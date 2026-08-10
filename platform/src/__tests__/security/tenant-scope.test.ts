@@ -42,6 +42,11 @@ describe('filterByScope: no-orgId documents', () => {
     const out = filterByScope(docs, scope({ role: 'doctor', orgId: 'org-moh-ss', hospitalId: 'hosp-001' }));
     expect(out.map((d) => d._id)).not.toContain('d');
   });
+
+  test('a non-national user without an org scope sees nothing', () => {
+    const out = filterByScope(docs, scope({ role: 'doctor', orgId: undefined, hospitalId: 'hosp-001' }));
+    expect(out).toEqual([]);
+  });
 });
 
 describe('filterByScope: national-role bypass', () => {

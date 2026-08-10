@@ -18,6 +18,7 @@
  * bundles is a build error by design — admin creds must not be shipped.
  */
 import { Buffer } from 'node:buffer';
+import { DATABASE_SYNC_CONFIGS } from './sync-config';
 
 interface CouchAdminEnv {
   baseUrl: string;
@@ -161,31 +162,12 @@ export async function setDatabaseSecurity(input: {
  * to any authenticated user (NOT recommended for production).
  */
 export async function applyOrgScopedSecurity(roles: string[]): Promise<void> {
-  // Match the list in setup-couchdb.sh — keep in sync if databases are
-  // added or removed there.
-  const dbs = [
-    'tamamhealth_users',
-    'tamamhealth_patients',
-    'tamamhealth_hospitals',
-    'tamamhealth_medical_records',
-    'tamamhealth_referrals',
-    'tamamhealth_lab_results',
-    'tamamhealth_disease_alerts',
-    'tamamhealth_prescriptions',
-    'tamamhealth_audit_log',
-    'tamamhealth_messages',
-    'tamamhealth_births',
-    'tamamhealth_deaths',
-    'tamamhealth_facility_assessments',
-    'tamamhealth_immunizations',
-    'tamamhealth_anc',
-    'tamamhealth_follow_ups',
-    'tamamhealth_organizations',
-    'tamamhealth_platform_config',
-    'tamamhealth_meta',
-    'tamamhealth_sync_events',
-    'tamamhealth_conflict_queue',
-  ];
+  // Derive this from the canonical sync map. Maintaining a second hand-written
+  // list caused newly-added clinical databases to miss CouchDB _security
+  // membership even though they were already replicating.
+  const dbs = DATABASE_SYNC_CONFIGS
+    .filter(config => config.orgScoped)
+    .map(config => config.localName);
   for (const db of dbs) {
     try {
       await setDatabaseSecurity({ dbName: db, memberRoles: roles });

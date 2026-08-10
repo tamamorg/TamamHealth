@@ -26,7 +26,10 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_referrals',             direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_lab_results',           direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_prescriptions',         direction: 'both', orgScoped: true },
-  { localName: 'tamamhealth_disease_alerts',        direction: 'both', orgScoped: false },
+  // Surveillance alerts carry tenant data; public-health roles can still
+  // receive cross-facility records through their explicit entitlement, but a
+  // facility user must never replicate another organisation's alerts.
+  { localName: 'tamamhealth_disease_alerts',        direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_messages',              direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_births',                direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_deaths',                direction: 'both', orgScoped: true },

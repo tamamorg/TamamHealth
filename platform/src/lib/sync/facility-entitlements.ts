@@ -34,6 +34,30 @@
 
 import type { UserRole } from '../db-types';
 
+// Only these records may be global when an older/reference document has no
+// orgId. Clinical and operational documents without a tenant are malformed
+// and must not be copied to a user's device as a convenient fallback.
+const GLOBAL_NO_ORG_TYPES = ['organization', 'platform_config'] as const;
+
+// Documents use different names for their owning facility across modules. The
+// selector must cover the same fields as data-scope.ts or replication can
+// leak a document before the UI has a chance to hide it.
+const FACILITY_FIELDS = [
+  'hospitalId',
+  'facilityId',
+  'registrationHospital',
+  'lastVisitHospital',
+  'fromHospitalId',
+  'toHospitalId',
+  'recipientHospitalId',
+] as const;
+
+function noFacilityTieSelector(): Record<string, unknown> {
+  return {
+    $and: FACILITY_FIELDS.map(field => ({ [field]: { $exists: false } })),
+  };
+}
+
 /**
  * Roles entitled to read across every facility in their organisation.
  *
@@ -120,8 +144,13 @@ export function replicationSelector(
     conditions.push({
       $or: [
         { orgId: entitlement.orgId },
-        // Docs with no orgId are global/reference data.
-        { orgId: { $exists: false } },
+        // Only explicitly global reference/config docs may lack orgId.
+        {
+          $and: [
+            { orgId: { $exists: false } },
+            { type: { $in: GLOBAL_NO_ORG_TYPES } },
+          ],
+        },
       ],
     });
   }
@@ -131,12 +160,12 @@ export function replicationSelector(
       // Entitled to nothing: replicate only non-facility documents. This is
       // fail-CLOSED on purpose — a user whose facility is unknown must not
       // fall through to receiving everything.
-      conditions.push({ hospitalId: { $exists: false } });
+      conditions.push(noFacilityTieSelector());
     } else {
       conditions.push({
         $or: [
-          { hospitalId: { $in: entitlement.facilityIds } },
-          { hospitalId: { $exists: false } },
+          ...FACILITY_FIELDS.map(field => ({ [field]: { $in: entitlement.facilityIds } })),
+          noFacilityTieSelector(),
         ],
       });
     }

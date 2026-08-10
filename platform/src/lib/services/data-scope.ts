@@ -47,6 +47,12 @@ export function filterByScope<T extends Record<string, any>>(
   // Super admin and national government see everything
   if (scope.role === 'super_admin' || scope.role === 'government') return docs;
 
+  // A tenant is the minimum authorization context for every other role. A
+  // missing orgId must fail closed; otherwise the later facility fallback can
+  // return hospital-less documents from every tenant to a partially-created
+  // or stale session.
+  if (!scope.orgId) return [];
+
   // Everyone else is filtered by orgId
   let filtered = docs;
   if (scope.orgId) {

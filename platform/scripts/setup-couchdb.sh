@@ -165,10 +165,23 @@ curl -sf -X PUT "${COUCHDB_URL}/_node/_local/_config/httpd/enable_cors" \
   -H "Content-Type: application/json" \
   -d '"true"' > /dev/null 2>&1
 
-# Allow all origins (restrict in production to your domain)
+# Credentialed CouchDB sessions must never use a wildcard origin. Supply a
+# comma-separated allowlist, for example:
+#   COUCHDB_CORS_ORIGINS=https://app.example.org
+# Local development may explicitly opt into a wildcard with
+# ALLOW_INSECURE_CORS=true, but production setup refuses it.
+CORS_ORIGINS="${COUCHDB_CORS_ORIGINS:-${NEXT_PUBLIC_APP_URL:-}}"
+if [[ -z "$CORS_ORIGINS" ]]; then
+  echo "ERROR: Set COUCHDB_CORS_ORIGINS (comma-separated HTTPS app origins) before configuring CouchDB CORS."
+  exit 1
+fi
+if [[ "$CORS_ORIGINS" == "*" && "${ALLOW_INSECURE_CORS:-false}" != "true" ]]; then
+  echo "ERROR: Refusing wildcard CouchDB CORS with credentialed sessions. Set explicit COUCHDB_CORS_ORIGINS."
+  exit 1
+fi
 curl -sf -X PUT "${COUCHDB_URL}/_node/_local/_config/cors/origins" \
   -H "Content-Type: application/json" \
-  -d '"*"' > /dev/null 2>&1
+  -d "\"${CORS_ORIGINS}\"" > /dev/null 2>&1
 
 # Allow credentials
 curl -sf -X PUT "${COUCHDB_URL}/_node/_local/_config/cors/credentials" \
