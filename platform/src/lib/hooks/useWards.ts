@@ -73,6 +73,16 @@ export function useWards() {
     return doc;
   }, [load]);
 
+  const reassignBed = useCallback(async (
+    admissionId: string,
+    destination: { wardId: string; wardName: string; bedId: string; bedNumber: string },
+  ) => {
+    const { reassignAdmissionBed } = await import('../services/ward-service');
+    const doc = await reassignAdmissionBed(admissionId, destination);
+    await load();
+    return doc;
+  }, [load]);
+
   // Derived: active admissions (still in ward)
   const activeAdmissions = admissions.filter(a => a.status === 'admitted');
 
@@ -86,6 +96,6 @@ export function useWards() {
     wards, beds, admissions, activeAdmissions,
     totalBeds, occupiedBeds, availableBeds, occupancyRate,
     loading, error,
-    admit, discharge, reload: load,
+    admit, discharge, reassignBed, reload: load,
   };
 }

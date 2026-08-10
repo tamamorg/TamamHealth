@@ -23,6 +23,7 @@ import { tooltipStyle } from '@/components/ChartCard';
 import WardWorkflow from './WardWorkflow';
 import MarWorkflow from './MarWorkflow';
 import RoomingWorkflow from './RoomingWorkflow';
+import TriageWorkflow from './TriageWorkflow';
 import HandoffWorkflow from './HandoffWorkflow';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
 
@@ -31,8 +32,8 @@ import PrintListDialog, { type PrintListSection } from '@/components/PrintListDi
    stations — the "New triage" action and queue deep links open them — but they
    are not offered as tabs either; the strip is the two boards a nurse parks on
    for a shift. */
-type StationTab = 'ward' | 'mar' | 'rooming';
-const STATION_TABS: readonly StationTab[] = ['ward', 'mar', 'rooming'];
+type StationTab = 'triage' | 'ward' | 'mar' | 'rooming';
+const STATION_TABS: readonly StationTab[] = ['triage', 'ward', 'mar', 'rooming'];
 
 function isStationTab(value: string | null): value is StationTab {
   return !!value && STATION_TABS.includes(value as StationTab);
@@ -97,6 +98,11 @@ export default function NurseDashboard() {
   // MAR plots dose slots, and Rooming plots rooming encounters; switching tabs
   // therefore changes both the list and the rail's visual language together.
   const chartItems = useMemo<DayStatsItem[]>(() => {
+    if (activeTab === 'triage') return triageToday.map(triage => ({
+      date: (triage.triagedAt || today).slice(0, 10),
+      time: rowTime(triage.triagedAt),
+      series: triage.priority === 'RED' ? 0 : 1,
+    }));
     if (activeTab === 'rooming') return roomingEntries.map(entry => ({
       date: (entry.encounter.startedAt || entry.encounter.createdAt || today).slice(0, 10),
       time: rowTime(entry.encounter.startedAt || entry.encounter.createdAt),
@@ -111,7 +117,7 @@ export default function NurseDashboard() {
       }))
       : DEMO_WARD_PATIENTS.map(patient => ({ date: today, time: undefined, series: (patient._triage?.priority === 'RED' || patient._triage?.priority === 'YELLOW' ? 0 : 1) as 0 | 1 }));
     return wardActivity;
-  }, [activeAdmissions, activeTab, marEntries, roomingEntries, today]);
+  }, [activeAdmissions, activeTab, marEntries, roomingEntries, today, triageToday]);
 
   // Free-text search for the station lives in the LEFT RAIL (between the
   // mini-calendar and the day chart); WardWorkflow receives it as a prop so
@@ -128,6 +134,7 @@ export default function NurseDashboard() {
   }, [urlStation]);
 
   const stationLabel = useMemo<Record<StationTab, string>>(() => ({
+    triage: 'Triage',
     ward: t('nurse.tabWard'),
     mar: t('nurse.tabMar'),
     rooming: 'Rooming',
@@ -145,10 +152,11 @@ export default function NurseDashboard() {
   // the same sources that render each board, so the tab never disagrees with
   // the visible list.
   const stationTabs = useMemo(() => ([
+    { key: 'triage' as const, label: 'Triage', count: triages.length },
     { key: 'ward' as const, label: stationLabel.ward, count: wardBoardCount },
     { key: 'mar' as const, label: stationLabel.mar, count: marEntries.length },
     { key: 'rooming' as const, label: stationLabel.rooming, count: roomingEntries.length },
-  ]), [marEntries.length, roomingEntries.length, stationLabel]);
+  ]), [marEntries.length, roomingEntries.length, stationLabel, triages.length, wardBoardCount]);
 
   const selectStation = useCallback((station: StationTab) => {
     setFallbackStation(station);
@@ -331,6 +339,13 @@ export default function NurseDashboard() {
   ), []);
 
   const stationSummary = useMemo(() => {
+    if (activeTab === 'triage') {
+      return [
+        { name: 'Critical', value: criticalTriage, color: CHART_RED },
+        { name: 'Urgent', value: urgentTriage, color: CHART_AMBER },
+        { name: 'Routine', value: routineTriage, color: CHART_GREEN },
+      ];
+    }
     if (activeTab === 'rooming') {
       return [
         { name: 'Waiting', value: roomingEntries.filter(entry => entry.step !== 'being_roomed').length, color: CHART_AMBER },
@@ -356,10 +371,15 @@ export default function NurseDashboard() {
       { name: 'Watch', value: urgent, color: CHART_AMBER },
       { name: 'Stable', value: Math.max(0, total - critical - urgent), color: CHART_GREEN },
     ];
-  }, [activeAdmissions, activeTab, marEntries, roomingEntries]);
+  }, [activeAdmissions, activeTab, marEntries, roomingEntries, criticalTriage, urgentTriage, routineTriage]);
   const stationSummaryTotal = stationSummary.reduce((sum, item) => sum + item.value, 0);
 
   const metrics = useMemo(() => {
+    if (activeTab === 'triage') return [
+      { label: 'Waiting', value: waitingTriage, tone: 'warning' as const },
+      { label: 'Critical', value: criticalTriage, tone: 'danger' as const },
+      { label: 'Completed', value: triageToday.filter(triage => triage.status !== 'pending').length },
+    ];
     if (activeTab === 'rooming') return [
       { label: 'Waiting', value: roomingEntries.filter(entry => entry.step !== 'being_roomed').length, tone: 'warning' as const },
       { label: 'In room', value: roomingEntries.filter(entry => entry.step === 'being_roomed').length },
@@ -377,10 +397,12 @@ export default function NurseDashboard() {
       { label: 'Watch', value: urgent, tone: 'warning' as const },
       { label: 'Admitted', value: wardBoardCount },
     ];
-  }, [activeAdmissions, activeTab, marEntries, roomingEntries]);
+  }, [activeAdmissions, activeTab, marEntries, roomingEntries, waitingTriage, criticalTriage, triageToday, wardBoardCount]);
 
-  const chartTitle = activeTab === 'rooming' ? 'Rooming activity' : activeTab === 'mar' ? 'Medication activity' : 'Ward activity';
-  const chartSeriesNames: [string, string] = activeTab === 'rooming'
+  const chartTitle = activeTab === 'triage' ? 'Triage activity' : activeTab === 'rooming' ? 'Rooming activity' : activeTab === 'mar' ? 'Medication activity' : 'Ward activity';
+  const chartSeriesNames: [string, string] = activeTab === 'triage'
+    ? ['Critical', 'Routine']
+    : activeTab === 'rooming'
     ? ['Waiting', 'In room']
     : activeTab === 'mar' ? ['Open doses', 'Given'] : ['Acute', 'Stable'];
 
@@ -417,7 +439,7 @@ export default function NurseDashboard() {
               <div className="ehr-day-stats-head">
                 <h3 className="flex items-center gap-2">
                   <PieChartIcon className="w-4 h-4" style={{ color: CHART_RED }} />
-                  {activeTab === 'rooming' ? 'Rooming queue' : activeTab === 'mar' ? 'Medication doses today' : 'Ward acuity'}
+                  {activeTab === 'triage' ? 'Triage acuity' : activeTab === 'rooming' ? 'Rooming queue' : activeTab === 'mar' ? 'Medication doses today' : 'Ward acuity'}
                 </h3>
               </div>
               {stationSummaryTotal === 0 ? (
@@ -462,16 +484,19 @@ export default function NurseDashboard() {
           centerTitle="Nursing station"
           centerSubtitle=""
           metrics={metrics}
-          calendarEventDates={activeTab === 'rooming'
+          calendarEventDates={activeTab === 'triage'
+            ? triageToday.map(triage => (triage.triagedAt || today).slice(0, 10))
+            : activeTab === 'rooming'
             ? roomingEntries.map(entry => (entry.encounter.startedAt || entry.encounter.createdAt || today).slice(0, 10))
             : activeTab === 'mar'
               ? [today]
               : activeAdmissions.map(admission => (admission.admissionDate || today).slice(0, 10))}
-          metricsTitle={activeTab === 'rooming' ? 'Rooming today' : activeTab === 'mar' ? 'Medication today' : 'Ward today'}
+          metricsTitle={activeTab === 'triage' ? 'Triage today' : activeTab === 'rooming' ? 'Rooming today' : activeTab === 'mar' ? 'Medication today' : 'Ward today'}
           emptyTitle="No patients in this station"
           hideRowList
         >
           <div className="flex flex-col" style={{ minHeight: 0 }}>
+            {activeTab === 'triage' && <TriageWorkflow />}
             {activeTab === 'ward' && <WardWorkflow search={railSearch} showHeader={false} />}
             {activeTab === 'mar' && <MarWorkflow />}
             {activeTab === 'rooming' && <RoomingWorkflow />}

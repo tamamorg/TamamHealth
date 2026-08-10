@@ -18766,6 +18766,99 @@ textarea.ehr-handoff-input {
   min-width: 0;
 }
 
+.appt-edit-header-actions .btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 9999px !important;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.appt-edit-header-actions .btn-primary {
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.appt-edit-header-actions .btn-primary:hover {
+  border-color: var(--tb-blue-800, #015697);
+  background: var(--tb-blue-800, #015697);
+}
+
+.appt-edit-header-actions .btn-secondary {
+  border: 1px solid var(--ehr-border, var(--border-light));
+  background: var(--ehr-panel, #fff);
+  color: var(--ehr-text, var(--text-primary));
+}
+
+.appt-edit-header-actions .btn-secondary:hover,
+.appt-edit-header-actions .btn-secondary:focus-visible {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-light, #eff6ff);
+}
+
+.nurse-inline-ward-row {
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.nurse-ward-bed-selectors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nurse-ward-bed-selectors select {
+  min-width: 150px;
+  min-height: 36px;
+  padding: 7px 30px 7px 10px;
+  border: 1px solid var(--border-medium, var(--border-light));
+  border-radius: 9999px;
+  background: var(--bg-card-solid, #fff);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.nurse-ward-bed-selectors select:focus {
+  border-color: var(--accent-primary);
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  outline-offset: 1px;
+}
+
+.nurse-status-select {
+  min-width: 150px;
+  min-height: 36px;
+  padding: 7px 30px 7px 10px;
+  border: 1px solid var(--border-medium, var(--border-light));
+  border-radius: 9999px;
+  background: var(--bg-card-solid, #fff);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+
+.nurse-status-select:focus {
+  border-color: var(--accent-primary);
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  outline-offset: 1px;
+}
+
+@media (max-width: 560px) {
+  .nurse-ward-bed-selectors,
+  .nurse-ward-bed-selectors select {
+    width: 100%;
+  }
+}
+
 @media (max-width: 760px) {
   .appt-edit-header-actions {
     width: 100%;

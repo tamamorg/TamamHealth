@@ -249,6 +249,44 @@ export async function admitPatient(
   return doc;
 }
 
+/** Move an admitted patient to another available ward bed. */
+export async function reassignAdmissionBed(
+  admissionId: string,
+  destination: { wardId: string; wardName: string; bedId: string; bedNumber: string },
+  actor?: { id?: string; name?: string },
+): Promise<AdmissionDoc> {
+  const db = wardDB();
+  const admission = await db.get(admissionId) as AdmissionDoc;
+  const nextBed = await db.get(destination.bedId) as BedDoc;
+  if (nextBed.status !== 'available' && nextBed.currentAdmissionId !== admissionId) {
+    throw new Error('The selected bed is not available.');
+  }
+  if (admission.bedId === destination.bedId && admission.wardId === destination.wardId) return admission;
+
+  const now = new Date().toISOString();
+  if (admission.bedId) await updateBedStatus(admission.bedId, 'cleaning');
+  const updated = withPendingOfflineSync({
+    ...admission,
+    wardId: destination.wardId,
+    wardName: destination.wardName,
+    bedId: destination.bedId,
+    bedNumber: destination.bedNumber,
+    updatedAt: now,
+  }, now);
+  const response = await db.put(updated);
+  updated._rev = response.rev;
+  await updateBedStatus(destination.bedId, 'occupied', admission.patientId, admission.patientName, admission._id);
+  if (admission.wardId !== destination.wardId) {
+    await updateWardOccupancy(admission.wardId);
+    await updateWardOccupancy(destination.wardId);
+  } else {
+    await updateWardOccupancy(destination.wardId);
+  }
+  await logAuditSafe('PATIENT_BED_REASSIGNED', actor?.id, actor?.name, `Moved ${admission.patientName} to ${destination.wardName} (${destination.bedNumber})`);
+  emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
+  return updated;
+}
+
 export async function dischargePatient(
   admissionId: string,
   dischargeData: {

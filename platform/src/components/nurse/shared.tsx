@@ -437,7 +437,7 @@ export function useWardRoster(opts?: { search?: string; sortByUrgency?: boolean 
 
   const { patients, reload } = usePatients();
   const { triages: triageHistory } = useTriage();
-  const { activeAdmissions } = useWards();
+  const { activeAdmissions, wards, beds, reassignBed } = useWards();
   const { globalSearch } = useUi();
 
   // Map patient IDs to their most recent triage for sorting and display
@@ -503,5 +503,5 @@ export function useWardRoster(opts?: { search?: string; sortByUrgency?: boolean 
     return [...filtered].sort((a, b) => priorityOrder(priorityOf(a)) - priorityOrder(priorityOf(b)));
   }, [patients, activeAdmissions, globalSearch, search, sortByUrgency, patientTriageMap, admissionByPatient]);
 
-  return { patients, reload, triageHistory, wardPatients, patientTriageMap, admissionByPatient };
+  return { patients, reload, triageHistory, wardPatients, patientTriageMap, admissionByPatient, wards, beds, reassignBed };
 }

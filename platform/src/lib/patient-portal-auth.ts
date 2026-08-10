@@ -11,7 +11,6 @@ import { SignJWT, jwtVerify } from 'jose';
 const HARDCODED_FALLBACK = 'tamamhealth-south-sudan-health-2026-secret-key';
 const secret =
   process.env.JWT_SECRET ||
-  process.env.NEXT_PUBLIC_JWT_SECRET ||
   HARDCODED_FALLBACK;
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';

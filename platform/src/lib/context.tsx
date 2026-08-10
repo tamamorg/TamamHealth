@@ -397,7 +397,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         syncManagerRef.current = null;
       });
     };
-  }, [isAuthenticated, currentUser?.orgId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Recreate the manager whenever the effective data entitlement changes.
+  // A user switch can keep the same org while changing facility or role; if
+  // those keys are omitted, the new session keeps the previous user's CouchDB
+  // replication scope until a full reload.
+  }, [
+    isAuthenticated,
+    currentUser?.orgId,
+    currentUser?.hospitalId,
+    currentUser?.role,
+  ]);  
 
   // --- Sync gating: the manager runs only when the user wants to be online
   // AND the OS reports the network is up. If either drops, stopAll(). When

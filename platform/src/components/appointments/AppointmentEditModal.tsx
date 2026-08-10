@@ -55,6 +55,8 @@ export default function AppointmentEditModal({
   onClose,
   onSaved,
   headerActions,
+  hideInlineTabs,
+  inlineLocation,
 }: {
   appointment: AppointmentDoc;
   /** Every appointment in view, for the provider conflict check. */
@@ -64,6 +66,10 @@ export default function AppointmentEditModal({
   onSaved?: () => void;
   /** Actions rendered on the far right of the inline tab header. */
   headerActions?: React.ReactNode;
+  /** Remove the inline navigation strip when the parent supplies its own row actions. */
+  hideInlineTabs?: boolean;
+  /** Optional nurse/ward placement control shown in the Details tab. */
+  inlineLocation?: React.ReactNode;
   /**
    * Render as a panel inside the row rather than a centred dialog. The row
    * dropdown is where the doctor dashboard puts a visit's detail, so the desk's
@@ -198,7 +204,7 @@ export default function AppointmentEditModal({
         <span>{appointment.appointmentDate} · {appointment.appointmentTime}</span>
       </div>
       )}
-      {inline && (
+      {inline && !hideInlineTabs && (
         <div className="ehr-visit-pop-tabs" role="tablist">
           {([['appointment', 'Details'], ['care', 'Provider & staff'], ['billing', 'Status & billing']] as const).map(([key, label]) => (
             <button
@@ -220,8 +226,9 @@ export default function AppointmentEditModal({
         </div>
       )}
       <div className="appt-edit-grid">
-        {(!inline || tab === 'appointment') && (
+        {(!inline || hideInlineTabs || tab === 'appointment') && (
         <div className="appt-edit-col">
+          {inline && inlineLocation}
           {!inline && <h4 className="appt-edit-section">Appointment mode &amp; location</h4>}
           <AppointmentDetailFields
             section="mode"
@@ -264,7 +271,7 @@ export default function AppointmentEditModal({
         </div>
         )}
 
-        {(!inline || tab === 'care') && (
+        {(!inline || hideInlineTabs || tab === 'care') && (
         <div className="appt-edit-col">
           {!inline && <h4 className="appt-edit-section">Provider &amp; staff</h4>}
           {/* A picker, not free text, with its own Assign so the change can be
@@ -311,7 +318,7 @@ export default function AppointmentEditModal({
         </div>
         )}
 
-        {(!inline || tab === 'billing') && (
+        {(!inline || hideInlineTabs || tab === 'billing') && (
         <div className="appt-edit-col">
           {!inline && <h4 className="appt-edit-section">Status &amp; priority</h4>}
           <div><label>Status</label><AppointmentStatusSelect status={status} layout="bare" onChange={setStatus} /></div>
@@ -327,6 +334,11 @@ export default function AppointmentEditModal({
         </div>
         )}
       </div>
+      {inline && hideInlineTabs && headerActions && (
+        <div className="ehr-row-detail__actions appt-edit-inline-actions" role="group" aria-label="Patient actions" onClick={event => event.stopPropagation()}>
+          {headerActions}
+        </div>
+      )}
       <div className="appt-edit-actions">
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>

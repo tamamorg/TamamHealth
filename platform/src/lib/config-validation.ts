@@ -47,6 +47,9 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   // Exempt only an explicit demo deployment, which by definition holds seeded
   // fake data rather than real patients. Any other production boot must encrypt.
   const isDemo = env.NEXT_PUBLIC_DEMO_MODE === 'true';
+  if (!isDemo && env.NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE === 'true') {
+    errors.push('NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE must be false in production — destructive cleanup is an operator-only migration.');
+  }
   if (!isDemo && env.PHI_ENCRYPTION_ENABLED !== 'true') {
     errors.push(
       'PHI_ENCRYPTION_ENABLED must be "true" in production — patient data would otherwise be stored unencrypted. ' +
@@ -88,6 +91,16 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   }
 
   // --- Sync (CouchDB) ------------------------------------------------------
+  // A Vercel deployment is multi-user/serverless by definition. Browser-only
+  // PouchDB is an offline cache, not shared durable storage, so allowing sync
+  // to be disabled in production would make users on different devices see
+  // different patient charts and worklists.
+  if (!isDemo && env.NEXT_PUBLIC_SYNC_ENABLED !== 'true') {
+    errors.push('NEXT_PUBLIC_SYNC_ENABLED must be true in production — shared CouchDB replication is required for multi-user patient data.');
+  }
+  if (!isDemo && !env.COUCHDB_URL) {
+    errors.push('COUCHDB_URL is unset — server routes on Vercel need a durable CouchDB endpoint, not local filesystem storage.');
+  }
   if (env.NEXT_PUBLIC_SYNC_ENABLED === 'true') {
     if (!env.NEXT_PUBLIC_COUCHDB_URL) {
       errors.push('NEXT_PUBLIC_SYNC_ENABLED=true but NEXT_PUBLIC_COUCHDB_URL is unset.');

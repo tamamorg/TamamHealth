@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 import { useAppointments } from '@/lib/hooks/useAppointments';
@@ -8,14 +8,195 @@ import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils'
 import { patientFullName, patientAgeLabel, initials, stateTint } from '@/lib/patient-utils';
 import { buildQueueFromTriage, stageForAppointmentStatus, STAGE_LABELS, type QueueEntry } from '@/lib/services/patient-queue-service';
 import { waitLabel } from '@/components/ehr/EhrVisitPopup';
-import EhrVisitPopup from '@/components/ehr/EhrVisitPopup';
 import AppointmentEditModal from '@/components/appointments/AppointmentEditModal';
-import { usePermissions } from '@/lib/hooks/usePermissions';
-import type { AppointmentStatus, PatientDoc } from '@/lib/db-types';
+import type { AppointmentDoc, AppointmentStatus, PatientDoc, TriageDoc } from '@/lib/db-types';
+import type { AdmissionDoc, BedDoc, WardDoc } from '@/lib/db-types-ward';
 import { APPOINTMENT_STATUS_OPTIONS, APPOINTMENT_STATUS_TONES, APPOINTMENT_STATUS_DESCRIPTIONS, appointmentStatusLabel, canonicalAppointmentStatus } from '@/lib/appointment-status';
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useWardRoster, severityAcuity } from './shared';
+import { useTriage } from '@/lib/hooks/useTriage';
+
+function WardBedSelector({
+  admission,
+  wards,
+  beds,
+  onReassign,
+  onNotify,
+}: {
+  admission?: AdmissionDoc;
+  wards: WardDoc[];
+  beds: BedDoc[];
+  onReassign: (admissionId: string, destination: { wardId: string; wardName: string; bedId: string; bedNumber: string }) => Promise<unknown>;
+  onNotify: (message: string, type: 'success' | 'error') => void;
+}) {
+  const [wardId, setWardId] = useState(admission?.wardId || '');
+  const [bedId, setBedId] = useState(admission?.bedId || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setWardId(admission?.wardId || '');
+    setBedId(admission?.bedId || '');
+  }, [admission?._id, admission?.wardId, admission?.bedId]);
+
+  if (!admission) return <dd>Not admitted</dd>;
+  const wardBeds = beds
+    .filter(bed => bed.wardId === wardId && (bed.status === 'available' || bed.currentAdmissionId === admission._id))
+    .sort((a, b) => a.bedNumber.localeCompare(b.bedNumber));
+  const selectedWard = wards.find(ward => ward._id === wardId);
+
+  const save = async (nextWardId: string, nextBedId: string) => {
+    const nextBed = beds.find(bed => bed._id === nextBedId);
+    const nextWard = wards.find(ward => ward._id === nextWardId);
+    if (!nextBed || !nextWard || !nextBedId) return;
+    setSaving(true);
+    try {
+      await onReassign(admission._id, { wardId: nextWard._id, wardName: nextWard.name, bedId: nextBed._id, bedNumber: nextBed.bedNumber });
+      onNotify(`Patient moved to ${nextWard.name} · ${nextBed.bedNumber}.`, 'success');
+    } catch (error) {
+      onNotify(error instanceof Error ? error.message : 'Could not update the ward bed.', 'error');
+      setWardId(admission.wardId);
+      setBedId(admission.bedId || '');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <dd className="nurse-ward-bed-selectors">
+      <select aria-label="Ward" value={wardId} disabled={saving} onChange={event => {
+        const nextWardId = event.target.value;
+        const nextBed = beds.find(bed => bed.wardId === nextWardId && (bed.status === 'available' || bed.currentAdmissionId === admission._id));
+        setWardId(nextWardId);
+        setBedId(nextBed?._id || '');
+        if (nextBed) void save(nextWardId, nextBed._id);
+      }}>
+        {wards.filter(ward => ward.isActive).map(ward => <option key={ward._id} value={ward._id}>{ward.name}</option>)}
+      </select>
+      <select aria-label="Bed" value={bedId} disabled={saving || !selectedWard} onChange={event => {
+        const nextBedId = event.target.value;
+        setBedId(nextBedId);
+        void save(wardId, nextBedId);
+      }}>
+        {!wardBeds.length && <option value="">No available beds</option>}
+        {wardBeds.map(bed => <option key={bed._id} value={bed._id}>{bed.bedNumber}</option>)}
+      </select>
+    </dd>
+  );
+}
+
+function NurseWardPatientDetail({
+  patient,
+  appointment,
+  appointments,
+  admission,
+  triage,
+  onClose,
+  onRoute,
+  wards,
+  beds,
+  reassignBed,
+  onNotify,
+}: {
+  patient: import('./shared').WardRow;
+  appointment: AppointmentDoc | null;
+  appointments: AppointmentDoc[];
+  admission?: AdmissionDoc;
+  triage: TriageDoc | null;
+  onClose: () => void;
+  onRoute: (action: 'triage' | 'mar' | 'chart', id: string) => void;
+  wards: WardDoc[];
+  beds: BedDoc[];
+  reassignBed: (admissionId: string, destination: { wardId: string; wardName: string; bedId: string; bedNumber: string }) => Promise<unknown>;
+  onNotify: (message: string, type: 'success' | 'error') => void;
+}) {
+  const [tab, setTab] = useState<'details' | 'care' | 'billing'>('details');
+  const { update: updateTriage } = useTriage();
+  const [statusSaving, setStatusSaving] = useState(false);
+  const patientName = patientFullName(patient);
+  const actions = (
+    <>
+      <button type="button" className="btn btn-primary btn-sm" onClick={() => onRoute('triage', patient._id)}>Triage</button>
+      {admission && <button type="button" className="btn btn-secondary btn-sm" onClick={() => onRoute('mar', admission._id)}>MAR</button>}
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => onRoute('chart', patient._id)}>Chart</button>
+    </>
+  );
+
+  if (appointment) {
+    return (
+      <AppointmentEditModal
+        inline
+        appointment={appointment}
+        appointments={appointments}
+        patient={patient as unknown as PatientDoc}
+        onClose={onClose}
+        headerActions={actions}
+        inlineLocation={(
+          <div className="appointment-detail-row nurse-inline-ward-row">
+            <dt>Ward / bed</dt>
+            <WardBedSelector admission={admission} wards={wards} beds={beds} onReassign={reassignBed} onNotify={onNotify} />
+          </div>
+        )}
+      />
+    );
+  }
+
+  return (
+    <div className="appt-edit-shell is-inline">
+      <div className="ehr-visit-pop-tabs" role="tablist">
+        {([['details', 'Details'], ['care', 'Provider & staff'], ['billing', 'Status & billing']] as const).map(([key, label]) => (
+          <button key={key} type="button" role="tab" aria-selected={tab === key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>{label}</button>
+        ))}
+        <div className="appt-edit-header-actions" role="group" aria-label="Patient actions" onClick={event => event.stopPropagation()}>{actions}</div>
+      </div>
+      <div className="appt-edit-grid">
+        {tab === 'details' && <div className="appt-edit-col">
+          <div className="appointment-detail-row"><dt>Patient</dt><dd>{patientName}</dd></div>
+          <div className="appointment-detail-row"><dt>Hospital number</dt><dd>{patient.hospitalNumber || 'Not recorded'}</dd></div>
+          <div className="appointment-detail-row"><dt>Ward / bed</dt><WardBedSelector admission={admission} wards={wards} beds={beds} onReassign={reassignBed} onNotify={onNotify} /></div>
+          <div className="appointment-detail-row"><dt>Chief complaint</dt><dd>{triage?.chiefComplaint || admission?.admittingDiagnosis || 'Not recorded'}</dd></div>
+        </div>}
+        {tab === 'care' && <div className="appt-edit-col">
+          <div className="appointment-detail-row"><dt>Provider</dt><dd>{triage?.assignedProviderName || admission?.attendingPhysicianName || patient.assignedDoctorName || 'Unassigned'}</dd></div>
+          <div className="appointment-detail-row"><dt>Nurse</dt><dd>{admission?.nurseAssignedName || 'Unassigned'}</dd></div>
+          <div className="appointment-detail-row"><dt>Handoff</dt><dd>{triage?.handoffStatus?.replaceAll('_', ' ') || 'Not started'}</dd></div>
+          {triage?.handoffNote && <div className="appointment-detail-row"><dt>Note</dt><dd>{triage.handoffNote}</dd></div>}
+        </div>}
+        {tab === 'billing' && <div className="appt-edit-col">
+          <div className="appointment-detail-row"><dt>Status</dt><dd>
+            {triage ? (
+              <select
+                className="nurse-status-select"
+                value={triage.status}
+                disabled={statusSaving}
+                aria-label={`Status for ${patientName}`}
+                onChange={async event => {
+                  const next = event.target.value as TriageDoc['status'];
+                  setStatusSaving(true);
+                  try {
+                    await updateTriage(triage._id, { status: next });
+                    onNotify(`${patientName} status updated to ${next.replaceAll('_', ' ')}.`, 'success');
+                  } catch (error) {
+                    onNotify(error instanceof Error ? error.message : 'Could not update patient status.', 'error');
+                  } finally {
+                    setStatusSaving(false);
+                  }
+                }}
+              >
+                {(['pending', 'seen', 'admitted', 'discharged', 'referred', 'lwbs'] as const).map(status => (
+                  <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>
+                ))}
+              </select>
+            ) : <span>{admission ? 'Admitted' : 'No active visit'}</span>}
+          </dd></div>
+          <div className="appointment-detail-row"><dt>Disposition</dt><dd>{triage?.disposition?.replaceAll('_', ' ') || 'Not recorded'}</dd></div>
+          <div className="appointment-detail-row"><dt>Billing</dt><dd>Managed at checkout</dd></div>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Ward patient board. Free-text search comes from OUTSIDE: the nurse-station
  * left rail passes `search` down; the standalone /dashboard/nurse/ward page
@@ -29,7 +210,7 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
   const { t } = useTranslation();
   const router = useRouter();
 
-  const { wardPatients, patientTriageMap, admissionByPatient } = useWardRoster();
+  const { wardPatients, patientTriageMap, admissionByPatient, wards, beds, reassignBed } = useWardRoster();
   const { appointments, updateStatus } = useAppointments();
   const { showToast } = useToast();
   const [expandedPatientId, setExpandedPatientId] = useState<string | null>(null);
@@ -252,7 +433,7 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                     : today;
                   const overTarget = Boolean(entry?.flaggedForReassessment);
                   const subtitle = `${triage?.chiefComplaint || admission?.admittingDiagnosis || patient.hospitalNumber || 'No ID'} · ${patientAgeLabel(patient)} · ${patient.gender || 'Not recorded'}`;
-                  const activate = patient._demo ? undefined : () => setExpandedPatientId(current => current === patient._id ? null : patient._id);
+                  const activate = () => setExpandedPatientId(current => current === patient._id ? null : patient._id);
                   const stageText = queueStageText ?? appointment?.department ?? '';
                   const careTeamDoctor = admission?.attendingPhysicianName || patient.assignedDoctorName || 'Doctor unassigned';
                   const careTeamNurse = admission?.nurseAssignedName || entry?.assignedToName || 'Nurse unassigned';
@@ -271,11 +452,11 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                     <div
                       data-triage={priority}
                       className="ehr-appointment-row appointment-card-row"
-                      role={patient._demo ? undefined : 'button'}
-                      tabIndex={patient._demo ? undefined : 0}
+                      role="button"
+                      tabIndex={0}
                       onClick={activate}
-                      onKeyDown={patient._demo ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate?.(); } }}
-                      style={{ cursor: patient._demo ? 'default' : 'pointer' }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); } }}
+                      style={{ cursor: 'pointer' }}
                     >
                       <div className="ehr-appointment-identity">
                         <div className="ehr-patient-icon" style={stateTint(priority)}>
@@ -351,66 +532,25 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                           <small>{statusSubtext}</small>
                         </div>
                       </div>
-                      {!patient._demo && expandedPatientId === patient._id && (
+                      {expandedPatientId === patient._id && (
                         <div className="ehr-row-detail ehr-row-detail--visit" onClick={event => event.stopPropagation()}>
-                          {appointment ? (
-                            <AppointmentEditModal
-                              inline
-                              appointment={appointment}
-                              appointments={appointments}
-                              patient={patient as unknown as PatientDoc}
-                              onClose={() => setExpandedPatientId(null)}
-                              headerActions={(
-                                <>
-                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/triage/${patient._id}`)}>
-                                    Triage
-                                  </button>
-                                  {admission && (
-                                    <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/wards/mar/${admission._id}`)}>
-                                      MAR
-                                    </button>
-                                  )}
-                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/rooming/${patient._id}`)}>
-                                    Room patient
-                                  </button>
-                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/patients/${patient._id}`)}>
-                                    Chart
-                                  </button>
-                                </>
-                              )}
-                            />
-                          ) : (
-                            <EhrVisitPopup
-                              inline
-                              patientId={patient._id}
-                              name={patientFullName(patient)}
-                              detail={subtitle}
-                              acuity={priority}
-                              wait={waitText}
-                              appointment={null}
-                              triage={patientTriageMap.get(patient._id) || null}
-                              entry={entry || null}
-                              onClose={() => setExpandedPatientId(null)}
-                              onCall={() => router.push(`/triage/${patient._id}`)}
-                              onCallLabel="Open triage"
-                              onOpenChart={() => router.push(`/patients/${patient._id}`)}
-                              nurseActions={(
-                                <>
-                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/triage/${patient._id}`); }}>
-                                    Triage
-                                  </button>
-                                  {admission && (
-                                    <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/wards/mar/${admission._id}`); }}>
-                                      MAR
-                                    </button>
-                                  )}
-                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/rooming/${patient._id}`); }}>
-                                    Room patient
-                                  </button>
-                                </>
-                              )}
-                            />
-                          )}
+                          <NurseWardPatientDetail
+                            patient={patient}
+                            appointment={appointment || null}
+                            appointments={appointments}
+                            admission={admission}
+                            triage={patientTriageMap.get(patient._id) || null}
+                            wards={wards}
+                            beds={beds}
+                            reassignBed={reassignBed}
+                            onNotify={showToast}
+                            onClose={() => setExpandedPatientId(null)}
+                            onRoute={(action, id) => {
+                              if (action === 'triage') router.push(`/triage/${id}`);
+                              if (action === 'mar' && admission) router.push(`/wards/mar/${admission._id}`);
+                              if (action === 'chart') router.push(`/patients/${id}`);
+                            }}
+                          />
                         </div>
                       )}
                     </div>

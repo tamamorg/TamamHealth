@@ -2,13 +2,12 @@ import { SignJWT, jwtVerify } from 'jose';
 
 // Server-side secret (never leaves Node). All authoritative token creation and
 // verification runs server-side, so the client never needs the signing key.
-// NOTE: NEXT_PUBLIC_JWT_SECRET is still read as a last-resort fallback so the
-// offline client can verify self-issued dev tokens, but the server refuses to
-// start with a default secret in production.
+// The browser-side development fallback is intentionally separate from the
+// server secret. Never read a NEXT_PUBLIC_* signing key here: this module is
+// imported by client code and any such value would be bundled for every user.
 const HARDCODED_FALLBACK = 'tamamhealth-south-sudan-health-2026-secret-key';
 const secret =
   process.env.JWT_SECRET ||
-  process.env.NEXT_PUBLIC_JWT_SECRET ||
   HARDCODED_FALLBACK;
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -27,21 +26,6 @@ if (IS_SERVER && IS_PRODUCTION && secret.length < 32) {
   throw new Error(
     '[SECURITY] JWT_SECRET must be at least 32 characters in production ' +
     `(got ${secret.length}). Generate one with: openssl rand -hex 32`
-  );
-}
-
-// NEXT_PUBLIC_* env vars are inlined into the CLIENT JavaScript bundle at build
-// time. This module is imported by client code (context.tsx), so if the JWT
-// signing secret were ever supplied via NEXT_PUBLIC_JWT_SECRET in production it
-// would be shipped to every browser — anyone could then forge a token for any
-// role. Refuse to start. The server must use the server-only JWT_SECRET; the
-// NEXT_PUBLIC fallback exists solely for the non-production offline dev-token
-// path.
-if (IS_SERVER && IS_PRODUCTION && process.env.NEXT_PUBLIC_JWT_SECRET) {
-  throw new Error(
-    '[SECURITY] NEXT_PUBLIC_JWT_SECRET must not be set in production — it is ' +
-    'bundled into client JavaScript and would expose the token-signing key. ' +
-    'Remove it and set the server-only JWT_SECRET instead.'
   );
 }
 

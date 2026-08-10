@@ -1869,6 +1869,61 @@ async function clearSeedMarker(): Promise<void> {
   }
 }
 
+/** Remove seeded clinical/operational records while preserving user accounts
+ * and organization/facility configuration. Browser-only deletions sync as
+ * tombstones; server-side code never performs a tenant-wide wipe. */
+async function clearSeededClinicalDataOnce(): Promise<void> {
+  if (process.env.NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE !== 'true') return;
+  if (typeof window === 'undefined') return;
+  const meta = getDB('tamamhealth_meta');
+  try {
+    await meta.get('seeded-clinical-data-cleared');
+    return;
+  } catch {
+    // First production boot after demo mode.
+  }
+
+  const dataDatabases = [
+    'tamamhealth_patients', 'tamamhealth_medical_records', 'tamamhealth_referrals',
+    'tamamhealth_lab_results', 'tamamhealth_disease_alerts', 'tamamhealth_prescriptions',
+    'tamamhealth_messages', 'tamamhealth_conversations', 'tamamhealth_patient_notes',
+    'tamamhealth_births', 'tamamhealth_deaths', 'tamamhealth_facility_assessments',
+    'tamamhealth_immunizations', 'tamamhealth_anc', 'tamamhealth_follow_ups',
+    'tamamhealth_appointments', 'tamamhealth_telehealth', 'tamamhealth_pharmacy_inventory',
+    'tamamhealth_triage', 'tamamhealth_billing', 'tamamhealth_charges',
+    'tamamhealth_claims', 'tamamhealth_adjustments', 'tamamhealth_payments',
+    'tamamhealth_refunds', 'tamamhealth_saved_payment_methods', 'tamamhealth_payment_plans',
+    'tamamhealth_invoices', 'tamamhealth_ledger', 'tamamhealth_wards',
+    'tamamhealth_staff_schedules', 'tamamhealth_blood_bank', 'tamamhealth_problems',
+    'tamamhealth_encounters', 'tamamhealth_patient_documents', 'tamamhealth_patient_reminders',
+    'tamamhealth_intake_forms', 'tamamhealth_program_enrollments', 'tamamhealth_procedures',
+    'tamamhealth_handoffs', 'tamamhealth_patient_transfers', 'tamamhealth_nutrition_screenings',
+    'tamamhealth_nutrition_supplies', 'tamamhealth_availability', 'tamamhealth_announcements',
+    'tamamhealth_emergency_plans', 'tamamhealth_assets', 'tamamhealth_leave_requests',
+    'tamamhealth_payroll_entries', 'tamamhealth_clinical_favorites',
+    'tamamhealth_consultation_templates', 'tamamhealth_clinician_tasks',
+  ];
+
+  let failed = false;
+  for (const name of dataDatabases) {
+    try {
+      const db = getDB(name);
+      const result = await db.allDocs({ include_docs: true });
+      const deletions = result.rows
+        .map(row => row.doc as { _id?: string; _rev?: string } | undefined)
+        .filter((doc): doc is { _id: string; _rev?: string } => Boolean(doc?._id && !doc._id.startsWith('_design/')))
+        .map(doc => ({ _id: doc._id, _rev: doc._rev, _deleted: true }));
+      if (deletions.length) await db.bulkDocs(deletions);
+    } catch (error) {
+      failed = true;
+      console.warn(`[db-seed] could not clear ${name}`, error);
+    }
+  }
+
+  if (failed) throw new Error('Seeded data cleanup did not finish; it will retry on the next app load.');
+  await meta.put({ _id: 'seeded-clinical-data-cleared', version: 1, clearedAt: new Date().toISOString() });
+}
+
 export async function seedDatabase(): Promise<void> {
   // Serialize seeding across tabs. Two tabs seeding concurrently is how the
   // demo DB gets corrupted: one tab's resetAllDatabases() destroys IndexedDB
@@ -1989,6 +2044,8 @@ async function migrateRemoveOverlappingAppointments(): Promise<void> {
 }
 
 async function seedDatabaseExclusive(): Promise<void> {
+  await clearSeededClinicalDataOnce();
+
   if (await isSeeded()) {
     // Self-heal a corrupted "marked-seeded but empty" state. The seed marker is
     // written last, so normally it implies the data is present — but a wiped or
