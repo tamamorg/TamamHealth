@@ -376,7 +376,7 @@ export default function EhrTopRail() {
                   <span>Take a tour</span>
                 </button>
               )}
-              <button type="button" role="menuitem" className="danger" onClick={logout}>
+              <button type="button" role="menuitem" className="danger" onClick={() => { setUserOpen(false); logout(); }}>
                 <LogOut className="w-4 h-4" />
                 <span>Log out</span>
               </button>

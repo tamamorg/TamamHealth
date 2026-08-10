@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import type { PatientDoc } from '@/lib/db-types';
 import { useAssessments } from '@/lib/hooks/useAssessments';
@@ -23,7 +23,13 @@ const SEVERITY_COLOR: Record<string, string> = {
  * Outcome-measure assessments on the chart (P2.2). The front desk enters answers
  * (held); the score auto-totals; the provider reviews with the patient and signs.
  */
-export default function AssessmentsPanel({ patient }: { patient: PatientDoc }) {
+export default function AssessmentsPanel({ patient, focusId }: {
+  patient: PatientDoc;
+  /** Deep-link target from the dashboard's "documents to sign" list — this
+   *  assessment is scrolled to and highlighted so the signer lands on the exact
+   *  document they were sent to sign, not on a list to search. */
+  focusId?: string;
+}) {
   const { currentUser } = useAuth();
   const { assessments } = useAssessments(patient._id);
   const [busy, setBusy] = useState(false);
@@ -33,6 +39,16 @@ export default function AssessmentsPanel({ patient }: { patient: PatientDoc }) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
 
   const isProvider = isClinicalAuthorRole(currentUser?.role);
+
+  // Scroll the deep-linked assessment into view once the list has loaded.
+  useEffect(() => {
+    if (!focusId || !assessments.some(a => a._id === focusId)) return;
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(`assessment-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [focusId, assessments]);
+
   const instrument = getInstrument(instrumentId)!;
   const liveScore = useMemo(() => scoreAssessment(instrument, answers), [instrument, answers]);
 
@@ -131,7 +147,14 @@ export default function AssessmentsPanel({ patient }: { patient: PatientDoc }) {
         {assessments.map((a) => {
           const signed = a.documentStatus === 'signed';
           return (
-            <li key={a._id} className="rounded-lg p-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+            <li
+              key={a._id}
+              id={`assessment-${a._id}`}
+              className="rounded-lg p-3"
+              style={a._id === focusId
+                ? { background: 'var(--accent-light)', border: '1px solid var(--accent-primary)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' }
+                : { background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}
+            >
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{a.instrumentName}</span>
                 <span className="text-[12px] font-bold" style={{ color: a.severity ? SEVERITY_COLOR[a.severity] : 'var(--text-secondary)' }}>

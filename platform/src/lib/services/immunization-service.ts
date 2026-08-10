@@ -6,6 +6,13 @@ import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
 
+/**
+ * The EPI antigens this deployment records. One list, exported: coverage
+ * reporting, the immunizations module and the chart's own Immunizations
+ * section all have to agree on what "a vaccine" is, and separate copies drift.
+ */
+export const VACCINE_NAMES = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'] as const;
+
 export async function getAllImmunizations(scope?: DataScope): Promise<ImmunizationDoc[]> {
   const db = immunizationsDB();
   const all = await findByType<ImmunizationDoc>(db, 'immunization');
@@ -284,7 +291,7 @@ export async function getCoverageByAgeCohort(scope?: DataScope) {
     if (cohort) cohortMembers[cohort.key].add(patientId);
   }
 
-  const VACCINES = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'];
+  const VACCINES = VACCINE_NAMES;
   const rows: Array<{ vaccine: string; cohort: string; covered: number; total: number; percentage: number }> = [];
   for (const vaccine of VACCINES) {
     const recipients = new Set(completed.filter(i => i.vaccine === vaccine).map(i => i.patientId));
@@ -309,7 +316,7 @@ export async function getVaccineCoverage(scope?: DataScope) {
   const childIds = new Set(all.map(i => i.patientId));
   const totalChildren = childIds.size;
 
-  const vaccines = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'];
+  const vaccines = VACCINE_NAMES;
   const coverage: { vaccine: string; count: number; percentage: number }[] = [];
 
   for (const vaccine of vaccines) {

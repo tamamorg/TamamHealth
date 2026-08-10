@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import type { AppointmentDoc, AppointmentStatus, EncounterDoc, LabResultDoc } from '@/lib/db-types';
+import type { AppointmentDoc, AppointmentStatus, EncounterDoc, FollowUpDoc, LabResultDoc } from '@/lib/db-types';
 import {
   Calendar,
   Check,
@@ -47,6 +47,7 @@ import EhrVisitPopup, { EhrQueueMoveDialog, waitLabel } from '@/components/ehr/E
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';
 import PatientDispenseModal from '@/components/pharmacy/PatientDispenseModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
+import Select from '@/components/Select';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
@@ -104,6 +105,9 @@ export type OutstandingEntry = {
   meta?: string;
   tone?: 'neutral' | 'warning' | 'danger';
   href?: string;
+  actionLabel?: string;
+  actionHref?: string;
+  actionKind?: 'navigate' | 'complete-follow-up';
 };
 
 export type OutstandingItem = {
@@ -518,6 +522,10 @@ export default function EhrClinicalDashboard({
   // Which outstanding item's worklist occupies the centre panel (null = the
   // normal schedule). Keyed by item label.
   const [outstandingView, setOutstandingView] = useState<string | null>(null);
+  const [followUpToComplete, setFollowUpToComplete] = useState<OutstandingEntry | null>(null);
+  const [followUpOutcome, setFollowUpOutcome] = useState<NonNullable<FollowUpDoc['outcome']>>('under_treatment');
+  const [followUpNotes, setFollowUpNotes] = useState('');
+  const [followUpSaving, setFollowUpSaving] = useState(false);
 
   // "Dispense" header action — searches the full patient register (not just
   // today's worklist), then opens that patient's prescriptions and dispensing
@@ -620,6 +628,41 @@ export default function EhrClinicalDashboard({
     const patientId = patients.find(patient => patient.name === entry.title)?._id;
     if (patientId) { router.push(`/patients/${patientId}`); return; }
     showToast(`Couldn't open “${entry.title}”`, 'error');
+  };
+
+  const handleOutstandingAction = (entry: OutstandingEntry) => {
+    if (entry.actionKind === 'complete-follow-up') {
+      setFollowUpToComplete(entry);
+      setFollowUpOutcome('under_treatment');
+      setFollowUpNotes('');
+      return;
+    }
+    if (entry.actionHref) {
+      router.push(entry.actionHref);
+      return;
+    }
+    openOutstandingEntry(entry);
+  };
+
+  const completeFollowUp = async () => {
+    if (!followUpToComplete) return;
+    setFollowUpSaving(true);
+    try {
+      const { updateFollowUp } = await import('@/lib/services/follow-up-service');
+      const updated = await updateFollowUp(followUpToComplete.id, {
+        status: 'completed',
+        outcome: followUpOutcome,
+        completedDate: toIsoDate(new Date()),
+        notes: followUpNotes.trim() || undefined,
+      });
+      if (!updated) throw new Error('Could not update follow-up');
+      showToast('Follow-up completed', 'success');
+      setFollowUpToComplete(null);
+    } catch {
+      showToast('Could not complete follow-up', 'error');
+    } finally {
+      setFollowUpSaving(false);
+    }
   };
 
   const providerOptions = useMemo(() => {
@@ -1419,6 +1462,15 @@ export default function EhrClinicalDashboard({
                                   {statusLabel(appointment.status)}
                                 </span>
                               </div>
+                              {entry.actionLabel && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm ehr-outstanding-action"
+                                  onClick={event => { event.stopPropagation(); handleOutstandingAction(entry); }}
+                                >
+                                  {entry.actionLabel}
+                                </button>
+                              )}
                             </article>
                           );
                         }
@@ -1458,6 +1510,15 @@ export default function EhrClinicalDashboard({
                             <div className="ehr-queue-cell">
                               <span className="ehr-queue-pill" data-tone={pill.key}>{pill.label}</span>
                             </div>
+                            {entry.actionLabel && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={event => { event.stopPropagation(); handleOutstandingAction(entry); }}
+                              >
+                                {entry.actionLabel}
+                              </button>
+                            )}
                           </div>
                         );
                       })}
@@ -1742,6 +1803,44 @@ export default function EhrClinicalDashboard({
               defaultDate={selectedDate}
               onClose={() => setBookingOpen(false)}
             />
+          )}
+
+          {followUpToComplete && (
+            <Modal onClose={() => { if (!followUpSaving) setFollowUpToComplete(null); }} width={480} labelledBy="complete-follow-up-title">
+              <div className="modal-content card-elevated p-6 w-full" onClick={event => event.stopPropagation()}>
+                <h3 id="complete-follow-up-title" className="text-base font-semibold mb-1">Complete follow-up</h3>
+                <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+                  {followUpToComplete.title} · {followUpToComplete.subtitle || 'Scheduled follow-up'}
+                </p>
+                <div className="space-y-3">
+                  <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                    Outcome
+                    <Select value={followUpOutcome} onChange={event => setFollowUpOutcome(event.target.value as NonNullable<FollowUpDoc['outcome']>)} className="w-full mt-1">
+                      <option value="recovered">Recovered</option>
+                      <option value="under_treatment">Under treatment</option>
+                      <option value="referred">Referred</option>
+                      <option value="died">Died</option>
+                    </Select>
+                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                    Notes
+                    <textarea
+                      value={followUpNotes}
+                      onChange={event => setFollowUpNotes(event.target.value)}
+                      rows={3}
+                      className="w-full mt-1 p-2 rounded-lg text-sm"
+                      placeholder="Record what happened during the follow-up"
+                    />
+                  </label>
+                </div>
+                <div className="flex gap-2 mt-5">
+                  <button type="button" className="btn btn-secondary flex-1" disabled={followUpSaving} onClick={() => setFollowUpToComplete(null)}>Cancel</button>
+                  <button type="button" className="btn btn-primary flex-1" disabled={followUpSaving} onClick={() => void completeFollowUp()}>
+                    {followUpSaving ? 'Saving…' : 'Complete follow-up'}
+                  </button>
+                </div>
+              </div>
+            </Modal>
           )}
 
           {printOpen && (

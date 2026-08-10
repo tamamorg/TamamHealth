@@ -1,6 +1,7 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ChevronDown } from '@/components/icons/lucide';
 
 import type {
@@ -37,6 +38,18 @@ export interface PatientTimelineProps {
   ancVisits?: ANCVisitDoc[];
   appointments?: AppointmentDoc[];
   triages?: TriageDoc[];
+  /**
+   * Rendered inside an expanded consultation row. The chart passes the visit's
+   * signature/lock controls here, so a consult record is attested where it is
+   * read — the timeline itself stays free of any signing knowledge.
+   */
+  renderRecordSignature?: (recordId: string) => ReactNode;
+  /**
+   * Deep-link target — the `_id` of a record/note the dashboard's "documents to
+   * sign" list sent the user here to act on. That row is expanded, scrolled to
+   * and highlighted on arrival.
+   */
+  focusId?: string;
 }
 
 interface TimelineEvent {
@@ -47,21 +60,25 @@ interface TimelineEvent {
   subtitle?: string;
   meta?: string;
   badge?: { label?: string; bg: string; color: string; dot?: boolean };
+  /** Underlying document id, when this row IS a document (vs a derived event).
+   *  Drives both the signature slot and deep-link focus. */
+  docId?: string;
 }
 
-// Marker color per category — rendered as a colored timeline dot (the icon
-// chips added noise without aiding recognition; the colored category label
-// carries the same signal).
-const CATEGORY_CONFIG: Record<TimelineEvent['category'], { color: string; labelKey: string }> = {
-  triage:        { color: '#FB923C',               labelKey: 'timeline.categoryTriage' },
-  consultation:  { color: 'var(--accent-primary)', labelKey: 'timeline.categoryConsultation' },
-  note:          { color: '#7C3AED',               labelKey: 'timeline.categoryNote' },
-  lab:           { color: 'var(--accent-primary)', labelKey: 'timeline.categoryLab' },
-  prescription:  { color: '#0D9488',               labelKey: 'timeline.categoryRx' },
-  immunization:  { color: '#059669',               labelKey: 'timeline.categoryVaccine' },
-  referral:      { color: '#F59E0B',               labelKey: 'timeline.categoryReferral' },
-  anc:           { color: '#EC4899',               labelKey: 'timeline.categoryAnc' },
-  appointment:   { color: '#6366F1',               labelKey: 'timeline.categoryAppointment' },
+// Category is a word, not a colour. The dot that used to sit before the label
+// carried no information the label didn't already give, and down a full table
+// it turned the column into a stripe of unrelated hues competing with the
+// badges — which DO mean something (unsigned, critical, overdue).
+const CATEGORY_CONFIG: Record<TimelineEvent['category'], { labelKey: string }> = {
+  triage:        { labelKey: 'timeline.categoryTriage' },
+  consultation:  { labelKey: 'timeline.categoryConsultation' },
+  note:          { labelKey: 'timeline.categoryNote' },
+  lab:           { labelKey: 'timeline.categoryLab' },
+  prescription:  { labelKey: 'timeline.categoryRx' },
+  immunization:  { labelKey: 'timeline.categoryVaccine' },
+  referral:      { labelKey: 'timeline.categoryReferral' },
+  anc:           { labelKey: 'timeline.categoryAnc' },
+  appointment:   { labelKey: 'timeline.categoryAppointment' },
 };
 
 /** First line of real text in a note, for the timeline's subtitle. */
@@ -102,14 +119,27 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
 
   for (const r of props.medicalRecords || []) {
     const dx = (r.diagnoses || []).slice(0, 2).map(d => d.name).join(', ');
+    // A consult record's signature state is the one thing about it a clinician
+    // scanning the history has to be able to see — an unsigned visit is an
+    // unattested one — so it outranks the visit type for the badge slot.
+    const recStatus = r.documentStatus ?? 'draft';
+    const recBadge = recStatus === 'signed' || recStatus === 'amended'
+      ? { label: recStatus === 'amended' ? 'Amended' : 'Signed', bg: 'rgba(31, 157, 111,0.12)', color: 'var(--color-success)' }
+      : recStatus === 'awaiting_cosign'
+        ? { label: 'Awaiting co-sign', bg: 'rgba(252,211,77,0.16)', color: 'var(--color-warning)' }
+        : { label: 'Unsigned', bg: 'rgba(252,211,77,0.16)', color: 'var(--color-warning)' };
     events.push({
       id: `mr-${r._id}`,
+      docId: r._id,
       date: r.consultedAt || r.visitDate || r.createdAt,
       category: 'consultation',
       title: r.chiefComplaint || t('timeline.titleConsultation'),
       subtitle: dx || r.providerName || undefined,
-      meta: r.providerName ? `${r.providerName}${r.department ? ` · ${r.department}` : ''}` : r.department,
-      badge: r.visitType ? { label: humanizeStatus(r.visitType), bg: 'rgba(59, 130, 246,0.10)', color: 'var(--accent-primary)' } : undefined,
+      meta: [
+        r.providerName ? `${r.providerName}${r.department ? ` · ${r.department}` : ''}` : r.department,
+        r.visitType ? humanizeStatus(r.visitType) : '',
+      ].filter(Boolean).join(' · '),
+      badge: recBadge,
     });
   }
 
@@ -123,6 +153,7 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
     const signed = n.status === 'signed' || n.status === 'amended';
     events.push({
       id: `cn-${n._id}`,
+      docId: n._id,
       date: n.serviceTime ? `${n.serviceDate}T${n.serviceTime}` : n.serviceDate,
       category: 'note',
       title: getNoteType(n.noteType).label,
@@ -234,6 +265,24 @@ export default function PatientTimeline(props: PatientTimelineProps) {
     if (!next.delete(id)) next.add(id);
     return next;
   });
+
+  // Deep-link arrival: the row the caller asked for opens itself, so the
+  // signature controls the user was sent here to use are on screen rather than
+  // one more click away behind a disclosure they have to find first.
+  const { focusId } = props;
+  const focusedEvent = focusId ? events.find(e => e.docId === focusId) : undefined;
+  const focusedRowId = focusedEvent?.id;
+  useEffect(() => {
+    if (!focusedRowId) return;
+    setExpanded(prev => (prev.has(focusedRowId) ? prev : new Set(prev).add(focusedRowId)));
+    // The row mounts with the expansion, so the scroll waits a frame for it.
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(`timeline-row-${focusedRowId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [focusedRowId]);
+
   const visibleEvents = filter === 'all' ? events : events.filter(event => event.category === filter);
   const categoryOptions: Array<{ id: 'all' | TimelineEvent['category']; label: string }> = [
     { id: 'all', label: 'All activity' },
@@ -316,18 +365,25 @@ export default function PatientTimeline(props: PatientTimelineProps) {
             // Only rows that actually carry more than the four columns show
             // get a disclosure — an expander that opens onto nothing is worse
             // than no expander.
-            const hasDetail = Boolean(e.subtitle || e.meta);
+            // A consultation row always has detail once the signature slot is
+            // available, even when the record itself carries no subtitle/meta.
+            const signatureSlot = e.category === 'consultation' && e.docId
+              ? props.renderRecordSignature?.(e.docId)
+              : undefined;
+            const hasDetail = Boolean(e.subtitle || e.meta || signatureSlot);
             const isOpen = hasDetail && expanded.has(e.id);
+            const isFocused = !!e.docId && e.docId === focusId;
             return (
               <Fragment key={e.id}>
                 <tr
+                  id={`timeline-row-${e.id}`}
                   className={`tamam-activity-tr${badgeIsAlarm ? ' is-alarm' : ''}${hasDetail ? ' has-detail' : ''}${isOpen ? ' is-open' : ''}`}
+                  style={isFocused ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
                   onClick={hasDetail ? () => toggleDetail(e.id) : undefined}
                 >
                   <td className="tamam-activity-date"><time dateTime={e.date}>{dateLabel}</time></td>
                   <td>
                     <span className="tamam-activity-type">
-                      <i aria-hidden style={{ background: cfg.color }} />
                       {t(cfg.labelKey)}
                     </span>
                   </td>
@@ -355,9 +411,13 @@ export default function PatientTimeline(props: PatientTimelineProps) {
                 </tr>
                 {isOpen && (
                   <tr className="tamam-activity-detail">
-                    <td colSpan={5}>
+                    {/* The detail cell stops click propagation: the parent row
+                        toggles the disclosure, and a click on Sign inside it
+                        would otherwise collapse the panel it was aimed at. */}
+                    <td colSpan={5} onClick={event => event.stopPropagation()}>
                       {e.subtitle && <p>{e.subtitle}</p>}
                       {e.meta && <small>{e.meta}</small>}
+                      {signatureSlot && <div style={{ marginTop: 10 }}>{signatureSlot}</div>}
                     </td>
                   </tr>
                 )}

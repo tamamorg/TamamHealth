@@ -16,7 +16,7 @@
  * patient/current-user/permission/router context they need down to them.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
   ShoppingCart, Stethoscope, ClipboardCheck, FileText, Users, X, Maximize2,
@@ -47,19 +47,34 @@ interface DrawerPanelDef {
   id: string;
   title: string;
   icon: ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
+  /** The panel shows clinical detail about this patient (drug/lab orders,
+   *  diagnoses, when they were last consulted or admitted), so it belongs to
+   *  the same minimum-necessary set as the clinical chart tabs. The rail is
+   *  rendered for every role that can open a chart — reception, cashiers and
+   *  the lab bench included — so without this flag those roles read a
+   *  patient's medication list out of a drawer the tab gating denies them. */
+  clinical?: boolean;
 }
 
 // Right-rail workspace panels — icon + title only; the actual body is
 // resolved per-id in renderPanelBody() below.
 const DRAWER_PANELS: DrawerPanelDef[] = [
-  { id: 'order-basket', title: 'Order basket', icon: ShoppingCart },
+  { id: 'order-basket', title: 'Order basket', icon: ShoppingCart, clinical: true },
   // Stethoscope, not a pencil: this panel's primary action starts a
   // consultation, so it should read as clinical work rather than note-taking.
-  { id: 'visit-note', title: 'Visit note', icon: Stethoscope },
+  { id: 'visit-note', title: 'Visit note', icon: Stethoscope, clinical: true },
+  // Recall reminders, not clinical detail — the front desk works this queue
+  // (ADMIN_TAB_IDS carries 'recall' for exactly that reason), so it stays.
   { id: 'task-list', title: 'Task list', icon: ClipboardCheck },
-  { id: 'clinical-forms', title: 'Clinical forms', icon: FileText },
+  { id: 'clinical-forms', title: 'Clinical forms', icon: FileText, clinical: true },
   { id: 'patient-lists', title: 'Patient lists', icon: Users },
 ];
+
+/** The workspace panels a viewer may open, in rail order. Exported so the
+ *  minimum-necessary rule is unit-testable without rendering the chart. */
+export function visibleDrawerPanels(canViewClinical: boolean): DrawerPanelDef[] {
+  return DRAWER_PANELS.filter(panel => canViewClinical || !panel.clinical);
+}
 
 /**
  * The clinical-note editor panel is deliberately NOT on the right icon rail:
@@ -88,6 +103,9 @@ interface OpenmrsChartShellProps {
   canPrescribe: boolean;
   canOrderLabs: boolean;
   canConsult: boolean;
+  /** Gates the clinical workspace panels on the right rail — see
+   *  `visibleDrawerPanels`. */
+  canViewClinical: boolean;
   router: ChartPanelRouter;
   onOpenPrescribeModal: () => void;
   onOpenOrderLabModal: () => void;
@@ -101,7 +119,7 @@ interface OpenmrsChartShellProps {
 
 export default function OpenmrsChartShell({
   activeTab, setActiveTab, railItems, moreItems, header, vitalsBand, children,
-  patient, currentUser, canPrescribe, canOrderLabs, canConsult, router,
+  patient, currentUser, canPrescribe, canOrderLabs, canConsult, canViewClinical, router,
   onOpenPrescribeModal, onOpenOrderLabModal, onNoteSaved,
   panelRequest, onPanelRequestHandled,
 }: OpenmrsChartShellProps) {
@@ -134,8 +152,11 @@ export default function OpenmrsChartShell({
       onPanelRequestHandled?.();
     }
   }, [panelRequest, onPanelRequestHandled]);
-  const activePanel = DRAWER_PANELS.find(p => p.id === openPanel)
-    || (openPanel === CLINICAL_NOTE_PANEL.id ? CLINICAL_NOTE_PANEL : null);
+  // Resolve from the permitted set, not the full list: a panel this role may
+  // not open must not render even if something asked for it by id.
+  const railPanels = useMemo(() => visibleDrawerPanels(canViewClinical), [canViewClinical]);
+  const activePanel = railPanels.find(p => p.id === openPanel)
+    || (openPanel === CLINICAL_NOTE_PANEL.id && canViewClinical ? CLINICAL_NOTE_PANEL : null);
 
   // One list, not two. `moreItems` used to hide behind a collapsed "More
   // sections" toggle, which meant half the chart's sections were one click away
@@ -183,6 +204,53 @@ export default function OpenmrsChartShell({
     // Only the tab switch itself should trigger this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  // Escape closes the workspace drawer, the way every other dialog in the app
+  // behaves. Without it the only ways out were the X and the backdrop, and the
+  // note editor opens maximized over the whole chart.
+  //
+  // Tab is confined to the drawer while it is open. It declares aria-modal, so
+  // a screen reader is already told the chart behind it is inert — letting the
+  // keyboard walk out into that chart contradicts the announcement and strands
+  // the caret on controls the user cannot see.
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!openPanel) return;
+    const focusable = () => Array.from(
+      drawerRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    ).filter(el => el.offsetParent !== null);
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { closeDrawer(); return; }
+      if (e.key !== 'Tab') return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      // Wrap at both ends, and pull focus back in if it escaped some other way.
+      if (!drawerRef.current?.contains(active)) { e.preventDefault(); first.focus(); return; }
+      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    };
+
+    // Move focus in on open, and hand it back to whatever opened the drawer on
+    // close, so a keyboard user doesn't restart from the top of the document.
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const firstItem = focusable()[0];
+    (firstItem ?? drawerRef.current)?.focus();
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      previouslyFocused?.focus?.();
+    };
+    // closeDrawer is recreated each render; keying on the open panel is what
+    // actually decides whether the listener should be attached.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openPanel]);
 
   const goToRecallTab = () => {
     // Recall reminders render on the Care plan tab (RemindersPanel), not
@@ -318,7 +386,7 @@ export default function OpenmrsChartShell({
 
       {/* ══ Right action icon rail ══ */}
       <aside className="omrs-right-rail no-print" aria-label="Chart workspace panels">
-        {DRAWER_PANELS.map(panel => (
+        {railPanels.map(panel => (
           <button
             key={panel.id}
             type="button"
@@ -336,7 +404,14 @@ export default function OpenmrsChartShell({
       {activePanel && (
         <>
           <div className="omrs-drawer-backdrop no-print" onClick={closeDrawer} />
-          <div className={`omrs-drawer no-print ${drawerMaximized ? 'is-maximized' : ''}`} role="dialog" aria-label={activePanel.title}>
+          <div
+            ref={drawerRef}
+            tabIndex={-1}
+            className={`omrs-drawer no-print ${drawerMaximized ? 'is-maximized' : ''}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={activePanel.title}
+          >
             <div className="omrs-drawer-header">
               <span className="omrs-drawer-title">{activePanel.title}</span>
               <div className="omrs-drawer-controls">

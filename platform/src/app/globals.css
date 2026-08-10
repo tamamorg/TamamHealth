@@ -8783,6 +8783,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   white-space: nowrap;
 }
 
+
 .tebra-vitals {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -9802,6 +9803,22 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   font-size: var(--type-size-caption) !important;
   font-weight: var(--type-weight-semibold) !important;
   line-height: var(--type-leading-caption) !important;
+}
+
+/* Allergy rows in the facesheet's Safety alerts card read as alerts, not as
+   list items. An allergy is the one entry in that card that changes what is
+   safe to prescribe, so it carries the same red as the chart header's allergy
+   banner — a clinician scanning the summary shouldn't have to read the row to
+   know it matters. `!important` because the typography block directly above
+   sets these colours that way; matching it is the only way to win, and only
+   the colour is overridden — size, weight and leading stay with the system. */
+.tebra-list-row--alert strong {
+  color: var(--tamamhealth-red-text, #A5372A) !important;
+  font-weight: var(--type-weight-bold) !important;
+}
+
+.tebra-list-row--alert span {
+  color: var(--tamamhealth-red, #C44536) !important;
 }
 
 .tebra-vitals span {
@@ -17420,12 +17437,22 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-queue-card--compact {
-  grid-template-columns: minmax(200px, 1.8fr) minmax(96px, 1fr) minmax(112px, 0.8fr);
+  grid-template-columns: minmax(200px, 1.8fr) minmax(96px, 1fr) minmax(112px, 0.8fr) auto;
   gap: 16px;
 }
 
 .ehr-queue-card--compact .ehr-queue-actions {
   justify-content: center;
+}
+
+.ehr-queue-card--compact > .btn,
+.ehr-outstanding-action {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.ehr-outstanding-action {
+  align-self: center;
 }
 
 .ehr-care-list .ehr-queue-guide--care {

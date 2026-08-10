@@ -42,6 +42,23 @@ export default function PatientsPage() {
   const setF = <K extends keyof Filters>(k: K, v: Filters[K]) => setFilters(f => ({ ...f, [k]: v }));
   const activeFilterCount = Object.entries(filters).filter(([, v]) => v !== '' && v !== false).length;
   const clearFilters = () => setFilters(emptyFilters);
+  // Deep link: the patient chart's "Patient lists" drawer counts the patients
+  // assigned to the signed-in provider and links here with ?assigned=me, so
+  // the registry has to land already narrowed to the list that was counted.
+  // Read from window (not useSearchParams) and stripped afterwards — the same
+  // pattern the appointments page uses for its own deep links, and it keeps
+  // this route out of a Suspense boundary.
+  const assignedParamRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || assignedParamRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('assigned') !== 'me') return;
+    assignedParamRef.current = true;
+    setFilters(f => ({ ...f, assignedMe: true }));
+    params.delete('assigned');
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
+  }, []);
   // Shared input/select styling for the filter panel controls.
   const fieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 

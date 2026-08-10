@@ -336,6 +336,50 @@ describe('assembleDoctorWorklist — outstanding: documents to sign', () => {
     expect(item?.count).toBe(0);
     expect(item?.tone).toBe('neutral');
   });
+
+  // Every row has to land on the document it names. All four kinds used to
+  // point at the patient's Notes tab — including assessments, which do not
+  // live there at all — so a clinician with several documents to sign arrived
+  // repeatedly at the same list with no indication of which row was meant.
+  test('each entry deep-links to its own document, on the section that document lives on', () => {
+    const input = baseInput({
+      unsignedDrafts: [makeMedicalRecord({ _id: 'draft-1', patientId: 'patient-akol' })],
+      awaitingCosign: [makeMedicalRecord({ _id: 'cosign-1', patientId: 'patient-nyara' })],
+      heldAssessments: [makeAssessment({ _id: 'assess-1', patientId: 'patient-deng' })],
+      unsignedNotes: [makeClinicalNote({ _id: 'note-1', patientId: 'patient-mabior' })],
+    });
+    const entries = assembleDoctorWorklist(input).outstanding
+      .find(o => o.label === 'Documents to sign')!.entries!;
+    const byId = Object.fromEntries(entries.map(e => [e.id, e]));
+
+    // Consult records are signed on the Visits timeline (RecordSignatureBar).
+    expect(byId['draft-1'].href).toBe('/patients/patient-akol?tab=history&focus=draft-1');
+    expect(byId['cosign-1'].href).toBe('/patients/patient-nyara?tab=history&focus=cosign-1');
+    // Assessments are signed in AssessmentsPanel, on the Care plan tab.
+    expect(byId['assess-1'].href).toBe('/patients/patient-deng?tab=careChecklist&focus=assess-1');
+    // A clinical note's own route already IS the document.
+    expect(byId['note-1'].href).toBe('/notes/note-1');
+  });
+
+  test('the action button goes to the same document as the row', () => {
+    const input = baseInput({
+      unsignedDrafts: [makeMedicalRecord({ _id: 'draft-1', patientId: 'patient-akol' })],
+      heldAssessments: [makeAssessment({ _id: 'assess-1', patientId: 'patient-deng' })],
+    });
+    const entries = assembleDoctorWorklist(input).outstanding
+      .find(o => o.label === 'Documents to sign')!.entries!;
+    for (const entry of entries) {
+      expect(entry.actionHref).toBe(entry.href);
+      expect(entry.href).toContain(entry.id);
+    }
+  });
+
+  test('a trainee note asks for a co-signature, not a signature', () => {
+    const input = baseInput({ awaitingCosign: [makeMedicalRecord({ _id: 'cosign-1', patientId: 'p1' })] });
+    const entries = assembleDoctorWorklist(input).outstanding
+      .find(o => o.label === 'Documents to sign')!.entries!;
+    expect(entries[0].actionLabel).toBe('Review & co-sign');
+  });
 });
 
 describe('assembleDoctorWorklist — outstanding: phone notes', () => {
@@ -414,7 +458,7 @@ describe('assembleDoctorWorklist — outstanding: awaiting labs', () => {
     expect(entry?.href).toBe('/consultation?encounter=enc-full');
   });
 
-  test('an encounter with partial results gets neutral tone and links to /lab', () => {
+  test('an encounter with partial results gets neutral tone and opens the patient labs tab', () => {
     const enc = makeResumableEncounter({ _id: 'enc-partial', allResultsBack: false, resultsReady: 1, resultsTotal: 3 });
 
     const result = assembleDoctorWorklist(baseInput({ resumableEncounters: [enc] }));
@@ -422,7 +466,7 @@ describe('assembleDoctorWorklist — outstanding: awaiting labs', () => {
     const item = result.outstanding.find(o => o.label === 'Awaiting labs');
     const entry = item?.entries?.find(e => e.id === 'enc-partial');
     expect(entry?.tone).toBe('neutral');
-    expect(entry?.href).toBe('/lab');
+    expect(entry?.href).toBe('/patients/patient-1?tab=labs');
     expect(entry?.subtitle).toBe('1 of 3 results back');
   });
 });

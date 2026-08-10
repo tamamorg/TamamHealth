@@ -8,7 +8,14 @@ export async function POST(request: NextRequest) {
   // so this token can't be replayed even within its remaining 8h JWT life.
   const token = request.cookies.get('tamamhealth-token')?.value;
   if (token) {
-    await revokeToken(token);
+    try {
+      await revokeToken(token);
+    } catch (error) {
+      // Cookie invalidation must still happen if the shared revocation store is
+      // temporarily unavailable. The browser is logged out locally, while the
+      // failure is visible in server logs for remediation.
+      console.error('[auth/logout] token revocation failed:', error);
+    }
   }
 
   const response = NextResponse.json({ success: true });

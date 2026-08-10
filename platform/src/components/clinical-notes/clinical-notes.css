@@ -15,8 +15,8 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: var(--color-surface, #fff);
-  color: var(--color-text, #0f172a);
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -26,8 +26,8 @@
   gap: 12px;
   flex-wrap: wrap;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface, #fff);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-card-solid);
 }
 
 .cn-header-title {
@@ -40,7 +40,7 @@
 
 .cn-header-meta {
   font-weight: 400;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
 }
 
 /* Holds the note's identity fields (type, date/time, assignee) beside the
@@ -73,9 +73,11 @@
   padding: 0 10px;
   font-size: 12.5px;
   line-height: 1;
-  border: 1px solid var(--color-border, #cbd5e1);
-  background: var(--color-surface, #fff);
-  color: var(--color-text, #0f172a);
+  border: 1px solid var(--border-medium);
+  /* Longhand — see `.cn-select` below: the shorthand erases the platform's
+     dropdown chevron. */
+  background-color: var(--bg-card-solid);
+  color: var(--text-primary);
 }
 
 /* The platform squares off inputs app-wide (`.tamam-ehr-app input … {
@@ -117,8 +119,8 @@
 .cn-header .cn-input:disabled,
 .cn-header .cn-btn:disabled,
 .cn-header .cn-assign-trigger:disabled {
-  background: var(--color-surface-muted, #f8fafc);
-  color: var(--color-text-muted, #94a3b8);
+  background-color: var(--overlay-subtle);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
@@ -137,20 +139,65 @@
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
+/* Modelled on the platform's own filter selects — `.ward-location-select` in
+   the list headers and `.ehr-set-select` in settings — so a notes filter reads
+   as the same control as a ward or status filter elsewhere: EHR chrome tokens,
+   content width, 12px/700 text, and its own chevron.
+
+   This block used to name `--color-border` / `--color-surface` /
+   `--color-primary`, none of which exist in globals.css, so every control fell
+   through to a hardcoded literal (#cbd5e1 on #fff) — off-palette, and a white
+   ground that ignored the theme. */
 .cn-select,
-.cn-input {
-  font: inherit;
-  font-size: 13px;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border, #cbd5e1);
-  border-radius: var(--radius-control, 6px);
-  background: var(--color-surface, #fff);
-  color: inherit;
+.cn-input,
+.tamam-ehr-app select.cn-select,
+.tamam-ehr-app input.cn-input {
+  font-family: var(--font-platform);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 12px;
+  height: 34px;
   min-height: 34px;
+  border: 1px solid var(--ehr-border, var(--border-light));
+  /* Same corner as .cn-btn (--radius-control). The list toolbar rounds its
+     filters further — full pill ends matching the Create capsule; see
+     .cn-list-toolbar below. */
+  border-radius: var(--radius-control);
+  background-color: var(--ehr-panel, var(--bg-card-solid));
+  color: var(--ehr-text, var(--text-primary));
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+/* Content width, not the global `select { width: 100% }` — a filter row of
+   full-width controls would put one control per line. `flex: 0 0 auto` is the
+   same guard `.ward-location-select` uses for exactly this reason. */
+.cn-field > .cn-select,
+.cn-field > .cn-input {
+  width: auto;
+  flex: 0 0 auto;
+  max-width: 220px;
+}
+
+/* The chevron is painted HERE rather than inherited, and with `!important`,
+   because the chart cascade (`.ehr-chart-content select`, globals.css) forces
+   `background: #fff !important` — a shorthand, so it resets `background-image`
+   to `initial` and wipes any caret the select would inherit. These were the
+   only selects in the app with no caret at all.
+   `.bl-root .bl-toolbar-select` in billing.css takes the same trap the same
+   way; this follows that precedent rather than inventing a second answer. */
+.tamam-ehr-app select.cn-select,
+select.cn-select {
+  padding-right: 30px;
+  appearance: none;
+  cursor: pointer;
+  background-color: var(--ehr-panel, var(--bg-card-solid)) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2372839a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
 }
 
 /* globals.css never styles datetime-local / date / time; do it here so the
@@ -162,11 +209,18 @@
   appearance: none;
 }
 
+/* The platform's focus treatment — a blue border plus a soft ring — rather
+   than the stark 2px outline this module used to draw. */
+.cn-select:focus,
+.cn-input:focus,
+.cn-textarea:focus,
 .cn-select:focus-visible,
 .cn-input:focus-visible,
 .cn-textarea:focus-visible {
-  outline: 2px solid var(--color-primary, var(--accent-primary));
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-light);
+  background-color: var(--bg-card-solid);
 }
 
 /* ── Body layout ────────────────────────────────────────────────────────── */
@@ -234,7 +288,7 @@
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--color-primary, var(--accent-primary));
+  color: var(--accent-primary);
 }
 .cn-card-head-action:hover { text-decoration: underline; }
 
@@ -292,7 +346,7 @@
   font: inherit;
   font-size: 13.5px;
   font-weight: 600;
-  color: var(--color-primary, var(--accent-primary));
+  color: var(--accent-primary);
   background: none;
   border: none;
   cursor: pointer;
@@ -314,7 +368,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  color: var(--color-primary, var(--accent-primary));
+  color: var(--accent-primary);
   text-align: left;
 }
 .cn-rail-row:hover { text-decoration: underline; }
@@ -347,7 +401,7 @@
   width: 100%;
   padding: 8px 6px;
   border: none;
-  border-radius: var(--radius-control, 6px);
+  border-radius: var(--radius-control);
   background: none;
   font: inherit;
   font-size: 13.5px;
@@ -356,7 +410,7 @@
   text-align: left;
 }
 
-.cn-section-nav-item:hover { background: var(--color-surface-muted, #f1f5f9); }
+.cn-section-nav-item:hover { background: var(--overlay-subtle); }
 .cn-section-nav-item[aria-current='true'] {
   background: #fff;
   font-weight: 600;
@@ -364,7 +418,7 @@
 
 .cn-section-nav-badge {
   font-size: 11px;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--text-muted);
 }
 
 /* The ⊟ remove control on rows the clinician added. */
@@ -383,8 +437,8 @@
   padding: 0;
 }
 .cn-section-nav-remove:hover {
-  color: var(--color-danger, #dc2626);
-  border-color: var(--color-danger, #dc2626);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 /* ── Note canvas ────────────────────────────────────────────────────────── */
@@ -407,13 +461,13 @@
 .cn-note-patient {
   text-align: right;
   font-size: 12px;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   margin-bottom: 12px;
   line-height: 1.5;
 }
 
 .cn-section {
-  border-radius: var(--radius-card, 8px);
+  border-radius: var(--radius-card);
   padding: 10px 12px 12px;
   margin-bottom: 6px;
   border: 1px solid transparent;
@@ -424,8 +478,8 @@
    one being written, and lighting each one up on the way is movement that
    means nothing. */
 .cn-section.is-active {
-  border-color: var(--color-border, #e2e8f0);
-  background: var(--color-surface-muted, #f8fafc);
+  border-color: var(--border-light);
+  background: var(--overlay-subtle);
 }
 
 .cn-section-head {
@@ -439,7 +493,7 @@
 .cn-section-name {
   font-size: 14px;
   font-weight: 700;
-  color: var(--color-primary, var(--accent-primary));
+  color: var(--accent-primary);
   margin: 0;
   flex: 1 1 auto;
 }
@@ -460,15 +514,15 @@
   padding: 4px 9px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid var(--color-border, #cbd5e1);
-  border-radius: var(--radius-control, 6px);
-  background: var(--color-surface, #fff);
-  color: var(--color-text, #0f172a);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-control);
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
   cursor: pointer;
   white-space: nowrap;
 }
 
-.cn-tool:hover:not(:disabled) { background: var(--color-surface-muted, #f1f5f9); }
+.cn-tool:hover:not(:disabled) { background: var(--overlay-subtle); }
 .cn-tool:disabled { opacity: 0.5; cursor: not-allowed; }
 .cn-tool svg { color: currentColor; background: none; }
 
@@ -480,15 +534,15 @@
   font-size: 13.5px;
   line-height: 1.6;
   padding: 10px 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: var(--radius-control, 6px);
-  background: var(--color-surface, #fff);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-control);
+  background: var(--bg-card-solid);
   color: inherit;
 }
 
 .cn-textarea[readonly] {
-  background: var(--color-surface-muted, #f8fafc);
-  color: var(--color-text-muted, #475569);
+  background: var(--overlay-subtle);
+  color: var(--text-secondary);
 }
 
 .cn-derived {
@@ -496,10 +550,10 @@
   line-height: 1.6;
   padding: 8px 12px;
   white-space: pre-wrap;
-  color: var(--color-text, #334155);
+  color: var(--text-secondary);
 }
 
-.cn-derived-empty { color: var(--color-text-muted, #94a3b8); font-style: italic; }
+.cn-derived-empty { color: var(--text-muted); font-style: italic; }
 
 /* ── Popovers (shortcut + template pickers) ─────────────────────────────── */
 /* The search box is one of the section's tools, sized like the buttons beside
@@ -532,13 +586,13 @@
   font: inherit;
   font-size: 12px;
   padding: 4px 9px 4px 24px;
-  border: 1px solid var(--color-border, #cbd5e1);
-  border-radius: var(--radius-control, 6px);
-  background: var(--color-surface, #fff);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-control);
+  background: var(--bg-card-solid);
   color: inherit;
 }
 .cn-section-tools .cn-shortcut-input:focus-visible {
-  outline: 2px solid var(--color-primary, var(--accent-primary));
+  outline: 2px solid var(--accent-primary);
   outline-offset: 1px;
 }
 
@@ -549,9 +603,9 @@
   margin: 0 0 10px;
   max-height: 260px;
   overflow-y: auto;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: var(--radius-card, 8px);
-  background: var(--color-surface, #fff);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
+  background: var(--bg-card-solid);
   padding: 6px;
 }
 
@@ -561,7 +615,7 @@
   text-align: left;
   padding: 7px 9px;
   border: none;
-  border-radius: var(--radius-control, 6px);
+  border-radius: var(--radius-control);
   background: none;
   font: inherit;
   font-size: 13px;
@@ -570,12 +624,12 @@
 }
 
 .cn-popover-item:hover,
-.cn-popover-item:focus-visible { background: var(--color-surface-muted, #f1f5f9); }
+.cn-popover-item:focus-visible { background: var(--overlay-subtle); }
 
 .cn-popover-item-body {
   display: block;
   font-size: 11.5px;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--text-muted);
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -585,11 +639,11 @@
 .cn-popover-empty {
   padding: 10px;
   font-size: 12.5px;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--text-muted);
 }
 
 /* ── Template tree ──────────────────────────────────────────────────────── */
-.cn-tree-group { border-bottom: 1px solid var(--color-border, #f1f5f9); padding: 4px 0; }
+.cn-tree-group { border-bottom: 1px solid var(--border-medium); padding: 4px 0; }
 .cn-tree-group:last-child { border-bottom: none; }
 
 .cn-tree-group-label {
@@ -597,7 +651,7 @@
   font-weight: 700;
   text-transform: none;
   letter-spacing: 0;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   padding: 4px 6px;
   margin: 0;
 }
@@ -607,12 +661,12 @@
   align-items: flex-start;
   gap: 8px;
   padding: 5px 6px;
-  border-radius: var(--radius-control, 6px);
+  border-radius: var(--radius-control);
   font-size: 13px;
   cursor: pointer;
 }
 
-.cn-tree-option:hover { background: var(--color-surface-muted, #f1f5f9); }
+.cn-tree-option:hover { background: var(--overlay-subtle); }
 .cn-tree-option input[type='checkbox'],
 .cn-tree-option input[type='radio'] { margin-top: 2px; flex: 0 0 auto; }
 
@@ -622,18 +676,18 @@
   font: inherit;
   font-size: 12.5px;
   padding: 5px 8px;
-  border: 1px solid var(--color-border, #cbd5e1);
-  border-radius: var(--radius-control, 6px);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-control);
 }
 
 .cn-tree-preview {
   margin-top: 8px;
   padding: 8px 10px;
-  border-radius: var(--radius-control, 6px);
-  background: var(--color-surface-muted, #f8fafc);
+  border-radius: var(--radius-control);
+  background: var(--overlay-subtle);
   font-size: 12.5px;
   line-height: 1.55;
-  color: var(--color-text, #334155);
+  color: var(--text-secondary);
 }
 
 /* ── Footer ─────────────────────────────────────────────────────────────── */
@@ -643,15 +697,15 @@
   gap: 8px;
   flex-wrap: wrap;
   padding: 10px 16px;
-  border-top: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface, #fff);
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-card-solid);
 }
 
 .cn-footer-spacer { flex: 1 1 auto; }
 
 .cn-saved {
   font-size: 12px;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -663,34 +717,34 @@
   font: inherit;
   font-size: 13px;
   font-weight: 600;
-  border-radius: var(--radius-control, 6px);
-  border: 1px solid var(--color-border, #cbd5e1);
-  background: var(--color-surface, #fff);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-card-solid);
   color: inherit;
   cursor: pointer;
   min-height: 36px;
 }
 
-.cn-btn:hover:not(:disabled) { background: var(--color-surface-muted, #f1f5f9); }
+.cn-btn:hover:not(:disabled) { background: var(--overlay-subtle); }
 .cn-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .cn-btn-primary {
-  background: var(--color-primary, var(--accent-primary));
-  border-color: var(--color-primary, var(--accent-primary));
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: #fff;
 }
 
-.cn-btn-primary:hover:not(:disabled) { filter: brightness(1.06); background: var(--color-primary, var(--accent-primary)); }
+.cn-btn-primary:hover:not(:disabled) { filter: brightness(1.06); background: var(--accent-primary); }
 
 /* Sits in a row of outlined icon buttons (open chart, move, start consult), so
    it matches them rather than dropping a saturated block into the middle. */
 .cn-btn-neutral {
-  background: var(--color-surface, #fff);
-  border-color: var(--color-border, #cbd5e1);
-  color: var(--color-text, #0f172a);
+  background: var(--bg-card-solid);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
 }
-.cn-btn-neutral:hover:not(:disabled) { background: var(--color-surface-muted, #f1f5f9); }
-.cn-split-main.cn-btn-neutral { border-right-color: var(--color-border, #cbd5e1); }
+.cn-btn-neutral:hover:not(:disabled) { background: var(--overlay-subtle); }
+.cn-split-main.cn-btn-neutral { border-right-color: var(--border-medium); }
 
 
 /* ── Signed banner + addenda ────────────────────────────────────────────── */
@@ -700,7 +754,7 @@
   gap: 8px;
   padding: 9px 12px;
   margin-bottom: 12px;
-  border-radius: var(--radius-card, 8px);
+  border-radius: var(--radius-card);
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
   color: #065f46;
@@ -708,16 +762,16 @@
 }
 
 .cn-addendum {
-  border-left: 3px solid var(--color-primary, var(--accent-primary));
+  border-left: 3px solid var(--accent-primary);
   padding: 8px 12px;
   margin: 10px 0;
-  background: var(--color-surface-muted, #f8fafc);
-  border-radius: 0 var(--radius-control, 6px) var(--radius-control, 6px) 0;
+  background: var(--overlay-subtle);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
 }
 
 .cn-addendum-meta {
   font-size: 11.5px;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   margin-bottom: 3px;
 }
 
@@ -730,16 +784,39 @@
   margin-bottom: 12px;
 }
 
+/* These filters share the row with the Create clinical note capsule
+   (`.cn-split .cn-btn-primary`, fully rounded 999px ends), so they take the
+   same pill ends and the row reads as one control family. The app shell
+   squares every select to 4px (`.tamam-ehr-app select { border-radius: 4px
+   !important }`), so the corner needs its own !important at higher
+   specificity to take that trap. */
+.tamam-ehr-app .cn-list-toolbar .cn-select,
+.tamam-ehr-app .cn-list-toolbar .cn-input {
+  border-radius: var(--radius-pill, 999px) !important;
+}
+
+/* Pill ends eat into the text box; a wider inset keeps the value and the
+   chevron clear of the curve. */
+.cn-list-toolbar .cn-select {
+  padding-left: 14px;
+  padding-right: 32px;
+  background-position: right 12px center;
+}
+.cn-list-toolbar .cn-input {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
 .cn-note-card {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: var(--radius-card, 8px);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
   padding: 12px 14px;
   margin-bottom: 8px;
-  background: var(--color-surface, #fff);
+  background: var(--bg-card-solid);
 }
 
 .cn-note-card-main { flex: 1 1 320px; min-width: 0; }
@@ -756,7 +833,7 @@
 
 .cn-note-card-preview {
   font-size: 13px;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -764,7 +841,7 @@
 
 .cn-note-card-meta {
   font-size: 12px;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
@@ -775,8 +852,8 @@
   border-radius: var(--radius-pill, 999px);
   font-size: 11.5px;
   font-weight: 600;
-  background: var(--color-surface-muted, #f1f5f9);
-  color: var(--color-text-muted, #475569);
+  background: var(--overlay-subtle);
+  color: var(--text-secondary);
 }
 
 .cn-badge.is-signed { background: #dcfce7; color: #166534; }
@@ -794,15 +871,15 @@
   font-weight: 700;
   text-transform: none;
   letter-spacing: 0;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   padding: 6px 8px;
-  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  border-bottom: 1px solid var(--border-light);
 }
-.cn-coord-table td { padding: 7px 8px; border-bottom: 1px solid var(--color-border, #f1f5f9); }
+.cn-coord-table td { padding: 7px 8px; border-bottom: 1px solid var(--border-medium); }
 
 .cn-segmented {
   display: inline-flex;
-  border: 1px solid var(--color-border, #cbd5e1);
+  border: 1px solid var(--border-medium);
   border-radius: var(--radius-pill, 999px);
   overflow: hidden;
 }
@@ -812,13 +889,13 @@
   font: inherit;
   font-size: 13px;
   border: none;
-  background: var(--color-surface, #fff);
+  background: var(--bg-card-solid);
   cursor: pointer;
   color: inherit;
 }
 
 .cn-segmented button[aria-pressed='true'] {
-  background: var(--color-primary, var(--accent-primary));
+  background: var(--accent-primary);
   color: #fff;
   font-weight: 600;
 }
@@ -891,9 +968,9 @@
   z-index: 1200;
   overflow-y: auto;
   padding: 4px;
-  border: 1px solid var(--color-border, #cbd5e1);
-  border-radius: var(--radius-card, 8px);
-  background: var(--color-surface, #fff);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-card);
+  background: var(--bg-card-solid);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
 }
 
@@ -904,7 +981,7 @@
   width: 100%;
   padding: 7px 10px;
   border: none;
-  border-radius: var(--radius-control, 6px);
+  border-radius: var(--radius-control);
   background: none;
   font: inherit;
   font-size: 13.5px;
@@ -916,12 +993,12 @@
 }
 
 .cn-type-item:hover,
-.cn-type-item:focus-visible { background: var(--color-surface-muted, #f1f5f9); }
+.cn-type-item:focus-visible { background: var(--overlay-subtle); }
 
 /* The type already in play is marked, so the menu opens on what is selected
    rather than making the clinician remember what they picked. */
 .cn-type-item.is-selected {
-  background: var(--color-primary-soft, #e6f4f1);
+  background: var(--accent-light);
   font-weight: 600;
 }
 
@@ -929,7 +1006,7 @@
   width: 12px;
   flex: 0 0 12px;
   font-size: 11px;
-  color: var(--color-primary, var(--accent-primary));
+  color: var(--accent-primary);
 }
 
 /* ── Assign picker (reuses the portalled menu above) ─────────────────────── */
@@ -945,9 +1022,9 @@
   min-width: 168px;
   min-height: 34px;
   padding: 6px 10px;
-  border: 1px solid var(--color-border, #cbd5e1);
-  border-radius: var(--radius-control, 6px);
-  background: var(--color-surface, #fff);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-control);
+  background: var(--bg-card-solid);
   font: inherit;
   font-size: 13px;
   color: inherit;
@@ -956,10 +1033,10 @@
 }
 .cn-assign-trigger:disabled { cursor: default; opacity: 0.6; }
 .cn-assign-trigger:focus-visible {
-  outline: 2px solid var(--color-primary, var(--accent-primary));
+  outline: 2px solid var(--accent-primary);
   outline-offset: 1px;
 }
-.cn-assign-trigger svg { flex: 0 0 auto; color: var(--color-text-muted, #64748b); }
+.cn-assign-trigger svg { flex: 0 0 auto; color: var(--text-muted); }
 
 .cn-assign-name {
   min-width: 0;
@@ -972,13 +1049,13 @@
   margin: 0;
   padding: 10px;
   font-size: 12.5px;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
 }
 
 .cn-empty {
   padding: 28px 16px;
   text-align: center;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--text-muted);
   font-size: 13.5px;
 }
 
@@ -995,19 +1072,19 @@
 .cn-meds-title { margin: 0; font-size: 17px; font-weight: 700; }
 .cn-meds-close {
   border: none; background: none; cursor: pointer; padding: 4px;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
 }
 
 .cn-meds-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
-  border-top: 1px solid var(--color-border, #e2e8f0);
+  border-top: 1px solid var(--border-light);
   min-height: 0;
   overflow: hidden;
 }
 @media (max-width: 1000px) {
   .cn-meds-body { grid-template-columns: minmax(0, 1fr); }
-  .cn-meds-right { border-top: 1px solid var(--color-border, #e2e8f0); }
+  .cn-meds-right { border-top: 1px solid var(--border-light); }
 }
 
 .cn-meds-left {
@@ -1016,7 +1093,7 @@
   min-height: 0;
   padding: 14px 18px 16px;
   overflow-y: auto;
-  border-right: 1px solid var(--color-border, #e2e8f0);
+  border-right: 1px solid var(--border-light);
 }
 .cn-meds-right { padding: 14px 18px 16px; overflow-y: auto; }
 
@@ -1047,8 +1124,8 @@
   font-size: 13px;
   text-transform: none;
 }
-.cn-meds-reconcile > span:first-child { color: var(--color-text-muted, #64748b); }
-.cn-meds-reconcile-at { font-size: 12px; color: var(--color-text-muted, #94a3b8); }
+.cn-meds-reconcile > span:first-child { color: var(--text-muted); }
+.cn-meds-reconcile-at { font-size: 12px; color: var(--text-muted); }
 
 .cn-meds-add {
   display: grid;
@@ -1056,7 +1133,7 @@
   gap: 8px;
   margin-top: 12px;
   padding: 10px;
-  border: 1px dashed var(--color-border, #cbd5e1);
+  border: 1px dashed var(--border-medium);
   border-radius: 8px;
 }
 
@@ -1066,7 +1143,7 @@
   flex: 1 1 auto;
   min-height: 300px;
   overflow-y: auto;
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
 }
 
@@ -1076,12 +1153,12 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--color-border-light, #f1f5f9);
+  border-bottom: 1px solid var(--border-light);
   cursor: pointer;
 }
 .cn-meds-row:last-child { border-bottom: none; }
-.cn-meds-row:hover { background: var(--color-surface-muted, #f8fafc); }
-.cn-meds-row.is-selected { background: var(--color-primary-soft, var(--accent-light)); }
+.cn-meds-row:hover { background: var(--overlay-subtle); }
+.cn-meds-row.is-selected { background: var(--accent-light); }
 
 .cn-meds-row-main {
   display: flex;
@@ -1090,12 +1167,12 @@
   min-width: 0;
   font-size: 13px;
 }
-.cn-meds-row-meta { font-size: 12px; color: var(--color-text-muted, #64748b); }
+.cn-meds-row-meta { font-size: 12px; color: var(--text-muted); }
 .cn-meds-row-stage {
   flex: 0 0 auto;
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
 }
 
 .cn-meds-footer {
@@ -1113,10 +1190,10 @@
   font-size: 14.5px;
   font-weight: 700;
 }
-.cn-meds-histhead svg { color: var(--color-text-muted, #94a3b8); }
+.cn-meds-histhead svg { color: var(--text-muted); }
 
 .cn-consent-card {
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 16px;
 }
@@ -1133,7 +1210,7 @@
   cursor: pointer;
 }
 .cn-consent-card .cn-btn { margin-top: 10px; }
-.cn-consent-note { font-size: 12px; color: var(--color-text-muted, #64748b); margin: 8px 0; }
+.cn-consent-note { font-size: 12px; color: var(--text-muted); margin: 8px 0; }
 
 .cn-meds-history { display: flex; flex-direction: column; }
 .cn-meds-histrow {
@@ -1141,18 +1218,18 @@
   align-items: baseline;
   gap: 10px;
   padding: 8px 2px;
-  border-bottom: 1px solid var(--color-border-light, #f1f5f9);
+  border-bottom: 1px solid var(--border-light);
   font-size: 13px;
 }
 .cn-meds-histrow:last-child { border-bottom: none; }
-.cn-meds-histdate { flex: 0 0 78px; color: var(--color-text-muted, #64748b); font-size: 12px; }
+.cn-meds-histdate { flex: 0 0 78px; color: var(--text-muted); font-size: 12px; }
 .cn-meds-histmed { flex: 1 1 auto; min-width: 0; }
 
 /* The medications snapshot doubles as the button into the popup. */
 .cn-derived-clickable { cursor: pointer; }
 .cn-derived-clickable:hover {
-  background: var(--color-surface-muted, #f8fafc);
-  border-radius: var(--radius-control, 6px);
+  background: var(--overlay-subtle);
+  border-radius: var(--radius-control);
 }
 
 /* ── Assessment diagnosis cards ─────────────────────────────────────────── */
@@ -1167,9 +1244,9 @@
 }
 
 .cn-dx-card {
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: var(--color-surface, #fff);
+  background: var(--bg-card-solid);
   padding: 10px 12px;
 }
 
@@ -1194,8 +1271,8 @@
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 11px;
   font-weight: 500;
-  color: var(--color-text-muted, #64748b);
-  background: var(--color-surface-muted, #f1f5f9);
+  color: var(--text-muted);
+  background: var(--overlay-subtle);
   border-radius: 4px;
   padding: 1px 6px;
   white-space: nowrap;
@@ -1207,9 +1284,9 @@
   background: none;
   cursor: pointer;
   padding: 2px;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--text-muted);
 }
-.cn-dx-remove:hover { color: var(--color-danger, #dc2626); }
+.cn-dx-remove:hover { color: var(--color-danger); }
 
 .cn-dx-controls {
   display: flex;
@@ -1227,7 +1304,7 @@
   text-transform: none;
 }
 .cn-dx-field > span {
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 .cn-dx-date { min-height: 30px; padding: 3px 8px; font-size: 12.5px; }
@@ -1235,8 +1312,8 @@
 /* Mini acute/chronic segmented toggle. */
 .cn-dx-acuity {
   display: inline-flex;
-  border: 1px solid var(--color-border, #cbd5e1);
-  border-radius: var(--radius-control, 6px);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-control);
   overflow: hidden;
 }
 .cn-dx-acuity button {
@@ -1246,11 +1323,11 @@
   font-size: 12px;
   padding: 4px 10px;
   cursor: pointer;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
 }
-.cn-dx-acuity button + button { border-left: 1px solid var(--color-border, #cbd5e1); }
+.cn-dx-acuity button + button { border-left: 1px solid var(--border-medium); }
 .cn-dx-acuity button[aria-pressed='true'] {
-  background: var(--color-primary, var(--accent-primary));
+  background: var(--accent-primary);
   color: #fff;
   font-weight: 600;
 }
@@ -1266,14 +1343,14 @@
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--color-primary, var(--accent-primary));
+  color: var(--accent-primary);
 }
 .cn-dx-problem:hover { text-decoration: underline; }
 
 .cn-dx-on-list {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-success, #16a34a);
+  color: var(--color-success);
   white-space: nowrap;
 }
 
@@ -1285,7 +1362,7 @@
   font-size: 12px;
   font-weight: 500;
   text-transform: none;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 .cn-card-head-filter select {
@@ -1293,7 +1370,7 @@
   font-size: 12px;
   border: none;
   background: none;
-  color: var(--color-primary, var(--accent-primary));
+  color: var(--accent-primary);
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -1319,7 +1396,7 @@
 .cn-allergy-add {
   margin-top: 12px;
   padding: 10px;
-  border: 1px dashed var(--color-border, #cbd5e1);
+  border: 1px dashed var(--border-medium);
   border-radius: 8px;
 }
 .cn-allergy-add-row {
@@ -1336,14 +1413,14 @@
   justify-content: space-between;
   gap: 10px;
   padding: 7px 2px;
-  border-bottom: 1px solid var(--color-border-light, #f1f5f9);
+  border-bottom: 1px solid var(--border-light);
   font-size: 13px;
 }
 .cn-dx-line:last-child { border-bottom: none; margin-bottom: 6px; }
-.cn-dx-line-meta { color: var(--color-text-muted, #94a3b8); font-size: 12px; }
+.cn-dx-line-meta { color: var(--text-muted); font-size: 12px; }
 
 .cn-inc-tablewrap {
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   overflow-x: auto;
   min-height: 180px;
@@ -1357,34 +1434,34 @@
   text-align: left;
   font-size: 11.5px;
   font-weight: 700;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   padding: 9px 10px;
-  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  border-bottom: 1px solid var(--border-light);
   white-space: nowrap;
 }
 .cn-inc-table td {
   padding: 9px 10px;
-  border-bottom: 1px solid var(--color-border-light, #f1f5f9);
+  border-bottom: 1px solid var(--border-light);
   vertical-align: top;
 }
 .cn-inc-table tbody tr { cursor: pointer; }
-.cn-inc-table tbody tr:hover { background: var(--color-surface-muted, #f8fafc); }
-.cn-inc-table tbody tr.is-checked { background: var(--color-primary-soft, var(--accent-light)); }
+.cn-inc-table tbody tr:hover { background: var(--overlay-subtle); }
+.cn-inc-table tbody tr.is-checked { background: var(--accent-light); }
 .cn-inc-name { font-weight: 600; }
 .cn-inc-code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; }
 .cn-inc-comments { max-width: 160px; }
 .cn-inc-empty {
   text-align: center;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--text-muted);
   padding: 42px 10px !important;
 }
 
 .cn-inc-add {
   margin-top: 14px;
   padding: 14px;
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: var(--color-surface-muted, #f8fafc);
+  background: var(--overlay-subtle);
 }
 .cn-inc-add h4 { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
 .cn-inc-add-status { display: flex; gap: 16px; margin-bottom: 10px; }
@@ -1400,9 +1477,9 @@
 .cn-inc-results {
   margin: 6px 0 0 74px;
   max-width: 460px;
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
-  background: var(--color-surface, #fff);
+  background: var(--bg-card-solid);
   overflow: hidden;
 }
 .cn-inc-results button {
@@ -1412,7 +1489,7 @@
   width: 100%;
   padding: 8px 10px;
   border: none;
-  border-bottom: 1px solid var(--color-border-light, #f1f5f9);
+  border-bottom: 1px solid var(--border-light);
   background: none;
   font: inherit;
   font-size: 12.5px;
@@ -1420,7 +1497,7 @@
   text-align: left;
 }
 .cn-inc-results button:last-child { border-bottom: none; }
-.cn-inc-results button:hover { background: var(--color-surface-muted, #f8fafc); }
+.cn-inc-results button:hover { background: var(--overlay-subtle); }
 
 .cn-inc-details-toggle { display: inline-block; margin-top: 10px; }
 .cn-inc-details {
@@ -1458,7 +1535,7 @@
 }
 .cn-rx-field > span {
   font-weight: 600;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 .cn-rx-field--wide { flex: 1 1 300px; }
@@ -1483,7 +1560,7 @@
 .cn-rx-reason-chip {
   font-size: 12.5px;
   font-weight: 600;
-  background: var(--color-primary-soft, var(--accent-light));
+  background: var(--accent-light);
   border-radius: 999px;
   padding: 3px 10px;
 }
@@ -1502,9 +1579,9 @@
   font: inherit;
   font-size: 12.5px;
   padding: 3px 0;
-  color: var(--color-text, #0f172a);
+  color: var(--text-primary);
 }
-.cn-rx-sigs button:hover { color: var(--color-primary, var(--accent-primary)); text-decoration: underline; }
+.cn-rx-sigs button:hover { color: var(--accent-primary); text-decoration: underline; }
 
 .cn-rx-drugname { margin: 0 0 12px; font-size: 15px; font-weight: 800; letter-spacing: 0.02em; }
 .cn-rx-panelhead { margin: 14px 0 6px; font-size: 13px; font-weight: 700; }
@@ -1515,10 +1592,10 @@
   line-height: 1.6;
 }
 .cn-rx-warnings li { margin-bottom: 6px; }
-.cn-rx-currentmeds { color: var(--color-text-muted, #64748b); }
+.cn-rx-currentmeds { color: var(--text-muted); }
 
 /* ── Prescribe: collapsible blocks + monograph rail ─────────────────────── */
-.cn-rx-block { border-bottom: 1px solid var(--color-border-light, #f1f5f9); }
+.cn-rx-block { border-bottom: 1px solid var(--border-light); }
 .cn-rx-block:last-of-type { border-bottom: none; }
 
 .cn-rx-blockhead {
@@ -1541,7 +1618,7 @@
   font: inherit;
   font-size: 14.5px;
   font-weight: 700;
-  color: var(--color-text, #0f172a);
+  color: var(--text-primary);
   text-align: left;
 }
 .cn-rx-blocktoggle svg { transition: transform 0.15s ease; }
@@ -1561,7 +1638,7 @@
 .cn-rx-qtynote {
   font-size: 11.5px;
   font-weight: 400;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--text-muted);
 }
 
 .cn-rx-favorite {
@@ -1576,10 +1653,10 @@
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--color-primary, var(--accent-primary));
+  color: var(--accent-primary);
 }
 .cn-rx-favorite:disabled { opacity: 0.5; cursor: not-allowed; }
-.cn-rx-favorite[aria-pressed='true'] { color: var(--color-warning, #d97706); }
+.cn-rx-favorite[aria-pressed='true'] { color: var(--color-warning); }
 
 .cn-rx-cost {
   display: grid;
@@ -1591,20 +1668,20 @@
 .cn-rx-drugform {
   margin: -6px 0 12px;
   font-size: 12px;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
 }
 .cn-rx-panelbody {
   margin: 0 0 10px;
   font-size: 12.5px;
   line-height: 1.6;
-  color: var(--color-text, #0f172a);
+  color: var(--text-primary);
 }
 
 .cn-rx-tabs {
   display: flex;
   gap: 4px;
   margin: 14px 0 10px;
-  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  border-bottom: 1px solid var(--border-light);
 }
 .cn-rx-tabs button {
   border: none;
@@ -1614,20 +1691,20 @@
   font-size: 12.5px;
   font-weight: 600;
   padding: 6px 8px;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
 .cn-rx-tabs button[aria-selected='true'] {
-  color: var(--color-primary, var(--accent-primary));
-  border-bottom-color: var(--color-primary, var(--accent-primary));
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
 }
 
 .cn-rx-warnings li[data-severity='contraindicated'],
 .cn-rx-warnings li[data-severity='allergy'] {
-  color: var(--color-danger, #dc2626);
+  color: var(--color-danger);
   font-weight: 600;
 }
-.cn-rx-warnings li[data-severity='serious'] { color: var(--color-danger, #dc2626); }
-.cn-rx-warnings li[data-severity='moderate'] { color: var(--color-warning, #b45309); }
-.cn-rx-note { color: var(--color-text-muted, #94a3b8); font-style: italic; }
+.cn-rx-warnings li[data-severity='serious'] { color: var(--color-danger); }
+.cn-rx-warnings li[data-severity='moderate'] { color: var(--color-warning); }
+.cn-rx-note { color: var(--text-muted); font-style: italic; }

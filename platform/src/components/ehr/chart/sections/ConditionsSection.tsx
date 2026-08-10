@@ -19,6 +19,7 @@ import Modal from '@/components/Modal';
 import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useProblems } from '@/lib/hooks/useProblems';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import { formatDate , humanizeStatus } from '@/lib/format-utils';
@@ -52,6 +53,11 @@ export default function ConditionsSection({
 }: ConditionsSectionProps) {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  // Adding or retiring a coded diagnosis is a clinical write, gated the same
+  // way AllergiesSection gates its own. `canViewClinical` is much wider than
+  // `canEditClinical` — nurses, midwives and the read-only super_admin all see
+  // this tab — so leaving the control open let them author the problem list.
+  const { canEditClinical } = usePermissions();
   const { problems, create, setStatus } = useProblems(patientId);
   const [adding, setAdding] = useState(false);
   /** The row mid-save, so a slow write can't be fired twice. */
@@ -123,7 +129,7 @@ export default function ConditionsSection({
 
   return (
     <>
-      <ChartSection title="Conditions" addLabel="Add" onAdd={() => setAdding(true)}>
+      <ChartSection title="Conditions" addLabel="Add" onAdd={canEditClinical ? () => setAdding(true) : undefined}>
         {/* Attested at a problem review in a note: an empty list means nobody
             has asked, this means someone asked and the answer was none. */}
         {(reconciledAt || (ordered.length === 0 && noKnownProblems)) && (
@@ -134,7 +140,12 @@ export default function ConditionsSection({
         )}
 
         {ordered.length === 0 && !noKnownProblems ? (
-          <OmrsEmptyState itemLabel="conditions" actionLabel="Record conditions" onAction={() => setAdding(true)} />
+          <OmrsEmptyState
+            itemLabel="conditions"
+            actionLabel="Record conditions"
+            onAction={canEditClinical ? () => setAdding(true) : undefined}
+            disabledReason={canEditClinical ? undefined : 'Requires clinical-editing permission'}
+          />
         ) : ordered.length === 0 ? null : (
           <table className="omrs-table omrs-table--conditions">
             {/* Explicit widths: the three columns used to be sized by their
@@ -165,7 +176,9 @@ export default function ConditionsSection({
                       <Select
                         aria-label={`Status for ${p.name}`}
                         value={p.status}
-                        disabled={savingStatus === p._id}
+                        // Retiring a condition is the same clinical write as
+                        // adding one — a viewer reads the badge, not edits it.
+                        disabled={savingStatus === p._id || !canEditClinical}
                         onChange={e => handleStatusChange(p._id, e.target.value as ProblemStatus)}
                       >
                         {STATUS_OPTIONS.map(option => (

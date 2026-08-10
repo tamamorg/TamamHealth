@@ -642,7 +642,7 @@ export default function ReferralsPage() {
               <tbody>
                 {filteredReferrals.map(ref => {
                 const tp = ref.transferPackage as TransferPackage | undefined;
-                const hasPatientChart = isRealPatient(ref.patientId);
+                const hasPatientChart = isRealPatient(ref.patientId) && !!patientById.get(ref.patientId);
                 // Status-driven actions, collapsed into a single kebab menu.
                 const rowActions: RowAction[] = [
                   {

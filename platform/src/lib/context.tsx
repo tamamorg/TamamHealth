@@ -638,85 +638,87 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(async () => {
-    // Server-side logout. The session cookie (`tamamhealth-token`) is httpOnly,
-    // so `document.cookie = ...` cannot clear it from JavaScript — only the
-    // server can. Hitting /api/auth/logout: (1) clears the httpOnly token and
-    // CSRF cookies via Set-Cookie, (2) inserts the token into the persisted
-    // revocation list so it can't be replayed within its 8h JWT life. Skip on
-    // SSR-only paths and on unexpected errors so a network blip can't trap
-    // the user in an unloggable state.
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'same-origin',
-      });
-    } catch {
-      // best-effort — fall through to the client-side teardown below
-    }
-    // Drop any in-progress encrypted PHI drafts (consultation autosave, etc.)
-    // so the next user on a shared workstation can't recover them. The
-    // per-tab AES-GCM key already dies with the tab, but explicitly clearing
-    // localStorage here is defence-in-depth and tightens the window.
-    // Best-effort — do not block logout on a storage error.
-    try {
-      const { dropAllDrafts } = await import('./draft-storage');
-      await dropAllDrafts();
-    } catch {
-      // best-effort
-    }
-    // Drop the CouchDB AuthSession cookie so the next user on this browser
-    // can't replay this session against the sync endpoint. Also clear the
-    // in-memory renewal credentials and stop the session heartbeat.
-    if (process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true') {
-      try {
-        const { logoutCouch, clearCouchCredentials } = await import('./sync/couch-client-auth');
-        clearCouchCredentials();
-        await logoutCouch();
-      } catch {
-        // best-effort
-      }
-    }
-    try {
-      const { logAudit } = await import('./services/audit-service');
-      await logAudit('logout', currentUser?._id, currentUser?.username, 'Logged out', true);
-    } catch {
-      // OK
-    }
-    // Wipe the browser's PouchDB IndexedDB stores. Without this, a shared
-    // tablet retains the prior user's locally-replicated PHI documents — when
-    // a different clinician (or a patient) logs in, the next sync resumes
-    // against the new user but the old user's docs remain readable in the
-    // local stores until the schema-version replay clears them. On a single-
-    // user workstation this is a no-op (next login re-syncs anyway); on a
-    // shared device this is the only thing that prevents PHI cross-leakage.
-    //
-    // CRITICAL ORDERING: we must stop replication BEFORE destroying the
-    // databases, otherwise pouchdb-browser's IndexedDB deleteDatabase will
-    // hang behind the open replication-side connection. Doing this via the
-    // teardown effect (which fires on the isAuthenticated → false render)
-    // is racy because resetAllDatabases() runs in the same callback before
-    // React commits. So we destroy the sync manager synchronously here, then
-    // flip auth state, then wipe the local DBs. The teardown effect remains
-    // as a backstop for any path that flips isAuthenticated without going
-    // through logout().
-    try {
-      const { destroySyncManager } = await import('./sync/sync-manager');
-      destroySyncManager();
-      syncManagerRef.current = null;
-    } catch {
-      // best-effort
-    }
+  const logout = useCallback(() => {
+    // Capture the identity before clearing it. The UI must become logged out
+    // immediately; network, audit, CouchDB, and IndexedDB cleanup are all
+    // best-effort and must never make the logout button appear broken.
+    const loggingOutUser = currentUser;
     setIsAuthenticated(false);
     setCurrentUser(null);
     setSyncStatus(null);
-    try {
-      const { resetAllDatabases } = await import('./db');
-      await resetAllDatabases();
-    } catch {
-      // best-effort — IndexedDB.deleteDatabase can hang behind an open
-      // connection, but we've already invalidated the session server-side.
+
+    // Clear cookies that are readable by JavaScript immediately. The server
+    // request below clears the httpOnly session cookie; this fallback covers
+    // offline/demo sessions that minted the token client-side.
+    if (typeof document !== 'undefined') {
+      document.cookie = 'tamamhealth-token=; Max-Age=0; Path=/; SameSite=Lax';
+      document.cookie = `${CSRF_COOKIE_NAME}=; Max-Age=0; Path=/; SameSite=Strict`;
     }
+
+    void (async () => {
+      // Server-side revocation and cookie clearing. A bounded timeout prevents
+      // a stalled API request from holding any later cleanup hostage.
+      try {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 3000);
+        try {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin',
+            keepalive: true,
+            signal: controller.signal,
+          });
+        } finally {
+          window.clearTimeout(timeout);
+        }
+      } catch {
+        // The local session is already invalidated; server cleanup is best-effort.
+      }
+
+      try {
+        const { dropAllDrafts } = await import('./draft-storage');
+        await dropAllDrafts();
+      } catch {
+        // best-effort
+      }
+
+      if (process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true') {
+        try {
+          const { logoutCouch, clearCouchCredentials } = await import('./sync/couch-client-auth');
+          clearCouchCredentials();
+          await logoutCouch();
+        } catch {
+          // best-effort
+        }
+      }
+
+      try {
+        const { logAudit } = await import('./services/audit-service');
+        await logAudit('logout', loggingOutUser?._id, loggingOutUser?.username, 'Logged out', true);
+      } catch {
+        // best-effort
+      }
+
+      // Stop replication before attempting IndexedDB deletion. Do not await the
+      // delete: browsers can keep an IndexedDB connection alive temporarily,
+      // but that must not delay the visible logout or login screen.
+      try {
+        const { destroySyncManager } = await import('./sync/sync-manager');
+        destroySyncManager();
+        syncManagerRef.current = null;
+      } catch {
+        // best-effort
+      }
+      try {
+        const { resetAllDatabases } = await import('./db');
+        await Promise.race([
+          resetAllDatabases(),
+          new Promise<void>(resolve => window.setTimeout(resolve, 5000)),
+        ]);
+      } catch {
+        // best-effort — the auth state was already cleared above
+      }
+    })();
   }, [currentUser]);
 
   /**

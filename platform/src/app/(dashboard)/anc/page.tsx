@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import EmptyState from '@/components/EmptyState';
 import Badge, { type BadgeTone } from '@/components/Badge';
@@ -97,6 +97,30 @@ export default function ANCPage() {
     }));
     setPatientLookup('');
   };
+
+  // Deep link: the patient chart's "Clinical forms" drawer opens the ANC visit
+  // form for a specific mother via ?patientId=. The link existed but nothing
+  // read the param, so it landed on the bare ANC list and the clinician had to
+  // find the patient again. Waits for `patients` to load (retries via the dep
+  // array) and fires once.
+  const ancPatientParamRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || ancPatientParamRef.current || !patients.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const patientId = params.get('patientId');
+    if (!patientId) return;
+    const match = patients.find(p => p._id === patientId);
+    if (!match) return;
+    ancPatientParamRef.current = true;
+    selectAncPatient(patientId);
+    if (canRecordVitalEvents) setShowModal(true);
+    params.delete('patientId');
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
+    // selectAncPatient is recreated each render; `patients` arriving is the
+    // signal this effect actually waits on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patients, canRecordVitalEvents]);
 
   // Group visits by mother — get latest visit for each
   const motherSummaries = useMemo(() => {

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Modal from '@/components/Modal';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 // Clean single-stroke Tailwind Labs Heroicons via the local compatibility shim.
 import {
   ArrowLeft, ArrowRightLeft,
@@ -49,7 +49,8 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
 import BillingTab from '@/components/patients/BillingTab';
 import PatientSBAR from '@/components/patients/PatientSBAR';
-import DirectiveList from '@/components/patients/DirectiveList';
+import { usePatientHandoff } from '@/lib/hooks/usePatientHandoff';
+import RecordSignatureBar from '@/components/patients/RecordSignatureBar';
 import NotesList from '@/components/clinical-notes/NotesList';
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
@@ -75,7 +76,6 @@ import { useAuth } from '@/lib/context';
 import { PrescribeModal, ReferModal } from '@/components/patients/PatientActionModals';
 import LabOrderModal from '@/components/lab/order/LabOrderModal';
 import LabWorkspace from '@/components/lab/workflow/LabWorkspace';
-import { useWards } from '@/lib/hooks/useWards';
 import OpenmrsChartShell from '@/components/ehr/chart/OpenmrsChartShell';
 import ChartHeader from '@/components/ehr/chart/ChartHeader';
 import ChartVitalsBand from '@/components/ehr/chart/ChartVitalsBand';
@@ -86,6 +86,8 @@ import MedicationsSection from '@/components/ehr/chart/sections/MedicationsSecti
 import OrdersSection from '@/components/ehr/chart/sections/OrdersSection';
 import ProceduresSection from '@/components/ehr/chart/sections/ProceduresSection';
 import ProgramsSection from '@/components/ehr/chart/sections/ProgramsSection';
+import ImmunizationsSection from '@/components/ehr/chart/sections/ImmunizationsSection';
+import DirectivesSection from '@/components/ehr/chart/sections/DirectivesSection';
 import AssignDoctorModal, { type AssignDoctorTarget } from '@/components/AssignDoctorModal';
 import NurseVitalsModal from '@/components/nurse/NurseVitalsModal';
 import Select from '@/components/Select';
@@ -110,6 +112,40 @@ const LAB_TAB_IDS = ['overview', 'labs'];
 // needs and nothing else — same minimum-necessary rule as LAB_TAB_IDS.
 const PHARMACY_TAB_IDS = ['overview', 'prescriptions', 'allergies'];
 const IMAGING_TAB_IDS = ['overview', 'labs'];
+
+/** The capabilities that decide how much of the chart a viewer gets. */
+export interface ChartAccess {
+  canViewClinical: boolean;
+  canEnterLabResults: boolean;
+  canDispense: boolean;
+  role?: string;
+}
+
+/**
+ * The tab ids a viewer may open, or `null` for "the whole chart".
+ *
+ * Exported so the minimum-necessary rule can be asserted directly: this is the
+ * only thing standing between a cashier looking up a balance and the patient's
+ * notes, and the order of these branches is load-bearing — a clinical role is
+ * checked first, so a doctor who also happens to hold a lab permission is not
+ * narrowed to the bench's two tabs.
+ */
+export function allowedChartTabIds(access: ChartAccess): string[] | null {
+  if (access.canViewClinical) return null;
+  if (access.canEnterLabResults) return LAB_TAB_IDS;
+  if (access.canDispense) return PHARMACY_TAB_IDS;
+  if (access.role === 'radiologist') return IMAGING_TAB_IDS;
+  return ADMIN_TAB_IDS;
+}
+
+/**
+ * Where a restricted viewer lands when the tab they asked for isn't theirs —
+ * the tab their role came for, not a generic overview.
+ */
+export function chartLandingTab(allowedIds: string[] | null): string {
+  if (!allowedIds) return 'overview';
+  return allowedIds.find(id => id !== 'overview') || 'overview';
+}
 type PrintSectionId = 'consultation' | 'problems' | 'vitals' | 'medications' | 'allergies' | 'labs' | 'immunizations' | 'appointments';
 const PRINT_SECTION_OPTIONS: Array<{ id: PrintSectionId; label: string; description: string }> = [
   { id: 'consultation', label: 'Latest consultation', description: 'Reason for visit, examination, assessment, and plan' },
@@ -123,6 +159,11 @@ const PRINT_SECTION_OPTIONS: Array<{ id: PrintSectionId; label: string; descript
 ];
 const DEFAULT_PRINT_SECTIONS = new Set<PrintSectionId>(PRINT_SECTION_OPTIONS.map(section => section.id));
 type FacesheetPanelId = 'medications' | 'problems' | 'vitals' | 'recommendations';
+
+/** The subset of a vitals set the chart's read-only surfaces display. Partial
+ *  because a single observation rarely carries every reading — the vitals band
+ *  and the facesheet both render "-" for whatever is missing. */
+type ChartVitalsLike = Partial<NonNullable<MedicalRecordDoc['vitalSigns']>>;
 
 const FACESHEET_PANEL_OPTIONS: Array<{ id: FacesheetPanelId; label: string }> = [
   { id: 'problems', label: 'Safety alerts' },
@@ -157,45 +198,84 @@ const DEEP_LINK_TAB_IDS = new Set([
     'orders', 'procedures', 'programs',
 ]);
 
+/** Legacy/alias `?tab=` values that don't have a section of their own: transfers
+ *  are read on Care coordination, recall reminders on Appointments. */
+const TAB_ALIASES: Record<string, string> = { transfers: 'referrals', recall: 'appointments' };
+
+/** The section a `?tab=` value opens, or null when the value isn't a section.
+ *  Shared by the initial read and the browser-navigation resync so a Back
+ *  button and a deep link can never resolve the same URL differently. */
+export function resolveChartTab(tabParam: string | null | undefined): string | null {
+  if (!tabParam) return null;
+  const mapped = TAB_ALIASES[tabParam] ?? tabParam;
+  return DEEP_LINK_TAB_IDS.has(mapped) ? mapped : null;
+}
+
 export default function PatientDetailPage() {
   const routeParams = useParams<{ id?: string | string[] }>();
   const id = Array.isArray(routeParams?.id) ? routeParams.id[0] : routeParams?.id;
   const router = useRouter();
   const searchParams = useSearchParams();
   const contentRef = useRef<HTMLElement>(null);
+  const pathname = usePathname();
   // Deep-link support: a link like `/patients/<id>?tab=labs&focus=<recordId>`
   // opens that chart section (validated + permission-gated) and the section
-  // scrolls to / highlights the specific record. Seeded once from the URL.
-  const initialTab = searchParams.get('tab');
-  const focusId = searchParams.get('focus') || undefined;
-  // An analyzer reading handed over from the lab queue: the value travels in
-  // the URL so the technician reviews and files it here, never auto-saved.
-  const seedResult = searchParams.get('value')
+  // scrolls to / highlights the specific record.
+  const [activeTab, setActiveTab] = useState(() => resolveChartTab(searchParams.get('tab')) ?? 'overview');
+
+  // `focus` and the analyzer hand-off (`value`/`unit`/`range`) are one-shot
+  // arrival state, not addressable state: they are read once here and then
+  // stripped from the URL below. Left in place, the highlight came back every
+  // later visit to that section and the reading was re-offered for filing.
+  const [focusId, setFocusId] = useState<string | undefined>(() => searchParams.get('focus') || undefined);
+  const [seedResult] = useState(() => (searchParams.get('value')
     ? {
         value: searchParams.get('value') || '',
         unit: searchParams.get('unit') || '',
         referenceRange: searchParams.get('range') || '',
       }
-    : undefined;
-  const [activeTab, setActiveTab] = useState(
-    initialTab === 'transfers' ? 'referrals' : initialTab === 'recall' ? 'appointments' : initialTab && DEEP_LINK_TAB_IDS.has(initialTab) ? initialTab : 'overview',
-  );
-  // The initializer above only reads `?tab=` once, at mount — a later
-  // navigation to a new `?tab=` while this page instance stays mounted (e.g.
-  // a link inside the in-chart note editor drawer, "go to Vitals") left
-  // `activeTab` stuck on whatever it was. Resync it whenever the URL's tab
-  // param actually changes, using the same mapping the initializer uses.
-  // `focusId` above needs no equivalent effect — it's a plain read of
-  // `searchParams` on every render, and `useSearchParams()` itself already
-  // re-renders this component when the URL's query changes. Clinical-tab
+    : undefined));
+
+  /**
+   * Open a chart section AND record it in the URL, so the chart's own sections
+   * are addressable: refresh keeps your place, a section can be linked or
+   * bookmarked, and Back steps between sections instead of throwing the
+   * clinician out of the chart. One-shot arrival params are dropped on the way
+   * — they belong to the section you arrived at, not the one you moved to.
+   */
+  const selectTab = useCallback((next: string) => {
+    setActiveTab(prev => {
+      if (prev !== next) setFocusId(undefined);
+      return next;
+    });
+    router.push(`${pathname}?tab=${encodeURIComponent(next)}`, { scroll: false });
+  }, [router, pathname]);
+
+  // Browser navigation (Back/Forward, or a `?tab=` link followed while this
+  // page instance stays mounted) drives `activeTab` from the URL. Clinical-tab
   // gating still runs afterward in the allowedTabIds effect below, so a
   // non-clinical viewer deep-linked to a clinical tab is still bounced back.
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (!tabParam) return;
-    const mapped = tabParam === 'transfers' ? 'referrals' : tabParam === 'recall' ? 'appointments' : tabParam;
-    if (DEEP_LINK_TAB_IDS.has(mapped)) setActiveTab(mapped);
+    const resolved = resolveChartTab(searchParams.get('tab'));
+    if (resolved) setActiveTab(resolved);
   }, [searchParams]);
+
+  // Strip the one-shot arrival params once they have been read into state, so
+  // the URL that stays in the address bar is the shareable one (`?tab=`).
+  //
+  // The current history state is passed through rather than replaced with
+  // null: the App Router keeps its own bookkeeping in that object, and blanking
+  // it mid-navigation made the next history event restore the entry we came
+  // from — arriving from the dashboard's "documents to sign" list bounced
+  // straight back to the dashboard.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (!['focus', 'value', 'unit', 'range'].some(k => params.has(k))) return;
+    ['focus', 'value', 'unit', 'range'].forEach(k => params.delete(k));
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
+  }, []);
   const [demographicsTab, setDemographicsTab] = useState('profile');
   const [vitalsView, setVitalsView] = useState<'table' | 'flowsheet'>('table');
   const [showCustomizeView, setShowCustomizeView] = useState(false);
@@ -322,6 +402,7 @@ export default function PatientDetailPage() {
   const { appointments: patientAppointments } = usePatientAppointments(patient?._id);
   const { prescriptions: allPrescriptions } = usePrescriptions(patient?._id);
   const { triages: patientTriages } = useTriage(patient?._id);
+  const latestShiftHandoff = usePatientHandoff(patient?._id);
   // Merged vitals history across both places they're captured — a consult's
   // own vitalSigns and a triage stop's own vitals fields — normalized and
   // sorted newest-first. Feeds the vitals band, the vitals table and the
@@ -330,26 +411,32 @@ export default function PatientDetailPage() {
   // loading/not-found early return below, alongside the other data hooks —
   // no hook in this component is called after that return.
   const vitalsTimeline = useMemo(() => mergeVitalsTimeline(records, patientTriages), [records, patientTriages]);
-  const { canConsult, canViewClinical, canOrderLabs, canEnterLabResults, canDispense, canPrescribe, canBookAppointments, canManageReferrals, canRecordVitalEvents } = usePermissions();
+  const { canConsult, canViewClinical, canOrderLabs, canEnterLabResults, canDispense, canPrescribe, canBookAppointments, canManageReferrals, canRecordVitalEvents, canRegisterPatients } = usePermissions();
   const canAssignPatients = ['front_desk', 'central_registration_clerk', 'clinic_clerk'].includes(currentUser?.role ?? '');
 
   // Which tabs this viewer may open at all: clinicians get the chart, lab
   // technicians get identity + labs, everyone else gets the admin set.
-  const allowedTabIds = canViewClinical ? null
-    : canEnterLabResults ? LAB_TAB_IDS
-    : canDispense ? PHARMACY_TAB_IDS
-    : currentUser?.role === 'radiologist' ? IMAGING_TAB_IDS
-    : ADMIN_TAB_IDS;
+  // Memoized on the capabilities themselves — the function returns a fresh
+  // array for restricted roles, and an unmemoized one would re-run the bounce
+  // effect below on every render.
+  const allowedTabIds = useMemo(
+    () => allowedChartTabIds({ canViewClinical, canEnterLabResults, canDispense, role: currentUser?.role }),
+    [canViewClinical, canEnterLabResults, canDispense, currentUser?.role],
+  );
 
   // Defence in depth: if a restricted viewer lands on (or deep-links to) a tab
   // outside their set, snap them back so those panels never render.
   useEffect(() => {
     if (allowedTabIds && !allowedTabIds.includes(activeTab)) {
-      // Land on the tab the role came for, not a generic overview.
-      const landing = allowedTabIds.find(id => id !== 'overview') || 'overview';
+      const landing = chartLandingTab(allowedTabIds);
       setActiveTab(landing);
+      // A correction, not navigation: replace the denied `?tab=` rather than
+      // pushing a history entry, so Back doesn't walk into the bounce again —
+      // and so the address bar can't claim to be on a section that isn't
+      // rendering.
+      router.replace(`${pathname}?tab=${encodeURIComponent(landing)}`, { scroll: false });
     }
-  }, [allowedTabIds, activeTab]);
+  }, [allowedTabIds, activeTab, router, pathname]);
   const { balance: patientBalance, reload: reloadPayments } = usePatientPayments(patient?._id);
   const { problems: patientProblems } = useProblems(patient?._id);
   const patientIdForNotes = patient?._id;
@@ -392,7 +479,7 @@ export default function PatientDetailPage() {
     } catch {
       // The drawer could not be readied — land on the Notes tab so the click
       // still goes somewhere useful.
-      setActiveTab('notes');
+      selectTab('notes');
     }
   }, [patient, createClinicalNoteDraft, scope]);
 
@@ -432,7 +519,7 @@ export default function PatientDetailPage() {
   };
 
   const openPaymentFromHeader = () => {
-    setActiveTab('billing');
+    selectTab('billing');
     setShowPaymentPanel(true);
   };
 
@@ -442,7 +529,7 @@ export default function PatientDetailPage() {
   // and the Conditions/Allergies tabs' own "Add" modals (opened via
   // sectionAddRequest so the card's action lands directly in the add form).
   const openSectionAdd = (section: 'problems' | 'allergies') => {
-    setActiveTab(section);
+    selectTab(section);
     setSectionAddRequest(section);
   };
   const facesheetActions: FacesheetActions = {
@@ -452,8 +539,8 @@ export default function PatientDetailPage() {
     // Vitals entry is always the nurse-vitals form now, for doctors and nurses
     // alike — a full /consultation redirect was the wrong weight for "record
     // a set of numbers" and orphaned the visit from the chart tab it was on.
-    ...((canConsult || canRecordVitalEvents) && patient ? { vitals: { label: 'Record', onClick: () => { setActiveTab('vitals'); setShowNurseVitals(true); } } } : {}),
-    ...(canConsult ? { recommendations: { label: 'Review', onClick: () => setActiveTab('careChecklist'), icon: ClipboardList } } : {}),
+    ...((canConsult || canRecordVitalEvents) && patient ? { vitals: { label: 'Record', onClick: () => { selectTab('vitals'); setShowNurseVitals(true); } } } : {}),
+    ...(canConsult ? { recommendations: { label: 'Review', onClick: () => selectTab('careChecklist'), icon: ClipboardList } } : {}),
   };
 
   const handleEditSubmit = async () => {
@@ -585,14 +672,28 @@ export default function PatientDetailPage() {
   // — the printed record and the superbill's encounter link are both about
   // the VISIT, so they skip past a nursing stub to the newest real one.
   const latestRecord = records.find(r => r.recordKind !== 'nursing_vitals');
-  const latestVitals = latestRecord?.vitalSigns;
-  // The sticky vitals band shows the most recent record that actually carries
-  // vital signs — records[0] is often a note with no vitals, which would leave
-  // the band blank even when older encounters have readings. The band's
-  // freshness timestamp follows this record too, so "X days old" is meaningful.
-  const latestVitalsRecord = records.find(r => r.vitalSigns);
-  // Newest entry across records AND triage — what the vitals band shows.
+  // Newest entry across records AND triage — the one reading every surface of
+  // the chart quotes: the sticky band, the facesheet's "Latest observations"
+  // and the printed record. They used to derive it three different ways
+  // (newest consult / newest record carrying vitals / merged timeline), so the
+  // same patient could show three different "latest" sets on one screen, and
+  // the printed Vital Signs block vanished whenever the newest consult
+  // happened to be a note with no readings on it.
   const latestVitalsEntry = vitalsTimeline[0];
+  // Partial: a timeline entry only carries the readings that were actually
+  // taken, where MedicalRecordDoc['vitalSigns'] declares them all required.
+  const latestVitals: ChartVitalsLike | undefined = latestVitalsEntry ? {
+    temperature: latestVitalsEntry.temperature,
+    systolic: latestVitalsEntry.systolic,
+    diastolic: latestVitalsEntry.diastolic,
+    pulse: latestVitalsEntry.pulse,
+    respiratoryRate: latestVitalsEntry.respiratoryRate,
+    oxygenSaturation: latestVitalsEntry.oxygenSaturation,
+    weight: latestVitalsEntry.weight,
+    height: latestVitalsEntry.height,
+    bmi: latestVitalsEntry.bmi,
+    recordedAt: latestVitalsEntry.at,
+  } : undefined;
   // VitalsTrends only reads MedicalRecordDoc[] — a triage stop has no
   // medical_record to live on, so triage-sourced timeline entries are
   // represented as minimal synthetic records (never persisted, never shown
@@ -730,8 +831,35 @@ export default function PatientDetailPage() {
           .print-doc-root,
           .print-doc-root * { visibility: visible !important; }
 
-          /* Full-page print wrapper — absolute so content flows across pages */
+          /* The SBAR tab has its own Print button, which calls window.print()
+             against this same stylesheet — so without these rules it printed a
+             blank sheet, the whole page having been hidden and the handoff not
+             being .print-doc-root. It identifies the patient in its own first
+             line, so it prints as itself rather than through the record
+             template. */
+          .sbar-doc,
+          .sbar-doc * { visibility: visible !important; }
+          .sbar-doc {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            width: 100%;
+            padding: 10mm 12mm;
+            background: #fff;
+          }
+          /* Both can be mounted at once (print the record while sitting on the
+             SBAR tab); the record wins, since that is the document the user
+             just signed. */
+          body:has(.print-doc-root) .sbar-doc { display: none !important; }
+
+          /* Full-page print wrapper — absolute so content flows across pages.
+             The display value has to be restored explicitly: this element also
+             carries .print-only, whose "display: none" above is what keeps the
+             document off the screen, and that rule stays in force inside this
+             media block. Without the line below the whole printed record was
+             display:none — "Print chart" put a blank sheet through the
+             printer. */
           .print-doc-root {
+            display: block !important;
             position: absolute;
             top: 0; left: 0; right: 0;
             width: 100%;
@@ -927,13 +1055,21 @@ export default function PatientDetailPage() {
             const activeAllergies = (patient.structuredAllergies || []).filter((a: { status: string }) => a.status === 'active');
             const legacyAllergies = !patient.structuredAllergies ? (patient.allergies || []).filter(Boolean) : [];
             const activeProblems = patientProblems.filter(p => p.status === 'active' || p.status === 'chronic');
-            const currentMeds = (allPrescriptions || []).filter(rx => rx.patientId === patient._id && rx.status !== 'dispensed');
+            // "Current" = anything not stopped, matching the Medications tab
+            // and the facesheet. Excluding dispensed left the printed sheet —
+            // the copy the patient walks out with — missing exactly the drugs
+            // they had just collected and were actually taking.
+            const currentMeds = (allPrescriptions || []).filter(rx => rx.patientId === patient._id && rx.status !== 'discontinued');
             const patientLabs = (allLabResults || []).filter(l => l.patientId === patient._id).slice(0, 12);
             const patientImms = (allImmunizations || []).filter(i => i.patientId === patient._id);
             const upcomingPrint = (patientAppointments || [])
               .filter(a => a.status !== 'cancelled' && a.status !== 'no_show' && new Date(`${a.appointmentDate}T${a.appointmentTime || '00:00'}`).getTime() >= Date.now())
               .sort((x, y) => `${x.appointmentDate}T${x.appointmentTime || '00:00'}`.localeCompare(`${y.appointmentDate}T${y.appointmentTime || '00:00'}`))[0];
             const printedAt = new Date().toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' });
+            // `registrationHospital` holds the facility ID, not its name — the
+            // printed record was headed "hosp-001" instead of the hospital.
+            // `regHospital` is the same lookup the Demographics tab already does.
+            const printFacilityName = regHospital?.name || patient.registrationHospital || 'Tamam Facility';
             return (
               <div className="print-only print-doc-root">
 
@@ -945,7 +1081,7 @@ export default function PatientDetailPage() {
                       <img src="/assets/logos/SVG/Tamam_Style_Guide-33.svg" alt="Tamam" />
                     </div>
                     <div>
-                      <div className="rx-facility-name">{patient.registrationHospital || 'Tamam Facility'}</div>
+                      <div className="rx-facility-name">{printFacilityName}</div>
                       <div className="rx-facility-sub">Tamam · Patient record</div>
                     </div>
                   </div>
@@ -968,7 +1104,7 @@ export default function PatientDetailPage() {
                     <div className="rx-patient-field"><label>Hospital Number</label><span>{patient.hospitalNumber || '—'}</span></div>
                     <div className="rx-patient-field"><label>Phone</label><span>{patient.phone || '—'}</span></div>
                     <div className="rx-patient-field"><label>State / County</label><span>{patient.state || '—'}{patient.county ? ` · ${patient.county}` : ''}</span></div>
-                    <div className="rx-patient-field"><label>Facility</label><span>{patient.registrationHospital || 'Tamam Facility'}</span></div>
+                    <div className="rx-patient-field"><label>Facility</label><span>{printFacilityName}</span></div>
                     <div className="rx-patient-field"><label>Visit Date</label><span>{new Date().toLocaleDateString(undefined, { dateStyle: 'long' })}</span></div>
                     <div className="rx-patient-field"><label>Blood Group</label><span>{(patient as unknown as Record<string, string>).bloodGroup || '—'}</span></div>
                   </div>
@@ -1153,7 +1289,7 @@ export default function PatientDetailPage() {
                         <div className="rx-field"><b>Date &amp; Time:</b> {new Date(`${upcomingPrint.appointmentDate}T${upcomingPrint.appointmentTime || '00:00'}`).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })}</div>
                         {upcomingPrint.reason && <div className="rx-field"><b>Reason:</b> {upcomingPrint.reason}</div>}
                         {upcomingPrint.providerName && <div className="rx-field"><b>Provider:</b> {upcomingPrint.providerName}</div>}
-                        <div className="rx-field"><b>Facility:</b> {patient.registrationHospital || 'Tamam Facility'}</div>
+                        <div className="rx-field"><b>Facility:</b> {printFacilityName}</div>
                       </div>
                     </div>
                   )}
@@ -1180,7 +1316,7 @@ export default function PatientDetailPage() {
                 {/* Fixed footer on every page */}
                 <div className="rx-footer">
                   <span className="rx-footer-conf">CONFIDENTIAL — Patient Medical Record</span>
-                  <span>Tamam · {patient.hospitalNumber || patient.geocodeId} · {patient.registrationHospital || 'Tamam Facility'}</span>
+                  <span>Tamam · {patient.hospitalNumber || patient.geocodeId} · {printFacilityName}</span>
                   <span>Printed: {printedAt}</span>
                 </div>
 
@@ -1274,7 +1410,7 @@ export default function PatientDetailPage() {
 
           <OpenmrsChartShell
             activeTab={activeTab}
-            setActiveTab={setActiveTab}
+            setActiveTab={selectTab}
             railItems={omrsRailItems}
             moreItems={omrsMoreItems}
             patient={patient}
@@ -1282,6 +1418,11 @@ export default function PatientDetailPage() {
             canPrescribe={canPrescribe}
             canOrderLabs={canOrderLabs}
             canConsult={canConsult}
+            // Gates the clinical workspace panels on the right rail. Reception,
+            // cashiers, the lab bench and pharmacy all reach this chart on the
+            // restricted tab sets above; the drawer has to honour the same rule
+            // or it becomes a second way in to the same clinical detail.
+            canViewClinical={canViewClinical}
             router={router}
             onOpenPrescribeModal={() => setShowPrescribeModal(true)}
             onOpenOrderLabModal={() => setShowOrderLabModal(true)}
@@ -1304,13 +1445,13 @@ export default function PatientDetailPage() {
                   setMessageIsEducation(true);
                   setShowMessageModal(true);
                 }}
-                onNote={() => (canConsult ? void openClinicalNoteDrawer() : setActiveTab('notes'))}
-                onScripts={() => (canPrescribe ? setShowPrescribeModal(true) : setActiveTab('prescriptions'))}
-                onOrders={() => (canOrderLabs ? setShowOrderLabModal(true) : setActiveTab('labs'))}
-                onExchange={() => (canManageReferrals ? setShowReferModal(true) : setActiveTab('appointments'))}
+                onNote={() => (canConsult ? void openClinicalNoteDrawer() : selectTab('notes'))}
+                onScripts={() => (canPrescribe ? setShowPrescribeModal(true) : selectTab('prescriptions'))}
+                onOrders={() => (canOrderLabs ? setShowOrderLabModal(true) : selectTab('labs'))}
+                onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('appointments'))}
                 onEdit={openEditModal}
-                onStickyNote={() => { if (canViewClinical) setActiveTab('notes'); }}
-                onShowAllergies={() => setActiveTab('allergies')}
+                onStickyNote={() => { if (canViewClinical) selectTab('notes'); }}
+                onShowAllergies={() => selectTab('allergies')}
                 onAssignProvider={canAssignPatients ? () => setAssignTarget({
                   patientId: patient._id,
                   patientName: patientFullName(patient),
@@ -1325,20 +1466,10 @@ export default function PatientDetailPage() {
                 // patient hasn't been formally seen for yet — not only the
                 // newest medical_record, which would leave the band showing
                 // stale (or no) vitals right after triage.
-                latestVitals={latestVitalsEntry ? {
-                  temperature: latestVitalsEntry.temperature,
-                  systolic: latestVitalsEntry.systolic,
-                  diastolic: latestVitalsEntry.diastolic,
-                  pulse: latestVitalsEntry.pulse,
-                  respiratoryRate: latestVitalsEntry.respiratoryRate,
-                  oxygenSaturation: latestVitalsEntry.oxygenSaturation,
-                  weight: latestVitalsEntry.weight,
-                  height: latestVitalsEntry.height,
-                  bmi: latestVitalsEntry.bmi,
-                } : undefined}
+                latestVitals={latestVitals}
                 latestRecordDate={latestVitalsEntry?.at}
-                onViewVitalsHistory={() => setActiveTab('vitals')}
-                onRecordVitals={() => { setActiveTab('vitals'); setShowNurseVitals(true); }}
+                onViewVitalsHistory={() => selectTab('vitals')}
+                onRecordVitals={() => { selectTab('vitals'); setShowNurseVitals(true); }}
                 canRecordVitals={canConsult || canRecordVitalEvents}
               />
             ) : undefined}
@@ -1350,7 +1481,7 @@ export default function PatientDetailPage() {
               because a clinician who doesn't know a transfer is pending can
               start work the receiving team is about to take over. */}
           {patient && (
-            <TransferBanner patient={patient} onOpenHistory={() => setActiveTab('referrals')} />
+            <TransferBanner patient={patient} onOpenHistory={() => selectTab('referrals')} />
           )}
 
           {/* Chart-permanent safety alerts (fall risk, difficult IV access,
@@ -1367,13 +1498,13 @@ export default function PatientDetailPage() {
           {activeTab === 'overview' && (
             <PatientFacesheetView
               patient={patient}
-              latestVitals={latestVitalsRecord?.vitalSigns}
+              latestVitals={latestVitals}
               problems={patientProblems}
               prescriptions={(allPrescriptions || []).filter(rx => rx.patientId === patient._id)}
               labResults={(allLabResults || []).filter(lab => lab.patientId === patient._id)}
               immunizations={(allImmunizations || []).filter(imm => imm.patientId === patient._id)}
               canViewClinical={canViewClinical}
-              onOpenTab={setActiveTab}
+              onOpenTab={selectTab}
               actions={facesheetActions}
               visiblePanelIds={facesheetPanels}
               customizeOpen={showCustomizeView}
@@ -1418,15 +1549,23 @@ export default function PatientDetailPage() {
                             <td className="font-mono">{formatDate(appt.appointmentDate)}</td>
                             <td>{formatClockTime(appt.appointmentTime) || '—'}</td>
                             <td>
+                              {/* The care team ON THIS APPOINTMENT. The second
+                                  line used to print the patient's current
+                                  assigning nurse against every row, including
+                                  visits booked years earlier by someone else —
+                                  a name that was never part of that booking.
+                                  `staffName` is the appointment's own second
+                                  staff member, and it is simply absent when the
+                                  booking has none. */}
                               <div className="appointment-card-provider">
-                                <strong>{appt.providerName || patient.assignedDoctorName || 'Doctor unassigned'}</strong>
-                                <span>{patient.assignedByName || 'Nurse unassigned'}</span>
+                                <strong>{appt.providerName || 'Doctor unassigned'}</strong>
+                                {appt.staffName && <span>{appt.staffName}</span>}
                               </div>
                             </td>
                             <td>
                               <div className="appointment-card-provider">
                                 <strong>{appt.reason || appt.department || 'Follow-up'}</strong>
-                                <span>{appt.department || 'Appointment'}</span>
+                                <span>{[appt.department, appt.room].filter(Boolean).join(' · ') || 'Appointment'}</span>
                               </div>
                             </td>
                             <td><span className="badge badge-normal text-[10px]">{humanizeStatus(appt.status)}</span></td>
@@ -1440,8 +1579,10 @@ export default function PatientDetailPage() {
             );
           })()}
 
+          {/* No wrapper card: PatientSBAR is built from ChartSection now, and
+              nesting those inside a card produced a card-in-a-card. */}
           {activeTab === 'sbar' && patient && (
-            <div className="card-elevated p-5">
+            <>
               <PatientSBAR
                 patient={patient}
                 records={records}
@@ -1449,8 +1590,9 @@ export default function PatientDetailPage() {
                 prescriptions={(allPrescriptions || []).filter(r => r.patientId === patient._id)}
                 triages={patientTriages}
                 problems={patientProblems}
+                latestShiftHandoff={latestShiftHandoff}
               />
-            </div>
+            </>
           )}
 
           {/* Problem List — longitudinal active/chronic/resolved */}
@@ -1480,9 +1622,7 @@ export default function PatientDetailPage() {
                 autoOpenAdd={sectionAddRequest === 'allergies'}
                 onAutoOpenHandled={() => setSectionAddRequest(null)}
               />
-              <div className="card-elevated p-5">
-                <DirectiveList patient={patient} />
-              </div>
+              <DirectivesSection patient={patient} />
             </div>
           )}
 
@@ -1520,6 +1660,11 @@ export default function PatientDetailPage() {
               activeTab={demographicsTab}
               onTabChange={setDemographicsTab}
               onEdit={openEditModal}
+              // The header's "Edit details" is gated on canRegisterPatients;
+              // this button opens the identical modal, so it has to be too —
+              // otherwise any chart viewer (a nurse, a cashier looking up a
+              // balance) could rewrite the patient's name, DOB or county.
+              canEdit={canRegisterPatients}
               appointments={patientAppointments}
               regHospitalName={regHospital?.name || patient.registrationHospital || ''}
             />
@@ -1530,7 +1675,7 @@ export default function PatientDetailPage() {
               <ScreeningsPanel patient={patient} />
               <RemindersPanel patient={patient} />
               <div className="card-elevated p-5">
-                <AssessmentsPanel patient={patient} />
+                <AssessmentsPanel patient={patient} focusId={focusId} />
               </div>
             </div>
           )}
@@ -1568,6 +1713,14 @@ export default function PatientDetailPage() {
               ancVisits={patientANC}
               appointments={patientAppointments}
               triages={patientTriages}
+              // Consultation records carry a full sign / co-sign / addendum
+              // lifecycle that no screen had ever mounted, so visits were never
+              // attested or locked. The controls belong on the visit itself.
+              renderRecordSignature={canViewClinical ? recordId => {
+                const rec = records.find(r => r._id === recordId);
+                return rec ? <RecordSignatureBar record={rec} /> : null;
+              } : undefined}
+              focusId={focusId}
             />
           )}
 
@@ -1708,55 +1861,16 @@ export default function PatientDetailPage() {
             </ChartSection>
           )}
 
-          {/* Immunizations Tab */}
-          {activeTab === 'immunizations' && (() => {
-            const immRecords = (allImmunizations || [])
-              .filter(i => i.patientId === patient._id)
-              .sort((a, b) => new Date(b.dateGiven || b.nextDueDate).getTime() - new Date(a.dateGiven || a.nextDueDate).getTime());
-            const statusStyle: Record<string, { bg: string; color: string }> = {
-              completed: { bg: 'rgba(31,157,111,0.14)', color: 'var(--color-success)' },
-              scheduled: { bg: 'var(--accent-light)', color: 'var(--accent-primary)' },
-              overdue: { bg: 'rgba(229,46,66,0.14)', color: 'var(--color-danger)' },
-              missed: { bg: 'rgba(252,211,77,0.16)', color: 'var(--color-warning)' },
-            };
-            return (
-              <ChartSection title="Immunizations" addLabel="Add" onAdd={() => router.push(`/immunizations?patientId=${patient._id}`)}>
-                {immRecords.length === 0 ? (
-                  <OmrsEmptyState itemLabel="immunizations" actionLabel="Record immunizations" onAction={() => router.push(`/immunizations?patientId=${patient._id}`)} />
-                ) : (
-                  <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                  <table className="omrs-table" style={{ minWidth: 840 }}>
-                    <thead>
-                      <tr>
-                        {['Vaccine', 'Dose', 'Date given', 'Next due', 'Site', 'Batch', 'Status'].map(h => (
-                          <th key={h}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {immRecords.map(im => {
-                        const s = statusStyle[im.status] || statusStyle.scheduled;
-                        return (
-                          <tr key={im._id}>
-                            <td style={{ fontWeight: 600 }}>{im.vaccine}</td>
-                            <td>{im.doseNumber ? `Dose ${im.doseNumber}` : '—'}</td>
-                            <td>{im.dateGiven ? formatDate(im.dateGiven) : '—'}</td>
-                            <td>{im.nextDueDate ? formatDate(im.nextDueDate) : '—'}</td>
-                            <td style={{ textTransform: 'capitalize' }}>{im.site || '—'}</td>
-                            <td className="font-mono">{im.batchNumber || '—'}</td>
-                            <td>
-                              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: s.bg, color: s.color }}>{humanizeStatus(im.status)}</span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  </div>
-                )}
-              </ChartSection>
-            );
-          })()}
+          {/* Immunizations — dose history recorded in the chart, through the
+              same service the /immunizations module writes with. */}
+          {activeTab === 'immunizations' && (
+            <ImmunizationsSection
+              patient={patient}
+              patientName={patientFullName(patient)}
+              canRecord={canConsult || canRecordVitalEvents}
+              facilityName={regHospital?.name || currentUser?.hospitalName}
+            />
+          )}
 
           {/* Care coordination: internal transfers and external referrals share
               one ownership and follow-up destination. */}
@@ -2154,7 +2268,7 @@ function PatientFacesheetView({
   onResetPanels,
 }: {
   patient: PatientDoc;
-  latestVitals?: MedicalRecordDoc['vitalSigns'];
+  latestVitals?: ChartVitalsLike;
   problems: ProblemDoc[];
   prescriptions: PrescriptionDoc[];
   labResults: LabResultDoc[];
@@ -2265,7 +2379,7 @@ function PatientFacesheetView({
             {activeAllergies.slice(0, 4).map((allergy, index) => (
               <div
                 key={`${allergy.name}-${index}`}
-                className="tebra-list-row"
+                className="tebra-list-row tebra-list-row--alert"
                 // Allergies live on their own tab, not Conditions — without
                 // this an allergy row opened the Conditions tab instead.
                 onClick={event => { event.stopPropagation(); onOpenTab('allergies'); }}
@@ -2305,7 +2419,13 @@ function PatientFacesheetView({
           </div>
         ) : <p className="tebra-none">(None documented)</p>}
         {recentLabs.length > 0 && (
-          <div className="tebra-list mt-2">
+          // Results live on their own section, not Vitals — without the
+          // stopPropagation these rows inherited the card's click and opened
+          // the vitals table instead of the result they name.
+          <div
+            className="tebra-list mt-2"
+            onClick={event => { event.stopPropagation(); onOpenTab('labs'); }}
+          >
             <div className="tebra-list-row"><strong>Recent results</strong><span>{recentLabs.length} recorded</span></div>
             {recentLabs.slice(0, 2).map(lab => (
               <div key={lab._id} className="tebra-list-row">
@@ -2349,6 +2469,7 @@ function PatientDemographicsView({
   activeTab,
   onTabChange,
   onEdit,
+  canEdit,
   appointments,
   regHospitalName,
 }: {
@@ -2356,6 +2477,8 @@ function PatientDemographicsView({
   activeTab: string;
   onTabChange: (tab: string) => void;
   onEdit: () => void;
+  /** Whether this viewer may change the registration record. */
+  canEdit: boolean;
   appointments: AppointmentDoc[];
   regHospitalName: string;
 }) {
@@ -2394,7 +2517,7 @@ function PatientDemographicsView({
 
       {activeTab === 'profile' && (
         <section className="tebra-demo-panel">
-          <button type="button" className="tebra-demo-edit" onClick={onEdit}>Edit</button>
+          {canEdit && <button type="button" className="tebra-demo-edit" onClick={onEdit}>Edit</button>}
           <div className="tebra-demo-person">
             <div className="tebra-demo-avatar">{patientInitials(patient)}</div>
             <h2>{patientFullName(patient)}</h2>
@@ -2472,8 +2595,11 @@ function PatientDemographicsView({
                   <td>{formatClockTime(appt.appointmentTime) || '-'}</td>
                   <td>
                     <div className="appointment-card-provider">
-                      <strong>{appt.providerName || patient.assignedDoctorName || 'Doctor unassigned'}</strong>
-                      <span>{patient.assignedByName || 'Nurse unassigned'}</span>
+                      {/* Same rule as the Appointments section above: this
+                          column describes the booking, not the patient's
+                          current assignment. */}
+                      <strong>{appt.providerName || 'Doctor unassigned'}</strong>
+                      {appt.staffName && <span>{appt.staffName}</span>}
                     </div>
                   </td>
                   <td>

@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import DemoModeBanner from '@/components/DemoModeBanner';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -120,6 +120,28 @@ export default function NutritionDashboard() {
   const [formError, setFormError] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [queueSearch, setQueueSearch] = useState('');
+
+  // Deep link: the patient chart's "Clinical forms" drawer opens a nutrition
+  // screening for a specific patient via ?patientId=. The link existed but
+  // nothing read the param, so the screening form opened blank and the link
+  // between the classification and that patient's chart was lost. Waits for
+  // `patients` to load (retries via the dep array) and fires once.
+  const nutritionPatientParamRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || nutritionPatientParamRef.current || !patients.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const patientId = params.get('patientId');
+    if (!patientId) return;
+    const match = patients.find(p => p._id === patientId);
+    if (!match) return;
+    nutritionPatientParamRef.current = true;
+    setScreeningPatientId(match._id);
+    setForm(f => ({ ...f, name: patientFullName(match), sex: match.gender === 'Male' ? 'M' : 'F' }));
+    setShowForm(true);
+    params.delete('patientId');
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
+  }, [patients]);
 
   const screenings = useMemo<Screening[]>(
     () => [

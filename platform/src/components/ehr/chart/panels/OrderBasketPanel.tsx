@@ -27,8 +27,11 @@ interface OrderBasketPanelProps {
 export default function OrderBasketPanel({
   patient, canPrescribe, canOrderLabs, onAddDrugOrder, onAddLabOrder, onClose,
 }: OrderBasketPanelProps) {
-  const { prescriptions } = usePrescriptions();
-  const { results } = useLabResults();
+  // Scoped to this patient at the query, not filtered down from the whole
+  // facility's orders: the un-scoped call pulled every prescription and lab
+  // result in the hospital into the drawer to show at most a handful.
+  const { prescriptions } = usePrescriptions(patient._id);
+  const { results } = useLabResults(patient._id);
   const [drugsOpen, setDrugsOpen] = useState(true);
   const [labsOpen, setLabsOpen] = useState(true);
 

@@ -45,6 +45,32 @@ export type DirectiveType =
   | 'release_of_information'
   | 'other';
 
+/** Who put their name to a consent — the patient, or an authorised representative. */
+export type DirectiveSignatory = 'patient' | 'guardian' | 'next_of_kin' | 'power_of_attorney';
+
+/**
+ * The attestation on a consent or directive.
+ *
+ * Recording that a consent exists and holding a signed consent are different
+ * facts, and only the second one authorises anything: an unsigned entry means
+ * the conversation was logged, not that the patient agreed. Kept as its own
+ * object so `signature === undefined` is unambiguous — there is no way to read
+ * a missing signature as a signed one.
+ */
+export interface DirectiveSignature {
+  /** Name as signed. */
+  name: string;
+  /** Whose signature this is. */
+  signedBy: DirectiveSignatory;
+  /** Free-text relationship, required when `signedBy` is not 'patient'. */
+  relationship?: string;
+  /** ISO timestamp the signature was taken. */
+  signedAt: string;
+  /** Staff member who witnessed it — captured from the signed-in user. */
+  witnessId?: string;
+  witnessName?: string;
+}
+
 export interface DirectiveEntry {
   id: string;
   type: DirectiveType;
@@ -55,6 +81,8 @@ export interface DirectiveEntry {
   status: 'active' | 'inactive' | 'expired' | 'revoked';
   /** Required when the directive is removed/revoked — preserves the audit trail. */
   removalReason?: string;
+  /** Absent until the patient (or their representative) has actually signed. */
+  signature?: DirectiveSignature;
   recordedBy?: string;
   recordedByName?: string;
   recordedAt: string;

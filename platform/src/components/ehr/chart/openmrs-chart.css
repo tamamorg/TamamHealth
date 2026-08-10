@@ -296,21 +296,15 @@
   font-weight: 600;
 }
 
-/* Category reads as a coloured dot + label rather than the old pill: at table
-   density a filled chip per row turns the column into a stripe of colour. */
+/* Category is a plain label. It had a coloured dot before it, then a filled
+   pill before that; both turned the column into a stripe of colour at table
+   density, and neither said anything the word didn't. Colour in this table is
+   reserved for the badges, where it marks something actionable. */
 .tamam-activity-type {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   color: var(--ehr-text-body, #39536B);
   white-space: nowrap;
-}
-
-.tamam-activity-type i {
-  flex-shrink: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
 }
 
 .tamam-activity-badge {
@@ -880,11 +874,11 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px;
-  padding: 14px 18px 0;
+  padding: 16px 18px 0;
 }
 
 .omrs-section-title-wrap {
-  padding-bottom: 10px;
+  padding-bottom: 14px;
 }
 
 .omrs-section-title {
@@ -970,7 +964,7 @@
 }
 
 .omrs-section-body {
-  padding: 0 18px 16px;
+  padding: 0 18px 18px;
 }
 
 .omrs-section-search {
@@ -1019,13 +1013,17 @@
 .omrs-root .omrs-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 /* No fill behind the column labels: the rule beneath them already separates
    header from data, and the tinted strip read as a second, competing surface
    inside an already-bordered section. Applies to every chart table —
    medications, results, activity. */
+/* Column labels sit clear of the first row rather than on top of it: the head
+   has more space beneath it than above, so the rule below it reads as the top
+   edge of the data instead of a line squeezed between two rows of text. */
 .omrs-root .omrs-table thead th {
   text-align: left;
   font-size: 10.5px;
@@ -1034,17 +1032,40 @@
   letter-spacing: 0.3px;
   color: var(--ehr-muted, #8395A8);
   background: transparent;
-  padding: 8px 12px;
+  padding: 6px 16px 10px;
   border-bottom: 1px solid var(--ehr-border, #D8E3EC);
   white-space: nowrap;
 }
 
+/* Row rhythm. These tables are read by scanning down one column — a problem
+   list, a medication list — and at the old 9px the rows ran together into a
+   block of text with hairlines through it. The vertical padding is what buys
+   the scan; the horizontal keeps the first column off the card edge and the
+   last column's control off the border. */
 .omrs-root .omrs-table tbody td {
-  padding: 9px 12px;
+  padding: 13px 16px;
   color: var(--ehr-text, #102634);
   border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
+  vertical-align: middle;
+}
+
+/* Cells that stack a second line (a sub-label under a name) keep their content
+   top-aligned — centring a two-line cell against single-line neighbours drops
+   its first line below theirs. */
+.omrs-root .omrs-table tbody td:has(div) {
   vertical-align: top;
 }
+
+/* The outer columns lose their side padding so the first one lines up with the
+   section title above it and the last one sits on the same right gutter. The
+   cell padding is for the space BETWEEN columns; at the table's edges it was
+   just inset, leaving the header and its own first column on two different
+   left margins. */
+.omrs-root .omrs-table thead th:first-child,
+.omrs-root .omrs-table tbody td:first-child { padding-left: 0; }
+
+.omrs-root .omrs-table thead th:last-child,
+.omrs-root .omrs-table tbody td:last-child { padding-right: 0; }
 
 .omrs-root .omrs-table tbody tr:last-child td {
   border-bottom: none;
@@ -1795,3 +1816,252 @@
   line-height: 1.5;
   color: var(--ehr-text-body, #39536B);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SBAR handoff (components/patients/PatientSBAR.tsx)
+
+   The handoff is built from ChartSection like every other chart tab, so this
+   file only styles what lives INSIDE those sections. Rules to note: no row
+   dividers (the label carries the separation; a rule per fact turned four
+   short facts into a ruled ledger) and no card of its own for the document
+   title — the sticky patient header above already says whose chart this is.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.sbar-doc {
+  font-size: 13px;
+  color: var(--ehr-text-strong, #1E3A52);
+}
+
+.sbar-muted { color: var(--ehr-muted, #8395A8); font-weight: 400; }
+
+/* ── Allergy strip ── */
+.sbar-allergies {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 9px 14px;
+  border: 1px solid var(--ehr-border, #D8E3EC);
+  border-radius: 8px;
+  background: var(--ehr-panel, #fff);
+  color: var(--ehr-muted, #8395A8);
+}
+
+.sbar-allergies.is-alert {
+  border-color: rgba(196, 69, 54, 0.28);
+  background: rgba(196, 69, 54, 0.05);
+  color: var(--tamamhealth-red, #C44536);
+}
+
+.sbar-allergies-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sbar-allergies-none { font-size: 12.5px; }
+
+.sbar-allergies-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.sbar-allergies-list em {
+  padding: 2px 8px;
+  border: 1px solid rgba(196, 69, 54, 0.22);
+  border-radius: 5px;
+  background: rgba(196, 69, 54, 0.10);
+  color: var(--tamamhealth-red-text, #A5372A);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ── Body typography ── */
+.sbar-lede { margin: 0; font-size: 13.5px; line-height: 1.55; }
+.sbar-para { margin: 6px 0 0; line-height: 1.6; }
+
+/* ── One labelled fact per line ── */
+.sbar-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 5px 0;
+}
+
+.sbar-fact + .sbar-fact { padding-top: 4px; }
+
+.sbar-fact-label {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ehr-muted, #8395A8);
+}
+
+.sbar-fact-value { text-align: right; line-height: 1.5; }
+
+/* ── Sub-block inside a section ── */
+.sbar-block { margin-top: 14px; }
+.sbar-block:first-child { margin-top: 0; }
+
+.sbar-subhead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ehr-muted, #8395A8);
+}
+
+.sbar-subhead[data-tone='danger'] { color: var(--tamamhealth-red, #C44536); }
+.sbar-subhead svg { width: 13px; height: 13px; }
+
+/* ── Problem chips ── */
+.sbar-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+
+.sbar-chips li {
+  padding: 3px 9px;
+  border: 1px solid var(--ehr-border, #D8E3EC);
+  border-radius: 5px;
+  background: var(--ehr-soft, #E9F0F5);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ehr-text-body, #39536B);
+}
+
+/* ── Two-part rows (medication, lab, diagnosis) ── */
+.sbar-rows { margin: 0; padding: 0; list-style: none; }
+
+.sbar-rows li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 5px 0;
+}
+
+.sbar-row-main { font-weight: 600; }
+.sbar-critical { white-space: nowrap; font-weight: 700; color: var(--tamamhealth-red-text, #A5372A); }
+
+.sbar-bullets { margin: 0; padding-left: 18px; line-height: 1.7; }
+
+/* ── Vitals tiles ── */
+.sbar-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.sbar-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--ehr-border, #D8E3EC);
+  border-radius: 7px;
+  background: var(--ehr-soft, #E9F0F5);
+}
+
+.sbar-tile-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ehr-muted, #8395A8);
+}
+
+.sbar-tile-value {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ehr-text-strong, #1E3A52);
+}
+
+/* ── Prior shift handoff ── */
+.sbar-handoff-grid { display: grid; gap: 10px; }
+
+@media (min-width: 900px) {
+  .sbar-handoff-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.sbar-handoff-cell p { margin: 3px 0 0; line-height: 1.55; white-space: pre-wrap; }
+
+.sbar-disclaimer {
+  margin: 4px 2px 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ehr-muted, #8395A8);
+}
+
+/* ── Shared table cell treatments ──
+   Named classes rather than inline styles, so every chart table renders the
+   same kinds of cell the same way: a row's subject, a capitalised category, a
+   secondary line under a value, and the trailing actions column. */
+.omrs-root .omrs-table .omrs-cell-strong { font-weight: 600; color: var(--ehr-text-strong, #1E3A52); }
+.omrs-root .omrs-table .omrs-cell-cap { text-transform: capitalize; }
+.omrs-root .omrs-table .omrs-cell-note { text-transform: none; }
+.omrs-root .omrs-table .omrs-cell-sub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--ehr-muted, #8395A8);
+}
+.omrs-root .omrs-table .omrs-cell-actions { text-align: right; white-space: nowrap; }
+
+/* A retired row is history: it stays legible (a resolved allergy is still
+   clinical information) but recedes behind the active ones. Opacity on the
+   whole row washed out its status badge too, which is the one part that has
+   to stay readable. */
+.omrs-root .omrs-table tbody tr.is-retired .omrs-cell-strong,
+.omrs-root .omrs-table tbody tr.is-retired td { color: var(--ehr-muted, #8395A8); }
+
+/* ── Allergy severity grades ──
+   Severity is the field a prescriber acts on. Three steps, each with its own
+   ink and a matching tinted plate, so "severe" is legible from across the row
+   rather than being one grey word among four. */
+.omrs-sev {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.omrs-sev--severe {
+  background: rgba(196, 69, 54, 0.10);
+  color: var(--tamamhealth-red-text, #A5372A);
+}
+
+.omrs-sev--moderate {
+  background: var(--ehr-warning-bg, #FFF1C7);
+  color: var(--ehr-warning-text, #9C5E16);
+}
+
+.omrs-sev--mild {
+  background: var(--ehr-success-bg, #DDF2E9);
+  color: var(--ehr-success-text, #0E7155);
+}
+
+.omrs-sev--unknown {
+  background: var(--ehr-soft, #E9F0F5);
+  color: var(--ehr-muted, #8395A8);
+}
+
+/* Allergen names wrap rather than ellipsise — a truncated allergen is worse
+   than a tall row. */
+.omrs-table--allergies { table-layout: fixed; }
+.omrs-table--allergies td { white-space: normal; }
+
+/* Directives wrap their detail line rather than truncating it — a consent
+   reading "General consent to treat — signed at reg…" is not a consent record. */
+.omrs-table--directives { table-layout: fixed; }
+.omrs-table--directives td { white-space: normal; }
+
+/* A badge with a glyph in it needs to sit its parts on one baseline. */
+.omrs-root .omrs-panel-badge { display: inline-flex; align-items: center; gap: 4px; }
+.omrs-root .omrs-panel-badge svg { width: 12px; height: 12px; }

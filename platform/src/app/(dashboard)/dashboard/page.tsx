@@ -219,38 +219,68 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   // Per-item worklists behind the outstanding counts.
   const shortDate = (iso?: string) =>
     iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+  const patientIds = new Set(patients.map(p => p._id));
 
+  // Every row lands on the DOCUMENT it names, not on a tab that merely contains
+  // documents of that kind. All four used to point at the patient's Notes tab
+  // (or, for assessments, a tab they don't even live on), so a clinician with
+  // nine things to sign arrived nine times at the same list and had to work out
+  // which row the dashboard had meant. The chart's `?tab=&focus=` deep link
+  // expands, scrolls to and highlights the exact record.
   const documentEntries: OutstandingEntry[] = [
-    ...unsignedDrafts.map(r => ({
-      id: r._id,
-      title: signingPatientName(r.patientId),
-      subtitle: 'Draft consult note — needs signature',
-      meta: shortDate(r.visitDate || r.createdAt),
-      tone: 'warning' as const,
-      href: `/patients/${r.patientId}?tab=notes`,
-    })),
-    ...awaitingCosign.map(r => ({
-      id: r._id,
-      title: signingPatientName(r.patientId),
-      subtitle: 'Trainee note — awaiting co-signature',
-      meta: shortDate(r.visitDate || r.createdAt),
-      tone: 'warning' as const,
-      href: `/patients/${r.patientId}?tab=notes`,
-    })),
-    ...heldAssessments.map(a => ({
-      id: a._id,
-      title: signingPatientName(a.patientId),
-      subtitle: 'Outcome assessment — review & sign',
-      meta: shortDate(a.createdAt),
-      href: `/patients/${a.patientId}?tab=notes`,
-    })),
+    ...unsignedDrafts.map(r => {
+      // A consult record is a VISIT — it is signed on the Visits timeline,
+      // where RecordSignatureBar now renders, not on the Notes tab.
+      const href = `/patients/${r.patientId}?tab=history&focus=${r._id}`;
+      return {
+        id: r._id,
+        title: signingPatientName(r.patientId),
+        subtitle: 'Draft consult note — needs signature',
+        meta: shortDate(r.visitDate || r.createdAt),
+        tone: 'warning' as const,
+        href,
+        actionLabel: 'Review & sign',
+        actionHref: href,
+      };
+    }),
+    ...awaitingCosign.map(r => {
+      const href = `/patients/${r.patientId}?tab=history&focus=${r._id}`;
+      return {
+        id: r._id,
+        title: signingPatientName(r.patientId),
+        subtitle: 'Trainee note — awaiting co-signature',
+        meta: shortDate(r.visitDate || r.createdAt),
+        tone: 'warning' as const,
+        href,
+        actionLabel: 'Review & co-sign',
+        actionHref: href,
+      };
+    }),
+    ...heldAssessments.map(a => {
+      // Assessments render in AssessmentsPanel on the Care plan tab.
+      const href = `/patients/${a.patientId}?tab=careChecklist&focus=${a._id}`;
+      return {
+        id: a._id,
+        title: signingPatientName(a.patientId),
+        subtitle: `${a.instrumentName || 'Outcome assessment'} — review & sign`,
+        meta: shortDate(a.createdAt),
+        tone: 'warning' as const,
+        href,
+        actionLabel: 'Review & sign',
+        actionHref: href,
+      };
+    }),
     ...unsignedNotes.map(n => ({
       id: n._id,
       title: n.patientName,
       subtitle: `${getNoteType(n.noteType).label} note — needs signature`,
       meta: shortDate(n.serviceDate || n.createdAt),
       tone: 'warning' as const,
+      // Already exact: /notes/[id] IS the note, opened in the full editor that
+      // owns the Sign action.
       href: `/notes/${n._id}`,
+      actionLabel: 'Review & sign',
+      actionHref: `/notes/${n._id}`,
     })),
   ];
 
@@ -263,6 +293,8 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     // Opens the patient's own notes tab — where the callback actually gets
     // resolved — rather than /messages, which has no per-patient context.
     href: n.patientId ? `/patients/${n.patientId}?tab=notes` : '/patients',
+    actionLabel: 'Open callback',
+    actionHref: n.patientId ? `/patients/${n.patientId}?tab=notes` : '/patients',
   }));
 
   // "Open" = submitted but not yet resolved — excludes completed/cancelled
@@ -275,7 +307,13 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     title: r.patientName,
     subtitle: `${r.reason || 'Referral'} → ${r.toHospital || 'receiving facility'}`,
     meta: r.status ? String(r.status).replace(/_/g, ' ') : '',
-    href: `/patients/${r.patientId}?tab=referrals`,
+    href: patientIds.has(r.patientId)
+      ? `/patients/${r.patientId}?tab=referrals`
+      : `/referrals?patient=${encodeURIComponent(r.patientId)}`,
+    actionLabel: 'Review referral',
+    actionHref: patientIds.has(r.patientId)
+      ? `/patients/${r.patientId}?tab=referrals`
+      : `/referrals?patient=${encodeURIComponent(r.patientId)}`,
   }));
 
   // Today's telehealth visits for this clinician — each row opens the visit room.
@@ -287,6 +325,8 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     meta: a.status ? String(a.status).replace(/_/g, ' ') : '',
     tone: 'warning' as const,
     href: `/telehealth/visit/${encodeURIComponent(a._id)}`,
+    actionLabel: 'Join visit',
+    actionHref: `/telehealth/visit/${encodeURIComponent(a._id)}`,
   }));
 
   const labEntries = resumableEncounters.map(e => ({
@@ -298,6 +338,8 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     meta: shortDate(e.createdAt),
     tone: e.allResultsBack ? ('danger' as const) : ('neutral' as const),
     href: e.allResultsBack ? `/consultation?encounter=${e._id}` : `/patients/${e.patientId}?tab=labs`,
+    actionLabel: e.allResultsBack ? 'Resume visit' : 'Review labs',
+    actionHref: e.allResultsBack ? `/consultation?encounter=${e._id}` : `/patients/${e.patientId}?tab=labs`,
   }));
 
   // Community-health follow-ups due (or nearly due) for this clinician's org/
@@ -319,6 +361,8 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     meta: shortDate(f.scheduledDate),
     tone: 'warning' as const,
     href: `/patients/${f.patientId}?tab=careChecklist`,
+    actionLabel: 'Complete follow-up',
+    actionKind: 'complete-follow-up' as const,
   }));
 
   const transferEntries = incomingTransfers.map(t => {
@@ -332,6 +376,8 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
       // nobody has taken responsibility for, so it outranks ordinary warnings.
       tone: overdue ? ('danger' as const) : ('warning' as const),
       href: `/patients/${t.patientId}?tab=referrals`,
+      actionLabel: 'Review transfer',
+      actionHref: `/patients/${t.patientId}?tab=referrals`,
     };
   });
 

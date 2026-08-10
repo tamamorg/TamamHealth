@@ -3,16 +3,21 @@
 /**
  * Patient lists workspace panel — OpenMRS-style saved worklists. This app
  * has no saved-list feature, so the two lists shown are derived live from
- * real data already used elsewhere in the app (usePatients / useAppointments)
- * rather than inventing a list-definition data layer: "My patients" (this
- * clinician's hospital) and "Assigned to me" (patients with an appointment
- * where this clinician is the provider).
+ * real data already used elsewhere in the app (usePatients) rather than
+ * inventing a list-definition data layer: "My patients" (this clinician's
+ * hospital) and "Assigned to me" (patients whose assigned provider is this
+ * clinician — the same `assignedDoctor` field AssignDoctorModal writes and the
+ * registry's "Assigned to me" filter reads).
+ *
+ * Each row opens the registry ALREADY filtered to the list it counted. The
+ * counts previously came from appointment providers while both rows navigated
+ * to the same unfiltered /patients, so the number on the row and the list you
+ * landed in were unrelated.
  */
 
 import { useMemo } from 'react';
 import { Users, ChevronRight } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { useAppointments } from '@/lib/hooks/useAppointments';
 import type { ChartPanelRouter, ChartPanelUser } from './types';
 
 interface PatientListsPanelProps {
@@ -23,7 +28,6 @@ interface PatientListsPanelProps {
 
 export default function PatientListsPanel({ currentUser, router, onClose }: PatientListsPanelProps) {
   const { patients } = usePatients();
-  const { appointments } = useAppointments();
 
   const myPatientsCount = useMemo(
     () => (patients || []).filter(p => p.registrationHospital === currentUser?.hospitalId).length,
@@ -32,24 +36,23 @@ export default function PatientListsPanel({ currentUser, router, onClose }: Pati
 
   const assignedToMeCount = useMemo(() => {
     if (!currentUser?._id) return 0;
-    const ids = new Set((appointments || []).filter(a => a.providerId === currentUser._id).map(a => a.patientId));
-    return ids.size;
-  }, [appointments, currentUser?._id]);
+    return (patients || []).filter(p => p.assignedDoctor === currentUser._id).length;
+  }, [patients, currentUser?._id]);
 
   const lists = [
-    { id: 'my-patients', name: 'My patients', type: `Hospital · ${currentUser?.hospitalName || '—'}`, count: myPatientsCount },
-    { id: 'assigned-to-me', name: 'Assigned to me', type: 'Provider worklist', count: assignedToMeCount },
+    { id: 'my-patients', name: 'My patients', type: `Hospital · ${currentUser?.hospitalName || '—'}`, count: myPatientsCount, href: '/patients' },
+    { id: 'assigned-to-me', name: 'Assigned to me', type: 'Provider worklist', count: assignedToMeCount, href: '/patients?assigned=me' },
   ];
 
-  const goToPatients = () => {
-    router.push('/patients');
+  const openList = (href: string) => {
+    router.push(href);
     onClose();
   };
 
   return (
     <div className="omrs-drawer-body">
       {lists.map(list => (
-        <button key={list.id} type="button" className="omrs-panel-list-item" onClick={goToPatients}>
+        <button key={list.id} type="button" className="omrs-panel-list-item" onClick={() => openList(list.href)}>
           <Users />
           <div style={{ flex: 1 }}>
             <div className="omrs-panel-row-main">{list.name}</div>
