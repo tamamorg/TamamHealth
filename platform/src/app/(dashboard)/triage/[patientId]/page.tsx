@@ -17,20 +17,15 @@
  * they need to assess.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { useTriage } from '@/lib/hooks/useTriage';
-import { useAppointments } from '@/lib/hooks/useAppointments';
-import { APPOINTMENT_CLOSED_STATUSES, APPOINTMENT_STATUS_TONES, appointmentStatusLabel } from '@/lib/appointment-status';
 import { getRoleConfig } from '@/lib/permissions';
-import { jubaDate } from '@/lib/time-juba';
-import { patientFullName, patientGenderAge, initials, stateTint } from '@/lib/patient-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { ArrowLeft, FileText } from '@/components/icons/lucide';
+import { ArrowLeft } from '@/components/icons/lucide';
 import TriageWorkflow from '@/components/nurse/TriageWorkflow';
-import { PRIORITY_META } from '@/lib/clinical/triage-display';
+import type { PatientDoc } from '@/lib/db-types';
 
 export default function PatientTriagePage() {
 
@@ -40,8 +35,6 @@ export default function PatientTriagePage() {
   const { currentUser } = useAuth();
   const patientId = String(params?.patientId || '');
   const { patients, loading } = usePatients();
-  const { triages } = useTriage();
-  const { appointments } = useAppointments();
 
   // Where "back" goes depends on who is here: the nurse's triage station is
   // not in a doctor's route table, so a doctor following the chart's
@@ -51,106 +44,70 @@ export default function PatientTriagePage() {
     route => nurseStation === route || nurseStation.startsWith(`${route}/`),
   )
     ? '/dashboard/nurse?station=ward'
-    : currentUser
-      ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
-      : '/dashboard';
+      : currentUser
+        ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
+        : '/dashboard';
+  const stationDateLabel = useMemo(() => (
+    new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date())
+  ), []);
 
-  // Today's open visit, if there is one. The visit status is shown here for
-  // context, while appointment status changes remain on the station/worklist.
-  const visit = useMemo(() => {
-    const today = jubaDate();
-    return appointments.find(appointment =>
-      appointment.patientId === patientId &&
-      appointment.appointmentDate === today &&
-      !APPOINTMENT_CLOSED_STATUSES.includes(appointment.status)) || null;
-  }, [appointments, patientId]);
-
-  const patient = useMemo(
+  const scopedPatient = useMemo(
     () => patients.find(p => p._id === patientId) || null,
     [patients, patientId],
   );
 
-  // Most recent triage for this patient — the header says where they already
-  // are in the queue, so a nurse can tell a re-assessment from a first one.
-  const latestTriage = useMemo(() => (
-    triages
-      .filter(tr => tr.patientId === patientId)
-      .sort((a, b) => (b.triagedAt || '').localeCompare(a.triagedAt || ''))[0] || null
-  ), [triages, patientId]);
+  // The nurse queue can contain a patient registered at another facility in
+  // the same organisation (for example, a referral). The scoped list will not
+  // include that record, so resolve the exact id directly as a safe fallback.
+  const [fallbackPatient, setFallbackPatient] = useState<PatientDoc | null>(null);
+  const [fallbackChecked, setFallbackChecked] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setFallbackPatient(null);
+    setFallbackChecked(false);
+    if (!patientId || loading || scopedPatient) {
+      setFallbackChecked(true);
+      return () => { cancelled = true; };
+    }
+    (async () => {
+      const { getPatientById } = await import('@/lib/services/patient-service');
+      const doc = await getPatientById(patientId);
+      if (cancelled) return;
+      const sameOrg = !doc?.orgId || !currentUser?.orgId || doc.orgId === currentUser.orgId;
+      const isNational = currentUser?.role === 'super_admin' || currentUser?.role === 'government';
+      setFallbackPatient(doc && (sameOrg || isNational) ? doc : null);
+      setFallbackChecked(true);
+    })();
+    return () => { cancelled = true; };
+  }, [patientId, loading, scopedPatient, currentUser?.orgId, currentUser?.role]);
 
-  if (loading || !patient) {
+  const patient = scopedPatient ?? fallbackPatient;
+
+  if (loading || !fallbackChecked || !patient) {
     return (
       <main className="page-container flex items-center justify-center">
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          {loading ? t('status.loading') : t('patient.notFound')}
+          {loading || !fallbackChecked ? t('status.loading') : t('patient.notFound')}
         </p>
       </main>
     );
   }
 
-  const name = patientFullName(patient);
-  const photo = (patient as { photoUrl?: string }).photoUrl;
-  const acuity = latestTriage?.priority as 'RED' | 'YELLOW' | 'GREEN' | undefined;
-
   return (
-    <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+    <main className="page-container page-enter patient-registration-page triage-patient-page">
       {/* Not `.ehr-chart-back` — globals hides that class outright; it belongs
           to the chart, which has its own way back. */}
       <button
         type="button"
         onClick={() => router.push(backTarget)}
-        className="flex items-center gap-1.5 text-[12px] font-bold mb-2 no-print"
-        style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+        className="patient-registration-back no-print"
       >
         <ArrowLeft className="w-4 h-4" style={{ stroke: 'currentColor' }} />
-        {backTarget.startsWith('/dashboard/nurse') ? 'Nurse station' : 'Back to dashboard'}
+        {backTarget.startsWith('/dashboard/nurse') ? stationDateLabel : 'Back to dashboard'}
       </button>
 
-      {/* Who is being triaged, stated once at the top — the form below has no
-          patient picker, so this line is the only place it is said. */}
-      <div
-        className="card-elevated flex items-center gap-3 px-4 py-3 mb-3 flex-shrink-0"
-        style={{ borderRadius: 12 }}
-      >
-        <span className="ehr-patient-icon" style={stateTint(acuity)} aria-hidden>
-          {photo
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={photo} alt="" className="ehr-patient-icon-photo" />
-            : initials(name)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-base font-bold truncate" style={{ color: 'var(--text-primary)' }}>{name}</h1>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {[patient.hospitalNumber, patientGenderAge(patient)].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-        {acuity && (
-          <span className="ehr-queue-pill flex-shrink-0" data-tone={PRIORITY_META[acuity].tone}>
-            {PRIORITY_META[acuity].label}
-          </span>
-        )}
-        {visit && (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Visit</span>
-            {/* Display-only: the booking is changed in the appointment
-                editor, so this page reports the visit rather than steering it. */}
-            <span className={`appointment-status-pill status-${APPOINTMENT_STATUS_TONES[visit.status]}`}>
-              {appointmentStatusLabel(visit.status)}
-            </span>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => router.push(`/patients/${patient._id}`)}
-          className="flex items-center gap-1.5 px-3 h-[32px] rounded-lg text-[12px] font-semibold flex-shrink-0"
-          style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-secondary)' }}
-        >
-          <FileText className="w-4 h-4" style={{ stroke: 'currentColor' }} /> Open chart
-        </button>
-      </div>
-
-      <div className="flex-1 flex flex-col gap-3 overflow-y-auto" style={{ minHeight: 0 }}>
-        <TriageWorkflow lockedPatientId={patient._id} />
+      <div className="triage-patient-workspace">
+        <TriageWorkflow lockedPatientId={patient._id} lockedPatient={patient} />
       </div>
     </main>
   );

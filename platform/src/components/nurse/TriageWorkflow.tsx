@@ -7,7 +7,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useTriage } from '@/lib/hooks/useTriage';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { APPOINTMENT_STATUS_FLOW, APPOINTMENT_CLOSED_STATUSES, canonicalAppointmentStatus } from '@/lib/appointment-status';
-import type { AppointmentStatus } from '@/lib/db-types';
+import type { AppointmentStatus, PatientDoc } from '@/lib/db-types';
 import { jubaDate } from '@/lib/time-juba';
 import { useToast } from '@/components/Toast';
 import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
@@ -41,6 +41,7 @@ function modeOfArrivalLabel(mode: string | undefined, t: (key: string) => string
 export default function TriageWorkflow({
   initialPatientId,
   lockedPatientId,
+  lockedPatient,
 }: {
   initialPatientId?: string;
   /**
@@ -51,6 +52,8 @@ export default function TriageWorkflow({
    * the station: pick anyone, and the list is the whole facility's.
    */
   lockedPatientId?: string;
+  /** Resolved patient from the focused page, including cross-facility referrals. */
+  lockedPatient?: PatientDoc | null;
 }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -131,6 +134,7 @@ export default function TriageWorkflow({
   const [triageComplaint, setTriageComplaint] = useState('');
   const [triageNotes, setTriageNotes] = useState('');
   const [triageSubmitting, setTriageSubmitting] = useState(false);
+  const [activeSection, setActiveSection] = useState('patient');
 
   // Triage auto-calculate
   useEffect(() => {
@@ -150,8 +154,10 @@ export default function TriageWorkflow({
   }, [triagePatientSearch, patients, triagePatientId]);
 
   const selectedTriagePatient = useMemo(
-    () => patients.find(p => p._id === triagePatientId) || null,
-    [triagePatientId, patients]
+    () => lockedPatient && lockedPatient._id === triagePatientId
+      ? lockedPatient
+      : patients.find(p => p._id === triagePatientId) || null,
+    [lockedPatient, triagePatientId, patients]
   );
 
   // Load an already-saved triage back into the form for correction (behavior:
@@ -463,22 +469,96 @@ export default function TriageWorkflow({
     ? scopedHistory.filter(ti => (ti.patientName || '').toLowerCase().includes(histQ) || (ti.chiefComplaint || '').toLowerCase().includes(histQ))
     : scopedHistory;
 
+  const triageSections = [
+    { id: 'patient', label: 'Patient & complaint', icon: ClipboardList, detail: selectedTriagePatient ? 'Identity confirmed' : 'Select patient' },
+    { id: 'assessment', label: 'ABCC assessment', icon: AlertTriangle, detail: triageData.priority ? 'Assessment complete' : 'Required' },
+    { id: 'vitals', label: 'Vitals', icon: Activity, detail: 'Record observations' },
+    { id: 'context', label: 'Visit context', icon: Clock, detail: 'Arrival & history' },
+    { id: 'notes', label: 'Notes & save', icon: ClipboardList, detail: triageData.priority ? 'Ready to save' : 'Final review' },
+  ] as const;
+
+  const goToTriageSection = (id: string) => {
+    setActiveSection(id);
+    document.getElementById(`triage-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
-    <div className="flex flex-col lg:flex-row gap-4" style={{ flex: 1, minHeight: 0 }}>
-      {/* Left column: ETAT Assessment Form (2/3 width) */}
-      <div data-tour="triage-form" className="lg:flex-[2] dash-card overflow-hidden flex flex-col" style={{ padding: '0', minHeight: 0 }}>
-        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" style={{ color: '#FB923C' }} />
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.etatTriageAssessment')}</h3>
+    <div className={lockedPatientId ? 'omrs-reg triage-reg' : 'flex flex-col lg:flex-row gap-4'} style={{ flex: 1, minHeight: 0 }}>
+      {lockedPatientId && (
+        <aside className="omrs-reg-rail" aria-label="Triage progress">
+          <h1 className="omrs-reg-title">Patient triage</h1>
+          {selectedTriagePatient && (
+            <div className="triage-rail-patient">
+              <div className="triage-patient-photo">
+                <div className="triage-patient-photo-frame">
+                  {(selectedTriagePatient as { photoUrl?: string }).photoUrl
+                    ? <img src={(selectedTriagePatient as { photoUrl?: string }).photoUrl} alt={patientFullName(selectedTriagePatient)} />
+                    : <span className="text-3xl font-semibold" style={{ color: 'var(--accent-primary)' }}>{initials(patientFullName(selectedTriagePatient))}</span>}
+                </div>
+                <span className="triage-patient-photo-label">Patient photo</span>
+              </div>
+              <strong>{patientFullName(selectedTriagePatient)}</strong>
+              <span>{[selectedTriagePatient.hospitalNumber, patientGenderAge(selectedTriagePatient)].filter(Boolean).join(' · ')}</span>
+              <button type="button" onClick={() => router.push(`/patients/${selectedTriagePatient._id}`)} className="triage-rail-chart-link">
+                Open chart
+              </button>
+            </div>
+          )}
+          <p className="omrs-reg-railnote">Complete the assessment from top to bottom, then save the triage record.</p>
+          <p className="omrs-reg-jump">Assessment steps</p>
+          <nav className="omrs-reg-nav" aria-label="Triage sections">
+            {triageSections.map(section => {
+              const isCurrent = activeSection === section.id;
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => goToTriageSection(section.id)}
+                  className={`omrs-reg-navitem${isCurrent ? ' is-current' : ''}`}
+                  aria-current={isCurrent ? 'step' : undefined}
+                >
+                  <span className="omrs-reg-navarrow" aria-hidden>↳</span>
+                  <span className="omrs-reg-navlabel">{section.label}</span>
+                  <span className="omrs-reg-navmeta">{section.detail}</span>
+                </button>
+              );
+            })}
+          </nav>
+          <div className="omrs-reg-railactions">
+            <button
+              type="button"
+              onClick={handleSubmitTriage}
+              disabled={triageSubmitting || !triageData.priority || !selectedTriagePatient}
+              className="btn btn-primary"
+            >
+              {triageSubmitting ? t('nurse.saving') : editingTriageId ? t('action.saveChanges') : t('nurse.saveTriage')}
+            </button>
+            <button type="button" onClick={clearForm} disabled={triageSubmitting} className="btn btn-secondary">
+              {t('nurse.reset')}
+            </button>
           </div>
-          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-            {t('nurse.triageHeaderSummary', { today: triageHistory.filter(ti => (ti.triagedAt || '').startsWith(new Date().toISOString().slice(0, 10))).length, red: triageHistory.filter(ti => ti.priority === 'RED' && ti.status === 'pending').length })}
-          </span>
-        </div>
-        <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+        </aside>
+      )}
+
+      <div data-tour="triage-form" className={lockedPatientId ? 'omrs-reg-form patient-registration-shell triage-reg-form' : 'lg:flex-[2] dash-card overflow-hidden flex flex-col'} style={{ padding: lockedPatientId ? 0 : undefined, minHeight: 0 }}>
+        {!lockedPatientId && (
+          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" style={{ color: '#FB923C' }} />
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.etatTriageAssessment')}</h3>
+            </div>
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              {t('nurse.triageHeaderSummary', { today: triageHistory.filter(ti => (ti.triagedAt || '').startsWith(new Date().toISOString().slice(0, 10))).length, red: triageHistory.filter(ti => ti.priority === 'RED' && ti.status === 'pending').length })}
+            </span>
+          </div>
+        )}
+        <div className={lockedPatientId ? 'patient-registration-card-body' : 'p-4 space-y-4 flex-1 overflow-y-auto'}>
+          <div className={lockedPatientId ? 'omrs-reg-section' : 'space-y-4'}>
+            {lockedPatientId && <div className="omrs-reg-sectionhead"><h2>ETAT assessment</h2><p>Record the patient identity, immediate risk, observations, and handoff context.</p></div>}
+            <div className={lockedPatientId ? 'omrs-reg-fields space-y-4' : 'space-y-4'}>
+          {!lockedPatientId && <>
           {/* Patient picker */}
-          <div className="relative">
+          <div id="triage-section-patient" className="relative scroll-mt-3">
             <label className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nurse.patient')}</label>
             {selectedTriagePatient ? (
               <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(59, 130, 246,0.25))' }}>
@@ -530,9 +610,10 @@ export default function TriageWorkflow({
               </>
             )}
           </div>
+          </>}
 
           {/* Chief complaint */}
-          <div>
+          <div id={lockedPatientId ? 'triage-section-patient' : undefined} className="scroll-mt-3">
             <label className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nurse.chiefComplaint')}</label>
             <input
               type="text"
@@ -545,7 +626,7 @@ export default function TriageWorkflow({
           </div>
 
           {/* ABCC Assessment */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div id="triage-section-assessment" className="grid grid-cols-1 sm:grid-cols-2 gap-3 scroll-mt-3">
             {/* Airway */}
             <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center gap-2 mb-2">
@@ -693,7 +774,7 @@ export default function TriageWorkflow({
           )}
 
           {/* Vitals at triage */}
-          <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+          <div id="triage-section-vitals" className="p-3 rounded-xl scroll-mt-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center gap-2 mb-3">
               <Activity className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
               <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.vitalsAtTriage')}</span>
@@ -747,7 +828,7 @@ export default function TriageWorkflow({
           </div>
 
           {/* Triage context */}
-          <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+          <div id="triage-section-context" className="p-3 rounded-xl scroll-mt-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center gap-2 mb-3">
               <Clock className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
               <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.triageContext')}</span>
@@ -780,7 +861,7 @@ export default function TriageWorkflow({
           </div>
 
           {/* Notes */}
-          <div>
+          <div id="triage-section-notes" className="scroll-mt-3">
             <label className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nurse.notesOptional')}</label>
             <textarea
               rows={2}
@@ -807,8 +888,9 @@ export default function TriageWorkflow({
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-2">
+          {/* Actions remain at the bottom of the station form. The focused
+              patient flow places them in the registration-style rail. */}
+          {!lockedPatientId && <div className="flex gap-2">
             <button
               onClick={clearForm}
               className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
@@ -828,11 +910,13 @@ export default function TriageWorkflow({
             >
               {triageSubmitting ? t('nurse.saving') : editingTriageId ? t('action.saveChanges') : t('nurse.saveTriage')}
             </button>
+          </div>}
+          </div>
           </div>
         </div>
       </div>
 
-      <div data-tour="triage-recent" className="lg:flex-[1] card-elevated overflow-hidden flex flex-col" style={{ minHeight: 0 }}>
+      {!lockedPatientId && <div data-tour="triage-recent" className="lg:flex-[1] card-elevated overflow-hidden flex flex-col" style={{ minHeight: 0 }}>
         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" style={{ color: ACCENT }} />
@@ -929,7 +1013,7 @@ export default function TriageWorkflow({
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

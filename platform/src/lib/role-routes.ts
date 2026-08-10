@@ -27,7 +27,7 @@ const NURSE_MODULE_ROUTES = [
   // Nurses document their own encounters (the Nurse Visit note type), so the
   // notes module is part of the nursing station, not a clinician-only surface.
   '/notes',
-  '/wards',
+  '/wards', '/wards/mar',
 ] as const;
 
 export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
