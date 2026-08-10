@@ -9,8 +9,9 @@ import { patientFullName, patientAgeLabel, initials, stateTint } from '@/lib/pat
 import { buildQueueFromTriage, stageForAppointmentStatus, STAGE_LABELS, type QueueEntry } from '@/lib/services/patient-queue-service';
 import { waitLabel } from '@/components/ehr/EhrVisitPopup';
 import EhrVisitPopup from '@/components/ehr/EhrVisitPopup';
+import AppointmentEditModal from '@/components/appointments/AppointmentEditModal';
 import { usePermissions } from '@/lib/hooks/usePermissions';
-import type { AppointmentStatus } from '@/lib/db-types';
+import type { AppointmentStatus, PatientDoc } from '@/lib/db-types';
 import { APPOINTMENT_STATUS_OPTIONS, APPOINTMENT_STATUS_TONES, APPOINTMENT_STATUS_DESCRIPTIONS, appointmentStatusLabel, canonicalAppointmentStatus } from '@/lib/appointment-status';
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -352,36 +353,64 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                       </div>
                       {!patient._demo && expandedPatientId === patient._id && (
                         <div className="ehr-row-detail ehr-row-detail--visit" onClick={event => event.stopPropagation()}>
-                          <EhrVisitPopup
-                            inline
-                            patientId={patient._id}
-                            name={patientFullName(patient)}
-                            detail={subtitle}
-                            acuity={priority}
-                            wait={waitText}
-                            appointment={appointment || null}
-                            triage={patientTriageMap.get(patient._id) || null}
-                            entry={entry || null}
-                            onClose={() => setExpandedPatientId(null)}
-                            onCall={() => router.push(`/triage/${patient._id}`)}
-                            onCallLabel="Open triage"
-                            onOpenChart={() => router.push(`/patients/${patient._id}`)}
-                            nurseActions={(
-                              <>
-                                <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/triage/${patient._id}`); }}>
-                                  Triage
-                                </button>
-                                {admission && (
-                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/wards/mar/${admission._id}`); }}>
-                                    MAR
+                          {appointment ? (
+                            <AppointmentEditModal
+                              inline
+                              appointment={appointment}
+                              appointments={appointments}
+                              patient={patient as unknown as PatientDoc}
+                              onClose={() => setExpandedPatientId(null)}
+                              headerActions={(
+                                <>
+                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/triage/${patient._id}`)}>
+                                    Triage
                                   </button>
-                                )}
-                                <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/rooming/${patient._id}`); }}>
-                                  Room patient
-                                </button>
-                              </>
-                            )}
-                          />
+                                  {admission && (
+                                    <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/wards/mar/${admission._id}`)}>
+                                      MAR
+                                    </button>
+                                  )}
+                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/rooming/${patient._id}`)}>
+                                    Room patient
+                                  </button>
+                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/patients/${patient._id}`)}>
+                                    Chart
+                                  </button>
+                                </>
+                              )}
+                            />
+                          ) : (
+                            <EhrVisitPopup
+                              inline
+                              patientId={patient._id}
+                              name={patientFullName(patient)}
+                              detail={subtitle}
+                              acuity={priority}
+                              wait={waitText}
+                              appointment={null}
+                              triage={patientTriageMap.get(patient._id) || null}
+                              entry={entry || null}
+                              onClose={() => setExpandedPatientId(null)}
+                              onCall={() => router.push(`/triage/${patient._id}`)}
+                              onCallLabel="Open triage"
+                              onOpenChart={() => router.push(`/patients/${patient._id}`)}
+                              nurseActions={(
+                                <>
+                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/triage/${patient._id}`); }}>
+                                    Triage
+                                  </button>
+                                  {admission && (
+                                    <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/wards/mar/${admission._id}`); }}>
+                                      MAR
+                                    </button>
+                                  )}
+                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/rooming/${patient._id}`); }}>
+                                    Room patient
+                                  </button>
+                                </>
+                              )}
+                            />
+                          )}
                         </div>
                       )}
                     </div>

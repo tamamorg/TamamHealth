@@ -54,6 +54,7 @@ export default function AppointmentEditModal({
   patient,
   onClose,
   onSaved,
+  headerActions,
 }: {
   appointment: AppointmentDoc;
   /** Every appointment in view, for the provider conflict check. */
@@ -61,6 +62,8 @@ export default function AppointmentEditModal({
   patient?: PatientDoc;
   onClose: () => void;
   onSaved?: () => void;
+  /** Actions rendered on the far right of the inline tab header. */
+  headerActions?: React.ReactNode;
   /**
    * Render as a panel inside the row rather than a centred dialog. The row
    * dropdown is where the doctor dashboard puts a visit's detail, so the desk's
@@ -112,8 +115,34 @@ export default function AppointmentEditModal({
     appointments, date, time, duration, excludeAppointmentId: appointment._id,
   }), [appointments, date, time, duration, appointment._id]);
 
-  // Opening the modal on a different row re-seeds the draft.
-  useEffect(() => { setStatus(appointment.status); }, [appointment._id, appointment.status]);
+  // Opening the inline editor on a different row must re-seed the whole draft.
+  // The nurse worklist keeps one editor mounted while the expanded patient
+  // changes; resetting only status would leak the previous patient's provider,
+  // date, billing, and appointment details into the next row.
+  useEffect(() => {
+    setDate(appointment.appointmentDate);
+    setTime(appointment.appointmentTime);
+    setDuration(appointment.duration);
+    setType(appointment.appointmentType);
+    setPriority(appointment.priority);
+    setStatus(appointment.status);
+    setDepartment(appointment.department);
+    setProviderId(appointment.providerId || '');
+    setProvider(appointment.providerName);
+    setReason(appointment.reason);
+    setNotes(appointment.notes || '');
+    setDetail({
+      mode: appointment.appointmentMode || (appointment.appointmentType === 'telehealth' ? 'telehealth' : 'in_office'),
+      recurrence: appointment.isRecurring ? (appointment.recurrencePattern || 'weekly') : '',
+      staffId: appointment.staffId || '',
+      staffName: appointment.staffName || '',
+      room: appointment.room || '',
+    });
+  }, [appointment._id]);
+
+  useEffect(() => {
+    setStatus(appointment.status);
+  }, [appointment._id, appointment.status]);
 
   const save = async () => {
     setSaving(true);
@@ -183,6 +212,11 @@ export default function AppointmentEditModal({
               {label}
             </button>
           ))}
+          {headerActions && (
+            <div className="appt-edit-header-actions" role="group" aria-label="Patient actions" onClick={event => event.stopPropagation()}>
+              {headerActions}
+            </div>
+          )}
         </div>
       )}
       <div className="appt-edit-grid">

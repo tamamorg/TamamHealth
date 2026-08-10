@@ -18755,6 +18755,26 @@ textarea.ehr-handoff-input {
   filter: brightness(0.97);
 }
 
+/* Reception-style inline appointment editor: keep the editable tabs on the
+   left and give nursing/clinical actions a stable far-right action shelf. */
+.appt-edit-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .appt-edit-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-top: 4px;
+  }
+}
+
 /* Acuity line under the status pill, tinted by the row's priority. Same three
    colours the triage pills and avatars use, so "Critical" means one colour
    everywhere in the app. */
