@@ -18727,10 +18727,28 @@ textarea.ehr-handoff-input {
   margin: 0;
   padding: 0;
   border: 0;
-  opacity: 0;
+  /* Keep the native control visible and clickable. An almost-transparent
+     overlay can fail to open on touch browsers and Safari when it sits inside
+     an interactive patient row. */
+  opacity: 1;
+  color: transparent;
+  background: transparent;
+  z-index: 2;
+  pointer-events: auto;
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
+}
+
+.appointment-status-pill--select > select option {
+  color: var(--text-primary);
+  background: var(--bg-card-solid, #fff);
+}
+
+.appointment-status-pill--select > select:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: 999px;
 }
 
 .appointment-status-pill--select:hover {

@@ -156,8 +156,8 @@ export function buildQueueFromTriage(
       score,
       flaggedForReassessment,
       triageId: triage._id,
-      assignedToId: triage.handoffTo,
-      assignedToName: triage.handoffToName,
+      assignedToId: triage.assignedProviderId ?? triage.handoffTo,
+      assignedToName: triage.assignedProviderName ?? triage.handoffToName,
     });
   }
 

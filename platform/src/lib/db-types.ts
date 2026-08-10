@@ -1613,6 +1613,8 @@ export interface ANCVisitDoc extends BaseDoc {
 // Captures the WHO ETAT ABCC assessment plus vitals taken at triage.
 // One record per triage encounter; a patient may have many over time.
 export type TriagePriority = 'RED' | 'YELLOW' | 'GREEN';
+export type TriageDisposition = 'emergency' | 'general_clinic' | 'specialty_clinic' | 'telehealth' | 'home_care';
+export type TriageHandoffStatus = 'awaiting_room' | 'awaiting_provider' | 'assigned' | 'acknowledged' | 'in_consultation' | 'completed';
 
 export interface TriageDoc extends BaseDoc {
   type: 'triage';
@@ -1662,6 +1664,16 @@ export interface TriageDoc extends BaseDoc {
   symptomDuration?: string;   // free text, e.g. "2 days"
   referralSource?: string;    // referring facility / person
   knownAllergies?: string;    // free text; "" / "None known" when none
+  /** Clinical destination selected by the triage nurse. */
+  disposition?: TriageDisposition;
+  destinationClinic?: string;
+  assignedProviderId?: string;
+  assignedProviderName?: string;
+  handoffStatus?: TriageHandoffStatus;
+  handoffNote?: string;
+  acknowledgedAt?: string;
+  acknowledgedBy?: string;
+  acknowledgedByName?: string;
   // Audit
   triagedBy: string;       // user id
   triagedByName: string;   // display name at time of triage

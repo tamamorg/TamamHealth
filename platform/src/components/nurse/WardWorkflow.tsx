@@ -315,6 +315,8 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                             <span
                               className={`appointment-status-pill appointment-status-pill--select ${statusPillClass}`.trim()}
                               onClick={event => event.stopPropagation()}
+                              onPointerDown={event => event.stopPropagation()}
+                              onMouseDown={event => event.stopPropagation()}
                               onKeyDown={event => event.stopPropagation()}
                             >
                               {appointmentStatusLabel(visitStatus)}
@@ -322,6 +324,9 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                                 value={canonicalAppointmentStatus(visitStatus)}
                                 aria-label={`Status for ${patientFullName(patient)}`}
                                 title={APPOINTMENT_STATUS_DESCRIPTIONS[visitStatus]}
+                                onClick={event => event.stopPropagation()}
+                                onPointerDown={event => event.stopPropagation()}
+                                onMouseDown={event => event.stopPropagation()}
                                 onChange={async event => {
                                   event.stopPropagation();
                                   const next = event.target.value as AppointmentStatus;
@@ -359,18 +364,19 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                             entry={entry || null}
                             onClose={() => setExpandedPatientId(null)}
                             onCall={() => router.push(`/triage/${patient._id}`)}
+                            onCallLabel="Open triage"
                             onOpenChart={() => router.push(`/patients/${patient._id}`)}
                             nurseActions={(
                               <>
-                                <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/triage/${patient._id}`)}>
+                                <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/triage/${patient._id}`); }}>
                                   Triage
                                 </button>
                                 {admission && (
-                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/wards/mar/${admission._id}`)}>
+                                  <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/wards/mar/${admission._id}`); }}>
                                     MAR
                                   </button>
                                 )}
-                                <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={() => router.push(`/rooming/${patient._id}`)}>
+                                <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={(event) => { event.stopPropagation(); router.push(`/rooming/${patient._id}`); }}>
                                   Room patient
                                 </button>
                               </>

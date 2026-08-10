@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
+import { useSettings } from '@/lib/settings/SettingsProvider';
 import { usePatients } from '@/lib/hooks/usePatients';
+import { useUsers } from '@/lib/hooks/useUsers';
 import { useTriage } from '@/lib/hooks/useTriage';
 import { useAppointments } from '@/lib/hooks/useAppointments';
-import { APPOINTMENT_STATUS_FLOW, APPOINTMENT_CLOSED_STATUSES, canonicalAppointmentStatus } from '@/lib/appointment-status';
-import type { AppointmentStatus, PatientDoc } from '@/lib/db-types';
+import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
+import type { PatientDoc, TriageDisposition } from '@/lib/db-types';
 import { jubaDate } from '@/lib/time-juba';
 import { useToast } from '@/components/Toast';
 import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
@@ -58,7 +60,9 @@ export default function TriageWorkflow({
   const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
+  const facilitySettings = useSettings();
   const { patients } = usePatients();
+  const { users } = useUsers();
   // Portrait per patient id — the triage card shows the same face as the
   // register, falling back to initials when a patient has no photo on file.
   const triagePhotoById = useMemo(() => {
@@ -70,38 +74,8 @@ export default function TriageWorkflow({
     return map;
   }, [patients]);
   const { triages: triageHistory, create: createTriageRecord, update: updateTriageRecord } = useTriage();
-  const { appointments, updateStatus: updateAppointmentStatus } = useAppointments();
+  const { appointments } = useAppointments();
   const { showToast } = useToast();
-
-  /**
-   * Move today's visit onto the Triaged rung once the assessment is saved.
-   *
-   * The board and the front desk read the appointment's status, so without this
-   * a patient the nurse had just assessed still read "Checked In" — the same as
-   * everyone still waiting for one. Only ever forward: a visit already roomed or
-   * checked out is not walked back by a late correction to its triage record.
-   */
-  const markVisitTriaged = async (patientId: string) => {
-    const today = jubaDate();
-    const visit = appointments.find(appointment =>
-      appointment.patientId === patientId &&
-      appointment.appointmentDate === today &&
-      !APPOINTMENT_CLOSED_STATUSES.includes(appointment.status));
-    if (!visit) return;
-    // `triaged` folds into the In Progress rung on the simplified ladder, so
-    // the "already there or past it" check compares canonical rungs — a visit
-    // still at Checked In (or the finer arrived) gets the hop, one already in
-    // the clinical workflow doesn't get downgraded.
-    const rung = (status: AppointmentStatus) => APPOINTMENT_STATUS_FLOW.indexOf(canonicalAppointmentStatus(status));
-    if (rung(visit.status) >= rung('in_progress')) return;
-    try {
-      await updateAppointmentStatus(visit._id, 'triaged');
-    } catch {
-      // The triage record itself is saved; a failed status hop must not read as
-      // a failed triage.
-      showToast('Triage saved, but the visit status could not be updated.', 'error');
-    }
-  };
 
   // When set, the form is correcting an already-saved triage record rather
   // than creating a new one. Lets a nurse fix a mistyped vital / mis-tapped
@@ -133,6 +107,10 @@ export default function TriageWorkflow({
   });
   const [triageComplaint, setTriageComplaint] = useState('');
   const [triageNotes, setTriageNotes] = useState('');
+  const [triageDisposition, setTriageDisposition] = useState<TriageDisposition>('general_clinic');
+  const [destinationClinic, setDestinationClinic] = useState('');
+  const [assignedProviderId, setAssignedProviderId] = useState('');
+  const [handoffNote, setHandoffNote] = useState('');
   const [triageSubmitting, setTriageSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState('patient');
 
@@ -159,6 +137,17 @@ export default function TriageWorkflow({
       : patients.find(p => p._id === triagePatientId) || null,
     [lockedPatient, triagePatientId, patients]
   );
+  const availableProviders = useMemo(() => users.filter(user =>
+    user.isActive !== false &&
+    ['doctor', 'clinical_officer', 'clinician', 'medical_superintendent'].includes(user.role) &&
+    (!currentUser?.hospitalId || !user.hospitalId || user.hospitalId === currentUser.hospitalId)
+  ), [currentUser?.hospitalId, users]);
+  const destinationOptions = useMemo(
+    () => facilitySettings.departments.filter(Boolean),
+    [facilitySettings.departments],
+  );
+  const resolvedDestinationClinic = destinationClinic || destinationOptions[0] || '';
+  const selectedProvider = availableProviders.find(provider => provider._id === assignedProviderId);
 
   // Load an already-saved triage back into the form for correction (behavior:
   // edit-saved-record). Uses updateTriage on the next save, keeping the id.
@@ -198,6 +187,10 @@ export default function TriageWorkflow({
     });
     setTriageComplaint(ti.chiefComplaint || '');
     setTriageNotes(ti.notes || '');
+    setTriageDisposition(ti.disposition || 'general_clinic');
+    setDestinationClinic(ti.destinationClinic || '');
+    setAssignedProviderId(ti.assignedProviderId || '');
+    setHandoffNote(ti.handoffNote || '');
   };
 
   // Disposition a triaged patient straight from the queue row — mark them seen,
@@ -280,32 +273,6 @@ export default function TriageWorkflow({
   // Empty the form. On the per-patient page the patient survives the clear —
   // the nurse is there to triage that one person, and dropping the selection
   // would leave a form with no subject on a page that is about them.
-  /**
-   * Hand the assessed patient to the clinic.
-   *
-   * The boards read the appointment; the rooming station reads the encounter.
-   * Marking the visit Triaged without moving the encounter left the patient
-   * sitting in Rooming as "waiting for triage" with no way to be given a room —
-   * the rooming actions all require `routed_to_clinic` or later. This walks the
-   * encounter the rest of the way to the clinic door and stops there, because
-   * assigning the room is a person's job, not an automatic hop.
-   */
-  const routeTriagedEncounter = async (patientId: string, triageId?: string) => {
-    try {
-      const { findOpenEncounterForPatient, advanceEncounterAfterTriage } =
-        await import('@/lib/services/encounter-service');
-      const encounter = await findOpenEncounterForPatient(patientId, currentUser?.hospitalId || '');
-      if (!encounter) return;
-      await advanceEncounterAfterTriage(encounter._id, {
-        triageId,
-        actorId: currentUser?._id,
-      });
-    } catch {
-      // The assessment itself is saved; a failed hand-off must not read as a
-      // failed triage. The rooming station can still pick the patient up.
-    }
-  };
-
   const clearForm = () => {
     setEditingTriageId(null);
     setTriageData({ airway: '', breathing: '', circulation: '', consciousness: '', priority: '' });
@@ -315,6 +282,10 @@ export default function TriageWorkflow({
     setTriageContext({ modeOfArrival: '', symptomDuration: '', referralSource: '', knownAllergies: '' });
     setTriageComplaint('');
     setTriageNotes('');
+    setTriageDisposition('general_clinic');
+    setDestinationClinic('');
+    setAssignedProviderId('');
+    setHandoffNote('');
   };
 
   const triagePriorityColor = (priority: string) => {
@@ -387,6 +358,12 @@ export default function TriageWorkflow({
         knownAllergies: triageContext.knownAllergies || undefined,
         chiefComplaint: triageComplaint || undefined,
         notes: triageNotes || undefined,
+        disposition: triageDisposition,
+        destinationClinic: destinationClinic || undefined,
+        assignedProviderId: assignedProviderId || undefined,
+        assignedProviderName: selectedProvider?.name || undefined,
+        handoffStatus: assignedProviderId ? 'assigned' as const : 'awaiting_provider' as const,
+        handoffNote: handoffNote || undefined,
       };
       // The saved record's id, so the encounter can point back at the
       // assessment that routed it.
@@ -430,23 +407,32 @@ export default function TriageWorkflow({
           status: 'seen',
         });
       }
-      // Triaged, and now waiting on a room — the nurse's next move. Both
-      // machines have to hear about it: the visit ladder the boards read, and
-      // the encounter the rooming station works from.
-      await markVisitTriaged(selectedTriagePatient._id);
-      await routeTriagedEncounter(selectedTriagePatient._id, editingTriageId ?? created?._id);
-      void import('@/lib/services/consultation-progress-service').then(({ syncConsultationProgressStage }) =>
-        syncConsultationProgressStage({
-          patientId: selectedTriagePatient._id,
-          patientName: patientFullName(selectedTriagePatient),
-          hospitalId: currentUser?.hospitalId || selectedTriagePatient.registrationHospital || 'facility-unassigned',
-          hospitalName: currentUser?.hospitalName,
-          orgId: currentUser?.orgId,
-          stage: 'waiting_for_provider',
-          nextAction: 'Assign patient to a provider',
-          actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
-        })
-      ).catch(() => { /* queue save remains successful if progress sync is offline */ });
+      const triageId = editingTriageId ?? created?._id;
+      if (!triageId) throw new Error('The triage record has no id.');
+      const today = jubaDate();
+      const currentVisit = appointments.find(appointment =>
+        appointment.patientId === selectedTriagePatient._id &&
+        appointment.appointmentDate === today &&
+        !APPOINTMENT_CLOSED_STATUSES.includes(appointment.status)
+      );
+      const { completeTriageHandoff } = await import('@/lib/services/triage-handoff-service');
+      await completeTriageHandoff({
+        triageId,
+        patientId: selectedTriagePatient._id,
+        patientName: patientFullName(selectedTriagePatient),
+        appointmentId: currentVisit?._id,
+        disposition: triageDisposition,
+        destinationClinic: resolvedDestinationClinic || undefined,
+        assignedProviderId: assignedProviderId || undefined,
+        assignedProviderName: selectedProvider?.name,
+        handoffNote: handoffNote || undefined,
+        actorId: currentUser?._id,
+        actorName: currentUser?.name,
+        actorRole: currentUser?.role,
+        hospitalId: currentUser?.hospitalId || selectedTriagePatient.registrationHospital,
+        hospitalName: currentUser?.hospitalName,
+        orgId: currentUser?.orgId,
+      });
       showToast(t('nurse.triageSaved', { priority: triageData.priority, name: patientFullName(selectedTriagePatient) }), 'success');
       // Reset form only on success
       clearForm();
@@ -474,6 +460,7 @@ export default function TriageWorkflow({
     { id: 'assessment', label: 'ABCC assessment', icon: AlertTriangle, detail: triageData.priority ? 'Assessment complete' : 'Required' },
     { id: 'vitals', label: 'Vitals', icon: Activity, detail: 'Record observations' },
     { id: 'context', label: 'Visit context', icon: Clock, detail: 'Arrival & history' },
+    { id: 'handoff', label: 'Provider handoff', icon: Send, detail: assignedProviderId ? 'Provider selected' : 'Assign later' },
     { id: 'notes', label: 'Notes & save', icon: ClipboardList, detail: triageData.priority ? 'Ready to save' : 'Final review' },
   ] as const;
 
@@ -856,6 +843,44 @@ export default function TriageWorkflow({
               <div>
                 <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.knownAllergies')}</label>
                 <input type="text" value={triageContext.knownAllergies} onChange={e => setTriageContext({ ...triageContext, knownAllergies: e.target.value })} placeholder={t('nurse.knownAllergiesPlaceholder')} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Disposition and provider handoff */}
+          <div id="triage-section-handoff" className="p-3 rounded-xl scroll-mt-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Send className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+              <div>
+                <span className="block text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Disposition & provider handoff</span>
+                <span className="block text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Tell the care team where this patient goes next.</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Destination</label>
+                <Select value={triageDisposition} onChange={event => setTriageDisposition(event.target.value as TriageDisposition)} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
+                  <option value="emergency">Emergency care</option>
+                  <option value="general_clinic">General clinic</option>
+                  <option value="specialty_clinic">Specialty clinic</option>
+                  <option value="telehealth">Telehealth</option>
+                  <option value="home_care">Discharge / home care</option>
+                </Select>
+              </div>
+              <div>
+                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Clinic or service</label>
+                <input type="text" value={destinationClinic || destinationOptions[0] || ''} onChange={event => setDestinationClinic(event.target.value)} placeholder={destinationOptions[0] || 'Destination clinic'} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
+              </div>
+              <div>
+                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Receiving provider</label>
+                <Select value={assignedProviderId} onChange={event => setAssignedProviderId(event.target.value)} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
+                  <option value="">Assign provider later</option>
+                  {availableProviders.map(provider => <option key={provider._id} value={provider._id}>{provider.name}{provider.specialty ? ` · ${provider.specialty}` : ''}</option>)}
+                </Select>
+              </div>
+              <div>
+                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Handoff note</label>
+                <input type="text" value={handoffNote} onChange={event => setHandoffNote(event.target.value)} placeholder="What should the provider know first?" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
               </div>
             </div>
           </div>

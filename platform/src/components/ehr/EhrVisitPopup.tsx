@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, ArrowRightLeft, Clock, FileText, LogOut, X } from '@/components/icons/lucide';
+import { AlertTriangle, ArrowRight, ArrowRightLeft, Check, Clock, FileText, LogOut, X } from '@/components/icons/lucide';
 import CreateNoteButton, { defaultNoteTypeFor } from '@/components/clinical-notes/CreateNoteButton';
 import Modal from '@/components/Modal';
 import { useMedicalRecords } from '@/lib/hooks/useMedicalRecords';
@@ -66,6 +66,8 @@ export default function EhrVisitPopup({
   entry,
   onClose,
   onCall,
+  onCallLabel,
+  onAcknowledge,
   onMove,
   onOpenChart,
   onEscalate,
@@ -87,6 +89,10 @@ export default function EhrVisitPopup({
   onClose: () => void;
   /** Take the patient now — records the handoff and opens the consultation. */
   onCall: () => void;
+  /** Override the inline primary action label for role-specific workflows. */
+  onCallLabel?: string;
+  /** Acknowledge the nurse's clinical handoff without starting consultation. */
+  onAcknowledge?: () => void;
   /** Opens the Move dialog (only offered while a queue entry exists). */
   onMove?: () => void;
   onOpenChart?: () => void;
@@ -180,6 +186,11 @@ export default function EhrVisitPopup({
                 <ArrowRightLeft className="w-4 h-4" aria-hidden />
               </button>
             )}
+            {onAcknowledge && triage && triage.handoffStatus !== 'acknowledged' && triage.handoffStatus !== 'in_consultation' && (
+              <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onAcknowledge} title="Acknowledge the nurse handoff">
+                <Check className="w-4 h-4" aria-hidden /> Acknowledge
+              </button>
+            )}
             {onEscalate && (
               <button
                 type="button"
@@ -249,11 +260,25 @@ export default function EhrVisitPopup({
                 )}
                 {patientId && (
                   <button type="button" className="ehr-visit-pop-link" onClick={onCall}>
-                    {todaysNote ? 'Open consultation' : 'Visit note form'} <ArrowRight className="w-3.5 h-3.5" />
+                    {onCallLabel || (todaysNote ? 'Open consultation' : 'Visit note form')} <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
             </div>
+
+            {triage && (triage.disposition || triage.destinationClinic || triage.assignedProviderName || triage.handoffNote) && (
+              <div className="ehr-visit-pop-row">
+                <span className="ehr-visit-pop-label">Handoff</span>
+                <div>
+                  <strong>{triage.destinationClinic || 'Provider review'}</strong>
+                  <p>
+                    {triage.assignedProviderName ? `To ${triage.assignedProviderName}` : 'Provider unassigned'}
+                    {triage.handoffStatus ? ` · ${triage.handoffStatus.replaceAll('_', ' ')}` : ''}
+                  </p>
+                  {triage.handoffNote && <p>{triage.handoffNote}</p>}
+                </div>
+              </div>
+            )}
 
             <div className="ehr-visit-pop-row">
               <span className="ehr-visit-pop-label">Vitals</span>

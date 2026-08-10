@@ -91,7 +91,9 @@ export type WardRow = {
 
 // Demo mode gates the seeded ward roster so the board is never empty during a
 // walkthrough. (The old live "Care Feed" ticker has been removed app-wide.)
-export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+// Demo data must be explicitly enabled. Treating an absent environment value
+// as demo mode leaked hardcoded ward patients into otherwise real facilities.
+export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 export const ACCENT = 'var(--accent-primary)';
 

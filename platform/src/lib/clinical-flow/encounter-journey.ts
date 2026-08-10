@@ -105,7 +105,11 @@ export const ENCOUNTER_TRANSITIONS: Readonly<Record<EncounterStatus, readonly En
   // nothing, and it records that somebody actually laid eyes on them before the
   // escalation was called. Escalating straight from the queue would let the
   // system assert an emergency nobody had assessed.
-  awaiting_triage: ['in_triage', 'lwbs'],
+  // Home-care disposition is a documented triage exit: the nurse has assessed
+  // the patient and the facility visit can close without opening a clinic
+  // encounter. It is recorded as a formal dismissal so the open-visit joiner
+  // cannot absorb the patient's next arrival.
+  awaiting_triage: ['in_triage', 'lwbs', 'dismissed_without_formal_checkout'],
   in_triage: ['triaged_awaiting_destination', 'escalated_to_emergency', 'lwbs'],
   triaged_awaiting_destination: ['routed_to_clinic', 'escalated_to_emergency', 'lwbs'],
   escalated_to_emergency: ['admitted', 'discharged', 'deceased', 'referred_out'],

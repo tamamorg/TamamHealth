@@ -357,7 +357,7 @@ export function computeRowQueueColumns(
   triage: TriageDoc | null,
   nowMs: number | null,
 ): RowQueueColumns {
-  const inService = Boolean(entry?.assignedToId) || row.status === 'in_progress';
+  const inService = triage?.handoffStatus === 'in_consultation' || Boolean(triage?.handoffTo) || row.status === 'in_progress';
   const appointmentAt = row.appointment?.appointmentTime
     ? new Date(`${row.appointment.appointmentDate}T${row.appointment.appointmentTime}:00`)
     : null;
@@ -380,9 +380,13 @@ export function computeRowQueueColumns(
     comingFrom: entry
       ? (entry.stage === 'awaiting_triage' ? 'Registration' : 'Triage')
       : row.appointment ? 'Appointment' : 'Registry',
-    careTeamPrimary: row.provider || 'Doctor unassigned',
+    careTeamPrimary: row.provider || entry?.assignedToName || 'Doctor unassigned',
     careTeamSecondary: row.patient?.nurse || entry?.assignedToName || 'Nurse unassigned',
-    statusText: inService
+    statusText: triage?.handoffStatus === 'acknowledged'
+      ? 'Acknowledged'
+      : triage?.assignedProviderId && triage.handoffStatus === 'assigned'
+        ? 'Assigned'
+        : inService
       ? 'In service'
       : entry ? 'Waiting' : assignmentLabel || statusLabel(row.status),
     queueText: entry ? STAGE_LABELS[entry.stage] : typeLabel(row.department),
@@ -390,7 +394,9 @@ export function computeRowQueueColumns(
     waitSubtext: entry
       ? waitLabel(entry.minutesWaiting)
       : appointmentRelative || row.appointment?.appointmentDate || 'Assigned list',
-    statusSubtext: entry?.acuity === 'RED'
+    statusSubtext: triage?.handoffStatus
+      ? triage.handoffStatus.replaceAll('_', ' ')
+      : entry?.acuity === 'RED'
       ? 'Critical'
       : entry?.acuity === 'YELLOW'
         ? 'Urgent'
@@ -998,6 +1004,25 @@ export default function EhrClinicalDashboard({
     }
   };
 
+  const acknowledgeTriage = async (triage: TriageDoc) => {
+    if (!currentUser) return;
+    try {
+      const updated = await updateTriageDoc(triage._id, {
+        handoffStatus: 'acknowledged',
+        acknowledgedAt: new Date().toISOString(),
+        acknowledgedBy: currentUser._id,
+        acknowledgedByName: currentUser.name,
+        handoffTo: currentUser._id,
+        handoffToName: currentUser.name,
+        status: 'seen',
+      });
+      if (!updated) throw new Error('The triage handoff could not be updated.');
+      showToast(`${triage.patientName} handoff acknowledged.`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not acknowledge this handoff.', 'error');
+    }
+  };
+
   // Call = take the patient now: record the handoff on the triage doc (the
   // row flips to "In service" for every station) and open the consultation.
   const callPatient = async (row: UnifiedPatientRow) => {
@@ -1011,7 +1036,7 @@ export default function EhrClinicalDashboard({
       // cache is temporarily unavailable; the event is retried by sync.
     }
     const entry = queueEntryByPatient.get(row.patientId);
-    if (entry && !entry.assignedToId && currentUser) {
+    if (entry && currentUser && (!entry.assignedToId || entry.assignedToId === currentUser._id)) {
       await updateTriageDoc(entry.triageId, {
         handoffTo: currentUser._id,
         handoffToName: currentUser.name,
@@ -1020,6 +1045,7 @@ export default function EhrClinicalDashboard({
         // triage station uses. Without it, pending-gated actions (escalate,
         // LWBS) stayed offered on a patient already in consultation.
         status: 'seen',
+        handoffStatus: 'in_consultation',
       });
     }
     try {
@@ -1728,6 +1754,9 @@ export default function EhrClinicalDashboard({
                             entry={columns.entry}
                             onClose={() => setVisitRow(null)}
                             onCall={() => { setVisitRow(null); void callPatient(row); }}
+                            onAcknowledge={columns.triage && canConsult && (!columns.triage.assignedProviderId || columns.triage.assignedProviderId === currentUser?._id)
+                              ? () => void acknowledgeTriage(columns.triage!)
+                              : undefined}
                             onMove={columns.entry ? () => { setVisitRow(null); setMoveEntry(columns.entry); } : undefined}
                             onOpenChart={row.patientId ? () => router.push(`/patients/${row.patientId}`) : undefined}
                             onEscalate={columns.triage?.encounterId && (columns.triage.status === 'pending' || columns.triage.status === 'seen')

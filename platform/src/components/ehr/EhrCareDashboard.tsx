@@ -831,6 +831,8 @@ export default function EhrCareDashboard({
                                 // The row expands on click; picking a status
                                 // must not also open the panel underneath.
                                 onClick={event => event.stopPropagation()}
+                                onPointerDown={event => event.stopPropagation()}
+                                onMouseDown={event => event.stopPropagation()}
                                 onKeyDown={event => event.stopPropagation()}
                               >
                                 {statusControl.text || statusText || '—'}
@@ -843,6 +845,9 @@ export default function EhrCareDashboard({
                                   value={statusControl.value ? canonicalAppointmentStatus(statusControl.value as AppointmentStatus) : ''}
                                   aria-label={`Status for ${row.title}`}
                                   title={APPOINTMENT_STATUS_DESCRIPTIONS[statusControl.value as AppointmentStatus] || undefined}
+                                  onClick={event => event.stopPropagation()}
+                                  onPointerDown={event => event.stopPropagation()}
+                                  onMouseDown={event => event.stopPropagation()}
                                   onChange={event => statusControl.onChange?.(event.target.value)}
                                 >
                                   {statusControl.options.map(option => (
