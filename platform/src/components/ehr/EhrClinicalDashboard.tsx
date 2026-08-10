@@ -26,7 +26,8 @@ import { initials, stateTint, AVATAR_TINT_NEUTRAL } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
 import {
   APPOINTMENT_STATUS_TONES, appointmentStatusLabel,
-  APPOINTMENT_STATUS_GROUPS, APPOINTMENT_STATUS_GROUP_LABELS,
+  APPOINTMENT_STATUS_GROUPS, APPOINTMENT_STATUS_GROUP_LABELS, APPOINTMENT_STATUS_OPTIONS,
+  APPOINTMENT_STATUS_DESCRIPTIONS, canonicalAppointmentStatus,
   appointmentStatusGroup, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { useToast } from '@/components/Toast';
@@ -53,6 +54,7 @@ import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import EhrWorkItemProgress from '@/components/ehr/EhrWorkItemProgress';
 import { useTriage } from '@/lib/hooks/useTriage';
+import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useAuth } from '@/lib/context';
 import { buildQueueFromTriage, STAGE_LABELS, type QueueEntry } from '@/lib/services/patient-queue-service';
 import type { TriageDoc } from '@/lib/db-types';
@@ -755,6 +757,7 @@ export default function EhrClinicalDashboard({
   // deduped to the newest record per patient.
   const { currentUser } = useAuth();
   const { triages, update: updateTriageDoc } = useTriage();
+  const { updateStatus: updateAppointmentStatus } = useAppointments();
   // "Create clinical note" on a visit card — the appointment already carries
   // the patient, provider, date and telehealth mode the note header needs.
   const { createNote, creating: creatingNote } = useCreateNote(currentUser);
@@ -1590,12 +1593,6 @@ export default function EhrClinicalDashboard({
                       if (row.patientId) setVisitRow(isExpanded ? null : row);
                       else if (row.appointment) setOpenAppointment(row.appointment);
                     };
-                    const statusPillClass = columns.inService || row.status === 'checked_in' || row.status === 'in_progress' ? 'status-checked-in'
-                      : columns.statusText === 'Waiting' ? 'status-attention'
-                      : row.status === 'confirmed' ? 'status-confirmed'
-                      : row.status === 'completed' ? 'status-completed'
-                      : row.status === 'cancelled' || row.status === 'no_show' ? 'status-no-show'
-                      : '';
                     return (
                       <div
                         key={row.id}
@@ -1672,7 +1669,46 @@ export default function EhrClinicalDashboard({
                         </div>
 
                         <div className="appointment-card-status">
-                          <span className={`appointment-status-pill ${statusPillClass}`.trim()}>{columns.statusText}</span>
+                          {row.appointment ? (() => {
+                            const visitStatus = row.appointment!.status;
+                            const tone = APPOINTMENT_STATUS_TONES[visitStatus];
+                            const pillClass = tone === 'done' ? 'status-completed'
+                              : tone === 'active' ? 'status-checked-in'
+                              : tone === 'ready' ? 'status-confirmed'
+                              : tone === 'danger' ? 'status-no-show'
+                              : tone === 'warning' ? 'status-attention'
+                              : 'status-scheduled';
+                            return (
+                              <span
+                                className={`appointment-status-pill appointment-status-pill--select ${pillClass}`.trim()}
+                                onClick={event => event.stopPropagation()}
+                                onKeyDown={event => event.stopPropagation()}
+                              >
+                                {appointmentStatusLabel(visitStatus)}
+                                <select
+                                  value={canonicalAppointmentStatus(visitStatus)}
+                                  aria-label={`Status for ${row.name}`}
+                                  title={APPOINTMENT_STATUS_DESCRIPTIONS[visitStatus]}
+                                  onChange={async event => {
+                                    event.stopPropagation();
+                                    const next = event.target.value as AppointmentStatus;
+                                    if (next === canonicalAppointmentStatus(visitStatus)) return;
+                                    try {
+                                      await updateAppointmentStatus(row.appointment!._id, next);
+                                    } catch (error) {
+                                      showToast(error instanceof Error ? error.message : 'Could not update visit status.', 'error');
+                                    }
+                                  }}
+                                >
+                                  {APPOINTMENT_STATUS_OPTIONS.map(option => (
+                                    <option key={option} value={option}>{appointmentStatusLabel(option)}</option>
+                                  ))}
+                                </select>
+                              </span>
+                            );
+                          })() : (
+                            <span className="appointment-status-pill status-confirmed">{columns.statusText}</span>
+                          )}
                           <small>{columns.statusSubtext}</small>
                         </div>
                       </div>

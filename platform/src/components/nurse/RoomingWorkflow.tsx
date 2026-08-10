@@ -59,11 +59,12 @@ const emptyVitals = (): RoomingVitals => ({
   weight: '', height: '', painScore: '', bloodGlucose: '', gcs: '', muac: '', notes: '',
 });
 
-export default function RoomingWorkflow() {
+export default function RoomingWorkflow({ patientId }: { patientId?: string } = {}) {
   const router = useRouter();
   const { currentUser } = useAuth();
   const toast = useToast();
   const { entries, loading, error, markArrived, assignRoom, transferClinic, markReady, recordVitals } = useRooming();
+  const visibleEntries = patientId ? entries.filter(entry => entry.encounter.patientId === patientId) : entries;
 
   // Room being typed, keyed by encounter — several patients can be part-way
   // through rooming at once, so a single shared input would leak one nurse's
@@ -157,7 +158,7 @@ export default function RoomingWorkflow() {
 
   return (
     <div data-tour="rooming-board" className="overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
-      {entries.length === 0 ? (
+      {visibleEntries.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <BedDouble className="w-6 h-6 mb-2" style={{ color: 'var(--text-muted)' }} />
           <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Nobody waiting</p>
@@ -167,7 +168,7 @@ export default function RoomingWorkflow() {
         </div>
       ) : (
         <div className="flex flex-col gap-2 overflow-y-auto" style={{ minHeight: 0 }}>
-          {entries.map(({ encounter, step, waitingMinutes }) => {
+          {visibleEntries.map(({ encounter, step, waitingMinutes }) => {
             const tone = waitTone(waitingMinutes);
             const isBusy = busy === encounter._id;
 
@@ -179,15 +180,13 @@ export default function RoomingWorkflow() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    {/* The name opens this patient's own triage page. Rooming is
-                        the queue everyone joins at check-in, so the first thing
-                        a nurse does from a row is assess the person in it. */}
+                    {/* The name opens this patient's focused rooming page. */}
                     <button
                       type="button"
                       className="text-sm font-semibold truncate text-left"
                       style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                      onClick={() => router.push(`/triage/${encounter.patientId}`)}
-                      title={`Triage ${encounter.patientName}`}
+                      onClick={() => router.push(`/rooming/${encounter.patientId}`)}
+                      title={`Room ${encounter.patientName}`}
                     >
                       {encounter.patientName}
                     </button>

@@ -50,15 +50,13 @@ export default function PatientTriagePage() {
   const backTarget = currentUser && getRoleConfig(currentUser.role)?.allowedRoutes?.some(
     route => nurseStation === route || nurseStation.startsWith(`${route}/`),
   )
-    ? '/dashboard/nurse?station=triage'
+    ? '/dashboard/nurse?station=ward'
     : currentUser
       ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
       : '/dashboard';
 
-  // Today's open visit, if there is one. Saving a triage puts it on the Triaged
-  // rung; the nurse's next step — Roomed — is the next option in this same
-  // control, so rooming happens where the assessment was just written rather
-  // than back on some other board.
+  // Today's open visit, if there is one. The visit status is shown here for
+  // context, while appointment status changes remain on the station/worklist.
   const visit = useMemo(() => {
     const today = jubaDate();
     return appointments.find(appointment =>
@@ -105,7 +103,7 @@ export default function PatientTriagePage() {
         style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
       >
         <ArrowLeft className="w-4 h-4" style={{ stroke: 'currentColor' }} />
-        {backTarget.startsWith('/dashboard/nurse') ? 'Triage station' : 'Back to dashboard'}
+        {backTarget.startsWith('/dashboard/nurse') ? 'Nurse station' : 'Back to dashboard'}
       </button>
 
       {/* Who is being triaged, stated once at the top — the form below has no
@@ -151,7 +149,7 @@ export default function PatientTriagePage() {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
+      <div className="flex-1 flex flex-col gap-3 overflow-y-auto" style={{ minHeight: 0 }}>
         <TriageWorkflow lockedPatientId={patient._id} />
       </div>
     </main>

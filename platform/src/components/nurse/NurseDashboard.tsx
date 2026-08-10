@@ -6,22 +6,22 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
-  ArrowRightLeft, Plus, Printer,
+  ArrowRightLeft, Calendar, Printer,
   PieChart as PieChartIcon,
 } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useTriage } from '@/lib/hooks/useTriage';
 import { useWards } from '@/lib/hooks/useWards';
+import { useRooming } from '@/lib/hooks/useRooming';
 import { patientFullName, patientGenderAge, patientRegisteredAt } from '@/lib/patient-utils';
 import { getRoleConfig } from '@/lib/permissions';
-import { DEMO_WARD_PATIENTS, IS_DEMO } from '@/components/nurse/shared';
+import { DEMO_WARD_PATIENTS, IS_DEMO, useMarEntries } from '@/components/nurse/shared';
 import EhrCareDashboard, { type EhrCareDashboardAction, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import { tooltipStyle } from '@/components/ChartCard';
 import WardWorkflow from './WardWorkflow';
 import MarWorkflow from './MarWorkflow';
-import TriageWorkflow from './TriageWorkflow';
 import RoomingWorkflow from './RoomingWorkflow';
 import HandoffWorkflow from './HandoffWorkflow';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
@@ -31,8 +31,8 @@ import PrintListDialog, { type PrintListSection } from '@/components/PrintListDi
    stations — the "New triage" action and queue deep links open them — but they
    are not offered as tabs either; the strip is the two boards a nurse parks on
    for a shift. */
-type StationTab = 'ward' | 'mar' | 'triage' | 'rooming';
-const STATION_TABS: readonly StationTab[] = ['ward', 'mar', 'triage', 'rooming'];
+type StationTab = 'ward' | 'mar' | 'rooming';
+const STATION_TABS: readonly StationTab[] = ['ward', 'mar', 'rooming'];
 
 function isStationTab(value: string | null): value is StationTab {
   return !!value && STATION_TABS.includes(value as StationTab);
@@ -60,6 +60,8 @@ export default function NurseDashboard() {
   const { patients } = usePatients();
   const { triages } = useTriage();
   const { activeAdmissions } = useWards();
+  const { entries: roomingEntries } = useRooming();
+  const { marEntries } = useMarEntries();
   const today = new Date().toISOString().slice(0, 10);
   const triageToday = triages.filter(tr => (tr.triagedAt || '').startsWith(today));
   const criticalTriage = triageToday.filter(tr => tr.priority === 'RED').length;
@@ -72,25 +74,11 @@ export default function NurseDashboard() {
 
   // Triage queue by acuity — today's RED/YELLOW/GREEN split, straight from
   // triage-service data already loaded above (no extra fetch).
-  const acuityData = useMemo(() => ([
+  const triageAcuityData = useMemo(() => ([
     { name: 'Red', value: criticalTriage, color: CHART_RED },
     { name: 'Yellow', value: urgentTriage, color: CHART_AMBER },
     { name: 'Green', value: routineTriage, color: CHART_GREEN },
   ]), [criticalTriage, urgentTriage, routineTriage]);
-  const acuityTotal = criticalTriage + urgentTriage + routineTriage;
-
-  // Day-activity rail: the rows behind it are the active station's board, and
-  // the triage board is today-only by definition — charting it drew one bar
-  // under a "This week" heading. Built from every triage on file instead, split
-  // the way the station reads acuity: RED/YELLOW need attention now, GREEN is
-  // routine.
-  const chartItems = useMemo<DayStatsItem[]>(() => triages
-    .filter(tr => !!tr.triagedAt)
-    .map(tr => ({
-      date: tr.triagedAt!.slice(0, 10),
-      time: rowTime(tr.triagedAt),
-      series: (tr.priority === 'RED' || tr.priority === 'YELLOW' ? 0 : 1) as 0 | 1,
-    })), [triages]);
 
   // The station is URL-addressable so notifications, redirects, bookmarks, and
   // the browser back button can return a nurse to the exact station they need.
@@ -98,13 +86,32 @@ export default function NurseDashboard() {
     isStationTab(searchParams.get('station')) ? searchParams.get('station') as StationTab : null
   ));
   const urlStation = searchParams.get('station');
-  const initialTriagePatientId = searchParams.get('patient') ?? undefined;
   // Every nurse lands on the ward list, the way every other module opens on its
   // worklist. Rooming nurses used to open on the Rooming board instead, which
   // made the module the one place in the app where what you saw first depended
   // on your role; Rooming is one click away, and triage arrives by deep link.
   const defaultStation: StationTab = 'ward';
   const activeTab: StationTab = isStationTab(urlStation) ? urlStation : (fallbackStation ?? defaultStation);
+
+  // Plot the same work represented by the active tab. Ward plots admissions,
+  // MAR plots dose slots, and Rooming plots rooming encounters; switching tabs
+  // therefore changes both the list and the rail's visual language together.
+  const chartItems = useMemo<DayStatsItem[]>(() => {
+    if (activeTab === 'rooming') return roomingEntries.map(entry => ({
+      date: (entry.encounter.startedAt || entry.encounter.createdAt || today).slice(0, 10),
+      time: rowTime(entry.encounter.startedAt || entry.encounter.createdAt),
+      series: entry.step === 'being_roomed' ? 1 : 0,
+    }));
+    if (activeTab === 'mar') return marEntries.map(entry => ({ date: today, time: entry.time, series: entry.status === 'given' ? 1 : 0 }));
+    const wardActivity = activeAdmissions.length > 0 || !IS_DEMO
+      ? activeAdmissions.map(admission => ({
+      date: (admission.admissionDate || today).slice(0, 10),
+      time: rowTime(admission.admissionDate),
+      series: (admission.severity === 'critical' || admission.severity === 'severe' ? 0 : 1) as 0 | 1,
+      }))
+      : DEMO_WARD_PATIENTS.map(patient => ({ date: today, time: undefined, series: (patient._triage?.priority === 'RED' || patient._triage?.priority === 'YELLOW' ? 0 : 1) as 0 | 1 }));
+    return wardActivity;
+  }, [activeAdmissions, activeTab, marEntries, roomingEntries, today]);
 
   // Free-text search for the station lives in the LEFT RAIL (between the
   // mini-calendar and the day chart); WardWorkflow receives it as a prop so
@@ -123,7 +130,6 @@ export default function NurseDashboard() {
   const stationLabel = useMemo<Record<StationTab, string>>(() => ({
     ward: t('nurse.tabWard'),
     mar: t('nurse.tabMar'),
-    triage: t('nurse.tabTriage'),
     rooming: 'Rooming',
   }), [t]);
 
@@ -135,18 +141,14 @@ export default function NurseDashboard() {
   // here so the tab never says "0" above a visibly populated board.
   const wardAdmittedCount = new Set(activeAdmissions.map(a => a.patientId)).size;
   const wardBoardCount = (wardAdmittedCount > 0 || !IS_DEMO) ? wardAdmittedCount : DEMO_WARD_PATIENTS.length;
-  // The two boards a nurse works a shift from. Triage, rooming and handoff came
-  // off this strip: each is a task you start and finish, not a place to sit, and
-  // the three of them pushed the two standing boards to the far left of a
-  // five-tab row.
+  // All three nursing workboards are first-class tabs. Their counts come from
+  // the same sources that render each board, so the tab never disagrees with
+  // the visible list.
   const stationTabs = useMemo(() => ([
     { key: 'ward' as const, label: stationLabel.ward, count: wardBoardCount },
-    // MAR carries no count: its board lists medication entries (built inside
-    // MarWorkflow), and the only number available here — active admissions —
-    // routinely disagrees with what the board displays. No count beats a
-    // wrong one.
-    { key: 'mar' as const, label: stationLabel.mar },
-  ]), [wardBoardCount, stationLabel.mar, stationLabel.ward]);
+    { key: 'mar' as const, label: stationLabel.mar, count: marEntries.length },
+    { key: 'rooming' as const, label: stationLabel.rooming, count: roomingEntries.length },
+  ]), [marEntries.length, roomingEntries.length, stationLabel]);
 
   const selectStation = useCallback((station: StationTab) => {
     setFallbackStation(station);
@@ -166,13 +168,13 @@ export default function NurseDashboard() {
   // of window.print()'s whole-dashboard dump.
   const [printOpen, setPrintOpen] = useState(false);
 
-  // Header actions per the nurse-station design: "+ New triage" as the rail
-  // CTA, then Print and the primary "Start handoff" on the right.
+  // Header actions mirror the appointment dashboard: create an appointment,
+  // print the active register, or start a handoff.
   const actions = useMemo<EhrCareDashboardAction[]>(() => ([
-    { label: 'New Triage', icon: Plus, onClick: () => selectStation('triage'), tone: 'primary' },
+    { label: 'Admit new patient', icon: Calendar, onClick: () => router.push('/appointments?new=1'), tone: 'primary' },
     { label: 'Print', icon: Printer, onClick: () => setPrintOpen(true), tone: 'neutral' },
     { label: 'Start Handoff', icon: ArrowRightLeft, onClick: () => setHandoffOpen(true), tone: 'primary' },
-  ]), [selectStation]);
+  ]), [router]);
 
   // The print dialog's choices: the station's two standing registers as pure
   // text lists — the full ward roster and today's triage, uncapped and
@@ -253,46 +255,6 @@ export default function NurseDashboard() {
     const hit = (...values: Array<unknown>) =>
       !q || values.some(value => String(value ?? '').toLowerCase().includes(q));
 
-    if (activeTab === 'triage') {
-      return triageToday.filter(triage => hit(
-        triage.patientName, triage.chiefComplaint, triage.modeOfArrival,
-        triage.status, triage.priority, triage.triagedByName, triage.assignedRoom,
-      )).slice(0, 10).map(triage => {
-        const time = rowTime(triage.triagedAt);
-        return {
-          id: triage._id,
-          photoUrl: photoByPatientId.get(triage.patientId),
-          title: triage.patientName,
-          subtitle: triage.chiefComplaint || 'ETAT assessment',
-          meta: `${triage.modeOfArrival || 'walk-in'} · ${time || 'No time'}`,
-          time,
-          timeSecondary: (triage.triagedAt || today).slice(0, 10),
-          status: triage.status,
-          statusLabel: triage.status === 'seen' ? 'Seen' : triage.status === 'pending' ? 'Waiting' : triage.status,
-          // Shared acuity vocabulary: RED reads "Emergency" here as it does on
-          // triage, the clinician queue and the front desk. This row used to
-          // call it "Critical", the one station that did.
-          statusSecondary: PRIORITY_META[triage.priority].label,
-          statusTone: triage.priority === 'RED' ? 'danger' : triage.priority === 'YELLOW' ? 'warning' : 'ready',
-          // RED/YELLOW need attention now (Urgent); GREEN is routine — a more
-          // useful split for this station than the done-based default, which
-          // would never place a still-open triage in the second series.
-          chartSeries: (triage.priority === 'RED' || triage.priority === 'YELLOW' ? 0 : 1) as 0 | 1,
-          priority: triage.priority,
-          careTeam: triage.triagedByName || 'Nurse unassigned',
-          careTeamSecondary: 'Triage nurse',
-          careTeamLabel: 'Care team',
-          room: triage.assignedRoom,
-          locationSecondary: triage.modeOfArrival || 'Triage',
-          date: (triage.triagedAt || today).slice(0, 10),
-          patientId: triage.patientId,
-          onClick: () => router.push(`/patients/${triage.patientId}`),
-          actionLabel: 'Open',
-          onAction: () => router.push(`/patients/${triage.patientId}`),
-        };
-      });
-    }
-
     if (activeTab === 'mar') {
       return activeAdmissions.filter(admission => hit(
         admission.patientName, admission.wardName, admission.bedNumber, admission.hospitalNumber,
@@ -368,15 +330,59 @@ export default function NurseDashboard() {
     new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date())
   ), []);
 
-  // Critical/Urgent/Waiting/In consult are acuity signals not already surfaced
-  // by a tab count — Patients/Active admissions/Triage today were dropped as
-  // they just echoed the Ward/MAR/Triage tab counts above.
-  const metrics = useMemo(() => ([
-    { label: 'Critical', value: criticalTriage, tone: criticalTriage > 0 ? 'danger' as const : 'neutral' as const },
-    { label: 'Urgent', value: urgentTriage, tone: urgentTriage > 0 ? 'warning' as const : 'neutral' as const },
-    { label: 'Waiting', value: waitingTriage },
-    { label: 'In consult', value: inConsultTriage },
-  ]), [criticalTriage, urgentTriage, waitingTriage, inConsultTriage]);
+  const stationSummary = useMemo(() => {
+    if (activeTab === 'rooming') {
+      return [
+        { name: 'Waiting', value: roomingEntries.filter(entry => entry.step !== 'being_roomed').length, color: CHART_AMBER },
+        { name: 'In room', value: roomingEntries.filter(entry => entry.step === 'being_roomed').length, color: CHART_GREEN },
+      ];
+    }
+    if (activeTab === 'mar') {
+      return [
+        { name: 'Overdue', value: marEntries.filter(entry => entry.status === 'overdue').length, color: CHART_RED },
+        { name: 'Due now', value: marEntries.filter(entry => entry.status === 'due').length, color: CHART_AMBER },
+        { name: 'Given', value: marEntries.filter(entry => entry.status === 'given').length, color: CHART_GREEN },
+      ];
+    }
+    const critical = activeAdmissions.length > 0
+      ? activeAdmissions.filter(admission => admission.severity === 'critical').length
+      : IS_DEMO ? DEMO_WARD_PATIENTS.filter(patient => patient._triage?.priority === 'RED').length : 0;
+    const urgent = activeAdmissions.length > 0
+      ? activeAdmissions.filter(admission => admission.severity === 'severe').length
+      : IS_DEMO ? DEMO_WARD_PATIENTS.filter(patient => patient._triage?.priority === 'YELLOW').length : 0;
+    const total = activeAdmissions.length > 0 || !IS_DEMO ? activeAdmissions.length : DEMO_WARD_PATIENTS.length;
+    return [
+      { name: 'Critical', value: critical, color: CHART_RED },
+      { name: 'Watch', value: urgent, color: CHART_AMBER },
+      { name: 'Stable', value: Math.max(0, total - critical - urgent), color: CHART_GREEN },
+    ];
+  }, [activeAdmissions, activeTab, marEntries, roomingEntries]);
+  const stationSummaryTotal = stationSummary.reduce((sum, item) => sum + item.value, 0);
+
+  const metrics = useMemo(() => {
+    if (activeTab === 'rooming') return [
+      { label: 'Waiting', value: roomingEntries.filter(entry => entry.step !== 'being_roomed').length, tone: 'warning' as const },
+      { label: 'In room', value: roomingEntries.filter(entry => entry.step === 'being_roomed').length },
+      { label: 'With room', value: roomingEntries.filter(entry => Boolean(entry.encounter.roomNumber)).length },
+    ];
+    if (activeTab === 'mar') return [
+      { label: 'Overdue', value: marEntries.filter(entry => entry.status === 'overdue').length, tone: 'danger' as const },
+      { label: 'Due now', value: marEntries.filter(entry => entry.status === 'due').length, tone: 'warning' as const },
+      { label: 'Given', value: marEntries.filter(entry => entry.status === 'given').length },
+    ];
+    const critical = activeAdmissions.length > 0 ? activeAdmissions.filter(admission => admission.severity === 'critical').length : IS_DEMO ? DEMO_WARD_PATIENTS.filter(patient => patient._triage?.priority === 'RED').length : 0;
+    const urgent = activeAdmissions.length > 0 ? activeAdmissions.filter(admission => admission.severity === 'severe').length : IS_DEMO ? DEMO_WARD_PATIENTS.filter(patient => patient._triage?.priority === 'YELLOW').length : 0;
+    return [
+      { label: 'Critical', value: critical, tone: 'danger' as const },
+      { label: 'Watch', value: urgent, tone: 'warning' as const },
+      { label: 'Admitted', value: wardBoardCount },
+    ];
+  }, [activeAdmissions, activeTab, marEntries, roomingEntries]);
+
+  const chartTitle = activeTab === 'rooming' ? 'Rooming activity' : activeTab === 'mar' ? 'Medication activity' : 'Ward activity';
+  const chartSeriesNames: [string, string] = activeTab === 'rooming'
+    ? ['Waiting', 'In room']
+    : activeTab === 'mar' ? ['Open doses', 'Given'] : ['Acute', 'Stable'];
 
   if (!currentUser) return null;
 
@@ -401,8 +407,8 @@ export default function NurseDashboard() {
           // severity, or routing status), so chartSeries is set explicitly per
           // row rather than relying on the done-based default — none of these
           // three stations' rows ever reach a 'done' statusTone.
-          chartTitle="Triage activity"
-          chartSeriesNames={['Acute', 'Routine']}
+          chartTitle={chartTitle}
+          chartSeriesNames={chartSeriesNames}
           chartItems={chartItems}
           // Triage acuity donut — today's RED/YELLOW/GREEN split, rendered in
           // the left rail directly below the Triage activity chart.
@@ -411,29 +417,29 @@ export default function NurseDashboard() {
               <div className="ehr-day-stats-head">
                 <h3 className="flex items-center gap-2">
                   <PieChartIcon className="w-4 h-4" style={{ color: CHART_RED }} />
-                  Triage acuity today
+                  {activeTab === 'rooming' ? 'Rooming queue' : activeTab === 'mar' ? 'Medication doses today' : 'Ward acuity'}
                 </h3>
               </div>
-              {acuityTotal === 0 ? (
-                <p className="ehr-day-stats-empty">No triages recorded today</p>
+              {stationSummaryTotal === 0 ? (
+                <p className="ehr-day-stats-empty">No work in this station</p>
               ) : (
                 <div className="flex items-center gap-4" style={{ marginTop: 12 }}>
                   <div className="relative flex-shrink-0" style={{ width: 110, height: 110 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={acuityData} dataKey="value" innerRadius={36} outerRadius={52} paddingAngle={3} stroke="none">
-                          {acuityData.map(d => <Cell key={d.name} fill={d.color} />)}
+                        <Pie data={stationSummary} dataKey="value" innerRadius={36} outerRadius={52} paddingAngle={3} stroke="none">
+                          {stationSummary.map(d => <Cell key={d.name} fill={d.color} />)}
                         </Pie>
                         <Tooltip {...tooltipStyle} formatter={(v, name) => [v ?? 0, String(name ?? '')]} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{acuityTotal}</span>
-                      <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>seen today</span>
+                      <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{stationSummaryTotal}</span>
+                      <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>in station</span>
                     </div>
                   </div>
                   <div className="flex-1 space-y-1.5">
-                    {acuityData.map(d => (
+                    {stationSummary.map(d => (
                       <div key={d.name} className="flex items-center justify-between gap-2 text-xs">
                         <span className="flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
                           <span className="w-2 h-2 rounded-full inline-block" style={{ background: d.color }} />
@@ -450,24 +456,24 @@ export default function NurseDashboard() {
           // The rail search and global module menu already provide patient and
           // cross-service navigation. Keeping a second action strip here made
           // the same destinations appear twice on every nursing station.
-          rows={rows}
+          rows={[]}
           // The design's daybar carries only the station title + tabs — the
           // tabs already show each board's count, so no subtitle.
           centerTitle="Nursing station"
           centerSubtitle=""
           metrics={metrics}
-          calendarEventDates={[
-            ...triageToday.map(triage => (triage.triagedAt || today).slice(0, 10)),
-            ...activeAdmissions.map(admission => (admission.admissionDate || today).slice(0, 10)),
-          ]}
-          metricsTitle="Today's triage"
+          calendarEventDates={activeTab === 'rooming'
+            ? roomingEntries.map(entry => (entry.encounter.startedAt || entry.encounter.createdAt || today).slice(0, 10))
+            : activeTab === 'mar'
+              ? [today]
+              : activeAdmissions.map(admission => (admission.admissionDate || today).slice(0, 10))}
+          metricsTitle={activeTab === 'rooming' ? 'Rooming today' : activeTab === 'mar' ? 'Medication today' : 'Ward today'}
           emptyTitle="No patients in this station"
           hideRowList
         >
           <div className="flex flex-col" style={{ minHeight: 0 }}>
             {activeTab === 'ward' && <WardWorkflow search={railSearch} showHeader={false} />}
             {activeTab === 'mar' && <MarWorkflow />}
-            {activeTab === 'triage' && <TriageWorkflow initialPatientId={initialTriagePatientId} />}
             {activeTab === 'rooming' && <RoomingWorkflow />}
           </div>
         </EhrCareDashboard>

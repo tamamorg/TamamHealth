@@ -21,7 +21,7 @@ export interface RoleRouteConfig {
 const NURSE_MODULE_ROUTES = [
   // `/triage` is the per-patient triage page the station's queue rows open —
   // the same ETAT assessment, pinned to one patient.
-  '/dashboard/nurse', '/patients', '/triage', '/messages',
+  '/dashboard/nurse', '/patients', '/triage', '/rooming', '/messages',
   '/lab', '/immunizations', '/anc', '/births', '/deaths',
   '/settings', '/appointments', '/patient-intake',
   // Nurses document their own encounters (the Nurse Visit note type), so the

@@ -71,6 +71,7 @@ export default function EhrVisitPopup({
   onEscalate,
   onLwbs,
   onCreateNote,
+  nurseActions,
   creatingNote = false,
   inline = false,
 }: {
@@ -102,6 +103,8 @@ export default function EhrVisitPopup({
    * all of it.
    */
   onCreateNote?: (noteType: import('@/lib/clinical-notes/note-catalog').NoteTypeId) => void;
+  /** Role-specific actions that belong beside the visit tabs. */
+  nurseActions?: React.ReactNode;
   creatingNote?: boolean;
   /** Render the panel in the flow of the list, under the row it belongs to,
    *  rather than as an overlay. The content is identical — only the frame
@@ -211,6 +214,7 @@ export default function EhrVisitPopup({
                 onCreate={onCreateNote}
               />
             )}
+            {nurseActions}
           </div>
         </div>
 
