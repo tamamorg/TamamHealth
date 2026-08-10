@@ -77,7 +77,9 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   // in production and the single-replica case must say so explicitly. Same
   // fail-closed shape as the PHI rule above: the dangerous configuration is
   // reachable, but only as a deliberate, recorded choice.
-  if (!isDemo && !env.UPSTASH_REDIS_REST_URL) {
+  const sharedRedisUrl = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
+  const sharedRedisToken = env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN;
+  if (!isDemo && !sharedRedisUrl) {
     if (env.SINGLE_REPLICA_ACK !== 'true') {
       errors.push(
         'UPSTASH_REDIS_REST_URL/TOKEN are unset, so rate-limit counters and the JWT ' +
@@ -86,8 +88,8 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
         'deploy runs exactly ONE platform replica.',
       );
     }
-  } else if (!isDemo && env.UPSTASH_REDIS_REST_URL && !env.UPSTASH_REDIS_REST_TOKEN) {
-    errors.push('UPSTASH_REDIS_REST_URL is set but UPSTASH_REDIS_REST_TOKEN is unset — the shared store would be unreachable.');
+  } else if (!isDemo && sharedRedisUrl && !sharedRedisToken) {
+    errors.push('A shared Redis URL is set but its token is unset — the shared store would be unreachable.');
   }
 
   // --- Sync (CouchDB) ------------------------------------------------------

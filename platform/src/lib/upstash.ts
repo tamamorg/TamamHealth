@@ -20,8 +20,11 @@ export interface UpstashConfig {
 
 /** Returns null when Upstash is not configured — callers fall back locally. */
 export function getUpstashConfig(): UpstashConfig | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Vercel's Upstash marketplace uses KV_REST_* names; direct Upstash
+  // projects commonly use UPSTASH_REDIS_REST_*. Support both so the shared
+  // security store cannot silently degrade to per-instance memory.
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
   if (!url || !token) return null;
   return { url: url.replace(/\/+$/, ''), token };
 }

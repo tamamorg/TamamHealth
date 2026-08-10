@@ -24,6 +24,10 @@ APP_DIR="${APP_DIR:-/opt/tamamhealth}"
 DOMAIN_ROOT="${DOMAIN_ROOT:-tamamhealth.org}"
 DOMAIN_APP="${DOMAIN_APP:-app.tamamhealth.org}"
 DOMAIN_COUCH="${DOMAIN_COUCH:-couch.tamamhealth.org}"
+# Browser origin allowed to use credentialed CouchDB replication. Override this
+# when the app is hosted on Vercel, e.g.:
+#   COUCH_CORS_ORIGIN=https://tamamhealth-v6.vercel.app ./deploy.sh
+COUCH_CORS_ORIGIN="${COUCH_CORS_ORIGIN:-https://${DOMAIN_APP}}"
 # ----------------------------------------------------------------------------
 
 say() { echo -e "\033[1;36m[deploy]\033[0m $*"; }
@@ -116,7 +120,7 @@ ${DOMAIN_ROOT}, www.${DOMAIN_ROOT}, ${DOMAIN_APP} {
 ${DOMAIN_COUCH} {
     reverse_proxy localhost:5984
     header {
-        Access-Control-Allow-Origin "https://${DOMAIN_ROOT}"
+        Access-Control-Allow-Origin "${COUCH_CORS_ORIGIN}"
         Access-Control-Allow-Credentials true
         Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, HEAD"
         Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With, X-CouchDB-Www-Authenticate"
@@ -142,7 +146,7 @@ ${DOMAIN_COUCH} {
     reverse_proxy localhost:5984
     # CouchDB needs CORS for browser PouchDB replication
     header {
-        Access-Control-Allow-Origin "https://${DOMAIN_APP}"
+        Access-Control-Allow-Origin "${COUCH_CORS_ORIGIN}"
         Access-Control-Allow-Credentials true
         Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, HEAD"
         Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With, X-CouchDB-Www-Authenticate"
