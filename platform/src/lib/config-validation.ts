@@ -103,6 +103,26 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   if (!isDemo && !env.COUCHDB_URL) {
     errors.push('COUCHDB_URL is unset — server routes on Vercel need a durable CouchDB endpoint, not local filesystem storage.');
   }
+  if (!isDemo) {
+    for (const [name, value] of [
+      ['COUCHDB_URL', env.COUCHDB_URL],
+      ['NEXT_PUBLIC_COUCHDB_URL', env.NEXT_PUBLIC_COUCHDB_URL],
+    ] as const) {
+      if (!value) continue;
+      try {
+        const url = new URL(value);
+        const localHost = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|couchdb)$/i.test(url.hostname);
+        if (url.protocol !== 'https:') {
+          errors.push(`${name} must use https:// in production — clinical data must not cross the network in clear text.`);
+        }
+        if (localHost || url.hostname.endsWith('.internal')) {
+          errors.push(`${name} points to a private/local Docker hostname (${url.hostname}) — configure the reachable production CouchDB hostname.`);
+        }
+      } catch {
+        errors.push(`${name} is not a valid URL.`);
+      }
+    }
+  }
   if (env.NEXT_PUBLIC_SYNC_ENABLED === 'true') {
     if (!env.NEXT_PUBLIC_COUCHDB_URL) {
       errors.push('NEXT_PUBLIC_SYNC_ENABLED=true but NEXT_PUBLIC_COUCHDB_URL is unset.');

@@ -3,9 +3,9 @@
 # Required files before `docker compose up`:
 #   ./.env                         — compose-level vars (CouchDB/Postgres credentials, ports)
 #   ./platform/.env.production     — platform runtime env (JWT_SECRET, DATABASE_URL, etc.)
-#   ./website/.env.production      — website runtime env (email keys, etc.)
 #
-# Copy the .example files and fill them in.
+# Copy the platform example file and fill it in. The public website currently
+# has no runtime secrets, so it intentionally does not require an env file.
 #
 # NOTE on NEXT_PUBLIC_* vars: Next.js bakes these into the client bundle at
 # BUILD time, so they must be present in ./platform/.env.production BEFORE
@@ -126,8 +126,6 @@ services:
     build:
       context: ./website
       dockerfile: Dockerfile
-    env_file:
-      - ./website/.env.production
     environment:
       NODE_ENV: production
     ports:
