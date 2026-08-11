@@ -36,6 +36,7 @@ export type UserRole = 'super_admin' | 'org_admin' | 'doctor' | 'clinical_office
 export interface UserDoc extends BaseDoc {
   type: 'user';
   username: string;
+  email?: string;
   passwordHash: string;
   name: string;
   role: UserRole;
@@ -79,6 +80,28 @@ export interface UserDoc extends BaseDoc {
    * devices.
    */
   onboarding?: OnboardingState;
+}
+
+/** Public onboarding request; never stores a password or credential secret. */
+export interface AccountRequestDoc extends BaseDoc {
+  type: 'account_request';
+  status: 'pending' | 'approved' | 'rejected';
+  applicantName: string;
+  email: string;
+  phone?: string;
+  requestedRole: UserRole;
+  organizationId?: string;
+  organizationName?: string;
+  organizationSlug?: string;
+  organizationCountry?: string;
+  facilityId?: string;
+  facilityName?: string;
+  message?: string;
+  reviewerRole: 'org_admin' | 'super_admin';
+  reviewedAt?: string;
+  reviewedBy?: string;
+  rejectionReason?: string;
+  provisionedUserId?: string;
 }
 
 export interface OnboardingState {

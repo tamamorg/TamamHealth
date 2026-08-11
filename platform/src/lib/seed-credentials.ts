@@ -132,7 +132,7 @@ let inflight: Promise<CredentialsFile> | null = null;
 
 async function readFile(): Promise<CredentialsFile | null> {
   try {
-    const raw = await fs.readFile(credentialsFilePath(), 'utf8');
+    const raw = await fs.readFile(/* turbopackIgnore: true */ credentialsFilePath(), 'utf8');
     // Tolerate the version comment at the top of the file.
     const json = raw.replace(/^\s*#[^\n]*\n/, '');
     const parsed = JSON.parse(json) as CredentialsFile;
@@ -267,7 +267,7 @@ export async function deleteSeedCredentialsFile(): Promise<boolean> {
   const filePath = credentialsFilePath();
   try {
     const { writeFile, unlink, stat } = await import('node:fs/promises');
-    const info = await stat(filePath);
+    const info = await stat(/* turbopackIgnore: true */ filePath);
     // Best-effort overwrite; ignore failure and still unlink.
     try {
       const { randomBytes } = await import('node:crypto');

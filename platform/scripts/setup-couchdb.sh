@@ -48,6 +48,7 @@ done
 # ---------- 2. Create databases ----------
 DATABASES=(
   tamamhealth_users
+  tamamhealth_account_requests
   tamamhealth_patients
   tamamhealth_hospitals
   tamamhealth_medical_records

@@ -81,7 +81,7 @@ function maybeWarnSingleInstance(): void {
 
 async function loadFromDisk(): Promise<Map<string, RevocationEntry>> {
   try {
-    const raw = await fs.readFile(filePath(), 'utf8');
+    const raw = await fs.readFile(/* turbopackIgnore: true */ filePath(), 'utf8');
     const json = raw.replace(/^\s*#[^\n]*\n/, '');
     const parsed = JSON.parse(json) as Record<string, RevocationEntry>;
     const m = new Map<string, RevocationEntry>();

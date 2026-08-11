@@ -337,7 +337,11 @@ async function main() {
   );
   for (const db of allDbs) {
     try {
-      const result = await applySecurity(baseUrl, authHeader, db, roles);
+      // Account requests are server-only PII. Unlike clinical databases they
+      // are intentionally absent from sync-config, so CouchDB members must
+      // not receive direct access even if they know the database name.
+      const dbRoles = db === 'tamamhealth_account_requests' ? [] : roles;
+      const result = await applySecurity(baseUrl, authHeader, db, dbRoles);
       if (result.ok) {
         secOk++;
       } else {

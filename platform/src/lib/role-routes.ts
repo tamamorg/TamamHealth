@@ -40,7 +40,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/admin/risk', '/admin/audit', '/admin/support', '/admin/sync',
       '/admin/interop', '/admin/data', '/admin/security', '/admin/config', '/admin/flags',
       '/it', '/system-admin',
-      '/admin/billing', '/admin/analytics',
+      '/admin/billing', '/admin/analytics', '/admin/account-requests',
       '/org-admin', '/org-admin/analytics',
       '/dashboard', '/patients', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
@@ -62,7 +62,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     allowed: [
       '/org-admin',
       '/facility-management',
-      '/org-admin/users', '/org-admin/hospitals',
+      '/org-admin/users', '/org-admin/hospitals', '/org-admin/account-requests',
       '/org-admin/branding', '/org-admin/settings', '/org-admin/pricing',
       '/org-admin/analytics',
       '/facility-settings',

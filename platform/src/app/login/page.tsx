@@ -283,6 +283,8 @@ export default function LoginPage() {
                   <a href="/patient-portal" className="tl-link">Sign in as a patient</a>
                 )}
                 <span className="tl-foot-sep">·</span>
+                <a href="/signup" className="tl-link">Request an account</a>
+                <span className="tl-foot-sep">·</span>
                 <a href="/terms" target="_blank" rel="noopener noreferrer" className="tl-link">Terms &amp; Conditions</a>
               </p>
             </div>
@@ -373,6 +375,7 @@ export default function LoginPage() {
 
         <div className="tl-list-foot">
           <a href="/patient-portal" className="tl-link"><Icon name="patient" size={15} color={ACCENT_DEEP} /> Sign in as a patient</a>
+          <a href="/signup" className="tl-link">Request an account</a>
           {demoEnabled && <button type="button" className="tl-link" onClick={openManual}>Other account</button>}
         </div>
       </div>

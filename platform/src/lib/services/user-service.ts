@@ -79,6 +79,7 @@ interface CreateUserData {
   department?: string;
   specialty?: string;
   phone?: string;
+  email?: string;
 }
 
 export async function createUser(
@@ -148,6 +149,7 @@ export async function createUser(
     _id: `user-${username}`,
     type: 'user',
     username,
+    email: data.email?.trim().toLowerCase(),
     passwordHash,
     name: data.name,
     role: data.role,
