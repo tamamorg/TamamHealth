@@ -250,9 +250,11 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     // administration (/immunizations) is a nursing/clinical task, not dietetics;
     // antenatal clinical care (/anc) is a midwife/nurse/clinician function —
     // maternal-nutrition data is reviewed via MCH analytics and the patient record.
+    // /referrals is allowed so SAM/MAM follow-up can open a referral without
+    // bouncing RoleGuard (nutrition dashboard "Refer" action).
     allowed: [
       '/dashboard/nutrition', '/patients', '/messages',
-      '/mch-analytics', '/settings',
+      '/mch-analytics', '/referrals', '/settings',
     ],
     defaultDashboard: '/dashboard/nutrition',
   },

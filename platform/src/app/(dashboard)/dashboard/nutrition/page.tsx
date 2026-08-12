@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import DemoModeBanner from '@/components/DemoModeBanner';
+import Modal from '@/components/Modal';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -8,9 +10,10 @@ import { useNutritionScreenings } from '@/lib/hooks/useNutritionScreenings';
 import { classifyScreening } from '@/lib/services/nutrition-screening-service';
 import { useNutritionSupplies } from '@/lib/hooks/useNutritionSupplies';
 import { classifySupplyStatus } from '@/lib/services/nutrition-supply-service';
+import type { NutritionFollowUpAction } from '@/lib/db-types';
 import {
   AlertTriangle, CheckCircle2, TrendingDown,
-  BarChart3, Utensils, Plus, X,
+  BarChart3, Utensils, Plus, X, ArrowRightLeft, HeartPulse,
 } from '@/components/icons/lucide';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -42,6 +45,10 @@ type Screening = {
    *  the row's name open the chart. Screenings can precede registration, so
    *  this is frequently absent even on real (saved) rows. */
   patientId?: string;
+  notes?: string;
+  followUpAction?: NutritionFollowUpAction;
+  /** True for persisted store docs (not demo sample rows). */
+  persistable: boolean;
 };
 
 function formatTime(iso?: string): string | undefined {
@@ -50,7 +57,7 @@ function formatTime(iso?: string): string | undefined {
   return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
-const EMPTY_FORM = { name: '', age: '', sex: 'F', muac: '', weight: '', height: '', edema: false, isAnc: false };
+const EMPTY_FORM = { name: '', age: '', sex: 'F', muac: '', weight: '', height: '', edema: false, isAnc: false, notes: '' };
 
 // Demo-only screenings + supply inventory. Gated on NEXT_PUBLIC_DEMO_MODE so
 // production deploys render empty states instead of confusing staff with
@@ -101,10 +108,11 @@ export default function NutritionDashboard() {
   const { currentUser } = useAuth();
   const { t } = useTranslation();
   const { patients } = usePatients();
+  const router = useRouter();
 
   // Real screenings persist to the synced nutrition_screenings store; demo
   // rows fill in behind them in demo mode only.
-  const { screenings: savedScreenings, add: addScreening } = useNutritionScreenings();
+  const { screenings: savedScreenings, add: addScreening, update: updateScreening } = useNutritionScreenings();
   const [showForm, setShowForm] = useState(false);
   // Which stat panel (header toggles) occupies the center instead of the
   // screenings list; null = normal queue view.
@@ -159,8 +167,13 @@ export default function NutritionDashboard() {
         createdAt: s.createdAt,
         screenedBy: s.screenedByName,
         patientId: s.patientId,
+        notes: s.notes,
+        followUpAction: s.followUpAction,
+        persistable: true,
       })),
-      ...(IS_DEMO ? SAMPLE_SCREENINGS : []),
+      ...(IS_DEMO
+        ? SAMPLE_SCREENINGS.map(s => ({ ...s, persistable: false as const }))
+        : []),
     ],
     [savedScreenings],
   );
@@ -239,6 +252,7 @@ export default function NutritionDashboard() {
         heightCm: Number.isFinite(height) ? height : undefined,
         edema: form.edema,
         isAnc: form.isAnc,
+        notes: form.notes.trim() || undefined,
         screenedById: currentUser?._id,
         screenedByName: currentUser?.name,
         hospitalId: currentUser?.hospitalId,
@@ -251,6 +265,39 @@ export default function NutritionDashboard() {
     } catch (err) {
       setFormError(err instanceof Error ? err.message : String(err));
     }
+  };
+
+  const markFollowedUp = async (s: Screening) => {
+    if (!s.persistable) return;
+    await updateScreening(s.id, { followUpAction: 'followed_up' });
+  };
+
+  const referScreening = async (s: Screening) => {
+    if (s.persistable) {
+      await updateScreening(s.id, { followUpAction: 'referred' });
+    }
+    router.push(`/referrals?patient=${encodeURIComponent(s.name)}`);
+  };
+
+  const startTreatment = async (s: Screening) => {
+    if (s.persistable) {
+      await updateScreening(s.id, { followUpAction: 'treatment_started' });
+    }
+    // Nutritionists are not on /consultation (RoleGuard). Open the patient
+    // chart — or the registry — so treatment planning stays on allowed routes.
+    if (s.patientId) {
+      router.push(`/patients/${encodeURIComponent(s.patientId)}`);
+      return;
+    }
+    router.push('/patients');
+  };
+
+  const followUpLabel = (action?: NutritionFollowUpAction) => {
+    if (action === 'followed_up') return t('nutrition.followedUp');
+    if (action === 'referred') return t('nutrition.referred');
+    if (action === 'treatment_started') return t('nutrition.treatmentStarted');
+    if (action === 'needed') return t('nutrition.followUpNeeded');
+    return undefined;
   };
 
   const stats = useMemo(() => {
@@ -286,25 +333,69 @@ export default function NutritionDashboard() {
 
   const dateLabel = formatDateTitle(toIsoDate(new Date()));
 
-  // Per-screening detail, rendered inline via `row.popupDetail` (EhrCareDashboard's
-  // shared expand-in-place panel). Name/age/status/MUAC/weight/height/date are
-  // all already on the row above (title, subtitle, location and status
-  // columns) — the one field with nowhere else to live is edema, so that's
-  // all this panel adds.
-  const renderScreeningDetail = (s: Screening) => (
-    <div className="ehr-visit-pop ehr-visit-pop--inline">
-      <div className="ehr-visit-pop-body">
-        <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">{t('nutrition.colEdema')}</span>
-          <div>
-            {s.edema
-              ? <strong style={{ color: 'var(--color-danger)' }}>{t('nutrition.edemaYes')}</strong>
-              : <p>{t('nutrition.edemaNo')}</p>}
+  // Per-screening detail: edema, notes, and follow-up actions for flagged cases.
+  const renderScreeningDetail = (s: Screening) => {
+    const needsFollowUp = s.status !== 'Normal' && (!s.followUpAction || s.followUpAction === 'needed');
+    return (
+      <div className="ehr-visit-pop ehr-visit-pop--inline">
+        <div className="ehr-visit-pop-body">
+          <div className="ehr-visit-pop-row">
+            <span className="ehr-visit-pop-label">{t('nutrition.colEdema')}</span>
+            <div>
+              {s.edema
+                ? <strong style={{ color: 'var(--color-danger)' }}>{t('nutrition.edemaYes')}</strong>
+                : <p>{t('nutrition.edemaNo')}</p>}
+            </div>
           </div>
+          <div className="ehr-visit-pop-row">
+            <span className="ehr-visit-pop-label">{t('nutrition.notesLabel')}</span>
+            <div>
+              <p style={{ whiteSpace: 'pre-wrap' }}>{s.notes?.trim() || t('nutrition.noNotes')}</p>
+            </div>
+          </div>
+          {s.persistable && s.status !== 'Normal' && (
+            <div className="ehr-visit-pop-row">
+              <span className="ehr-visit-pop-label">{t('nutrition.followUpNeeded')}</span>
+              <div className="flex flex-wrap gap-2">
+                {needsFollowUp ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => markFollowedUp(s)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold"
+                      style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-medium)' }}
+                    >
+                      <CheckCircle2 className="w-3 h-3" /> {t('nutrition.markFollowedUp')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => referScreening(s)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold"
+                      style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-medium)' }}
+                    >
+                      <ArrowRightLeft className="w-3 h-3" /> {t('nutrition.refer')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startTreatment(s)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold"
+                      style={{ background: ACCENT, color: '#fff', border: 'none' }}
+                    >
+                      <HeartPulse className="w-3 h-3" /> {t('nutrition.startTreatment')}
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-[11px] font-semibold" style={{ color: 'var(--color-success)' }}>
+                    {followUpLabel(s.followUpAction)}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (!currentUser) return null;
 
@@ -336,10 +427,10 @@ export default function NutritionDashboard() {
         ]}
         actions={[
           {
-            label: showForm ? t('nutrition.formCancel') : t('nutrition.newScreening'),
-            icon: showForm ? X : Plus,
-            onClick: () => { setShowForm(v => !v); setFormError(''); },
-            tone: showForm ? 'neutral' : 'primary',
+            label: t('nutrition.newScreening'),
+            icon: Plus,
+            onClick: () => { setShowForm(true); setFormError(''); },
+            tone: 'primary',
           },
           { label: t('nutrition.classification'), icon: BarChart3, onClick: () => togglePanel('classification'), active: centerPanel === 'classification', tone: centerPanel === 'classification' ? 'primary' : 'neutral' },
           { label: t('nutrition.supplies'), icon: Utensils, onClick: () => togglePanel('supplies'), active: centerPanel === 'supplies', tone: centerPanel === 'supplies' ? 'primary' : 'neutral' },
@@ -365,7 +456,9 @@ export default function NutritionDashboard() {
             locationSecondary: `${s.weight} kg · ${s.height} cm`,
             status: s.status,
             statusLabel: s.status,
-            statusSecondary: s.status === 'Normal' ? 'Within range' : 'Follow-up needed',
+            statusSecondary: s.status === 'Normal'
+              ? 'Within range'
+              : (followUpLabel(s.followUpAction) || t('nutrition.followUpNeeded')),
             statusTone: s.status === 'SAM' ? 'danger'
               : s.status === 'MAM' ? 'warning'
               : (s.status === 'At Risk' || s.status === 'Underweight') ? 'warning'
@@ -387,103 +480,6 @@ export default function NutritionDashboard() {
         metricsTitle={t('nutrition.title')}
         emptyTitle={t('nutrition.noScreenings')}
       >
-          {/* ── New screening entry form ── */}
-          {showForm && (
-            <div className="p-4 rounded-lg dash-card" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-              <div className="mb-3">
-                {/* Optional — a screening can still be recorded for someone not
-                    yet registered. Linking a match here is what lets a SAM/MAM
-                    classification reach that patient's chart. */}
-                <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>
-                  Patient chart (optional)
-                </label>
-                <LabOrderPatientPicker
-                  patients={patients}
-                  selectedId={screeningPatientId}
-                  onSelect={(patientId) => {
-                    setScreeningPatientId(patientId);
-                    const patient = patients.find(p => p._id === patientId);
-                    if (patient) {
-                      setForm(f => ({ ...f, name: patientFullName(patient), sex: patient.gender === 'Male' ? 'M' : 'F' }));
-                    }
-                  }}
-                />
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formName')}</label>
-                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-md text-xs"
-                    style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formAge')}</label>
-                  <input value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-md text-xs"
-                    style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formSex')}</label>
-                  <Select value={form.isAnc ? 'F' : form.sex} disabled={form.isAnc}
-                    onChange={e => setForm(f => ({ ...f, sex: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-md text-xs"
-                    style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}>
-                    <option value="F">F</option>
-                    <option value="M">M</option>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formMuac')}</label>
-                  <input type="number" step="0.1" min="0" value={form.muac} onChange={e => setForm(f => ({ ...f, muac: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-md text-xs"
-                    style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formWeight')}</label>
-                  <input type="number" step="0.1" min="0" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-md text-xs"
-                    style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formHeight')}</label>
-                  <input type="number" step="0.1" min="0" value={form.height} onChange={e => setForm(f => ({ ...f, height: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-md text-xs"
-                    style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }} />
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-4 mt-3">
-                <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={form.edema} onChange={e => setForm(f => ({ ...f, edema: e.target.checked }))} />
-                  {t('nutrition.formEdema')}
-                </label>
-                <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={form.isAnc} onChange={e => setForm(f => ({ ...f, isAnc: e.target.checked }))} />
-                  {t('nutrition.formAnc')}
-                </label>
-                {/* Live classification preview */}
-                {parseFloat(form.muac) > 0 && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    style={{
-                      background: `${getStatusColor(classifyScreening(parseFloat(form.muac), form.edema, form.isAnc))}15`,
-                      color: getStatusColor(classifyScreening(parseFloat(form.muac), form.edema, form.isAnc)),
-                    }}>
-                    {t('nutrition.formClassification')}: {classifyScreening(parseFloat(form.muac), form.edema, form.isAnc)}
-                  </span>
-                )}
-              </div>
-              {formError && (
-                <p className="text-xs mt-2 font-semibold" style={{ color: 'var(--color-danger)' }}>{formError}</p>
-              )}
-              <button
-                onClick={submitScreening}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold mt-3"
-                style={{ background: ACCENT, color: '#fff', border: 'none', cursor: 'pointer' }}
-              >
-                <CheckCircle2 className="w-3 h-3" /> {t('nutrition.formSave')}
-              </button>
-            </div>
-          )}
-
           {/* Stat panels — opened from the header toggles; the active one
               replaces the screenings list and occupies the whole center. */}
           {centerPanel === 'classification' && (
@@ -631,6 +627,177 @@ export default function NutritionDashboard() {
             </div>
           )}
       </EhrCareDashboard>
+
+      {showForm && (
+        <Modal
+          onClose={() => { setShowForm(false); setFormError(''); }}
+          width={640}
+          align="top"
+          labelledBy="nutrition-screening-title"
+        >
+          <div className="p-5" style={{ background: 'var(--bg-card-solid)', borderRadius: 'var(--card-radius)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 id="nutrition-screening-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                {t('nutrition.newScreening')}
+              </h2>
+              <button
+                type="button"
+                onClick={() => { setShowForm(false); setFormError(''); }}
+                aria-label={t('nutrition.formCancel')}
+                className="p-1.5 rounded-lg"
+                style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="mb-3">
+              <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>
+                Patient chart (optional)
+              </label>
+              <LabOrderPatientPicker
+                patients={patients}
+                selectedId={screeningPatientId}
+                onSelect={(patientId) => {
+                  setScreeningPatientId(patientId);
+                  const patient = patients.find(p => p._id === patientId);
+                  if (patient) {
+                    setForm(f => ({ ...f, name: patientFullName(patient), sex: patient.gender === 'Male' ? 'M' : 'F' }));
+                  }
+                }}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="col-span-2 sm:col-span-1">
+                <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formName')}</label>
+                <input
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  autoFocus
+                  className="w-full px-3 py-2 rounded-md text-xs"
+                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formAge')}</label>
+                <input
+                  value={form.age}
+                  onChange={e => setForm(f => ({ ...f, age: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-md text-xs"
+                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formSex')}</label>
+                <Select
+                  value={form.isAnc ? 'F' : form.sex}
+                  disabled={form.isAnc}
+                  onChange={e => setForm(f => ({ ...f, sex: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-md text-xs"
+                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}
+                >
+                  <option value="F">F</option>
+                  <option value="M">M</option>
+                </Select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formMuac')}</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={form.muac}
+                  onChange={e => setForm(f => ({ ...f, muac: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-md text-xs"
+                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formWeight')}</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={form.weight}
+                  onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-md text-xs"
+                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formHeight')}</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={form.height}
+                  onChange={e => setForm(f => ({ ...f, height: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-md text-xs"
+                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nutrition.formNotes')}</label>
+              <textarea
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                rows={3}
+                placeholder={t('nutrition.formNotesPlaceholder')}
+                className="w-full px-3 py-2 rounded-md text-xs"
+                style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', resize: 'vertical' }}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 mt-3">
+              <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+                <input type="checkbox" checked={form.edema} onChange={e => setForm(f => ({ ...f, edema: e.target.checked }))} />
+                {t('nutrition.formEdema')}
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+                <input type="checkbox" checked={form.isAnc} onChange={e => setForm(f => ({ ...f, isAnc: e.target.checked }))} />
+                {t('nutrition.formAnc')}
+              </label>
+              {parseFloat(form.muac) > 0 && (
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: `${getStatusColor(classifyScreening(parseFloat(form.muac), form.edema, form.isAnc))}15`,
+                    color: getStatusColor(classifyScreening(parseFloat(form.muac), form.edema, form.isAnc)),
+                  }}
+                >
+                  {t('nutrition.formClassification')}: {classifyScreening(parseFloat(form.muac), form.edema, form.isAnc)}
+                </span>
+              )}
+            </div>
+
+            {formError && (
+              <p className="text-xs mt-2 font-semibold" style={{ color: 'var(--color-danger)' }}>{formError}</p>
+            )}
+
+            <div className="flex items-center justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => { setShowForm(false); setFormError(''); }}
+                className="px-4 py-2 rounded-md text-xs font-semibold"
+                style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-medium)' }}
+              >
+                {t('nutrition.formCancel')}
+              </button>
+              <button
+                type="button"
+                onClick={submitScreening}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold"
+                style={{ background: ACCENT, color: '#fff', border: 'none', cursor: 'pointer' }}
+              >
+                <CheckCircle2 className="w-3 h-3" /> {t('nutrition.formSave')}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </main>
   );
 }

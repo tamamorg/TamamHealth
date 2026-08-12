@@ -1,22 +1,27 @@
 'use client';
 
 /**
- * Personal task panel — the HealthBridge "tasks" list that replaces the sticky
- * note: quick to-dos with an optional reminder date, create / edit / complete /
- * reschedule / delete, and a collapsible completed section. Opened from the
- * TopBar.
+ * Personal task panel — quick to-dos with optional reminder date, priority,
+ * and patient link. Create / edit / complete / reschedule / delete, plus a
+ * collapsible completed section. Opened from the top-rail QuickActions.
  *
  * Layout note: the global `input { width: 100% }` rule in globals.css means any
  * input dropped in a flex row claims the whole row. Every field here therefore
- * sets its own width/flex explicitly — otherwise the date field swallows the
- * row and the title field collapses to nothing (which it did).
+ * sets its own width/flex explicitly.
  */
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
-import { CheckCircle2, Check, Clock, Calendar, Plus, Trash2, X, Flag, Pencil } from '@/components/icons/lucide';
+import {
+  ClipboardList, Check, Clock, Calendar, Plus, Trash2, X, Flag, Pencil, Search, User,
+} from '@/components/icons/lucide';
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import { useTasks } from '@/lib/hooks/useTasks';
+import { usePatients } from '@/lib/hooks/usePatients';
+import { patientFullName } from '@/lib/patient-utils';
 import type { ClinicianTaskDoc } from '@/lib/db-types';
+import Select from '@/components/Select';
+
+type TaskPriority = 'low' | 'normal' | 'medium' | 'high';
 
 /** Client-local "today" — never the UTC slice, which flips a day early in Juba. */
 function todayISO(): string {
@@ -31,6 +36,13 @@ function dueLabel(due?: string): { text: string; overdue: boolean } | null {
   return { text: due, overdue: false };
 }
 
+function priorityColor(priority?: string): string {
+  if (priority === 'high') return 'var(--color-danger)';
+  if (priority === 'medium') return 'var(--color-warning)';
+  if (priority === 'low') return 'var(--text-muted)';
+  return 'var(--text-secondary)';
+}
+
 const fieldStyle: React.CSSProperties = {
   padding: '8px 12px',
   borderRadius: 'var(--input-radius)',
@@ -41,22 +53,57 @@ const fieldStyle: React.CSSProperties = {
 
 export default function TasksPanel({ onClose }: { onClose: () => void }) {
   const { open, completed, loading, add, complete, reopen, reschedule, update, remove } = useTasks();
+  const { patients } = usePatients();
+  const titleRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
-  const [high, setHigh] = useState(false);
+  const [priority, setPriority] = useState<TaskPriority>('normal');
+  const [patientId, setPatientId] = useState('');
+  const [patientQuery, setPatientQuery] = useState('');
+  const [showPatientSearch, setShowPatientSearch] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
+
+  const selectedPatient = useMemo(
+    () => (patientId ? patients.find(p => p._id === patientId) : null),
+    [patients, patientId],
+  );
+
+  const patientMatches = useMemo(() => {
+    const q = patientQuery.trim().toLowerCase();
+    if (!q) return [];
+    return patients
+      .filter(p =>
+        patientFullName(p).toLowerCase().includes(q) ||
+        (p.hospitalNumber || '').toLowerCase().includes(q),
+      )
+      .slice(0, 6);
+  }, [patients, patientQuery]);
+
   const submit = async () => {
     if (!title.trim() || busy) return;
     setBusy(true);
     try {
-      await add({ title: title.trim(), dueDate: due || undefined, priority: high ? 'high' : 'normal' });
+      await add({
+        title: title.trim(),
+        dueDate: due || undefined,
+        priority,
+        patientId: selectedPatient?._id,
+        patientName: selectedPatient ? patientFullName(selectedPatient) : undefined,
+      });
       setTitle('');
       setDue('');
-      setHigh(false);
+      setPriority('normal');
+      setPatientId('');
+      setPatientQuery('');
+      setShowPatientSearch(false);
+      titleRef.current?.focus();
     } finally {
       setBusy(false);
     }
@@ -74,12 +121,19 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
     await update(task._id, { title: next });
   };
 
+  const cyclePriority = (current?: string): TaskPriority => {
+    if (current === 'high') return 'normal';
+    if (current === 'medium') return 'high';
+    if (current === 'low') return 'normal';
+    return 'medium';
+  };
+
   return (
-    <Modal onClose={onClose} width={520} align="top" labelledBy="tasks-panel-title">
+    <Modal onClose={onClose} width={560} align="top" labelledBy="tasks-panel-title">
       <div className="card-elevated" style={{ background: 'var(--bg-card-solid)', borderRadius: 'var(--card-radius)', padding: 0, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+            <ClipboardList className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} aria-hidden />
             <h2 id="tasks-panel-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>My Tasks</h2>
             {open.length > 0 && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-light)', color: 'var(--accent-text)' }}>{open.length}</span>
@@ -88,10 +142,11 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
         </div>
 
-        {/* Add a task */}
+        {/* Single cohesive create row: title · date · priority · add */}
         <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <input
+              ref={titleRef}
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -99,8 +154,29 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
               placeholder="Add a task — e.g. phone John"
               aria-label="Task title"
               className="text-sm"
-              style={{ ...fieldStyle, flex: '1 1 auto', width: 'auto', minWidth: 0 }}
+              style={{ ...fieldStyle, flex: '1 1 160px', width: 'auto', minWidth: 0 }}
             />
+            <input
+              type="date"
+              value={due}
+              onChange={e => setDue(e.target.value)}
+              title="Reminder date (optional)"
+              aria-label="Reminder date"
+              className="text-[12px]"
+              style={{ ...fieldStyle, padding: '6px 10px', width: 140, flex: '0 0 auto' }}
+            />
+            <Select
+              value={priority}
+              onChange={e => setPriority(e.target.value as TaskPriority)}
+              aria-label="Priority"
+              className="text-[12px]"
+              style={{ ...fieldStyle, padding: '6px 8px', width: 110, flex: '0 0 auto' }}
+            >
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </Select>
             <button
               onClick={submit}
               disabled={!title.trim() || busy}
@@ -111,41 +187,96 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
               <Plus className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex items-center gap-2 mt-2">
-            <input
-              type="date"
-              value={due}
-              onChange={e => setDue(e.target.value)}
-              title="Reminder date (optional)"
-              aria-label="Reminder date"
-              className="text-[12px]"
-              style={{ ...fieldStyle, padding: '6px 10px', width: 150, flex: '0 0 auto' }}
-            />
-            <button
-              type="button"
-              onClick={() => setHigh(h => !h)}
-              aria-pressed={high}
-              title="High priority"
-              className="inline-flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1.5 rounded-lg flex-shrink-0"
-              style={{
-                background: high ? 'var(--color-danger-bg, var(--overlay-subtle))' : 'var(--overlay-subtle)',
-                color: high ? 'var(--color-danger)' : 'var(--text-muted)',
-                border: `1px solid ${high ? 'var(--color-danger)' : 'var(--border-medium)'}`,
-              }}
-            >
-              <Flag className="w-3.5 h-3.5" />
-              High priority
-            </button>
+
+          <div className="mt-2">
+            {selectedPatient ? (
+              <div className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+                <User className="w-3.5 h-3.5" aria-hidden />
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{patientFullName(selectedPatient)}</span>
+                {selectedPatient.hospitalNumber && (
+                  <span style={{ color: 'var(--text-muted)' }}>· {selectedPatient.hospitalNumber}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setPatientId(''); setPatientQuery(''); }}
+                  className="text-[11px] font-semibold px-1.5 py-0.5 rounded"
+                  style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)' }}
+                >
+                  Clear
+                </button>
+              </div>
+            ) : showPatientSearch ? (
+              <div>
+                <div className="flex items-center gap-2">
+                  <div style={{ position: 'relative', flex: '1 1 auto', minWidth: 0 }}>
+                    <Search
+                      className="w-3.5 h-3.5"
+                      style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}
+                      aria-hidden
+                    />
+                    <input
+                      type="search"
+                      value={patientQuery}
+                      autoFocus
+                      onChange={e => setPatientQuery(e.target.value)}
+                      placeholder="Link a patient (optional)"
+                      aria-label="Link a patient"
+                      className="text-[12px]"
+                      style={{ ...fieldStyle, paddingLeft: 30, width: '100%' }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setShowPatientSearch(false); setPatientQuery(''); }}
+                    className="text-[11px] font-semibold"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {patientMatches.length > 0 && (
+                  <div className="mt-1 rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
+                    {patientMatches.map(p => (
+                      <button
+                        key={p._id}
+                        type="button"
+                        onClick={() => {
+                          setPatientId(p._id);
+                          setPatientQuery('');
+                          setShowPatientSearch(false);
+                          titleRef.current?.focus();
+                        }}
+                        className="w-full text-left px-3 py-2 text-[12px] flex items-center justify-between"
+                        style={{ background: 'var(--bg-card-solid)', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-light)' }}
+                      >
+                        <span className="font-semibold">{patientFullName(p)}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{p.hospitalNumber || ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowPatientSearch(true)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold"
+                style={{ color: 'var(--accent-text)' }}
+              >
+                <User className="w-3.5 h-3.5" /> Link patient
+              </button>
+            )}
           </div>
         </div>
 
-        <div style={{ overflowY: 'auto' }}>
+        <div style={{ overflowY: 'auto', minHeight: 160 }}>
           {loading ? (
             <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>
           ) : open.length === 0 ? (
-            <div className="p-10 text-center" style={{ color: 'var(--text-muted)' }}>
-              <CheckCircle2 className="w-10 h-10 mx-auto mb-2" style={{ opacity: 0.35 }} />
-              <p className="text-sm">No open tasks — you&apos;re clear.</p>
+            <div className="flex flex-col items-center justify-center px-6 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
+              <ClipboardList className="w-9 h-9 mb-3" style={{ opacity: 0.35 }} aria-hidden />
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>No open tasks</p>
+              <p className="text-[12px] mt-1" style={{ maxWidth: 260 }}>Add one above — e.g. a callback, follow-up, or chart review.</p>
             </div>
           ) : (
             <div>
@@ -182,7 +313,9 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                         />
                       ) : (
                         <div className="text-[13px] font-semibold flex items-start gap-1.5" style={{ color: 'var(--text-primary)' }}>
-                          {task.priority === 'high' && <span style={{ color: 'var(--color-danger)' }} title="High priority">●</span>}
+                          {(task.priority === 'high' || task.priority === 'medium') && (
+                            <span style={{ color: priorityColor(task.priority) }} title={`${task.priority} priority`}>●</span>
+                          )}
                           <span className="flex-1 break-words">{task.title}</span>
                           <button
                             onClick={() => startEdit(task)}
@@ -196,9 +329,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                         </div>
                       )}
                       {task.patientName && <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>re: {task.patientName}</div>}
-                      <div className="flex items-center gap-2 mt-1.5">
-                        {/* The input already shows the exact date, so the badge
-                            only earns its place when it says something more. */}
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         {(!d || d.overdue || d.text === 'Today') && (
                           <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: d?.overdue ? 'var(--color-danger)' : 'var(--text-muted)' }}>
                             {d?.overdue ? <Clock className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
@@ -215,14 +346,14 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                           style={{ ...fieldStyle, padding: '3px 6px', width: 132, flex: '0 0 auto' }}
                         />
                         <button
-                          onClick={() => update(task._id, { priority: task.priority === 'high' ? 'normal' : 'high' })}
-                          aria-pressed={task.priority === 'high'}
-                          aria-label={`Toggle high priority for "${task.title}"`}
-                          title={task.priority === 'high' ? 'High priority — click to clear' : 'Mark high priority'}
-                          className="p-1 rounded flex-shrink-0"
-                          style={{ color: task.priority === 'high' ? 'var(--color-danger)' : 'var(--text-muted)' }}
+                          onClick={() => update(task._id, { priority: cyclePriority(task.priority) })}
+                          aria-label={`Change priority for "${task.title}" (currently ${task.priority || 'normal'})`}
+                          title={`Priority: ${task.priority || 'normal'} — click to cycle`}
+                          className="p-1 rounded flex-shrink-0 inline-flex items-center gap-1"
+                          style={{ color: priorityColor(task.priority) }}
                         >
                           <Flag className="w-3 h-3" />
+                          <span className="text-[10px] font-bold uppercase">{task.priority || 'normal'}</span>
                         </button>
                       </div>
                     </div>

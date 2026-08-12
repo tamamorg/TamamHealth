@@ -547,7 +547,7 @@ export default function EhrClinicalDashboard({
   // "Print" — choose which lanes and which output (paper/PDF or CSV) instead
   // of window.print()'s whole-dashboard dump.
   const [printOpen, setPrintOpen] = useState(false);
-  // Inline search under the mini-calendar that filters the day's appointment list.
+  // Inline search above the mini-calendar that filters the day's appointment list.
   const [appointmentSearch, setAppointmentSearch] = useState('');
   const findPatientInputRef = useRef<HTMLInputElement>(null);
   // Modal renders its children a tick after open (portal mount) and then
@@ -1333,6 +1333,24 @@ export default function EhrClinicalDashboard({
 
       <section className={`ehr-workspace-grid ${view === 'dashboard' ? 'is-dashboard' : 'is-calendar'}`}>
         <aside className="ehr-left-rail">
+          {/* Search sits above the calendar so the list filter is the first
+              control clinicians see when scanning the records rail. */}
+          <div className="ehr-rail-search">
+            <Search className="ehr-rail-search-icon w-4 h-4" />
+            <input
+              type="search"
+              placeholder="Search appointments"
+              aria-label="Search the day's appointments"
+              value={appointmentSearch}
+              onChange={event => setAppointmentSearch(event.target.value)}
+            />
+            {appointmentSearch && (
+              <button type="button" className="ehr-rail-search-clear" aria-label="Clear search" onClick={() => setAppointmentSearch('')}>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
           <div className="ehr-mini-calendar">
             <div className="ehr-mini-calendar-title">
               <button type="button" onClick={() => setCalendarMonth(current => addMonths(current, -1))} aria-label="Previous month">
@@ -1367,22 +1385,6 @@ export default function EhrClinicalDashboard({
                 </button>
               ))}
             </div>
-          </div>
-
-          <div className="ehr-rail-search">
-            <Search className="ehr-rail-search-icon w-4 h-4" />
-            <input
-              type="search"
-              placeholder="Search appointments"
-              aria-label="Search the day's appointments"
-              value={appointmentSearch}
-              onChange={event => setAppointmentSearch(event.target.value)}
-            />
-            {appointmentSearch && (
-              <button type="button" className="ehr-rail-search-clear" aria-label="Clear search" onClick={() => setAppointmentSearch('')}>
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
 
           <DayActivityChart

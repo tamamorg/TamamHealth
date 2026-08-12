@@ -1160,6 +1160,8 @@ export type NutritionStatus = 'SAM' | 'MAM' | 'At Risk' | 'Underweight' | 'Norma
  * nutrition staff. Feeds the nutrition dashboard and program reports.
  * Facility-operational PHI; org-scoped sync.
  */
+export type NutritionFollowUpAction = 'needed' | 'followed_up' | 'referred' | 'treatment_started';
+
 export interface NutritionScreeningDoc extends BaseDoc {
   type: 'nutrition_screening';
   /** Optional link to a registered patient (screenings may precede registration). */
@@ -1177,6 +1179,11 @@ export interface NutritionScreeningDoc extends BaseDoc {
   /** Pregnant/lactating (ANC) — uses the adult MUAC threshold. */
   isAnc: boolean;
   status: NutritionStatus;
+  /** Free-text nutritionist notes (counselling, plan, observations). */
+  notes?: string;
+  /** Care follow-up after a flagged screening (SAM/MAM/at-risk). */
+  followUpAction?: NutritionFollowUpAction;
+  followUpAt?: string;
   /** yyyy-mm-dd. */
   screeningDate: string;
   screenedById?: string;
@@ -1243,7 +1250,7 @@ export interface ClinicianTaskDoc extends BaseDoc {
   /** ISO date (yyyy-mm-dd) the task should resurface / is due. */
   dueDate?: string;
   status: ClinicianTaskStatus;
-  priority?: 'normal' | 'high';
+  priority?: 'low' | 'normal' | 'medium' | 'high';
   /** Optional patient this task is about. */
   patientId?: string;
   patientName?: string;
