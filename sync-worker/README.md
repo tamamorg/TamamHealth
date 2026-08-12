@@ -42,13 +42,18 @@ directly. We chose a separate pull-style worker because:
 
 | Var                       | Required | Default                              | Notes                                                                                               |
 |---------------------------|----------|--------------------------------------|-----------------------------------------------------------------------------------------------------|
-| `COUCHDB_URL`             | yes      | —                                    | Internal CouchDB URL **with admin creds**, e.g. `http://admin:pw@couchdb:5984`. Container-to-container only. |
-| `COUCHDB_WEBHOOK_SECRET`  | yes      | —                                    | Min 32 chars. Same value the platform reads from its env. HMAC-SHA-256 over the JSON payload.       |
-| `PLATFORM_SYNC_URL`       | yes      | —                                    | Full URL of `/api/sync`, e.g. `http://platform:3000/api/sync`.                                      |
+| `COUCHDB_URL`             | yes      | —                                    | Credential-free internal CouchDB URL, e.g. `http://couchdb:5984`.                                    |
+| `COUCHDB_USER`            | production | —                                  | CouchDB machine user. Set together with `COUCHDB_PASSWORD`; never embed it in the URL.                |
+| `COUCHDB_PASSWORD`        | production | —                                  | CouchDB machine password.                                                                            |
+| `COUCHDB_WEBHOOK_SECRET`  | yes      | —                                    | Min 32 chars. Shared with the platform; signs timestamp, nonce, method, path, and body.               |
+| `PLATFORM_SYNC_URL`       | yes      | —                                    | Full HTTPS URL of `/api/sync`, e.g. `https://app.example.org/api/sync`.                              |
+| `REQUIRE_HTTPS`           | production | `false`                             | Set `true` outside local development.                                                                |
 | `POLL_INTERVAL_MS`        | no       | `5000`                               | Time between ticks. Min 100.                                                                         |
 | `BATCH_SIZE`              | no       | `100`                                | Max changes per CouchDB request per database per tick.                                              |
 | `STATE_FILE`              | no       | `/var/lib/sync-worker/state.json`    | Where last-seen seq per database is persisted. Mount a volume here.                                  |
 | `BACKOFF_MS`              | no       | `30000`                              | Sleep duration after 3 consecutive failed ticks.                                                    |
+| `REQUEST_TIMEOUT_MS`      | no       | `15000`                              | Timeout for CouchDB and platform requests.                                                           |
+| `HEARTBEAT_FILE`          | no       | `/var/lib/sync-worker/heartbeat.json`| Container-health heartbeat written after every completed poll.                                      |
 | `PLATFORM_SYNC_ROUTE_PATH`| no       | —                                    | Optional: read DB list off the platform's `route.ts` instead of the hardcoded fallback.             |
 
 ---
@@ -115,14 +120,9 @@ Cross-check against CouchDB:
 curl -u admin:$COUCHDB_PASSWORD http://localhost:5984/tamamhealth_patients | jq .update_seq
 ```
 
-— and the platform's record:
-
-```bash
-curl -s https://app.tamamhealth.org/api/sync | jq
-# { "databases": [ { "db_name":"tamamhealth_patients", "last_seq":"42-abcdef", "last_synced_at":"..." }, ... ] }
-```
-
-All three should agree (modulo seconds of poll lag).
+The worker automatically compares this state with the platform's authenticated
+checkpoint endpoint after a state-volume loss. `/api/sync` is intentionally not
+available to unsigned `curl` requests.
 
 ---
 
@@ -156,9 +156,12 @@ node index.mjs                   # with all required env unset → exits 2 with 
 Manual smoke test against a live CouchDB + platform stack:
 
 ```bash
-COUCHDB_URL=http://admin:pw@localhost:5984 \
+COUCHDB_URL=http://localhost:5984 \
+COUCHDB_USER=admin \
+COUCHDB_PASSWORD=pw \
 COUCHDB_WEBHOOK_SECRET="$(openssl rand -hex 32)" \
 PLATFORM_SYNC_URL=http://localhost:3000/api/sync \
+REQUIRE_HTTPS=false \
 POLL_INTERVAL_MS=1000 \
 node index.mjs
 ```
@@ -185,9 +188,10 @@ one poll interval.
 - **HMAC secret must be byte-identical on both sides.** Trailing newlines
   from `aws ssm get-parameter | tee` will break the signature silently —
   always use `--output text` and feed the value through env, not files.
-- **`COUCHDB_URL` must contain admin credentials** (CouchDB's `_changes`
-  feed for non-`_users` databases requires auth). Use `http://admin:$pw@host:5984`,
-  NOT a separate `Authorization` header.
+- **Set both `COUCHDB_USER` and `COUCHDB_PASSWORD`.** The worker sends Basic
+  authentication without putting credentials in URLs or logs.
+- **Production requests are replay-resistant.** Each call has a five-minute
+  timestamp window and a one-time nonce stored in shared Redis by Vercel.
 - **State file persistence.** In docker-compose, mount a named volume on
   `/var/lib/sync-worker`. Without that, every container restart re-syncs
   from `seq=0` (which is idempotent but expensive).

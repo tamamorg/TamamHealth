@@ -47,6 +47,7 @@
  */
 
 import { Pool, type PoolConfig } from 'pg';
+import { connectionStringForExplicitSsl, postgresSslOptions } from './postgres-ssl';
 
 // ============================================================================
 // SQL-injection allowlists.
@@ -449,15 +450,15 @@ function getPool(): Pool {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
+    const ssl = postgresSslOptions();
     const config: PoolConfig = {
-      connectionString,
+      connectionString: connectionStringForExplicitSsl(connectionString, ssl),
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
-      // SSL in production
-      ...(process.env.NODE_ENV === 'production' ? {
-        ssl: { rejectUnauthorized: false },
-      } : {}),
+      // Verify the provider certificate in production. A cluster-specific CA
+      // can be supplied through DATABASE_CA_CERT_BASE64.
+      ...(ssl ? { ssl } : {}),
     };
 
     pool = new Pool(config);

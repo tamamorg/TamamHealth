@@ -107,10 +107,11 @@ export async function GET(request: NextRequest) {
     if (!auth) return unauthorized();
     if (!hasRole(auth, READ_ROLES)) return forbidden();
     const { getAllUsers } = await import('@/lib/services/user-service');
+    const { redactUserForClient } = await import('@/lib/services/user-service');
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
     const scope = buildScopeFromAuth(auth);
     const users = await getAllUsers(scope);
-    return NextResponse.json({ users });
+    return NextResponse.json({ users: users.map(redactUserForClient) });
   } catch (err) {
     logApiError('[API /users GET]', err);
     return serverError();
@@ -119,7 +120,7 @@ export async function GET(request: NextRequest) {
 async function postHandler(request: NextRequest) {
   try {
     const { checkRateLimit } = await import('@/lib/api-security');
-    const rateLimitResponse = checkRateLimit(request, 'users:write', 20);
+    const rateLimitResponse = await checkRateLimit(request, 'users:write', 20);
     if (rateLimitResponse) return rateLimitResponse;
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
@@ -158,7 +159,8 @@ async function postHandler(request: NextRequest) {
         auth.sub,
         auth.username
       );
-      return NextResponse.json({ user: updated });
+      const { redactUserForClient } = await import('@/lib/services/user-service');
+      return NextResponse.json({ user: redactUserForClient(updated) });
     }
 
     if (!hasRole(auth, WRITE_ROLES)) return forbidden();
@@ -275,7 +277,8 @@ async function postHandler(request: NextRequest) {
         auth.sub,
         auth.username
       );
-      return NextResponse.json({ user: updated });
+      const { redactUserForClient } = await import('@/lib/services/user-service');
+      return NextResponse.json({ user: redactUserForClient(updated) });
     }
     // Create new user
     if (!body.username || !body.password || !body.name || !body.role) {
@@ -322,7 +325,8 @@ async function postHandler(request: NextRequest) {
       auth.sub,
       auth.username
     );
-    return NextResponse.json({ user }, { status: 201 });
+    const { redactUserForClient } = await import('@/lib/services/user-service');
+    return NextResponse.json({ user: redactUserForClient(user) }, { status: 201 });
   } catch (err) {
     // The user-service throws plain `Error` for validation problems
     // ("Invalid role", "Clinical users must be assigned to a hospital",

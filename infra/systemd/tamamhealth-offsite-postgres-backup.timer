@@ -1,0 +1,13 @@
+[Unit]
+Description=Nightly off-site encrypted PostgreSQL backup
+Documentation=file:///opt/tamamhealth/docs/operations/backups.md
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 UTC
+RandomizedDelaySec=15min
+Persistent=true
+Unit=tamamhealth-offsite-postgres-backup.service
+
+[Install]
+WantedBy=timers.target
+

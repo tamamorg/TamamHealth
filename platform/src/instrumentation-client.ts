@@ -1,8 +1,8 @@
 /**
- * Sentry — browser config.
+ * Sentry — browser instrumentation.
  *
  * No-op when no DSN is configured (current dev default). Loaded automatically
- * by the @sentry/nextjs build wrapper for the client bundle.
+ * through Next.js' instrumentation-client convention.
  *
  * PII safety: every event passes through `stripPHI` (see
  * `src/lib/observability.ts`) before transport. Cookies + obvious patient-data
@@ -20,3 +20,5 @@ Sentry.init({
   release: process.env.SENTRY_RELEASE,
   beforeSend: (event) => stripPHI(event),
 });
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

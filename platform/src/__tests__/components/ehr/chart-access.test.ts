@@ -17,7 +17,7 @@ import {
   chartLandingTab,
   resolveChartTab,
   type ChartAccess,
-} from '@/app/(dashboard)/patients/[id]/page';
+} from '@/components/patients/PatientDetailPage';
 
 const access = (over: Partial<ChartAccess> = {}): ChartAccess => ({
   canViewClinical: false,

@@ -28,6 +28,9 @@ export async function POST(request: NextRequest) {
     if (process.env.NEXT_PUBLIC_SYNC_ENABLED !== 'true') {
       return NextResponse.json({ enabled: false });
     }
+    if (process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED === 'true') {
+      return NextResponse.json({ enabled: true, gateway: true });
+    }
 
     // A fresh, single-use CouchDB password. The browser uses it once at
     // /_session and then holds only the resulting cookie.

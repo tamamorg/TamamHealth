@@ -3,12 +3,14 @@
  *
  * The direction of each database is a data-safety decision:
  *  - audit trails push only (a device must never overwrite the server's log),
- *  - identity/config pull only (clients read, never author, users/orgs/config),
+ *  - credential-bearing identity data never replicates to browsers,
+ *  - non-secret reference config is pull only,
  *  - the ledger is bidirectional so a clinic charge and a cashier payment
  *    converge.
  * These assertions pin those choices.
  */
-import { DATABASE_SYNC_CONFIGS } from '@/lib/sync/sync-config';
+import { DATABASE_DOCUMENT_TYPES, DATABASE_SYNC_CONFIGS } from '@/lib/sync/sync-config';
+import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 
 const byName = Object.fromEntries(DATABASE_SYNC_CONFIGS.map((c) => [c.localName, c]));
 
@@ -19,8 +21,11 @@ describe('sync directions', () => {
     expect(byName['tamamhealth_sync_events'].direction).toBe('push');
   });
 
-  test('identity and configuration are pull-only', () => {
-    expect(byName['tamamhealth_users'].direction).toBe('pull');
+  test('credential-bearing user documents are server-only', () => {
+    expect(byName['tamamhealth_users']).toBeUndefined();
+  });
+
+  test('non-secret reference configuration is pull-only', () => {
     expect(byName['tamamhealth_organizations'].direction).toBe('pull');
     expect(byName['tamamhealth_platform_config'].direction).toBe('pull');
     expect(byName['tamamhealth_fee_schedule'].direction).toBe('pull');
@@ -34,6 +39,14 @@ describe('sync directions', () => {
     for (const db of ['tamamhealth_patients', 'tamamhealth_medical_records', 'tamamhealth_prescriptions', 'tamamhealth_lab_results']) {
       expect(byName[db].direction).toBe('both');
     }
+  });
+
+  test('patient feedback has an org-scoped bidirectional source database', () => {
+    expect(byName['tamamhealth_patient_feedback']).toEqual({
+      localName: 'tamamhealth_patient_feedback',
+      direction: 'both',
+      orgScoped: true,
+    });
   });
 });
 
@@ -54,6 +67,10 @@ describe('org scoping', () => {
       expect(c.localName).toMatch(/^tamamhealth_/);
       expect(['push', 'pull', 'both']).toContain(c.direction);
       expect(typeof c.orgScoped).toBe('boolean');
+      expect(DATABASE_DOCUMENT_TYPES[c.localName]?.length).toBeGreaterThan(0);
+      for (const documentType of DATABASE_DOCUMENT_TYPES[c.localName] || []) {
+        expect(DOC_WRITE_ROLES[documentType]?.length).toBeGreaterThan(0);
+      }
     }
   });
 });

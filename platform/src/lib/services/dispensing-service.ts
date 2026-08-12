@@ -26,9 +26,9 @@
  * never by deletion). The invariant the ticket asks for holds either way:
  * you never end up with stock movement and no dispense record, or the reverse.
  */
-import { pharmacyInventoryDB, usersDB } from '../db';
+import { pharmacyInventoryDB } from '../db';
 import type {
-  PharmacyInventoryDoc, PrescriptionDoc, DispenseAllocation, UserRole, UserDoc,
+  PharmacyInventoryDoc, PrescriptionDoc, DispenseAllocation, UserRole,
 } from '../db-types';
 import { findByType } from './db-query';
 import { recordMovement } from './controlled-substance-service';
@@ -719,7 +719,8 @@ async function resolvePrescriberId(prescribedBy: string, orgId?: string): Promis
   const wanted = (prescribedBy || '').trim().toLowerCase();
   if (!wanted) return prescribedBy;
   try {
-    const users = await findByType<UserDoc>(usersDB(), 'user', {});
+    const { getAllUsers } = await import('./user-service');
+    const users = await getAllUsers();
     // Constrained to the prescription's own org: the local directory holds
     // every tenant's users, and an unconstrained unique-name match could
     // deliver this PHI-bearing task to a same-named clinician elsewhere.

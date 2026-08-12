@@ -41,7 +41,7 @@ export const DEFAULT_BOOKING_POLICY: Omit<BookingPolicyDoc, '_id' | 'createdAt' 
   requireInsurance: false,
   singleSlotPerFacility: false,
   consentTextPrivacy:
-    'I have read and agree to the Privacy Policy and Terms of Use, am at least 18, and have the authority to make this appointment.',
+    'I have read and agree to the Privacy Policy and Terms & Conditions, am at least 18, and have the authority to make this appointment.',
   consentTextSms:
     'I agree to receive text messages from this practice about my appointment. Message frequency and data rates may apply.',
   publicSlug: '',

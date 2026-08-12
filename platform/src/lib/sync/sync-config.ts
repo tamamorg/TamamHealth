@@ -9,6 +9,8 @@
 
 export type SyncDirection = 'both' | 'push' | 'pull';
 
+import { tenantDatabaseName } from './tenant-database';
+
 export interface DatabaseSyncConfig {
   /** Local PouchDB name (matches db.ts) */
   localName: string;
@@ -85,6 +87,7 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_staff_schedules',       direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_leave_requests',        direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_payroll_entries',       direction: 'both', orgScoped: true },
+  { localName: 'tamamhealth_patient_feedback',      direction: 'both', orgScoped: true },
 
   // ----- Billing / payments / insurance -----
   { localName: 'tamamhealth_billing',               direction: 'both', orgScoped: true },
@@ -115,8 +118,11 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_sync_events',           direction: 'push', orgScoped: true },
   { localName: 'tamamhealth_conflict_queue',        direction: 'both', orgScoped: true },
 
-  // ----- Identity / config (server-pushed, read-only on the client) -----
-  { localName: 'tamamhealth_users',                 direction: 'pull', orgScoped: true },
+  // ----- Identity / config -----
+  // `tamamhealth_users` is intentionally NOT replicated to browsers. User
+  // documents contain password/PIN hashes and are a server-only control-plane
+  // database. Staff-directory reads go through /api/users, which returns a
+  // redacted, tenant-scoped representation.
   { localName: 'tamamhealth_organizations',         direction: 'pull', orgScoped: false },
   { localName: 'tamamhealth_platform_config',       direction: 'pull', orgScoped: false },
 
@@ -159,11 +165,107 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_intake_forms',          direction: 'both', orgScoped: true },
 ];
 
+/**
+ * Document types permitted in each physical browser-sync database. This is a
+ * second boundary in addition to role-based CouchDB validation: an unknown or
+ * misplaced type cannot be smuggled through `_bulk_docs` and later interpreted
+ * by another module. Tombstones and `_local` replication checkpoints are
+ * handled separately by the gateway.
+ */
+export const DATABASE_DOCUMENT_TYPES: Readonly<Record<string, readonly string[]>> = {
+  tamamhealth_patients: ['patient'],
+  tamamhealth_medical_records: ['medical_record'],
+  tamamhealth_referrals: ['referral'],
+  tamamhealth_lab_results: ['lab_result'],
+  tamamhealth_prescriptions: ['prescription'],
+  tamamhealth_disease_alerts: ['disease_alert'],
+  tamamhealth_messages: ['message'],
+  tamamhealth_births: ['birth'],
+  tamamhealth_deaths: ['death'],
+  tamamhealth_facility_assessments: ['facility_assessment'],
+  tamamhealth_facility_census: ['facility_census'],
+  tamamhealth_immunizations: ['immunization'],
+  tamamhealth_anc: ['anc_visit'],
+  tamamhealth_follow_ups: ['follow_up'],
+  tamamhealth_hospitals: ['hospital'],
+  tamamhealth_problems: ['problem'],
+  tamamhealth_program_enrollments: ['program_enrollment'],
+  tamamhealth_procedures: ['procedure'],
+  tamamhealth_triage: ['triage'],
+  tamamhealth_appointments: ['appointment'],
+  tamamhealth_availability: ['availability'],
+  tamamhealth_announcements: ['announcement'],
+  tamamhealth_conversations: ['conversation'],
+  tamamhealth_patient_notes: ['patient_note'],
+  tamamhealth_clinical_notes: ['clinical_note'],
+  tamamhealth_encounters: ['clinical_encounter', 'encounter'],
+  tamamhealth_consultation_progress: ['consultation_progress'],
+  tamamhealth_handoffs: ['shift_handoff'],
+  tamamhealth_patient_transfers: ['patient_transfer'],
+  tamamhealth_order_sets: ['order_set'],
+  tamamhealth_phone_notes: ['phone_note'],
+  tamamhealth_assessments: ['assessment'],
+  tamamhealth_clinical_favorites: ['clinical_favorite'],
+  tamamhealth_consultation_templates: ['consultation_template'],
+  tamamhealth_text_shortcuts: ['text_shortcut'],
+  tamamhealth_clinician_tasks: ['clinician_task'],
+  tamamhealth_patient_documents: ['patient_document'],
+  tamamhealth_patient_reminders: ['patient_reminder'],
+  tamamhealth_nutrition_screenings: ['nutrition_screening'],
+  tamamhealth_nutrition_supplies: ['nutrition_supply'],
+  tamamhealth_telehealth: ['telehealth_session'],
+  tamamhealth_biometric_templates: ['biometric_template'],
+  tamamhealth_pharmacy_inventory: ['pharmacy_inventory'],
+  tamamhealth_wards: ['ward', 'bed', 'admission'],
+  tamamhealth_blood_bank: ['blood_bank'],
+  tamamhealth_emergency_plans: ['emergency_plan'],
+  tamamhealth_assets: ['asset'],
+  tamamhealth_staff_schedules: ['staff_schedule'],
+  tamamhealth_leave_requests: ['leave_request'],
+  tamamhealth_payroll_entries: ['payroll_entry'],
+  tamamhealth_patient_feedback: ['patient_feedback'],
+  tamamhealth_billing: ['billing'],
+  tamamhealth_fee_schedule: ['fee_schedule'],
+  tamamhealth_insurance_policies: ['insurance_policy'],
+  tamamhealth_eligibility_checks: ['eligibility_check'],
+  tamamhealth_charges: ['charge'],
+  tamamhealth_claims: ['claim'],
+  tamamhealth_adjustments: ['adjustment'],
+  tamamhealth_payments: ['payment'],
+  tamamhealth_refunds: ['refund'],
+  tamamhealth_saved_payment_methods: ['saved_payment_method'],
+  tamamhealth_payment_plans: ['payment_plan'],
+  tamamhealth_invoices: ['invoice'],
+  tamamhealth_visit_reasons: ['visit_reason'],
+  tamamhealth_booking_policies: ['booking_policy'],
+  tamamhealth_provider_profiles: ['provider_profile'],
+  tamamhealth_provider_reviews: ['provider_review'],
+  tamamhealth_sync_events: ['sync_event'],
+  tamamhealth_conflict_queue: ['conflict_queue'],
+  tamamhealth_organizations: ['organization'],
+  tamamhealth_platform_config: ['platform_config'],
+  tamamhealth_audit_log: ['audit_log'],
+  tamamhealth_controlled_substance_log: ['controlled_substance_log'],
+  tamamhealth_ledger: ['ledger_entry'],
+  tamamhealth_intake_forms: ['patient_intake_form'],
+};
+
 /** Build the full CouchDB remote URL for a given database name */
-export function getRemoteUrl(localName: string, couchdbUrl: string): string {
+export function getRemoteUrl(
+  localName: string,
+  couchdbUrl: string,
+  options: { orgScoped?: boolean; orgId?: string; tenantDatabasesEnabled?: boolean } = {},
+): string {
   // Strip trailing slash from base URL
   const base = couchdbUrl.replace(/\/+$/, '');
+  if (options.orgScoped && options.tenantDatabasesEnabled) {
+    return `${base}/${tenantDatabaseName(localName, options.orgId || '')}`;
+  }
   return `${base}/${localName}`;
+}
+
+export function tenantDatabasesEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED === 'true';
 }
 
 /** Check whether sync is enabled via environment variable */

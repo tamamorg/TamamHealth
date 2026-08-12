@@ -17,22 +17,32 @@ import { join } from 'node:path';
 import { createHmac } from 'node:crypto';
 
 import {
-  signPayload,
+  buildSignedHeaders,
   readEnv,
   loadState,
   saveState,
+  saveHeartbeat,
   pollDatabase,
   recoverStateFromPlatform,
   FALLBACK_DBS,
 } from './index.mjs';
 
-test('signPayload produces sha256= prefixed hex matching the platform verifier', () => {
+test('buildSignedHeaders signs timestamp, nonce, method, path, and body', () => {
   const secret = 'x'.repeat(32);
   const body = JSON.stringify({ db: 'tamamhealth_patients', changes: [] });
-  const sig = signPayload(secret, body);
-  assert.match(sig, /^sha256=[0-9a-f]{64}$/);
-  const expected = 'sha256=' + createHmac('sha256', secret).update(body, 'utf8').digest('hex');
-  assert.equal(sig, expected);
+  const headers = buildSignedHeaders({ secret, method: 'POST', url: 'https://app.example.org/api/sync', body });
+  assert.match(headers['x-tamamhealth-signature'], /^sha256=[0-9a-f]{64}$/);
+  assert.match(headers['x-tamamhealth-timestamp'], /^\d{10}$/);
+  assert.match(headers['x-tamamhealth-nonce'], /^[0-9a-f-]{36}$/);
+  const canonical = [
+    headers['x-tamamhealth-timestamp'],
+    headers['x-tamamhealth-nonce'],
+    'POST',
+    '/api/sync',
+    body,
+  ].join('\n');
+  const expected = 'sha256=' + createHmac('sha256', secret).update(canonical, 'utf8').digest('hex');
+  assert.equal(headers['x-tamamhealth-signature'], expected);
 });
 
 test('readEnv reports every missing required var', () => {
@@ -70,6 +80,40 @@ test('readEnv rejects short secrets', () => {
   }
 });
 
+test('readEnv requires HTTPS for an external platform webhook when requested', () => {
+  const saved = process.env.REQUIRE_HTTPS;
+  process.env.COUCHDB_URL = 'http://couchdb:5984';
+  process.env.COUCHDB_WEBHOOK_SECRET = 'x'.repeat(32);
+  process.env.PLATFORM_SYNC_URL = 'http://platform:3000/api/sync';
+  process.env.REQUIRE_HTTPS = 'true';
+  try {
+    const { errors } = readEnv();
+    assert.ok(errors.some((e) => e.includes('must use https://')));
+  } finally {
+    if (saved === undefined) delete process.env.REQUIRE_HTTPS;
+    else process.env.REQUIRE_HTTPS = saved;
+  }
+});
+
+test('readEnv rejects a partially configured CouchDB credential pair', () => {
+  const savedUser = process.env.COUCHDB_USER;
+  const savedPassword = process.env.COUCHDB_PASSWORD;
+  process.env.COUCHDB_URL = 'http://couchdb:5984';
+  process.env.COUCHDB_WEBHOOK_SECRET = 'x'.repeat(32);
+  process.env.PLATFORM_SYNC_URL = 'https://app.example.org/api/sync';
+  process.env.COUCHDB_USER = 'worker';
+  delete process.env.COUCHDB_PASSWORD;
+  try {
+    const { errors } = readEnv();
+    assert.ok(errors.some((e) => e.includes('must either both be set')));
+  } finally {
+    if (savedUser === undefined) delete process.env.COUCHDB_USER;
+    else process.env.COUCHDB_USER = savedUser;
+    if (savedPassword === undefined) delete process.env.COUCHDB_PASSWORD;
+    else process.env.COUCHDB_PASSWORD = savedPassword;
+  }
+});
+
 test('saveState/loadState round-trips JSON', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'sync-state-'));
   try {
@@ -80,6 +124,20 @@ test('saveState/loadState round-trips JSON', async () => {
     await saveState(path, wanted);
     const reread = await loadState(path);
     assert.deepEqual(reread, wanted);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('saveHeartbeat writes a current service status atomically', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sync-heartbeat-'));
+  try {
+    const path = join(dir, 'heartbeat.json');
+    await saveHeartbeat(path, { status: 'ok', totalErrors: 0 });
+    const parsed = JSON.parse(await import('node:fs/promises').then((fs) => fs.readFile(path, 'utf8')));
+    assert.equal(parsed.status, 'ok');
+    assert.equal(parsed.totalErrors, 0);
+    assert.ok(Number.isFinite(Date.parse(parsed.timestamp)));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -127,8 +185,15 @@ test('pollDatabase advances seq and POSTs an HMAC signed body', async (t) => {
   assert.equal(r.advancedTo, '7-deadbeef');
   assert.equal(state.tamamhealth_patients.seq, '7-deadbeef');
 
-  // verify HMAC matches what /api/sync expects
-  const expected = 'sha256=' + createHmac('sha256', env.COUCHDB_WEBHOOK_SECRET).update(postedBody, 'utf8').digest('hex');
+  // Verify the replay-resistant HMAC matches what /api/sync expects.
+  const canonical = [
+    postedHeaders['x-tamamhealth-timestamp'],
+    postedHeaders['x-tamamhealth-nonce'],
+    'POST',
+    '/api/sync',
+    postedBody,
+  ].join('\n');
+  const expected = 'sha256=' + createHmac('sha256', env.COUCHDB_WEBHOOK_SECRET).update(canonical, 'utf8').digest('hex');
   assert.equal(postedHeaders['x-tamamhealth-signature'], expected);
 });
 
@@ -151,7 +216,7 @@ test('recoverStateFromPlatform maps sync_metadata rows to worker state', async (
   }), { status: 200 });
   t.after(() => { globalThis.fetch = realFetch; });
 
-  const state = await recoverStateFromPlatform('http://platform:3000/api/sync');
+  const state = await recoverStateFromPlatform('http://platform:3000/api/sync', 'x'.repeat(32));
   assert.deepEqual(state, {
     tamamhealth_patients: { seq: '412-abc' },
     tamamhealth_lab_results: { seq: '77-def' },
@@ -168,7 +233,7 @@ test('recoverStateFromPlatform keeps CouchDB seqs opaque strings', async (t) => 
   }), { status: 200 });
   t.after(() => { globalThis.fetch = realFetch; });
 
-  const state = await recoverStateFromPlatform('http://platform:3000/api/sync');
+  const state = await recoverStateFromPlatform('http://platform:3000/api/sync', 'x'.repeat(32));
   assert.equal(state.tamamhealth_patients.seq, opaque);
 });
 
@@ -177,7 +242,7 @@ test('recoverStateFromPlatform returns null when Postgres is unconfigured (503)'
   globalThis.fetch = async () => new Response(JSON.stringify({ error: 'not configured' }), { status: 503 });
   t.after(() => { globalThis.fetch = realFetch; });
 
-  assert.equal(await recoverStateFromPlatform('http://platform:3000/api/sync'), null);
+  assert.equal(await recoverStateFromPlatform('http://platform:3000/api/sync', 'x'.repeat(32)), null);
 });
 
 test('recoverStateFromPlatform returns null when the platform is unreachable', async (t) => {
@@ -185,7 +250,7 @@ test('recoverStateFromPlatform returns null when the platform is unreachable', a
   globalThis.fetch = async () => { throw new Error('ECONNREFUSED'); };
   t.after(() => { globalThis.fetch = realFetch; });
 
-  assert.equal(await recoverStateFromPlatform('http://platform:3000/api/sync'), null);
+  assert.equal(await recoverStateFromPlatform('http://platform:3000/api/sync', 'x'.repeat(32)), null);
 });
 
 test('recoverStateFromPlatform ignores rows still at seq 0', async (t) => {
@@ -198,7 +263,7 @@ test('recoverStateFromPlatform ignores rows still at seq 0', async (t) => {
   }), { status: 200 });
   t.after(() => { globalThis.fetch = realFetch; });
 
-  assert.equal(await recoverStateFromPlatform('http://platform:3000/api/sync'), null);
+  assert.equal(await recoverStateFromPlatform('http://platform:3000/api/sync', 'x'.repeat(32)), null);
 });
 
 test('replaying the identical batch twice posts identical payloads (idempotency contract)', async (t) => {

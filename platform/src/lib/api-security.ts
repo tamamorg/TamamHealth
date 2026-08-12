@@ -8,6 +8,8 @@
  * Rate Limiting: Per-IP throttle for sensitive endpoints.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from './rate-limit';
+import { getClientIp } from './request-utils';
 
 // ===== CSRF / Origin Verification =====
 
@@ -50,89 +52,26 @@ export function verifyCsrf(request: NextRequest): NextResponse | null {
 
 // ===== Rate Limiting =====
 
-export interface RateLimitEntry {
-  count: number;
-  windowStart: number;
-}
-
-/**
- * Rate limit storage backend. The default in-memory store is fine for a
- * single-instance deployment; for multi-replica deployments replace it with
- * a Redis-backed store via `setRateLimitStore(myRedisStore)` at app boot.
- *
- * The API is intentionally synchronous so `checkRateLimit` stays non-async.
- * A Redis implementation should block on its underlying calls (e.g. using
- * a synchronous Redis client or Node's `Atomics.waitAsync` adapter), or
- * accept the trade-off of switching `checkRateLimit` to async.
- */
-export interface RateLimitStore {
-  /** Record a hit for the key; return the updated entry. */
-  hit(key: string, windowMs: number, now: number): RateLimitEntry;
-  /** Periodic cleanup of stale entries. Called by checkRateLimit. */
-  cleanup(now: number): void;
-}
-
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;  // 1 minute window
 const DEFAULT_MAX_REQUESTS = 60;          // 60 requests per minute
-const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
-
-class MemoryRateLimitStore implements RateLimitStore {
-  private entries: Map<string, RateLimitEntry> = new Map();
-  private lastCleanup = Date.now();
-
-  hit(key: string, windowMs: number, now: number): RateLimitEntry {
-    const existing = this.entries.get(key);
-    if (!existing || now - existing.windowStart > windowMs) {
-      const entry = { count: 1, windowStart: now };
-      this.entries.set(key, entry);
-      return entry;
-    }
-    existing.count += 1;
-    return existing;
-  }
-
-  cleanup(now: number): void {
-    if (now - this.lastCleanup < CLEANUP_INTERVAL_MS) return;
-    this.lastCleanup = now;
-    for (const [key, entry] of this.entries) {
-      if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS * 2) {
-        this.entries.delete(key);
-      }
-    }
-  }
-}
-
-let store: RateLimitStore = new MemoryRateLimitStore();
-
-/**
- * Swap the rate-limit backend. Call once at app boot (e.g. from
- * `instrumentation.ts`) before any API routes are hit.
- */
-export function setRateLimitStore(nextStore: RateLimitStore): void {
-  store = nextStore;
-}
 
 /**
  * Check rate limit for a given IP + endpoint combination.
  * Returns null if within limits, or a 429 response if exceeded.
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   request: NextRequest,
   endpointKey: string,
   maxRequests: number = DEFAULT_MAX_REQUESTS,
-): NextResponse | null {
-  const now = Date.now();
-  store.cleanup(now);
+): Promise<NextResponse | null> {
+  const verdict = await rateLimit({
+    key: `api:${endpointKey}:${getClientIp(request)}`,
+    limit: maxRequests,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+  });
 
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
-    || request.headers.get('x-real-ip')
-    || 'unknown';
-
-  const key = `${ip}:${endpointKey}`;
-  const entry = store.hit(key, RATE_LIMIT_WINDOW_MS, now);
-
-  if (entry.count > maxRequests) {
-    const retryAfter = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - entry.windowStart)) / 1000);
+  if (!verdict.allowed) {
+    const retryAfter = Math.max(1, Math.ceil((verdict.resetAt - Date.now()) / 1000));
     const response = NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429 }

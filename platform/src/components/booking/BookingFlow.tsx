@@ -325,6 +325,17 @@ export default function BookingFlow({
                 onChange={e => set('consentSms', e.target.checked)} />
               <span style={{ fontWeight: 500 }}>{policy.consentTextSms}</span>
             </label>
+            {/* The consent above names two documents; these are how the patient
+                actually reads them — in a new tab, without an account, and
+                without losing the half-filled form behind them. Separate links
+                rather than markup inside the consent string, which is
+                tenant-authored and rendered as plain text on purpose. */}
+            <p className="booking-consent-links">
+              <a href="/terms" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
+              <span aria-hidden> · </span>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+            </p>
+
             {/* Practice-authored, rendered as text. Never dangerouslySetInnerHTML:
                 this string is supplied by a tenant and read on a public page. */}
             {policy.policyText && <p className="booking-policy-text">{policy.policyText}</p>}

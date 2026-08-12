@@ -98,8 +98,8 @@ the aggregated store, or (b) formally retire the unused Postgres writeback and a
 - [ ] **Field-completeness drops in mappers:** death cause-of-death chain (WHO antecedent/contributing
   causes), immunization AEFI detail, triage vitals, facility IPC/WASH readiness are all dropped before
   Postgres. Refs: `sync/route.ts` mappers vs `db-types.ts` docs.
-- [ ] **Orphans/drift:** `patient_feedback` (Postgres table + policy + FALLBACK entry, but no sync-config
-  source and no mapper) — still open. ~~`FALLBACK_DBS` still lists dropped `boma_visits`~~ FIXED 2026-07:
+- [x] **Orphans/drift:** `patient_feedback` now has an org-scoped bidirectional sync source,
+  CouchDB-to-Postgres route, and complete field mapper. ~~`FALLBACK_DBS` still lists dropped `boma_visits`~~ FIXED 2026-07:
   removed the dead `boma_visits` entry from the sync-worker `FALLBACK_DBS`. Refs: `sync-worker/index.mjs`.
 
 ---

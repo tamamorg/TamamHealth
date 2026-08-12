@@ -27,6 +27,16 @@ const VALID_ROLES = Object.keys(ROLE_LABEL) as UserRole[];
 // DB path against mocked databases.
 const isBrowserRuntime = () => typeof window !== 'undefined' && !process.env.JEST_WORKER_ID;
 
+export type ClientSafeUser = Omit<UserDoc, 'passwordHash' | 'pinHash'>;
+
+/** Strip credential verifiers before a user document crosses an API boundary. */
+export function redactUserForClient(user: UserDoc): ClientSafeUser {
+  const { passwordHash: _passwordHash, pinHash: _pinHash, ...safe } = user;
+  void _passwordHash;
+  void _pinHash;
+  return safe;
+}
+
 /** POST an action to /api/users and translate failures into readable errors. */
 async function postUsersApi(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { apiFetch } = await import('../api-fetch');
@@ -51,6 +61,17 @@ async function postUsersApi(payload: Record<string, unknown>): Promise<Record<st
 }
 
 export async function getAllUsers(scope?: DataScope): Promise<UserDoc[]> {
+  if (isBrowserRuntime()) {
+    const { apiFetch } = await import('../api-fetch');
+    const response = await apiFetch('/api/users');
+    const body = await response.json().catch(() => ({})) as { users?: UserDoc[]; error?: string };
+    if (!response.ok) throw new Error(body.error || `Failed to load staff directory (${response.status})`);
+    // The API has already applied the authenticated actor's data scope. A
+    // second client-side scope pass is harmless and keeps existing callers'
+    // expectations intact without trusting the browser as the boundary.
+    const users = body.users ?? [];
+    return scope ? filterByScope(users, scope) : users;
+  }
   const db = usersDB();
   const all = await findByType<UserDoc>(db, 'user');
   /* istanbul ignore next -- scope filter: tested with and without */
@@ -58,6 +79,10 @@ export async function getAllUsers(scope?: DataScope): Promise<UserDoc[]> {
 }
 
 export async function getUserById(id: string): Promise<UserDoc | null> {
+  if (isBrowserRuntime()) {
+    const users = await getAllUsers();
+    return users.find(user => user._id === id) ?? null;
+  }
   try {
     const db = usersDB();
     return await db.get(id) as UserDoc;

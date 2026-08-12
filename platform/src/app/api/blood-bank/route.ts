@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 async function postHandler(request: NextRequest) {
   try {
     const { checkRateLimit } = await import('@/lib/api-security');
-    const rateLimitResponse = checkRateLimit(request, 'blood-bank:write', 30);
+    const rateLimitResponse = await checkRateLimit(request, 'blood-bank:write', 30);
     if (rateLimitResponse) return rateLimitResponse;
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();

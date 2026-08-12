@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { checkRateLimit, checkContentLength } = await import('@/lib/api-security');
-    const limited = checkRateLimit(request, 'account-requests:write', 8);
+    const limited = await checkRateLimit(request, 'account-requests:write', 8);
     if (limited) return limited;
     const tooLarge = checkContentLength(request, 32 * 1024);
     if (tooLarge) return tooLarge;
@@ -69,6 +69,12 @@ export async function POST(request: NextRequest) {
       if (applicantName.length < 2 || applicantName.length > 120) throw new Error('Full name is required');
       const organizationId = sanitizeString(body.organizationId) || undefined;
       const isOrgAdmin = requestedRole === 'org_admin';
+      if (isOrgAdmin && !organizationId && process.env.SINGLE_ORG_MODE === 'true') {
+        return NextResponse.json(
+          { error: 'Select the existing organization. New organizations are disabled in this deployment.' },
+          { status: 409 },
+        );
+      }
       if (!isOrgAdmin && !organizationId) throw new Error('Select an organization');
       const facilityId = sanitizeString(body.facilityId) || undefined;
       let facilityName = sanitizeString(body.facilityName).slice(0, 160) || undefined;
@@ -124,10 +130,31 @@ export async function POST(request: NextRequest) {
     let finalOrgId = orgId;
     let finalOrgName = target.organizationName;
     if (!finalOrgId) {
+      if (process.env.SINGLE_ORG_MODE === 'true') {
+        return NextResponse.json(
+          { error: 'New organizations are disabled in this deployment.' },
+          { status: 409 },
+        );
+      }
       if (role !== 'org_admin' || auth.role !== 'super_admin') return NextResponse.json({ error: 'Organization details are incomplete' }, { status: 400 });
-      const { createOrganization } = await import('@/lib/services/organization-service');
-      const org = await createOrganization({ name: target.organizationName!, slug: target.organizationSlug!, contactEmail: target.email, country: target.organizationCountry || 'South Sudan', primaryColor: '#2191D0', secondaryColor: '#015697', subscriptionStatus: 'trial', subscriptionPlan: 'basic', maxUsers: 50, maxHospitals: 10, featureFlags: { epidemicIntelligence: false, mchAnalytics: false, dhis2Export: false, aiClinicalSupport: false, communityHealth: false, facilityAssessments: false }, orgType: 'private', isActive: true }, auth.sub, auth.username);
+      const { createOrganization, getOrganizationBySlug } = await import('@/lib/services/organization-service');
+      const requestedSlug = target.organizationSlug!;
+      const existingOrg = await getOrganizationBySlug(requestedSlug);
+      if (existingOrg && (existingOrg.contactEmail !== target.email || existingOrg.createdBy !== auth.sub)) {
+        return NextResponse.json(
+          { error: 'That organization slug is already in use. Choose a different slug.' },
+          { status: 409 },
+        );
+      }
+      const org = existingOrg || await createOrganization({ name: target.organizationName!, slug: requestedSlug, contactEmail: target.email, country: target.organizationCountry || 'South Sudan', primaryColor: '#2191D0', secondaryColor: '#015697', subscriptionStatus: 'trial', subscriptionPlan: 'basic', maxUsers: 50, maxHospitals: 10, featureFlags: { epidemicIntelligence: false, mchAnalytics: false, dhis2Export: false, aiClinicalSupport: false, communityHealth: false, facilityAssessments: false }, orgType: 'private', isActive: true }, auth.sub, auth.username);
       finalOrgId = org._id; finalOrgName = org.name;
+      // Persist this checkpoint before user provisioning. If the following
+      // write fails, an approval retry resumes in the same tenant instead of
+      // creating a duplicate organization.
+      await updateAccountRequest(target._id, {
+        organizationId: finalOrgId,
+        organizationName: finalOrgName,
+      });
     }
     if (auth.role === 'org_admin' && finalOrgId !== auth.orgId) return forbidden();
     const facilityId = sanitizeString(body.facilityId) || target.facilityId;
@@ -141,11 +168,20 @@ export async function POST(request: NextRequest) {
     if (role !== 'org_admin' && (!facilityId || !facilityName)) {
       return NextResponse.json({ error: 'A facility is required for this account role' }, { status: 400 });
     }
-    const { createUser } = await import('@/lib/services/user-service');
+    const { createUser, getUserById, resetPassword } = await import('@/lib/services/user-service');
     const usernameBase = (sanitizeString(body.username) || target.email.split('@')[0]).toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 40) || `staff${Date.now()}`;
-    const username = `${usernameBase}.${Math.random().toString(36).slice(2, 6)}`;
-    const tempPassword = `${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}Aa!`;
-    const user = await createUser({ username, email: target.email, password: tempPassword, name: target.applicantName, role, orgId: finalOrgId, hospitalId: facilityId, hospitalName: facilityName, phone: target.phone }, auth.sub, auth.username);
+    const requestSuffix = target._id.replace(/[^a-z0-9]/gi, '').slice(-8).toLowerCase();
+    const username = `${usernameBase}.${requestSuffix}`;
+    const tempPassword = `${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}Aa1!`;
+    let user = await getUserById(`user-${username}`);
+    if (user) {
+      if (user.orgId !== finalOrgId) return forbidden('Provisioned account belongs to another organization.');
+      // Recovery path for an interrupted approval: rotate the unclaimed
+      // temporary credential and return only the newly generated value.
+      await resetPassword(user._id, tempPassword, auth.sub, auth.username);
+    } else {
+      user = await createUser({ username, email: target.email, password: tempPassword, name: target.applicantName, role, orgId: finalOrgId, hospitalId: facilityId, hospitalName: facilityName, phone: target.phone }, auth.sub, auth.username);
+    }
     const updated = await updateAccountRequest(target._id, { status: 'approved', reviewedAt: new Date().toISOString(), reviewedBy: auth.sub, provisionedUserId: user._id, organizationId: finalOrgId, organizationName: finalOrgName });
     return NextResponse.json({ request: updated, credentials: { username, temporaryPassword: tempPassword } });
   } catch (error) {

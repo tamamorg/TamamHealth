@@ -1,0 +1,116 @@
+name: tamamhealth
+
+# Production data plane for the Vercel-hosted TamamHealth application.
+# This stack intentionally does not run the Next.js platform or marketing
+# website. It owns durable clinical storage, verified local dumps, and the
+# optional analytics sync worker only.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "100m"
+    max-file: "5"
+
+services:
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    logging: *default-logging
+    environment:
+      CADDY_EMAIL: ${CADDY_EMAIL:?CADDY_EMAIL must be set for certificate notifications}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/digitalocean/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - clinical-data
+
+  couchdb:
+    image: tamamhealth-couchdb:${RELEASE_ID:?RELEASE_ID must be the deployed git commit SHA}
+    build:
+      context: ./infra/digitalocean
+      dockerfile: couchdb.Dockerfile
+    logging: *default-logging
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER:?COUCHDB_USER must be set}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}
+      COUCHDB_SECRET: ${COUCHDB_SECRET:?COUCHDB_SECRET must be set}
+    ports:
+      - "${COUCHDB_BIND_ADDRESS:-127.0.0.1}:${COUCHDB_PORT:-5984}:5984"
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+    restart: unless-stopped
+    networks:
+      - clinical-data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u \"$$COUCHDB_USER:$$COUCHDB_PASSWORD\" http://localhost:5984/_up || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  couchdb-backup:
+    image: tamamhealth-couchdb-backup:${RELEASE_ID:?RELEASE_ID must be the deployed git commit SHA}
+    build:
+      context: ./scripts
+      dockerfile: couchdb-backup.Dockerfile
+    logging: *default-logging
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER:?COUCHDB_USER must be set}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}
+      COUCHDB_HOST: couchdb
+      COUCHDB_PORT: "5984"
+      BACKUP_RETAIN_DAYS: ${BACKUP_RETAIN_DAYS:-14}
+    volumes:
+      - couchdb_backups:/backups
+    restart: unless-stopped
+    networks:
+      - clinical-data
+
+  sync-worker:
+    image: tamamhealth-sync-worker:${RELEASE_ID:?RELEASE_ID must be the deployed git commit SHA}
+    build:
+      context: ./sync-worker
+      dockerfile: Dockerfile
+    profiles: ["analytics"]
+    logging: *default-logging
+    environment:
+      COUCHDB_URL: http://couchdb:5984
+      COUCHDB_USER: ${COUCHDB_USER:?COUCHDB_USER must be set}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}
+      COUCHDB_WEBHOOK_SECRET: ${COUCHDB_WEBHOOK_SECRET:?COUCHDB_WEBHOOK_SECRET must be set}
+      PLATFORM_SYNC_URL: ${PLATFORM_SYNC_URL:?PLATFORM_SYNC_URL must be the Vercel https /api/sync endpoint}
+      REQUIRE_HTTPS: "true"
+      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-5000}
+      BATCH_SIZE: ${BATCH_SIZE:-100}
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-15000}
+      STATE_FILE: /var/lib/sync-worker/state.json
+      HEARTBEAT_FILE: /var/lib/sync-worker/heartbeat.json
+    volumes:
+      - sync_worker_state:/var/lib/sync-worker
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - clinical-data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  couchdb_data:
+  couchdb_backups:
+  sync_worker_state:
+
+networks:
+  clinical-data:
+    driver: bridge

@@ -11,181 +11,40 @@
  *   COUCHDB_ADMIN_USER       (or COUCHDB_USER)
  *   COUCHDB_ADMIN_PASSWORD   (or COUCHDB_PASSWORD)
  *
- * NOTE: This script is intentionally a plain Node ESM module so it can run
- * without tsx / a TypeScript toolchain. The orgScoped database list and the
- * validate function string are duplicated below to keep the script free of
- * .ts imports. Keep them in sync with:
- *   - platform/src/lib/sync/sync-config.ts  (orgScoped flags)
- *   - platform/src/lib/sync/validate-doc-update.ts  (ORG_SCOPED_VALIDATE_FN)
+ * Run through `tsx` so the database list and validator come from the exact
+ * same TypeScript modules as the application. Security policy must never be
+ * duplicated in a deployment script because a stale copy silently weakens the
+ * database even when application tests pass.
  */
 
 import { Buffer } from 'node:buffer';
 import process from 'node:process';
+import syncConfigModule from '../src/lib/sync/sync-config.ts';
+import writePermissionsModule from '../src/lib/sync/write-permissions.ts';
+import databasePolicyModule from '../src/lib/sync/couch-database-policy.ts';
 
-// ---------------------------------------------------------------------------
-// Duplicated from platform/src/lib/sync/sync-config.ts — orgScoped: true only.
-// If you add/remove orgScoped databases there, update this list too.
-// ---------------------------------------------------------------------------
-const ORG_SCOPED_DATABASES = [
-  // Core clinical
-  'tamamhealth_patients',
-  'tamamhealth_medical_records',
-  'tamamhealth_referrals',
-  'tamamhealth_lab_results',
-  'tamamhealth_prescriptions',
-  'tamamhealth_messages',
-  'tamamhealth_births',
-  'tamamhealth_deaths',
-  'tamamhealth_facility_assessments',
-  'tamamhealth_facility_census',
-  'tamamhealth_immunizations',
-  'tamamhealth_anc',
-  'tamamhealth_boma_visits',
-  'tamamhealth_follow_ups',
-  'tamamhealth_hospitals',
-  'tamamhealth_problems',
-  'tamamhealth_disease_alerts',
-  'tamamhealth_triage',
-  'tamamhealth_appointments',
-  'tamamhealth_availability',
-  'tamamhealth_announcements',
-  'tamamhealth_conversations',
-  'tamamhealth_patient_notes',
-  'tamamhealth_encounters',
-  'tamamhealth_consultation_progress',
-  'tamamhealth_handoffs',
-  'tamamhealth_patient_transfers',
-  'tamamhealth_order_sets',
-  'tamamhealth_phone_notes',
-  'tamamhealth_assessments',
-  'tamamhealth_clinical_favorites',
-  'tamamhealth_consultation_templates',
-  'tamamhealth_clinician_tasks',
-  'tamamhealth_patient_documents',
-  'tamamhealth_patient_reminders',
-  'tamamhealth_nutrition_screenings',
-  'tamamhealth_nutrition_supplies',
-  'tamamhealth_telehealth',
-  'tamamhealth_program_enrollments',
-  'tamamhealth_procedures',
-  'tamamhealth_biometric_templates',
-  'tamamhealth_clinical_notes',
-  'tamamhealth_text_shortcuts',
-  // Operational / facility
-  'tamamhealth_pharmacy_inventory',
-  'tamamhealth_wards',
-  'tamamhealth_blood_bank',
-  'tamamhealth_emergency_plans',
-  'tamamhealth_assets',
-  'tamamhealth_staff_schedules',
-  'tamamhealth_leave_requests',
-  'tamamhealth_payroll_entries',
-  'tamamhealth_patient_feedback',
-  // Billing / payments / insurance
-  'tamamhealth_billing',
-  'tamamhealth_fee_schedule',
-  'tamamhealth_insurance_policies',
-  'tamamhealth_eligibility_checks',
-  'tamamhealth_charges',
-  'tamamhealth_claims',
-  'tamamhealth_adjustments',
-  'tamamhealth_payments',
-  'tamamhealth_refunds',
-  'tamamhealth_saved_payment_methods',
-  'tamamhealth_payment_plans',
-  'tamamhealth_invoices',
-  // Sync infrastructure
-  'tamamhealth_sync_events',
-  'tamamhealth_conflict_queue',
-  // Identity / config (orgScoped subset)
-  'tamamhealth_users',
-  // Append-only audit trails
-  'tamamhealth_audit_log',
-  'tamamhealth_controlled_substance_log',
-  'tamamhealth_ledger',
-  'tamamhealth_intake_forms',
-  'tamamhealth_visit_reasons',
-  'tamamhealth_booking_policies',
-  'tamamhealth_provider_profiles',
-  'tamamhealth_provider_reviews',
-];
+const { DATABASE_SYNC_CONFIGS } = syncConfigModule;
+const { ORG_SCOPED_VALIDATE_FN } = writePermissionsModule;
+const {
+  databasePolicy,
+  ORG_SCOPE_DESIGN_DOC_ID,
+  SERVER_ONLY_DESIGN_DOC_ID,
+} = databasePolicyModule;
 
-// ---------------------------------------------------------------------------
-// Duplicated verbatim from platform/src/lib/sync/validate-doc-update.ts.
-// Keep these byte-for-byte identical.
-// ---------------------------------------------------------------------------
-const ORG_SCOPED_VALIDATE_FN = `function (newDoc, oldDoc, userCtx, secObj) {
-  // Replication brings in _deleted tombstones; allow them so deletes propagate.
-  if (newDoc._deleted) return;
+export const ORG_SCOPED_DATABASES = DATABASE_SYNC_CONFIGS
+  .filter(config => config.orgScoped)
+  .map(config => config.localName);
+export { ORG_SCOPED_VALIDATE_FN };
 
-  // Design docs are admin-only; the CouchDB security object handles that.
-  if (newDoc._id && newDoc._id.indexOf('_design/') === 0) return;
-
+const DESIGN_DOC_ID = ORG_SCOPE_DESIGN_DOC_ID;
+const READ_ONLY_DESIGN_DOC_ID = SERVER_ONLY_DESIGN_DOC_ID;
+const READ_ONLY_VALIDATE_FN = `function (newDoc, oldDoc, userCtx, secObj) {
   var roles = (userCtx && userCtx.roles) || [];
-
-  function hasRole(r) {
-    for (var i = 0; i < roles.length; i++) { if (roles[i] === r) return true; }
-    return false;
-  }
-
-  // Server-side service writes (sync-worker, migrations) run as _admin.
-  if (hasRole('_admin')) return;
-
-  // ── Tenant boundary ────────────────────────────────────────────────────
-  if (!newDoc.orgId || typeof newDoc.orgId !== 'string') {
-    throw({ forbidden: 'orgId is required on this database' });
-  }
-
   for (var i = 0; i < roles.length; i++) {
-    if (roles[i].indexOf('org:') === 0) {
-      var allowedOrg = roles[i].substring(4);
-      if (newDoc.orgId !== allowedOrg) {
-        throw({ forbidden: 'orgId mismatch: doc=' + newDoc.orgId + ' user=' + allowedOrg });
-      }
-    }
+    if (roles[i] === '_admin') return;
   }
-
-  // ── Immutable fields ───────────────────────────────────────────────────
-  // Rewriting orgId/hospitalId would move a record into another tenant's data;
-  // rewriting type would move it between permission rows.
-  if (oldDoc) {
-    var immutable = ["orgId","hospitalId","type"];
-    for (var j = 0; j < immutable.length; j++) {
-      var f = immutable[j];
-      if (oldDoc[f] !== undefined && newDoc[f] !== oldDoc[f]) {
-        throw({ forbidden: f + ' is immutable (was ' + oldDoc[f] + ', got ' + newDoc[f] + ')' });
-      }
-    }
-  }
-
-  // ── Role-based write permission, by document type ──────────────────────
-  var WRITE_ROLES = {"patient":["super_admin","org_admin","doctor","clinical_officer","clinician","nurse","midwife","front_desk","medical_superintendent","hrio","data_entry_clerk"],"medical_record":["super_admin","doctor","clinical_officer","clinician","medical_superintendent"],"clinical_note":["super_admin","doctor","clinical_officer","clinician","medical_superintendent"],"lab_result":["super_admin","doctor","clinical_officer","clinician","nurse","lab_tech","medical_superintendent"],"prescription":["super_admin","doctor","clinical_officer","clinician","medical_superintendent"],"triage":["super_admin","doctor","clinical_officer","clinician","nurse","front_desk","medical_superintendent"],"referral":["super_admin","doctor","clinical_officer","clinician","nurse","midwife","medical_superintendent"],"birth":["super_admin","doctor","clinical_officer","clinician","nurse","midwife","medical_superintendent","data_entry_clerk"],"death":["super_admin","doctor","clinical_officer","clinician","nurse","midwife","medical_superintendent","data_entry_clerk"],"anc_visit":["super_admin","doctor","clinical_officer","clinician","nurse","midwife","medical_superintendent","data_entry_clerk"],"immunization":["super_admin","doctor","clinical_officer","clinician","nurse","midwife","medical_superintendent","data_entry_clerk"],"telehealth_session":["super_admin","org_admin","doctor","clinical_officer","clinician","nurse"],"patient_transfer":["super_admin","org_admin","medical_superintendent","hospital_manager","doctor","clinician","clinical_officer","nurse","midwife","triage_nurse","rooming_nurse","nutritionist"]};
-  var allowed = WRITE_ROLES[newDoc.type];
-
-  // Unknown type: no rule to apply. See the note in write-permissions.ts.
-  if (!allowed) return;
-
-  // The acting role comes from the authenticated CouchDB user context, never
-  // from the document body — the client controls the body.
-  var actingRole = null;
-  for (var k = 0; k < roles.length; k++) {
-    if (roles[k].indexOf('role:') === 0) { actingRole = roles[k].substring(5); break; }
-  }
-
-  // No role claim at all: reject rather than assume. A user whose CouchDB
-  // account predates role provisioning must be re-provisioned, not trusted.
-  if (!actingRole) {
-    throw({ forbidden: 'no role claim on the CouchDB user; cannot write ' + newDoc.type });
-  }
-
-  for (var m = 0; m < allowed.length; m++) {
-    if (allowed[m] === actingRole) return;
-  }
-
-  throw({ forbidden: 'role ' + actingRole + ' may not write documents of type ' + newDoc.type });
+  throw({ forbidden: 'This database is server-managed and read-only to clients' });
 }`;
-
-const DESIGN_DOC_ID = '_design/tamamhealth-org-scope';
 
 function resolveConfig() {
   const url =
@@ -206,7 +65,7 @@ function resolveConfig() {
   return { baseUrl: url.replace(/\/+$/, ''), authHeader };
 }
 
-async function installOne(baseUrl, authHeader, dbName) {
+export async function installOne(baseUrl, authHeader, dbName) {
   const designUrl = `${baseUrl}/${dbName}/${DESIGN_DOC_ID}`;
 
   // 1. Probe for an existing design doc to capture _rev (idempotent updates).
@@ -253,30 +112,58 @@ async function installOne(baseUrl, authHeader, dbName) {
   return { ok: false, reason };
 }
 
+export async function installReadOnly(baseUrl, authHeader, dbName) {
+  const designUrl = `${baseUrl}/${dbName}/${READ_ONLY_DESIGN_DOC_ID}`;
+  const probe = await fetch(designUrl, {
+    method: 'GET',
+    headers: { Authorization: authHeader },
+  });
+  let existingRev = null;
+  if (probe.status === 200) {
+    const existing = await probe.json();
+    existingRev = existing && existing._rev ? existing._rev : null;
+  } else if (probe.status !== 404) {
+    return { ok: false, reason: `GET ${probe.status}` };
+  }
+  const body = {
+    _id: READ_ONLY_DESIGN_DOC_ID,
+    validate_doc_update: READ_ONLY_VALIDATE_FN,
+  };
+  if (existingRev) body._rev = existingRev;
+  const put = await fetch(designUrl, {
+    method: 'PUT',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return put.status === 201 || put.status === 202
+    ? { ok: true }
+    : { ok: false, reason: `PUT ${put.status}` };
+}
+
 /**
- * Grant per-DB read/write membership to org roles so authenticated CouchDB
- * users (provisioned by lib/sync/couch-auth.ts with `org:<orgId>` roles) can
- * replicate. Without this, CouchDB 3.x's admins-only default blocks every
- * browser pull/push with 403. Admin operations stay with the server admin
- * credentials — the admins block is intentionally left empty.
+ * Organizations granted membership on the *shared aggregate* databases, so
+ * authenticated CouchDB users (provisioned by lib/sync/couch-auth.ts with
+ * `org:<orgId>` roles) can replicate them. Without this, CouchDB 3.x's
+ * admins-only default blocks every browser pull/push with 403.
  *
- * Org list comes from COUCHDB_MEMBER_ORG_IDS (comma-separated orgIds);
- * defaults to the two demo-seed organizations.
+ * With no explicit org IDs, membership stays empty (admin-only). Production
+ * must never silently grant access to demo organization roles. Tenant
+ * databases do not consult this list — their single owning organization is
+ * read from the database name.
  */
-function memberRoles() {
-  const orgIds = (process.env.COUCHDB_MEMBER_ORG_IDS || 'org-moh-ss,org-mercy-hospital')
+function memberOrgIds() {
+  return (process.env.COUCHDB_MEMBER_ORG_IDS || '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  return orgIds.map((id) => `org:${id}`);
 }
 
-async function applySecurity(baseUrl, authHeader, dbName, roles) {
+export async function applySecurity(baseUrl, authHeader, dbName, roles) {
   const res = await fetch(`${baseUrl}/${dbName}/_security`, {
     method: 'PUT',
     headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      admins: { names: [], roles: [] },
+      admins: { names: [], roles: ['role:super_admin'] },
       members: { names: [], roles },
     }),
   });
@@ -295,53 +182,59 @@ async function applySecurity(baseUrl, authHeader, dbName, roles) {
 
 async function main() {
   const { baseUrl, authHeader } = resolveConfig();
-  console.log(
-    `[install-validate-doc-updates] target=${baseUrl.replace(/\/\/[^@]*@/, '//***@')} ` +
-    `databases=${ORG_SCOPED_DATABASES.length}`,
-  );
 
-  let okCount = 0;
-  let errCount = 0;
-  for (const db of ORG_SCOPED_DATABASES) {
-    try {
-      const result = await installOne(baseUrl, authHeader, db);
-      if (result.ok) {
-        console.log(`[ok] ${db}`);
-        okCount++;
-      } else {
-        console.log(`[error] ${db} ${result.reason}`);
-        errCount++;
-      }
-    } catch (err) {
-      console.log(`[error] ${db} ${err && err.message ? err.message : String(err)}`);
-      errCount++;
-    }
-  }
-
-  console.log(
-    `[install-validate-doc-updates] done ok=${okCount} error=${errCount} ` +
-    `total=${ORG_SCOPED_DATABASES.length}`,
-  );
-
-  // ── _security membership on every app database ──────────────────────────
-  // Replication needs membership on all tamamhealth_* DBs, not only the
-  // org-scoped subset above, so enumerate the live database list.
-  const roles = memberRoles();
-  let secOk = 0;
-  let secErr = 0;
+  // Every decision below is made against the databases CouchDB actually has,
+  // not against a static list — that is the only way tenant databases created
+  // by the migration receive the policy they need.
   const allDbsRes = await fetch(`${baseUrl}/_all_dbs`, {
     headers: { Authorization: authHeader },
   });
   const allDbs = (await allDbsRes.json()).filter(
     (name) => typeof name === 'string' && name.startsWith('tamamhealth_'),
   );
+
+  const options = {
+    tenantDatabasesEnabled: process.env.COUCHDB_TENANT_DATABASES_ENABLED === 'true',
+    memberOrgIds: memberOrgIds(),
+  };
+  console.log(
+    `[install-validate-doc-updates] target=${baseUrl.replace(/\/\/[^@]*@/, '//***@')} ` +
+    `databases=${allDbs.length} tenantMode=${options.tenantDatabasesEnabled}`,
+  );
+
+  let errCount = 0;
+  let secErr = 0;
+  let okCount = 0;
+  let secOk = 0;
+  let tenantCount = 0;
+
   for (const db of allDbs) {
+    const policy = databasePolicy(db, options);
+    if (policy.orgId) tenantCount++;
     try {
-      // Account requests are server-only PII. Unlike clinical databases they
-      // are intentionally absent from sync-config, so CouchDB members must
-      // not receive direct access even if they know the database name.
-      const dbRoles = db === 'tamamhealth_account_requests' ? [] : roles;
-      const result = await applySecurity(baseUrl, authHeader, db, dbRoles);
+      if (policy.orgScopedValidator) {
+        const result = await installOne(baseUrl, authHeader, db);
+        if (result.ok) {
+          okCount++;
+        } else {
+          console.log(`[error] ${db} org-scope validator ${result.reason}`);
+          errCount++;
+        }
+      }
+      if (policy.serverOnlyValidator) {
+        const result = await installReadOnly(baseUrl, authHeader, db);
+        if (!result.ok) {
+          console.log(`[error] ${db} server-only validator ${result.reason}`);
+          errCount++;
+        }
+      }
+    } catch (err) {
+      console.log(`[error] ${db} ${err && err.message ? err.message : String(err)}`);
+      errCount++;
+    }
+
+    try {
+      const result = await applySecurity(baseUrl, authHeader, db, policy.memberRoles);
       if (result.ok) {
         secOk++;
       } else {
@@ -353,15 +246,20 @@ async function main() {
       secErr++;
     }
   }
+
   console.log(
-    `[install-validate-doc-updates] _security membership roles=[${roles.join(', ')}] ` +
-    `ok=${secOk} error=${secErr} total=${allDbs.length}`,
+    `[install-validate-doc-updates] validators ok=${okCount} error=${errCount} · ` +
+    `_security ok=${secOk} error=${secErr} · tenant databases=${tenantCount} · ` +
+    `aggregate members=[${options.tenantDatabasesEnabled ? '' : options.memberOrgIds.join(', ')}]`,
   );
 
   if (errCount > 0 || secErr > 0) process.exit(1);
 }
 
-main().catch((err) => {
-  console.error('[install-validate-doc-updates] fatal', err);
-  process.exit(1);
-});
+const invokedDirectly = process.argv[1] && new URL(import.meta.url).pathname === process.argv[1];
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error('[install-validate-doc-updates] fatal', err);
+    process.exit(1);
+  });
+}

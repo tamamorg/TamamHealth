@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 async function postHandler(request: NextRequest) {
   try {
     const { checkRateLimit } = await import('@/lib/api-security');
-    const rateLimitResponse = checkRateLimit(request, 'organizations:write', 10);
+    const rateLimitResponse = await checkRateLimit(request, 'organizations:write', 10);
     if (rateLimitResponse) return rateLimitResponse;
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
@@ -101,6 +101,12 @@ async function postHandler(request: NextRequest) {
         auth.username
       );
       return NextResponse.json({ organization: updated });
+    }
+    if (process.env.SINGLE_ORG_MODE === 'true') {
+      return NextResponse.json(
+        { error: 'This deployment currently supports one organization. Add staff to the existing organization.' },
+        { status: 409 },
+      );
     }
     // Create new organization
     if (!body.name || !body.slug || !body.contactEmail || !body.country) {

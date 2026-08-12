@@ -19,7 +19,7 @@ const MIN_PASSWORD_LENGTH = 8;
 export async function POST(request: NextRequest) {
   try {
     const { checkRateLimit } = await import('@/lib/api-security');
-    const rateLimited = checkRateLimit(request, 'auth:change-password', 10);
+    const rateLimited = await checkRateLimit(request, 'auth:change-password', 10);
     if (rateLimited) return rateLimited;
 
     const auth = await getAuthPayload(request);

@@ -19,11 +19,12 @@ import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 // Mirror of buildPushFilter(role) in sync-service.ts. Kept structurally
 // identical; DOC_WRITE_ROLES is imported so the role lists can never drift.
 function pushFilter(role: string | undefined) {
-  return (doc: { _id?: string; type?: string }) => {
+  return (doc: { _id?: string; _deleted?: boolean; type?: string }) => {
     if (typeof doc._id === 'string' && doc._id.indexOf('_design/') === 0) return false;
-    if (!role) return true;
+    if (doc._deleted === true) return true;
+    if (!role || !doc.type) return false;
     const allowed = doc.type ? DOC_WRITE_ROLES[doc.type] : undefined;
-    if (!allowed) return true;
+    if (!allowed) return false;
     return (allowed as readonly string[]).includes(role);
   };
 }
@@ -65,29 +66,32 @@ describe('push filter: role-based clinical exclusions (BUG-005)', () => {
   });
 });
 
-describe('push filter: fail-open for unknown/untyped docs', () => {
+describe('push filter: fail-closed for unknown/untyped docs', () => {
   const f = pushFilter('front_desk');
-  test('untyped documents pass (the validator fails open on them too)', () => {
-    expect(f({ _id: 'cfg-1' })).toBe(true);
+  test('untyped documents are quarantined but tombstones still replicate', () => {
+    expect(f({ _id: 'cfg-1' })).toBe(false);
+    expect(f({ _id: 'pat-1', _deleted: true })).toBe(true);
   });
-  test('types absent from the matrix pass', () => {
+  test('known operational types use their explicit role row', () => {
     expect(f({ _id: 'appt-1', type: 'appointment' })).toBe(true);
-    expect(f({ _id: 'x-1', type: 'staff_schedule' })).toBe(true);
+    expect(f({ _id: 'x-1', type: 'staff_schedule' })).toBe(false);
+    expect(f({ _id: 'x-2', type: 'invented_type' })).toBe(false);
   });
 });
 
-describe('push filter: no role → identity except design docs', () => {
+describe('push filter: no role fails closed except for tombstones', () => {
   const f = pushFilter(undefined);
-  test('keeps every typed doc but still drops design docs', () => {
-    expect(f({ _id: 'rx-1', type: 'prescription' })).toBe(true);
+  test('drops typed docs and design docs while allowing deletes', () => {
+    expect(f({ _id: 'rx-1', type: 'prescription' })).toBe(false);
     expect(f({ _id: '_design/idx-1' })).toBe(false);
+    expect(f({ _id: 'old-1', _deleted: true })).toBe(true);
   });
 });
 
 /**
  * The wedge itself, expressed as an invariant: for any role, EVERY document
  * that survives the push filter is one the CouchDB validator would accept
- * (patient/clinical types this role may write, or a type outside the matrix).
+ * (a known type this role may write, or a deletion tombstone).
  * Nothing the validator rejects can reach the stream, so nothing can stall the
  * checkpoint.
  */

@@ -152,6 +152,19 @@ export function getDB(name: string): PouchDatabase {
   return databases[name];
 }
 
+/** Remove one browser database and release its cached IndexedDB handle. */
+export async function destroyLocalDatabase(name: string): Promise<void> {
+  if (!IS_BROWSER) return;
+  const PouchDB = loadPouchDB();
+  const db = databases[name] ?? new PouchDB(name);
+  delete databases[name];
+  try {
+    await db.destroy();
+  } finally {
+    delete databases[name];
+  }
+}
+
 // Typed database accessors
 export const usersDB = () => getDB('tamamhealth_users');
 export const accountRequestsDB = () => getDB('tamamhealth_account_requests');
@@ -192,6 +205,7 @@ export const emergencyPlansDB = () => getDB('tamamhealth_emergency_plans');
 export const assetsDB = () => getDB('tamamhealth_assets');
 export const leaveRequestsDB = () => getDB('tamamhealth_leave_requests');
 export const payrollEntriesDB = () => getDB('tamamhealth_payroll_entries');
+export const patientFeedbackDB = () => getDB('tamamhealth_patient_feedback');
 export const controlledSubstanceLogDB = () => getDB('tamamhealth_controlled_substance_log');
 export const problemsDB = () => getDB('tamamhealth_problems');
 // Care-program enrollment (ART/HIV, TB, PMTCT, ANC, Nutrition, EPI, NCD, other).
@@ -457,7 +471,7 @@ export async function resetAllDatabases(): Promise<void> {
     // leaving stale data behind on reset/re-seed.
     'tamamhealth_availability', 'tamamhealth_announcements',
     'tamamhealth_emergency_plans', 'tamamhealth_assets',
-    'tamamhealth_leave_requests', 'tamamhealth_payroll_entries',
+    'tamamhealth_leave_requests', 'tamamhealth_payroll_entries', 'tamamhealth_patient_feedback',
     'tamamhealth_clinical_favorites', 'tamamhealth_consultation_templates',
     'tamamhealth_clinician_tasks', 'tamamhealth_patient_documents',
     'tamamhealth_patient_reminders', 'tamamhealth_intake_forms',

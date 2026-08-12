@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 async function postHandler(request: NextRequest) {
   try {
     const { checkRateLimit } = await import('@/lib/api-security');
-    const rateLimitResponse = checkRateLimit(request, 'staff-schedules:write', 30);
+    const rateLimitResponse = await checkRateLimit(request, 'staff-schedules:write', 30);
     if (rateLimitResponse) return rateLimitResponse;
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
@@ -131,7 +131,7 @@ async function patchHandler(request: NextRequest) {
 async function deleteHandler(request: NextRequest) {
   try {
     const { checkRateLimit } = await import('@/lib/api-security');
-    const rateLimitResponse = checkRateLimit(request, 'staff-schedules:delete', 10);
+    const rateLimitResponse = await checkRateLimit(request, 'staff-schedules:delete', 10);
     if (rateLimitResponse) return rateLimitResponse;
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();

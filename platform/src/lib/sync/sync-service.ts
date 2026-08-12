@@ -13,6 +13,7 @@ import type { SyncDirection } from './sync-config';
 import { enqueueConflict, HIGH_RISK_RESOURCES } from '../services/conflict-service';
 import { addBreadcrumb, captureException } from '../observability';
 import { markDocsConflicted, markDocsSynced } from './offline-metadata';
+import { apiFetch } from '../api-fetch';
 
 export type SyncState = 'idle' | 'connecting' | 'active' | 'paused' | 'error' | 'denied';
 
@@ -130,15 +131,17 @@ import { DOC_WRITE_ROLES } from './write-permissions';
  * Build a PouchDB push filter that drops documents the server would reject:
  *  - every `_design/*` doc (members can't write design docs to CouchDB), and
  *  - any typed doc whose write matrix excludes this role.
- * Untyped docs and types absent from the matrix pass through (the validator
- * fails open on unknown types, so they will not wedge the checkpoint).
+ * Untyped docs and types absent from the matrix are dropped. The same-origin
+ * gateway fails closed on unknown document types; filtering them here keeps a
+ * malformed legacy record from wedging every later write in the checkpoint.
  */
 function buildPushFilter(role: string | undefined) {
-  return (doc: { _id?: string; type?: string }) => {
+  return (doc: { _id?: string; _deleted?: boolean; type?: string }) => {
     if (typeof doc._id === 'string' && doc._id.indexOf('_design/') === 0) return false;
-    if (!role) return true;
+    if (doc._deleted === true) return true;
+    if (!role || !doc.type) return false;
     const allowed = doc.type ? DOC_WRITE_ROLES[doc.type] : undefined;
-    if (!allowed) return true;
+    if (!allowed) return false;
     return (allowed as readonly string[]).includes(role);
   };
 }
@@ -189,7 +192,7 @@ export class SyncService {
     this.remoteDB = new PouchDB(opts.remoteUrl, {
       skip_setup: true,
       fetch: (url: RequestInfo | URL, requestOpts?: RequestInit) =>
-        fetch(url, { ...(requestOpts ?? {}), credentials: 'include' }),
+        apiFetch(url, { ...(requestOpts ?? {}), credentials: 'include' }),
     } as PouchDB.Configuration.RemoteDatabaseConfiguration);
     this.direction = opts.direction;
     this.orgId = opts.orgId;

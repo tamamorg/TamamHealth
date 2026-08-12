@@ -1,6 +1,6 @@
-import { labResultsDB, hospitalsDB, usersDB } from '../db';
+import { labResultsDB, hospitalsDB } from '../db';
 import { findByType } from './db-query';
-import type { LabResultDoc, HospitalDoc, UserDoc } from '../db-types';
+import type { LabResultDoc, HospitalDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
@@ -208,7 +208,8 @@ export async function updateLabResult(id: string, data: Partial<LabResultDoc>): 
 async function resolveOrderingClinicianId(result: LabResultDoc): Promise<string> {
   if (result.orderedById) return result.orderedById;
   try {
-    const users = await findByType<UserDoc>(usersDB(), 'user', {});
+    const { getAllUsers } = await import('./user-service');
+    const users = await getAllUsers();
     const wanted = result.orderedBy.trim().toLowerCase();
     // Candidates are constrained to the ORDER's own org: the local directory
     // holds every tenant's users, and an unconstrained unique-name match
