@@ -42,7 +42,7 @@ services:
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}
       COUCHDB_SECRET: ${COUCHDB_SECRET:?COUCHDB_SECRET must be set}
     ports:
-      - "127.0.0.1:${COUCHDB_PORT:-5984}:5984"
+      - "${COUCHDB_BIND_ADDRESS:-127.0.0.1}:${COUCHDB_PORT:-5984}:5984"
     volumes:
       - couchdb_data:/opt/couchdb/data
     restart: unless-stopped

@@ -148,7 +148,8 @@ done
 echo ""
 echo "--- Installing validate_doc_update design docs (org-scoping enforcement)..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if command -v node > /dev/null 2>&1; then
+TSX_PACKAGE="${SCRIPT_DIR}/../node_modules/tsx"
+if command -v node > /dev/null 2>&1 && [ -d "$TSX_PACKAGE" ]; then
   # Derive admin user/pass from the COUCHDB_URL (user:pass@host) for the
   # node script, which reads COUCHDB_ADMIN_USER / COUCHDB_ADMIN_PASSWORD.
   _userinfo="${COUCHDB_URL#*://}"
@@ -163,10 +164,10 @@ if command -v node > /dev/null 2>&1; then
   _host_only="${_host_only#*@}"
   _scheme="${COUCHDB_URL%%://*}"
   COUCHDB_URL_NOAUTH="${_scheme}://${_host_only}"
-  COUCHDB_URL="$COUCHDB_URL_NOAUTH" node "${SCRIPT_DIR}/install-validate-doc-updates.mjs" || \
+  COUCHDB_URL="$COUCHDB_URL_NOAUTH" node --import tsx "${SCRIPT_DIR}/install-validate-doc-updates.mjs" || \
     echo "  WARN: validate_doc_update install reported errors (see above)."
 else
-  echo "  SKIP: node not found on PATH. Run 'node platform/scripts/install-validate-doc-updates.mjs' manually."
+  echo "  SKIP: node/tsx unavailable. Run 'npm ci && npm run setup:couchdb:validators' from platform/."
 fi
 
 # ---------- 4. Configure CORS ----------

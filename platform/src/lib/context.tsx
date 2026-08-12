@@ -251,7 +251,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               // CouchDB AuthSession cookie may be gone (host-scoped, shorter
               // life). Re-establish it server-side so replication resumes
               // instead of silently 401-looping for the rest of the session.
-              if (process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true') {
+              if (
+                process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true' &&
+                process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true'
+              ) {
                 try {
                   const { refreshCouchSessionFromServer } = await import('./sync/couch-client-auth');
                   await refreshCouchSessionFromServer();
@@ -482,12 +485,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
           };
           usedApi = true;
 
+          // v7 hardening: legacy builds replicated the complete users DB,
+          // including password/PIN hashes, into IndexedDB. Tenant-database
+          // mode removes that replication surface; purge any legacy local copy
+          // once an online login proves this device can use the redacted API.
+          if (
+            process.env.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED === 'true' &&
+            process.env.NEXT_PUBLIC_DEMO_MODE !== 'true' &&
+            window.localStorage.getItem('tamamhealth.users-cache-purged-v1') !== 'true'
+          ) {
+            try {
+              const { destroyLocalDatabase } = await import('./db');
+              await destroyLocalDatabase('tamamhealth_users');
+              window.localStorage.setItem('tamamhealth.users-cache-purged-v1', 'true');
+            } catch {
+              // Try again on the next online login; never claim the purge ran.
+            }
+          }
+
           // Establish a CouchDB session cookie in the browser. The server
           // provisioned/updated the matching CouchDB user as part of the
           // login route, so the same plaintext password works for /_session.
           // Best-effort: a failure here means sync won't run this session
           // (offline-first PouchDB still works), so we don't fail login.
-          if (process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true') {
+          if (
+            process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true' &&
+            process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true'
+          ) {
             try {
               const { loginCouch, registerCouchCredentials, startCouchSessionHeartbeat } =
                 await import('./sync/couch-client-auth');
@@ -691,7 +715,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // best-effort
       }
 
-      if (process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true') {
+      if (
+        process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true' &&
+        process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true'
+      ) {
         try {
           const { logoutCouch, clearCouchCredentials } = await import('./sync/couch-client-auth');
           clearCouchCredentials();

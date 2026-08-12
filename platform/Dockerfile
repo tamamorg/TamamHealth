@@ -7,7 +7,6 @@ COPY . .
 # run in production without JWT_SECRET. The real secret is injected at runtime;
 # this build-time value only satisfies the guard. Builder-stage only — never
 # reaches the runtime image. Mirrors ci.yml.
-ARG JWT_SECRET=docker-build-time-placeholder-not-used-at-runtime
 # Demo mode is read as `NEXT_PUBLIC_DEMO_MODE !== 'false'` (src/lib/db-seed.ts),
 # i.e. it is OPT-OUT, and NEXT_PUBLIC_* is inlined into the client bundle at
 # BUILD time. A runtime `environment:` entry in docker-compose therefore cannot
@@ -22,8 +21,24 @@ ARG JWT_SECRET=docker-build-time-placeholder-not-used-at-runtime
 # The public demo deployment must pass --build-arg NEXT_PUBLIC_DEMO_MODE=true
 # explicitly.
 ARG NEXT_PUBLIC_DEMO_MODE=false
+ARG NEXT_PUBLIC_SYNC_ENABLED=false
+ARG NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=false
+ARG NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=false
+ARG NEXT_PUBLIC_COUCHDB_URL=
+ARG NEXT_PUBLIC_APP_URL=
+ARG NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=false
+ARG NEXT_PUBLIC_BUILD_ID=
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN JWT_SECRET="$JWT_SECRET" NEXT_PUBLIC_DEMO_MODE="$NEXT_PUBLIC_DEMO_MODE" npm run build
+RUN JWT_SECRET="docker-build-time-placeholder-not-used-at-runtime" \
+    NEXT_PUBLIC_DEMO_MODE="$NEXT_PUBLIC_DEMO_MODE" \
+    NEXT_PUBLIC_SYNC_ENABLED="$NEXT_PUBLIC_SYNC_ENABLED" \
+    NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED="$NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED" \
+    NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED="$NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED" \
+    NEXT_PUBLIC_COUCHDB_URL="$NEXT_PUBLIC_COUCHDB_URL" \
+    NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
+    NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE="$NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE" \
+    NEXT_PUBLIC_BUILD_ID="$NEXT_PUBLIC_BUILD_ID" \
+    npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -33,7 +48,16 @@ ENV NODE_ENV=production
 # deploy-production.yml reads it and refuses to promote a demo-mode image to
 # production. Without this the flag is invisible once the image is built.
 ARG NEXT_PUBLIC_DEMO_MODE=false
+ARG NEXT_PUBLIC_SYNC_ENABLED=false
+ARG NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=false
+ARG NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=false
+ARG NEXT_PUBLIC_COUCHDB_URL=
+ARG NEXT_PUBLIC_APP_URL=
+ARG NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=false
+ARG NEXT_PUBLIC_BUILD_ID=
 LABEL org.tamamhealth.demo-mode="${NEXT_PUBLIC_DEMO_MODE}"
+LABEL org.tamamhealth.tenant-databases="${NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED}"
+LABEL org.tamamhealth.sync-gateway="${NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED}"
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./

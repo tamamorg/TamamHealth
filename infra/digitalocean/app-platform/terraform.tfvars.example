@@ -1,0 +1,16 @@
+# Never put real values in a tracked file. Copy to terraform.tfvars (gitignored)
+# only after configuring an encrypted, access-controlled remote state backend.
+
+runtime_secrets = {
+  JWT_SECRET               = "REPLACE"
+  PHI_ENCRYPTION_KEY       = "REPLACE_BASE64_32_BYTES"
+  COUCHDB_ADMIN_USER       = "REPLACE"
+  COUCHDB_ADMIN_PASSWORD   = "REPLACE"
+  COUCHDB_GATEWAY_SECRET   = "REPLACE_32_OR_MORE_RANDOM_BYTES"
+  COUCHDB_WEBHOOK_SECRET   = "REPLACE_32_OR_MORE_RANDOM_BYTES"
+  DATABASE_CA_CERT_BASE64  = "REPLACE"
+  UPSTASH_REDIS_REST_URL   = "REPLACE"
+  UPSTASH_REDIS_REST_TOKEN = "REPLACE"
+  AIRTEL_WEBHOOK_SECRET    = "REPLACE"
+  MPESA_WEBHOOK_SECRET     = "REPLACE"
+}

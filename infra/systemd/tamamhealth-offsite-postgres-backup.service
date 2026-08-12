@@ -1,0 +1,26 @@
+[Unit]
+Description=TamamHealth off-site encrypted PostgreSQL backup
+Documentation=file:///opt/tamamhealth/docs/operations/backups.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/tamamhealth
+EnvironmentFile=/etc/tamamhealth/backup.env
+ExecStart=/opt/tamamhealth/scripts/backup-postgres.sh
+SuccessExitStatus=0
+Restart=on-failure
+RestartSec=15min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target
+

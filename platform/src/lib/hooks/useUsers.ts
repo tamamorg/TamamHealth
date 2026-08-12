@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { UserDoc, UserRole } from '../db-types';
 import { useDataScope } from './useDataScope';
-import { makeCoalescer } from './live-reload';
-import { usersDB } from '../db';
 
 export function useUsers() {
   const [users, setUsers] = useState<UserDoc[]>([]);
@@ -30,18 +28,13 @@ export function useUsers() {
     loadUsers();
   }, [loadUsers]);
 
-  // Live PouchDB subscription — reflect writes arriving from sync/other tabs.
+  // Staff identity is server-managed and deliberately excluded from browser
+  // replication because user docs contain password/PIN hashes. Refresh when
+  // the tab regains focus; mutations below also refresh immediately.
   useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadUsers(); });
-    const changes = usersDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* transient feed errors; next load resyncs */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
+    const refresh = () => { if (document.visibilityState === 'visible') void loadUsers(); };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
   }, [loadUsers]);
 
   const create = useCallback(async (data: {

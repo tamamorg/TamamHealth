@@ -59,6 +59,22 @@ jobs:
           # the demo variant and never exercised the real-mode code paths that
           # reach production.
           NEXT_PUBLIC_DEMO_MODE: 'false'
+          NEXT_PUBLIC_SYNC_ENABLED: 'true'
+          NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED: 'true'
+          NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: 'true'
+          NEXT_PUBLIC_COUCHDB_URL: https://v7.example.invalid/api/couch
+          NEXT_PUBLIC_APP_URL: https://v7.example.invalid
+          COUCHDB_URL: http://10.114.0.3:5984
+          COUCHDB_ADMIN_USER: ci-admin
+          COUCHDB_ADMIN_PASSWORD: ci-admin-password-0123456789-abcdefghijklmnopqrstuvwxyz
+          COUCHDB_GATEWAY_SECRET: ci-gateway-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+          COUCHDB_WEBHOOK_SECRET: ci-webhook-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+          PHI_ENCRYPTION_ENABLED: 'true'
+          PHI_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          UPSTASH_REDIS_REST_URL: https://redis.example.invalid
+          UPSTASH_REDIS_REST_TOKEN: ci-token
+          AIRTEL_WEBHOOK_SECRET: ci-airtel-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+          MPESA_WEBHOOK_SECRET: ci-mpesa-secret-0123456789-abcdefghijklmnopqrstuvwxyz
           NEXT_TELEMETRY_DISABLED: '1'
 
       - name: Upload coverage
@@ -142,3 +158,47 @@ jobs:
 
       - name: Tests
         run: npm test
+
+  infrastructure:
+    name: infrastructure · terraform + deployment manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+
+      # The migration scripts import the application's TypeScript sync-config
+      # and permission matrix through tsx, so they need the platform's
+      # dependencies installed rather than bare Node.
+      - name: Install platform dependencies
+        working-directory: platform
+        run: npm ci
+
+      - name: Terraform format
+        run: terraform fmt -check -recursive infra/digitalocean/app-platform
+
+      - name: Terraform init (no backend)
+        working-directory: infra/digitalocean/app-platform
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        working-directory: infra/digitalocean/app-platform
+        run: terraform validate
+
+      - name: Validate migration scripts without network writes
+        working-directory: platform
+        env:
+          DRY_RUN: 'true'
+          COUCHDB_URL: https://couch.invalid
+          COUCHDB_ADMIN_USER: ci-user
+          COUCHDB_ADMIN_PASSWORD: ci-password
+          COUCHDB_TENANT_ORG_IDS: org-ci-clinic
+        run: npm run db:migrate:couchdb-tenants

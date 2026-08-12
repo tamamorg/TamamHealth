@@ -15,6 +15,7 @@ import {
   getRemoteUrl,
   getCouchDBUrl,
   isSyncEnabled,
+  tenantDatabasesEnabled,
 } from './sync-config';
 
 export type AggregateState =
@@ -179,6 +180,7 @@ export class SyncManager {
   /** Spin up the per-DB SyncService instances. Caller has already (or will) become leader. */
   private startReplications(): void {
     const couchdbUrl = getCouchDBUrl();
+    const useTenantDatabases = tenantDatabasesEnabled();
 
     // A single client runs ~76 databases. Left as continuous longpolls, their
     // pull feeds saturate the browser's per-host connection limit and starve
@@ -193,7 +195,11 @@ export class SyncManager {
 
     for (const config of DATABASE_SYNC_CONFIGS) {
       const localDB = getDB(config.localName);
-      const remoteUrl = getRemoteUrl(config.localName, couchdbUrl);
+      const remoteUrl = getRemoteUrl(config.localName, couchdbUrl, {
+        orgScoped: config.orgScoped,
+        orgId: this.orgId,
+        tenantDatabasesEnabled: useTenantDatabases,
+      });
 
       const service = new SyncService({
         localDB,

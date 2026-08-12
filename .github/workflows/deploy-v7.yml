@@ -1,0 +1,103 @@
+name: deploy-v7-app-platform
+
+# Production deployment is manual and uses the protected `production`
+# environment. Configure required reviewers in GitHub before enabling it.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Full commit SHA expected on the App Platform source branch
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-v7-app-platform
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_sha }}
+
+      - name: Require an exact reviewed commit
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ inputs.expected_sha }}"
+          test "$(git ls-remote origin refs/heads/main | awk '{print $1}')" = "${{ inputs.expected_sha }}"
+
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Validate deployment target
+        id: target
+        env:
+          APP_ID: ${{ secrets.DO_V7_APP_ID }}
+        run: |
+          test -n "$APP_ID"
+          doctl apps get "$APP_ID" --format ID,Spec.Name,Spec.Region,ActiveDeployment.ID
+          PREVIOUS_DEPLOYMENT_ID="$(doctl apps get "$APP_ID" --format ActiveDeployment.ID --no-header)"
+          test -n "$PREVIOUS_DEPLOYMENT_ID"
+          echo "previous_deployment_id=$PREVIOUS_DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger v7 deployment
+        id: deploy
+        env:
+          APP_ID: ${{ secrets.DO_V7_APP_ID }}
+        run: |
+          DEPLOYMENT_ID="$(doctl apps create-deployment "$APP_ID" --update-sources --force-rebuild --format ID --no-header)"
+          test -n "$DEPLOYMENT_ID"
+          echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for deployment
+        env:
+          APP_ID: ${{ secrets.DO_V7_APP_ID }}
+          DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
+        run: |
+          for attempt in $(seq 1 60); do
+            PHASE="$(doctl apps get-deployment "$APP_ID" "$DEPLOYMENT_ID" --format Phase --no-header)"
+            echo "phase=$PHASE attempt=$attempt"
+            case "$PHASE" in
+              ACTIVE) exit 0 ;;
+              ERROR|CANCELED|SUPERSEDED) exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "Deployment timed out"
+          exit 1
+
+      - name: Smoke test health and login page
+        env:
+          V7_BASE_URL: ${{ secrets.DO_V7_BASE_URL }}
+        run: |
+          test -n "$V7_BASE_URL"
+          curl --fail --silent --show-error --retry 6 --retry-all-errors \
+            --max-time 15 "$V7_BASE_URL/api/health" | jq -e '.status == "ok"'
+          curl --fail --silent --show-error --retry 3 --max-time 15 \
+            --output /dev/null "$V7_BASE_URL/login"
+
+      - name: Roll back when post-deployment smoke tests fail
+        if: failure() && steps.target.outputs.previous_deployment_id != ''
+        env:
+          APP_ID: ${{ secrets.DO_V7_APP_ID }}
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          PREVIOUS_DEPLOYMENT_ID: ${{ steps.target.outputs.previous_deployment_id }}
+        run: |
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"deployment_id\":\"$PREVIOUS_DEPLOYMENT_ID\"}" \
+            "https://api.digitalocean.com/v2/apps/$APP_ID/rollback"
+
+      - name: Deployment summary
+        run: |
+          echo "### v7 deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${{ inputs.expected_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deployment: \`${{ steps.deploy.outputs.deployment_id }}\`" >> "$GITHUB_STEP_SUMMARY"

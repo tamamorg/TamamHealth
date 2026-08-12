@@ -152,6 +152,19 @@ export function getDB(name: string): PouchDatabase {
   return databases[name];
 }
 
+/** Remove one browser database and release its cached IndexedDB handle. */
+export async function destroyLocalDatabase(name: string): Promise<void> {
+  if (!IS_BROWSER) return;
+  const PouchDB = loadPouchDB();
+  const db = databases[name] ?? new PouchDB(name);
+  delete databases[name];
+  try {
+    await db.destroy();
+  } finally {
+    delete databases[name];
+  }
+}
+
 // Typed database accessors
 export const usersDB = () => getDB('tamamhealth_users');
 export const accountRequestsDB = () => getDB('tamamhealth_account_requests');

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# install-offsite-backup.sh — install the nightly off-site backup timer.
+# install-offsite-backup.sh — install nightly CouchDB and PostgreSQL backups.
 #
 # Until this is run, nightly CouchDB dumps stay on the SAME droplet as the
 # database. A disk failure or a destroyed droplet loses the database and every
@@ -44,6 +44,7 @@ it holds credentials:
   install -d -m 0700 /etc/tamamhealth
   cat > $ENV_FILE <<'ENV'
   BACKUP_BUCKET=your-bucket-name
+  DATABASE_URL=postgresql://backup-user:password@private-host:25060/tamamhealth?sslmode=require
   AWS_REGION=af-south-1
   AWS_ACCESS_KEY_ID=...
   AWS_SECRET_ACCESS_KEY=...
@@ -62,6 +63,7 @@ else
   # shellcheck disable=SC1090
   . "$ENV_FILE"
   [ -n "${BACKUP_BUCKET:-}" ] || { red "  ✗ BACKUP_BUCKET unset in $ENV_FILE"; missing=1; }
+  [ -n "${DATABASE_URL:-}" ] || { red "  ✗ DATABASE_URL unset in $ENV_FILE (required for PostgreSQL backup)"; missing=1; }
   PUBKEY="${BACKUP_PUBKEY_PATH:-/etc/tamamhealth/backup-pubkey.gpg}"
   if [ ! -f "$PUBKEY" ]; then
     red "  ✗ Backup public key missing at $PUBKEY"
@@ -77,16 +79,20 @@ green "  ✓ prerequisites present"
 say "Installing systemd units"
 install -m 0644 "${SRC}/tamamhealth-offsite-backup.service" "${UNIT_DIR}/"
 install -m 0644 "${SRC}/tamamhealth-offsite-backup.timer"   "${UNIT_DIR}/"
+install -m 0644 "${SRC}/tamamhealth-offsite-postgres-backup.service" "${UNIT_DIR}/"
+install -m 0644 "${SRC}/tamamhealth-offsite-postgres-backup.timer"   "${UNIT_DIR}/"
 systemctl daemon-reload
-systemctl enable --now tamamhealth-offsite-backup.timer
+systemctl enable --now tamamhealth-offsite-backup.timer tamamhealth-offsite-postgres-backup.timer
 
 green "Installed."
 echo
 say "Next run:"
-systemctl list-timers tamamhealth-offsite-backup.timer --no-pager || true
+systemctl list-timers tamamhealth-offsite-backup.timer tamamhealth-offsite-postgres-backup.timer --no-pager || true
 echo
 say "Verify NOW rather than trusting it — an untested backup is not a backup:"
 echo "    sudo systemctl start tamamhealth-offsite-backup.service"
 echo "    journalctl -u tamamhealth-offsite-backup.service -n 50 --no-pager"
+echo "    sudo systemctl start tamamhealth-offsite-postgres-backup.service"
+echo "    journalctl -u tamamhealth-offsite-postgres-backup.service -n 50 --no-pager"
 echo
 say "Then prove a restore works: scripts/backup-restore-drill.sh"

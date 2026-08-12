@@ -46,6 +46,18 @@ export async function createOrganization(
     createdBy: actorId,
   };
 
+  // Provision the physical tenant boundary before publishing the organization
+  // as active. This runs only on the server/API path. If CouchDB provisioning
+  // fails, creation fails closed and no login can be issued into a tenant that
+  // has nowhere safe to sync clinical data.
+  if (
+    typeof window === 'undefined' &&
+    process.env.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED === 'true'
+  ) {
+    const { provisionOrganizationDatabases } = await import('../sync/couch-auth');
+    await provisionOrganizationDatabases(doc._id);
+  }
+
   const resp = await db.put(doc);
   doc._rev = resp.rev;
   const { logAudit } = await import('./audit-service');

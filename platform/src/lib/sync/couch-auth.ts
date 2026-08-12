@@ -18,7 +18,15 @@
  * bundles is a build error by design — admin creds must not be shipped.
  */
 import { Buffer } from 'node:buffer';
+import { createHmac } from 'node:crypto';
 import { DATABASE_SYNC_CONFIGS } from './sync-config';
+import {
+  tenantDatabaseName,
+  assertOrganizationId,
+  tenantReplicationDocuments,
+  type TenantReplicationDocument,
+} from './tenant-database';
+import { ORG_SCOPED_VALIDATE_FN } from './validate-doc-update';
 
 interface CouchAdminEnv {
   baseUrl: string;
@@ -84,6 +92,73 @@ async function couchFetch(opts: CouchFetchOpts): Promise<unknown> {
   return res.json().catch(() => null);
 }
 
+async function ensureDatabase(dbName: string): Promise<void> {
+  const { baseUrl, authHeader } = adminEnv();
+  const res = await fetch(`${baseUrl}/${encodeURIComponent(dbName)}`, {
+    method: 'PUT',
+    headers: { Authorization: authHeader, Accept: 'application/json' },
+  });
+  // 412 means the database already exists; provisioning is idempotent.
+  if (res.status !== 201 && res.status !== 202 && res.status !== 412) {
+    throw new Error(`[couch-auth] PUT /${dbName} → ${res.status}`);
+  }
+}
+
+const SERVER_WRITES_ONLY_VALIDATE_FN = `function (newDoc, oldDoc, userCtx) {
+  var roles = (userCtx && userCtx.roles) || [];
+  for (var i = 0; i < roles.length; i++) { if (roles[i] === '_admin') return; }
+  throw({ forbidden: 'This database is server-managed and read-only to clients' });
+}`;
+
+async function installTenantValidator(dbName: string, serverWritesOnly = false): Promise<void> {
+  const designId = '_design/tamamhealth-org-scope';
+  const path = `/${encodeURIComponent(dbName)}/${designId}`;
+  const existing = await couchFetch({ method: 'GET', path, allow404: true }) as { _rev?: string } | null;
+  await couchFetch({
+    method: 'PUT',
+    path,
+    body: {
+      _id: designId,
+      ...(existing?._rev ? { _rev: existing._rev } : {}),
+      validate_doc_update: serverWritesOnly ? SERVER_WRITES_ONLY_VALIDATE_FN : ORG_SCOPED_VALIDATE_FN,
+    },
+  });
+}
+
+async function grantDatabaseMemberRole(dbName: string, role: string): Promise<void> {
+  const path = `/${encodeURIComponent(dbName)}/_security`;
+  const current = await couchFetch({ method: 'GET', path, allow404: true }) as {
+    admins?: { names?: string[]; roles?: string[] };
+    members?: { names?: string[]; roles?: string[] };
+  } | null;
+  const roles = new Set(current?.members?.roles ?? []);
+  roles.add(role);
+  await couchFetch({
+    method: 'PUT',
+    path,
+    body: {
+      admins: {
+        names: current?.admins?.names ?? [],
+        roles: Array.from(new Set([...(current?.admins?.roles ?? []), 'role:super_admin'])),
+      },
+      members: {
+        names: current?.members?.names ?? [],
+        roles: Array.from(roles),
+      },
+    },
+  });
+}
+
+async function ensureReplication(doc: TenantReplicationDocument): Promise<void> {
+  const path = `/_replicator/${encodeURIComponent(doc._id)}`;
+  const existing = await couchFetch({ method: 'GET', path, allow404: true }) as { _rev?: string } | null;
+  await couchFetch({
+    method: 'PUT',
+    path,
+    body: { ...doc, ...(existing?._rev ? { _rev: existing._rev } : {}) },
+  });
+}
+
 /**
  * Idempotent: ensure a CouchDB user document exists for `username`, with the
  * supplied plaintext password and the given role list. Re-running with a new
@@ -101,6 +176,7 @@ export async function ensureCouchUser(input: {
   orgId?: string;
   hospitalId?: string;
   platformRole?: string;
+  skipPasswordRefreshIfRolesMatch?: boolean;
 }): Promise<void> {
   const docId = `org.couchdb.user:${input.username}`;
   const path = `/_users/${encodeURIComponent(docId)}`;
@@ -115,7 +191,15 @@ export async function ensureCouchUser(input: {
     method: 'GET',
     path,
     allow404: true,
-  })) as { _rev?: string } | null;
+  })) as { _rev?: string; roles?: string[] } | null;
+
+  if (
+    input.skipPasswordRefreshIfRolesMatch &&
+    existing &&
+    JSON.stringify([...(existing.roles ?? [])].sort()) === JSON.stringify([...roles].sort())
+  ) {
+    return;
+  }
 
   const body: Record<string, unknown> = {
     _id: docId,
@@ -127,6 +211,43 @@ export async function ensureCouchUser(input: {
   if (existing?._rev) body._rev = existing._rev;
 
   await couchFetch({ method: 'PUT', path, body });
+}
+
+const gatewayProvisioning = new Map<string, Promise<{ username: string; password: string }>>();
+
+/**
+ * Provision a deterministic server-held CouchDB identity for one platform
+ * user. The browser never receives this credential; the same-origin sync
+ * gateway attaches it only on the private App Platform → CouchDB hop.
+ */
+export async function ensureCouchGatewayUser(input: {
+  sub: string;
+  orgId?: string;
+  hospitalId?: string;
+  role: string;
+}): Promise<{ username: string; password: string }> {
+  const secret = process.env.COUCHDB_GATEWAY_SECRET || '';
+  if (secret.length < 32) throw new Error('[couch-auth] COUCHDB_GATEWAY_SECRET must be at least 32 characters');
+  const orgId = assertOrganizationId(input.orgId);
+  const identity = `${input.sub}|${orgId}|${input.role}|${input.hospitalId || ''}`;
+  const username = `gw-${createHmac('sha256', secret).update(`user:${input.sub}`).digest('hex').slice(0, 32)}`;
+  const password = createHmac('sha384', secret).update(`password:${identity}`).digest('base64url');
+  const cacheKey = `${username}:${identity}`;
+
+  let provisioning = gatewayProvisioning.get(cacheKey);
+  if (!provisioning) {
+    provisioning = ensureCouchUser({
+      username,
+      password,
+      orgId,
+      hospitalId: input.hospitalId,
+      platformRole: input.role,
+      skipPasswordRefreshIfRolesMatch: true,
+    }).then(() => ({ username, password }));
+    gatewayProvisioning.set(cacheKey, provisioning);
+    provisioning.catch(() => gatewayProvisioning.delete(cacheKey));
+  }
+  return provisioning;
 }
 
 /**
@@ -177,4 +298,42 @@ export async function applyOrgScopedSecurity(roles: string[]): Promise<void> {
       console.warn(`[couch-auth] applyOrgScopedSecurity: ${db} failed`, err);
     }
   }
+}
+
+/**
+ * Create and secure every browser-synced database for one organization.
+ * Safe to retry: database creation, validator installation, and `_security`
+ * replacement are all idempotent. No shared/source database is deleted.
+ */
+export async function provisionOrganizationDatabases(orgIdInput: string): Promise<{
+  orgId: string;
+  databases: string[];
+}> {
+  const orgId = assertOrganizationId(orgIdInput);
+  const configs = DATABASE_SYNC_CONFIGS.filter(config => config.orgScoped);
+  const databases = configs.map(config => tenantDatabaseName(config.localName, orgId));
+
+  // Keep bounded concurrency so a new organization does not exhaust CouchDB's
+  // request workers or a serverless function's socket pool.
+  const concurrency = 8;
+  for (let offset = 0; offset < databases.length; offset += concurrency) {
+    const batch = configs.slice(offset, offset + concurrency);
+    await Promise.all(batch.map(async config => {
+      const dbName = tenantDatabaseName(config.localName, orgId);
+      await ensureDatabase(dbName);
+      await installTenantValidator(dbName, config.direction === 'pull');
+      await setDatabaseSecurity({ dbName, memberRoles: [`org:${orgId}`] });
+      await Promise.all(tenantReplicationDocuments(config.localName, orgId, config.direction).map(ensureReplication));
+    }));
+  }
+
+  // Shared reference databases carry no tenant PHI but still require CouchDB
+  // membership. Preserve existing roles and add the newly provisioned org.
+  const sharedBrowserDatabases = DATABASE_SYNC_CONFIGS
+    .filter(config => !config.orgScoped)
+    .map(config => config.localName);
+  await Promise.all(sharedBrowserDatabases.map(dbName =>
+    grantDatabaseMemberRole(dbName, `org:${orgId}`)));
+
+  return { orgId, databases };
 }

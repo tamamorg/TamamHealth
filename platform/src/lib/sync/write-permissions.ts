@@ -34,6 +34,29 @@ import type { UserRole } from '../db-types';
 // pulls no runtime auth code into the validator-generation path.
 import { TRANSFER_WRITE_ROLES } from '../services/patient-transfer-permissions';
 
+const ADMIN: readonly UserRole[] = ['super_admin', 'org_admin'];
+const CLINICIANS: readonly UserRole[] = [
+  'super_admin', 'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
+];
+const NURSING_AND_CLINICIANS: readonly UserRole[] = [
+  ...CLINICIANS, 'nurse', 'triage_nurse', 'rooming_nurse', 'midwife',
+];
+const REGISTRATION: readonly UserRole[] = [
+  ...ADMIN, 'front_desk', 'central_registration_clerk', 'clinic_clerk',
+  'data_entry_clerk', 'records_hmis_officer', 'hrio', 'hospital_manager',
+];
+const BILLING: readonly UserRole[] = [
+  ...ADMIN, 'cashier', 'medical_biller', 'front_desk', 'hospital_manager',
+];
+const ALL_STAFF: readonly UserRole[] = [
+  'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse', 'midwife',
+  'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'data_entry_clerk',
+  'medical_superintendent', 'hrio', 'nutritionist', 'radiologist',
+  'hospital_manager', 'medical_biller', 'central_registration_clerk',
+  'clinic_clerk', 'triage_nurse', 'rooming_nurse', 'clinician',
+  'records_hmis_officer',
+];
+
 /**
  * Document `type` → roles permitted to create or modify it.
  *
@@ -107,6 +130,80 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   // capability table the API route and the UI read, so this row cannot drift
   // from the route guard the way a hand-copied list can.
   patient_transfer: TRANSFER_WRITE_ROLES,
+  appointment: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
+  availability: [...ADMIN, ...CLINICIANS],
+  assessment: NURSING_AND_CLINICIANS,
+  clinical_encounter: NURSING_AND_CLINICIANS,
+  encounter: NURSING_AND_CLINICIANS,
+  consultation_progress: NURSING_AND_CLINICIANS,
+  shift_handoff: NURSING_AND_CLINICIANS,
+  follow_up: NURSING_AND_CLINICIANS,
+  problem: CLINICIANS,
+  procedure: CLINICIANS,
+  program_enrollment: NURSING_AND_CLINICIANS,
+  order_set: CLINICIANS,
+  phone_note: NURSING_AND_CLINICIANS,
+  patient_note: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
+  patient_document: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
+  patient_reminder: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
+  clinical_favorite: CLINICIANS,
+  consultation_template: CLINICIANS,
+  text_shortcut: CLINICIANS,
+  clinician_task: NURSING_AND_CLINICIANS,
+  nutrition_screening: [...NURSING_AND_CLINICIANS, 'nutritionist'],
+  nutrition_supply: [...ADMIN, 'nutritionist', 'nurse', 'midwife', 'pharmacist'],
+  pharmacy_inventory: [...ADMIN, 'pharmacist', 'hospital_manager'],
+  controlled_substance_log: [...CLINICIANS, 'pharmacist', 'nurse'],
+  ward: [...ADMIN, ...NURSING_AND_CLINICIANS, 'hospital_manager'],
+  bed: [...ADMIN, ...NURSING_AND_CLINICIANS, 'hospital_manager'],
+  admission: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
+  blood_bank: [...ADMIN, ...NURSING_AND_CLINICIANS, 'lab_tech'],
+  biometric_template: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
+  emergency_plan: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
+  asset: [...ADMIN, 'hrio', 'hospital_manager', 'medical_superintendent'],
+  staff_schedule: [...ADMIN, 'hrio', 'hospital_manager', 'medical_superintendent'],
+  leave_request: [...ADMIN, 'hrio', 'hospital_manager'],
+  payroll_entry: [...ADMIN, 'hrio'],
+  patient_feedback: [...ADMIN, 'front_desk', 'hospital_manager'],
+  billing: BILLING,
+  fee_schedule: [...ADMIN, 'medical_biller', 'hospital_manager'],
+  insurance_policy: BILLING,
+  eligibility_check: BILLING,
+  charge: [...BILLING, ...CLINICIANS],
+  claim: BILLING,
+  adjustment: BILLING,
+  payment: BILLING,
+  refund: BILLING,
+  saved_payment_method: BILLING,
+  payment_plan: BILLING,
+  invoice: BILLING,
+  ledger_entry: BILLING,
+  visit_reason: [...ADMIN, 'front_desk', 'clinic_clerk', 'hospital_manager'],
+  booking_policy: [...ADMIN, 'hospital_manager'],
+  provider_profile: [...ADMIN, ...CLINICIANS],
+  provider_review: ADMIN,
+  message: ALL_STAFF,
+  conversation: ALL_STAFF,
+  announcement: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
+  disease_alert: [
+    ...NURSING_AND_CLINICIANS, 'lab_tech', 'government', 'county_health_director',
+    'data_entry_clerk', 'records_hmis_officer',
+  ],
+  facility_assessment: [
+    ...ADMIN, 'government', 'county_health_director', 'data_entry_clerk',
+    'medical_superintendent', 'hospital_manager', 'records_hmis_officer',
+  ],
+  facility_census: [
+    ...ADMIN, 'government', 'county_health_director', 'data_entry_clerk',
+    'medical_superintendent', 'hospital_manager', 'records_hmis_officer',
+  ],
+  hospital: [...ADMIN, 'government', 'county_health_director', 'hospital_manager'],
+  organization: ADMIN,
+  platform_config: ['super_admin'],
+  audit_log: ALL_STAFF,
+  sync_event: ALL_STAFF,
+  conflict_queue: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
+  patient_intake_form: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
 };
 
 /**
@@ -131,12 +228,11 @@ export const IMMUTABLE_FIELDS = ['orgId', 'hospitalId', 'type'] as const;
  *     no arrow functions, no `Array.prototype.includes`.
  *   - **A syntax error here blocks every write to the database.** That is why
  *     it is generated from a tested table rather than hand-edited per type.
- *   - Unknown document types are ALLOWED through. The matrix covers clinical
- *     documents; refusing everything else would break the ~40 operational
- *     databases that share this validator the moment a new type is added.
- *     Fail-open is wrong for a security control in general — but a fail-closed
- *     default here would take a facility offline on deploy, and the tenant
- *     check below still applies to every document regardless of type.
+ *   - Unknown document types are rejected. Every browser-synced database and
+ *     type is pinned by `DATABASE_DOCUMENT_TYPES` and a regression test checks
+ *     that every permitted type has a role row here. Adding a new type now
+ *     requires an explicit permission decision instead of silently failing
+ *     open.
  */
 export function buildValidateDocUpdateFn(
   matrix: Readonly<Record<string, readonly string[]>> = DOC_WRITE_ROLES,
@@ -192,8 +288,10 @@ export function buildValidateDocUpdateFn(
   var WRITE_ROLES = ${matrixJson};
   var allowed = WRITE_ROLES[newDoc.type];
 
-  // Unknown type: no rule to apply. See the note in write-permissions.ts.
-  if (!allowed) return;
+  // Unknown types fail closed. New persisted types require an explicit row.
+  if (!allowed) {
+    throw({ forbidden: 'unknown document type: ' + newDoc.type });
+  }
 
   // The acting role comes from the authenticated CouchDB user context, never
   // from the document body — the client controls the body.

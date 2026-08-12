@@ -101,8 +101,9 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
     errors.push('NEXT_PUBLIC_SYNC_ENABLED must be true in production — shared CouchDB replication is required for multi-user patient data.');
   }
   if (!isDemo && !env.COUCHDB_URL) {
-    errors.push('COUCHDB_URL is unset — server routes on Vercel need a durable CouchDB endpoint, not local filesystem storage.');
+    errors.push('COUCHDB_URL is unset — server routes need a durable CouchDB endpoint, not local filesystem storage.');
   }
+  const syncGateway = env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED === 'true';
   if (!isDemo) {
     for (const [name, value] of [
       ['COUCHDB_URL', env.COUCHDB_URL],
@@ -112,10 +113,13 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
       try {
         const url = new URL(value);
         const localHost = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|couchdb)$/i.test(url.hostname);
-        if (url.protocol !== 'https:') {
+        const privateAddress = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(url.hostname)
+          || url.hostname.endsWith('.internal');
+        const privateGatewayHop = name === 'COUCHDB_URL' && syncGateway && privateAddress;
+        if (url.protocol !== 'https:' && !(privateGatewayHop && url.protocol === 'http:')) {
           errors.push(`${name} must use https:// in production — clinical data must not cross the network in clear text.`);
         }
-        if (localHost || url.hostname.endsWith('.internal')) {
+        if (localHost || (privateAddress && !privateGatewayHop)) {
           errors.push(`${name} points to a private/local Docker hostname (${url.hostname}) — configure the reachable production CouchDB hostname.`);
         }
       } catch {
@@ -130,13 +134,52 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
     if (!env.COUCHDB_WEBHOOK_SECRET) {
       errors.push('NEXT_PUBLIC_SYNC_ENABLED=true but COUCHDB_WEBHOOK_SECRET is unset.');
     }
-    // Shared CouchDB databases cannot enforce per-document read ACLs. Until
-    // database-per-organization routing exists, fail closed unless production
-    // explicitly enforces one organization at every creation boundary.
-    if (!isDemo && env.SINGLE_ORG_MODE !== 'true') {
+    // Shared CouchDB databases cannot enforce per-document read ACLs. Production
+    // must either use database-per-organization routing or explicitly stay in
+    // single-organization mode during migration.
+    const tenantDatabases = env.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED === 'true';
+    if (!isDemo && !tenantDatabases && env.SINGLE_ORG_MODE !== 'true') {
       errors.push(
-        'SINGLE_ORG_MODE must be true while CouchDB uses shared databases — multi-organization read isolation requires database-per-organization storage.',
+        'Enable NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=true, or keep SINGLE_ORG_MODE=true while CouchDB uses shared databases.',
       );
+    }
+    if (tenantDatabases && (!env.COUCHDB_ADMIN_USER || !env.COUCHDB_ADMIN_PASSWORD)) {
+      errors.push(
+        'Tenant databases require COUCHDB_ADMIN_USER and COUCHDB_ADMIN_PASSWORD for secure user and organization provisioning.',
+      );
+    }
+    if (tenantDatabases && env.COUCHDB_ADMIN_PASSWORD) {
+      if (PLACEHOLDER.test(env.COUCHDB_ADMIN_PASSWORD)) {
+        errors.push('COUCHDB_ADMIN_PASSWORD still contains a placeholder.');
+      } else if (env.COUCHDB_ADMIN_PASSWORD.length < 20) {
+        errors.push('COUCHDB_ADMIN_PASSWORD must be at least 20 characters in production.');
+      }
+    }
+    if (syncGateway && !tenantDatabases) {
+      errors.push('NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED requires database-per-organization routing.');
+    }
+    if (syncGateway && (
+      (env.COUCHDB_GATEWAY_SECRET || '').length < 32
+      || PLACEHOLDER.test(env.COUCHDB_GATEWAY_SECRET || '')
+    )) {
+      errors.push('COUCHDB_GATEWAY_SECRET must be at least 32 characters when the sync gateway is enabled.');
+    }
+    if (
+      (env.COUCHDB_WEBHOOK_SECRET || '').length < 32
+      || PLACEHOLDER.test(env.COUCHDB_WEBHOOK_SECRET || '')
+    ) {
+      errors.push('COUCHDB_WEBHOOK_SECRET must be at least 32 characters.');
+    }
+    if (syncGateway && env.NEXT_PUBLIC_COUCHDB_URL && env.NEXT_PUBLIC_APP_URL) {
+      try {
+        const gatewayUrl = new URL(env.NEXT_PUBLIC_COUCHDB_URL);
+        const appUrl = new URL(env.NEXT_PUBLIC_APP_URL);
+        if (gatewayUrl.origin !== appUrl.origin || !gatewayUrl.pathname.startsWith('/api/couch')) {
+          errors.push('The CouchDB gateway URL must be the same app origin under /api/couch.');
+        }
+      } catch {
+        // The generic URL checks above report malformed URLs.
+      }
     }
   }
 
@@ -188,11 +231,19 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   // --- Payment webhooks ------------------------------------------------------
   // Public money-movement callbacks must not run unsigned in production. The
   // individual routes keep a non-production fallback for local gateway testing.
-  if (!env.AIRTEL_WEBHOOK_SECRET) {
-    errors.push('AIRTEL_WEBHOOK_SECRET is unset — Airtel webhooks would be unsigned in production.');
+  if (
+    !env.AIRTEL_WEBHOOK_SECRET
+    || env.AIRTEL_WEBHOOK_SECRET.length < 32
+    || PLACEHOLDER.test(env.AIRTEL_WEBHOOK_SECRET)
+  ) {
+    errors.push('AIRTEL_WEBHOOK_SECRET must be a non-placeholder secret of at least 32 characters.');
   }
-  if (!env.MPESA_WEBHOOK_SECRET) {
-    errors.push('MPESA_WEBHOOK_SECRET is unset — M-Pesa webhooks would be unsigned in production.');
+  if (
+    !env.MPESA_WEBHOOK_SECRET
+    || env.MPESA_WEBHOOK_SECRET.length < 32
+    || PLACEHOLDER.test(env.MPESA_WEBHOOK_SECRET)
+  ) {
+    errors.push('MPESA_WEBHOOK_SECRET must be a non-placeholder secret of at least 32 characters.');
   }
 
   return errors;
