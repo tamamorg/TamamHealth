@@ -31,6 +31,8 @@ import { ORG_SCOPED_VALIDATE_FN } from './validate-doc-update';
 interface CouchAdminEnv {
   baseUrl: string;
   authHeader: string;
+  user: string;
+  pass: string;
 }
 
 function adminEnv(): CouchAdminEnv {
@@ -60,7 +62,30 @@ function adminEnv(): CouchAdminEnv {
     }
   })();
   const token = Buffer.from(`${user}:${pass}`).toString('base64');
-  return { baseUrl: stripped, authHeader: `Basic ${token}` };
+  return { baseUrl: stripped, authHeader: `Basic ${token}`, user, pass };
+}
+
+/**
+ * Absolute endpoint for a `_replicator` document.
+ *
+ * CouchDB 3 rejects bare database names in persisted replications with
+ * `local_endpoints_not_supported`, so the topology names produced by
+ * `tenant-database.ts` have to be resolved to URLs before they are stored.
+ *
+ * The URL is dialled by the CouchDB server itself, not by this process, so it
+ * defaults to the node's own loopback rather than to COUCHDB_URL — the server
+ * env points at the private VPC address of the host, which would hairpin out of
+ * the container and back in. Credentials go in `auth.basic` rather than the
+ * URL: embedded credentials corrupt on special characters and are echoed
+ * verbatim into replication logs.
+ */
+function replicationEndpoint(database: string) {
+  const base = (process.env.COUCHDB_REPLICATION_URL || 'http://127.0.0.1:5984').replace(/\/+$/, '');
+  const { user, pass } = adminEnv();
+  return {
+    url: `${base}/${encodeURIComponent(database)}`,
+    auth: { basic: { username: user, password: pass } },
+  };
 }
 
 interface CouchFetchOpts {
@@ -155,7 +180,12 @@ async function ensureReplication(doc: TenantReplicationDocument): Promise<void> 
   await couchFetch({
     method: 'PUT',
     path,
-    body: { ...doc, ...(existing?._rev ? { _rev: existing._rev } : {}) },
+    body: {
+      ...doc,
+      source: replicationEndpoint(doc.source),
+      target: replicationEndpoint(doc.target),
+      ...(existing?._rev ? { _rev: existing._rev } : {}),
+    },
   });
 }
 
