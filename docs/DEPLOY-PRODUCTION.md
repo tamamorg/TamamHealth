@@ -1,12 +1,18 @@
-# v7 cutover: App Platform + database-per-organization
+# Production cutover: App Platform + database-per-organization
 
-How to move production from the v6 Droplet (shared CouchDB, browsers talking to
-CouchDB directly) to v7 (DigitalOcean App Platform, per-organization CouchDB
-databases, browsers replicating only through the authenticated same-origin
-gateway).
+How to bring TamamHealth up on DigitalOcean App Platform with per-organization
+CouchDB databases, where browsers replicate only through the authenticated
+same-origin gateway.
 
-v6 keeps serving throughout. Nothing here deletes a database, and every step is
-idempotent, so a failed step is retried rather than unwound.
+**There is no earlier version still serving.** `app.tamamhealth.org` resolves to
+a Droplet that no longer exists in this team and presents a certificate for the
+wrong hostname; the only TamamHealth service actually running is CouchDB on the
+data Droplet. Treat this as a cold start, not a hand-off between two live
+stacks. That means no clinician is disrupted while it runs — and equally that
+there is no previous stack to fall back to.
+
+Nothing here deletes a database, and every step is idempotent, so a failed step
+is retried rather than unwound.
 
 **Order matters.** Section 4 must not run before section 3 has been verified,
 and section 6 is the point of no easy return. Read [ordering rules](#ordering-rules)
@@ -16,7 +22,7 @@ before improvising.
 
 ## What changes
 
-| | v6 | v7 |
+| | Previous design | This design |
 |---|---|---|
 | Hosting | Droplet + docker-compose | App Platform, ≥2 instances |
 | Browser → CouchDB | direct, public HTTPS | `/api/couch` gateway, same origin |
@@ -25,7 +31,7 @@ before improvising.
 | CouchDB credentials in the browser | yes | never |
 
 The data plane Droplet stays. It keeps CouchDB and the encrypted off-site
-backup jobs; only the application layer moves.
+backup jobs; the application layer is new.
 
 ---
 
@@ -64,11 +70,12 @@ Keep the example default (`127.0.0.1`) everywhere else. Restart the data stack:
 docker compose -f docker-compose.data.yml up -d
 ```
 
-The public HTTPS endpoint stays available for v6 until section 7.
+The public HTTPS endpoint stays reachable until section 7, so the migration
+and verification scripts can run against it before the VPC route is proven.
 
 ---
 
-## 2. Provision v7
+## 2. Provision the application stack
 
 ```bash
 cd infra/digitalocean/app-platform
@@ -77,8 +84,8 @@ export AWS_ACCESS_KEY_ID='your-dedicated-spaces-key'
 export AWS_SECRET_ACCESS_KEY='your-dedicated-spaces-secret'
 terraform init -backend-config=backend.hcl
 terraform import digitalocean_firewall.data_plane 265e3909-f1e4-43e9-94d1-92e701fa122b
-terraform plan -out=v7.tfplan
-terraform show v7.tfplan
+terraform plan -out=tamamhealth.tfplan
+terraform show tamamhealth.tfplan
 ```
 
 `terraform apply` creates paid capacity and rewrites PostgreSQL trusted
@@ -109,7 +116,8 @@ export COUCHDB_TENANT_ORG_IDS=org-one,org-two
 DRY_RUN=true npm run db:migrate:couchdb-tenants
 ```
 
-Then the real copy. Shared access is retained, so v6 browsers keep working:
+Then the real copy. Shared access is retained, so nothing that reads the
+aggregates breaks partway through:
 
 ```bash
 npm run db:migrate:couchdb-tenants
@@ -138,8 +146,8 @@ verified by restoring into a scratch database) before any real PHI moves.
 
 ## 4. Install validators and membership
 
-At this stage v6 is still replicating the shared aggregates, so run **without**
-the tenant flag:
+While the shared aggregates are still authoritative, run **without** the tenant
+flag:
 
 ```bash
 COUCHDB_MEMBER_ORG_IDS=org-one,org-two npm run setup:couchdb:validators
@@ -170,14 +178,14 @@ silently undoes the isolation that section 6 established.
 
 ## 5. Deploy the application
 
-Merge to `main`, then run the `deploy-v7-app-platform` workflow with the exact
+Merge to `main`, then run the `deploy-app-platform` workflow with the exact
 reviewed commit SHA. The workflow refuses to deploy a SHA that is not the
 current tip of `main`, waits for the deployment to go `ACTIVE`, smoke-tests
 `/api/health` and `/login`, and rolls back to the previous deployment if the
 smoke test fails.
 
-Required repository secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `DO_V7_APP_ID`,
-`DO_V7_BASE_URL`. The `production` environment should require reviewers.
+Required repository secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `DO_APP_ID`,
+`DO_BASE_URL`. The `production` environment should require reviewers.
 
 `NEXT_PUBLIC_*` values are compiled into the browser bundle at **build** time.
 They are set `RUN_AND_BUILD_TIME` in `main.tf` and mirrored as `ARG`s in
@@ -187,15 +195,15 @@ They are set `RUN_AND_BUILD_TIME` in `main.tf` and mirrored as `ARG`s in
 
 ## 6. Finalize isolation (point of no easy return)
 
-Only after v7 serves real traffic correctly:
+Only after the application serves real traffic correctly:
 
 ```bash
 FINALIZE_SHARED_ACCESS=true npm run db:migrate:couchdb-tenants
 ```
 
 Shared aggregate databases become admin-only. Browsers can then reach their own
-organization's database and nothing else. v6 browsers replicating directly will
-stop working at this point — that is the intent.
+organization's database and nothing else. Any client still replicating directly
+against an aggregate stops working at this point — that is the intent.
 
 Re-run the verification, and confirm a login and a chart write in each
 organization.
@@ -204,7 +212,7 @@ organization.
 
 ## 7. Close the public data plane
 
-Once v7 is confirmed and v6 is retired:
+Once the application is confirmed:
 
 1. Remove the public HTTPS rules from the data-plane firewall, leaving SSH from
    the operator CIDR and 5984 from `10.114.0.0/20`.
@@ -220,8 +228,8 @@ Once v7 is confirmed and v6 is retired:
   membership onto an incomplete set.
 - **Never point liveness at `/api/health`.** See section 2.
 - **`COUCHDB_TENANT_DATABASES_ENABLED=true` only after cutover — and always
-  after it.** Setting it early revokes v6's aggregate membership and cuts
-  browsers off before the tenant path is proven; omitting it on a later re-run
+  after it.** Setting it early revokes the aggregates'
+  browser membership and cuts clients off before the tenant path is proven; omitting it on a later re-run
   silently re-grants that membership.
 - **Tenant databases are browser-facing.** They are absent from the sync map by
   name, and treating "absent from the map" as "server-only" would install a
@@ -235,7 +243,7 @@ Once v7 is confirmed and v6 is retired:
 
 | Stage | How to undo |
 |---|---|
-| Before §6 | Point DNS back at v6. Aggregates still hold every document — the continuous `_replicator` jobs kept them current. |
+| Before §6 | Aggregates still hold every document — the continuous `_replicator` jobs kept them current — so the data is intact. There is no earlier application stack to point DNS back at; recovery means fixing forward. |
 | After §6 | Re-grant membership: run `setup:couchdb:validators` **without** `COUCHDB_TENANT_DATABASES_ENABLED`, with `COUCHDB_MEMBER_ORG_IDS` set. |
 | Bad app deploy | The deploy workflow rolls back automatically on smoke-test failure; otherwise `doctl apps create-deployment` from the previous SHA. |
 
@@ -248,4 +256,4 @@ change, never a restore.
 
 - [infra/digitalocean/app-platform/README.md](../infra/digitalocean/app-platform/README.md) — stack contents and safety gates
 - [OPERATOR-RUNBOOK.md](OPERATOR-RUNBOOK.md) — day-to-day operation
-- [DEPLOY-DIGITALOCEAN.md](DEPLOY-DIGITALOCEAN.md) — the v6 Droplet deployment
+- [DEPLOY-DIGITALOCEAN.md](DEPLOY-DIGITALOCEAN.md) — the earlier Droplet deployment

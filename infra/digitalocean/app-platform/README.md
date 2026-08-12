@@ -1,6 +1,6 @@
-# TamamHealth v7 on DigitalOcean App Platform
+# TamamHealth on DigitalOcean App Platform
 
-This stack creates the new **v7** application without modifying v6. It attaches
+This stack creates the TamamHealth application. It attaches
 the existing `tamamhealth-analytics` PostgreSQL cluster, connects the app to the
 existing FRA1 VPC, requires two app instances, and restricts PostgreSQL trusted
 sources to the App Platform app and the encrypted-backup Droplet.
@@ -34,8 +34,8 @@ terraform init -backend-config=backend.hcl
 terraform import digitalocean_firewall.data_plane 265e3909-f1e4-43e9-94d1-92e701fa122b
 terraform fmt -check -recursive
 terraform validate
-terraform plan -out=v7.tfplan
-terraform show v7.tfplan
+terraform plan -out=tamamhealth.tfplan
+terraform show tamamhealth.tfplan
 ```
 
 `terraform apply` creates paid App Platform capacity and changes PostgreSQL
@@ -47,10 +47,10 @@ Use a dedicated private Spaces bucket with versioning enabled and a dedicated
 least-privilege key. Terraform state locking is not provided by Spaces, so only
 one protected deployment job or operator may run `plan`/`apply` at a time.
 
-Before starting the data stack for v7, set `COUCHDB_BIND_ADDRESS=10.114.0.3` on
+Before starting the data stack, set `COUCHDB_BIND_ADDRESS=10.114.0.3` on
 the data Droplet. Keep it at the example default (`127.0.0.1`) everywhere else.
-The public HTTPS endpoint remains available for v6 during migration; remove its
-public firewall and DNS access only after the documented v7 cutover succeeds.
+The public HTTPS endpoint remains available during migration; remove its
+public firewall and DNS access only after the documented cutover succeeds.
 
 The current IDs in `variables.tf` were read from the `Tamam Health` team on
 2026-08-12. Re-run `doctl vpcs list`, `doctl compute droplet list`, and

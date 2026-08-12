@@ -2,7 +2,7 @@
 # bucket. Supply the access/secret keys through AWS_ACCESS_KEY_ID and
 # AWS_SECRET_ACCESS_KEY, never in this file.
 bucket = "REPLACE-tamamhealth-terraform-state"
-key    = "production/v7/terraform.tfstate"
+key    = "production/tamamhealth/terraform.tfstate"
 region = "fra1"
 
 endpoints = {
