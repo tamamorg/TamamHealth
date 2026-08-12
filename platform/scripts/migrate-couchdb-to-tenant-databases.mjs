@@ -44,6 +44,26 @@ for (const orgId of orgIds) {
 
 const authHeader = `Basic ${Buffer.from(`${adminUser}:${adminPassword}`).toString('base64')}`;
 const headers = { Authorization: authHeader, 'Content-Type': 'application/json' };
+
+// CouchDB 3 rejects bare database names in `_replicator` documents with
+// `local_endpoints_not_supported`; persisted replications must name absolute
+// endpoints. (One-shot `/_replicate` still accepts local names, which is why
+// the initial copy above succeeds and only the continuous jobs fail.)
+//
+// The URL is resolved by the CouchDB server itself, not by this script, so it
+// defaults to the node's own loopback rather than to COUCHDB_URL — an operator
+// running this over the VPC address or a public HTTPS hostname would otherwise
+// make the replicator route out of the container and back in. Override only if
+// CouchDB genuinely cannot reach itself on 5984.
+const replicationBaseUrl = (process.env.COUCHDB_REPLICATION_URL || 'http://127.0.0.1:5984')
+  .replace(/\/+$/, '');
+
+// Credentials travel in `auth.basic`, never inside the URL: embedded credentials
+// corrupt on special characters and show up verbatim in replication logs.
+const endpoint = database => ({
+  url: `${replicationBaseUrl}/${encodeURIComponent(database)}`,
+  auth: { basic: { username: adminUser, password: adminPassword } },
+});
 const PULL_ONLY_DATABASES = new Set(['tamamhealth_fee_schedule']);
 const PUSH_ONLY_DATABASES = new Set([
   'tamamhealth_sync_events',
@@ -118,7 +138,9 @@ async function migrateOne(orgId, source) {
       method: 'PUT',
       headers,
       body: JSON.stringify({
-        ...job,
+        _id: job._id,
+        source: endpoint(job.source),
+        target: endpoint(job.target),
         ...(existingBody?._rev ? { _rev: existingBody._rev } : {}),
         continuous: true,
         create_target: false,
