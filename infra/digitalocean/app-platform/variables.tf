@@ -1,6 +1,6 @@
 variable "app_name" {
   type    = string
-  default = "tamamhealth-v7"
+  default = "tamamhealth"
 }
 
 variable "app_region" {
@@ -26,7 +26,7 @@ variable "github_branch" {
 
 variable "domain" {
   type    = string
-  default = "v7.tamamhealth.org"
+  default = "staging.tamamhealth.org"
 }
 
 # tamamhealth.org is hosted on GoDaddy, not DigitalOcean DNS, so the CNAME for
@@ -47,7 +47,7 @@ variable "instance_count" {
 
   validation {
     condition     = var.instance_count >= 2
-    error_message = "Production v7 requires at least two App Platform instances."
+    error_message = "Production requires at least two App Platform instances."
   }
 }
 

@@ -5,7 +5,7 @@ locals {
   public_base_url = var.enable_custom_domain ? "https://${var.domain}" : "$${APP_URL}"
 }
 
-resource "digitalocean_app" "v7" {
+resource "digitalocean_app" "tamamhealth" {
   spec {
     name                            = var.app_name
     region                          = var.app_region
@@ -193,7 +193,8 @@ resource "digitalocean_app" "v7" {
 
 # Import the existing firewall before the first plan:
 # terraform import digitalocean_firewall.data_plane 265e3909-f1e4-43e9-94d1-92e701fa122b
-# The existing public HTTPS rules remain temporarily for v6. Port 5984 is only
+# The existing public HTTPS rules remain temporarily so the migration and
+# verification scripts can reach CouchDB. Port 5984 is only
 # reachable from the FRA1 VPC and is never exposed directly to browsers.
 resource "digitalocean_firewall" "data_plane" {
   name        = "tamamhealth-data-production"
@@ -248,7 +249,7 @@ resource "digitalocean_database_firewall" "analytics" {
 
   rule {
     type  = "app"
-    value = digitalocean_app.v7.id
+    value = digitalocean_app.tamamhealth.id
   }
 
   # The current data Droplet runs encrypted off-site pg_dump jobs. Its VPC
