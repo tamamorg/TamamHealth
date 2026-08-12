@@ -1,12 +1,22 @@
+locals {
+  # $${APP_URL} is an App Platform bindable variable resolved to the app's own
+  # public URL. It is the only way to reference the default ingress, whose
+  # hostname carries a random suffix that is not knowable before creation.
+  public_base_url = var.enable_custom_domain ? "https://${var.domain}" : "$${APP_URL}"
+}
+
 resource "digitalocean_app" "v7" {
   spec {
     name                            = var.app_name
     region                          = var.app_region
     enhanced_threat_control_enabled = true
 
-    domain {
-      name = var.domain
-      type = "PRIMARY"
+    dynamic "domain" {
+      for_each = var.enable_custom_domain ? [var.domain] : []
+      content {
+        name = domain.value
+        type = "PRIMARY"
+      }
     }
 
     vpc {
@@ -103,12 +113,12 @@ resource "digitalocean_app" "v7" {
       }
       env {
         key   = "NEXT_PUBLIC_COUCHDB_URL"
-        value = "https://${var.domain}/api/couch"
+        value = "${local.public_base_url}/api/couch"
         scope = "RUN_AND_BUILD_TIME"
       }
       env {
         key   = "NEXT_PUBLIC_APP_URL"
-        value = "https://${var.domain}"
+        value = local.public_base_url
         scope = "RUN_AND_BUILD_TIME"
       }
       env {
