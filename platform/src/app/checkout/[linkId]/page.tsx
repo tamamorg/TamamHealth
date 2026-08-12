@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import {
   Phone, Banknote, CreditCard, CheckCircle2, Clock,
   AlertTriangle, XCircle, Wallet,
@@ -48,8 +49,8 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function CheckoutPage({ params }: { params: { linkId: string } }) {
-  const { linkId } = params;
+export default function CheckoutPage() {
+  const { linkId } = useParams<{ linkId: string }>();
 
   const [link, setLink] = useState<CheckoutLink | null>(null);
   const [loading, setLoading] = useState(true);

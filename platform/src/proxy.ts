@@ -61,12 +61,13 @@ const CSRF_EXEMPT_API_PATHS = new Set<string>([
  *     compare, so presence alone authorises nothing.
  */
 const MACHINE_CALLER_ROUTES: Record<string, string> = {
+  '/api/sync': 'x-tamamhealth-signature',
   '/api/patient-reminders/dispatch': 'x-reminder-dispatch-secret',
   '/api/patient-transfers/sweep': 'x-transfer-sweep-secret',
   '/api/telehealth/maintenance': 'x-telehealth-maintenance-secret',
 };
 
-function isMachineCallerRequest(pathname: string, request: NextRequest): boolean {
+export function isMachineCallerRequest(pathname: string, request: NextRequest): boolean {
   const header = MACHINE_CALLER_ROUTES[pathname];
   return Boolean(header && request.headers.get(header));
 }

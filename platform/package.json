@@ -43,8 +43,7 @@
     "react-dom": "^19.2.0",
     "react-leaflet": "^5.0.0",
     "recharts": "^3.7.0",
-    "uuid": "^11.1.1",
-    "vercel": "^54.18.0"
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -70,7 +69,8 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typedoc": "^0.28.19",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vercel": "^54.21.1"
   },
   "overrides": {
     "ajv": "^8.17.2",

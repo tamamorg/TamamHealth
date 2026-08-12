@@ -35,6 +35,14 @@ describe('sync directions', () => {
       expect(byName[db].direction).toBe('both');
     }
   });
+
+  test('patient feedback has an org-scoped bidirectional source database', () => {
+    expect(byName['tamamhealth_patient_feedback']).toEqual({
+      localName: 'tamamhealth_patient_feedback',
+      direction: 'both',
+      orgScoped: true,
+    });
+  });
 });
 
 describe('org scoping', () => {

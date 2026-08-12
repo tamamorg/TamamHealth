@@ -8,7 +8,7 @@
  *
  * Every test passes a fixed `now` so nothing here depends on the wall clock.
  */
-import { assembleDoctorWorklist, type DoctorWorklistInput } from '@/app/(dashboard)/dashboard/page';
+import { assembleDoctorWorklist, type DoctorWorklistInput } from '@/components/dashboards/DoctorDashboardPage';
 import { computeSignCount } from '@/lib/hooks/signing-inbox-math';
 import type { FollowUpDoc } from '@/lib/db-types';
 import {

@@ -3,6 +3,11 @@
  */
 
 import { validateProductionConfig } from './lib/config-validation';
+import * as Sentry from '@sentry/nextjs';
+
+// Capture failures from nested React Server Components and server request
+// handling. Sentry remains transport-disabled when no DSN is configured.
+export const onRequestError = Sentry.captureRequestError;
 
 /**
  * Boot-time configuration safety check. Refuses to start in production if an

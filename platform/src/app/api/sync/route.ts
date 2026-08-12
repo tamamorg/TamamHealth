@@ -129,7 +129,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { verifySyncMachineRequest } from '@/lib/sync-auth';
 import { query, upsertDocument, deleteDocument } from '@/lib/db/postgres';
 import { patientAgeInYears } from '@/lib/validation';
 
@@ -142,37 +142,6 @@ import { patientAgeInYears } from '@/lib/validation';
 function derivePatientAge(doc: Record<string, unknown>): number | undefined {
   const age = patientAgeInYears(doc);
   return age === undefined ? undefined : Math.floor(age);
-}
-
-/**
- * Constant-time comparison of two strings. Prevents timing side-channels
- * that would otherwise leak the signature byte-by-byte.
- */
-function timingSafeEqualStrings(a: string, b: string): boolean {
-  const bufA = new Uint8Array(Buffer.from(a, 'utf8'));
-  const bufB = new Uint8Array(Buffer.from(b, 'utf8'));
-  if (bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
-}
-
-/**
- * Verify the CouchDB webhook signature. We require a dedicated
- * COUCHDB_WEBHOOK_SECRET (separate from the admin password) and compute
- * HMAC-SHA256 over the raw request body. Fails closed: any missing env
- * variable or signature mismatch returns false.
- */
-function verifyWebhookSignature(rawBody: string, header: string | null): boolean {
-  const secret = process.env.COUCHDB_WEBHOOK_SECRET;
-  if (!secret || secret.length < 32) {
-    console.error('[Sync] COUCHDB_WEBHOOK_SECRET not set or too short (<32 chars)');
-    return false;
-  }
-  if (!header) return false;
-
-  // Accept header forms: "sha256=<hex>" or just "<hex>"
-  const provided = header.startsWith('sha256=') ? header.slice('sha256='.length) : header;
-  const expected = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex');
-  return timingSafeEqualStrings(provided, expected);
 }
 
 // Map CouchDB database names to PostgreSQL table names
@@ -212,6 +181,7 @@ const DB_TABLE_MAP: Record<string, string> = {
   tamamhealth_staff_schedules: 'staff_schedules',
   tamamhealth_leave_requests: 'leave_requests',
   tamamhealth_payroll_entries: 'payroll_entries',
+  tamamhealth_patient_feedback: 'patient_feedback',
   tamamhealth_billing: 'billing',
   tamamhealth_fee_schedule: 'fee_schedule',
   tamamhealth_insurance_policies: 'insurance_policies',
@@ -957,6 +927,30 @@ const FIELD_MAPPERS: Record<string, FieldMapper> = {
     updated_at: doc.updatedAt,
   }),
 
+  patient_feedback: (doc) => ({
+    id: doc._id,
+    patient_id: doc.patientId,
+    patient_name: doc.patientName,
+    facility_id: doc.facilityId,
+    facility_name: doc.facilityName,
+    department: doc.department,
+    visit_date: doc.visitDate,
+    rating: doc.rating,
+    nps_score: doc.npsScore,
+    sentiment: doc.sentiment,
+    category: doc.category,
+    comment: doc.comment,
+    channel: doc.channel,
+    follow_up_required: doc.followUpRequired,
+    follow_up_status: doc.followUpStatus,
+    resolved_at: doc.resolvedAt,
+    state: doc.state,
+    county: doc.county,
+    org_id: doc.orgId,
+    created_at: doc.createdAt,
+    updated_at: doc.updatedAt,
+  }),
+
   billing: (doc) => ({
     id: doc._id,
     patient_id: doc.patientId,
@@ -1246,18 +1240,16 @@ interface SyncPayload {
 
 export async function POST(request: NextRequest) {
   try {
+    const rawBody = await request.text();
+    const verification = await verifySyncMachineRequest(request, rawBody);
+    if (!verification.ok) {
+      return NextResponse.json(
+        { error: verification.status === 503 ? 'Sync authentication unavailable' : 'Unauthorized' },
+        { status: verification.status },
+      );
+    }
     if (!process.env.DATABASE_URL) {
       return NextResponse.json({ error: 'Sync not configured: DATABASE_URL not set' }, { status: 503 });
-    }
-
-    // Require a dedicated HMAC-signed webhook secret. Previously this used
-    // COUCHDB_ADMIN_PASSWORD as a bearer token, which reused a high-value
-    // credential and gave anyone who captured the header full privileges.
-    // HMAC over the raw body also prevents replay / tampering.
-    const rawBody = await request.text();
-    const signature = request.headers.get('x-tamamhealth-signature') || request.headers.get('authorization');
-    if (!verifyWebhookSignature(rawBody, signature)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     let body: SyncPayload;
@@ -1364,9 +1356,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** GET /api/sync — return sync metadata (last sequence per DB) */
-export async function GET() {
+/** GET /api/sync — return sync metadata to the authenticated sync worker. */
+export async function GET(request: NextRequest) {
   try {
+    const verification = await verifySyncMachineRequest(request, '');
+    if (!verification.ok) {
+      return NextResponse.json(
+        { error: verification.status === 503 ? 'Sync authentication unavailable' : 'Unauthorized' },
+        { status: verification.status },
+      );
+    }
     if (!process.env.DATABASE_URL) {
       return NextResponse.json({ error: 'Sync not configured: DATABASE_URL not set' }, { status: 503 });
     }

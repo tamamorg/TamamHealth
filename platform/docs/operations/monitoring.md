@@ -14,7 +14,7 @@ load-bearing for correctness — they are diagnostic only.
 
 The `@sentry/nextjs` SDK is wired in three runtimes:
 
-- **Browser** — [`sentry.client.config.ts`](../../sentry.client.config.ts).
+- **Browser** — [`src/instrumentation-client.ts`](../../src/instrumentation-client.ts).
 - **Node server** — [`sentry.server.config.ts`](../../sentry.server.config.ts),
   loaded via `register()` in [`src/instrumentation.ts`](../../src/instrumentation.ts).
 - **Edge runtime (middleware + edge route handlers)** —

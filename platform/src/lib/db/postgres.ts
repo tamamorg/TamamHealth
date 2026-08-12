@@ -47,6 +47,7 @@
  */
 
 import { Pool, type PoolConfig } from 'pg';
+import { postgresSslOptions } from './postgres-ssl';
 
 // ============================================================================
 // SQL-injection allowlists.
@@ -454,10 +455,9 @@ function getPool(): Pool {
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
-      // SSL in production
-      ...(process.env.NODE_ENV === 'production' ? {
-        ssl: { rejectUnauthorized: false },
-      } : {}),
+      // Verify the provider certificate in production. A cluster-specific CA
+      // can be supplied through DATABASE_CA_CERT_BASE64.
+      ...(postgresSslOptions() ? { ssl: postgresSslOptions() } : {}),
     };
 
     pool = new Pool(config);

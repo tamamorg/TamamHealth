@@ -25,15 +25,14 @@
  *     CouchDB's outbound capacity.
  *   - State is per-database last-seen `seq` persisted to a JSON file. The
  *     /api/sync route ALSO persists last_seq into the sync_metadata Postgres
- *     table; if our local state file is lost we recover by reading that on
- *     restart (not yet wired — TODO if we ever ship redundant workers).
- *   - HMAC-SHA-256 over the JSON payload, header `x-tamamhealth-signature`,
- *     matching the verification logic in
- *     platform/src/app/api/sync/route.ts (verifyWebhookSignature).
+ *     table; if our local state file is lost we recover those signed
+ *     checkpoints before polling.
+ *   - Replay-resistant HMAC-SHA-256 over timestamp, nonce, method, path, and
+ *     JSON payload, matching platform/src/lib/sync-auth.ts.
  *   - Self-contained. The Dockerfile pulls in nothing but Node.
  */
 
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -160,18 +159,37 @@ function readEnv() {
     if (!v) errors.push(`missing required env: ${k}`);
     else out[k] = v;
   }
+  out.COUCHDB_USER = process.env.COUCHDB_USER || '';
+  out.COUCHDB_PASSWORD = process.env.COUCHDB_PASSWORD || '';
+  if (Boolean(out.COUCHDB_USER) !== Boolean(out.COUCHDB_PASSWORD)) {
+    errors.push('COUCHDB_USER and COUCHDB_PASSWORD must either both be set or both be unset');
+  }
   if (out.COUCHDB_WEBHOOK_SECRET && out.COUCHDB_WEBHOOK_SECRET.length < 32) {
     errors.push('COUCHDB_WEBHOOK_SECRET must be >=32 chars (matches platform/src/app/api/sync/route.ts)');
   }
   out.POLL_INTERVAL_MS = Number.parseInt(process.env.POLL_INTERVAL_MS || '5000', 10);
   out.BATCH_SIZE = Number.parseInt(process.env.BATCH_SIZE || '100', 10);
   out.STATE_FILE = process.env.STATE_FILE || '/var/lib/sync-worker/state.json';
+  out.HEARTBEAT_FILE = process.env.HEARTBEAT_FILE || '/var/lib/sync-worker/heartbeat.json';
   out.BACKOFF_MS = Number.parseInt(process.env.BACKOFF_MS || '30000', 10);
+  out.REQUEST_TIMEOUT_MS = Number.parseInt(process.env.REQUEST_TIMEOUT_MS || '15000', 10);
+  if (process.env.REQUIRE_HTTPS === 'true' && out.PLATFORM_SYNC_URL) {
+    try {
+      if (new URL(out.PLATFORM_SYNC_URL).protocol !== 'https:') {
+        errors.push('PLATFORM_SYNC_URL must use https:// when REQUIRE_HTTPS=true');
+      }
+    } catch {
+      errors.push('PLATFORM_SYNC_URL is not a valid URL');
+    }
+  }
   if (!Number.isFinite(out.POLL_INTERVAL_MS) || out.POLL_INTERVAL_MS < 100) {
     errors.push('POLL_INTERVAL_MS must be a positive number >=100');
   }
   if (!Number.isFinite(out.BATCH_SIZE) || out.BATCH_SIZE < 1 || out.BATCH_SIZE > 10000) {
     errors.push('BATCH_SIZE must be between 1 and 10000');
+  }
+  if (!Number.isFinite(out.REQUEST_TIMEOUT_MS) || out.REQUEST_TIMEOUT_MS < 1000 || out.REQUEST_TIMEOUT_MS > 120000) {
+    errors.push('REQUEST_TIMEOUT_MS must be between 1000 and 120000');
   }
   return { env: out, errors };
 }
@@ -216,12 +234,28 @@ async function loadState(path) {
  * Derives the status URL from PLATFORM_SYNC_URL so there is nothing new to
  * configure (the POST target and the GET source are the same endpoint).
  */
-async function recoverStateFromPlatform(syncUrl) {
+function buildSignedHeaders({ secret, method, url, body = '' }) {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const nonce = randomUUID();
+  const pathname = new URL(url).pathname;
+  const canonical = [timestamp, nonce, method.toUpperCase(), pathname, body].join('\n');
+  const signature = 'sha256=' + createHmac('sha256', secret).update(canonical, 'utf8').digest('hex');
+  return {
+    'x-tamamhealth-signature': signature,
+    'x-tamamhealth-timestamp': timestamp,
+    'x-tamamhealth-nonce': nonce,
+  };
+}
+
+async function recoverStateFromPlatform(syncUrl, secret, timeoutMs = 15000) {
   try {
     const res = await fetch(syncUrl, {
       method: 'GET',
-      headers: { accept: 'application/json' },
-      signal: AbortSignal.timeout(15000),
+      headers: {
+        accept: 'application/json',
+        ...buildSignedHeaders({ secret, method: 'GET', url: syncUrl }),
+      },
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
       log('warn', `state recovery: /api/sync returned HTTP ${res.status}`);
@@ -258,10 +292,12 @@ async function saveState(path, state) {
   await rename(tmp, path);
 }
 
-// ---------- HMAC ---------------------------------------------------------
-
-function signPayload(secret, body) {
-  return 'sha256=' + createHmac('sha256', secret).update(body, 'utf8').digest('hex');
+async function saveHeartbeat(path, payload) {
+  await mkdir(dirname(path), { recursive: true });
+  const tmp = `${path}.tmp`;
+  await writeFile(tmp, JSON.stringify({ ...payload, timestamp: new Date().toISOString() }), 'utf8');
+  const { rename } = await import('node:fs/promises');
+  await rename(tmp, path);
 }
 
 // ---------- HTTP helpers ------------------------------------------------
@@ -294,7 +330,7 @@ function splitCouchAuth(rawUrl) {
   return { base, authHeader };
 }
 
-async function fetchChanges({ couchUrl, db, since, batchSize }) {
+async function fetchChanges({ couchUrl, couchUser, couchPassword, db, since, batchSize, timeoutMs }) {
   const { base, authHeader } = splitCouchAuth(couchUrl);
   // CouchDB accepts since=0 as the "from the beginning" sentinel.
   const url = new URL(`${base}/${db}/_changes`);
@@ -305,9 +341,13 @@ async function fetchChanges({ couchUrl, db, since, batchSize }) {
   url.searchParams.set('feed', 'normal');
 
   const headers = {};
-  if (authHeader) headers.authorization = authHeader;
+  if (couchUser && couchPassword) {
+    headers.authorization = 'Basic ' + Buffer.from(`${couchUser}:${couchPassword}`).toString('base64');
+  } else if (authHeader) {
+    headers.authorization = authHeader;
+  }
 
-  const res = await fetch(url, { method: 'GET', headers });
+  const res = await fetch(url, { method: 'GET', headers, signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     // Note: never include the URL or auth header in this message — admin
@@ -317,16 +357,16 @@ async function fetchChanges({ couchUrl, db, since, batchSize }) {
   return res.json();
 }
 
-async function postSync({ syncUrl, secret, db, changes }) {
+async function postSync({ syncUrl, secret, db, changes, timeoutMs }) {
   const payload = JSON.stringify({ db, changes });
-  const signature = signPayload(secret, payload);
   const res = await fetch(syncUrl, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-tamamhealth-signature': signature,
+      ...buildSignedHeaders({ secret, method: 'POST', url: syncUrl, body: payload }),
     },
     body: payload,
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await res.text().catch(() => '');
   if (!res.ok) {
@@ -343,9 +383,12 @@ async function pollDatabase({ env, state, db }) {
   const since = state[db]?.seq || '0';
   const result = await fetchChanges({
     couchUrl: env.COUCHDB_URL,
+    couchUser: env.COUCHDB_USER,
+    couchPassword: env.COUCHDB_PASSWORD,
     db,
     since,
     batchSize: env.BATCH_SIZE,
+    timeoutMs: env.REQUEST_TIMEOUT_MS || 15000,
   });
   const changes = Array.isArray(result.results) ? result.results : [];
 
@@ -367,6 +410,7 @@ async function pollDatabase({ env, state, db }) {
     secret: env.COUCHDB_WEBHOOK_SECRET,
     db,
     changes: mapped,
+    timeoutMs: env.REQUEST_TIMEOUT_MS || 15000,
   });
 
   // CouchDB's `last_seq` is authoritative; fall back to the final entry's seq.
@@ -418,13 +462,18 @@ export async function runOnce({ env, state, dbs }) {
 
 async function mainLoop({ env, dbs }) {
   let state = await loadState(env.STATE_FILE);
+  await saveHeartbeat(env.HEARTBEAT_FILE, { status: 'starting', databases: dbs.length });
 
   // Empty state means either a genuine first run or a lost state file. We
   // cannot tell them apart locally, so ask the platform for the checkpoints it
   // holds in Postgres before deciding to replay everything (KAN-55).
   if (Object.keys(state).length === 0) {
     log('warn', `no local state at ${env.STATE_FILE} — attempting recovery from the platform's sync_metadata`);
-    const recovered = await recoverStateFromPlatform(env.PLATFORM_SYNC_URL);
+    const recovered = await recoverStateFromPlatform(
+      env.PLATFORM_SYNC_URL,
+      env.COUCHDB_WEBHOOK_SECRET,
+      env.REQUEST_TIMEOUT_MS,
+    );
     if (recovered) {
       state = recovered;
       log('info', `state recovered for ${Object.keys(recovered).length} database(s); resuming from stored checkpoints`);
@@ -475,6 +524,11 @@ async function mainLoop({ env, dbs }) {
     } catch (err) {
       log('error', `state file write failed: ${err.message}`);
     }
+    await saveHeartbeat(env.HEARTBEAT_FILE, {
+      status: totalErrors > 0 ? 'degraded' : 'ok',
+      totalProcessed,
+      totalErrors,
+    }).catch((err) => log('error', `heartbeat write failed: ${err.message}`));
 
     if (totalErrors > 0 && totalProcessed === 0) {
       consecutiveFailures += 1;
@@ -508,7 +562,7 @@ if (isMain) {
   if (errors.length) {
     for (const e of errors) console.error(`[sync-worker] ${e}`);
     console.error('[sync-worker] required env: COUCHDB_URL, COUCHDB_WEBHOOK_SECRET (>=32 chars), PLATFORM_SYNC_URL');
-    console.error('[sync-worker] optional env: POLL_INTERVAL_MS (default 5000), BATCH_SIZE (default 100), STATE_FILE, BACKOFF_MS (default 30000)');
+    console.error('[sync-worker] optional env: POLL_INTERVAL_MS (default 5000), BATCH_SIZE (default 100), STATE_FILE, HEARTBEAT_FILE, BACKOFF_MS (default 30000), REQUEST_TIMEOUT_MS (default 15000), REQUIRE_HTTPS');
     process.exit(2);
   }
   loadDbList()
@@ -521,11 +575,12 @@ if (isMain) {
 
 // Exports for tests.
 export {
-  signPayload,
+  buildSignedHeaders,
   loadDbList,
   readEnv,
   loadState,
   saveState,
+  saveHeartbeat,
   pollDatabase,
   recoverStateFromPlatform,
   splitCouchAuth,

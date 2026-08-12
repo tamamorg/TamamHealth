@@ -1900,7 +1900,7 @@ async function clearSeededClinicalDataOnce(): Promise<void> {
     'tamamhealth_handoffs', 'tamamhealth_patient_transfers', 'tamamhealth_nutrition_screenings',
     'tamamhealth_nutrition_supplies', 'tamamhealth_availability', 'tamamhealth_announcements',
     'tamamhealth_emergency_plans', 'tamamhealth_assets', 'tamamhealth_leave_requests',
-    'tamamhealth_payroll_entries', 'tamamhealth_clinical_favorites',
+    'tamamhealth_payroll_entries', 'tamamhealth_patient_feedback', 'tamamhealth_clinical_favorites',
     'tamamhealth_consultation_templates', 'tamamhealth_clinician_tasks',
   ];
 

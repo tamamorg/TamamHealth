@@ -36,12 +36,18 @@ set -eu
 # Non-zero because a write landing mid-dump is normal, not a failure.
 : "${BACKUP_VERIFY_TOLERANCE_PCT:=1}"
 
-BASE="http://${COUCHDB_USER}:${COUCHDB_PASSWORD}@${COUCHDB_HOST}:${COUCHDB_PORT}"
+BASE="http://${COUCHDB_HOST}:${COUCHDB_PORT}"
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 OUT="/backups/${STAMP}"
 mkdir -p "$OUT"
 
 log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
+
+# Keep credentials out of URLs so special characters are handled correctly and
+# curl errors can never echo an authenticated URL into the backup log.
+couch_get() {
+  curl --silent --show-error --fail --user "${COUCHDB_USER}:${COUCHDB_PASSWORD}" "${BASE}$1"
+}
 
 log "starting CouchDB backup → $OUT"
 
@@ -54,13 +60,13 @@ FIRST=1
 # Iterating a `for` over command substitution rather than piping into `while`:
 # a piped subshell cannot mutate FAILURES in the parent, so failures were
 # invisible to the exit status.
-for db in $(curl -sf "${BASE}/_all_dbs" | jq -r '.[]' | grep '^tamamhealth_'); do
+for db in $(couch_get '/_all_dbs' | jq -r '.[]' | grep '^tamamhealth_'); do
   log "  dumping $db"
 
   # Read live state BEFORE dumping, so the recorded checkpoint is never ahead
   # of the data it describes. A checkpoint newer than the dump would silently
   # skip documents on an incremental restore.
-  if ! INFO=$(curl -sf "${BASE}/${db}"); then
+  if ! INFO=$(couch_get "/${db}"); then
     log "  ERROR: could not read ${db} info"
     FAILURES=$((FAILURES + 1))
     continue
@@ -68,7 +74,7 @@ for db in $(curl -sf "${BASE}/_all_dbs" | jq -r '.[]' | grep '^tamamhealth_'); d
   LIVE_COUNT=$(echo "$INFO" | jq -r '.doc_count')
   UPDATE_SEQ=$(echo "$INFO" | jq -r '.update_seq')
 
-  if ! curl -sf "${BASE}/${db}/_all_docs?include_docs=true" | gzip -c > "${OUT}/${db}.json.gz"; then
+  if ! couch_get "/${db}/_all_docs?include_docs=true" | gzip -c > "${OUT}/${db}.json.gz"; then
     log "  ERROR: dump failed for ${db}"
     FAILURES=$((FAILURES + 1))
     continue

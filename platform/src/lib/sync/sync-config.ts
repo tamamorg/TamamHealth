@@ -85,6 +85,7 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_staff_schedules',       direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_leave_requests',        direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_payroll_entries',       direction: 'both', orgScoped: true },
+  { localName: 'tamamhealth_patient_feedback',      direction: 'both', orgScoped: true },
 
   // ----- Billing / payments / insurance -----
   { localName: 'tamamhealth_billing',               direction: 'both', orgScoped: true },

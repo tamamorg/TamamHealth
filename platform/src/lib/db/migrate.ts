@@ -15,6 +15,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
+import { postgresSslOptions } from './postgres-ssl';
 
 // 64-bit signed integer, picked once and never changed. Any process that
 // holds a Postgres advisory lock under this key serializes migration runs
@@ -180,7 +181,9 @@ export async function runMigrations(opts: RunMigrationsOptions = {}): Promise<Mi
 }
 
 function buildPoolFromEnv(): Pool {
-  const connectionString = process.env.DATABASE_URL;
+  // Serverless traffic uses a transaction pool, but the migration advisory
+  // lock is session-scoped and must use the provider's direct endpoint.
+  const connectionString = process.env.DATABASE_DIRECT_URL || process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error('[migrate] DATABASE_URL is not set');
   }
@@ -189,8 +192,6 @@ function buildPoolFromEnv(): Pool {
     max: 2,
     idleTimeoutMillis: 5000,
     connectionTimeoutMillis: 10000,
-    ...(process.env.NODE_ENV === 'production'
-      ? { ssl: { rejectUnauthorized: false } }
-      : {}),
+    ...(postgresSslOptions() ? { ssl: postgresSslOptions() } : {}),
   });
 }
