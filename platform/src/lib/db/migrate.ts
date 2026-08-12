@@ -15,7 +15,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
-import { postgresSslOptions } from './postgres-ssl';
+import { connectionStringForExplicitSsl, postgresSslOptions } from './postgres-ssl';
 
 // 64-bit signed integer, picked once and never changed. Any process that
 // holds a Postgres advisory lock under this key serializes migration runs
@@ -187,11 +187,12 @@ function buildPoolFromEnv(): Pool {
   if (!connectionString) {
     throw new Error('[migrate] DATABASE_URL is not set');
   }
+  const ssl = postgresSslOptions();
   return new Pool({
-    connectionString,
+    connectionString: connectionStringForExplicitSsl(connectionString, ssl),
     max: 2,
     idleTimeoutMillis: 5000,
     connectionTimeoutMillis: 10000,
-    ...(postgresSslOptions() ? { ssl: postgresSslOptions() } : {}),
+    ...(ssl ? { ssl } : {}),
   });
 }

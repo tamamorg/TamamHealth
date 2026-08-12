@@ -24,3 +24,23 @@ export function postgresSslOptions(
   }
   return { rejectUnauthorized: true, ca };
 }
+
+/**
+ * node-postgres lets SSL query parameters in a connection URL replace the
+ * separately supplied `ssl` object. That silently discards a managed
+ * provider's CA and produces "self-signed certificate in certificate chain".
+ * Once we have explicit SSL options, remove those URL parameters so the
+ * verified configuration remains authoritative.
+ */
+export function connectionStringForExplicitSsl(
+  connectionString: string,
+  ssl: PostgresSslOptions | undefined,
+): string {
+  if (!ssl) return connectionString;
+
+  const url = new URL(connectionString);
+  for (const parameter of ['sslmode', 'sslcert', 'sslkey', 'sslrootcert']) {
+    url.searchParams.delete(parameter);
+  }
+  return url.toString();
+}

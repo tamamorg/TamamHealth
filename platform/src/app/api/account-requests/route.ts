@@ -69,6 +69,12 @@ export async function POST(request: NextRequest) {
       if (applicantName.length < 2 || applicantName.length > 120) throw new Error('Full name is required');
       const organizationId = sanitizeString(body.organizationId) || undefined;
       const isOrgAdmin = requestedRole === 'org_admin';
+      if (isOrgAdmin && !organizationId && process.env.SINGLE_ORG_MODE === 'true') {
+        return NextResponse.json(
+          { error: 'Select the existing organization. New organizations are disabled in this deployment.' },
+          { status: 409 },
+        );
+      }
       if (!isOrgAdmin && !organizationId) throw new Error('Select an organization');
       const facilityId = sanitizeString(body.facilityId) || undefined;
       let facilityName = sanitizeString(body.facilityName).slice(0, 160) || undefined;
@@ -124,6 +130,12 @@ export async function POST(request: NextRequest) {
     let finalOrgId = orgId;
     let finalOrgName = target.organizationName;
     if (!finalOrgId) {
+      if (process.env.SINGLE_ORG_MODE === 'true') {
+        return NextResponse.json(
+          { error: 'New organizations are disabled in this deployment.' },
+          { status: 409 },
+        );
+      }
       if (role !== 'org_admin' || auth.role !== 'super_admin') return NextResponse.json({ error: 'Organization details are incomplete' }, { status: 400 });
       const { createOrganization } = await import('@/lib/services/organization-service');
       const org = await createOrganization({ name: target.organizationName!, slug: target.organizationSlug!, contactEmail: target.email, country: target.organizationCountry || 'South Sudan', primaryColor: '#2191D0', secondaryColor: '#015697', subscriptionStatus: 'trial', subscriptionPlan: 'basic', maxUsers: 50, maxHospitals: 10, featureFlags: { epidemicIntelligence: false, mchAnalytics: false, dhis2Export: false, aiClinicalSupport: false, communityHealth: false, facilityAssessments: false }, orgType: 'private', isActive: true }, auth.sub, auth.username);

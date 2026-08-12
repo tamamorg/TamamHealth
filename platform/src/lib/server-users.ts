@@ -89,6 +89,18 @@ export async function authenticateUser(
   username: string,
   password: string,
 ): Promise<ServerUser | null> {
+  const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+
+  // Production users—including the bootstrap admin—are authoritative only in
+  // the shared users database. Falling back to ADMIN_INITIAL_PASSWORD after a
+  // password change would leave the old bootstrap password usable forever.
+  if (!isDemo) {
+    const productionUser = await authenticateFromUsersDb(username, password);
+    if (productionUser) return productionUser;
+    await bcrypt.hash(password, 12);
+    return null;
+  }
+
   // 1) Seeded demo accounts — verified against the generated credentials file.
   //    Checked first so demo logins keep working even when CouchDB is offline.
   const profile = profileByUsername.get(username);

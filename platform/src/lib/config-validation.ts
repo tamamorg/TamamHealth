@@ -130,6 +130,14 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
     if (!env.COUCHDB_WEBHOOK_SECRET) {
       errors.push('NEXT_PUBLIC_SYNC_ENABLED=true but COUCHDB_WEBHOOK_SECRET is unset.');
     }
+    // Shared CouchDB databases cannot enforce per-document read ACLs. Until
+    // database-per-organization routing exists, fail closed unless production
+    // explicitly enforces one organization at every creation boundary.
+    if (!isDemo && env.SINGLE_ORG_MODE !== 'true') {
+      errors.push(
+        'SINGLE_ORG_MODE must be true while CouchDB uses shared databases — multi-organization read isolation requires database-per-organization storage.',
+      );
+    }
   }
 
   // --- Telehealth video (LiveKit) -------------------------------------------

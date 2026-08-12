@@ -146,7 +146,9 @@ export async function setDatabaseSecurity(input: {
     method: 'PUT',
     path: `/${encodeURIComponent(input.dbName)}/_security`,
     body: {
-      admins: { names: [], roles: [] },
+      // Super admins intentionally have no orgId but must be able to bootstrap
+      // and support this single-organization deployment.
+      admins: { names: [], roles: ['role:super_admin'] },
       members: {
         names: input.memberUsers ?? [],
         roles: input.memberRoles,

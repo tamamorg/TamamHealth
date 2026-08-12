@@ -8,7 +8,12 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <PublicLegalShell title="Privacy Policy" subtitle="TamamHealth — Digital Health Records Platform">
+    <PublicLegalShell
+      title="Privacy Policy"
+      // The eyebrow above already carries the platform's name; this says what
+      // the document is about.
+      subtitle="How personal and health information is collected, used, stored and shared."
+    >
       <p>
         TamamHealth processes personal and health information to support patient care,
         facility operations, and public-health reporting. This policy summarises how that

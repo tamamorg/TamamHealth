@@ -40,7 +40,6 @@ const ORG_SCOPED_DATABASES = [
   'tamamhealth_facility_census',
   'tamamhealth_immunizations',
   'tamamhealth_anc',
-  'tamamhealth_boma_visits',
   'tamamhealth_follow_ups',
   'tamamhealth_hospitals',
   'tamamhealth_problems',
@@ -186,6 +185,20 @@ const ORG_SCOPED_VALIDATE_FN = `function (newDoc, oldDoc, userCtx, secObj) {
 }`;
 
 const DESIGN_DOC_ID = '_design/tamamhealth-org-scope';
+const READ_ONLY_DESIGN_DOC_ID = '_design/tamamhealth-server-writes-only';
+const READ_ONLY_DATABASES = [
+  'tamamhealth_users',
+  'tamamhealth_organizations',
+  'tamamhealth_platform_config',
+  'tamamhealth_fee_schedule',
+];
+const READ_ONLY_VALIDATE_FN = `function (newDoc, oldDoc, userCtx, secObj) {
+  var roles = (userCtx && userCtx.roles) || [];
+  for (var i = 0; i < roles.length; i++) {
+    if (roles[i] === '_admin') return;
+  }
+  throw({ forbidden: 'This database is server-managed and read-only to clients' });
+}`;
 
 function resolveConfig() {
   const url =
@@ -253,6 +266,34 @@ async function installOne(baseUrl, authHeader, dbName) {
   return { ok: false, reason };
 }
 
+async function installReadOnly(baseUrl, authHeader, dbName) {
+  const designUrl = `${baseUrl}/${dbName}/${READ_ONLY_DESIGN_DOC_ID}`;
+  const probe = await fetch(designUrl, {
+    method: 'GET',
+    headers: { Authorization: authHeader },
+  });
+  let existingRev = null;
+  if (probe.status === 200) {
+    const existing = await probe.json();
+    existingRev = existing && existing._rev ? existing._rev : null;
+  } else if (probe.status !== 404) {
+    return { ok: false, reason: `GET ${probe.status}` };
+  }
+  const body = {
+    _id: READ_ONLY_DESIGN_DOC_ID,
+    validate_doc_update: READ_ONLY_VALIDATE_FN,
+  };
+  if (existingRev) body._rev = existingRev;
+  const put = await fetch(designUrl, {
+    method: 'PUT',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return put.status === 201 || put.status === 202
+    ? { ok: true }
+    : { ok: false, reason: `PUT ${put.status}` };
+}
+
 /**
  * Grant per-DB read/write membership to org roles so authenticated CouchDB
  * users (provisioned by lib/sync/couch-auth.ts with `org:<orgId>` roles) can
@@ -261,10 +302,11 @@ async function installOne(baseUrl, authHeader, dbName) {
  * credentials — the admins block is intentionally left empty.
  *
  * Org list comes from COUCHDB_MEMBER_ORG_IDS (comma-separated orgIds);
- * defaults to the two demo-seed organizations.
+ * With no explicit org IDs, membership stays empty (admin-only). Production
+ * must never silently grant access to demo organization roles.
  */
 function memberRoles() {
-  const orgIds = (process.env.COUCHDB_MEMBER_ORG_IDS || 'org-moh-ss,org-mercy-hospital')
+  const orgIds = (process.env.COUCHDB_MEMBER_ORG_IDS || '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
@@ -276,7 +318,7 @@ async function applySecurity(baseUrl, authHeader, dbName, roles) {
     method: 'PUT',
     headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      admins: { names: [], roles: [] },
+      admins: { names: [], roles: ['role:super_admin'] },
       members: { names: [], roles },
     }),
   });
@@ -322,6 +364,14 @@ async function main() {
     `[install-validate-doc-updates] done ok=${okCount} error=${errCount} ` +
     `total=${ORG_SCOPED_DATABASES.length}`,
   );
+
+  for (const db of READ_ONLY_DATABASES) {
+    const result = await installReadOnly(baseUrl, authHeader, db);
+    if (!result.ok) {
+      console.log(`[error] ${db} read-only policy ${result.reason}`);
+      errCount++;
+    }
+  }
 
   // ── _security membership on every app database ──────────────────────────
   // Replication needs membership on all tamamhealth_* DBs, not only the

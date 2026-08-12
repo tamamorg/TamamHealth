@@ -47,27 +47,86 @@ done
 
 # ---------- 2. Create databases ----------
 DATABASES=(
-  tamamhealth_users
   tamamhealth_account_requests
-  tamamhealth_patients
-  tamamhealth_hospitals
-  tamamhealth_medical_records
-  tamamhealth_referrals
-  tamamhealth_lab_results
-  tamamhealth_disease_alerts
-  tamamhealth_prescriptions
-  tamamhealth_audit_log
-  tamamhealth_messages
-  tamamhealth_births
-  tamamhealth_deaths
-  tamamhealth_facility_assessments
-  tamamhealth_immunizations
+  tamamhealth_adjustments
   tamamhealth_anc
-  tamamhealth_boma_visits
+  tamamhealth_announcements
+  tamamhealth_appointments
+  tamamhealth_assessments
+  tamamhealth_assets
+  tamamhealth_audit_log
+  tamamhealth_availability
+  tamamhealth_billing
+  tamamhealth_biometric_templates
+  tamamhealth_births
+  tamamhealth_blood_bank
+  tamamhealth_booking_policies
+  tamamhealth_charges
+  tamamhealth_claims
+  tamamhealth_clinical_favorites
+  tamamhealth_clinical_notes
+  tamamhealth_clinician_tasks
+  tamamhealth_conflict_queue
+  tamamhealth_consultation_progress
+  tamamhealth_consultation_templates
+  tamamhealth_controlled_substance_log
+  tamamhealth_conversations
+  tamamhealth_deaths
+  tamamhealth_disease_alerts
+  tamamhealth_eligibility_checks
+  tamamhealth_emergency_plans
+  tamamhealth_encounters
+  tamamhealth_facility_assessments
+  tamamhealth_facility_census
+  tamamhealth_fee_schedule
   tamamhealth_follow_ups
-  tamamhealth_organizations
-  tamamhealth_platform_config
+  tamamhealth_handoffs
+  tamamhealth_hospitals
+  tamamhealth_immunizations
+  tamamhealth_insurance_policies
+  tamamhealth_intake_forms
+  tamamhealth_invoices
+  tamamhealth_lab_results
+  tamamhealth_leave_requests
+  tamamhealth_ledger
+  tamamhealth_medical_records
+  tamamhealth_messages
   tamamhealth_meta
+  tamamhealth_nutrition_screenings
+  tamamhealth_nutrition_supplies
+  tamamhealth_order_sets
+  tamamhealth_organizations
+  tamamhealth_patient_documents
+  tamamhealth_patient_feedback
+  tamamhealth_patient_notes
+  tamamhealth_patient_reminders
+  tamamhealth_patient_transfers
+  tamamhealth_patients
+  tamamhealth_payment_plans
+  tamamhealth_payments
+  tamamhealth_payroll_entries
+  tamamhealth_pharmacy_inventory
+  tamamhealth_phone_notes
+  tamamhealth_platform_config
+  tamamhealth_prescriptions
+  tamamhealth_problems
+  tamamhealth_procedures
+  tamamhealth_program_enrollments
+  tamamhealth_provider_profiles
+  tamamhealth_provider_reviews
+  tamamhealth_referrals
+  tamamhealth_refunds
+  tamamhealth_saved_payment_methods
+  tamamhealth_slot_holds
+  tamamhealth_staff_schedules
+  tamamhealth_sync_events
+  tamamhealth_telehealth
+  tamamhealth_text_shortcuts
+  tamamhealth_triage
+  tamamhealth_usage_events
+  tamamhealth_users
+  tamamhealth_visit_reasons
+  tamamhealth_wards
 )
 
 echo ""
@@ -81,54 +140,7 @@ for db in "${DATABASES[@]}"; do
   esac
 done
 
-# ---------- 3. Create design documents for filtered replication ----------
-echo ""
-echo "--- Installing design documents..."
-
-# Org-scoped filter: only replicate documents matching the user's orgId
-ORG_FILTER_DOC='{
-  "_id": "_design/sync",
-  "filters": {
-    "by_org": "function(doc, req) { if (doc._id.indexOf(\"_design/\") === 0) return true; if (!doc.orgId) return true; return doc.orgId === req.query.orgId; }"
-  }
-}'
-
-# Databases that use org-scoped filtering
-ORG_SCOPED_DBS=(
-  tamamhealth_patients
-  tamamhealth_medical_records
-  tamamhealth_referrals
-  tamamhealth_lab_results
-  tamamhealth_prescriptions
-  tamamhealth_messages
-  tamamhealth_births
-  tamamhealth_deaths
-  tamamhealth_facility_assessments
-  tamamhealth_immunizations
-  tamamhealth_anc
-  tamamhealth_boma_visits
-  tamamhealth_follow_ups
-  tamamhealth_hospitals
-  tamamhealth_users
-  tamamhealth_audit_log
-)
-
-for db in "${ORG_SCOPED_DBS[@]}"; do
-  # Delete old design doc if it exists (ignore errors)
-  curl -sf -X DELETE "${COUCHDB_URL}/${db}/_design/sync?rev=$(curl -sf "${COUCHDB_URL}/${db}/_design/sync" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("_rev",""))' 2>/dev/null)" > /dev/null 2>&1 || true
-
-  status=$(curl -sf -o /dev/null -w "%{http_code}" -X PUT \
-    -H "Content-Type: application/json" \
-    -d "${ORG_FILTER_DOC}" \
-    "${COUCHDB_URL}/${db}/_design/sync" 2>/dev/null || echo "000")
-  case "$status" in
-    201) echo "  Design doc installed: ${db}/_design/sync" ;;
-    409) echo "  Design doc exists:    ${db}/_design/sync" ;;
-    *)   echo "  WARN: ${db}/_design/sync (HTTP ${status})" ;;
-  esac
-done
-
-# ---------- 3b. Install org-scoping validate_doc_update design docs ----------
+# ---------- 3. Install server-side write validation and DB security ---------
 # Server-side tenancy enforcement. The client-side sync filter in
 # sync-service.ts can be bypassed by a tampered PouchDB; the validate_doc_update
 # function below runs inside CouchDB on every write and rejects docs missing
@@ -221,7 +233,7 @@ echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "Databases created: ${#DATABASES[@]}"
-echo "Design docs installed: ${#ORG_SCOPED_DBS[@]}"
+echo "Server-side validation and _security policies installed."
 echo ""
 echo "Next steps:"
 echo "  1. Set NEXT_PUBLIC_COUCHDB_URL in .env.local"

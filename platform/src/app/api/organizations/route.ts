@@ -102,6 +102,12 @@ async function postHandler(request: NextRequest) {
       );
       return NextResponse.json({ organization: updated });
     }
+    if (process.env.SINGLE_ORG_MODE === 'true') {
+      return NextResponse.json(
+        { error: 'This deployment currently supports one organization. Add staff to the existing organization.' },
+        { status: 409 },
+      );
+    }
     // Create new organization
     if (!body.name || !body.slug || !body.contactEmail || !body.country) {
       return NextResponse.json(

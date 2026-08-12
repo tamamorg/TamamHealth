@@ -43,7 +43,7 @@ cd /opt/tamamhealth
 cp infra/digitalocean/data-plane.env.example .env.data
 # Fill secrets and set RELEASE_ID to `git rev-parse --short=12 HEAD`, then:
 docker compose --env-file .env.data -f docker-compose.data.yml config --quiet
-docker compose --env-file .env.data -f docker-compose.data.yml up -d couchdb couchdb-backup
+docker compose --env-file .env.data -f docker-compose.data.yml up -d couchdb couchdb-backup caddy
 ```
 
 Enable analytics only after Vercel has a reachable TLS PostgreSQL

@@ -12,12 +12,35 @@ x-logging: &default-logging
     max-file: "5"
 
 services:
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    logging: *default-logging
+    environment:
+      CADDY_EMAIL: ${CADDY_EMAIL:?CADDY_EMAIL must be set for certificate notifications}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/digitalocean/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - clinical-data
+
   couchdb:
-    image: couchdb:3.5.1
+    image: tamamhealth-couchdb:${RELEASE_ID:?RELEASE_ID must be the deployed git commit SHA}
+    build:
+      context: ./infra/digitalocean
+      dockerfile: couchdb.Dockerfile
     logging: *default-logging
     environment:
       COUCHDB_USER: ${COUCHDB_USER:?COUCHDB_USER must be set}
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}
+      COUCHDB_SECRET: ${COUCHDB_SECRET:?COUCHDB_SECRET must be set}
     ports:
       - "127.0.0.1:${COUCHDB_PORT:-5984}:5984"
     volumes:
@@ -26,7 +49,7 @@ services:
     networks:
       - clinical-data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:5984/_up || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS -u \"$$COUCHDB_USER:$$COUCHDB_PASSWORD\" http://localhost:5984/_up || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -82,6 +105,8 @@ services:
       - clinical-data
 
 volumes:
+  caddy_data:
+  caddy_config:
   couchdb_data:
   couchdb_backups:
   sync_worker_state:

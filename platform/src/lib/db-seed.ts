@@ -1126,7 +1126,7 @@ const seedBookingPolicies: Record<string, unknown>[] = [
       + 'previous test results, and your insurance details if you have cover. '
       + 'If you cannot attend, cancel at least 24 hours ahead so the slot can go to someone else.',
     consentTextPrivacy:
-      'I have read and agree to the Privacy Policy and Terms of Use, am at least 18, '
+      'I have read and agree to the Privacy Policy and Terms & Conditions, am at least 18, '
       + 'and have the authority to make this appointment.',
     consentTextSms:
       'I agree to receive text messages from this facility about my appointment. '
@@ -1669,29 +1669,10 @@ async function seedProduction(): Promise<void> {
     updatedAt: now,
   });
 
-  // Create initial super admin. The plaintext lives only on the server in
-  // .seed-credentials.json — fetched here so the local PouchDB hash matches
-  // what the server-side login endpoint expects.
-  const db = usersDB();
-  const cred = await fetchAdminCredential();
-  if (!cred) {
-    throw new Error(
-      '[db-seed] could not fetch admin credential from /api/demo-credentials. ' +
-      'Set ADMIN_INITIAL_PASSWORD on the server or check that the credentials file is writable.',
-    );
-  }
-  const hash = await hashPassword(cred.password);
-  await safePut(db, {
-    _id: 'user-admin',
-    type: 'user',
-    username: 'admin',
-    passwordHash: hash,
-    name: process.env.NEXT_PUBLIC_ADMIN_NAME || 'System Administrator',
-    role: 'super_admin',
-    isActive: true,
-    createdAt: now,
-    updatedAt: now,
-  });
+  // The production admin is created in the server-managed shared users DB by
+  // the deployment bootstrap. Never fetch or place its plaintext credential
+  // in browser code; usersDB is pull-only and receives the profile after the
+  // authenticated CouchDB session starts.
 }
 
 // ═══ Patient-photo migration ══════════════════════════════════════

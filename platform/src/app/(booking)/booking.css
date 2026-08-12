@@ -688,6 +688,21 @@
   gap: 12px;
 }
 
+/* Where to actually read the documents the consent tick refers to. Small and
+   quiet — the tick is the decision, these are the reference behind it. */
+.booking-consent-links {
+  margin: -2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--booking-ink-muted);
+}
+.booking-consent-links a {
+  color: var(--booking-accent-strong, #015697);
+  font-weight: 600;
+  text-decoration: none;
+}
+.booking-consent-links a:hover { text-decoration: underline; }
+
 /* Practice-authored copy. Rendered as plain text, never as HTML — a
    practice-supplied string is untrusted input, and this page is public. */
 .booking-policy-text {
