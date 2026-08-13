@@ -904,8 +904,24 @@ export interface MessageDoc extends BaseDoc {
   subject: string;
   body: string;
   channel: 'app' | 'sms' | 'both';
+  /**
+   * DELIVERY status — whether the message left the building. This is not a
+   * triage state; an inbound patient enquiry that has been answered still
+   * reads 'sent'. Front-desk triage lives in `enquiryStatus` below.
+   */
   status: 'sent' | 'delivered' | 'failed';
   sentAt: string;
+  /**
+   * Front-desk triage state for an inbound patient enquiry
+   * (`direction === 'patient_to_staff'`). Optional and absent on every
+   * message written before enquiry triage existed — readers must treat
+   * "absent" as 'new' (see `deriveEnquiryStatus` in services/enquiry-service).
+   * Deliberately separate from `status`, which means delivery, not handling.
+   */
+  enquiryStatus?: 'new' | 'contacted' | 'appointment_scheduled' | 'closed';
+  /** Staff member who owns this enquiry. Absent = unassigned. */
+  enquiryAssignedToId?: string;
+  enquiryAssignedToName?: string;
   /**
    * Set when the message was sent as patient education (the chart header's
    * "Patient education" action) — the chart's Documents ▸ Patient education

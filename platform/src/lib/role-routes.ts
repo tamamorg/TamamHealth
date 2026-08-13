@@ -50,7 +50,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dhis2-export', '/public-stats',
       '/appointments', '/telehealth',
       '/billing', '/payments', '/payments/claims',
-      '/wards', '/equipment', '/hr', '/dashboard/hr',
+      '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
     ],
     // Platform admins land on the real admin console — the facility-style
@@ -73,7 +73,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/patients', '/pharmacy', '/messages',
       '/appointments',
       '/billing', '/payments', '/payments/claims',
-      '/wards', '/equipment', '/hr', '/dashboard/hr',
+      '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
     ],
     // Org admins land on the Facility Operations dashboard; the org-level
@@ -225,7 +225,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/epidemic-intelligence', '/mch-analytics', '/my-facility', '/facility-overview',
       '/appointments', '/telehealth', '/facility-assessments', '/data-quality',
       '/billing', '/payments', '/payments/claims', '/patient-intake',
-      '/wards', '/equipment', '/hr', '/dashboard/hr',
+      '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
     ],
     defaultDashboard: '/dashboard',
@@ -280,7 +280,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // Reporting
       '/reports', '/data-quality', '/vital-statistics', '/dhis2-export', '/public-stats',
       // Facility operations
-      '/equipment', '/hr', '/dashboard/hr', 
+      '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       // Finance oversight
       '/billing', '/payments', '/payments/claims',
       // Clinical context (read). Lab/pharmacy are operational service queues run

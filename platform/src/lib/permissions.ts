@@ -150,11 +150,17 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // /org-admin (Org Overview) stays a reachable route for deep links but
       // is deliberately not in the nav — the Facility Operations dashboard is
       // the org admin's single home.
-      { href: '/messages', label: 'Enquiries', icon: MessageSquare, section: 'OVERVIEW' },
+      // This is staff-to-staff chat. It was labelled "Enquiries", which sent
+      // anyone looking for inbound patient enquiries to the wrong screen —
+      // those now have their own page, reachable from the People & HR menu.
+      { href: '/messages', label: 'Messages', icon: MessageSquare, section: 'OVERVIEW' },
       { href: '/hospitals', label: 'Facilities', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
       { href: '/wards', label: 'Bed Management', icon: BedDouble, section: 'FACILITIES & OPERATIONS' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'FACILITIES & OPERATIONS' },
-      { href: '/hr', label: 'Doctors & Staff', icon: Stethoscope, section: 'PEOPLE & ACCESS' },
+      // Staff, accounts, leave, shifts, payroll and patient enquiries all live
+      // in the labelled "People & HR" rail dropdown (lib/people-nav.ts). No
+      // entry here — two routes to the same page is the duplication that made
+      // this nav hard to reason about.
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL SERVICES' },
       { href: '/pharmacy', label: 'Prescriptions & Medicines', icon: Pill, section: 'CLINICAL SERVICES' },
       { href: '/blood-bank', label: 'Blood Bank', icon: Droplets, section: 'CLINICAL SERVICES' },
@@ -443,7 +449,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/dashboard', label: 'Hospital Dashboard', icon: LayoutDashboard, section: 'ADMINISTRATION' },
       { href: '/hospitals', label: 'Hospital Network', icon: HospitalIcon, section: 'ADMINISTRATION' },
       { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'ADMINISTRATION' },
-      { href: '/facility-overview', label: 'Facility Overview', icon: Gauge, section: 'ADMINISTRATION' },      { href: '/hr', label: 'HR & Leave', icon: Users, section: 'ADMINISTRATION' },
+      // HR destinations live in the labelled "People & HR" rail dropdown.
+      { href: '/facility-overview', label: 'Facility Overview', icon: Gauge, section: 'ADMINISTRATION' },
       { href: '/equipment', label: 'Assets', icon: Package, section: 'ADMINISTRATION' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'ADMINISTRATION' },
       { href: '/emergency-preparedness', label: 'Emergency Prep', icon: ShieldAlert, section: 'ADMINISTRATION' },
@@ -548,7 +555,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'FACILITY' },
       { href: '/facility-overview', label: 'Facility Overview', icon: Gauge, section: 'FACILITY' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'FACILITY' },
-      { href: '/equipment', label: 'Assets & Equipment', icon: Package, section: 'FACILITY' },      { href: '/hr', label: 'HR & Leave', icon: Users, section: 'FACILITY' },
+      // HR destinations live in the labelled "People & HR" rail dropdown.
+      { href: '/equipment', label: 'Assets & Equipment', icon: Package, section: 'FACILITY' },
       { href: '/billing', label: 'Billing', icon: Receipt, section: 'FINANCE' },
       { href: '/payments', label: 'Revenue & Bills', icon: Wallet, section: 'FINANCE' },
       { href: '/payments/claims', label: 'Insurance Claims', icon: Receipt, section: 'FINANCE' },
