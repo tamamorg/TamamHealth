@@ -121,25 +121,6 @@ function downloadCsv(filename: string, header: string[], rows: (string | number)
   URL.revokeObjectURL(url);
 }
 
-/**
- * Proportional column widths for a `bl-table--even` table.
- *
- * `table-layout: fixed` alone divides the width equally, which is stable but
- * not even to look at: a column holding "1" got exactly as much room as one
- * holding a patient's full name, so the numeric middle of the queue was a void
- * and the last column trailed white space to the card edge. Weights are
- * normalised here, so a caller can add or drop a column (Claims is role-gated)
- * without the percentages having to add up by hand.
- */
-function BlColGroup({ weights }: { weights: number[] }) {
-  const total = weights.reduce((sum, w) => sum + w, 0) || 1;
-  return (
-    <colgroup>
-      {weights.map((w, i) => <col key={i} style={{ width: `${(w / total) * 100}%` }} />)}
-    </colgroup>
-  );
-}
-
 export default function BillingWorkspace({ initialTab = 'accounts' }: { initialTab?: WorkspaceTab }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -489,26 +470,21 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     showToast('Export downloaded', 'success');
   }, [tab, filteredClaims, filteredAccounts, t, showToast]);
 
-  /**
-   * The accounts queue's columns and how much width each earns.
-   *
-   * Weights, not equal shares: a name needs room, a count of plans needs
-   * almost none, and the row's action button needs only its own width.
-   * Dividing evenly gave three 196px columns holding a single digit while the
-   * names were cramped and Status trailed white space to the card edge. Claims
-   * is role-gated, so `BlColGroup` normalises whatever survives.
-   */
+  /** The accounts queue's columns, in order. Widths are equal by layout
+   *  (`bl-table--even`); this list only decides order and alignment. */
   const accountColumns = useMemo(() => [
-    { label: t('payments.colPatient'), align: 'left' as const, w: 19 },
-    { label: 'Patient ID', align: 'left' as const, w: 13 },
-    { label: t('payments.colPayments'), align: 'right' as const, w: 8 },
+    { label: t('payments.colPatient'), align: 'left' as const },
+    { label: 'Patient ID', align: 'left' as const },
+    { label: t('payments.colPayments'), align: 'right' as const },
     // Claims count only for roles that can act on claims — for a cashier the
     // column is always empty by construction.
-    ...(canSeeClaims ? [{ label: t('payments.colClaims'), align: 'right' as const, w: 8 }] : []),
-    { label: t('payments.colPlans'), align: 'right' as const, w: 8 },
-    { label: t('payments.colLastActivity'), align: 'left' as const, w: 14 },
-    { label: t('payments.colBalance'), align: 'right' as const, w: 13 },
-    { label: 'Status', align: 'left' as const, w: 13 },
+    ...(canSeeClaims ? [{ label: t('payments.colClaims'), align: 'right' as const }] : []),
+    { label: t('payments.colPlans'), align: 'right' as const },
+    { label: t('payments.colLastActivity'), align: 'left' as const },
+    { label: t('payments.colBalance'), align: 'right' as const },
+    // Last column, and the Actions button sits directly above it — the pills
+    // line up under that button rather than drifting to the column's far left.
+    { label: 'Status', align: 'right' as const },
   ], [t, canSeeClaims]);
 
   // The work queue's Actions menu — create, export, reset, reload, in that
@@ -797,12 +773,9 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
             ) : (
               <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
                 <table className="bl-table bl-table--even bl-table--rows-open" style={{ minWidth: 940 }}>
-                  {/* Weights, not equal shares. `table-layout: fixed` divides
-                      the width equally, which is stable but not even to look
-                      at: three columns holding one digit got as much room as
-                      the patient's name, so the middle of the row was a void
-                      and Status trailed white space to the card edge. */}
-                  <BlColGroup weights={accountColumns.map(c => c.w)} />
+                  {/* `bl-table--even` is table-layout: fixed — every column
+                      takes an equal share of the full width, and none of them
+                      reflow as rows load. */}
                   <thead>
                     <tr>
                       {accountColumns.map(h => (
@@ -865,7 +838,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                           <td className="bl-num bl-right" style={{ fontWeight: 700, color: owing ? 'var(--color-danger-text)' : 'var(--color-success-text)' }}>
                             {formatMoney(owing ? line.outstanding : line.totalCollected)}
                           </td>
-                          <td>
+                          <td className="bl-right">
                             <span className={`bl-chip ${status.chip}`}>{status.label}</span>
                           </td>
                         </tr>

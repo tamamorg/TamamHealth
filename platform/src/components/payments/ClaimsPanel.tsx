@@ -104,28 +104,18 @@ export interface ClaimsPanelProps {
   setNewClaimOpen: (open: boolean) => void;
 }
 
-/** Claim queue columns: label key, alignment, and share of the width. */
+/** Claim queue columns, in order. Widths are equal by layout. */
 const CLAIM_COLUMNS = [
-  { key: 'claims.colClaimNumber', align: 'left' as const, w: 15 },
-  { key: 'claims.colPatientName', align: 'left' as const, w: 15 },
-  { key: 'claims.colPayerName', align: 'left' as const, w: 16 },
-  { key: 'claims.colPayerType', align: 'left' as const, w: 13 },
-  { key: 'claims.colBilled', align: 'right' as const, w: 10 },
-  { key: 'claims.colAllowed', align: 'right' as const, w: 10 },
-  { key: 'claims.colPaid', align: 'right' as const, w: 10 },
-  { key: 'claims.colStatus', align: 'left' as const, w: 6 },
-  { key: 'claims.colSubmittedDate', align: 'left' as const, w: 11 },
+  { key: 'claims.colClaimNumber', align: 'left' as const },
+  { key: 'claims.colPatientName', align: 'left' as const },
+  { key: 'claims.colPayerName', align: 'left' as const },
+  { key: 'claims.colPayerType', align: 'left' as const },
+  { key: 'claims.colBilled', align: 'right' as const },
+  { key: 'claims.colAllowed', align: 'right' as const },
+  { key: 'claims.colPaid', align: 'right' as const },
+  { key: 'claims.colStatus', align: 'left' as const },
+  { key: 'claims.colSubmittedDate', align: 'left' as const },
 ] as const;
-
-/** Normalised proportional widths — see the note on the accounts queue. */
-function BlColGroup({ weights }: { weights: readonly number[] }) {
-  const total = weights.reduce((sum, w) => sum + w, 0) || 1;
-  return (
-    <colgroup>
-      {weights.map((w, i) => <col key={i} style={{ width: `${(w / total) * 100}%` }} />)}
-    </colgroup>
-  );
-}
 
 export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaimOpen, setNewClaimOpen }: ClaimsPanelProps) {
   const { t } = useTranslation();
@@ -331,10 +321,8 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       ) : (
         <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
           <table className="bl-table bl-table--even bl-table--rows-open" style={{ minWidth: 980 }}>
-            {/* Weighted, not equal: a payer name and a claim number need room,
-                three money columns and a status pill do not. Equal thirds left
-                the amounts marooned in the middle of the row. */}
-            <BlColGroup weights={CLAIM_COLUMNS.map(c => c.w)} />
+            {/* `bl-table--even` is table-layout: fixed — equal shares of the
+                full width, stable as rows load. */}
             <thead>
               <tr>
                 {CLAIM_COLUMNS.map(c => ({ ...c, label: t(c.key) })).map(h => (
