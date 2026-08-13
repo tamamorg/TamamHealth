@@ -116,6 +116,21 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/admin/security', label: 'Security & Compliance', icon: Shield, section: 'GOVERNANCE' },
       { href: '/admin/config', label: 'Configuration', icon: Settings, section: 'GOVERNANCE' },
       { href: '/admin/flags', label: 'Feature Flags', icon: Flag, section: 'GOVERNANCE' },
+      // Total access: direct entry into every role's workspace so the platform
+      // super-admin can support/QA any station without typing URLs. Route
+      // access is already granted by the super_admin wildcard in isPathAllowed.
+      { href: '/dashboard', label: 'Clinical', icon: Stethoscope, section: 'WORKSPACES' },
+      { href: '/dashboard/nurse', label: 'Nursing', icon: HeartPulse, section: 'WORKSPACES' },
+      { href: '/dashboard/front-desk', label: 'Front Desk', icon: MessageSquare, section: 'WORKSPACES' },
+      { href: '/dashboard/lab', label: 'Laboratory', icon: Microscope, section: 'WORKSPACES' },
+      { href: '/dashboard/pharmacy', label: 'Pharmacy', icon: Pill, section: 'WORKSPACES' },
+      { href: '/dashboard/radiology', label: 'Radiology', icon: ScanLine, section: 'WORKSPACES' },
+      { href: '/payments', label: 'Billing', icon: Wallet, section: 'WORKSPACES' },
+      { href: '/dashboard/data-entry', label: 'Records / HMIS', icon: BarChart3, section: 'WORKSPACES' },
+      { href: '/dashboard/nutrition', label: 'Nutrition', icon: LayoutDashboard, section: 'WORKSPACES' },
+      { href: '/dashboard/state', label: 'County', icon: LayoutDashboard, section: 'WORKSPACES' },
+      { href: '/government', label: 'Government', icon: Building2, section: 'WORKSPACES' },
+      { href: '/facility-management', label: 'Facility Ops', icon: HospitalIcon, section: 'WORKSPACES' },
     ],
     color: BRAND_SECONDARY,
     gradientFrom: BRAND_DARKER,

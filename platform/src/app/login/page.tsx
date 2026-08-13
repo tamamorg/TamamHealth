@@ -2,11 +2,20 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, ChevronRight, X, WifiOff } from '@/components/icons/lucide';
+import { Eye, EyeOff, ChevronRight, X } from '@/components/icons/lucide';
 import { Icon } from '@/components/icons';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
+import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
+import { getRoleConfig } from '@/lib/permissions';
 import type { UserRole } from '@/lib/db-types';
+
+// Role picker options — every role in the platform, labeled like the rest of
+// the UI. Everyone signs in as their assigned role; only the platform
+// super-admin may pick a different one and enter that role's workspace.
+const ROLE_OPTIONS = (Object.keys(ROLE_ROUTE_TABLE) as UserRole[])
+  .map((value) => ({ value, label: getRoleConfig(value).label }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 
 // Tamam brand accent — sourced from the shared theme tokens.
 const ACCENT = 'var(--accent-primary)';
@@ -125,6 +134,9 @@ export default function LoginPage() {
   // 'manual' = blank, fully-editable form for non-demo / production sign-in.
   const [selected, setSelected] = useState<Account | 'manual' | null>(null);
   const [hospitalId, setHospitalId] = useState('');
+  // '' = sign in as the account's own role; a value = requested role
+  // (honoured by the server only for the super-admin).
+  const [roleChoice, setRoleChoice] = useState<UserRole | ''>('');
   const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
 
   // Pull freshly-generated demo passwords from the server (one-time per load).
@@ -155,6 +167,7 @@ export default function LoginPage() {
     setUsername(acc.user);
     setPassword(demoCreds[acc.user] || '');
     setHospitalId(acc.hospital || '');
+    setRoleChoice(acc.roleKey);
     setShowPassword(false);
     setSelected(acc);
   };
@@ -164,6 +177,7 @@ export default function LoginPage() {
     setUsername('');
     setPassword('');
     setHospitalId('');
+    setRoleChoice('');
     setShowPassword(false);
     setSelected('manual');
   };
@@ -175,7 +189,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const result = await login(username, password, hospitalId || undefined);
+      const result = await login(username, password, hospitalId || undefined, roleChoice || undefined);
       if (result) router.push(resolveLandingPage(result));
       else { setError('Invalid credentials. Please try again.'); setLoading(false); }
     } catch { setError('Login failed. Please try again.'); setLoading(false); }
@@ -221,7 +235,7 @@ export default function LoginPage() {
             <div className="tl-form-wrap">
               <h1 className="tl-title">{acc ? 'Welcome back' : 'Sign in'}</h1>
               <p className="tl-subtitle">
-                {acc ? `${acc.role} · ${acc.desc}` : 'Enter your account credentials'}
+                {acc ? acc.desc : 'Enter your account credentials'}
               </p>
 
               {!dbReady && (
@@ -238,11 +252,17 @@ export default function LoginPage() {
                     className="tl-input" autoComplete={acc ? 'off' : 'username'} />
                 </div>
 
-                {/* Role */}
+                {/* Role — everyone signs in as their own role; the platform
+                    super-admin may pick any role and enter its workspace. */}
                 <div className="tl-field">
                   <label htmlFor="tl-role">Role</label>
-                  <input id="tl-role" type="text" value={acc ? acc.role : ''}
-                    readOnly placeholder={acc ? '' : '—'} className="tl-input" />
+                  <select id="tl-role" value={roleChoice} className="tl-input"
+                    onChange={(e) => setRoleChoice(e.target.value as UserRole | '')}>
+                    <option value="">Your assigned role</option>
+                    {ROLE_OPTIONS.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Password */}
@@ -262,16 +282,9 @@ export default function LoginPage() {
                 {error && <div role="alert" className="tl-error">{error}</div>}
 
                 <button type="submit" disabled={loading || !dbReady} className="tl-submit">
-                  {loading ? (<span className="tl-submit-loading"><span className="tl-spin tl-spin-light" /> Signing in…</span>) : 'Submit'}
+                  {loading ? (<span className="tl-submit-loading"><span className="tl-spin tl-spin-light" /> Signing in…</span>) : 'Sign in'}
                 </button>
 
-                {/* Social — Google intentionally omitted (not enabled). SSO is
-                    shown for parity but single sign-on isn't wired yet. */}
-                <button type="button" className="tl-social"
-                  onClick={() => setError('Single sign-on isn’t enabled yet — use your account password above.')}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 7h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                  Continue with SSO
-                </button>
               </form>
 
               <p className="tl-foot">
@@ -290,26 +303,10 @@ export default function LoginPage() {
           <section className="tl-hero" style={{ backgroundImage: `url(${hero})` }}>
             <button type="button" onClick={backToList} aria-label="Close" className="tl-hero-close"><X size={18} /></button>
 
-            {/* Floating promo cards. Same three card shapes as the original
-                hero, but each one now carries a product claim instead of the
-                invented appointments, fixed calendar dates, and stock-photo
-                faces they used to show. */}
-            <div className="tl-chip tl-chip-task">
-              <div className="tl-chip-title"><WifiOff size={13} /> Works offline</div>
-              <div className="tl-chip-time">Syncs the moment you reconnect</div>
-            </div>
-
-            {/* Replaces the old week strip — advertising copy, not a calendar. */}
-            <div className="tl-tagline">
-              <span className="tl-tagline-eyebrow">Tamam Healthcare System</span>
-              <strong className="tl-tagline-line">One patient record,<br />every facility.</strong>
-            </div>
-
-            <div className="tl-meeting">
-              <div className="tl-meeting-top">
-                <span className="tl-meeting-title">HMIS-ready reporting</span>
-              </div>
-              <div className="tl-meeting-time">Built for national programmes</div>
+            {/* One composed poster block on a single left axis. */}
+            <div className="tl-hero-panel">
+              <span className="tl-hero-eyebrow">Tamam Healthcare System</span>
+              <strong className="tl-hero-line">One patient record,<br />every facility.</strong>
             </div>
           </section>
         </div>
@@ -434,24 +431,26 @@ const sharedStyles = (
     .tl-form-wrap .tl-title { margin-top: 4px; }
     .tl-form { display: flex; flex-direction: column; gap: 14px; margin-top: 22px; }
     .tl-field { display: flex; flex-direction: column; gap: 7px; }
-    .tl-field label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+    /* Sentence case — the global label rule force-uppercases and letter-spaces
+       every label in the app; quiet it back down inside the login namespace. */
+    .tl-shell .tl-field label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); text-transform: none; letter-spacing: 0; }
     .tl-input-wrap { position: relative; display: flex; align-items: center; }
     /* Scoped under .tl-shell: globals.css styles input[type=...] directly, which
        outranks a bare class and squashes these fields to the square app-wide look. */
-    .tl-shell .tl-input { width: 100%; height: 52px; padding: 0 16px; font-size: 14.5px; color: var(--text-primary); background: var(--overlay-subtle); border: 1.5px solid transparent; border-radius: 999px; outline: none; transition: border-color .15s, background .15s, box-shadow .15s; }
+    .tl-shell .tl-input { width: 100%; height: 52px; padding: 0 18px; font-size: 14.5px; color: var(--text-primary); background: var(--overlay-subtle); border: 1.5px solid var(--border-light); border-radius: 999px; outline: none; transition: border-color .15s, background .15s, box-shadow .15s; }
     .tl-shell .tl-input::placeholder { color: var(--text-muted); }
-    .tl-shell .tl-input:focus { border-color: ${ACCENT}; background: var(--bg-card-solid); box-shadow: none !important; }
+    .tl-shell .tl-input:hover:not(:focus):not([readonly]) { border-color: var(--border-medium); }
+    .tl-shell .tl-input:focus { border-color: ${ACCENT}; background: var(--bg-card-solid); box-shadow: 0 0 0 3px var(--accent-light) !important; }
     .tl-shell .tl-input[readonly] { cursor: default; }
     .tl-shell .tl-input-password { padding-right: 46px; }
     .tl-input-eye { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 6px; }
     .tl-input-eye:hover { color: ${ACCENT_DEEP}; }
     .tl-error { padding: 10px 13px; font-size: 12.5px; color: var(--color-danger); background: var(--color-danger-bg); border: 1px solid color-mix(in srgb, var(--color-danger) 22%, transparent); border-radius: 10px; }
     .tl-submit { width: 100%; height: 52px; padding: 0 24px; margin-top: 4px; font-size: 15px; font-weight: 700; color: var(--color-white); background: var(--accent-primary); border: none; border-radius: 999px; cursor: pointer; transition: transform .12s, box-shadow .15s, opacity .15s; box-shadow: none; }
-    .tl-submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: none; }
+    .tl-submit:hover:not(:disabled) { background: ${ACCENT_DEEP}; transform: translateY(-1px); box-shadow: none; }
+    .tl-submit:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-border); }
     .tl-submit:disabled { opacity: .6; cursor: not-allowed; }
     .tl-submit-loading { display: inline-flex; align-items: center; gap: 8px; }
-    .tl-social { width: 100%; padding: 12px 24px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-size: 14px; font-weight: 600; color: var(--text-primary); background: var(--bg-card-solid); border: 1.5px solid var(--border-light); border-radius: 999px; cursor: pointer; transition: background .15s, border-color .15s; }
-    .tl-social:hover { background: var(--overlay-subtle); border-color: var(--border-medium); }
     .tl-foot { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 22px; font-size: 12.5px; }
     .tl-foot-sep { color: var(--border-medium); }
     .tl-link { display: inline-flex; align-items: center; gap: 5px; color: ${ACCENT_DEEP}; font-weight: 600; text-decoration: none; background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: 12.5px; }
@@ -459,26 +458,21 @@ const sharedStyles = (
 
     /* ── Hero ── */
     .tl-hero { position: relative; background-size: cover; background-position: center; }
-    .tl-hero::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--accent-hover) 18%, transparent); }
-    .tl-hero-close { position: absolute; top: 18px; right: 18px; z-index: 3; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: none; background: var(--bg-card-solid); color: var(--text-primary); cursor: pointer; box-shadow: none; }
-    .tl-hero-close:hover { background: var(--bg-card-solid); }
-    /* Value panel over the hero photo: a readable scrim rather than floating
-       cards, so the copy stays legible on any background image. */
-    /* Floating hero cards: accent chip (top-left), glass tagline (right),
-       white claim card (bottom-left). A scrim keeps every card legible
-       whatever the hero photograph is doing behind it. */
-    .tl-hero::before { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(2, 26, 45, 0.45) 0%, rgba(2, 26, 45, 0.20) 42%, rgba(2, 26, 45, 0.72) 100%); }
-    .tl-chip { position: absolute; z-index: 2; backdrop-filter: blur(6px); }
-    .tl-chip-task { top: 64px; left: 34px; background: ${ACCENT}; color: var(--color-white); border-radius: 14px; padding: 11px 15px; }
-    .tl-chip-title { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; }
-    .tl-chip-time { font-size: 11.5px; opacity: 0.92; margin-top: 3px; }
-    .tl-tagline { position: absolute; z-index: 2; right: 30px; bottom: 150px; max-width: 250px; padding: 15px 17px; border-radius: 16px; background: color-mix(in srgb, var(--color-white) 18%, transparent); border: 1px solid color-mix(in srgb, var(--color-white) 42%, transparent); backdrop-filter: blur(10px); color: var(--color-white); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
-    .tl-tagline-eyebrow { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.01em; opacity: 0.88; }
-    .tl-tagline-line { display: block; margin-top: 7px; font-family: var(--font-platform); font-size: 19px; line-height: 1.25; font-weight: 800; letter-spacing: -0.01em; }
-    .tl-meeting { position: absolute; z-index: 2; left: 30px; bottom: 36px; width: 244px; padding: 15px 17px; border-radius: 18px; background: var(--bg-card-solid); }
-    .tl-meeting-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .tl-meeting-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
-    .tl-meeting-time { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+    /* Brand duotone wash + a bottom-weighted scrim: the photo stays light up
+       top and settles into deep ink where the copy sits, so the white text
+       passes contrast on any photo in the pool. Flat — no blur, no glass. */
+    .tl-hero::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--accent-hover) 14%, transparent); }
+    .tl-hero::before { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(2, 26, 45, 0.38) 0%, rgba(2, 26, 45, 0.10) 34%, rgba(2, 26, 45, 0.50) 64%, rgba(2, 26, 45, 0.92) 100%); }
+    .tl-hero-close { position: absolute; top: 18px; right: 18px; z-index: 3; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(2, 26, 45, 0.40); color: var(--color-white); cursor: pointer; box-shadow: none; transition: background .15s; }
+    .tl-hero-close:hover { background: rgba(2, 26, 45, 0.65); }
+    .tl-hero-panel { position: absolute; z-index: 2; left: 34px; right: 34px; bottom: 100px; color: var(--color-white); text-shadow: 0 1px 2px rgba(2, 26, 45, 0.35); }
+    .tl-hero-eyebrow { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.01em; color: rgba(255, 255, 255, 0.88); }
+    .tl-hero-line { display: block; margin-top: 9px; font-family: var(--font-platform); font-size: 30px; line-height: 1.16; font-weight: 800; letter-spacing: -0.02em; }
+
+    /* Icons follow their container's color — the global svg.lucide rule would
+       otherwise pin them to the app icon color (dark glyphs on the dark hero). */
+    .tl-shell .tl-hero-close svg.lucide, .tl-shell .tl-form-close svg.lucide,
+    .tl-shell .tl-input-eye svg.lucide { color: inherit; stroke: currentColor; }
 
     .tl-spin { width: 13px; height: 13px; border: 2px solid var(--accent-border); border-top-color: ${ACCENT}; border-radius: 50%; display: inline-block; animation: tl-rot .7s linear infinite; }
     .tl-spin-light { border-color: color-mix(in srgb, var(--color-white) 40%, transparent); border-top-color: var(--color-white); }
@@ -489,6 +483,10 @@ const sharedStyles = (
       .tl-hero { display: none; }
       .tl-pane { padding: 28px 26px; }
       .tl-form-close { display: inline-flex; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .tl-user, .tl-submit, .tl-input, .tl-hero-close { transition: none; }
+      .tl-user:hover, .tl-submit:hover:not(:disabled) { transform: none; }
     }
   `}</style>
 );

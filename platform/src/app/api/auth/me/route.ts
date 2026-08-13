@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   // re-check in getAuthPayload (lib/api-auth.ts).
   const isProduction = process.env.NODE_ENV === 'production';
   let fresh: {
-    name?: string; role?: string; hospitalId?: string; hospitalName?: string;
+    name?: string; role?: string; actualRole?: string; hospitalId?: string; hospitalName?: string;
     orgId?: string; mustChangePassword?: boolean;
     /** Staff department — routes department-addressed patient transfers to the
      *  right inbox. Not a JWT claim, so it is only populated from the live user
@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
   } = {
     name: payload.name,
     role: payload.role,
+    actualRole: payload.actualRole,
     hospitalId: payload.hospitalId,
     hospitalName: payload.hospitalName,
     orgId: payload.orgId,
@@ -53,12 +54,18 @@ export async function GET(request: NextRequest) {
       if (user.isActive === false) {
         return NextResponse.json({ user: null }, { status: 401 });
       }
+      // A super-admin signed in AS another role (login role picker). Keep the
+      // token's impersonated role + facility scope across reloads — but ONLY
+      // while the live record still IS a super_admin; if the account was
+      // demoted mid-session, the live role wins and the impersonation ends.
+      const impersonating = payload.actualRole === 'super_admin' && user.role === 'super_admin';
       fresh = {
         name: user.name,
-        role: user.role,
-        hospitalId: user.hospitalId,
-        hospitalName: user.hospitalName,
-        orgId: user.orgId,
+        role: impersonating ? payload.role : user.role,
+        actualRole: impersonating ? payload.actualRole : undefined,
+        hospitalId: impersonating ? payload.hospitalId : user.hospitalId,
+        hospitalName: impersonating ? payload.hospitalName : user.hospitalName,
+        orgId: impersonating ? payload.orgId : user.orgId,
         mustChangePassword: user.mustChangePassword,
         department: user.department,
       };
@@ -76,6 +83,7 @@ export async function GET(request: NextRequest) {
       username: payload.username,
       name: fresh.name,
       role: fresh.role,
+      actualRole: fresh.actualRole,
       hospitalId: fresh.hospitalId,
       hospitalName: fresh.hospitalName,
       orgId: fresh.orgId,

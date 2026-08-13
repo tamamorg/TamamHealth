@@ -13,6 +13,9 @@ export interface AuthPayload {
   sub: string;
   username: string;
   role: UserRole;
+  /** Real account role when a super-admin is signed in AS another role via
+   *  the login role picker. Undefined for ordinary sessions. */
+  actualRole?: UserRole;
   name: string;
   hospitalId?: string;
   orgId?: string;
@@ -144,6 +147,13 @@ const STATION_ROLE_EQUIVALENT: Readonly<Partial<Record<UserRole, UserRole>>> = {
  * working unchanged.
  */
 export function hasRole(auth: AuthPayload, allowed: UserRole[]): boolean {
+  // The platform super-admin passes every role gate by design ("total
+  // access"). Every hand-maintained allow-list under src/app/api already
+  // names super_admin explicitly; this wildcard turns that convention into a
+  // guarantee so a new route can't accidentally lock the administrator out.
+  // It widens nothing for any other role — an allow-list naming
+  // 'super_admin' still rejects everyone else.
+  if (auth.role === 'super_admin') return true;
   if (allowed.includes(auth.role)) return true;
   const equivalent = STATION_ROLE_EQUIVALENT[auth.role];
   return equivalent ? allowed.includes(equivalent) : false;

@@ -81,11 +81,14 @@ function verifyFallbackToken(token: string): Record<string, unknown> | null {
   }
 }
 
-export async function createToken(user: { _id: string; username: string; role: string; name: string; hospitalId?: string; hospitalName?: string; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean }): Promise<string> {
+export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean }): Promise<string> {
   const payload = {
     sub: user._id,
     username: user.username,
     role: user.role,
+    // Set only when a super-admin signed in AS another role from the login
+    // role picker; carries the real account role for audit + session restore.
+    actualRole: user.actualRole,
     name: user.name,
     hospitalId: user.hospitalId,
     hospitalName: user.hospitalName,
@@ -117,6 +120,7 @@ export async function verifyToken(token: string): Promise<{
   sub: string;
   username: string;
   role: string;
+  actualRole?: string;
   name: string;
   hospitalId?: string;
   hospitalName?: string;
@@ -138,6 +142,7 @@ export async function verifyToken(token: string): Promise<{
         sub: string;
         username: string;
         role: string;
+        actualRole?: string;
         name: string;
         hospitalId?: string;
         hospitalName?: string;
@@ -160,6 +165,7 @@ export async function verifyToken(token: string): Promise<{
       sub: fallback.sub as string,
       username: fallback.username as string,
       role: fallback.role as string,
+      actualRole: fallback.actualRole as string | undefined,
       name: fallback.name as string,
       hospitalId: fallback.hospitalId as string | undefined,
       orgId: fallback.orgId as string | undefined,

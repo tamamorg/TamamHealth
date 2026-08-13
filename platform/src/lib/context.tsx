@@ -29,6 +29,9 @@ interface AppUser {
   username: string;
   name: string;
   role: UserRole;
+  /** Real account role when a super-admin is signed in AS another role via
+   *  the login role picker; undefined for ordinary sessions. */
+  actualRole?: UserRole;
   hospitalId?: string;
   hospitalName?: string;
   hospital?: HospitalDoc;
@@ -65,7 +68,7 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
-  login: (username: string, password: string, hospitalId?: string) => Promise<UserRole | false>;
+  login: (username: string, password: string, hospitalId?: string, requestedRole?: UserRole) => Promise<UserRole | false>;
   logout: () => void;
   toggleOnline: () => void;
   /** Sync state from the SyncManager (null when sync is disabled) */
@@ -445,7 +448,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (username: string, password: string, hospitalId?: string): Promise<UserRole | false> => {
+  const login = useCallback(async (username: string, password: string, hospitalId?: string, requestedRole?: UserRole): Promise<UserRole | false> => {
     try {
       const sanitizedUsername = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
 
@@ -457,14 +460,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Only if the request itself fails (offline / network error) do we fall
       // back to the PouchDB-local path so previously-logged-in users can still
       // sign in without connectivity.
-      let user: Pick<UserDoc, '_id' | 'username' | 'name' | 'role' | 'hospitalId' | 'hospitalName' | 'orgId' | 'isActive' | 'passwordHash' | 'mustChangePassword' | 'department'> | null = null;
+      type LoginUser = Pick<UserDoc, '_id' | 'username' | 'name' | 'role' | 'hospitalId' | 'hospitalName' | 'orgId' | 'isActive' | 'passwordHash' | 'mustChangePassword' | 'department'> & { actualRole?: UserRole };
+      let user: LoginUser | null = null;
       let usedApi = false;
 
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: sanitizedUsername, password, hospitalId }),
+          body: JSON.stringify({ username: sanitizedUsername, password, hospitalId, role: requestedRole }),
         });
         if (res.ok) {
           const body = await res.json();
@@ -473,6 +477,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             username: body.user.username,
             name: body.user.name,
             role: body.user.role,
+            actualRole: body.user.actualRole,
             hospitalId: body.user.hospitalId,
             hospitalName: body.user.hospitalName,
             orgId: body.user.orgId,
@@ -569,18 +574,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return false;
         }
 
+        // Login role picker — offline mirror of the /api/auth/login rules:
+        // only a super-admin may sign in as a different role, adopting the
+        // demo flagship facility so facility-scoped queries don't fail closed.
+        let effective: LoginUser = localUser;
+        if (requestedRole && requestedRole !== localUser.role) {
+          const { hasRoleRouteConfig } = await import('./role-routes');
+          if (localUser.role !== 'super_admin' || !hasRoleRouteConfig(requestedRole)) {
+            await logAudit('login_failed', localUser._id, sanitizedUsername, 'Role not assigned (offline)', false);
+            return false;
+          }
+          const needsFacility = !['super_admin', 'org_admin', 'government', 'county_health_director'].includes(requestedRole);
+          effective = {
+            ...localUser,
+            role: requestedRole,
+            actualRole: localUser.role,
+            hospitalId: needsFacility ? (localUser.hospitalId ?? 'hosp-001') : localUser.hospitalId,
+            hospitalName: needsFacility ? (localUser.hospitalName ?? 'Juba Teaching Hospital') : localUser.hospitalName,
+            orgId: localUser.orgId ?? 'org-moh-ss',
+          };
+        }
+
         // Mint a local token + set cookie ourselves since no server call happened.
         const token = await createToken({
-          _id: localUser._id,
-          username: localUser.username,
-          role: localUser.role,
-          name: localUser.name,
-          hospitalId: localUser.hospitalId,
-          orgId: localUser.orgId,
+          _id: effective._id,
+          username: effective.username,
+          role: effective.role,
+          actualRole: effective.actualRole,
+          name: effective.name,
+          hospitalId: effective.hospitalId,
+          orgId: effective.orgId,
         });
         document.cookie = `tamamhealth-token=${token}; path=/; max-age=${60 * 60 * 24}; samesite=lax${window.location.protocol === 'https:' ? '; secure' : ''}`;
 
-        user = localUser;
+        user = effective;
       }
 
       await logAudit('login_success', user._id, user.username, usedApi ? 'API login' : 'Offline PouchDB login', true);
@@ -633,6 +660,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         username: user.username,
         name: user.name,
         role: user.role as UserRole,
+        actualRole: user.actualRole,
         hospitalId: user.hospitalId,
         hospitalName: user.hospitalName,
         hospital,

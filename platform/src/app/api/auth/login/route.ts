@@ -12,14 +12,14 @@ const IP_LOCK_MS = 15 * 60 * 1000;   // 15 minutes
 export async function POST(request: NextRequest) {
   try {
     // Parse request body with explicit error handling
-    let body: { username?: string; password?: string; hospitalId?: string };
+    let body: { username?: string; password?: string; hospitalId?: string; role?: string };
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    const { username, password, hospitalId } = body;
+    const { username, password, hospitalId, role: requestedRole } = body;
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
@@ -69,6 +69,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
+    // Role picker on the login form. Everyone signs in as their assigned
+    // role; ONLY the platform super-admin may pick a different role and enter
+    // that role's workspace ("total access"). The session then carries the
+    // chosen role as `role` (so every dashboard, nav, guard, and data scope
+    // behaves natively) plus `actualRole: 'super_admin'` for session restore
+    // and audit. A super-admin account has no facility of its own, so an
+    // impersonated clinical session adopts the platform's demo flagship
+    // facility — otherwise facility-scoped queries fail closed and every
+    // screen renders empty.
+    let effective = {
+      role: user.role,
+      actualRole: undefined as string | undefined,
+      hospitalId: user.hospitalId,
+      hospitalName: user.hospitalName,
+      orgId: user.orgId,
+    };
+    if (requestedRole && requestedRole !== user.role) {
+      const { hasRoleRouteConfig } = await import('@/lib/role-routes');
+      if (user.role !== 'super_admin' || !hasRoleRouteConfig(requestedRole)) {
+        return NextResponse.json(
+          { error: 'You can only sign in as your assigned role.' },
+          { status: 403 },
+        );
+      }
+      const needsFacility = !ROLES_WITHOUT_HOSPITAL.includes(requestedRole);
+      effective = {
+        role: requestedRole,
+        actualRole: user.role,
+        hospitalId: needsFacility ? (user.hospitalId ?? 'hosp-001') : user.hospitalId,
+        hospitalName: needsFacility ? (user.hospitalName ?? 'Juba Teaching Hospital') : user.hospitalName,
+        orgId: user.orgId ?? 'org-moh-ss',
+      };
+    }
+
     // Clear failed attempts on successful login (both counters)
     await Promise.all([resetRateLimit(userRateKey), resetRateLimit(ipRateKey)]);
 
@@ -86,9 +120,9 @@ export async function POST(request: NextRequest) {
         await ensureCouchUser({
           username: sanitizedUsername,
           password,
-          orgId: user.orgId,
-          hospitalId: user.hospitalId,
-          platformRole: user.role,
+          orgId: effective.orgId,
+          hospitalId: effective.hospitalId,
+          platformRole: effective.role,
         });
       } catch (err) {
         // Expected when CouchDB isn't running (e.g. local dev) — login still
@@ -103,11 +137,12 @@ export async function POST(request: NextRequest) {
     const token = await createToken({
       _id: user._id,
       username: user.username,
-      role: user.role,
+      role: effective.role,
+      actualRole: effective.actualRole,
       name: user.name,
-      hospitalId: user.hospitalId,
-      hospitalName: user.hospitalName,
-      orgId: user.orgId,
+      hospitalId: effective.hospitalId,
+      hospitalName: effective.hospitalName,
+      orgId: effective.orgId,
       // May be undefined if the user record predates countryId — that's fine.
       countryId: user.countryId,
       // Geographic tier fields — undefined for users without sub-org scope.
@@ -124,10 +159,11 @@ export async function POST(request: NextRequest) {
         _id: user._id,
         username: user.username,
         name: user.name,
-        role: user.role,
-        hospitalId: user.hospitalId,
-        hospitalName: user.hospitalName,
-        orgId: user.orgId,
+        role: effective.role,
+        actualRole: effective.actualRole,
+        hospitalId: effective.hospitalId,
+        hospitalName: effective.hospitalName,
+        orgId: effective.orgId,
         mustChangePassword: user.mustChangePassword,
       },
     });

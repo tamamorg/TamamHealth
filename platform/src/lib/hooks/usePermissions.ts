@@ -102,7 +102,7 @@ export function usePermissions() {
 
   const roleConfig = role ? getRoleConfig(role) : null;
 
-  return {
+  const permissions = {
     role,
     roleConfig,
     isSuperAdmin,
@@ -146,4 +146,18 @@ export function usePermissions() {
     canRecordVitalEvents,
     canAccess,
   };
+
+  // Total access: the platform super-admin gets every capability boolean.
+  // Done as a sweep (not per-flag) so a capability added later is covered
+  // without touching this block. `canAccess` stays a function — its own
+  // super_admin wildcard already lives in isPathAllowed.
+  if (isSuperAdmin) {
+    for (const key of Object.keys(permissions) as (keyof typeof permissions)[]) {
+      if (key.startsWith('can') && key !== 'canAccess') {
+        (permissions as Record<string, unknown>)[key] = true;
+      }
+    }
+  }
+
+  return permissions;
 }

@@ -392,6 +392,10 @@ export function hasRoleRouteConfig(role: UserRole | string): boolean {
  * with `hasRoleRouteConfig(role)` first.
  */
 export function isPathAllowed(role: UserRole | string, pathname: string): boolean {
+  // The platform super-admin has total page access by design — every module,
+  // every station dashboard, every console. The super_admin entry in
+  // ROLE_ROUTE_TABLE remains the source for NAV derivation only.
+  if (role === 'super_admin') return true;
   const config = getConfig(role);
   if (!config) return false;
   // Compare the path only: callers also pass nav hrefs, which may carry a
