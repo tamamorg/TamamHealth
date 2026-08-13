@@ -47,6 +47,7 @@ import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDay
 import EhrVisitPopup, { EhrQueueMoveDialog, waitLabel } from '@/components/ehr/EhrVisitPopup';
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';
 import PatientDispenseModal from '@/components/pharmacy/PatientDispenseModal';
+import SendIntakeFormsModal from '@/components/intake/SendIntakeFormsModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 import Select from '@/components/Select';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
@@ -547,6 +548,7 @@ export default function EhrClinicalDashboard({
   // "Print" — choose which lanes and which output (paper/PDF or CSV) instead
   // of window.print()'s whole-dashboard dump.
   const [printOpen, setPrintOpen] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
   // Inline search under the mini-calendar that filters the day's appointment list.
   const [appointmentSearch, setAppointmentSearch] = useState('');
   const findPatientInputRef = useRef<HTMLInputElement>(null);
@@ -1324,7 +1326,7 @@ export default function EhrClinicalDashboard({
             type="button"
             className="primary"
             aria-label="Intake Form"
-            onClick={() => router.push('/patient-intake')}
+            onClick={() => setIntakeOpen(true)}
           >
             <Send className="w-4 h-4" /> Intake Form
           </button>
@@ -1917,6 +1919,8 @@ export default function EhrClinicalDashboard({
               onClose={() => setPrintOpen(false)}
             />
           )}
+
+          {intakeOpen && <SendIntakeFormsModal onClose={() => setIntakeOpen(false)} />}
         </main>
 
         {view === 'dashboard' && railOpen && (

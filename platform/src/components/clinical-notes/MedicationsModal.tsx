@@ -14,6 +14,11 @@
  * patient record with who obtained it and when, because looking at another
  * facility's prescribing without recorded consent is exactly the kind of PHI
  * access an audit asks about.
+ *
+ * The gate is answered on EVERY open. The last recorded answer pre-fills the
+ * form and is shown for context, but it never unlocks the panel by itself —
+ * otherwise a consent obtained by one clinician would silently open the
+ * history for whoever opens this dialog next.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -87,7 +92,8 @@ export default function MedicationsModal({
   const [busy, setBusy] = useState(false);
   // Consent form state; null = follow whatever the patient record says.
   const [consentDraft, setConsentDraft] = useState<'yes' | 'no' | null>(null);
-  const [editingConsent, setEditingConsent] = useState(false);
+  // The history only unlocks after consent is saved as "yes" in THIS dialog.
+  const [consentConfirmed, setConsentConfirmed] = useState(false);
   // "+ Med List": record a medication the patient reports taking.
   const [showAddMed, setShowAddMed] = useState(false);
   const [addMed, setAddMed] = useState({ medication: '', dose: '', frequency: '' });
@@ -243,7 +249,7 @@ export default function MedicationsModal({
 
   // ── Consent gate ────────────────────────────────────────────────────────
   const consent = patient?.medHistoryConsent;
-  const showHistory = consent?.granted === true && !editingConsent;
+  const showHistory = consentConfirmed && consent?.granted === true;
   const consentAnswer = consentDraft ?? (consent ? (consent.granted ? 'yes' : 'no') : null);
 
   const handleSaveConsent = () => withBusy(async () => {
@@ -256,7 +262,7 @@ export default function MedicationsModal({
         at: new Date().toISOString(),
       },
     });
-    setEditingConsent(false);
+    setConsentConfirmed(consentAnswer === 'yes');
     setConsentDraft(null);
   });
 
@@ -430,9 +436,10 @@ export default function MedicationsModal({
                   />
                   No
                 </label>
-                {consent && !consent.granted && !editingConsent && (
+                {consent && (
                   <p className="cn-consent-note">
-                    Consent declined — recorded by {consent.byName || 'staff'} on {shortDate(consent.at)}.
+                    Consent {consent.granted ? 'granted' : 'declined'} — recorded by{' '}
+                    {consent.byName || 'staff'} on {shortDate(consent.at)}. Save to confirm for this review.
                   </p>
                 )}
                 <button
@@ -450,7 +457,7 @@ export default function MedicationsModal({
               <div className="cn-meds-history">
                 <p className="cn-consent-note">
                   Consent recorded by {consent?.byName || 'staff'} on {shortDate(consent?.at)}.{' '}
-                  <button type="button" className="cn-card-head-action" onClick={() => { setEditingConsent(true); setConsentDraft(null); }}>
+                  <button type="button" className="cn-card-head-action" onClick={() => { setConsentConfirmed(false); setConsentDraft(null); }}>
                     Change
                   </button>
                 </p>
