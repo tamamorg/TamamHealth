@@ -547,8 +547,18 @@ export default function EhrCareDashboard({
 
       <div className={`ehr-workspace-grid ${effectiveView === 'calendar' ? 'is-calendar' : 'is-dashboard'}`}>
         <aside className="ehr-left-rail">
-          {/* Search above the calendar — same order as the clinical worklist
-              rail so filter visibility isn't buried under the mini-calendar. */}
+          {showCalendar && (
+            <EhrMiniCalendar
+              month={calendarMonth}
+              selectedDate={selectedDate}
+              today={todayIso}
+              eventDates={eventDates}
+              onMonthChange={setCalendarMonth}
+              onDateSelect={selectDate}
+            />
+          )}
+          {/* Search sits below the calendar — the calendar anchors the rail;
+              the search filters the list for whichever day is picked. */}
           {onSearchChange && (
             <div className="ehr-rail-search" data-tour="rail-search">
               <Search className="ehr-rail-search-icon w-4 h-4" />
@@ -570,16 +580,6 @@ export default function EhrCareDashboard({
                 </button>
               )}
             </div>
-          )}
-          {showCalendar && (
-            <EhrMiniCalendar
-              month={calendarMonth}
-              selectedDate={selectedDate}
-              today={todayIso}
-              eventDates={eventDates}
-              onMonthChange={setCalendarMonth}
-              onDateSelect={selectDate}
-            />
           )}
           {showChart && (chart ?? (
             <EhrWeekActivityChart

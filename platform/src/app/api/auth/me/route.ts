@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth-token';
+import { createToken, verifyToken } from '@/lib/auth-token';
 import { CSRF_COOKIE_NAME, mintCsrfToken } from '@/lib/csrf';
 import { isTokenRevoked } from '@/lib/token-blacklist';
+import { applySessionCookies, SESSION_RENEW_AFTER_SEC, SESSION_TTL_SEC } from '@/lib/session';
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get('tamamhealth-token')?.value;
@@ -46,6 +47,9 @@ export async function GET(request: NextRequest) {
     orgId: payload.orgId,
     mustChangePassword: payload.mustChangePassword,
   };
+  // Set when the live record was loaded — gates session renewal below, and
+  // carries the current password epoch into any re-minted token.
+  let liveUser: { passwordUpdatedAt?: string } | null = null;
   try {
     const { getUserById } = await import('@/lib/services/user-service');
     const user = await getUserById(payload.sub);
@@ -54,6 +58,15 @@ export async function GET(request: NextRequest) {
       if (user.isActive === false) {
         return NextResponse.json({ user: null }, { status: 401 });
       }
+      // Password epoch: a token minted before the account's latest password
+      // change must not hydrate a session (mirrors getAuthPayload).
+      if (user.passwordUpdatedAt) {
+        const liveSec = Math.floor(Date.parse(user.passwordUpdatedAt) / 1000);
+        if (Number.isFinite(liveSec) && liveSec > (payload.pwdAt ?? 0)) {
+          return NextResponse.json({ user: null }, { status: 401 });
+        }
+      }
+      liveUser = user;
       // A super-admin signed in AS another role (login role picker). Keep the
       // token's impersonated role + facility scope across reloads — but ONLY
       // while the live record still IS a super_admin; if the account was
@@ -95,6 +108,45 @@ export async function GET(request: NextRequest) {
     },
   });
 
+  // Sliding renewal — the mechanism behind "the browser remembers I'm logged
+  // in". The client calls /api/auth/me on every app load; when the presented
+  // token is older than SESSION_RENEW_AFTER_SEC we mint a fresh one from the
+  // live-hydrated claims and reset both cookies to a full TTL, so an actively
+  // used session never expires. Renewal requires the live user record (or a
+  // demo deployment, which has no server-side user store) — in production a
+  // session we cannot re-validate is left to age out rather than extended.
+  const isDemoDeployment = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+  const nowSec = Math.floor(Date.now() / 1000);
+  const tokenAgeSec = typeof payload.iat === 'number' ? nowSec - payload.iat : 0;
+  if (tokenAgeSec > SESSION_RENEW_AFTER_SEC && (liveUser || isDemoDeployment)) {
+    try {
+      const renewed = await createToken({
+        _id: payload.sub,
+        username: payload.username,
+        role: fresh.role ?? payload.role,
+        actualRole: fresh.actualRole,
+        name: fresh.name ?? payload.name,
+        hospitalId: fresh.hospitalId,
+        hospitalName: fresh.hospitalName,
+        orgId: fresh.orgId,
+        countryId: payload.countryId,
+        payam: payload.payam,
+        county: payload.county,
+        state: payload.state,
+        mustChangePassword: fresh.mustChangePassword,
+        passwordUpdatedAt: liveUser?.passwordUpdatedAt,
+        // Demo deployments have no live record; carry the claim forward.
+        pwdAt: liveUser ? undefined : payload.pwdAt,
+      });
+      const csrf = await mintCsrfToken(payload.sub);
+      applySessionCookies(response.cookies, renewed, csrf);
+      return response;
+    } catch {
+      // Renewal is best-effort — the current token is still valid, so fall
+      // through to the plain response (and the lazy CSRF mint below).
+    }
+  }
+
   // Lazy-mint the CSRF cookie if the client has a valid session JWT but no
   // CSRF cookie — handles the upgrade-across-deploy case and the "user
   // cleared cookies but session JWT still valid" case. /api/auth/me is the
@@ -106,7 +158,7 @@ export async function GET(request: NextRequest) {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 60 * 60 * 8,
+        maxAge: SESSION_TTL_SEC,
         path: '/',
       });
     } catch {

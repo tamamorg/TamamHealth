@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from './lib/auth-token';
+import { SESSION_TTL_SEC } from './lib/session';
 import {
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
@@ -403,7 +404,7 @@ export async function proxy(request: NextRequest) {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 60 * 60 * 8,
+        maxAge: SESSION_TTL_SEC,
         path: '/',
       });
     } catch {

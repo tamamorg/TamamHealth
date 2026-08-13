@@ -29,6 +29,9 @@ export interface ServerUser {
   isActive: boolean;
   /** True when the user must set a new password before using the app. */
   mustChangePassword?: boolean;
+  /** ISO timestamp of the last password change — feeds the JWT `pwdAt` epoch
+   *  claim so tokens minted before a change/reset are rejected. */
+  passwordUpdatedAt?: string;
 }
 
 /**
@@ -61,6 +64,7 @@ async function authenticateFromUsersDb(
       orgId: doc.orgId,
       isActive: doc.isActive,
       mustChangePassword: doc.mustChangePassword,
+      passwordUpdatedAt: doc.passwordUpdatedAt,
     };
   } catch {
     // 404 (no such user) or DB unreachable — treat as an auth miss.
@@ -139,6 +143,7 @@ async function bootstrapUserLogin(
     // requires a strong SUPERADMIN_INITIAL_PASSWORD, the operator sets a strong
     // secret AND rotates it immediately, and no default survives first login.
     mustChangePassword: true,
+    passwordUpdatedAt: now,
     createdAt: now,
     updatedAt: now,
   };
@@ -159,6 +164,7 @@ async function bootstrapUserLogin(
     orgId: profile.orgId,
     isActive: true,
     mustChangePassword: true,
+    passwordUpdatedAt: now,
   };
 }
 

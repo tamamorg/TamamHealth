@@ -12,7 +12,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthPayload, unauthorized, serverError, logApiError } from '@/lib/api-auth';
 import { createToken } from '@/lib/auth-token';
-import { CSRF_COOKIE_NAME, mintCsrfToken } from '@/lib/csrf';
+import { mintCsrfToken } from '@/lib/csrf';
+import { applySessionCookies } from '@/lib/session';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -55,8 +56,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { changeOwnPassword } = await import('@/lib/services/user-service');
+    let updatedUser: import('@/lib/db-types').UserDoc;
     try {
-      await changeOwnPassword(auth.sub, currentPassword, newPassword);
+      updatedUser = await changeOwnPassword(auth.sub, currentPassword, newPassword);
     } catch (err) {
       if (err instanceof Error && /current password is incorrect/i.test(err.message)) {
         return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
@@ -72,19 +74,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Re-issue the session JWT without the forced-change flag so the gate
-    // clears immediately, no re-login required.
+    // clears immediately, no re-login required. The fresh passwordUpdatedAt
+    // becomes this token's `pwdAt` claim — every OTHER session for this
+    // account now fails the password-epoch check on its next request, so a
+    // stolen or forgotten session can't outlive a password change.
     const token = await createToken({
       _id: auth.sub,
       username: auth.username,
       role: auth.role,
+      actualRole: auth.actualRole,
       name: auth.name,
       hospitalId: auth.hospitalId,
+      hospitalName: auth.hospitalName,
       orgId: auth.orgId,
       countryId: auth.countryId,
       payam: auth.payam,
       county: auth.county,
       state: auth.state,
       mustChangePassword: false,
+      passwordUpdatedAt: updatedUser.passwordUpdatedAt,
     });
 
     // The bootstrap credentials file has now served its only purpose: it
@@ -106,21 +114,8 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({ success: true });
-    response.cookies.set('tamamhealth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 8,
-      path: '/',
-    });
     const csrfToken = await mintCsrfToken(auth.sub);
-    response.cookies.set(CSRF_COOKIE_NAME, csrfToken, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 8,
-      path: '/',
-    });
+    applySessionCookies(response.cookies, token, csrfToken);
     return response;
   } catch (err) {
     logApiError('[API /auth/change-password POST]', err);

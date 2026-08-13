@@ -18,6 +18,7 @@ export interface AuthPayload {
   actualRole?: UserRole;
   name: string;
   hospitalId?: string;
+  hospitalName?: string;
   orgId?: string;
   /** ISO 3166-1 alpha-2 — facility's country (e.g. "SS" for South Sudan) */
   countryId?: string;
@@ -51,7 +52,7 @@ export async function getAuthPayload(request: NextRequest): Promise<AuthPayload 
 
   const payload = await verifyToken(token);
   if (!payload) return null;
-  const auth = payload as AuthPayload;
+  const auth = payload as unknown as AuthPayload;
   const isProduction = process.env.NODE_ENV === 'production';
   // Demo deployments run without a server-side user store (no CouchDB; the
   // roster lives in each browser's PouchDB), so "user not found" there means
@@ -68,6 +69,14 @@ export async function getAuthPayload(request: NextRequest): Promise<AuthPayload 
     // local/demo bootstrap data.
     if (user && user.isActive === false) return null;
     if (!user && isProduction && auth.sub !== 'admin' && !isDemoDeployment) return null;
+    // Password epoch: a token minted before the account's latest password
+    // change is dead, no matter how much JWT life remains. This is what makes
+    // the long "remember me" session TTL safe — change/reset a password and
+    // every other session for that account is revoked on its next request.
+    if (user?.passwordUpdatedAt) {
+      const liveSec = Math.floor(Date.parse(user.passwordUpdatedAt) / 1000);
+      if (Number.isFinite(liveSec) && liveSec > (payload.pwdAt ?? 0)) return null;
+    }
   } catch (err) {
     if (isProduction && auth.sub !== 'admin' && !isDemoDeployment) {
       captureException(err, { area: 'api-auth', check: 'user-active', sub: auth.sub });

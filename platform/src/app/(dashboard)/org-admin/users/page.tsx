@@ -14,22 +14,7 @@ import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/componen
 import { FilterSelect } from '@/components/filters';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
-
-/**
- * Generate a strong, readable temporary password. Avoids look-alike
- * characters (0/O, 1/l/I) so it can be relayed verbally or on paper without
- * ambiguity. The user must change it at first login (mustChangePassword).
- */
-function generateTempPassword(length = 14): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-  const out: string[] = [];
-  const rand = (n: number) =>
-    typeof crypto !== 'undefined' && crypto.getRandomValues
-      ? crypto.getRandomValues(new Uint32Array(1))[0] % n
-      : Math.floor(Math.random() * n);
-  for (let i = 0; i < length; i++) out.push(alphabet[rand(alphabet.length)]);
-  return out.join('');
-}
+import { generateTempPassword } from '@/lib/temp-password';
 
 const MIN_PASSWORD_LENGTH = 8;
 import type { UserDoc, HospitalDoc, UserRole } from '@/lib/db-types';

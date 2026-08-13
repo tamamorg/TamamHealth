@@ -39,6 +39,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { getUpstashConfig, upstashPipeline, withRetry, hashKey } from './upstash';
+import { SESSION_TTL_SEC } from './session';
 
 interface RevocationEntry {
   /** Unix epoch *seconds* when the JWT itself expires. */
@@ -150,11 +151,11 @@ function sweep(): void {
 /**
  * Best-effort extraction of the JWT `exp` claim. Doesn't verify the signature
  * — by the time we revoke a token we have already verified it (login or the
- * caller's own verifyToken). If the JWT is malformed, fall back to "now + 8h"
- * so the entry still has an upper bound on its lifetime.
+ * caller's own verifyToken). If the JWT is malformed, fall back to "now + one
+ * full session TTL" so the entry still has an upper bound on its lifetime.
  */
 function readExpFromJwt(token: string): number {
-  const fallback = Math.floor(Date.now() / 1000) + 8 * 60 * 60;
+  const fallback = Math.floor(Date.now() / 1000) + SESSION_TTL_SEC;
   const parts = token.split('.');
   if (parts.length !== 3) return fallback;
   try {

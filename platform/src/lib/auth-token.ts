@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
+import { SESSION_TTL_SEC } from './session';
 
 // Server-side secret (never leaves Node). All authoritative token creation and
 // verification runs server-side, so the client never needs the signing key.
@@ -59,7 +60,7 @@ function createFallbackToken(payload: Record<string, unknown>): string {
     iss: JWT_ISSUER,
     aud: JWT_AUDIENCE,
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 28800, // 8h
+    exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SEC,
   }));
   return `${header}.${body}.dev-fallback`;
 }
@@ -81,7 +82,18 @@ function verifyFallbackToken(token: string): Record<string, unknown> | null {
   }
 }
 
-export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean }): Promise<string> {
+/**
+ * Convert a user document's passwordUpdatedAt (ISO string) into the `pwdAt`
+ * JWT claim (unix seconds). Returns undefined for absent/invalid input so
+ * accounts predating the field keep working.
+ */
+export function pwdAtClaim(passwordUpdatedAt?: string): number | undefined {
+  if (!passwordUpdatedAt) return undefined;
+  const ms = Date.parse(passwordUpdatedAt);
+  return Number.isFinite(ms) ? Math.floor(ms / 1000) : undefined;
+}
+
+export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; passwordUpdatedAt?: string; pwdAt?: number }): Promise<string> {
   const payload = {
     sub: user._id,
     username: user.username,
@@ -98,6 +110,10 @@ export async function createToken(user: { _id: string; username: string; role: s
     county: user.county,
     state: user.state,
     mustChangePassword: user.mustChangePassword,
+    // Password epoch: tokens minted before the account's latest password
+    // change are rejected by getAuthPayload / /api/auth/me, so a password
+    // change or admin reset revokes every other session immediately.
+    pwdAt: user.pwdAt ?? pwdAtClaim(user.passwordUpdatedAt),
   };
 
   // Use jose when crypto.subtle is available (HTTPS / localhost / server-side)
@@ -107,7 +123,7 @@ export async function createToken(user: { _id: string; username: string; role: s
       .setIssuedAt()
       .setIssuer(JWT_ISSUER)
       .setAudience(JWT_AUDIENCE)
-      .setExpirationTime('8h')
+      .setExpirationTime(`${SESSION_TTL_SEC}s`)
       .sign(JWT_SECRET);
   }
 
@@ -116,7 +132,7 @@ export async function createToken(user: { _id: string; username: string; role: s
   return createFallbackToken(payload);
 }
 
-export async function verifyToken(token: string): Promise<{
+export interface VerifiedTokenPayload {
   sub: string;
   username: string;
   role: string;
@@ -130,7 +146,13 @@ export async function verifyToken(token: string): Promise<{
   county?: string;
   state?: string;
   mustChangePassword?: boolean;
-} | null> {
+  /** Password epoch (unix seconds) — see createToken. */
+  pwdAt?: number;
+  /** Issued-at (unix seconds) — drives sliding session renewal. */
+  iat?: number;
+}
+
+export async function verifyToken(token: string): Promise<VerifiedTokenPayload | null> {
   // Try jose first (works server-side and on HTTPS)
   if (hasCryptoSubtle()) {
     try {
@@ -138,21 +160,7 @@ export async function verifyToken(token: string): Promise<{
         issuer: JWT_ISSUER,
         audience: JWT_AUDIENCE,
       });
-      return payload as {
-        sub: string;
-        username: string;
-        role: string;
-        actualRole?: string;
-        name: string;
-        hospitalId?: string;
-        hospitalName?: string;
-        orgId?: string;
-        countryId?: string;
-        payam?: string;
-        county?: string;
-        state?: string;
-        mustChangePassword?: boolean;
-      };
+      return payload as unknown as VerifiedTokenPayload;
     } catch {
       // Fall through to try fallback
     }
@@ -174,6 +182,8 @@ export async function verifyToken(token: string): Promise<{
       county: fallback.county as string | undefined,
       state: fallback.state as string | undefined,
       mustChangePassword: fallback.mustChangePassword as boolean | undefined,
+      pwdAt: fallback.pwdAt as number | undefined,
+      iat: fallback.iat as number | undefined,
     };
   }
 

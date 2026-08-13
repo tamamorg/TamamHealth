@@ -8,9 +8,11 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import type { UserDoc, UserRole } from '@/lib/db-types';
 import {
-  Users, UserX, UserCheck, UserPlus, Shield, Filter
+  Users, UserX, UserCheck, UserPlus, Shield, Filter,
+  KeyRound, Copy, Check, RefreshCw, ShieldCheck, Eye, EyeOff, X,
 } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { generateTempPassword } from '@/lib/temp-password';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
 import { avatarTint } from '@/lib/patient-utils';
 import Select from '@/components/Select';
@@ -22,6 +24,8 @@ import Select from '@/components/Select';
 // with the clinical worklist and patient registry; only the trailing actions
 // gutter is narrower, since it holds a lone kebab instead of a data column.
 const USER_GRID = 'minmax(320px, 1.6fr) repeat(4, minmax(150px, 1fr)) 44px';
+
+const MIN_PASSWORD_LENGTH = 8;
 
 const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: 'Super Admin',
@@ -100,6 +104,16 @@ export default function AdminUsersPage() {
   const [addForm, setAddForm] = useState(emptyAddForm);
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [showAddPassword, setShowAddPassword] = useState(true);
+  // Credential hand-off — shown exactly once after a create or reset so the
+  // admin can copy the temporary password before it is unrecoverable.
+  const [handoff, setHandoff] = useState<{ username: string; password: string; kind: 'created' | 'reset' } | null>(null);
+  const [copied, setCopied] = useState(false);
+  // Reset-password modal
+  const [resetUser, setResetUser] = useState<UserDoc | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   // Access control
   useEffect(() => {
@@ -155,6 +169,10 @@ export default function AdminUsersPage() {
       setAddError('Name, username, and password are required');
       return;
     }
+    if (addForm.password.length < MIN_PASSWORD_LENGTH) {
+      setAddError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      return;
+    }
     setAddSaving(true);
     setAddError(null);
     try {
@@ -171,11 +189,37 @@ export default function AdminUsersPage() {
       }, currentUser._id, currentUser.username);
       setUsers(prev => [created, ...prev]);
       setShowAddUser(false);
+      // Hand the credentials to the admin exactly once — the password is
+      // never retrievable again (only its hash is stored), and the user must
+      // replace it at first login.
+      setHandoff({ username: created.username, password: addForm.password, kind: 'created' });
       setAddForm(emptyAddForm);
     } catch (err) {
       setAddError((err as Error).message || 'Failed to create user');
     } finally {
       setAddSaving(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!currentUser || !resetUser) return;
+    if (resetPasswordValue.length < MIN_PASSWORD_LENGTH) {
+      setResetError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      return;
+    }
+    setResetting(true);
+    setResetError(null);
+    try {
+      const { resetPassword } = await import('@/lib/services/user-service');
+      await resetPassword(resetUser._id, resetPasswordValue, currentUser._id, currentUser.username);
+      setUsers(prev => prev.map(u => u._id === resetUser._id ? { ...u, mustChangePassword: true } : u));
+      setHandoff({ username: resetUser.username, password: resetPasswordValue, kind: 'reset' });
+      setResetUser(null);
+      setResetPasswordValue('');
+    } catch (err) {
+      setResetError((err as Error).message || 'Failed to reset password');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -263,7 +307,7 @@ export default function AdminUsersPage() {
                   <Filter className="w-3.5 h-3.5" />
                   {filteredUsers.length} of {users.length}
                 </div>
-                <button type="button" className="btn btn-primary" style={{ gap: 6, height: 38, whiteSpace: 'nowrap' }} onClick={() => { setAddForm(emptyAddForm); setAddError(null); setShowAddUser(true); }}>
+                <button type="button" className="btn btn-primary" style={{ gap: 6, height: 38, whiteSpace: 'nowrap' }} onClick={() => { setAddForm({ ...emptyAddForm, password: generateTempPassword() }); setShowAddPassword(true); setAddError(null); setShowAddUser(true); }}>
                   <UserPlus className="w-4 h-4" /> Add user
                 </button>
               </>
@@ -362,6 +406,12 @@ export default function AdminUsersPage() {
                                 onClick: () => { setChangeRoleUser(u); setNewRole(u.role); },
                               },
                               {
+                                key: 'reset-password',
+                                label: 'Reset Password',
+                                icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
+                                onClick: () => { setResetUser(u); setResetPasswordValue(generateTempPassword()); setResetError(null); setShowAddPassword(true); },
+                              },
+                              {
                                 key: 'toggle',
                                 label: u.isActive ? t('adminUsers.deactivate') : t('adminUsers.activate'),
                                 tone: u.isActive ? 'danger' : 'success',
@@ -425,15 +475,39 @@ export default function AdminUsersPage() {
                 <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Full name</label>
                 <input type="text" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Username</label>
-                  <input type="text" value={addForm.username} onChange={e => setAddForm(f => ({ ...f, username: e.target.value }))} style={inputStyle} autoComplete="off" />
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Username</label>
+                <input type="text" value={addForm.username} onChange={e => setAddForm(f => ({ ...f, username: e.target.value }))} style={inputStyle} autoComplete="off" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium block" style={{ color: 'var(--text-muted)' }}>Temporary password</label>
+                  <button
+                    type="button"
+                    onClick={() => { setAddForm(f => ({ ...f, password: generateTempPassword() })); setShowAddPassword(true); }}
+                    className="flex items-center gap-1 text-xs font-semibold"
+                    style={{ color: 'var(--accent-text)' }}
+                  >
+                    <RefreshCw className="w-3 h-3" /> Generate
+                  </button>
                 </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Password</label>
-                  <input type="password" value={addForm.password} onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))} style={inputStyle} autoComplete="new-password" />
+                <div className="relative">
+                  <input
+                    type={showAddPassword ? 'text' : 'password'}
+                    value={addForm.password}
+                    onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))}
+                    style={{ ...inputStyle, paddingRight: 40, fontFamily: showAddPassword ? 'var(--font-mono, monospace)' : undefined }}
+                    autoComplete="new-password"
+                  />
+                  <button type="button" onClick={() => setShowAddPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {showAddPassword
+                      ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                      : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+                  </button>
                 </div>
+                <p className="mt-1.5 text-[11px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                  <ShieldCheck className="w-3 h-3" /> Temporary — the user must set their own password at first login.
+                </p>
               </div>
               <div>
                 <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Role</label>
@@ -467,6 +541,137 @@ export default function AdminUsersPage() {
               <button onClick={() => setShowAddUser(false)} className="btn btn-secondary" disabled={addSaving}>Cancel</button>
               <button onClick={handleAddUser} className="btn btn-primary" disabled={addSaving}>
                 {addSaving ? 'Creating…' : 'Create user'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Credential hand-off — shown once after a create or reset */}
+      {handoff && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => { setHandoff(null); setCopied(false); }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl w-full max-w-md p-6"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ color: 'var(--color-success)' }}>
+                <Check className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {handoff.kind === 'created' ? 'User created' : 'Password reset'}
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Share these credentials securely. The user must change the password at first login.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg p-3 mb-3 space-y-2" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Username</span>
+                <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{handoff.username}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Temporary password</span>
+                <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{handoff.password}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(`Username: ${handoff.username}\nTemporary password: ${handoff.password}`);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                } catch { /* clipboard unavailable — user can read the values above */ }
+              }}
+              className="btn btn-secondary w-full justify-center mb-2"
+            >
+              {copied ? <><Check className="w-4 h-4" /> Copied</> : <><Copy className="w-4 h-4" /> Copy credentials</>}
+            </button>
+            <button
+              onClick={() => { setHandoff(null); setCopied(false); }}
+              className="btn btn-primary w-full justify-center"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {resetUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setResetUser(null)}
+        >
+          <div
+            className="rounded-2xl shadow-2xl w-full max-w-sm p-6"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5" style={{ color: 'var(--color-warning)' }} />
+                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Reset Password</h2>
+              </div>
+              <button onClick={() => setResetUser(null)} className="p-1">
+                <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+              </button>
+            </div>
+
+            {resetError && (
+              <div className="mb-3 p-2 rounded-lg text-xs" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger)' }}>
+                {resetError}
+              </div>
+            )}
+
+            <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+              Set a temporary password for <strong style={{ color: 'var(--text-primary)' }}>{resetUser.username}</strong>. Every other signed-in session for this account ends immediately.
+            </p>
+
+            <div className="flex justify-end mb-1.5">
+              <button
+                type="button"
+                onClick={() => { setResetPasswordValue(generateTempPassword()); setShowAddPassword(true); }}
+                className="flex items-center gap-1 text-xs font-semibold"
+                style={{ color: 'var(--accent-text)' }}
+              >
+                <RefreshCw className="w-3 h-3" /> Generate
+              </button>
+            </div>
+            <div className="relative mb-3">
+              <input
+                type={showAddPassword ? 'text' : 'password'}
+                value={resetPasswordValue}
+                onChange={e => setResetPasswordValue(e.target.value)}
+                style={{ ...inputStyle, paddingRight: 40, fontFamily: showAddPassword ? 'var(--font-mono, monospace)' : undefined }}
+                autoComplete="new-password"
+              />
+              <button type="button" onClick={() => setShowAddPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2">
+                {showAddPassword
+                  ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                  : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setResetUser(null)} className="btn btn-secondary" disabled={resetting}>Cancel</button>
+              <button
+                onClick={handleResetPassword}
+                disabled={resetting}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+                style={{ background: 'var(--color-warning)' }}
+              >
+                {resetting ? 'Resetting…' : 'Reset Password'}
               </button>
             </div>
           </div>

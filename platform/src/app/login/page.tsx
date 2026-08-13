@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, ChevronRight, X } from '@/components/icons/lucide';
+import { ChevronDown, Eye, EyeOff, ChevronRight, X } from '@/components/icons/lucide';
 import { Icon } from '@/components/icons';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
@@ -149,7 +149,28 @@ export default function LoginPage() {
   // '' = sign in as the account's own role; a value = requested role
   // (honoured by the server only for the super-admin).
   const [roleChoice, setRoleChoice] = useState<UserRole | ''>('');
+  // The role combobox: what's typed in the field (a filter while the menu is
+  // open, the chosen role's label once picked) and whether the menu shows.
+  const [roleQuery, setRoleQuery] = useState('');
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+
+  const roleLabelFor = (value: UserRole | '') =>
+    value ? (ROLE_OPTIONS.find(r => r.value === value)?.label || '') : '';
+
+  // Typing filters; a query that exactly equals the current choice's label
+  // means "just reopened" and shows the full list again.
+  const roleMatches = (() => {
+    const q = roleQuery.trim().toLowerCase();
+    if (!q || q === roleLabelFor(roleChoice).toLowerCase()) return ROLE_OPTIONS;
+    return ROLE_OPTIONS.filter(r => r.label.toLowerCase().includes(q));
+  })();
+
+  const selectRole = (option: { value: UserRole; label: string } | null) => {
+    setRoleChoice(option?.value ?? '');
+    setRoleQuery(option?.label ?? '');
+    setRoleMenuOpen(false);
+  };
 
   // Pull freshly-generated demo passwords from the server (one-time per load).
   useEffect(() => {
@@ -180,6 +201,8 @@ export default function LoginPage() {
     setPassword(demoCreds[acc.user] || '');
     setHospitalId(acc.hospital || '');
     setRoleChoice(acc.roleKey);
+    setRoleQuery(ROLE_OPTIONS.find(r => r.value === acc.roleKey)?.label || acc.role);
+    setRoleMenuOpen(false);
     setShowPassword(false);
     setSelected(acc);
   };
@@ -190,6 +213,8 @@ export default function LoginPage() {
     setPassword('');
     setHospitalId('');
     setRoleChoice('');
+    setRoleQuery('');
+    setRoleMenuOpen(false);
     setShowPassword(false);
     setSelected('manual');
   };
@@ -265,16 +290,59 @@ export default function LoginPage() {
                 </div>
 
                 {/* Role — everyone signs in as their own role; the platform
-                    super-admin may pick any role and enter its workspace. */}
+                    super-admin may pick any role and enter its workspace.
+                    Searchable: typing filters the list, picking fills it. */}
                 <div className="tl-field">
                   <label htmlFor="tl-role">Role</label>
-                  <select id="tl-role" value={roleChoice} className="tl-input"
-                    onChange={(e) => setRoleChoice(e.target.value as UserRole | '')}>
-                    <option value="">Your assigned role</option>
-                    {ROLE_OPTIONS.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
+                  <div className="tl-role-wrap">
+                    <input id="tl-role" type="text" className="tl-input tl-role-input"
+                      role="combobox" aria-expanded={roleMenuOpen} aria-controls="tl-role-menu"
+                      aria-autocomplete="list" autoComplete="off"
+                      placeholder="Your assigned role" value={roleQuery}
+                      onChange={(e) => {
+                        setRoleQuery(e.target.value);
+                        setRoleMenuOpen(true);
+                        if (!e.target.value.trim()) setRoleChoice('');
+                      }}
+                      onFocus={() => setRoleMenuOpen(true)}
+                      onBlur={() => { setRoleMenuOpen(false); setRoleQuery(roleLabelFor(roleChoice)); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setRoleMenuOpen(false);
+                        if (e.key === 'Enter' && roleMenuOpen && roleQuery.trim()
+                          && roleQuery.trim().toLowerCase() !== roleLabelFor(roleChoice).toLowerCase()) {
+                          e.preventDefault();
+                          if (roleMatches[0]) selectRole(roleMatches[0]);
+                        }
+                      }} />
+                    {/* Inline color on purpose: the global svg.lucide rule skips
+                        icons that carry their own color. */}
+                    <ChevronDown size={16} className="tl-role-caret" style={{ color: 'var(--text-muted)' }} aria-hidden />
+                    {roleMenuOpen && (
+                      <ul id="tl-role-menu" className="tl-role-menu" role="listbox" aria-label="Roles">
+                        <li>
+                          {/* onMouseDown (not click) so picking wins the race
+                              against the input's blur closing the menu. */}
+                          <button type="button" role="option" aria-selected={roleChoice === ''}
+                            className={roleChoice === '' ? 'is-selected' : ''}
+                            onMouseDown={(e) => { e.preventDefault(); selectRole(null); }}>
+                            Your assigned role
+                          </button>
+                        </li>
+                        {roleMatches.map((r) => (
+                          <li key={r.value}>
+                            <button type="button" role="option" aria-selected={roleChoice === r.value}
+                              className={roleChoice === r.value ? 'is-selected' : ''}
+                              onMouseDown={(e) => { e.preventDefault(); selectRole(r); }}>
+                              {r.label}
+                            </button>
+                          </li>
+                        ))}
+                        {roleMatches.length === 0 && (
+                          <li className="tl-role-empty">No role matches “{roleQuery.trim()}”.</li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
                 </div>
 
                 {/* Password */}
@@ -455,6 +523,17 @@ const sharedStyles = (
     .tl-shell .tl-input:focus { border-color: ${ACCENT}; background: var(--bg-card-solid); box-shadow: 0 0 0 3px var(--accent-light) !important; }
     .tl-shell .tl-input[readonly] { cursor: default; }
     .tl-shell .tl-input-password { padding-right: 46px; }
+
+    /* ── Role combobox ── */
+    .tl-role-wrap { position: relative; }
+    .tl-shell .tl-role-input { padding-right: 44px; }
+    .tl-role-caret { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+    .tl-role-menu { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none; background: var(--bg-card-solid); border: 1px solid var(--border-light); border-radius: 16px; box-shadow: 0 12px 28px color-mix(in srgb, var(--accent-hover) 14%, transparent); max-height: 242px; overflow-y: auto; }
+    .tl-role-menu li { list-style: none; }
+    .tl-role-menu button { display: block; width: 100%; text-align: left; padding: 9px 12px; font-size: 14px; font-family: inherit; color: var(--text-primary); background: transparent; border: none; border-radius: 10px; cursor: pointer; }
+    .tl-role-menu button:hover { background: var(--overlay-subtle); }
+    .tl-role-menu button.is-selected { color: ${ACCENT_DEEP}; font-weight: 700; }
+    .tl-role-empty { padding: 9px 12px; font-size: 13px; color: var(--text-muted); }
     .tl-input-eye { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 6px; }
     .tl-input-eye:hover { color: ${ACCENT_DEEP}; }
     .tl-error { padding: 10px 13px; font-size: 12.5px; color: var(--color-danger); background: var(--color-danger-bg); border: 1px solid color-mix(in srgb, var(--color-danger) 22%, transparent); border-radius: 10px; }

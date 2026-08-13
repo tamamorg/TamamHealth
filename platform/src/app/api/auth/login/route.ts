@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createToken } from '@/lib/auth-token';
-import { CSRF_COOKIE_NAME, mintCsrfToken } from '@/lib/csrf';
+import { mintCsrfToken } from '@/lib/csrf';
+import { applySessionCookies } from '@/lib/session';
 import { getClientIp } from '@/lib/request-utils';
 import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
 
@@ -152,6 +153,8 @@ export async function POST(request: NextRequest) {
       // Carry the forced-change flag so the client can route a freshly created
       // or reset user straight to the "set your password" screen.
       mustChangePassword: user.mustChangePassword,
+      // Password epoch — a later change/reset invalidates this token.
+      passwordUpdatedAt: user.passwordUpdatedAt,
     });
 
     const response = NextResponse.json({
@@ -168,30 +171,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Set HTTP-only cookie
-    response.cookies.set('tamamhealth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 8, // 8 hours
-      path: '/',
-    });
-
-    // Mint a CSRF token bound to this session and set it as a NON-httpOnly
-    // cookie so the browser's apiFetch wrapper can read it and echo it back
-    // in the X-CSRF-Token header on every state-changing request. The HMAC
-    // binds the token to the JWT subject (user._id), so a token issued for
-    // one session can't be replayed against another even if it leaks. The
-    // middleware refuses any /api/* mutation that doesn't present a matching
-    // pair — without this cookie every client write would 403.
+    // Session cookie plus its CSRF twin (non-httpOnly so the browser's
+    // apiFetch wrapper can echo it in the X-CSRF-Token header on every
+    // state-changing request; the HMAC binds it to the JWT subject). Both
+    // share the session TTL, and /api/auth/me silently re-mints the token on
+    // app loads, so the browser stays signed in across restarts until the
+    // session is idle a full TTL, the user logs out, or their password
+    // changes (see lib/session.ts).
     const csrfToken = await mintCsrfToken(user._id);
-    response.cookies.set(CSRF_COOKIE_NAME, csrfToken, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 8,
-      path: '/',
-    });
+    applySessionCookies(response.cookies, token, csrfToken);
 
     return response;
   } catch (err) {

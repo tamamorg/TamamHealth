@@ -12,7 +12,7 @@ import { useTriage } from '@/lib/hooks/useTriage';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, PatientDoc, TriageDoc } from '@/lib/db-types';
 import { APPOINTMENT_STATUS_TONES, APPOINTMENT_CHECKED_IN_STATUSES,
   APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_OPTIONS,
-  appointmentStatusLabel, appointmentStatusGroup,
+  appointmentStatusLabel, appointmentStatusGroup, canonicalAppointmentStatus,
   APPOINTMENT_STATUS_GROUP_LABELS, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { formatCompactDateTime, formatMoney, formatClockTime } from '@/lib/format-utils';
@@ -52,6 +52,10 @@ import Select from '@/components/Select';
 // Exam rooms / bays a walk-in patient can be placed in to meet the provider.
 // Fallback used only when facility settings provide no rooms.
 const ROOM_OPTIONS = ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5', 'Room 6', 'Bay A', 'Bay B', 'Bay C', 'Bay D'];
+
+// Statuses already fronted by a board lane tab (Scheduled / In Office /
+// Finished) — the Reception side panel skips these and lists the rest.
+const TAB_FRONTED_STATUSES: string[] = ['scheduled', 'checked_in', 'completed'];
 
 // Half-hour clinic slots (07:00–18:30) offered when reception reschedules.
 const RESCHEDULE_SLOTS = Array.from({ length: 24 }, (_, i) => {
@@ -1467,22 +1471,48 @@ export default function FrontDeskDashboardPage() {
    * and each tile set its own `panelView`, which made them feel like separate
    * pages. Deriving both from `tabs` means they cannot disagree.
    */
-  const metrics = useMemo<EhrCareDashboardMetric[]>(() => tabs.map(lane => ({
-    label: lane.label,
-    value: lane.count ?? 0,
-    tone: lane.key === 'scheduled' && (lane.count ?? 0) > 0 ? 'warning' : 'neutral',
-    active: queueFilter === lane.key && panelView === 'all',
-    onClick: () => {
-      setQueueFilter(lane.key as AppointmentStatusGroup);
-      setPanelView('all');
-    },
-  })), [tabs, queueFilter, panelView]);
+  // Reception panel: the picker statuses the lane tabs DON'T already show.
+  // Scheduled, Checked In and Completed each front a tab (Scheduled /
+  // In Office / Finished), so repeating them here only restated the tab
+  // counts — the panel carries the rest: In Progress, No Show, Rescheduled,
+  // Cancelled. Fine-grained rungs (confirmed, reminder_sent, arrived,
+  // triaged…) count under their canonical status, exactly as the picker and
+  // row pills read them. Clicking a status opens the board lane it files under.
+  const metrics = useMemo<EhrCareDashboardMetric[]>(() => {
+    const counts = new Map<string, number>();
+    for (const item of boardQueue) {
+      const status = canonicalAppointmentStatus(item.visitStatus);
+      counts.set(status, (counts.get(status) ?? 0) + 1);
+    }
+    return APPOINTMENT_STATUS_OPTIONS.filter(status => !TAB_FRONTED_STATUSES.includes(status)).map(status => {
+      const group = appointmentStatusGroup(status);
+      const count = counts.get(status) ?? 0;
+      const tone: EhrCareDashboardMetric['tone'] =
+        count === 0 ? 'neutral'
+          : status === 'completed' ? 'success'
+          : status === 'no_show' || status === 'cancelled' ? 'danger'
+          : status === 'scheduled' ? 'warning'
+          : 'neutral';
+      return {
+        label: appointmentStatusLabel(status),
+        value: count,
+        tone,
+        active: queueFilter === group && panelView === 'all',
+        onClick: () => {
+          setQueueFilter(group);
+          setPanelView('all');
+        },
+      };
+    });
+  }, [boardQueue, queueFilter, panelView]);
 
+  // No subtitle line under the board title: the lane tabs and the Reception
+  // status panel already carry the counts, so the "24 patients scheduled"
+  // sentence only restated them.
   const centerCopy = useMemo(() => {
     if (panelView === 'appointments') {
       return {
         title: "Today's appointments",
-        subtitle: `${frontDeskRows.length} appointment${frontDeskRows.length === 1 ? '' : 's'} scheduled or arrived today`,
         emptyTitle: 'No appointments for this view',
         emptyActionLabel: 'Book appointment',
       };
@@ -1490,7 +1520,6 @@ export default function FrontDeskDashboardPage() {
     if (panelView === 'pending') {
       return {
         title: 'Pending arrivals',
-        subtitle: `${frontDeskRows.length} patient${frontDeskRows.length === 1 ? '' : 's'} waiting to check in`,
         emptyTitle: 'No pending arrivals',
         emptyActionLabel: 'Open schedule',
       };
@@ -1498,7 +1527,6 @@ export default function FrontDeskDashboardPage() {
     if (panelView === 'queue') {
       return {
         title: 'Live queue',
-        subtitle: `${frontDeskRows.length} patient${frontDeskRows.length === 1 ? '' : 's'} ready for desk action`,
         emptyTitle: t('frontDesk.noPatientsInQueue'),
         emptyActionLabel: 'Register patient',
       };
@@ -1506,21 +1534,18 @@ export default function FrontDeskDashboardPage() {
     if (panelView === 'registered') {
       return {
         title: 'Registered patients',
-        subtitle: `${frontDeskRows.length} registered record${frontDeskRows.length === 1 ? '' : 's'}`,
         emptyTitle: 'No registered patients',
         emptyActionLabel: 'Register patient',
       };
     }
-    const laneNoun = queueFilter === 'scheduled' ? 'scheduled' : queueFilter === 'in_office' ? 'in office' : 'finished';
     return {
       title: dateLabel,
-      subtitle: `${frontDeskRows.length} patient${frontDeskRows.length === 1 ? '' : 's'} ${laneNoun}`,
       emptyTitle: queueFilter === 'scheduled' ? 'No appointments still expected'
         : queueFilter === 'in_office' ? t('frontDesk.noPatientsInQueue')
         : 'No finished visits yet',
       emptyActionLabel: 'Register patient',
     };
-  }, [dateLabel, frontDeskRows.length, panelView, queueFilter, t]);
+  }, [dateLabel, panelView, queueFilter, t]);
 
   if (!currentUser) return null;
 
@@ -1556,7 +1581,7 @@ export default function FrontDeskDashboardPage() {
           // date in the title just restated the header and wrapped badly.
           metricsTitle="Reception"
           centerTitle={centerCopy.title}
-          centerSubtitle={centerCopy.subtitle}
+          centerSubtitle=""
           missionTitle="Keep the desk moving"
           missionDescription="Show the next action clearly so reception can register, check in, route, and close visits."
           showMissionCard

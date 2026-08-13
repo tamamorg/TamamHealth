@@ -10,6 +10,10 @@ import { ROLE_LABEL } from '../role-display';
 // can never go stale/missing in user validation again.
 const VALID_ROLES = Object.keys(ROLE_LABEL) as UserRole[];
 
+// Matches the /api/auth/change-password minimum — the "Password …" error
+// prefix is what POST /api/users translates into a 400 for the client.
+const MIN_PASSWORD_LENGTH = 8;
+
 // ─── Central provisioning ───────────────────────────────────────────────────
 // User accounts are AUTH data: they must live in the central users database or
 // the new user can never log in anywhere but the creating device. The users DB
@@ -137,6 +141,9 @@ export async function createUser(
   // Validate
   if (!data.username || !data.password || !data.name || !data.role) {
     throw new Error('Missing required fields: username, password, name, role');
+  }
+  if (data.password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
 
   const username = data.username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
@@ -266,6 +273,10 @@ export async function resetPassword(
   const db = usersDB();
   const existing = await db.get(id) as UserDoc;
 
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+
   const { hashPassword } = await import('../auth');
   const passwordHash = await hashPassword(newPassword);
   const now = new Date().toISOString();
@@ -273,7 +284,9 @@ export async function resetPassword(
     ...existing,
     passwordHash,
     // An admin reset is a temporary credential — force the user to choose
-    // their own password the next time they sign in.
+    // their own password the next time they sign in. Bumping
+    // passwordUpdatedAt also fails the `pwdAt` epoch check on every session
+    // the user (or whoever held their credentials) still has open.
     mustChangePassword: true,
     passwordUpdatedAt: now,
     updatedAt: now,
@@ -294,7 +307,7 @@ export async function changeOwnPassword(
   id: string,
   currentPassword: string,
   newPassword: string,
-): Promise<void> {
+): Promise<UserDoc> {
   const db = usersDB();
   const existing = await db.get(id) as UserDoc;
 
@@ -315,6 +328,9 @@ export async function changeOwnPassword(
   updated._rev = resp.rev;
   const { logAudit } = await import('./audit-service');
   await logAudit('password_changed', existing._id, existing.username, `User "${existing.username}" changed their own password`, true);
+  // The caller re-issues the session JWT; the fresh passwordUpdatedAt becomes
+  // its `pwdAt` claim so this session survives while every other one dies.
+  return updated;
 }
 
 export async function deactivateUser(
