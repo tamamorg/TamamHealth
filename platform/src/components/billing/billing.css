@@ -396,6 +396,18 @@
 .bl-table tbody tr:hover td { background: var(--ehr-hover, #FAFCFE); }
 .bl-table .bl-num { font-variant-numeric: tabular-nums; }
 
+/* The one seam that crowds: a right-aligned column followed by a left-aligned
+   one puts both values hard against the shared edge, so only the two 18px
+   paddings separate them — 36px, against 57–265px everywhere else, because
+   every other pair has slack the content never uses. Widening the gutter
+   globally would inflate the gaps that are already too big; this pads only
+   the boundary that actually meets. */
+.bl-table thead th.bl-right + th:not(.bl-right),
+.bl-table tbody td.bl-right + td:not(.bl-right) {
+  padding-left: 34px;
+}
+
+
 /* Even columns — the work queues.
 
    Auto layout sizes every column to its longest cell, so one long payer name
