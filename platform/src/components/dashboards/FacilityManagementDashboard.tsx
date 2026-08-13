@@ -24,7 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  Activity, Users, BedDouble, Wallet, UserCheck,
+  Activity, Users, BedDouble, Wallet, UserCheck, Clock,
   CalendarClock, AlertTriangle, RefreshCw, Phone, XCircle, Check, X,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
@@ -190,6 +190,14 @@ export interface FacilityOverview {
   /** Pending leave requests (status === 'pending'), filtered by the same
    *  `search` text as the inquiries preview — the Pending Leave tab's queue. */
   pendingLeaveRows: FacilityLeaveRow[];
+  /** Today's cover per shift type, absentees excluded. */
+  shiftBreakdown: { key: string; label: string; count: number; accent: string }[];
+  /** Approved leave starting today or later — the next five. */
+  upcomingLeave: { id: string; name: string; leaveType: string; startDate: string; days: number }[];
+  /** Total approved-and-upcoming, which may exceed the five listed. */
+  upcomingLeaveCount: number;
+  /** Headcount per role, busiest first. */
+  roleCounts: { role: string; label: string; count: number }[];
   cashFlow: { received: number; pending: number; totalInvoice: number };
 }
 
@@ -298,6 +306,40 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
     status: r.status,
   }));
 
+  // Today's cover, by shift. Absent staff are excluded — a roster line for
+  // someone who called in sick is not cover.
+  const covered = schedules.filter(s => s.status !== 'absent');
+  const shiftBreakdown = [
+    { key: 'morning', label: 'Morning', count: covered.filter(s => s.shiftType === 'morning').length, accent: '#15795C' },
+    { key: 'afternoon', label: 'Afternoon', count: covered.filter(s => s.shiftType === 'afternoon').length, accent: '#E4A84B' },
+    { key: 'night', label: 'Night', count: covered.filter(s => s.shiftType === 'night').length, accent: '#015697' },
+    { key: 'on_call', label: 'On call', count: covered.filter(s => s.isOnCall).length, accent: '#2191D0' },
+  ];
+
+  // Approved leave that has not started yet — the absences to plan around.
+  const upcomingLeave = leave
+    .filter(l => l.status === 'approved' && l.startDate >= today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+    .slice(0, 5)
+    .map(l => ({
+      id: l._id,
+      name: l.userName,
+      leaveType: l.leaveType,
+      startDate: l.startDate,
+      days: l.days,
+    }));
+  const upcomingLeaveCount = leave.filter(l => l.status === 'approved' && l.startDate >= today).length;
+
+  // Headcount per role, busiest first — the shape of the workforce.
+  const roleCounts = Object.entries(
+    users.reduce<Record<string, number>>((acc, u) => {
+      acc[u.role] = (acc[u.role] || 0) + 1;
+      return acc;
+    }, {}),
+  )
+    .map(([role, count]) => ({ role, label: ROLE_LABEL[role as UserDoc['role']] || role.replace(/_/g, ' '), count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
   const received = billing?.totalRevenue ?? 0;
   const pendingAmount = billing?.totalOutstanding ?? 0;
 
@@ -307,6 +349,10 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
     inquiryMatchCount: filteredEnquiries.length,
     availabilityRows,
     pendingLeaveRows,
+    shiftBreakdown,
+    upcomingLeave,
+    upcomingLeaveCount,
+    roleCounts,
     cashFlow: { received, pending: pendingAmount, totalInvoice: received + pendingAmount },
   };
 }
@@ -857,7 +903,140 @@ export default function FacilityManagementDashboard() {
             </div>
           </>
         )}
-      />
+      >
+        {/* Workforce panels, folded in from the People Overview page so this is
+            the single operational home. All three read the data this dashboard
+            already loads — no extra fetches. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3" style={{ minWidth: 0 }}>
+          {/* Today's shifts */}
+          <div className="dash-card">
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Today&apos;s Shifts</span>
+              </div>
+              <button
+                onClick={() => router.push(`/hr?tab=schedule&date=${today}`)}
+                className="text-[12px] font-medium"
+                style={{ color: 'var(--accent-primary)' }}
+                title="Open today's shift schedule"
+                aria-label="Open today's shift schedule"
+              >
+                View all
+              </button>
+            </div>
+            {loadErrors.has('schedule') ? (
+              <EmptyState
+                icon={AlertTriangle}
+                title="Couldn't load shifts"
+                message="Today's schedule failed to load. Try again."
+                action={{ label: 'Retry', onClick: retryExtra }}
+              />
+            ) : (
+              <div className="p-4 space-y-2">
+                {overview.shiftBreakdown.map(shift => (
+                  <div key={shift.key} className="flex items-center justify-between text-[12.5px]">
+                    <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+                      <span className="w-2 h-2 rounded-full" style={{ background: shift.accent }} />
+                      {shift.label}
+                    </span>
+                    <span className="font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{shift.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Upcoming leave */}
+          <div className="dash-card">
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
+              <div className="flex items-center gap-2">
+                <CalendarClock className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Upcoming Leave</span>
+              </div>
+              <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                {overview.upcomingLeaveCount} approved
+              </span>
+            </div>
+            {loadErrors.has('leave') ? (
+              <EmptyState
+                icon={AlertTriangle}
+                title="Couldn't load leave"
+                message="Leave requests failed to load. Try again."
+                action={{ label: 'Retry', onClick: retryExtra }}
+              />
+            ) : overview.upcomingLeave.length === 0 ? (
+              <EmptyState
+                title="No leave booked"
+                message="Nobody has approved leave starting from today."
+                action={{ label: 'View leave', onClick: () => router.push('/hr?tab=leave') }}
+              />
+            ) : (
+              <div className="p-2">
+                {overview.upcomingLeave.map(l => (
+                  <div key={l.id} className="flex items-center gap-3 px-3 py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12.5px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{l.name}</div>
+                      <div className="text-[10.5px]" style={{ color: 'var(--text-muted)' }}>
+                        <span className="capitalize">{l.leaveType}</span> · {l.startDate}
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(33, 145, 208, 0.14)', color: '#2191D0' }}>{l.days}d</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Roster by role */}
+          <div className="dash-card">
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Roster by Role</span>
+              </div>
+              <button
+                onClick={() => router.push('/hr?tab=roster')}
+                className="text-[12px] font-medium"
+                style={{ color: 'var(--accent-primary)' }}
+                title="Open the staff roster"
+                aria-label="Open the staff roster"
+              >
+                View all
+              </button>
+            </div>
+            {usersUnavailable ? (
+              <EmptyState
+                icon={AlertTriangle}
+                title="Couldn't load staff data"
+                message="Staff records failed to load. Try again."
+                action={{ label: 'Retry', onClick: () => reloadUsers() }}
+              />
+            ) : overview.roleCounts.length === 0 ? (
+              <EmptyState
+                title="No staff registered"
+                message="Nobody is on this facility's roster yet."
+                action={{ label: 'View roster', onClick: () => router.push('/hr?tab=roster') }}
+              />
+            ) : (
+              <div className="p-4 space-y-2">
+                {overview.roleCounts.map(entry => (
+                  <button
+                    key={entry.role}
+                    type="button"
+                    onClick={() => router.push(`/hr?tab=roster&role=${entry.role}`)}
+                    className="w-full flex items-center justify-between text-[12.5px]"
+                    title={`View ${entry.label} staff`}
+                  >
+                    <span style={{ color: 'var(--text-secondary)' }}>{entry.label}</span>
+                    <span className="font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{entry.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </EhrCareDashboard>
     </main>
   );
 }

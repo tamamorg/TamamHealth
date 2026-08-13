@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Plus, Clock, Calendar, Activity, Wallet, Check, X } from '@/components/icons/lucide';
+import { Users, Plus, Calendar, Activity, Wallet, Check, X } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -79,25 +79,10 @@ export default function HRDashboardPage() {
   const onLeaveToday = leave.filter(l =>
     l.status === 'approved' && l.startDate <= today && l.endDate >= today
   );
-  const upcomingLeave = leave
-    .filter(l => l.status === 'approved' && l.startDate > today)
-    .sort((a, b) => a.startDate.localeCompare(b.startDate))
-    .slice(0, 5);
-  const upcomingApprovedCount = leave.filter(l => l.status === 'approved' && l.startDate > today).length;
-
   const presentToday = facilityUsers.length - onLeaveToday.length;
   const onCallToday = schedules.filter(s => s.isOnCall).length;
-  const morningStaff = schedules.filter(s => s.shiftType === 'morning').length;
-  const nightStaff = schedules.filter(s => s.shiftType === 'night').length;
-
-  const roleCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const u of facilityUsers) counts[u.role] = (counts[u.role] || 0) + 1;
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  }, [facilityUsers]);
 
   const dateLabel = formatDateTitle(toIsoDate(new Date()));
-  const todayIso = toIsoDate(new Date());
 
   // Day statistics rail: the visible work list is pending-only (that's the
   // point of the queue), so it can never show a Pending/Approved split on its
@@ -266,81 +251,7 @@ export default function HRDashboardPage() {
         emptyTitle={t('hr.noPendingLeave')}
         emptyActionLabel={t('hr.viewAll')}
         onEmptyAction={() => router.push('/hr?tab=leave')}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3" style={{ minWidth: 0 }}>
-          {/* Today's shifts */}
-          <div className="dash-card">
-            <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <Clock className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('hr.todaysShifts')}</span>
-            </div>
-            <div className="p-4 space-y-2">
-              <ShiftRow label={t('hr.shiftMorning')} count={morningStaff} accent="#15795C" />
-              <ShiftRow label={t('hr.shiftAfternoon')} count={schedules.filter(s => s.shiftType === 'afternoon').length} accent="#E4A84B" />
-              <ShiftRow label={t('hr.shiftNight')} count={nightStaff} accent="#015697" />
-              <ShiftRow label={t('hr.shiftOnCall')} count={onCallToday} accent="#2191D0" />
-            </div>
-          </div>
-
-          {/* Upcoming leave */}
-          <div className="dash-card">
-            <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('hr.upcomingLeave')}</span>
-              </div>
-              <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('hr.countApproved', { count: upcomingApprovedCount })}</span>
-            </div>
-            {upcomingLeave.length === 0 ? (
-              <div className="p-6 text-center text-[12px]" style={{ color: 'var(--text-muted)' }}>{t('hr.noUpcomingLeave')}</div>
-            ) : (
-              <div className="p-2">
-                {upcomingLeave.map(l => (
-                  <div key={l._id} className="data-row" style={{ padding: '10px 14px' }}>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12.5px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{l.userName}</div>
-                      <div className="text-[10.5px]" style={{ color: 'var(--text-muted)' }}>
-                        <span className="capitalize">{l.leaveType}</span> · {l.startDate}
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(33, 145, 208, 0.14)', color: '#2191D0' }}>{l.days}d</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Roster by role */}
-          <div className="dash-card">
-            <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <Users className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('hr.rosterByRole')}</span>
-            </div>
-            <div className="p-4 space-y-2">
-              {roleCounts.length === 0 ? (
-                <div className="text-[12px] text-center" style={{ color: 'var(--text-muted)' }}>{t('hr.noStaffRegistered')}</div>
-              ) : roleCounts.map(([role, count]) => (
-                <div key={role} className="flex items-center justify-between text-[12.5px]">
-                  <span className="capitalize" style={{ color: 'var(--text-secondary)' }}>{role.replace(/_/g, ' ')}</span>
-                  <span className="font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </EhrCareDashboard>
+      />
     </main>
-  );
-}
-
-function ShiftRow({ label, count, accent }: { label: string; count: number; accent: string }) {
-  return (
-    <div className="flex items-center justify-between text-[12.5px]">
-      <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-        <span className="w-2 h-2 rounded-full" style={{ background: accent }} />
-        {label}
-      </span>
-      <span className="font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{count}</span>
-    </div>
   );
 }
