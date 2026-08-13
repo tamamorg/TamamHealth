@@ -217,7 +217,7 @@ function ProviderRow({
     >
       {/* Clinician */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, paddingTop: 2 }}>
-        <StaffAvatar name={provider.providerName} photoUrl={provider.photoUrl} size={48} />
+        <StaffAvatar name={provider.providerName} photoUrl={provider.photoUrl} size={44} rounded="card" />
         <div style={{ minWidth: 0 }}>
           {/* Wrapped, not truncated. "CO Deng Mabior K…" and "Dr. Achol Mayen
               De…" are the same nine characters for two different people —

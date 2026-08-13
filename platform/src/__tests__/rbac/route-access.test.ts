@@ -30,6 +30,28 @@ describe('RBAC: landing pages', () => {
   });
 });
 
+describe('RBAC: super_admin has total page access', () => {
+  test('reaches every station dashboard and clinical module, listed or not', () => {
+    const previouslyExcluded = [
+      '/dashboard/nurse', '/triage', '/rooming', '/patient-intake',
+      '/dashboard/front-desk', '/dashboard/lab', '/dashboard/pharmacy',
+      '/consultation', '/payments/claims', '/settings/manage',
+    ];
+    for (const path of previouslyExcluded) {
+      expect(isPathAllowed('super_admin', path)).toBe(true);
+    }
+  });
+
+  test('still lands on the admin console by default', () => {
+    expect(getDefaultDashboard('super_admin')).toBe('/admin');
+  });
+
+  test('total access is super_admin-only — org_admin gains nothing', () => {
+    expect(isPathAllowed('org_admin', '/consultation')).toBe(false);
+    expect(isPathAllowed('org_admin', '/triage')).toBe(false);
+  });
+});
+
 describe('RBAC: /payments/claims is biller-only (BUG-006 regression)', () => {
   test('cashier reaches /payments but NOT /payments/claims', () => {
     expect(isPathAllowed('cashier', '/payments')).toBe(true);

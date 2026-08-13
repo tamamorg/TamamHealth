@@ -164,6 +164,26 @@ function logFreshGeneration(filePath: string, demoMode: boolean): void {
 }
 
 /**
+ * Fixed INITIAL password for the platform super-admin, so the account is
+ * always reachable out of the box; override with SUPERADMIN_INITIAL_PASSWORD.
+ * Initial only — it is stored as a bcrypt hash on the seeded user doc and can
+ * be changed through the normal change-password flow at any time. A real
+ * production bootstrap must set the env override (or rotate immediately) and
+ * set mustChangePassword: true on the user doc so the well-known default
+ * cannot survive first login.
+ */
+const SUPERADMIN_DEFAULT_PASSWORD = 'Superadmin!';
+
+/** Operator-pinned initial password for a username, if one applies. */
+function initialPasswordOverride(username: string): string | null {
+  if (username === 'admin') return process.env.ADMIN_INITIAL_PASSWORD || null;
+  if (username === 'superadmin') {
+    return process.env.SUPERADMIN_INITIAL_PASSWORD || SUPERADMIN_DEFAULT_PASSWORD;
+  }
+  return null;
+}
+
+/**
  * Returns the username → plaintext-password map for seeded users, generating
  * and persisting it on first run. Idempotent and concurrency-safe (single
  * inflight read+write).
@@ -174,7 +194,9 @@ export async function getOrCreateSeedCredentials(): Promise<CredentialsFile> {
 
   inflight = (async () => {
     const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
-    const expectedUsers = demoMode ? DEMO_USERNAMES : ['admin'];
+    // 'superadmin' is seeded in BOTH modes: production needs a working
+    // platform administrator just as much as the demo does.
+    const expectedUsers = demoMode ? DEMO_USERNAMES : ['admin', 'superadmin'];
 
     // Deterministic mode (serverless-safe). When SEED_CREDENTIALS_SECRET is
     // set, derive every password from it instead of generating random ones and
@@ -184,12 +206,9 @@ export async function getOrCreateSeedCredentials(): Promise<CredentialsFile> {
     // required. `admin` still honours an explicit ADMIN_INITIAL_PASSWORD.
     const secret = process.env.SEED_CREDENTIALS_SECRET;
     if (secret) {
-      const adminOverride = process.env.ADMIN_INITIAL_PASSWORD;
       const passwords: Record<string, string> = {};
       for (const username of expectedUsers) {
-        passwords[username] = username === 'admin' && adminOverride
-          ? adminOverride
-          : deterministicPassword(username, secret);
+        passwords[username] = initialPasswordOverride(username) ?? deterministicPassword(username, secret);
       }
       cache = { generatedAt: '1970-01-01T00:00:00.000Z', passwords };
       inflight = null;
@@ -203,22 +222,19 @@ export async function getOrCreateSeedCredentials(): Promise<CredentialsFile> {
     if (existing) {
       next = { generatedAt: existing.generatedAt, passwords: { ...existing.passwords } };
       // Fill in any users missing from a stale file (e.g. a new role added).
+      // An existing entry always wins — the file records the credentials the
+      // browser seed already hashed, so rewriting one here would desync them.
       for (const username of expectedUsers) {
         if (!next.passwords[username]) {
-          next.passwords[username] = generatePassword();
+          next.passwords[username] = initialPasswordOverride(username) ?? generatePassword();
           touched = true;
         }
       }
     } else {
       next = { generatedAt: new Date().toISOString(), passwords: {} };
-      // Honour an operator-supplied admin password the first time we generate.
-      const adminOverride = process.env.ADMIN_INITIAL_PASSWORD;
+      // Honour operator-pinned initial passwords the first time we generate.
       for (const username of expectedUsers) {
-        if (username === 'admin' && adminOverride) {
-          next.passwords[username] = adminOverride;
-        } else {
-          next.passwords[username] = generatePassword();
-        }
+        next.passwords[username] = initialPasswordOverride(username) ?? generatePassword();
       }
     }
 

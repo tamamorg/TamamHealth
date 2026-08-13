@@ -70,6 +70,98 @@ async function authenticateFromUsersDb(
 
 const profileByUsername = new Map(DEMO_USER_PROFILES.map(p => [p.username, p]));
 
+/**
+ * Accounts that may bootstrap themselves into the shared users DB on first
+ * login. Production auth is authoritative against the users DB, but nothing
+ * else provisions these platform-operator docs, so a fresh production deploy
+ * would have no way in. The bootstrap below is the one exception, and it is
+ * deliberately narrow: only these usernames, only when NO doc exists yet
+ * (so a changed password can never be shadowed by the seed credential), and
+ * only against the seed credential (SUPERADMIN_INITIAL_PASSWORD /
+ * ADMIN_INITIAL_PASSWORD or their defaults).
+ */
+const BOOTSTRAP_USERNAMES = new Set(['admin', 'superadmin']);
+
+/**
+ * First-login provisioning for a platform bootstrap account. Returns the user
+ * only when (a) the username is a bootstrap account, (b) no users-DB doc
+ * exists yet, and (c) the password matches the seed credential. On success it
+ * writes the authoritative doc so subsequent logins — and password changes —
+ * go through `authenticateFromUsersDb` and this path is never taken again.
+ */
+async function bootstrapUserLogin(
+  username: string,
+  password: string,
+): Promise<ServerUser | null> {
+  if (!BOOTSTRAP_USERNAMES.has(username)) return null;
+  const profile = profileByUsername.get(username);
+  if (!profile) return null;
+
+  const { usersDB } = await import('./db');
+  const db = usersDB();
+
+  // A doc already exists → the DB is authoritative from here on. Do NOT let
+  // the seed credential authenticate against an account whose password may
+  // have been changed. (A DB match would already have returned in the caller;
+  // reaching here with an existing doc means the seed password was offered
+  // for an account that has one — reject it.)
+  try {
+    await db.get(`user-${username}`);
+    return null;
+  } catch (err) {
+    const status = (err as { status?: number; name?: string })?.status;
+    // Anything other than "not found" (e.g. CouchDB unreachable) is not a
+    // safe bootstrap condition — fail closed.
+    if (status !== 404) return null;
+  }
+
+  const credentials = await getOrCreateSeedCredentials();
+  const expected = credentials.passwords[username];
+  if (!expected) return null;
+  const hash = await getHash(username, expected);
+  if (!(await bcrypt.compare(password, hash))) return null;
+
+  const now = new Date().toISOString();
+  const doc = {
+    _id: `user-${username}`,
+    type: 'user' as const,
+    username,
+    passwordHash: hash,
+    name: profile.name,
+    role: profile.role,
+    hospitalId: profile.hospitalId,
+    hospitalName: profile.hospitalName,
+    orgId: profile.orgId,
+    isActive: true,
+    // This path is production-only (the demo branch of authenticateUser never
+    // reaches it). A bootstrap credential is single-use by design, so force a
+    // change on first login — combined with the config-validation guard that
+    // requires a strong SUPERADMIN_INITIAL_PASSWORD, the operator sets a strong
+    // secret AND rotates it immediately, and no default survives first login.
+    mustChangePassword: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+  try {
+    await db.put(doc);
+  } catch {
+    // Couch write failed (unreachable, or a concurrent login won the race).
+    // Still allow this session; the doc will be (re)provisioned next time.
+  }
+  return {
+    _id: doc._id,
+    username,
+    passwordHash: hash,
+    name: profile.name,
+    role: profile.role,
+    hospitalId: profile.hospitalId,
+    hospitalName: profile.hospitalName,
+    orgId: profile.orgId,
+    isActive: true,
+    mustChangePassword: true,
+  };
+}
+
 // Per-username bcrypt-hash cache. Each entry remembers which plaintext we
 // hashed against, so a regenerated password file invalidates automatically.
 const hashCache: Record<string, { plaintext: string; hash: string }> = {};
@@ -97,6 +189,11 @@ export async function authenticateUser(
   if (!isDemo) {
     const productionUser = await authenticateFromUsersDb(username, password);
     if (productionUser) return productionUser;
+    // First-login bootstrap for the platform operator accounts, so a fresh
+    // production deploy is reachable. Narrow and create-if-absent — see
+    // bootstrapUserLogin.
+    const bootstrapped = await bootstrapUserLogin(username, password);
+    if (bootstrapped) return bootstrapped;
     await bcrypt.hash(password, 12);
     return null;
   }

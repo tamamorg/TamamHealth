@@ -38,6 +38,7 @@ import {
   Send, Stethoscope, FileText, RotateCcw, type LucideIcon,
 } from '@/components/icons/lucide';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
+import SendIntakeFormsModal from '@/components/intake/SendIntakeFormsModal';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import Select from '@/components/Select';
 
@@ -181,6 +182,7 @@ export default function FrontDeskDashboardPage() {
   const [registerOpen, setRegisterOpen] = useState(false);
   // "Find availability" — the same booking dialog the doctor module opens.
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
   const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
 
   const [queueNowMs, setQueueNowMs] = useState(() => Date.now());
@@ -1062,9 +1064,9 @@ export default function FrontDeskDashboardPage() {
   // than a second, parallel front door.
   const actions = useMemo<EhrCareDashboardAction[]>(() => ([
     { label: 'Find availability', icon: Plus, onClick: () => setBookingOpen(true), tone: 'primary' as const },
-    ...(canUseRoute('/patient-intake') ? [{ label: 'Intake Form', icon: Send, onClick: () => router.push('/patient-intake'), tone: 'primary' as const }] : []),
+    ...(canUseRoute('/patient-intake') ? [{ label: 'Intake Form', icon: Send, onClick: () => setIntakeOpen(true), tone: 'primary' as const }] : []),
     ...(canUseRoute('/patients') ? [{ label: t('frontDesk.registerNewPatient'), icon: UserPlus, onClick: () => setRegisterOpen(true) }] : []),
-  ]), [canUseRoute, router, t]);
+  ]), [canUseRoute, t]);
 
   // "View Referrals" / "Appointments" now live as labeled nav links in the top
   // rail (next to the module dropdown), not as shortcuts inside this card.
@@ -1580,6 +1582,8 @@ export default function FrontDeskDashboardPage() {
             onClose={() => setBookingOpen(false)}
           />
         )}
+
+        {intakeOpen && <SendIntakeFormsModal onClose={() => setIntakeOpen(false)} />}
 
         {editAppointment && (
           <AppointmentEditModal

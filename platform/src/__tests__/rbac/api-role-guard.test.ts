@@ -40,6 +40,17 @@ describe('hasRole: station-role shim', () => {
   });
 });
 
+describe('hasRole: super_admin wildcard (total access)', () => {
+  test('super_admin passes an allow-list that does not name it', () => {
+    expect(hasRole(auth('super_admin'), ['doctor'])).toBe(true);
+    expect(hasRole(auth('super_admin'), ['nurse', 'lab_tech'])).toBe(true);
+  });
+  test('the wildcard applies to super_admin callers only', () => {
+    expect(hasRole(auth('org_admin'), ['doctor'])).toBe(false);
+    expect(hasRole(auth('government'), ['doctor'])).toBe(false);
+  });
+});
+
 describe('CouchDB write matrix (DOC_WRITE_ROLES)', () => {
   test('front_desk may write patients but not clinical documents', () => {
     expect(DOC_WRITE_ROLES.patient).toContain('front_desk');

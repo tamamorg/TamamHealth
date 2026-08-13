@@ -98,7 +98,7 @@ export function databasePolicy(
   }
 
   // Anything absent from the browser sync map is server-only by definition —
-  // users, account requests, slot holds, usage events. No member roles, and a
+  // users, slot holds, usage events. No member roles, and a
   // validator that refuses every non-admin write as defence in depth.
   return {
     baseName: databaseName,

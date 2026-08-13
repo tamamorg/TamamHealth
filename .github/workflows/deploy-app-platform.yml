@@ -1,4 +1,4 @@
-name: deploy-v7-app-platform
+name: deploy-app-platform
 
 # Production deployment is manual and uses the protected `production`
 # environment. Configure required reviewers in GitHub before enabling it.
@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-v7-app-platform
+  group: deploy-app-platform
   cancel-in-progress: false
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
       - name: Validate deployment target
         id: target
         env:
-          APP_ID: ${{ secrets.DO_V7_APP_ID }}
+          APP_ID: ${{ secrets.DO_APP_ID }}
         run: |
           test -n "$APP_ID"
           doctl apps get "$APP_ID" --format ID,Spec.Name,Spec.Region,ActiveDeployment.ID
@@ -46,10 +46,10 @@ jobs:
           test -n "$PREVIOUS_DEPLOYMENT_ID"
           echo "previous_deployment_id=$PREVIOUS_DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Trigger v7 deployment
+      - name: Trigger deployment
         id: deploy
         env:
-          APP_ID: ${{ secrets.DO_V7_APP_ID }}
+          APP_ID: ${{ secrets.DO_APP_ID }}
         run: |
           DEPLOYMENT_ID="$(doctl apps create-deployment "$APP_ID" --update-sources --force-rebuild --format ID --no-header)"
           test -n "$DEPLOYMENT_ID"
@@ -57,7 +57,7 @@ jobs:
 
       - name: Wait for deployment
         env:
-          APP_ID: ${{ secrets.DO_V7_APP_ID }}
+          APP_ID: ${{ secrets.DO_APP_ID }}
           DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
         run: |
           for attempt in $(seq 1 60); do
@@ -74,18 +74,18 @@ jobs:
 
       - name: Smoke test health and login page
         env:
-          V7_BASE_URL: ${{ secrets.DO_V7_BASE_URL }}
+          BASE_URL: ${{ secrets.DO_BASE_URL }}
         run: |
-          test -n "$V7_BASE_URL"
+          test -n "$BASE_URL"
           curl --fail --silent --show-error --retry 6 --retry-all-errors \
-            --max-time 15 "$V7_BASE_URL/api/health" | jq -e '.status == "ok"'
+            --max-time 15 "$BASE_URL/api/health" | jq -e '.status == "ok"'
           curl --fail --silent --show-error --retry 3 --max-time 15 \
-            --output /dev/null "$V7_BASE_URL/login"
+            --output /dev/null "$BASE_URL/login"
 
       - name: Roll back when post-deployment smoke tests fail
         if: failure() && steps.target.outputs.previous_deployment_id != ''
         env:
-          APP_ID: ${{ secrets.DO_V7_APP_ID }}
+          APP_ID: ${{ secrets.DO_APP_ID }}
           DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           PREVIOUS_DEPLOYMENT_ID: ${{ steps.target.outputs.previous_deployment_id }}
         run: |
@@ -98,6 +98,6 @@ jobs:
 
       - name: Deployment summary
         run: |
-          echo "### v7 deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "### App Platform deployment" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: \`${{ inputs.expected_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Deployment: \`${{ steps.deploy.outputs.deployment_id }}\`" >> "$GITHUB_STEP_SUMMARY"

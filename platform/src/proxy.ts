@@ -37,7 +37,6 @@ const CSRF_EXEMPT_API_PATHS = new Set<string>([
   '/api/auth/logout',
   '/api/auth/me',
   '/api/demo-credentials',
-  '/api/account-requests/submit',
 ]);
 
 /**

@@ -1,6 +1,6 @@
 variable "app_name" {
   type    = string
-  default = "tamamhealth-v7"
+  default = "tamamhealth"
 }
 
 variable "app_region" {
@@ -26,7 +26,18 @@ variable "github_branch" {
 
 variable "domain" {
   type    = string
-  default = "v7.tamamhealth.org"
+  default = "staging.tamamhealth.org"
+}
+
+# tamamhealth.org is hosted on GoDaddy, not DigitalOcean DNS, so the CNAME for
+# var.domain has to be created by hand. Until it exists, App Platform would hold
+# the app in a pending-domain state, so the first apply runs on the default
+# ondigitalocean.app ingress and the public URLs bind to ${APP_URL}. Flip this to
+# true once the DNS record is live; that rebuilds the browser bundle, because the
+# NEXT_PUBLIC_* values are compiled in at build time.
+variable "enable_custom_domain" {
+  type    = bool
+  default = false
 }
 
 variable "instance_count" {
@@ -36,7 +47,7 @@ variable "instance_count" {
 
   validation {
     condition     = var.instance_count >= 2
-    error_message = "Production v7 requires at least two App Platform instances."
+    error_message = "Production requires at least two App Platform instances."
   }
 }
 

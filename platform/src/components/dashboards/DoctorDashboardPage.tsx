@@ -441,7 +441,10 @@ export default function DashboardPage() {
       currentUser.role !== 'doctor' &&
       currentUser.role !== 'clinical_officer' &&
       currentUser.role !== 'medical_superintendent' &&
-      currentUser.role !== 'clinician'
+      currentUser.role !== 'clinician' &&
+      // Total access: a super-admin browsing /dashboard sees the clinical
+      // view instead of being bounced back to /admin.
+      currentUser.role !== 'super_admin'
     ) {
       router.push(getDefaultDashboard(currentUser.role));
     }
@@ -450,8 +453,11 @@ export default function DashboardPage() {
   if (!currentUser) return null;
   // Medical superintendent → admin-oriented hospital dashboard.
   if (currentUser.role === 'medical_superintendent') return <SuperintendentDashboard />;
-  // Anyone who isn't a doctor / clinical officer / clinician is mid-redirect.
-  if (currentUser.role !== 'doctor' && currentUser.role !== 'clinical_officer' && currentUser.role !== 'clinician') return null;
+  // Anyone who isn't a doctor / clinical officer / clinician / super-admin is mid-redirect.
+  if (
+    currentUser.role !== 'doctor' && currentUser.role !== 'clinical_officer' &&
+    currentUser.role !== 'clinician' && currentUser.role !== 'super_admin'
+  ) return null;
 
   const worklist = assembleDoctorWorklist({
     patients, triages, currentUser, appointments,

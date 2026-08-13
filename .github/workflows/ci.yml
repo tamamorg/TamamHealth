@@ -62,8 +62,8 @@ jobs:
           NEXT_PUBLIC_SYNC_ENABLED: 'true'
           NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED: 'true'
           NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: 'true'
-          NEXT_PUBLIC_COUCHDB_URL: https://v7.example.invalid/api/couch
-          NEXT_PUBLIC_APP_URL: https://v7.example.invalid
+          NEXT_PUBLIC_COUCHDB_URL: https://staging.example.invalid/api/couch
+          NEXT_PUBLIC_APP_URL: https://staging.example.invalid
           COUCHDB_URL: http://10.114.0.3:5984
           COUCHDB_ADMIN_USER: ci-admin
           COUCHDB_ADMIN_PASSWORD: ci-admin-password-0123456789-abcdefghijklmnopqrstuvwxyz

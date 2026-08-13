@@ -26777,8 +26777,11 @@ table.patient-data-table.patient-data-table {
    panel edges. The pull-back above would shove that header past the panel's
    `overflow: hidden` box and clip the title; here it keeps its own padding
    and stays put. Surfaces that DO pad themselves (`p-5`/`p-6` wrappers)
-   fall through to the generic pull-back. */
-.modal-portal-backdrop [role="dialog"] > :is(.modal-content, .card-elevated):not([class~="p-4"]):not([class~="p-5"]):not([class~="p-6"]) > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
+   fall through to the generic pull-back. `.cn-meds` (the medications popup)
+   is the same shape — an unpadded panel whose sections pad themselves — so
+   without this it wore the -20px pull-back as a bar bleeding right across
+   the page, covering the page header. */
+.modal-portal-backdrop [role="dialog"] > :is(.modal-content, .card-elevated, .cn-meds):not([class~="p-4"]):not([class~="p-5"]):not([class~="p-6"]) > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
   margin: 0 !important;
 }
 

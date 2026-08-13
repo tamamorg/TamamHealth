@@ -8,7 +8,7 @@
  */
 import PouchDB from 'pouchdb-browser';
 import memoryAdapter from 'pouchdb-adapter-memory';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const findPlugin = require('pouchdb-find');
 
 PouchDB.plugin(memoryAdapter);
