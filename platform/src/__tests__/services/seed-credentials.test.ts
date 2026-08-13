@@ -12,6 +12,8 @@
  * credentials file is read or written.
  */
 
+export {};
+
 const BASE_ENV = process.env;
 
 async function loadCredentials(env: Record<string, string | undefined>) {

@@ -17,6 +17,7 @@ function validEnvironment(): ConfigEnv {
     COUCHDB_URL: 'http://10.114.0.3:5984',
     COUCHDB_ADMIN_USER: 'admin',
     COUCHDB_ADMIN_PASSWORD: 'couch-admin-secret-0123456789',
+    SUPERADMIN_INITIAL_PASSWORD: 'sa-strong-secret-0123456789',
     COUCHDB_GATEWAY_SECRET: 'gateway-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
     COUCHDB_WEBHOOK_SECRET: 'webhook-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
     AIRTEL_WEBHOOK_SECRET: 'airtel-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
@@ -52,6 +53,20 @@ describe('production configuration validation', () => {
     env.PHI_ENCRYPTION_ENABLED = 'true';
     env.PHI_ENCRYPTION_KEY = 'too-short';
     expect(validateProductionConfig(env).join('\n')).toMatch(/PHI_ENCRYPTION_KEY must decode/);
+  });
+
+  it('rejects a missing, default, or weak SUPERADMIN_INITIAL_PASSWORD', () => {
+    const missing = validEnvironment();
+    delete missing.SUPERADMIN_INITIAL_PASSWORD;
+    expect(validateProductionConfig(missing).join('\n')).toMatch(/SUPERADMIN_INITIAL_PASSWORD must be set/);
+
+    const isDefault = validEnvironment();
+    isDefault.SUPERADMIN_INITIAL_PASSWORD = 'Superadmin!';
+    expect(validateProductionConfig(isDefault).join('\n')).toMatch(/demo default or a placeholder/);
+
+    const weak = validEnvironment();
+    weak.SUPERADMIN_INITIAL_PASSWORD = 'short';
+    expect(validateProductionConfig(weak).join('\n')).toMatch(/at least 16 characters/);
   });
 
   it('requires tenant databases and a same-origin browser gateway', () => {

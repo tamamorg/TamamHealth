@@ -174,6 +174,17 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
     if (syncGateway && !tenantDatabases) {
       errors.push('NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED requires database-per-organization routing.');
     }
+    // The platform super-admin ('superadmin') ships with a well-known initial
+    // password ('Superadmin!') for demo convenience. A real production deploy
+    // must override it with a strong secret — otherwise the most privileged
+    // account on the platform has a guessable, public credential.
+    if (!env.SUPERADMIN_INITIAL_PASSWORD) {
+      errors.push('SUPERADMIN_INITIAL_PASSWORD must be set in production — the well-known demo default must not reach a real deployment.');
+    } else if (env.SUPERADMIN_INITIAL_PASSWORD === 'Superadmin!' || PLACEHOLDER.test(env.SUPERADMIN_INITIAL_PASSWORD)) {
+      errors.push('SUPERADMIN_INITIAL_PASSWORD is still the demo default or a placeholder.');
+    } else if (env.SUPERADMIN_INITIAL_PASSWORD.length < 16) {
+      errors.push('SUPERADMIN_INITIAL_PASSWORD must be at least 16 characters in production.');
+    }
     if (syncGateway && (
       (env.COUCHDB_GATEWAY_SECRET || '').length < 32
       || PLACEHOLDER.test(env.COUCHDB_GATEWAY_SECRET || '')
