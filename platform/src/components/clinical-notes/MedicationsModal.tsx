@@ -22,7 +22,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Info, Plus, X } from '@/components/icons/lucide';
+import { Check, Info, Plus, X } from '@/components/icons/lucide';
 import PrescribeModal from './prescribe/PrescribeModal';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
@@ -90,9 +90,9 @@ export default function MedicationsModal({
   const [tab, setTab] = useState<MedTab>('active');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // Consent form state; null = follow whatever the patient record says.
-  const [consentDraft, setConsentDraft] = useState<'yes' | 'no' | null>(null);
-  // The history only unlocks after consent is saved as "yes" in THIS dialog.
+  // The consent question lives in its own dialog stacked over this one.
+  const [consentPromptOpen, setConsentPromptOpen] = useState(false);
+  // The history only unlocks after consent is answered "yes" in THIS dialog.
   const [consentConfirmed, setConsentConfirmed] = useState(false);
   // "+ Med List": record a medication the patient reports taking.
   const [showAddMed, setShowAddMed] = useState(false);
@@ -250,20 +250,20 @@ export default function MedicationsModal({
   // ── Consent gate ────────────────────────────────────────────────────────
   const consent = patient?.medHistoryConsent;
   const showHistory = consentConfirmed && consent?.granted === true;
-  const consentAnswer = consentDraft ?? (consent ? (consent.granted ? 'yes' : 'no') : null);
 
-  const handleSaveConsent = () => withBusy(async () => {
-    if (!consentAnswer) return;
+  // Either answer is written to the patient record with who and when — the
+  // audit trail is the point — then the popup closes and the panel reflects it.
+  const answerConsent = (granted: boolean) => withBusy(async () => {
     await savePatient({
       medHistoryConsent: {
-        granted: consentAnswer === 'yes',
+        granted,
         byId: currentUser?._id,
         byName: userName,
         at: new Date().toISOString(),
       },
     });
-    setConsentConfirmed(consentAnswer === 'yes');
-    setConsentDraft(null);
+    setConsentConfirmed(granted);
+    setConsentPromptOpen(false);
   });
 
   const shortDate = (iso?: string) => (iso ? iso.slice(0, 10) : '');
@@ -335,13 +335,24 @@ export default function MedicationsModal({
             </label>
 
             {showAddMed && (
+              // Same labeled-field language as the Prescribe form (.cn-rx-field),
+              // so this reads as a form rather than a strip of bare boxes.
               <div className="cn-meds-add">
-                <input className="cn-input" placeholder="Medication" value={addMed.medication}
-                  onChange={e => setAddMed(m => ({ ...m, medication: e.target.value }))} aria-label="Medication name" />
-                <input className="cn-input" placeholder="Dose" value={addMed.dose}
-                  onChange={e => setAddMed(m => ({ ...m, dose: e.target.value }))} aria-label="Dose" />
-                <input className="cn-input" placeholder="Frequency" value={addMed.frequency}
-                  onChange={e => setAddMed(m => ({ ...m, frequency: e.target.value }))} aria-label="Frequency" />
+                <label className="cn-rx-field">
+                  Medication
+                  <input className="cn-input" placeholder="e.g. Amoxicillin" value={addMed.medication}
+                    onChange={e => setAddMed(m => ({ ...m, medication: e.target.value }))} />
+                </label>
+                <label className="cn-rx-field">
+                  Dose
+                  <input className="cn-input" placeholder="500mg" value={addMed.dose}
+                    onChange={e => setAddMed(m => ({ ...m, dose: e.target.value }))} />
+                </label>
+                <label className="cn-rx-field">
+                  Frequency
+                  <input className="cn-input" placeholder="TDS" value={addMed.frequency}
+                    onChange={e => setAddMed(m => ({ ...m, frequency: e.target.value }))} />
+                </label>
                 <button type="button" className="cn-btn cn-btn-primary" onClick={handleAddMed} disabled={busy}>Add</button>
               </div>
             )}
@@ -402,62 +413,30 @@ export default function MedicationsModal({
               <span title="Prescriptions recorded for this patient across facilities in the shared record."><Info size={14} /></span>
             </h3>
 
+            {/* No standing consent furniture: the panel rests as a quiet
+                empty state, and the consent dialog appears only when the
+                clinician acts — asking to see the history. */}
             {!showHistory && (
-              <div className="cn-consent-card">
-                <h4>Obtain Consent from Patient</h4>
-                <p>
-                  You can view medication history retrieved from the TamamHealth shared record for
-                  this patient. You must obtain consent before viewing this information.
+              <div className="cn-meds-histlock">
+                <p className="cn-card-empty">
+                  History from the shared record appears here once the patient consents.
                 </p>
-                <p>
-                  Disclaimer: Certain information may not be available or accurate in this report,
-                  including medications the patient asked not to be disclosed, over-the-counter
-                  medicines, or records from facilities outside the network. The provider should
-                  independently verify medication history with the patient.
-                </p>
-                <p className="cn-consent-question">
-                  I have this patient&rsquo;s consent to view their medication history.
-                </p>
-                <label className="cn-consent-option">
-                  <input
-                    type="radio"
-                    name="cn-med-consent"
-                    checked={consentAnswer === 'yes'}
-                    onChange={() => setConsentDraft('yes')}
-                  />
-                  Yes
-                </label>
-                <label className="cn-consent-option">
-                  <input
-                    type="radio"
-                    name="cn-med-consent"
-                    checked={consentAnswer === 'no'}
-                    onChange={() => setConsentDraft('no')}
-                  />
-                  No
-                </label>
-                {consent && (
-                  <p className="cn-consent-note">
-                    Consent {consent.granted ? 'granted' : 'declined'} — recorded by{' '}
-                    {consent.byName || 'staff'} on {shortDate(consent.at)}. Save to confirm for this review.
-                  </p>
-                )}
                 <button
                   type="button"
                   className="cn-btn"
-                  onClick={handleSaveConsent}
-                  disabled={busy || !consentAnswer}
+                  onClick={() => setConsentPromptOpen(true)}
+                  disabled={busy || loading}
                 >
-                  Save
+                  View history
                 </button>
               </div>
             )}
 
             {showHistory && (
               <div className="cn-meds-history">
-                <p className="cn-consent-note">
-                  Consent recorded by {consent?.byName || 'staff'} on {shortDate(consent?.at)}.{' '}
-                  <button type="button" className="cn-card-head-action" onClick={() => { setConsentConfirmed(false); setConsentDraft(null); }}>
+                <p className="cn-consent-note cn-consent-note-granted">
+                  <Check size={13} aria-hidden /> Consent obtained — recorded by {consent?.byName || 'staff'} on {shortDate(consent?.at)}.{' '}
+                  <button type="button" className="cn-card-head-action" onClick={() => setConsentConfirmed(false)}>
                     Change
                   </button>
                 </p>
@@ -481,6 +460,50 @@ export default function MedicationsModal({
           </div>
         </div>
       </div>
+
+      {/* Consent question as its own dialog on top of the medications one.
+          Yes/No answer directly — no radio-then-save two-step. */}
+      {consentPromptOpen && (
+        <Modal onClose={() => setConsentPromptOpen(false)} width={520} labelledBy="cn-consent-title">
+          <div className="cn-consent-pop" onClick={e => e.stopPropagation()}>
+            <div className="cn-meds-header">
+              <h2 className="cn-meds-title" id="cn-consent-title">Obtain Consent from Patient</h2>
+              <button type="button" className="cn-meds-close" onClick={() => setConsentPromptOpen(false)} aria-label="Close consent">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="cn-consent-pop-body">
+              <p>
+                You can view medication history retrieved from the TamamHealth shared record for
+                this patient. You must obtain consent before viewing this information.
+              </p>
+              <p>
+                Disclaimer: Certain information may not be available or accurate in this report,
+                including medications the patient asked not to be disclosed, over-the-counter
+                medicines, or records from facilities outside the network. The provider should
+                independently verify medication history with the patient.
+              </p>
+              <p className="cn-consent-question">
+                Does the patient consent to viewing their medication history?
+              </p>
+              {consent && (
+                <p className="cn-consent-note">
+                  Last answer: consent {consent.granted ? 'granted' : 'declined'} — recorded by{' '}
+                  {consent.byName || 'staff'} on {shortDate(consent.at)}.
+                </p>
+              )}
+            </div>
+            <div className="cn-consent-pop-actions">
+              <button type="button" className="cn-btn" onClick={() => answerConsent(false)} disabled={busy}>
+                No — declined
+              </button>
+              <button type="button" className="cn-btn cn-consent-yes" onClick={() => answerConsent(true)} disabled={busy}>
+                <Check size={13} /> Yes — consent given
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showPrescribe && (
         <PrescribeModal

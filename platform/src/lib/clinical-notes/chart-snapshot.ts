@@ -49,7 +49,8 @@ function isNum(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v) && v !== 0;
 }
 
-/** Active medications, one per line, dose and frequency included. */
+/** Active medications, one bullet per line, dose and frequency included —
+ *  the same list shape as allergies and problems, so a note reads uniformly. */
 export function formatMedications(prescriptions: PrescriptionDoc[]): string {
   const active = prescriptions.filter(p => p.status !== 'discontinued');
   if (active.length === 0) return '';
@@ -57,7 +58,7 @@ export function formatMedications(prescriptions: PrescriptionDoc[]): string {
     .map((p) => {
       const bits = [p.medication, p.dose, p.route, p.frequency].filter(Boolean);
       const line = bits.join(' · ');
-      return p.duration ? `${line} — ${p.duration}` : line;
+      return `• ${p.duration ? `${line} — ${p.duration}` : line}`;
     })
     .join('\n');
 }

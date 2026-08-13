@@ -162,12 +162,12 @@
   padding: 0 12px;
   height: 34px;
   min-height: 34px;
-  border: 1px solid var(--ehr-border, var(--border-light));
+  border: 1px solid transparent;
   /* Same corner as .cn-btn (--radius-control). The list toolbar rounds its
      filters further — full pill ends matching the Create capsule; see
      .cn-list-toolbar below. */
   border-radius: var(--radius-control);
-  background-color: var(--ehr-panel, var(--bg-card-solid));
+  background-color: var(--overlay-subtle);
   color: var(--ehr-text, var(--text-primary));
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
@@ -194,7 +194,7 @@ select.cn-select {
   padding-right: 30px;
   appearance: none;
   cursor: pointer;
-  background-color: var(--ehr-panel, var(--bg-card-solid)) !important;
+  background-color: var(--overlay-subtle) !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2372839a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: right 10px center !important;
@@ -209,18 +209,23 @@ select.cn-select {
   appearance: none;
 }
 
-/* The platform's focus treatment — a blue border plus a soft ring — rather
-   than the stark 2px outline this module used to draw. */
+/* No blue ring on focus — the field keeps its resting tint. Keyboard focus
+   still gets a neutral hairline so tabbing stays followable. */
 .cn-select:focus,
 .cn-input:focus,
-.cn-textarea:focus,
+.cn-textarea:focus {
+  outline: none;
+  border-color: transparent;
+  box-shadow: none;
+  background-color: var(--overlay-subtle);
+}
 .cn-select:focus-visible,
 .cn-input:focus-visible,
 .cn-textarea:focus-visible {
   outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px var(--accent-light);
-  background-color: var(--bg-card-solid);
+  border-color: var(--border-medium);
+  box-shadow: none;
+  background-color: var(--overlay-subtle);
 }
 
 /* ── Body layout ────────────────────────────────────────────────────────── */
@@ -247,15 +252,16 @@ select.cn-select {
   .cn-sidebar { display: none; }
 }
 
-/* Design: white cards on a warm gray canvas — each card is a header row over a
-   hairline, then its body. Flat: separation comes from the background, not
-   shadows. */
+/* Design: white cards on a white canvas — each card is a header row over a
+   hairline, then its body. Flat: separation comes from the card borders and
+   the rail's right hairline, not shadows or a tinted background. */
 /* No top padding: the rail's first card meets the header band beside it
    instead of floating fourteen pixels below the line the header starts on. */
 .cn-sidebar {
   padding: 0 12px 14px;
   overflow-y: auto;
-  background: #f1efec;
+  background: #fff;
+  border-right: 1px solid #eceae5;
 }
 
 .cn-sidebar-card {
@@ -534,9 +540,11 @@ select.cn-select {
   font-size: 13.5px;
   line-height: 1.6;
   padding: 10px 12px;
-  border: 1px solid var(--border-light);
+  /* Light accent tint as the resting state — the tint IS the field, so the
+     border stays transparent (it still reserves the pixel focus repaints). */
+  border: 1px solid transparent;
   border-radius: var(--radius-control);
-  background: var(--bg-card-solid);
+  background: var(--overlay-subtle);
   color: inherit;
 }
 
@@ -1130,12 +1138,15 @@ select.cn-select {
 .cn-meds-add {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr auto;
-  gap: 8px;
+  gap: 8px 10px;
+  /* Labeled fields: the Add button hugs the input baseline, not the labels. */
+  align-items: end;
   margin-top: 12px;
-  padding: 10px;
+  padding: 12px;
   border: 1px dashed var(--border-medium);
   border-radius: 8px;
 }
+.cn-meds-add .cn-input { width: 100%; }
 
 .cn-meds-listhead { margin: 16px 0 8px; font-size: 14px; font-weight: 700; }
 
@@ -1196,6 +1207,46 @@ select.cn-select {
   border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 16px;
+}
+
+/* Locked history panel: quiet empty state + the action that asks for consent. */
+.cn-meds-histlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0 14px;
+}
+.cn-meds-histlock .cn-card-empty { padding: 20px 10px 8px; }
+
+/* The consent question as its own dialog stacked over Medications. */
+.cn-consent-pop {
+  background: var(--bg-card-solid);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.cn-consent-pop-body { padding: 2px 18px 6px; }
+.cn-consent-pop-body p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.6; }
+.cn-consent-pop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--border-light);
+}
+.cn-btn.cn-consent-yes {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+.cn-btn.cn-consent-yes:hover:not(:disabled) { background: var(--accent-hover); }
+.cn-consent-note-granted {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-success-text, var(--text-secondary));
 }
 .cn-consent-card h4 { margin: 0 0 10px; font-size: 14.5px; font-weight: 600; }
 .cn-consent-card p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.6; }
