@@ -11,7 +11,7 @@ import {
 } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { avatarTint } from '@/lib/patient-utils';
-import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
@@ -45,8 +45,6 @@ export default function OrgUsersPage() {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const filtersRef = useRef<HTMLDivElement>(null);
 
   // Create form state
   const [formUsername, setFormUsername] = useState('');
@@ -67,17 +65,6 @@ export default function OrgUsersPage() {
   const [copied, setCopied] = useState(false);
 
   const brandColor = currentUser?.branding?.primaryColor || 'var(--accent-primary)';
-
-  // Close the filters popover on outside click / Escape — same pattern as
-  // the hospitals/wards "Filters" pill.
-  useEffect(() => {
-    if (!showFilters) return;
-    const onDown = (e: MouseEvent) => { if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) setShowFilters(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowFilters(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [showFilters]);
 
   const loadData = useCallback(async () => {
     // Still hydrating the session — a later run (currentUser dependency)
@@ -326,56 +313,28 @@ export default function OrgUsersPage() {
             search={{ value: search, onChange: setSearch, placeholder: 'Search by name or username…' }}
             actions={
               <>
-                <div className="relative" ref={filtersRef}>
-                  <EhrListHeaderButton onClick={() => setShowFilters(s => !s)} active={activeFilterCount > 0} ariaExpanded={showFilters} ariaLabel="Filters">
-                    <Filter className="w-4 h-4" />
-                    {activeFilterCount > 0 && (
-                      <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
-                        {activeFilterCount}
-                      </span>
-                    )}
-                  </EhrListHeaderButton>
-                  {showFilters && (
-                    <div
-                      className="absolute right-0 mt-2 rounded-2xl overflow-hidden z-50"
-                      style={{ width: 'min(92vw, 320px)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
-                    >
-                      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                        <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Filters</span>
-                        <div className="flex items-center gap-2">
-                          {activeFilterCount > 0 && (
-                            <button onClick={clearUserFilters} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>{t('nurse.clearAllFilters')}</button>
-                          )}
-                          <button type="button" onClick={() => setShowFilters(false)} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label={t('action.close')}>
-                            <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="p-4 flex flex-col gap-3">
-                        <FilterSelect
-                          label={t('orgUsers.fieldRole')}
-                          value={filterRole}
-                          onChange={setFilterRole}
-                          neutralValue="all"
-                          size="sm"
-                          options={[{ value: 'all', label: t('orgUsers.allRoles') }, ...availableRoles.map(r => ({ value: r, label: roleLabel(r) }))]}
-                        />
-                        <FilterSelect
-                          label={t('orgUsers.colStatus')}
-                          value={filterStatus}
-                          onChange={setFilterStatus}
-                          neutralValue="all"
-                          size="sm"
-                          options={[
-                            { value: 'all', label: t('orgUsers.allStatus') },
-                            { value: 'active', label: t('orgUsers.statusActive') },
-                            { value: 'inactive', label: t('orgUsers.statusInactive') },
-                          ]}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <EhrListFilters activeCount={activeFilterCount} onClear={clearUserFilters}>
+                  <FilterSelect
+                    label={t('orgUsers.fieldRole')}
+                    value={filterRole}
+                    onChange={setFilterRole}
+                    neutralValue="all"
+                    size="sm"
+                    options={[{ value: 'all', label: t('orgUsers.allRoles') }, ...availableRoles.map(r => ({ value: r, label: roleLabel(r) }))]}
+                  />
+                  <FilterSelect
+                    label={t('orgUsers.colStatus')}
+                    value={filterStatus}
+                    onChange={setFilterStatus}
+                    neutralValue="all"
+                    size="sm"
+                    options={[
+                      { value: 'all', label: t('orgUsers.allStatus') },
+                      { value: 'active', label: t('orgUsers.statusActive') },
+                      { value: 'inactive', label: t('orgUsers.statusInactive') },
+                    ]}
+                  />
+                </EhrListFilters>
                 {/* Read and write diverge here: the facility roles read this
                     list as their staff roster, but /api/users' WRITE_ROLES is
                     super_admin + org_admin, so anyone else would just 403. */}

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { comparePatients, patientFullName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { ScanLine, Hash, X, ArrowRight, Filter, Download } from '@/components/icons/lucide';
+import { ScanLine, Hash, X, ArrowRight, Download } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useApp } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -19,6 +19,7 @@ import FingerprintIdentifyModal from '@/components/FingerprintIdentifyModal';
 import { isFingerprintEnabled } from '@/lib/services/fingerprint-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
+import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -62,18 +63,6 @@ export default function PatientsPage() {
   // Shared input/select styling for the filter panel controls.
   const fieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 
-  // The Filters panel opens as a dropdown anchored to its trigger. Close on
-  // outside click / Escape; filterRef wraps the trigger + its menu.
-  const [showFilters, setShowFilters] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!showFilters) return;
-    const onDown = (e: MouseEvent) => { if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilters(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowFilters(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [showFilters]);
   // Outstanding balance per patient — loaded only for billing-desk roles, so the
   // registry shows a "Balance" column instead of clinical conditions. Aggregated
   // from open bills (same rule the billing dashboard uses) in one pass.
