@@ -489,6 +489,28 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     showToast('Export downloaded', 'success');
   }, [tab, filteredClaims, filteredAccounts, t, showToast]);
 
+  /**
+   * The accounts queue's columns and how much width each earns.
+   *
+   * Weights, not equal shares: a name needs room, a count of plans needs
+   * almost none, and the row's action button needs only its own width.
+   * Dividing evenly gave three 196px columns holding a single digit while the
+   * names were cramped and Status trailed white space to the card edge. Claims
+   * is role-gated, so `BlColGroup` normalises whatever survives.
+   */
+  const accountColumns = useMemo(() => [
+    { label: t('payments.colPatient'), align: 'left' as const, w: 19 },
+    { label: 'Patient ID', align: 'left' as const, w: 13 },
+    { label: t('payments.colPayments'), align: 'right' as const, w: 8 },
+    // Claims count only for roles that can act on claims — for a cashier the
+    // column is always empty by construction.
+    ...(canSeeClaims ? [{ label: t('payments.colClaims'), align: 'right' as const, w: 8 }] : []),
+    { label: t('payments.colPlans'), align: 'right' as const, w: 8 },
+    { label: t('payments.colLastActivity'), align: 'left' as const, w: 14 },
+    { label: t('payments.colBalance'), align: 'right' as const, w: 13 },
+    { label: 'Status', align: 'left' as const, w: 13 },
+  ], [t, canSeeClaims]);
+
   // The work queue's Actions menu — create, export, reset, reload, in that
   // order: the two that write come first, the three that only redraw follow.
   // Ordering carries that grouping now; the menu no longer renders headings.
@@ -775,20 +797,15 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
             ) : (
               <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
                 <table className="bl-table bl-table--even bl-table--rows-open" style={{ minWidth: 940 }}>
+                  {/* Weights, not equal shares. `table-layout: fixed` divides
+                      the width equally, which is stable but not even to look
+                      at: three columns holding one digit got as much room as
+                      the patient's name, so the middle of the row was a void
+                      and Status trailed white space to the card edge. */}
+                  <BlColGroup weights={accountColumns.map(c => c.w)} />
                   <thead>
                     <tr>
-                      {[
-                        { label: t('payments.colPatient'), align: 'left' as const },
-                        { label: 'Patient ID', align: 'left' as const },
-                        { label: t('payments.colPayments'), align: 'right' as const },
-                        // Claims count only for roles that can act on claims —
-                        // for a cashier the column is always empty by construction.
-                        ...(canSeeClaims ? [{ label: t('payments.colClaims'), align: 'right' as const }] : []),
-                        { label: t('payments.colPlans'), align: 'right' as const },
-                        { label: t('payments.colLastActivity'), align: 'left' as const },
-                        { label: t('payments.colBalance'), align: 'right' as const },
-                        { label: 'Status', align: 'left' as const },
-                      ].map(h => (
+                      {accountColumns.map(h => (
                         <th
                           key={h.label}
                           className={h.align === 'right' ? 'bl-right' : undefined}
