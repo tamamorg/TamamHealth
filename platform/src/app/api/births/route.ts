@@ -91,7 +91,13 @@ async function postHandler(request: NextRequest) {
     body.registeredBy = body.registeredBy || auth.sub;
     body.registeredByName = body.registeredByName || auth.name;
     if (!body.facilityId && auth.hospitalId) body.facilityId = auth.hospitalId;
-    if (!body.orgId && auth.orgId) body.orgId = auth.orgId;
+    // Tenancy is stamped from the verified auth claim, never trusted from the
+    // client -- a non-admin must not inject records into another org's tenant DB.
+    // Platform/national admins may still target a specific org explicitly.
+    if (auth.role !== 'super_admin' && auth.role !== 'government') {
+      if (auth.orgId) body.orgId = auth.orgId;
+      else delete body.orgId;
+    }
     const { createBirth } = await import('@/lib/services/birth-service');
     const birth = await createBirth(body as Parameters<typeof createBirth>[0]);
     return NextResponse.json({ birth }, { status: 201 });

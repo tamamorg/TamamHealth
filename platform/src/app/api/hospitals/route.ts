@@ -75,7 +75,13 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!body.orgId && auth.orgId) body.orgId = auth.orgId;
+    // Tenancy is stamped from the verified auth claim, never trusted from the
+    // client -- a non-admin must not inject records into another org's tenant DB.
+    // Platform/national admins may still target a specific org explicitly.
+    if (auth.role !== 'super_admin' && auth.role !== 'government') {
+      if (auth.orgId) body.orgId = auth.orgId;
+      else delete body.orgId;
+    }
     const { createHospital } = await import('@/lib/services/hospital-service');
     const hospital = await createHospital(body as Parameters<typeof createHospital>[0], auth.sub, auth.username);
     return NextResponse.json({ hospital }, { status: 201 });
