@@ -285,6 +285,39 @@ export default function LoginPage() {
 
               </form>
 
+              {/* ── Demo accounts ──
+                  Only rendered where the deployment declares itself a demo.
+                  Grouped by facility and ordered the way a patient meets each
+                  role, so a visitor can walk the journey without knowing a
+                  single username. */}
+              {demoEnabled && (
+                <section className="tl-demo" aria-labelledby="tl-demo-title">
+                  <div className="tl-demo-head">
+                    <h2 id="tl-demo-title">Choose a demo account</h2>
+                    <p>One tap signs you in — seeded data, no real patients.</p>
+                  </div>
+                  {DEMO_GROUPS.map(group => (
+                    <div className="tl-demo-group" key={group}>
+                      <p className="tl-demo-group-name">{group}</p>
+                      <div className="tl-demo-rows">
+                        {DEMO_ACCOUNTS.filter(a => a.group === group).map(acct => (
+                          <button
+                            key={acct.user}
+                            type="button"
+                            className="tl-demo-row"
+                            disabled={loading || !dbReady}
+                            onClick={() => signInAsDemo(acct.user)}
+                          >
+                            <span className="tl-demo-role">{acct.role}</span>
+                            <span className="tl-demo-user">{acct.user}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </section>
+              )}
+
               <p className="tl-foot">
                 <a href="/patient-portal" className="tl-link">Sign in as a patient</a>
                 <span className="tl-foot-sep">·</span>
@@ -368,6 +401,25 @@ const sharedStyles = (
     .tl-submit:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-border); }
     .tl-submit:disabled { opacity: .6; cursor: not-allowed; }
     .tl-submit-loading { display: inline-flex; align-items: center; gap: 8px; }
+    /* ── Demo account picker (demo deployments only) ──
+       A quiet panel under the form: the roster is a shortcut, not the primary
+       way in, so it reads as a list of links rather than a wall of buttons. */
+    .tl-demo { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--border-light); }
+    .tl-demo-head h2 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); }
+    .tl-demo-head p { margin: 3px 0 14px; font-size: 12px; color: var(--text-muted); }
+    .tl-demo-group + .tl-demo-group { margin-top: 14px; }
+    .tl-demo-group-name { margin: 0 0 6px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+    .tl-demo-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+    .tl-demo-row {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+      padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 8px;
+      background: var(--bg-card-solid); cursor: pointer; font-family: inherit; text-align: left;
+      transition: border-color .15s ease, background .15s ease;
+    }
+    .tl-demo-row:hover:not(:disabled) { border-color: ${ACCENT}; background: var(--overlay-subtle); }
+    .tl-demo-row:disabled { opacity: .55; cursor: not-allowed; }
+    .tl-demo-role { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+    .tl-demo-user { font-size: 10.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-muted); }
     .tl-foot { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 22px; font-size: 12.5px; }
     .tl-foot-sep { color: var(--border-medium); }
     .tl-link { display: inline-flex; align-items: center; gap: 5px; color: ${ACCENT_DEEP}; font-weight: 600; text-decoration: none; background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: 12.5px; }
