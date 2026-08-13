@@ -53,6 +53,10 @@ export async function getAuthPayload(request: NextRequest): Promise<AuthPayload 
   if (!payload) return null;
   const auth = payload as AuthPayload;
   const isProduction = process.env.NODE_ENV === 'production';
+  // Demo deployments run without a server-side user store (no CouchDB; the
+  // roster lives in each browser's PouchDB), so "user not found" there means
+  // "no store", not "account deleted" — the signed JWT stays the source of truth.
+  const isDemoDeployment = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   // Live deactivation check. Avoid the lookup for the synthetic "admin"
   // bootstrap account whose JWT is issued before any users DB exists.
@@ -63,9 +67,9 @@ export async function getAuthPayload(request: NextRequest): Promise<AuthPayload 
     // Missing user in production → deny; non-production remains permissive for
     // local/demo bootstrap data.
     if (user && user.isActive === false) return null;
-    if (!user && isProduction && auth.sub !== 'admin') return null;
+    if (!user && isProduction && auth.sub !== 'admin' && !isDemoDeployment) return null;
   } catch (err) {
-    if (isProduction && auth.sub !== 'admin') {
+    if (isProduction && auth.sub !== 'admin' && !isDemoDeployment) {
       captureException(err, { area: 'api-auth', check: 'user-active', sub: auth.sub });
       return null;
     }
