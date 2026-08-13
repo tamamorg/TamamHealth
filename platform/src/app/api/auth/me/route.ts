@@ -69,8 +69,11 @@ export async function GET(request: NextRequest) {
         mustChangePassword: user.mustChangePassword,
         department: user.department,
       };
-    } else if (isProduction && payload.sub !== 'admin') {
-      // Account no longer exists in production → deny.
+    } else if (isProduction && payload.sub !== 'admin' && process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+      // Account no longer exists in production → deny. Demo deployments are
+      // exempt: with no CouchDB attached the server has no user store at all
+      // (the roster lives in each browser's PouchDB), so a not-found there
+      // falls back to the signed JWT claims like the DB-unavailable case.
       return NextResponse.json({ user: null }, { status: 401 });
     }
   } catch {
