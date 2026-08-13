@@ -177,14 +177,24 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
               <option value="medium">Medium</option>
               <option value="high">High</option>
             </Select>
+            {/* Labelled, not icon-only. A bare blue square is not a verb: it
+                gave no clue that it was what committed the task, and the
+                inherited white glyph was invisible against the fill on top of
+                that. `color` is passed explicitly for the same reason — the
+                global icon rules override inherited colour. */}
             <button
               onClick={submit}
               disabled={!title.trim() || busy}
-              aria-label="Add task"
-              className="p-2 rounded-lg flex-shrink-0"
-              style={{ background: title.trim() ? 'var(--accent-primary)' : 'var(--overlay-subtle)', color: title.trim() ? '#fff' : 'var(--text-muted)', cursor: title.trim() ? 'pointer' : 'default' }}
+              className="flex items-center gap-1.5 rounded-lg flex-shrink-0 text-[13px] font-semibold"
+              style={{
+                padding: '7px 14px',
+                background: title.trim() ? 'var(--accent-primary)' : 'var(--overlay-subtle)',
+                color: title.trim() ? '#fff' : 'var(--text-muted)',
+                cursor: title.trim() && !busy ? 'pointer' : 'default',
+              }}
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4" color={title.trim() ? '#fff' : 'var(--text-muted)'} />
+              {busy ? 'Adding…' : 'Add'}
             </button>
           </div>
 

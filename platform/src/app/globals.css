@@ -6046,14 +6046,25 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   font-size: 12px;
 }
 
+/* These two were the wrong way round in all but name: `warning` was pink
+   (#FFE3ED/#A8204A — a red by any reading) and `danger` was orange
+   (#FFE0D8/#B43921), so a card marked danger looked like a caution and one
+   marked warning looked like an alarm. They read the status tokens now, at the
+   `-text` rung the 12px numeral needs. `success` had no rule at all, which is
+   why a healthy count fell through to the neutral grey. */
 .ehr-side-card > button.warning b {
-  background: #FFE3ED;
-  color: #A8204A;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .ehr-side-card > button.danger b {
-  background: #FFE0D8;
-  color: #B43921;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.ehr-side-card > button.success b {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 /* Icon + label shortcut rows appended under a card's metric buttons (e.g.
@@ -6128,14 +6139,16 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   font-size: 12px;
 }
 
+/* Correct already — amber for warning, red for danger — but as literal copies
+   of the --semantic-* tints. Reading the tokens keeps them in step. */
 .ehr-outstanding-chips button.warning b {
-  background: #FFF4E9;
-  color: #B55E13;
+  background: var(--semantic-warning-bg);
+  color: var(--semantic-warning);
 }
 
 .ehr-outstanding-chips button.danger b {
-  background: #FFF0EF;
-  color: #C24135;
+  background: var(--semantic-danger-bg);
+  color: var(--semantic-danger);
 }
 
 .ehr-greeting-row {

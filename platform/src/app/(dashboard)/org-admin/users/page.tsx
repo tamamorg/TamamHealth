@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
   Plus, KeyRound, Users,
   UserX, UserCheck, X, Eye, EyeOff, ChevronDown, AlertCircle,
-  Copy, Check, RefreshCw, ShieldCheck, Filter,
+  Copy, Check, RefreshCw, ShieldCheck,
 } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { avatarTint } from '@/lib/patient-utils';

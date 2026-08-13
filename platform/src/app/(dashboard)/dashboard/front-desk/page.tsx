@@ -12,12 +12,12 @@ import { useTriage } from '@/lib/hooks/useTriage';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, PatientDoc, TriageDoc } from '@/lib/db-types';
 import { APPOINTMENT_STATUS_TONES, APPOINTMENT_CHECKED_IN_STATUSES,
   APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_OPTIONS,
-  appointmentStatusLabel, appointmentStatusGroup, canonicalAppointmentStatus,
+  appointmentStatusLabel, appointmentStatusGroup,
   APPOINTMENT_STATUS_GROUP_LABELS, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { formatCompactDateTime, formatMoney, formatClockTime } from '@/lib/format-utils';
 import { patientRegisteredAt, patientFullName, patientGenderAge, patientAgeLabel } from '@/lib/patient-utils';
-import { PRIORITY_META, appointmentPriorityLabel, appointmentTriage, priorityColor, priorityLabelKey } from '@/lib/clinical/triage-display';
+import { PRIORITY_META, appointmentPriorityLabel, appointmentTriage, isTriagePriority, priorityColor, priorityLabelKey, type TriagePriority } from '@/lib/clinical/triage-display';
 import { buildQueueFromTriage, STAGE_LABELS, type QueueStage } from '@/lib/services/patient-queue-service';
 import { waitLabel } from '@/components/ehr/EhrVisitPopup';
 import AssignDoctorModal, { type AssignDoctorTarget } from '@/components/AssignDoctorModal';
@@ -52,10 +52,6 @@ import Select from '@/components/Select';
 // Exam rooms / bays a walk-in patient can be placed in to meet the provider.
 // Fallback used only when facility settings provide no rooms.
 const ROOM_OPTIONS = ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5', 'Room 6', 'Bay A', 'Bay B', 'Bay C', 'Bay D'];
-
-// Statuses already fronted by a board lane tab (Scheduled / In Office /
-// Finished) — the Reception side panel skips these and lists the rest.
-const TAB_FRONTED_STATUSES: string[] = ['scheduled', 'checked_in', 'completed'];
 
 // Half-hour clinic slots (07:00–18:30) offered when reception reschedules.
 const RESCHEDULE_SLOTS = Array.from({ length: 24 }, (_, i) => {
@@ -1497,40 +1493,40 @@ export default function FrontDeskDashboardPage() {
    * and each tile set its own `panelView`, which made them feel like separate
    * pages. Deriving both from `tabs` means they cannot disagree.
    */
-  // Reception panel: the picker statuses the lane tabs DON'T already show.
-  // Scheduled, Checked In and Completed each front a tab (Scheduled /
-  // In Office / Finished), so repeating them here only restated the tab
-  // counts — the panel carries the rest: In Progress, No Show, Rescheduled,
-  // Cancelled. Fine-grained rungs (confirmed, reminder_sent, arrived,
-  // triaged…) count under their canonical status, exactly as the picker and
-  // row pills read them. Clicking a status opens the board lane it files under.
+  /**
+   * Reception panel: today's board by ETAT acuity, not by status.
+   *
+   * It used to list appointment statuses, which the lane tabs above already
+   * count — the desk read the same three numbers twice. How many emergencies
+   * are waiting is the question the front desk actually has, and it is the one
+   * thing the tabs cannot answer.
+   *
+   * Words, colours and order all come from `triage-display`, the single
+   * description of RED/YELLOW/GREEN, so "Emergency" here is the same word and
+   * the same red as on the clinician's worklist.
+   */
   const metrics = useMemo<EhrCareDashboardMetric[]>(() => {
-    const counts = new Map<string, number>();
+    const counts = new Map<TriagePriority, number>();
     for (const item of boardQueue) {
-      const status = canonicalAppointmentStatus(item.visitStatus);
-      counts.set(status, (counts.get(status) ?? 0) + 1);
+      if (isTriagePriority(item.priority)) {
+        counts.set(item.priority, (counts.get(item.priority) ?? 0) + 1);
+      }
     }
-    return APPOINTMENT_STATUS_OPTIONS.filter(status => !TAB_FRONTED_STATUSES.includes(status)).map(status => {
-      const group = appointmentStatusGroup(status);
-      const count = counts.get(status) ?? 0;
-      const tone: EhrCareDashboardMetric['tone'] =
-        count === 0 ? 'neutral'
-          : status === 'completed' ? 'success'
-          : status === 'no_show' || status === 'cancelled' ? 'danger'
-          : status === 'scheduled' ? 'warning'
-          : 'neutral';
+    // Most urgent first — `order` on the acuity table, not this file's opinion.
+    const ACUITY_TONE: Record<TriagePriority, EhrCareDashboardMetric['tone']> = {
+      RED: 'danger', YELLOW: 'warning', GREEN: 'success',
+    };
+    return (['RED', 'YELLOW', 'GREEN'] as TriagePriority[]).map(code => {
+      const count = counts.get(code) ?? 0;
       return {
-        label: appointmentStatusLabel(status),
+        label: PRIORITY_META[code].label,
         value: count,
-        tone,
-        active: queueFilter === group && panelView === 'all',
-        onClick: () => {
-          setQueueFilter(group);
-          setPanelView('all');
-        },
+        // A zero is not an alarm: an empty emergency lane reads neutral, the
+        // same way the status panel treated its empty rungs.
+        tone: count === 0 ? ('neutral' as const) : ACUITY_TONE[code],
       };
     });
-  }, [boardQueue, queueFilter, panelView]);
+  }, [boardQueue]);
 
   // No subtitle line under the board title: the lane tabs and the Reception
   // status panel already carry the counts, so the "24 patients scheduled"

@@ -23,6 +23,8 @@ export type EhrCareDashboardAction = {
   label: string;
   icon: LucideIcon;
   onClick: () => void;
+  /** Stable selector used by guided tours to reveal an action-owned panel. */
+  tourTarget?: string;
   active?: boolean;
   tone?: 'primary' | 'neutral' | 'warning' | 'success';
 };
@@ -523,7 +525,7 @@ export default function EhrCareDashboard({
             // empty and zero-sized — a tour step pointing there would attach to
             // nothing visible.
             <div className="ehr-segmented ehr-segmented-single" data-tour="station-primary-action">
-              <button type="button" className="active" aria-label={primaryAction.label} onClick={primaryAction.onClick}>
+              <button type="button" className="active" aria-label={primaryAction.label} data-tour={primaryAction.tourTarget} onClick={primaryAction.onClick}>
                 <primaryAction.icon className="w-4 h-4" /> {primaryAction.label}
               </button>
             </div>
@@ -548,7 +550,7 @@ export default function EhrCareDashboard({
               alongside Print rather than after it. */}
           {headerExtra}
           {headerActions.map(action => (
-            <button key={action.label} type="button" className={action.tone === 'primary' || action.active ? 'primary' : ''} onClick={action.onClick}>
+            <button key={action.label} type="button" className={action.tone === 'primary' || action.active ? 'primary' : ''} data-tour={action.tourTarget} onClick={action.onClick}>
               <action.icon className="w-4 h-4" />{action.label}
             </button>
           ))}
@@ -639,6 +641,7 @@ export default function EhrCareDashboard({
                 <button
                   key={tab.key}
                   type="button"
+                  data-tour-tab={tab.key}
                   className={activeTab === tab.key ? 'active' : ''}
                   onClick={() => onTabChange(tab.key)}
                 >
@@ -921,7 +924,9 @@ export default function EhrCareDashboard({
               <button
                 key={metric.label}
                 type="button"
-                className={`${metric.tone === 'danger' ? 'danger' : metric.tone === 'warning' ? 'warning' : ''} ${metric.active ? 'active' : ''}`.trim()}
+                // `success` was missing here, so a metric asking for it fell
+                // through to the neutral grey — a healthy count looked inert.
+                className={`${metric.tone && metric.tone !== 'neutral' ? metric.tone : ''} ${metric.active ? 'active' : ''}`.trim()}
                 onClick={metric.onClick || (metric.href ? () => router.push(metric.href as string) : undefined)}
               >
                 <span>{metric.label}</span>

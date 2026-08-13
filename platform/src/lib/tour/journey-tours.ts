@@ -70,39 +70,47 @@ const NURSE_STEPS: TourStep[] = [
   },
   {
     id: 'triage',
-    route: '/dashboard/nurse/triage',
+    // Triage is a station on the canonical nurse dashboard. Navigating to the
+    // legacy /dashboard/nurse/triage redirect made the tour push that route
+    // again every time Next.js returned to /dashboard/nurse, leaving the app
+    // in an endless pending-navigation state.
+    route: '/dashboard/nurse',
     target: '[data-tour="triage-form"]',
+    preClickSelector: '[data-tour-tab="triage"]',
     placement: 'right',
     title: 'Triage — ETAT assessment',
     body: 'Walk-ins arrive here as pending from check-in. Record the chief complaint, ETAT ABCC (Airway, Breathing, Circulation, Consciousness), and full vitals — the RED / YELLOW / GREEN priority derives automatically from the danger signs.',
   },
   {
     id: 'triage-disposition',
-    route: '/dashboard/nurse/triage',
+    route: '/dashboard/nurse',
     target: '[data-tour="triage-recent"]',
+    preClickSelector: '[data-tour-tab="triage"]',
     placement: 'left',
     title: 'Disposition from Recent Triages',
     body: 'From the recent list, move each patient along: pending → seen, admitted, referred, or discharged. Edits reuse the same record so the audit trail stays intact.',
   },
   {
     id: 'ward-board',
-    route: '/dashboard/nurse/ward',
+    route: '/dashboard/nurse',
     target: '[data-tour="ward-board"]',
+    preClickSelector: '[data-tour-tab="ward"]',
     placement: 'top',
     title: 'The ward board',
     body: 'Your acuity-sorted roster — critical patients first, with location and status chips. Row actions: quick Vitals (persists a real vitals record visible on chart trends), re-Triage, and Assign doctor.',
   },
   {
     id: 'mar',
-    route: '/dashboard/nurse/mar',
+    route: '/dashboard/nurse',
     target: '[data-tour="mar-board"]',
+    preClickSelector: '[data-tour-tab="mar"]',
     placement: 'top',
     title: 'Medication rounds (MAR)',
     body: 'Every scheduled dose across your patients, flagged overdue / due / upcoming / given (overdue = more than 1 hour past). Quick-mark “Given”, or open the detail modal for dose, route, witness, and notes — Undo voids append-only.',
   },
   {
     id: 'mar-bedside',
-    route: '/dashboard/nurse/mar',
+    route: '/dashboard/nurse',
     target: '',
     title: 'Bedside time-grid',
     body: 'Each admission also has a printable meds × dose-times grid (Wards → admission → MAR): record GIVEN / MISSED / REFUSED / HELD per cell — non-given needs a reason, controlled drugs need a witness.',
@@ -111,14 +119,16 @@ const NURSE_STEPS: TourStep[] = [
     id: 'rooming',
     route: '/dashboard/nurse',
     target: '[data-tour="station-tabs"]',
+    preClickSelector: '[data-tour-tab="rooming"]',
     placement: 'bottom',
     title: 'Rooming',
     body: 'The step between triage and the clinician. Acknowledge the patient reached the clinic, put them in a room, take rooming vitals, then mark them ready — each action moves the encounter, so the clinician\u2019s worklist updates on its own. Longest wait sits at the top.',
   },
   {
     id: 'handoff',
-    route: '/dashboard/nurse/handoff',
+    route: '/dashboard/nurse',
     target: '[data-tour="handoff-sbar"]',
+    preClickSelector: '[data-tour="start-handoff"]',
     placement: 'top',
     title: 'Shift handoff',
     body: 'The shift auto-detects (day/evening/night). Write a per-patient SBAR for your critical patients, check the shift KPIs, then Sign off — the oncoming nurse acknowledges your handoff.',
@@ -137,7 +147,13 @@ const NURSE_STEPS: TourStep[] = [
     title: 'Immunizations & defaulters',
     body: 'Record doses against each child’s schedule, and work the Defaulters tab — overdue doses can be recalled by SMS to the caregiver, per row or in bulk.',
   },
-  searchStep('/dashboard/nurse'),
+  {
+    ...searchStep('/dashboard/nurse'),
+    // Leave the tour-created handoff dialog before spotlighting the dashboard
+    // search. The selector is scoped to that dialog and does not touch any
+    // other modal in the application.
+    preClickSelector: '[data-tour="handoff-sbar"] .ehr-handoff-close',
+  },
   messagingStep('/dashboard/nurse'),
   finishStep('/dashboard/nurse'),
 ];
