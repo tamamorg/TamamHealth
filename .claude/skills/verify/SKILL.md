@@ -16,21 +16,18 @@ The app is the Next.js project in `platform/`.
 
 ## Login (seeded demo users)
 
-- Credentials live in `platform/.seed-credentials.json` (gitignored; JSON after a `#` comment
-  line — strip up to the first `{` before parsing). Usernames/roles are defined in
-  `platform/src/lib/db-seed.ts` (e.g. `co.deng` = clinical officer, `dr.wani` = doctor).
-- `/login` shows an account list: click the `.tl-user` entry for the person, fill
-  `#tl-password`, then click `.tl-submit`.
+- The account-picker page was removed 2026-08-13: `/login` now goes straight to the
+  sign-in form. Fill `#tl-name` (username, e.g. `desk.amira`, `clinician.peter`) and
+  `#tl-password`, then click `.tl-submit`. The Role combobox may stay empty ("Your
+  assigned role").
+- Passwords: fetch `GET /api/demo-credentials` and read `profiles[].password` for the
+  username (demo mode only). Fallback: `platform/.seed-credentials.json` (gitignored;
+  JSON after a `#` comment line — strip up to the first `{` before parsing).
+  Usernames/roles are defined in `platform/src/lib/db-seed.ts` (e.g. `co.deng` =
+  clinical officer, `dr.wani` = doctor, `desk.amira` = receptionist).
 - Gotcha: the submit button is disabled until the browser-side PouchDB finishes seeding
   ("Initializing offline database…") — wait for `.tl-submit:not([disabled])`, can take
   tens of seconds on a fresh browser profile.
-- Gotcha: `.tl-user` picker clicks also silently no-op during that init — wait until
-  "Initializing offline database" disappears from body text before clicking a profile.
-- Users not on the picker: click `.tl-link:has-text("Other account")` then fill `#tl-name`.
-- The picker shows a curated list by display name + role label (defined in `login/page.tsx`),
-  not usernames — e.g. the Juba doctor row is `clinician.peter` ("Doctor · Juba Teaching
-  Hospital"); `dr.wani` is seeded but not listed. Match on the role text, then use that
-  username's password.
 
 ## Drive
 

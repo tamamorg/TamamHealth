@@ -41,7 +41,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [hospitalId, setHospitalId] = useState('');
   // '' = sign in as the account's own role; a value = requested role
   // (honoured by the server only for the super-admin).
   const [roleChoice, setRoleChoice] = useState<UserRole | ''>('');
@@ -76,7 +75,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const result = await login(username, password, hospitalId || undefined, roleChoice || undefined);
+      const result = await login(username, password, undefined, roleChoice || undefined);
       if (result) router.push(resolveLandingPage(result));
       else { setError('Invalid credentials. Please try again.'); setLoading(false); }
     } catch { setError('Login failed. Please try again.'); setLoading(false); }
@@ -229,7 +228,7 @@ export default function LoginPage() {
     );
 }
 
-// Shared styled-jsx for both views (blue + lavender theme).
+// Styled-jsx for the sign-in screen (blue + lavender theme).
 const sharedStyles = (
   <style jsx global>{`
     .tl-shell {
@@ -242,29 +241,6 @@ const sharedStyles = (
     .tl-title { font-family: var(--font-platform); font-size: 28px; font-weight: 800; letter-spacing: -0.03em; color: var(--text-primary); margin: 0; }
     .tl-subtitle { font-size: 13.5px; color: var(--text-muted); margin: 6px 0 0; }
     .tl-db-banner { margin: 14px 0 0; padding: 8px 12px; font-size: 11.5px; color: ${ACCENT_DEEP}; background: var(--accent-light); border: 1px solid var(--accent-border); border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
-
-    /* ── Account list ── */
-    .tl-list-card {
-      width: 100%; max-width: 540px; max-height: calc(100vh - 48px);
-      display: flex; flex-direction: column;
-      background: var(--bg-card-solid); border: 1px solid var(--border-light);
-      border-radius: 24px; box-shadow: none;
-      padding: 26px 26px 18px; overflow: hidden;
-    }
-    .tl-brand-list { justify-content: center; }
-    .tl-list-head { text-align: center; margin-top: 16px; }
-    .tl-list-head .tl-subtitle { margin-top: 4px; }
-    .tl-list { margin-top: 16px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 4px; }
-    .tl-group { position: sticky; top: 0; z-index: 1; padding: 10px 4px 5px; font-size: 10px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: ${ACCENT}; background: var(--bg-card-solid); }
-    .tl-user { display: flex; align-items: center; gap: 13px; padding: 9px 11px; background: var(--bg-card-solid); border: 1px solid var(--border-light); border-radius: 14px; cursor: pointer; text-align: left; transition: background .14s, border-color .14s, transform .14s; }
-    .tl-user:hover { background: var(--overlay-subtle); border-color: var(--border-medium); transform: translateX(2px); }
-    .tl-user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--border-light); }
-    .tl-user-avatar-icon { display: inline-flex; align-items: center; justify-content: center; background: var(--accent-light); }
-    .tl-user-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-    .tl-user-name { font-size: 14px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tl-user-role { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tl-user-chev { color: var(--text-muted); flex-shrink: 0; }
-    .tl-list-foot { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 14px; margin-top: 8px; border-top: 1px solid var(--border-light); }
 
     /* ── Split sign-in ── */
     .tl-split {
@@ -279,8 +255,6 @@ const sharedStyles = (
     /* Keep the logo in the same centered 380px column as the form body so its
        left edge lines up with "Welcome back" and the fields (not the pane edge). */
     .tl-form-pane .tl-brand { width: 100%; max-width: 380px; align-self: center; }
-    .tl-form-close { display: none; position: absolute; top: 18px; right: 18px; z-index: 3; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--border-light); background: var(--bg-card-solid); color: var(--text-primary); cursor: pointer; box-shadow: none; }
-    .tl-form-close:hover { background: var(--overlay-subtle); }
     .tl-form-wrap .tl-title { margin-top: 4px; }
     .tl-form { display: flex; flex-direction: column; gap: 14px; margin-top: 22px; }
     .tl-field { display: flex; flex-direction: column; gap: 7px; }
@@ -327,15 +301,12 @@ const sharedStyles = (
        passes contrast on any photo in the pool. Flat — no blur, no glass. */
     .tl-hero::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--accent-hover) 14%, transparent); }
     .tl-hero::before { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(2, 26, 45, 0.38) 0%, rgba(2, 26, 45, 0.10) 34%, rgba(2, 26, 45, 0.50) 64%, rgba(2, 26, 45, 0.92) 100%); }
-    .tl-hero-close { position: absolute; top: 18px; right: 18px; z-index: 3; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(2, 26, 45, 0.40); color: var(--color-white); cursor: pointer; box-shadow: none; transition: background .15s; }
-    .tl-hero-close:hover { background: rgba(2, 26, 45, 0.65); }
     .tl-hero-panel { position: absolute; z-index: 2; left: 34px; right: 34px; bottom: 100px; color: var(--color-white); text-shadow: 0 1px 2px rgba(2, 26, 45, 0.35); }
     .tl-hero-eyebrow { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.01em; color: rgba(255, 255, 255, 0.88); }
     .tl-hero-line { display: block; margin-top: 9px; font-family: var(--font-platform); font-size: 30px; line-height: 1.16; font-weight: 800; letter-spacing: -0.02em; }
 
     /* Icons follow their container's color — the global svg.lucide rule would
        otherwise pin them to the app icon color (dark glyphs on the dark hero). */
-    .tl-shell .tl-hero-close svg.lucide, .tl-shell .tl-form-close svg.lucide,
     .tl-shell .tl-input-eye svg.lucide { color: inherit; stroke: currentColor; }
 
     .tl-spin { width: 13px; height: 13px; border: 2px solid var(--accent-border); border-top-color: ${ACCENT}; border-radius: 50%; display: inline-block; animation: tl-rot .7s linear infinite; }
@@ -346,11 +317,10 @@ const sharedStyles = (
       .tl-split { grid-template-columns: 1fr; height: auto; max-width: 460px; }
       .tl-hero { display: none; }
       .tl-pane { padding: 28px 26px; }
-      .tl-form-close { display: inline-flex; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .tl-user, .tl-submit, .tl-input, .tl-hero-close { transition: none; }
-      .tl-user:hover, .tl-submit:hover:not(:disabled) { transform: none; }
+      .tl-submit, .tl-input { transition: none; }
+      .tl-submit:hover:not(:disabled) { transform: none; }
     }
   `}</style>
 );
