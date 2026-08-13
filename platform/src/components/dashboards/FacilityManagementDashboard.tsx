@@ -1,21 +1,51 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+/**
+ * Facility Management — operational overview for hospital managers / org
+ * admins, rebuilt on the shared `EhrCareDashboard` shell so it matches the
+ * HR dashboard's layout (mini-calendar + search + day-activity chart on the
+ * left, a work queue in the center, KPI metrics + quick links on the right).
+ *
+ * The old version was dominated by a "Users & Inquiries" management table
+ * (with its own reset-password/activate/deactivate/delete modal) that left a
+ * large blank panel whenever a facility had few users. That management now
+ * lives on the user-accounts page (/org-admin/users or /admin/users); this
+ * screen only previews the data and deep-links out to where it is acted on.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
+import dynamic from 'next/dynamic';
+import {
+  Activity, Stethoscope, Users, BedDouble, Wallet, MessageSquare, UserCheck,
+  CalendarClock, AlertTriangle, RefreshCw, Phone, XCircle,
+} from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
 import { useAppointments } from '@/lib/hooks/useAppointments';
-import dynamic from 'next/dynamic';
-import ChartCard from '@/components/ChartCard';
+import { useToast } from '@/components/Toast';
+import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
+import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
+import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import EmptyState from '@/components/EmptyState';
+import { formatMoney } from '@/lib/format-utils';
+import { jubaDate, jubaTime } from '@/lib/time-juba';
+import { getRoleConfig } from '@/lib/permissions';
+import { buildAddMenuEntries } from '@/lib/people-nav';
+import { ROLE_LABEL } from '@/lib/role-display';
+import {
+  ENQUIRY_STATUS_LABELS, deriveEnquiryStatus, enquiryType, enquiryAssignee, summariseEnquiries,
+  getPatientEnquiries, type EnquiryStatus,
+} from '@/lib/services/enquiry-service';
+import type { MessageDoc, UserDoc, PatientDoc, StaffScheduleDoc } from '@/lib/db-types';
+import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 
 // recharts (~80–100 KB) is deferred behind a dynamic boundary so it is fetched
 // only when these charts render (KAN-66). ssr:false because recharts measures
-// the DOM to size itself. The surrounding stat cards and totals render without
-// it, so the dashboard is useful before the chart chunk lands.
+// the DOM to size itself.
 const CashFlowDonut = dynamic(() => import('./_FacilityCharts').then(m => m.CashFlowDonut), {
   ssr: false,
   loading: () => <div style={{ width: '100%', height: '100%' }} />,
@@ -24,23 +54,7 @@ const WeeklyActivityChart = dynamic(() => import('./_FacilityCharts').then(m => 
   ssr: false,
   loading: () => <div style={{ width: '100%', height: 208 }} />,
 });
-import {
-  Stethoscope, Users, HeartPulse, BedDouble, ChevronRight,
-  Eye, Pencil, Trash2, Plus,
-} from '@/components/icons/lucide';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import { formatMoney } from '@/lib/format-utils';
-import type { MessageDoc, UserDoc } from '@/lib/db-types';
-import { ROLE_LABEL } from '@/lib/role-display';
 
-const TEAL = 'var(--color-brand-400)';
-const PURPLE = 'var(--accent-primary)';
-const CORAL = '#FB923C';
-
-// Chart palette — validated against the dataviz six-checks on the light
-// surface. The weekly triple passes outright; the cash-flow green/amber pair
-// sits in the CVD warn band, which is legal only because the labeled amount
-// tiles + slice gap carry identity — keep those if you retint.
 const CHART_BLUE = '#2a78d6';   // appointments
 const CHART_GREEN = '#199e70';  // new patients
 const CHART_RED = '#e34948';    // canceled
@@ -60,88 +74,323 @@ interface BillingSummary {
   currency: string;
 }
 
+/** Staffing-gap row shape returned by `getStaffingGaps` — duplicated here
+ *  (rather than imported) because the service is loaded dynamically, same
+ *  precedent as the HR page's own `StaffingGap` type. */
+interface StaffingGap {
+  shift: string;
+  gap: number;
+  requiredStaff: number;
+  currentStaff: number;
+}
+
+function titleCase(value: string): string {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function formatClockTimeOrUndefined(iso?: string): string | undefined {
+  if (!iso) return undefined;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+function enquiryStatusTone(status: EnquiryStatus): EhrCareDashboardRow['statusTone'] {
+  switch (status) {
+    case 'new': return 'warning';
+    case 'contacted': return 'active';
+    case 'appointment_scheduled': return 'ready';
+    case 'closed': return 'done';
+    default: return undefined;
+  }
+}
+
+const DOCTOR_ROLES = new Set(['doctor', 'clinical_officer', 'clinician']);
+const NURSE_ROLES = new Set(['nurse', 'midwife']);
+
+export interface FacilityOverviewInput {
+  /** jubaDate() — passed in rather than read from the clock so this stays testable. */
+  today: string;
+  /** Free-text filter applied only to the Recent Inquiries preview. */
+  search: string;
+  users: UserDoc[];
+  /** True once the users fetch has failed AND there is nothing cached to show —
+   *  the users-dependent metrics/panels must read as "unknown", never as a
+   *  quiet zero (the /api/users 500 case). */
+  usersUnavailable: boolean;
+  patients: PatientDoc[];
+  /** Every scope-visible patient enquiry, not pre-sliced — this combiner does
+   *  both the metric total and the recent/search preview slicing. */
+  enquiries: MessageDoc[];
+  leave: LeaveRequestDoc[];
+  /** Today's schedules only (already filtered by getSchedulesByDate). */
+  schedules: StaffScheduleDoc[];
+  staffingGaps: StaffingGap[];
+  availableProviderIds: Set<string>;
+  availableBeds: number;
+  billing: { totalRevenue: number; totalOutstanding: number } | null;
+}
+
+export interface FacilityOverviewMetric {
+  key: string;
+  label: string;
+  value: number | string;
+  href: string;
+  tone?: 'neutral' | 'warning' | 'danger' | 'success';
+}
+
+export interface FacilityInquiryRow {
+  id: string;
+  name: string;
+  type: string;
+  channel: string;
+  date: string;
+  time?: string;
+  status: EnquiryStatus;
+  statusLabel: string;
+  assignee: string | null;
+}
+
+export interface FacilityAvailabilityRow {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  /** e.g. "Morning · 08:00–16:00", or null when today carries no schedule row for them. */
+  shift: string | null;
+}
+
+export interface FacilityDoctorPreview {
+  id: string;
+  name: string;
+  available: boolean;
+}
+
+export interface FacilityOverview {
+  metrics: FacilityOverviewMetric[];
+  inquiryRows: FacilityInquiryRow[];
+  /** Total matches behind `inquiryRows` (which is capped at 5 idle / 20 while
+   *  searching) — kept distinct so a caller can tell "5 of 5" from "5 of 40". */
+  inquiryMatchCount: number;
+  availabilityRows: FacilityAvailabilityRow[];
+  doctorsPreview: FacilityDoctorPreview[];
+  cashFlow: { received: number; pending: number; totalInvoice: number };
+}
+
+/**
+ * Pure combiner behind FacilityManagementDashboard — every input is an
+ * already-resolved, already-scoped value, so this only exercises the
+ * assembling logic (counts, hrefs, row shaping), never data fetching or
+ * tenancy filtering. Mirrors the house pattern in
+ * `src/__tests__/components/doctor/worklist.test.ts` (assembleDoctorWorklist).
+ */
+export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOverview {
+  const {
+    today, search, users, usersUnavailable, patients, enquiries, leave,
+    schedules, staffingGaps, availableProviderIds, availableBeds, billing,
+  } = input;
+
+  const doctors = users.filter(u => DOCTOR_ROLES.has(u.role));
+  const nurses = users.filter(u => NURSE_ROLES.has(u.role));
+  const activeStaff = users.filter(u => u.isActive !== false);
+  const availableStaff = users.filter(u => availableProviderIds.has(u._id));
+  const pendingLeave = leave.filter(l => l.status === 'pending');
+  const unfilledShifts = staffingGaps.reduce((sum, g) => sum + g.gap, 0);
+  const enquirySummary = summariseEnquiries(enquiries);
+
+  // Degraded /api/users path: read as "unknown" (—), never as a real zero.
+  const staffCount = (n: number): number | string => (usersUnavailable ? '—' : n);
+  const staffTone = usersUnavailable ? ('warning' as const) : undefined;
+
+  const metrics: FacilityOverviewMetric[] = [
+    { key: 'staff-total', label: 'Total Staff', value: staffCount(users.length), href: '/hr?tab=roster', tone: staffTone },
+    { key: 'staff-active', label: 'Active Staff', value: staffCount(activeStaff.length), href: '/hr?tab=roster&status=active', tone: staffTone },
+    { key: 'staff-available', label: 'Available Staff', value: staffCount(availableStaff.length), href: '/hr?tab=roster&availability=available', tone: staffTone },
+    { key: 'doctors', label: 'Total Doctors', value: staffCount(doctors.length), href: '/hr?tab=roster&role=doctor', tone: staffTone },
+    { key: 'nurses', label: 'Total Nurses', value: staffCount(nurses.length), href: '/hr?tab=roster&role=nurse', tone: staffTone },
+    { key: 'patients', label: 'Total Patients', value: patients.length, href: '/patients' },
+    { key: 'beds', label: 'Available Beds', value: availableBeds, href: '/wards' },
+    { key: 'inquiries-open', label: 'Open Inquiries', value: enquirySummary.open, href: '/inquiries?status=new', tone: enquirySummary.open > 0 ? 'warning' : undefined },
+    { key: 'leave-pending', label: 'Pending Leave', value: pendingLeave.length, href: '/hr?tab=leave&status=pending', tone: pendingLeave.length > 0 ? 'warning' : undefined },
+    { key: 'shifts-today', label: "Today's Shifts", value: schedules.length, href: `/hr?tab=schedule&date=${today}` },
+    // "Unfilled" = short against a configured per-shift minimum, not a vacant
+    // position record — this data model has no such record (see getStaffingGaps).
+    { key: 'shifts-unfilled', label: 'Unfilled Shifts', value: unfilledShifts, href: '/hr?tab=schedule&gaps=1', tone: unfilledShifts > 0 ? 'danger' : undefined },
+  ];
+
+  // Recent Inquiries: the idle view is a top-5 digest of the newest (callers
+  // pass enquiries already newest-first); a search widens the window to 20
+  // matches — same idle-digest/search-widens trade-off the old per-user table
+  // on this dashboard used.
+  const q = search.trim().toLowerCase();
+  const matchesQuery = (m: MessageDoc) => {
+    if (!q) return true;
+    const haystack = `${m.patientName || ''} ${enquiryType(m)} ${enquiryAssignee(m) || ''}`.toLowerCase();
+    return haystack.includes(q);
+  };
+  const filteredEnquiries = enquiries.filter(matchesQuery);
+  const inquiryRows: FacilityInquiryRow[] = filteredEnquiries.slice(0, q ? 20 : 5).map(m => {
+    const status = deriveEnquiryStatus(m);
+    const at = m.sentAt || m.createdAt || '';
+    return {
+      id: m._id,
+      name: m.patientName || 'Patient',
+      type: enquiryType(m),
+      channel: (m.channel || 'app').toUpperCase(),
+      date: at.slice(0, 10),
+      time: formatClockTimeOrUndefined(at),
+      status,
+      statusLabel: ENQUIRY_STATUS_LABELS[status],
+      assignee: enquiryAssignee(m),
+    };
+  });
+
+  const availabilityRows: FacilityAvailabilityRow[] = users
+    .filter(u => u.isActive !== false && availableProviderIds.has(u._id))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 5)
+    .map(u => {
+      const shift = schedules.find(s => s.userId === u._id);
+      return {
+        id: u._id,
+        name: u.name,
+        role: ROLE_LABEL[u.role] || u.role,
+        department: u.department || u.hospitalName || 'General',
+        shift: shift ? `${titleCase(shift.shiftType)} · ${shift.startTime}–${shift.endTime}` : null,
+      };
+    });
+
+  const doctorsPreview: FacilityDoctorPreview[] = doctors.slice(0, 5).map(d => ({
+    id: d._id, name: d.name, available: availableProviderIds.has(d._id),
+  }));
+
+  const received = billing?.totalRevenue ?? 0;
+  const pendingAmount = billing?.totalOutstanding ?? 0;
+
+  return {
+    metrics,
+    inquiryRows,
+    inquiryMatchCount: filteredEnquiries.length,
+    availabilityRows,
+    doctorsPreview,
+    cashFlow: { received, pending: pendingAmount, totalInvoice: received + pendingAmount },
+  };
+}
+
+type ExtraKey = 'billing' | 'enquiries' | 'availability' | 'leave' | 'schedule' | 'gaps';
+const EXTRA_LABELS: Record<ExtraKey, string> = {
+  billing: 'billing', enquiries: 'inquiries', availability: 'staff availability',
+  leave: 'leave requests', schedule: 'shift schedule', gaps: 'staffing gaps',
+};
+
 export default function FacilityManagementDashboard() {
   const { currentUser } = useAuth();
   const router = useRouter();
   const scope = useDataScope();
-  const currentUserId = currentUser?._id;
+  const { showToast } = useToast();
 
-  const { users } = useUsers();
-  const { patients } = usePatients();
-  const { availableBeds } = useWards();
-  const { appointments } = useAppointments();
+  const { users, loading: usersLoading, error: usersError, reload: reloadUsers } = useUsers();
+  const { patients, loading: patientsLoading } = usePatients();
+  const { availableBeds, loading: wardsLoading } = useWards();
+  const { appointments, loading: appointmentsLoading } = useAppointments();
 
   const [billing, setBilling] = useState<BillingSummary | null>(null);
   const [enquiries, setEnquiries] = useState<MessageDoc[]>([]);
   const [availableProviderIds, setAvailableProviderIds] = useState<Set<string>>(new Set());
+  const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
+  const [schedules, setSchedules] = useState<StaffScheduleDoc[]>([]);
+  const [staffingGaps, setStaffingGaps] = useState<StaffingGap[]>([]);
+  const [loadErrors, setLoadErrors] = useState<Set<ExtraKey>>(new Set());
+  const [extraLoading, setExtraLoading] = useState(true);
+  const [reloadToken, setReloadToken] = useState(0);
+  const hasLoadedExtraRef = useRef(false);
+  const [inquirySearch, setInquirySearch] = useState('');
 
-  // Manage-user popup (org/super admins get reset-password, deactivate, delete).
-  // localEdits overlays API writes onto the list immediately — the users DB is
-  // pull-only, so the change feed only catches up after the next sync cycle.
-  const [selectedUser, setSelectedUser] = useState<UserDoc | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
-  const [localEdits, setLocalEdits] = useState<Record<string, Partial<UserDoc> | 'deleted'>>({});
-  const [userSearch, setUserSearch] = useState('');
+  const today = jubaDate();
+  const facilityId = currentUser?.hospitalId;
 
-  const canManageUsers = currentUser?.role === 'org_admin' || currentUser?.role === 'super_admin';
-
-  // Billing (cash flow), enquiries (inbound patient messages) and provider
-  // availability are loaded from services — all real data, scope-filtered.
+  // Billing, enquiries, provider availability, leave, and today's
+  // schedule/staffing-gaps are all fetched together; each is tracked
+  // independently in `loadErrors` so a single failure degrades only its own
+  // card instead of the whole dashboard, and Retry re-runs all six.
   useEffect(() => {
     let cancelled = false;
+    if (!hasLoadedExtraRef.current) setExtraLoading(true);
+
+    const loadBilling = async () => {
+      const { getBillingSummary } = await import('@/lib/services/billing-service');
+      const s = await getBillingSummary(scope);
+      return { totalRevenue: s.totalRevenue, totalOutstanding: s.totalOutstanding, currency: s.currency };
+    };
+    const loadAvailability = async () => {
+      // Recurrence-aware: a clinic that runs every Monday has no row dated
+      // today, so matching on `a.date === today` would show every provider as
+      // unavailable the moment availability became a weekly pattern.
+      const { getAllAvailability, appliesOnDate } = await import('@/lib/services/availability-service');
+      const av = await getAllAvailability(scope);
+      const now = jubaTime();
+      return new Set(
+        av.filter(a => appliesOnDate(a, today) && a.startTime <= now && a.endTime >= now).map(a => a.providerId),
+      );
+    };
+    const loadLeave = async () => {
+      const { getAllLeaveRequests } = await import('@/lib/services/leave-service');
+      return getAllLeaveRequests(scope);
+    };
+    const loadSchedules = async () => {
+      const { getSchedulesByDate } = await import('@/lib/services/staff-scheduling-service');
+      return getSchedulesByDate(today, facilityId);
+    };
+    const loadGaps = async () => {
+      const { getStaffingGaps } = await import('@/lib/services/staff-scheduling-service');
+      return getStaffingGaps(today, facilityId);
+    };
+
     (async () => {
-      try {
-        const { getBillingSummary } = await import('@/lib/services/billing-service');
-        const s = await getBillingSummary(scope);
-        if (!cancelled) setBilling({ totalRevenue: s.totalRevenue, totalOutstanding: s.totalOutstanding, currency: s.currency });
-      } catch { /* leave null */ }
-      try {
-        const { getInboundPatientMessages } = await import('@/lib/services/message-service');
-        const m = await getInboundPatientMessages(scope);
-        if (!cancelled) setEnquiries(m.slice(0, 5));
-      } catch { /* leave empty */ }
-      try {
-        // Recurrence-aware: a clinic that runs every Monday has no row dated
-        // today, so matching on `a.date === today` showed every provider as
-        // unavailable the moment availability became a weekly pattern.
-        const { getAllAvailability, appliesOnDate } = await import('@/lib/services/availability-service');
-        const { jubaDate, jubaTime } = await import('@/lib/time-juba');
-        const av = await getAllAvailability(scope);
-        const today = jubaDate();
-        const now = jubaTime();
-        const ids = new Set(
-          av.filter(a => appliesOnDate(a, today) && a.startTime <= now && a.endTime >= now)
-            .map(a => a.providerId),
-        );
-        if (!cancelled) setAvailableProviderIds(ids);
-      } catch { /* leave empty */ }
+      const failed = new Set<ExtraKey>();
+      const [billingRes, enquiriesRes, availRes, leaveRes, schedRes, gapsRes] = await Promise.allSettled([
+        loadBilling(),
+        getPatientEnquiries(scope),
+        loadAvailability(),
+        loadLeave(),
+        loadSchedules(),
+        loadGaps(),
+      ]);
+      if (cancelled) return;
+      if (billingRes.status === 'fulfilled') setBilling(billingRes.value); else failed.add('billing');
+      if (enquiriesRes.status === 'fulfilled') setEnquiries(enquiriesRes.value); else failed.add('enquiries');
+      if (availRes.status === 'fulfilled') setAvailableProviderIds(availRes.value); else failed.add('availability');
+      if (leaveRes.status === 'fulfilled') setLeave(leaveRes.value); else failed.add('leave');
+      if (schedRes.status === 'fulfilled') setSchedules(schedRes.value); else failed.add('schedule');
+      if (gapsRes.status === 'fulfilled') setStaffingGaps(gapsRes.value); else failed.add('gaps');
+      setLoadErrors(failed);
+      hasLoadedExtraRef.current = true;
+      setExtraLoading(false);
     })();
+
     return () => { cancelled = true; };
-  }, [scope]);
+  }, [scope, today, facilityId, reloadToken]);
 
-  // ─── Derived counts ───
-  const visibleUsers = useMemo(() => users
-    .filter(u => localEdits[u._id] !== 'deleted')
-    .map(u => {
-      const edit = localEdits[u._id];
-      return edit && edit !== 'deleted' ? { ...u, ...edit } : u;
-    }), [users, localEdits]);
-  const doctors = useMemo(() => visibleUsers.filter(u => u.role === 'doctor' || u.role === 'clinical_officer' || u.role === 'clinician'), [visibleUsers]);
-  const nurses = useMemo(() => visibleUsers.filter(u => u.role === 'nurse' || u.role === 'midwife'), [visibleUsers]);
+  const retryExtra = useCallback(() => setReloadToken(t => t + 1), []);
+  const retryAll = useCallback(() => { reloadUsers(); retryExtra(); }, [reloadUsers, retryExtra]);
 
-  const received = billing?.totalRevenue ?? 0;
-  const pending = billing?.totalOutstanding ?? 0;
-  const totalInvoice = received + pending;
-  const cashData = [
-    { name: 'Received', value: received, color: CASH_RECEIVED },
-    { name: 'Pending', value: pending, color: CASH_PENDING },
-  ].filter(d => d.value > 0);
+  const usersUnavailable = !!usersError && users.length === 0;
 
-  // ─── Weekly patient activity (real: registrations, appointments, cancellations) ───
+  const overview = useMemo(() => buildFacilityOverview({
+    today,
+    search: inquirySearch,
+    users,
+    usersUnavailable,
+    patients,
+    enquiries,
+    leave,
+    schedules,
+    staffingGaps,
+    availableProviderIds,
+    availableBeds,
+    billing,
+  }), [today, inquirySearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, availableBeds, billing]);
+
+  // Weekly patient activity (real: registrations, appointments, cancellations).
   const weekly = useMemo(() => {
     const rows = WEEKDAYS.map(d => ({ day: d, newPatients: 0, appointments: 0, canceled: 0 }));
     const start = new Date(); start.setHours(0, 0, 0, 0);
@@ -166,503 +415,352 @@ export default function FacilityManagementDashboard() {
     return rows;
   }, [patients, appointments]);
 
-  const unreadEnquiries = useMemo(
-    () => enquiries.filter(message => !currentUserId || !message.readBy?.includes(currentUserId)),
-    [currentUserId, enquiries],
-  );
+  const cashData = useMemo(() => [
+    { name: 'Received', value: overview.cashFlow.received, color: CASH_RECEIVED },
+    { name: 'Pending', value: overview.cashFlow.pending, color: CASH_PENDING },
+  ].filter(d => d.value > 0), [overview.cashFlow]);
 
-  const lastInquiryLabel = useMemo(() => {
-    const latest = enquiries[0];
-    if (!latest?.sentAt && !latest?.createdAt) return 'No inquiries';
-    const timestamp = latest.sentAt || latest.createdAt;
-    return new Date(timestamp).toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  }, [enquiries]);
+  // The global "Add" menu — permission-gated entries from people-nav, mapped
+  // onto navigation. Hidden entirely (empty array) when this role has none.
+  const addMenuItems: RailMenuItem[] = useMemo(() => {
+    if (!currentUser) return [];
+    const allowedRoutes = getRoleConfig(currentUser.role).allowedRoutes;
+    return buildAddMenuEntries({ role: currentUser.role, allowedRoutes }).map(entry => ({
+      key: entry.key,
+      label: entry.label,
+      icon: entry.icon,
+      description: entry.description,
+      onSelect: () => router.push(entry.href),
+    }));
+  }, [currentUser, router]);
 
-  const userInquiryRows = useMemo(() => {
-    const priorityRoles = new Set(['front_desk', 'clinic_clerk', 'central_registration_clerk', 'doctor', 'clinician', 'clinical_officer', 'nurse', 'pharmacist', 'lab_tech']);
-    const q = userSearch.trim().toLowerCase();
-    return visibleUsers
-      .filter(user => priorityRoles.has(user.role) || user.isActive)
-      .filter(user => !q
-        || user.name.toLowerCase().includes(q)
-        || user.username.toLowerCase().includes(q)
-        || (ROLE_LABEL[user.role] || user.role).toLowerCase().includes(q))
-      .sort((a, b) => {
-        const activeDelta = Number(b.isActive !== false) - Number(a.isActive !== false);
-        if (activeDelta) return activeDelta;
-        const availableDelta = Number(availableProviderIds.has(b._id)) - Number(availableProviderIds.has(a._id));
-        if (availableDelta) return availableDelta;
-        return a.name.localeCompare(b.name);
-      })
-      // While searching, show the full match list; the idle view stays a top-5 digest.
-      .slice(0, q ? 20 : 5)
-      .map(user => ({
-        user,
-        available: availableProviderIds.has(user._id),
-        active: user.isActive !== false,
-      }));
-  }, [availableProviderIds, visibleUsers, userSearch]);
-
-  const openUser = (user: UserDoc) => {
-    setSelectedUser(user);
-    setNewPassword('');
-    setConfirmingDelete(false);
-    setActionError(null);
-    setActionNotice(null);
+  const updateEnquiryStatusLocally = (id: string, status: EnquiryStatus) => {
+    setEnquiries(prev => prev.map(m => (m._id === id ? { ...m, enquiryStatus: status } : m)));
   };
 
-  const handleResetPassword = async () => {
-    if (!selectedUser || !currentUser) return;
-    if (newPassword.length < 8) {
-      setActionError('Temporary password must be at least 8 characters.');
-      return;
-    }
-    setActionBusy(true); setActionError(null); setActionNotice(null);
+  // Quick triage actions from the dashboard's own queue — full triage
+  // (reassignment, notes) stays on /inquiries, which owns that surface.
+  const markContacted = async (id: string) => {
     try {
-      const { resetPassword } = await import('@/lib/services/user-service');
-      await resetPassword(selectedUser._id, newPassword, currentUser._id, currentUser.username);
-      setNewPassword('');
-      setActionNotice(`Temporary password set — ${selectedUser.name} must choose a new one at next sign-in.`);
+      const { setEnquiryStatus } = await import('@/lib/services/enquiry-service');
+      await setEnquiryStatus(id, 'contacted');
+      updateEnquiryStatusLocally(id, 'contacted');
+      showToast('Marked as contacted.', 'success');
     } catch (err) {
-      setActionError((err as Error).message || 'Failed to reset password');
-    } finally {
-      setActionBusy(false);
+      console.error('Failed to update inquiry status', err);
+      showToast('Could not update the inquiry.', 'error');
     }
   };
-
-  const handleToggleActive = async () => {
-    if (!selectedUser || !currentUser) return;
-    const makeActive = selectedUser.isActive === false;
-    setActionBusy(true); setActionError(null); setActionNotice(null);
+  const closeEnquiry = async (id: string) => {
     try {
-      if (makeActive) {
-        const { updateUser } = await import('@/lib/services/user-service');
-        await updateUser(selectedUser._id, { isActive: true }, currentUser._id, currentUser.username);
-      } else {
-        const { deactivateUser } = await import('@/lib/services/user-service');
-        await deactivateUser(selectedUser._id, currentUser._id, currentUser.username);
-      }
-      setLocalEdits(prev => ({
-        ...prev,
-        [selectedUser._id]: { ...(prev[selectedUser._id] as Partial<UserDoc> | undefined), isActive: makeActive },
-      }));
-      setSelectedUser({ ...selectedUser, isActive: makeActive });
-      setActionNotice(makeActive ? 'Account reactivated.' : 'Account deactivated — the user can no longer sign in.');
+      const { setEnquiryStatus } = await import('@/lib/services/enquiry-service');
+      await setEnquiryStatus(id, 'closed');
+      updateEnquiryStatusLocally(id, 'closed');
+      showToast('Inquiry closed.', 'success');
     } catch (err) {
-      setActionError((err as Error).message || 'Failed to update account');
-    } finally {
-      setActionBusy(false);
+      console.error('Failed to update inquiry status', err);
+      showToast('Could not update the inquiry.', 'error');
     }
   };
 
-  const handleDeleteUser = async () => {
-    if (!selectedUser || !currentUser) return;
-    setActionBusy(true); setActionError(null);
-    try {
-      const { deleteUser } = await import('@/lib/services/user-service');
-      await deleteUser(selectedUser._id, currentUser._id, currentUser.username);
-      setLocalEdits(prev => ({ ...prev, [selectedUser._id]: 'deleted' }));
-      setSelectedUser(null);
-    } catch (err) {
-      setActionError((err as Error).message || 'Failed to delete user');
-    } finally {
-      setActionBusy(false);
-    }
-  };
-
-  if (!currentUser) return null;
-
-  const statusPill = (status: string) => {
-    const ok = /approved|confirmed|scheduled|booked|available|active/i.test(status);
-    const bad = /cancel|inactive/i.test(status);
-    const color = bad ? 'var(--color-danger)' : ok ? 'var(--color-success)' : 'var(--text-muted)';
-    const bg = bad ? 'rgba(229,46,66,0.10)' : ok ? 'rgba(21,121,92,0.10)' : 'var(--overlay-subtle)';
-    return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize" style={{ color, background: bg }}>{status}</span>;
-  };
-
-  const stat = (icon: React.ReactNode, label: React.ReactNode, value: number) => (
-    <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
-      <div className="icon-box-sm">{icon}</div>
-      <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>{label}</span>
-      <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{value}</span>
+  const renderInquiryDetail = (row: FacilityInquiryRow) => (
+    <div className="ehr-visit-pop ehr-visit-pop--inline">
+      {(row.status === 'new' || row.status === 'contacted') && (
+        <div className="ehr-visit-pop-tabs">
+          <div className="ehr-visit-pop-actions">
+            {row.status === 'new' && (
+              <button
+                type="button"
+                className="ehr-visit-pop-icon is-primary"
+                aria-label="Mark contacted"
+                title="Mark contacted"
+                onClick={() => markContacted(row.id)}
+              >
+                <Phone className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              className="ehr-visit-pop-icon"
+              aria-label="Close inquiry"
+              title="Close inquiry"
+              onClick={() => closeEnquiry(row.id)}
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="ehr-visit-pop-body">
+        <div className="ehr-visit-pop-row">
+          <span className="ehr-visit-pop-label">Channel</span>
+          <div><p>{row.channel}</p></div>
+        </div>
+        <div className="ehr-visit-pop-row">
+          <span className="ehr-visit-pop-label">Assigned to</span>
+          <div><p>{row.assignee || 'Unassigned'}</p></div>
+        </div>
+      </div>
     </div>
   );
 
-  return (
-    <>
+  const failedLabels = Array.from(loadErrors).map(k => EXTRA_LABELS[k]);
+  if (usersError) failedLabels.push('staff accounts');
+  const hasErrors = failedLabels.length > 0;
+
+  const inquiriesFailed = loadErrors.has('enquiries');
+  const emptyTitle = inquiriesFailed
+    ? "Couldn't load inquiries"
+    : inquirySearch.trim()
+      ? 'No inquiries match your search'
+      : 'No recent inquiries';
+  const emptyActionLabel = inquiriesFailed ? 'Retry' : 'View all';
+  const onEmptyAction = inquiriesFailed ? retryExtra : () => router.push('/inquiries');
+
+  const initialLoading = usersLoading || patientsLoading || wardsLoading || appointmentsLoading || extraLoading;
+
+  if (!currentUser) return null;
+
+  if (initialLoading) {
+    return (
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <DashboardGreetingHeader />
-        {/* flex:1 so the card rows stretch to fill the viewport — the Users &
-            Inquiries row absorbs the leftover height (its table scrolls). */}
-        <div className="flex flex-col gap-3" style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 320, color: 'var(--text-muted)' }}>
+          <Activity size={44} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+          <span>Loading facility data…</span>
+        </div>
+      </main>
+    );
+  }
 
-          {/* ═══ ROW 1 — Cash Flow · Stat cards · Weekly activity ═══ */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+  return (
+    <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {hasErrors && (
+        <div
+          className="flex items-center gap-3 rounded-xl px-4 py-3 mb-3"
+          style={{ background: 'rgba(196,69,54,0.08)', border: '1px solid rgba(196,69,54,0.25)' }}
+        >
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--color-danger)' }} />
+          <span className="text-[12.5px] flex-1" style={{ color: 'var(--text-primary)' }}>
+            Couldn&apos;t load {failedLabels.join(', ')}. Some numbers on this page may be incomplete.
+          </span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={retryAll}>
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          </button>
+        </div>
+      )}
 
-            {/* Cash Flow */}
-            <div className="dash-card overflow-hidden">
-              <div className="px-5 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cash Flow</h3>
-              </div>
-              <div className="flex items-center gap-4 p-4">
-                <div className="relative flex-shrink-0" style={{ width: 128, height: 128 }}>
-                  <CashFlowDonut data={cashData} />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{formatMoney(totalInvoice)}</span>
-                    <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Total invoice</span>
-                  </div>
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div className="rounded-xl p-2.5" style={{ background: 'rgba(12,163,12,0.10)', border: '1px solid rgba(12,163,12,0.28)' }}>
-                    <p className="text-[11px] flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-                      Received Amount
-                    </p>
-                    <p className="text-base font-bold" style={{ color: CASH_RECEIVED }}>{formatMoney(received)}</p>
-                  </div>
-                  <div className="rounded-xl p-2.5" style={{ background: 'rgba(237,161,0,0.12)', border: '1px solid rgba(237,161,0,0.35)' }}>
-                    <p className="text-[11px] flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-                      Pending Amount
-                    </p>
-                    <p className="text-base font-bold" style={{ color: CASH_PENDING_TEXT }}>{formatMoney(pending)}</p>
-                  </div>
-                </div>
-              </div>
+      <EhrCareDashboard
+        title="Facility Management"
+        greetingName={currentUser.name}
+        dateLabel={formatDateTitle(toIsoDate(new Date()))}
+        centerTitle="Recent Inquiries"
+        tabs={[{ key: 'inquiries', label: 'Inquiries', count: overview.inquiryRows.length }]}
+        // Enquiries stay open across days (they are not a single day's
+        // schedule), so the calendar's selected day must not hide them.
+        filterRowsByDate={false}
+        activeTab="inquiries"
+        onTabChange={() => {}}
+        searchValue={inquirySearch}
+        searchPlaceholder="Search inquiries by name, type, or assignee…"
+        onSearchChange={setInquirySearch}
+        filters={[]}
+        actions={[
+          { label: 'Find staff availability', icon: UserCheck, onClick: () => router.push('/hr?tab=roster&availability=available') },
+        ]}
+        rows={overview.inquiryRows.map((r): EhrCareDashboardRow => ({
+          id: r.id,
+          title: r.name,
+          subtitle: r.type,
+          date: r.date,
+          time: r.time,
+          timeSecondary: r.date,
+          status: r.status,
+          statusLabel: r.statusLabel,
+          statusTone: enquiryStatusTone(r.status),
+          careTeam: r.assignee || 'Unassigned',
+          careTeamLabel: 'Assigned to',
+          location: r.channel,
+          locationLabel: 'Channel',
+          popupDetail: renderInquiryDetail(r),
+        }))}
+        metrics={overview.metrics}
+        metricsTitle="Facility Overview"
+        metricsActions={[
+          { label: 'Manage Roster', icon: Users, onClick: () => router.push('/hr?tab=roster') },
+          { label: 'Schedule Shifts', icon: CalendarClock, onClick: () => router.push('/hr?tab=schedule') },
+          { label: 'View Wards', icon: BedDouble, onClick: () => router.push('/wards') },
+        ]}
+        emptyTitle={emptyTitle}
+        emptyActionLabel={emptyActionLabel}
+        onEmptyAction={onEmptyAction}
+        chart={
+          <div className="ehr-day-stats">
+            <div className="ehr-day-stats-head">
+              <h3>Weekly Patient Activity</h3>
             </div>
-
-            {/* Stat cards — no header, matching the reference layout */}
-            <div className="dash-card overflow-hidden">
-              <div className="p-5 flex flex-col justify-center h-full">
-                {stat(<Stethoscope className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />, <>Total <b>Doctors</b></>, doctors.length)}
-                {stat(<Users className="w-4 h-4" style={{ color: PURPLE }} />, <>Total <b>Patients</b></>, patients.length)}
-                {stat(<HeartPulse className="w-4 h-4" style={{ color: CORAL }} />, <>Total <b>Nurses</b></>, nurses.length)}
-                <div className="flex items-center gap-3 pt-2.5">
-                  <div className="icon-box-sm"><BedDouble className="w-4 h-4" style={{ color: TEAL }} /></div>
-                  <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>Available <b>Beds</b></span>
-                  <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{availableBeds}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Weekly patient activity — registrations, appointments, cancellations */}
-            <ChartCard
-              title="Weekly Patient Activity"
-              defaultType="bar"
-              defaultPeriod="week"
-            >
-              {({ chartType }) => {
-                const series = [
+            <div style={{ marginTop: 8 }}>
+              <WeeklyActivityChart
+                data={weekly}
+                chartType="bar"
+                series={[
                   { key: 'appointments', name: 'Appointments', color: CHART_BLUE },
                   { key: 'newPatients', name: 'New Patients', color: CHART_GREEN },
                   { key: 'canceled', name: 'Canceled', color: CHART_RED },
-                ];
-                return <WeeklyActivityChart data={weekly} chartType={chartType} series={series} />;
-              }}
-            </ChartCard>
+                ]}
+              />
+            </div>
           </div>
+        }
+        // Add sits in the header beside Print (EhrCareDashboard `headerExtra`),
+        // not in the rail: `actions` only carries {label,icon,onClick}, so a
+        // dropdown needs the component slot.
+        headerExtra={addMenuItems.length > 0 ? (
+          <EhrRailMenu variant="primary" label="Add" ariaLabel="Add a new record" items={addMenuItems} menuTitle="Add" />
+        ) : undefined}
+        // Cash Flow and Staff Availability sit directly under the weekly
+        // activity chart — `railContent` renders immediately after it.
+        railContent={(
+          <>
+            {/* Cash Flow */}
+            <div className="dash-card overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                <Wallet className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cash Flow</span>
+              </div>
+              {loadErrors.has('billing') ? (
+                <EmptyState
+                  icon={AlertTriangle}
+                  title="Couldn't load billing data"
+                  message="Billing figures failed to load. Try again."
+                  action={{ label: 'Retry', onClick: retryExtra }}
+                />
+              ) : (
+                // Stacked, not side-by-side: the rail is far narrower than the
+                // three-column grid this card used to sit in.
+                <div className="flex flex-col items-center gap-3 p-4">
+                  <div className="relative flex-shrink-0" style={{ width: 124, height: 124 }}>
+                    <CashFlowDonut data={cashData} />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{formatMoney(overview.cashFlow.totalInvoice)}</span>
+                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Total invoice</span>
+                    </div>
+                  </div>
+                  <div className="w-full space-y-2">
+                    <div className="rounded-xl p-2.5" style={{ background: 'rgba(12,163,12,0.10)', border: '1px solid rgba(12,163,12,0.28)' }}>
+                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Received Amount</p>
+                      <p className="text-base font-bold" style={{ color: CASH_RECEIVED }}>{formatMoney(overview.cashFlow.received)}</p>
+                    </div>
+                    <div className="rounded-xl p-2.5" style={{ background: 'rgba(237,161,0,0.12)', border: '1px solid rgba(237,161,0,0.35)' }}>
+                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Pending Amount</p>
+                      <p className="text-base font-bold" style={{ color: CASH_PENDING_TEXT }}>{formatMoney(overview.cashFlow.pending)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
-          {/* ═══ ROW 2 — Users & Inquiries ═══ */}
-          <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
-            {/* Appointments-style list header: stats, search bar, icon actions. */}
-            <EhrListHeader
-              title="Users & Inquiries"
-              stats={[
-                { label: 'Users', value: visibleUsers.length, color: LIST_STAT_COLORS.muted },
-                { label: 'Open inquiries', value: unreadEnquiries.length, color: LIST_STAT_COLORS.amber },
-                { label: 'Last inquiry', value: lastInquiryLabel, color: LIST_STAT_COLORS.blue },
-              ]}
-              search={{ value: userSearch, onChange: setUserSearch, placeholder: 'Search users by name, username, or role…' }}
-              actions={
-                <>
-                  {canManageUsers && (
-                    <button
-                      type="button"
-                      className="listpage-icon-btn listpage-icon-btn-primary"
-                      // A platform super_admin has no organization, so the
-                      // org-scoped page can't serve them — their create form
-                      // lives in the platform-wide user management screen.
-                      onClick={() => router.push(currentUser?.role === 'super_admin' ? '/admin/users?new=1' : '/org-admin/users?new=1')}
-                      title="Add user"
-                      aria-label="Add user"
-                    >
-                      {/* The icon shim defaults to brand blue — invisible on the
-                          blue primary button, so force white. */}
-                      <Plus size={16} color="#fff" />
-                    </button>
-                  )}
-                </>
-              }
-            />
-            <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
-              <table className="w-full" style={{ minWidth: 640 }}>
-                <thead>
-                  <tr>
-                    {['User', 'Role', 'Department', 'Availability', 'Action'].map(h => (
-                      <th key={h} className={`px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider ${h === 'Action' ? 'text-right' : 'text-left'}`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {userInquiryRows.length === 0 && (
-                    <tr><td colSpan={5} className="px-5 py-8 text-center text-[12px]" style={{ color: 'var(--text-muted)' }}>No users available for this facility.</td></tr>
-                  )}
-                  {userInquiryRows.map(({ user, available, active }) => (
-                    <tr key={user._id} role="button" tabIndex={0}
-                      className="cursor-pointer hover:bg-[var(--table-row-hover)]"
-                      onClick={() => openUser(user)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openUser(user); } }}
-                      style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td className="px-5 py-2">
-                        <div className="flex items-center gap-3">
-                          <span className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style={{ background: active ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
-                            {(user.name || '?').split(' ').map(part => part[0]).slice(0, 2).join('')}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-[12px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{user.name}</span>
-                            <span className="block text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>{user.username}</span>
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-2 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{ROLE_LABEL[user.role] || user.role}</td>
-                      <td className="px-5 py-2 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{user.department || user.specialty || user.hospitalName || 'General'}</td>
-                      <td className="px-5 py-2">{statusPill(!active ? 'Inactive' : available ? 'Available' : 'Active')}</td>
-                      <td className="px-5 py-2">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {canManageUsers ? (
-                            <>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); openUser(user); }}
-                                className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--overlay-medium)]"
-                                title="Edit user"
-                                aria-label="Edit user"
-                              >
-                                <Pencil className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                              </button>
-                              {user._id !== currentUser?._id && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); openUser(user); setConfirmingDelete(true); }}
-                                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--overlay-medium)]"
-                                  title="Delete user"
-                                  aria-label="Delete user"
-                                >
-                                  <Trash2 className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />
-                                </button>
-                              )}
-                            </>
-                          ) : (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openUser(user); }}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--overlay-medium)]"
-                              title="View user"
-                              aria-label="View user"
-                            >
-                              <Eye className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+            {/* Staff Availability */}
+            <div className="dash-card overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Staff Availability</span>
+                </div>
+                <button
+                  onClick={() => router.push('/hr?tab=roster&availability=available')}
+                  className="text-[12px] font-medium"
+                  style={{ color: 'var(--accent-primary)' }}
+                  title="View all available staff"
+                  aria-label="View all available staff"
+                >
+                  View all
+                </button>
+              </div>
+              {usersUnavailable ? (
+                <EmptyState
+                  icon={AlertTriangle}
+                  title="Couldn't load staff data"
+                  message="Staff records failed to load. Try again."
+                  action={{ label: 'Retry', onClick: () => reloadUsers() }}
+                />
+              ) : overview.availabilityRows.length === 0 ? (
+                <EmptyState
+                  title="No staff available right now"
+                  message="Nobody on the roster is currently marked available."
+                  action={{ label: 'View roster', onClick: () => router.push('/hr?tab=roster') }}
+                />
+              ) : (
+                <div className="p-2">
+                  {overview.availabilityRows.map(row => (
+                    <div key={row.id} className="flex items-center gap-3 px-3 py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style={{ background: 'var(--accent-primary)' }}>
+                        {(row.name || '?').split(' ').map(s => s[0]).slice(0, 2).join('')}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{row.name}</div>
+                        <div className="text-[10.5px] truncate" style={{ color: 'var(--text-muted)' }}>{row.role} · {row.department}</div>
+                      </div>
+                      <span className="text-[11px] font-semibold text-right" style={{ color: 'var(--color-success)' }}>
+                        {row.shift || 'Available'}
+                      </span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* ═══ ROW 3 — Enquiries · Doctors ═══ */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-
-            {/* Enquiries (inbound patient messages) */}
-            <div className="dash-card overflow-hidden">
-              <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Enquiries</h3>
-                <button onClick={() => router.push('/messages')} className="text-[12px] font-medium inline-flex items-center gap-0.5" style={{ color: 'var(--accent-primary)' }}>View all <ChevronRight className="w-3 h-3" /></button>
+          </>
+        )}
+      >
+        <div className="grid grid-cols-1 gap-3" style={{ minWidth: 0 }}>
+          {/* Doctors + availability */}
+          <div className="dash-card overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
+              <div className="flex items-center gap-2">
+                <Stethoscope className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Doctors</span>
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table className="w-full" style={{ minWidth: 460 }}>
-                  <thead>
-                    <tr>
-                      {['Full Name', 'Type', 'Date', 'Status', 'Action'].map(h => (
-                        <th key={h} className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider ${h === 'Status' || h === 'Action' ? 'text-center' : 'text-left'}`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enquiries.length === 0 ? (
-                      <tr><td colSpan={5} className="px-4 py-6 text-center text-[12px]" style={{ color: 'var(--text-muted)' }}>No patient enquiries.</td></tr>
-                    ) : enquiries.map(m => {
-                      // Real per-row status from the message's own `readBy` list
-                      // (scoped to this user when known), not a hardcoded pill —
-                      // it used to render "on"/green for every row regardless.
-                      const isRead = currentUserId ? !!m.readBy?.includes(currentUserId) : (m.readBy?.length ?? 0) > 0;
-                      return (
-                      <tr key={m._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                        <td className="px-4 py-2.5 text-[13px] font-medium" style={{ color: 'var(--text-primary)' }}>{m.patientName || 'Patient'}</td>
-                        <td className="px-4 py-2.5 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{m.subject || 'General Inquiry'}</td>
-                        <td className="px-4 py-2.5 text-[12px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{(m.sentAt || m.createdAt || '').slice(0, 10)}</td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex justify-center">
-                            <span
-                              className="inline-flex items-center w-9 h-5 rounded-full px-0.5"
-                              style={{ background: isRead ? 'var(--color-success)' : 'var(--overlay-medium)' }}
-                              title={isRead ? 'Read' : 'Unread'}
-                            >
-                              <span className={`w-4 h-4 rounded-full bg-white ${isRead ? 'ml-auto' : 'mr-auto'}`} />
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex justify-center">
-                            <button onClick={() => router.push('/messages')} className="w-7 h-7 rounded-lg inline-flex items-center justify-center transition-colors hover:bg-[var(--overlay-medium)]" title="View enquiry" aria-label="View enquiry">
-                              <Eye className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <button onClick={() => router.push('/hr?tab=roster&role=doctor')} className="text-[12px] font-medium" style={{ color: 'var(--accent-primary)' }}>
+                View all
+              </button>
             </div>
-
-            {/* Doctors + availability */}
-            <div className="dash-card overflow-hidden">
-              <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Doctors</h3>
-                <button onClick={() => router.push('/hr')} className="text-[12px] font-medium inline-flex items-center gap-0.5" style={{ color: 'var(--accent-primary)' }}>View all <ChevronRight className="w-3 h-3" /></button>
-              </div>
+            {usersUnavailable ? (
+              <EmptyState
+                icon={AlertTriangle}
+                title="Couldn't load staff data"
+                message="Staff records failed to load. Try again."
+                action={{ label: 'Retry', onClick: () => reloadUsers() }}
+              />
+            ) : overview.doctorsPreview.length === 0 ? (
+              <EmptyState
+                title="No doctors on record"
+                message="No one with a doctor/clinical officer role is registered here yet."
+                action={{ label: 'Add staff member', onClick: () => router.push('/hr?tab=roster') }}
+              />
+            ) : (
               <div className="p-2">
-                {/* Column header (No / Name / Status) */}
                 <div className="flex items-center gap-3 px-3 py-2" style={{ borderBottom: '1px solid var(--border-light)' }}>
                   <span className="w-6 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>No</span>
                   <span className="w-8" aria-hidden />
                   <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Name</span>
                   <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Status</span>
                 </div>
-                {doctors.length === 0 ? (
-                  <p className="px-3 py-6 text-center text-[12px]" style={{ color: 'var(--text-muted)' }}>No doctors on record.</p>
-                ) : doctors.slice(0, 5).map((d, i) => {
-                  const available = availableProviderIds.has(d._id);
-                  return (
-                    <div key={d._id} className="flex items-center gap-3 px-3 py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <span className="text-[11px] font-mono w-6" style={{ color: 'var(--text-muted)' }}>{String(i + 1).padStart(2, '0')}</span>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style={{ background: 'var(--accent-primary)' }}>
-                        {(d.name || '?').split(' ').map(s => s[0]).slice(0, 2).join('')}
-                      </div>
-                      <span className="text-[13px] font-medium flex-1 truncate" style={{ color: 'var(--text-primary)' }}>{d.name}</span>
-                      <span className="text-[11px] font-semibold" style={{ color: available ? 'var(--color-success)' : 'var(--text-muted)' }}>
-                        {available ? 'Available' : 'Unavailable'}
-                      </span>
+                {overview.doctorsPreview.map((d, i) => (
+                  <div key={d.id} className="flex items-center gap-3 px-3 py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                    <span className="text-[11px] font-mono w-6" style={{ color: 'var(--text-muted)' }}>{String(i + 1).padStart(2, '0')}</span>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style={{ background: 'var(--accent-primary)' }}>
+                      {(d.name || '?').split(' ').map(s => s[0]).slice(0, 2).join('')}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </main>
-
-      {/* Manage-user popup — details for everyone; reset-password, activate/
-          deactivate, and delete only for org/super admins. */}
-      {selectedUser && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)' }}
-          onClick={() => { if (!actionBusy) setSelectedUser(null); }}
-        >
-          <div
-            className="rounded-2xl shadow-2xl w-full max-w-md"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <span className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ background: selectedUser.isActive !== false ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
-                {(selectedUser.name || '?').split(' ').map(part => part[0]).slice(0, 2).join('')}
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{selectedUser.name}</h2>
-                <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                  {selectedUser.username} · {ROLE_LABEL[selectedUser.role] || selectedUser.role}
-                </p>
-              </div>
-              {statusPill(selectedUser.isActive === false ? 'Inactive' : 'Active')}
-            </div>
-
-            <div className="px-5 py-4 grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-              <div><span style={{ color: 'var(--text-muted)' }}>Department: </span><span style={{ color: 'var(--text-primary)' }}>{selectedUser.department || '--'}</span></div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Specialty: </span><span style={{ color: 'var(--text-primary)' }}>{selectedUser.specialty || '--'}</span></div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Facility: </span><span style={{ color: 'var(--text-primary)' }}>{selectedUser.hospitalName || '--'}</span></div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Phone: </span><span style={{ color: 'var(--text-primary)' }}>{selectedUser.phone || '--'}</span></div>
-            </div>
-
-            {canManageUsers && (
-              <div className="px-5 pb-4 space-y-3">
-                <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Reset password</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      placeholder="New temporary password"
-                      autoComplete="off"
-                      className="flex-1 rounded px-3 py-2 text-sm outline-none"
-                      style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                    />
-                    <button
-                      onClick={handleResetPassword}
-                      className="btn btn-secondary whitespace-nowrap"
-                      disabled={actionBusy || !newPassword}
-                    >
-                      Reset
-                    </button>
+                    <span className="text-[13px] font-medium flex-1 truncate" style={{ color: 'var(--text-primary)' }}>{d.name}</span>
+                    <span className="text-[11px] font-semibold" style={{ color: d.available ? 'var(--color-success)' : 'var(--text-muted)' }}>
+                      {d.available ? 'Available' : 'Unavailable'}
+                    </span>
                   </div>
-                  <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                    The user will be asked to choose their own password at next sign-in.
-                  </p>
-                </div>
-
-                {actionNotice && <p className="text-xs" style={{ color: 'var(--color-success)' }}>{actionNotice}</p>}
-                {actionError && <p className="text-xs" style={{ color: 'var(--color-danger)' }}>{actionError}</p>}
-
-                {confirmingDelete && (
-                  <div className="rounded-lg p-3 text-xs" style={{ background: 'rgba(229,46,66,0.08)', border: '1px solid rgba(229,46,66,0.25)', color: 'var(--color-danger)' }}>
-                    This permanently removes {selectedUser.name}&apos;s account. This cannot be undone.
-                  </div>
-                )}
+                ))}
               </div>
             )}
-
-            <div className="px-5 py-3 flex items-center gap-2" style={{ borderTop: '1px solid var(--border-light)' }}>
-              {canManageUsers && selectedUser._id !== currentUser._id && (
-                <>
-                  <button onClick={handleToggleActive} className="btn btn-secondary" disabled={actionBusy}>
-                    {selectedUser.isActive === false ? 'Activate' : 'Deactivate'}
-                  </button>
-                  {confirmingDelete ? (
-                    <>
-                      <button onClick={handleDeleteUser} className="btn" style={{ background: 'var(--color-danger)', color: '#fff' }} disabled={actionBusy}>
-                        {actionBusy ? 'Deleting…' : 'Confirm delete'}
-                      </button>
-                      <button onClick={() => setConfirmingDelete(false)} className="btn btn-secondary" disabled={actionBusy}>Keep user</button>
-                    </>
-                  ) : (
-                    <button onClick={() => { setConfirmingDelete(true); setActionNotice(null); setActionError(null); }} className="btn btn-secondary" style={{ color: 'var(--color-danger)' }} disabled={actionBusy}>
-                      Delete
-                    </button>
-                  )}
-                </>
-              )}
-              <button onClick={() => setSelectedUser(null)} className="btn btn-secondary ml-auto" disabled={actionBusy}>Close</button>
-            </div>
           </div>
         </div>
-      )}
-    </>
+      </EhrCareDashboard>
+    </main>
   );
 }

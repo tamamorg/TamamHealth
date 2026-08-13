@@ -193,7 +193,13 @@ export default function EhrRailMenu({
     ? `ehr-rail-menu-trigger ehr-rail-menu-trigger-primary${open ? ' open' : ''}`
     : `ehr-rail-menu-trigger${open ? ' open' : ''}${active ? ' is-active' : ''}`;
 
-  let lastSection: string | undefined;
+  // Section headings resolved up front. Computing them by mutating a running
+  // variable inside the render map reassigns after render completes, which the
+  // React compiler rejects — and it would break if the list ever re-rendered
+  // partially. Consecutive items sharing a section get one heading.
+  const headings = items.map((item, i) =>
+    item.section && item.section !== items[i - 1]?.section ? item.section : null,
+  );
 
   return (
     <>
@@ -234,8 +240,7 @@ export default function EhrRailMenu({
             {items.length === 0 && <p className="ehr-rail-menu-empty">{emptyMessage}</p>}
             {items.map((item, index) => {
               const ItemIcon = item.icon;
-              const heading = item.section && item.section !== lastSection ? item.section : null;
-              lastSection = item.section;
+              const heading = headings[index];
               return (
                 <div key={item.key}>
                   {heading && <p className="ehr-rail-menu-section">{heading}</p>}

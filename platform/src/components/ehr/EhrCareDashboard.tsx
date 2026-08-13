@@ -207,6 +207,7 @@ export default function EhrCareDashboard({
   filters,
   actions,
   actionStrip,
+  headerExtra,
   rows,
   metrics,
   metricsActions,
@@ -253,6 +254,9 @@ export default function EhrCareDashboard({
    *  Clinical Officer dashboard's clinical strip. Kept separate from header
    *  `actions` so nothing is duplicated between the header and the strip. */
   actionStrip?: EhrCareDashboardAction[];
+  /** Rendered in the header action row, beside Print. Use for controls that
+   *  are not plain buttons (e.g. a dropdown menu). */
+  headerExtra?: ReactNode;
   rows: EhrCareDashboardRow[];
   metrics: EhrCareDashboardMetric[];
   /** Icon + label shortcuts rendered at the bottom of the metrics ("Today")
@@ -537,6 +541,12 @@ export default function EhrCareDashboard({
         </div>
 
         <div className="ehr-schedule-actions" data-tour="station-actions">
+          {/* Slot for a real component next to the plain action buttons —
+              `actions` only carries {label, icon, onClick}, so a dropdown (the
+              facility dashboard's "Add" menu) had nowhere to live in the
+              header and was exiled to the left rail. Rendered first so it sits
+              alongside Print rather than after it. */}
+          {headerExtra}
           {headerActions.map(action => (
             <button key={action.label} type="button" className={action.tone === 'primary' || action.active ? 'primary' : ''} onClick={action.onClick}>
               <action.icon className="w-4 h-4" />{action.label}

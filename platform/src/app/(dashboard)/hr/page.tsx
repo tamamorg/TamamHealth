@@ -1,21 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
-  Users, Plus, X, Trash2, Download, ClipboardList, CalendarClock, Wallet,
+  Users, Plus, X, Trash2, Download, ClipboardList, CalendarClock, Wallet, AlertTriangle,
 } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import EhrListHeader, { EhrListHeaderButton, EhrListFilters } from '@/components/ehr/EhrListHeader';
+import EmptyState from '@/components/EmptyState';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import type { LeaveRequestDoc, LeaveType, PayrollEntryDoc } from '@/lib/db-types-hr';
+import type { LeaveRequestDoc, LeaveStatus, LeaveType, PayrollEntryDoc } from '@/lib/db-types-hr';
 import type { LeaveSummary } from '@/lib/services/leave-service';
 import type { PayrollSummary } from '@/lib/services/payroll-service';
-import type { StaffScheduleDoc } from '@/lib/db-types';
+import type { StaffScheduleDoc, UserDoc } from '@/lib/db-types';
 import { formatMoney } from '@/lib/format-utils';
 import Select from '@/components/Select';
 
@@ -28,6 +30,8 @@ const LEAVE_TYPES: { id: LeaveType; label: string }[] = [
   { id: 'study', label: 'Study' },
   { id: 'unpaid', label: 'Unpaid' },
 ];
+
+const LEAVE_STATUSES: LeaveStatus[] = ['pending', 'approved', 'rejected', 'cancelled', 'taken'];
 
 const STATUS_TOKENS: Record<LeaveRequestDoc['status'], { label: string; color: string; bg: string }> = {
   pending:   { label: 'Pending',   color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)' },
@@ -47,6 +51,89 @@ const PAYROLL_STATUS_TOKENS: Record<PayrollEntryDoc['status'], { label: string; 
 const SHIFT_TYPES: StaffScheduleDoc['shiftType'][] = ['morning', 'afternoon', 'night', 'on_call'];
 
 type TabId = 'roster' | 'leave' | 'schedule' | 'payroll';
+type RosterStatusFilter = 'all' | 'active' | 'inactive';
+type RosterAvailabilityFilter = 'all' | 'available';
+
+/** Roster filter axes that round-trip through the URL (search stays local —
+ *  it is not part of the fixed dashboard deep-link contract). */
+export interface RosterFilterValues {
+  role: string;
+  dept: string;
+  facility: string;
+  status: RosterStatusFilter;
+  availability: RosterAvailabilityFilter;
+}
+
+/** Staffing-gap row shape returned by `getStaffingGaps` — duplicated here
+ *  (rather than imported) because the service is loaded dynamically. */
+interface StaffingGap {
+  shift: string;
+  gap: number;
+  requiredStaff: number;
+  currentStaff: number;
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Pure parser for the roster deep-link contract:
+ *   ?role=&dept=&facility=&status=active|inactive&availability=available
+ * Unknown/missing values fall back to 'all' so a malformed URL never throws.
+ */
+export function parseRosterFiltersFromParams(params: URLSearchParams): RosterFilterValues {
+  const status = params.get('status');
+  const availability = params.get('availability');
+  return {
+    role: params.get('role') || 'all',
+    dept: params.get('dept') || 'all',
+    facility: params.get('facility') || 'all',
+    status: status === 'active' || status === 'inactive' ? status : 'all',
+    availability: availability === 'available' ? 'available' : 'all',
+  };
+}
+
+/** Pure parser for the leave tab's `?status=` (a `LeaveStatus`, not the
+ *  roster active/inactive status — same query key, different tab). */
+export function parseLeaveStatusFromParams(params: URLSearchParams): LeaveStatus | 'all' {
+  const status = params.get('status');
+  return status && (LEAVE_STATUSES as string[]).includes(status) ? (status as LeaveStatus) : 'all';
+}
+
+/** Pure parser for the schedule tab's `?date=YYYY-MM-DD`. Returns null when
+ *  absent or malformed so the caller can fall back to today. */
+export function parseScheduleDateFromParams(params: URLSearchParams): string | null {
+  const date = params.get('date');
+  return date && ISO_DATE_RE.test(date) ? date : null;
+}
+
+/**
+ * Pure roster filter — role/department/facility/status/availability plus the
+ * free-text search, matched the same way the on-screen table and the CSV
+ * export do. `availableIds` is the on-duty-right-now set computed the same
+ * way FacilityManagementDashboard computes `availableProviderIds`.
+ */
+export function filterRoster(
+  users: UserDoc[],
+  f: RosterFilterValues & { search: string },
+  availableIds: Set<string>,
+): UserDoc[] {
+  const q = f.search.trim().toLowerCase();
+  return users.filter(u => {
+    if (f.role !== 'all' && u.role !== f.role) return false;
+    if (f.dept !== 'all' && (u.department || '') !== f.dept) return false;
+    if (f.facility !== 'all' && (u.hospitalId || '') !== f.facility) return false;
+    if (f.status === 'active' && u.isActive === false) return false;
+    if (f.status === 'inactive' && u.isActive !== false) return false;
+    if (f.availability === 'available' && !availableIds.has(u._id)) return false;
+    if (!q) return true;
+    return (
+      u.name.toLowerCase().includes(q) ||
+      u.username.toLowerCase().includes(q) ||
+      u.role.replace(/_/g, ' ').toLowerCase().includes(q) ||
+      (u.hospitalName || '').toLowerCase().includes(q)
+    );
+  });
+}
 
 const staffInitials = (name: string) =>
   name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase() || '?';
@@ -78,6 +165,7 @@ export default function HRPage() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { users } = useUsers();
+  const scope = useDataScope();
   const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,21 +173,20 @@ export default function HRPage() {
   const initialTab = (searchParams?.get('tab') as TabId) || 'roster';
   const [tab, setTab] = useState<TabId>(initialTab);
 
-  // Roster search + role filter
+  // Roster search + filters (role/dept/facility/status/availability).
   const [rosterSearch, setRosterSearch] = useState('');
-  const [rosterRole, setRosterRole] = useState('all');
-  // Leave-request search (same toolbar pattern as the roster).
+  const [rosterFilters, setRosterFiltersState] = useState<RosterFilterValues>(
+    () => parseRosterFiltersFromParams(searchParams ?? new URLSearchParams()),
+  );
+  // Leave-request search (same toolbar pattern as the roster) + status filter.
   const [leaveSearch, setLeaveSearch] = useState('');
+  const [leaveStatusFilter, setLeaveStatusFilterState] = useState<LeaveStatus | 'all'>(
+    () => parseLeaveStatusFromParams(searchParams ?? new URLSearchParams()),
+  );
 
-  // Sync tab → URL so deep links from dashboard work both ways
-  useEffect(() => { setTab((searchParams?.get('tab') as TabId) || 'roster'); }, [searchParams]);
-
-  const setTabAndUrl = (next: TabId) => {
-    setTab(next);
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    params.set('tab', next);
-    router.replace(`/hr?${params.toString()}`, { scroll: false });
-  };
+  // `?gaps=1` — highlight the staffing-gap row on the schedule tab.
+  const gapsParam = searchParams?.get('gaps') === '1';
+  const gapsRef = useRef<HTMLDivElement>(null);
 
   // ── Leave state ─────────────────────────────────────────────────────
   const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
@@ -114,7 +201,10 @@ export default function HRPage() {
 
   // ── Schedule state ──────────────────────────────────────────────────
   const [schedules, setSchedules] = useState<StaffScheduleDoc[]>([]);
-  const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().slice(0, 10));
+  const [staffingGaps, setStaffingGaps] = useState<StaffingGap[]>([]);
+  const [scheduleDate, setScheduleDate] = useState(
+    () => parseScheduleDateFromParams(searchParams ?? new URLSearchParams()) || new Date().toISOString().slice(0, 10),
+  );
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
     userId: '',
@@ -136,12 +226,74 @@ export default function HRPage() {
     userId: '', baseSalary: 0, allowances: 0, deductions: 0, currency: 'SSP', notes: '',
   });
 
+  /** Merge `updates` onto the current query string (deleting a key when its
+   *  value is null/empty) and replace history without a scroll jump — the
+   *  same mechanism `tab` already used, generalised for every filter below. */
+  const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === '') params.delete(key);
+      else params.set(key, value);
+    }
+    router.replace(`/hr?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
+  // URL is the source of truth: re-derive tab + roster/leave filters + the
+  // schedule date whenever the query string changes (deep link, back/forward
+  // navigation, or one of our own updateUrlParams calls landing).
+  useEffect(() => {
+    const params = searchParams ?? new URLSearchParams();
+    setTab((params.get('tab') as TabId) || 'roster');
+    setRosterFiltersState(parseRosterFiltersFromParams(params));
+    setLeaveStatusFilterState(parseLeaveStatusFromParams(params));
+    const date = parseScheduleDateFromParams(params);
+    if (date) setScheduleDate(date);
+  }, [searchParams]);
+
+  // `?new=1` — open the tab-appropriate modal on arrival, then strip the
+  // param so a refresh doesn't reopen it. Reads the tab straight off the URL
+  // rather than the `tab` state, which may not have caught up yet.
+  useEffect(() => {
+    const params = searchParams ?? new URLSearchParams();
+    if (params.get('new') !== '1') return;
+    const currentTab = (params.get('tab') as TabId) || 'roster';
+    if (currentTab === 'leave') setLeaveOpen(true);
+    else if (currentTab === 'schedule') setScheduleOpen(true);
+    updateUrlParams({ new: null });
+  }, [searchParams, updateUrlParams]);
+
+  const setTabAndUrl = (next: TabId) => {
+    setTab(next);
+    updateUrlParams({ tab: next });
+  };
+
+  const setRosterFilter = useCallback(<K extends keyof RosterFilterValues>(key: K, value: RosterFilterValues[K]) => {
+    setRosterFiltersState(f => ({ ...f, [key]: value }));
+    updateUrlParams({ [key]: value === 'all' ? null : String(value) });
+  }, [updateUrlParams]);
+
+  const clearRosterFilters = useCallback(() => {
+    setRosterFiltersState({ role: 'all', dept: 'all', facility: 'all', status: 'all', availability: 'all' });
+    updateUrlParams({ role: null, dept: null, facility: null, status: null, availability: null });
+  }, [updateUrlParams]);
+
+  const setLeaveStatusFilter = useCallback((status: LeaveStatus | 'all') => {
+    setLeaveStatusFilterState(status);
+    updateUrlParams({ status: status === 'all' ? null : status });
+  }, [updateUrlParams]);
+
+  const setScheduleDateAndUrl = (date: string) => {
+    setScheduleDate(date);
+    updateUrlParams({ date });
+  };
+
   const facilityId = currentUser?.hospitalId;
   const facilityName = currentUser?.hospitalName || t('hr.defaultFacility');
   const isApprover = currentUser?.role && ['org_admin', 'medical_superintendent', 'hospital_manager', 'super_admin'].includes(currentUser.role);
   // Account creation is restricted to the two admin roles (WRITE_ROLES in
   // /api/users) — showing the button to anyone else would just 403.
   const canCreateUsers = currentUser?.role === 'super_admin' || currentUser?.role === 'org_admin';
+  const addStaffHref = currentUser?.role === 'super_admin' ? '/admin/users?new=1' : '/org-admin/users?new=1';
 
   // ── Loaders ─────────────────────────────────────────────────────────
   const reloadLeave = useCallback(async () => {
@@ -152,8 +304,13 @@ export default function HRPage() {
   }, []);
 
   const reloadSchedules = useCallback(async () => {
-    const { getSchedulesByDate } = await import('@/lib/services/staff-scheduling-service');
-    setSchedules(await getSchedulesByDate(scheduleDate, facilityId));
+    const { getSchedulesByDate, getStaffingGaps } = await import('@/lib/services/staff-scheduling-service');
+    const [list, gaps] = await Promise.all([
+      getSchedulesByDate(scheduleDate, facilityId),
+      getStaffingGaps(scheduleDate, facilityId),
+    ]);
+    setSchedules(list);
+    setStaffingGaps(gaps);
   }, [scheduleDate, facilityId]);
 
   const reloadPayroll = useCallback(async () => {
@@ -170,6 +327,36 @@ export default function HRPage() {
   useEffect(() => { reloadSchedules(); }, [reloadSchedules]);
   useEffect(() => { reloadPayroll(); }, [reloadPayroll]);
 
+  // Scroll the staffing-gap row into view when arriving via ?gaps=1.
+  useEffect(() => {
+    if (gapsParam && tab === 'schedule') {
+      gapsRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [gapsParam, tab, staffingGaps]);
+
+  // "Available" means exactly what it means on the facility dashboard: inside
+  // an availability window (recurrence included) that covers today, right
+  // now — never a second, home-grown definition of on-duty.
+  const [availableStaffIds, setAvailableStaffIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getAllAvailability, appliesOnDate } = await import('@/lib/services/availability-service');
+        const { jubaDate, jubaTime } = await import('@/lib/time-juba');
+        const av = await getAllAvailability(scope);
+        const today = jubaDate();
+        const now = jubaTime();
+        const ids = new Set(
+          av.filter(a => appliesOnDate(a, today) && a.startTime <= now && a.endTime >= now)
+            .map(a => a.providerId),
+        );
+        if (!cancelled) setAvailableStaffIds(ids);
+      } catch { /* leave empty */ }
+    })();
+    return () => { cancelled = true; };
+  }, [scope]);
+
   const facilityUsers = useMemo(
     () => facilityId ? users.filter(u => u.hospitalId === facilityId) : users,
     [users, facilityId],
@@ -181,19 +368,29 @@ export default function HRPage() {
     return counts;
   }, [facilityUsers]);
 
-  const filteredRosterUsers = useMemo(() => {
-    const q = rosterSearch.trim().toLowerCase();
-    return facilityUsers.filter(u => {
-      if (rosterRole !== 'all' && u.role !== rosterRole) return false;
-      if (!q) return true;
-      return (
-        u.name.toLowerCase().includes(q) ||
-        u.username.toLowerCase().includes(q) ||
-        u.role.replace(/_/g, ' ').toLowerCase().includes(q) ||
-        (u.hospitalName || '').toLowerCase().includes(q)
-      );
-    });
-  }, [facilityUsers, rosterSearch, rosterRole]);
+  // Department/facility filter options always match the data on screen —
+  // built from the loaded roster itself rather than a hard-coded list.
+  const departmentOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const u of facilityUsers) if (u.department) set.add(u.department);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [facilityUsers]);
+
+  const facilityOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const u of facilityUsers) if (u.hospitalId) map.set(u.hospitalId, u.hospitalName || u.hospitalId);
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [facilityUsers]);
+
+  const rosterActiveCount = useMemo(() => {
+    const { role, dept, facility, status, availability } = rosterFilters;
+    return [role, dept, facility, status, availability].filter(v => v !== 'all').length;
+  }, [rosterFilters]);
+
+  const filteredRosterUsers = useMemo(
+    () => filterRoster(facilityUsers, { ...rosterFilters, search: rosterSearch }, availableStaffIds),
+    [facilityUsers, rosterFilters, rosterSearch, availableStaffIds],
+  );
 
   // Export the currently filtered roster to CSV.
   const handleDownloadCsv = () => {
@@ -351,6 +548,14 @@ export default function HRPage() {
     payroll: 'Payroll register',
   };
 
+  // Leave rows visible under the current search + status filter.
+  const q = leaveSearch.trim().toLowerCase();
+  const visibleLeave = leave.filter(r => {
+    if (leaveStatusFilter !== 'all' && r.status !== leaveStatusFilter) return false;
+    if (!q) return true;
+    return `${r.userName} ${r.role} ${r.leaveType} ${r.status}`.toLowerCase().includes(q);
+  });
+
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
@@ -408,12 +613,12 @@ export default function HRPage() {
               search={{ value: rosterSearch, onChange: setRosterSearch, placeholder: t('hr.searchStaffPlaceholder'), ariaLabel: t('hr.searchStaffPlaceholder') }}
               actions={
                 <>
-                  <EhrListFilters activeCount={rosterRole !== 'all' ? 1 : 0} onClear={() => setRosterRole('all')}>
+                  <EhrListFilters activeCount={rosterActiveCount} onClear={clearRosterFilters}>
                     <div>
                       <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.colRole')}</label>
                       <Select
-                        value={rosterRole}
-                        onChange={e => setRosterRole(e.target.value)}
+                        value={rosterFilters.role}
+                        onChange={e => setRosterFilter('role', e.target.value)}
                         aria-label={t('hr.colRole')}
                       >
                         <option value="all">{t('hr.allRoles')} ({facilityUsers.length})</option>
@@ -422,6 +627,51 @@ export default function HRPage() {
                             {role.replace(/_/g, ' ')} ({count})
                           </option>
                         ))}
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelDepartment')}</label>
+                      <Select
+                        value={rosterFilters.dept}
+                        onChange={e => setRosterFilter('dept', e.target.value)}
+                        aria-label={t('hr.labelDepartment')}
+                      >
+                        <option value="all">All departments</option>
+                        {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.colFacility')}</label>
+                      <Select
+                        value={rosterFilters.facility}
+                        onChange={e => setRosterFilter('facility', e.target.value)}
+                        aria-label={t('hr.colFacility')}
+                      >
+                        <option value="all">All facilities</option>
+                        {facilityOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.colStatus')}</label>
+                      <Select
+                        value={rosterFilters.status}
+                        onChange={e => setRosterFilter('status', e.target.value as RosterStatusFilter)}
+                        aria-label={t('hr.colStatus')}
+                      >
+                        <option value="all">All statuses</option>
+                        <option value="active">{t('hr.active')}</option>
+                        <option value="inactive">{t('hr.inactive')}</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Availability</label>
+                      <Select
+                        value={rosterFilters.availability}
+                        onChange={e => setRosterFilter('availability', e.target.value as RosterAvailabilityFilter)}
+                        aria-label="Availability"
+                      >
+                        <option value="all">All staff</option>
+                        <option value="available">Available now</option>
                       </Select>
                     </div>
                   </EhrListFilters>
@@ -435,7 +685,7 @@ export default function HRPage() {
                       // Same role-aware target as the facility dashboard: a
                       // platform super_admin creates accounts in /admin/users;
                       // an org_admin in their org-scoped page.
-                      onClick={() => router.push(currentUser?.role === 'super_admin' ? '/admin/users?new=1' : '/org-admin/users?new=1')}
+                      onClick={() => router.push(addStaffHref)}
                       title="Add staff"
                       aria-label="Add staff"
                     >
@@ -455,11 +705,6 @@ export default function HRPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredRosterUsers.length === 0 && (
-                  <tr><td colSpan={5} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>
-                    {facilityUsers.length === 0 ? t('hr.noStaffForFacility') : t('hr.noStaffMatchFilters')}
-                  </td></tr>
-                )}
                 {filteredRosterUsers.map(u => {
                   return (
                     <tr key={u._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
@@ -480,17 +725,24 @@ export default function HRPage() {
                 })}
               </tbody>
             </table>
+            {filteredRosterUsers.length === 0 && (
+              <EmptyState
+                icon={Users}
+                title={facilityUsers.length === 0 ? 'No staff yet' : 'No staff match your filters'}
+                message={facilityUsers.length === 0 ? t('hr.noStaffForFacility') : t('hr.noStaffMatchFilters')}
+                action={
+                  facilityUsers.length === 0
+                    ? (canCreateUsers ? { label: 'Add staff member', onClick: () => router.push(addStaffHref) } : undefined)
+                    : { label: 'Clear filters', onClick: () => { setRosterSearch(''); clearRosterFilters(); } }
+                }
+              />
+            )}
             </div>
           </div>
         )}
 
         {/* ── LEAVE ──────────────────────────────────────── */}
-        {tab === 'leave' && (() => {
-          const q = leaveSearch.trim().toLowerCase();
-          const visibleLeave = q
-            ? leave.filter(r => `${r.userName} ${r.role} ${r.leaveType} ${r.status}`.toLowerCase().includes(q))
-            : leave;
-          return (
+        {tab === 'leave' && (
           <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
             <EhrListHeader
               title={sectionTitles.leave}
@@ -502,76 +754,101 @@ export default function HRPage() {
               ]}
               search={{ value: leaveSearch, onChange: setLeaveSearch, placeholder: 'Search leave requests…', ariaLabel: 'Search leave requests' }}
               actions={
-                <button type="button" className="listpage-icon-btn listpage-icon-btn-primary" onClick={() => setLeaveOpen(true)} title={t('hr.requestLeave')} aria-label={t('hr.requestLeave')}>
-                  <Plus className="w-4 h-4" color="#fff" />
-                </button>
+                <>
+                  <EhrListFilters activeCount={leaveStatusFilter !== 'all' ? 1 : 0} onClear={() => setLeaveStatusFilter('all')}>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.colStatus')}</label>
+                      <Select
+                        value={leaveStatusFilter}
+                        onChange={e => setLeaveStatusFilter(e.target.value as LeaveStatus | 'all')}
+                        aria-label={t('hr.colStatus')}
+                      >
+                        <option value="all">All statuses</option>
+                        {LEAVE_STATUSES.map(s => (
+                          <option key={s} value={s}>{t(`hr.leaveStatus_${s}`)}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  </EhrListFilters>
+                  <button type="button" className="listpage-icon-btn listpage-icon-btn-primary" onClick={() => setLeaveOpen(true)} title={t('hr.requestLeave')} aria-label={t('hr.requestLeave')}>
+                    <Plus className="w-4 h-4" color="#fff" />
+                  </button>
+                </>
               }
             />
-            {leave.length === 0 ? (
-              <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>
-                {t('hr.noLeaveRequestsYet')} <strong>{t('hr.requestLeave')}</strong> {t('hr.above')}
-              </div>
-            ) : (
-              <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
-                <table className="w-full" style={{ minWidth: 760 }}>
-                  <thead>
-                    <tr>
-                      <Th>{t('hr.colStaff')}</Th>
-                      <Th>{t('hr.labelType')}</Th>
-                      <Th>Dates</Th>
-                      <Th right>Days</Th>
-                      <Th>{t('hr.colStatus')}</Th>
-                      {isApprover && <Th />}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleLeave.length === 0 && (
-                      <tr><td colSpan={6} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No leave requests match “{leaveSearch}”.</td></tr>
-                    )}
-                    {visibleLeave.map(r => {
-                      const tok = STATUS_TOKENS[r.status];
-                      return (
-                        <tr key={r._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td className="px-4 py-2.5"><StaffCell name={r.userName} sub={r.role.replace(/_/g, ' ')} /></td>
+            <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
+              <table className="w-full" style={{ minWidth: 760 }}>
+                <thead>
+                  <tr>
+                    <Th>{t('hr.colStaff')}</Th>
+                    <Th>{t('hr.labelType')}</Th>
+                    <Th>Dates</Th>
+                    <Th right>Days</Th>
+                    <Th>{t('hr.colStatus')}</Th>
+                    {isApprover && <Th />}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleLeave.map(r => {
+                    const tok = STATUS_TOKENS[r.status];
+                    return (
+                      <tr key={r._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                        <td className="px-4 py-2.5"><StaffCell name={r.userName} sub={r.role.replace(/_/g, ' ')} /></td>
+                        <td className="px-4 py-2.5">
+                          <div className="text-[13px] capitalize" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{t(`hr.leaveType_${r.leaveType}`)}</div>
+                          {r.reason && <div className="text-[11px] truncate" style={{ color: 'var(--text-muted)', maxWidth: 220 }} title={r.reason}>“{r.reason}”</div>}
+                        </td>
+                        <td className="px-4 py-2.5 text-[13px] whitespace-nowrap" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.startDate} → {r.endDate}</td>
+                        <td className="px-4 py-2.5 text-[13px] text-right tabular-nums" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.days}</td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md whitespace-nowrap"
+                            style={{ background: tok.bg, color: tok.color, border: `1px solid ${tok.color}40` }}
+                            title={r.decisionNotes ? t('hr.noteLabel', { note: r.decisionNotes }) : undefined}
+                          >
+                            {t(`hr.leaveStatus_${r.status}`)}
+                          </span>
+                        </td>
+                        {isApprover && (
                           <td className="px-4 py-2.5">
-                            <div className="text-[13px] capitalize" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{t(`hr.leaveType_${r.leaveType}`)}</div>
-                            {r.reason && <div className="text-[11px] truncate" style={{ color: 'var(--text-muted)', maxWidth: 220 }} title={r.reason}>“{r.reason}”</div>}
+                            <div className="flex justify-end">
+                              {r.status === 'pending' && (
+                                <RowActionsMenu
+                                  actions={[
+                                    { key: 'approve', label: t('hr.approve'), tone: 'success', onClick: () => decideLeave(r._id, 'approved') },
+                                    { key: 'reject', label: t('hr.reject'), tone: 'danger', onClick: () => decideLeave(r._id, 'rejected') },
+                                  ]}
+                                />
+                              )}
+                            </div>
                           </td>
-                          <td className="px-4 py-2.5 text-[13px] whitespace-nowrap" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.startDate} → {r.endDate}</td>
-                          <td className="px-4 py-2.5 text-[13px] text-right tabular-nums" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.days}</td>
-                          <td className="px-4 py-2.5">
-                            <span
-                              className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md whitespace-nowrap"
-                              style={{ background: tok.bg, color: tok.color, border: `1px solid ${tok.color}40` }}
-                              title={r.decisionNotes ? t('hr.noteLabel', { note: r.decisionNotes }) : undefined}
-                            >
-                              {t(`hr.leaveStatus_${r.status}`)}
-                            </span>
-                          </td>
-                          {isApprover && (
-                            <td className="px-4 py-2.5">
-                              <div className="flex justify-end">
-                                {r.status === 'pending' && (
-                                  <RowActionsMenu
-                                    actions={[
-                                      { key: 'approve', label: t('hr.approve'), tone: 'success', onClick: () => decideLeave(r._id, 'approved') },
-                                      { key: 'reject', label: t('hr.reject'), tone: 'danger', onClick: () => decideLeave(r._id, 'rejected') },
-                                    ]}
-                                  />
-                                )}
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {visibleLeave.length === 0 && (
+                <EmptyState
+                  icon={ClipboardList}
+                  title={leave.length === 0 ? 'No leave requests yet' : 'No matching leave requests'}
+                  message={
+                    leave.length === 0
+                      ? `${t('hr.noLeaveRequestsYet')} ${t('hr.requestLeave')} ${t('hr.above')}`
+                      : leaveSearch
+                        ? `No leave requests match "${leaveSearch}".`
+                        : 'No leave requests match the selected status.'
+                  }
+                  action={
+                    leave.length === 0
+                      ? { label: t('hr.requestLeave'), onClick: () => setLeaveOpen(true) }
+                      : { label: 'Clear filters', onClick: () => { setLeaveSearch(''); setLeaveStatusFilter('all'); } }
+                  }
+                />
+              )}
+            </div>
           </div>
-          );
-        })()}
+        )}
 
         {/* ── SCHEDULE ───────────────────────────────────── */}
         {tab === 'schedule' && (
@@ -590,7 +867,7 @@ export default function HRPage() {
                   <input
                     type="date"
                     value={scheduleDate}
-                    onChange={e => setScheduleDate(e.target.value)}
+                    onChange={e => setScheduleDateAndUrl(e.target.value)}
                     aria-label={t('hr.date')}
                     className="listpage-toolbar-date"
                     style={{ flex: 1, minWidth: 0 }}
@@ -601,53 +878,98 @@ export default function HRPage() {
                 </>
               }
             />
-            {schedules.length === 0 ? (
-              <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>
-                {t('hr.noShiftsScheduled', { date: scheduleDate })} <strong>{t('hr.scheduleShift')}</strong> {t('hr.aboveToAddOne')}
-              </div>
-            ) : (
-              <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
-                <table className="w-full" style={{ minWidth: 720 }}>
-                  <thead>
-                    <tr>
-                      <Th>{t('hr.colStaff')}</Th>
-                      <Th>{t('hr.labelShift')}</Th>
-                      <Th>Time</Th>
-                      <Th>{t('hr.labelDepartment')}</Th>
-                      <Th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {SHIFT_TYPES.flatMap(shift => schedules.filter(s => s.shiftType === shift)).map(s => {
-                      const shiftColor = s.shiftType === 'morning' ? 'var(--color-success-text)' : s.shiftType === 'afternoon' ? '#B8741C' : s.shiftType === 'night' ? '#015697' : 'var(--accent-primary)';
-                      return (
-                        <tr key={s._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td className="px-4 py-2.5"><StaffCell name={s.userName} sub={s.role.replace(/_/g, ' ')} /></td>
-                          <td className="px-4 py-2.5">
-                            <span className="inline-flex items-center gap-1.5 text-[13px] capitalize" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>
-                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: shiftColor }} />
-                              {t(`hr.shiftType_${s.shiftType}`)}
-                              {s.isOnCall && <span className="ml-1 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(59, 130, 246, 0.16)', color: 'var(--accent-primary)' }}>{t('hr.onCall')}</span>}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-[13px] whitespace-nowrap tabular-nums" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{s.startTime}–{s.endTime}</td>
-                          <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{s.department || '—'}</td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex justify-end">
-                              <RowActionsMenu
-                                actions={[
-                                  { key: 'remove', label: t('hr.removeShift'), tone: 'danger', icon: <Trash2 className="w-4 h-4" />, onClick: () => removeShift(s._id) },
-                                ]}
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {/* Staffing-gap indicators — a shortfall against the configured
+                minimum per shift type, not a list of specific vacant shifts
+                (this data model has no unassigned-shift record). */}
+            {staffingGaps.length > 0 && (
+              <div
+                ref={gapsRef}
+                className="mx-4 mt-3 mb-1 p-3 rounded-xl flex flex-wrap items-center gap-3"
+                style={{
+                  background: 'rgba(196, 69, 54, 0.06)',
+                  border: gapsParam ? '2px solid var(--color-danger-500)' : '1px solid rgba(196, 69, 54, 0.25)',
+                }}
+              >
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-danger-text)' }}>
+                  <AlertTriangle className="w-4 h-4" />
+                  Staffing shortfall
+                </span>
+                <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  Below the configured minimum for {scheduleDate}.
+                </span>
+                <div className="flex flex-wrap gap-2 ml-auto">
+                  {staffingGaps.map(g => (
+                    <span
+                      key={g.shift}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-lg whitespace-nowrap"
+                      style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
+                    >
+                      <span className="capitalize">{t(`hr.shiftType_${g.shift}`)}</span>
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{g.currentStaff}/{g.requiredStaff}</span>
+                      <span className="tabular-nums font-bold" style={{ color: 'var(--color-danger-text)' }}>(−{g.gap})</span>
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
+            {staffingGaps.length === 0 && gapsParam && (
+              <div
+                ref={gapsRef}
+                className="mx-4 mt-3 mb-1 p-3 rounded-xl text-[11px] font-semibold"
+                style={{ background: 'rgba(27, 158, 119, 0.08)', border: '1px solid rgba(27, 158, 119, 0.3)', color: 'var(--color-success-text)' }}
+              >
+                Fully staffed — every shift type meets its configured minimum for {scheduleDate}.
+              </div>
+            )}
+            <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
+              <table className="w-full" style={{ minWidth: 720 }}>
+                <thead>
+                  <tr>
+                    <Th>{t('hr.colStaff')}</Th>
+                    <Th>{t('hr.labelShift')}</Th>
+                    <Th>Time</Th>
+                    <Th>{t('hr.labelDepartment')}</Th>
+                    <Th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {SHIFT_TYPES.flatMap(shift => schedules.filter(s => s.shiftType === shift)).map(s => {
+                    const shiftColor = s.shiftType === 'morning' ? 'var(--color-success-text)' : s.shiftType === 'afternoon' ? '#B8741C' : s.shiftType === 'night' ? '#015697' : 'var(--accent-primary)';
+                    return (
+                      <tr key={s._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                        <td className="px-4 py-2.5"><StaffCell name={s.userName} sub={s.role.replace(/_/g, ' ')} /></td>
+                        <td className="px-4 py-2.5">
+                          <span className="inline-flex items-center gap-1.5 text-[13px] capitalize" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>
+                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: shiftColor }} />
+                            {t(`hr.shiftType_${s.shiftType}`)}
+                            {s.isOnCall && <span className="ml-1 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(59, 130, 246, 0.16)', color: 'var(--accent-primary)' }}>{t('hr.onCall')}</span>}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-[13px] whitespace-nowrap tabular-nums" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{s.startTime}–{s.endTime}</td>
+                        <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{s.department || '—'}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex justify-end">
+                            <RowActionsMenu
+                              actions={[
+                                { key: 'remove', label: t('hr.removeShift'), tone: 'danger', icon: <Trash2 className="w-4 h-4" />, onClick: () => removeShift(s._id) },
+                              ]}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {schedules.length === 0 && (
+                <EmptyState
+                  icon={CalendarClock}
+                  title="No shifts scheduled"
+                  message={`${t('hr.noShiftsScheduled', { date: scheduleDate })} ${t('hr.scheduleShift')} ${t('hr.aboveToAddOne')}`}
+                  action={{ label: 'Create shift', onClick: () => setScheduleOpen(true) }}
+                />
+              )}
+            </div>
           </div>
         )}
 
@@ -679,57 +1001,59 @@ export default function HRPage() {
                 </>
               }
             />
-            {payroll.length === 0 ? (
-              <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>
-                {t('hr.noPayrollEntries', { period: payrollPeriod })} <strong>{t('hr.addPayrollEntry')}</strong> {t('hr.aboveToStartRegister')}
-              </div>
-            ) : (
-              <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
-                <table className="w-full" style={{ minWidth: 840 }}>
-                  <thead>
-                    <tr>
-                      <Th>{t('hr.colStaff')}</Th>
-                      <Th right>{t('hr.colBase')}</Th>
-                      <Th right>{t('hr.colAllowances')}</Th>
-                      <Th right>{t('hr.colDeductions')}</Th>
-                      <Th right>{t('hr.colNetPay')}</Th>
-                      <Th>{t('hr.colStatus')}</Th>
-                      <Th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payroll.map(e => {
-                      const tok = PAYROLL_STATUS_TOKENS[e.status];
-                      return (
-                        <tr key={e._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td className="px-4 py-2.5"><StaffCell name={e.userName} sub={e.role.replace(/_/g, ' ')} /></td>
-                          <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{formatMoney(e.baseSalary, { currency: e.currency })}</td>
-                          <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: 'var(--accent-primary)' }}>+{formatMoney(e.allowances, { currency: e.currency })}</td>
-                          <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: 'var(--color-warning-text)' }}>-{formatMoney(e.deductions, { currency: e.currency })}</td>
-                          <td className="px-4 py-2.5 text-[13px] text-right font-mono font-bold" style={{ color: 'var(--color-success-text)' }}>{formatMoney(e.netPay, { currency: e.currency })}</td>
-                          <td className="px-4 py-2.5">
-                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md" style={{ background: tok.bg, color: tok.color, border: `1px solid ${tok.color}40` }}>
-                              {t(`hr.payrollStatus_${e.status}`)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex justify-end">
-                              <RowActionsMenu
-                                actions={[
-                                  ...(e.status === 'draft' && isApprover ? [{ key: 'approve', label: t('hr.approve'), tone: 'success' as const, onClick: () => setPayStatus(e._id, 'approved') }] : []),
-                                  ...(e.status === 'approved' && isApprover ? [{ key: 'paid', label: t('hr.markPaid'), tone: 'success' as const, onClick: () => setPayStatus(e._id, 'paid') }] : []),
-                                  ...(e.status === 'paid' && isApprover ? [{ key: 'reverse', label: t('hr.reverse'), onClick: () => setPayStatus(e._id, 'reversed') }] : []),
-                                ]}
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
+              <table className="w-full" style={{ minWidth: 840 }}>
+                <thead>
+                  <tr>
+                    <Th>{t('hr.colStaff')}</Th>
+                    <Th right>{t('hr.colBase')}</Th>
+                    <Th right>{t('hr.colAllowances')}</Th>
+                    <Th right>{t('hr.colDeductions')}</Th>
+                    <Th right>{t('hr.colNetPay')}</Th>
+                    <Th>{t('hr.colStatus')}</Th>
+                    <Th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {payroll.map(e => {
+                    const tok = PAYROLL_STATUS_TOKENS[e.status];
+                    return (
+                      <tr key={e._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                        <td className="px-4 py-2.5"><StaffCell name={e.userName} sub={e.role.replace(/_/g, ' ')} /></td>
+                        <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{formatMoney(e.baseSalary, { currency: e.currency })}</td>
+                        <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: 'var(--accent-primary)' }}>+{formatMoney(e.allowances, { currency: e.currency })}</td>
+                        <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: 'var(--color-warning-text)' }}>-{formatMoney(e.deductions, { currency: e.currency })}</td>
+                        <td className="px-4 py-2.5 text-[13px] text-right font-mono font-bold" style={{ color: 'var(--color-success-text)' }}>{formatMoney(e.netPay, { currency: e.currency })}</td>
+                        <td className="px-4 py-2.5">
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md" style={{ background: tok.bg, color: tok.color, border: `1px solid ${tok.color}40` }}>
+                            {t(`hr.payrollStatus_${e.status}`)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex justify-end">
+                            <RowActionsMenu
+                              actions={[
+                                ...(e.status === 'draft' && isApprover ? [{ key: 'approve', label: t('hr.approve'), tone: 'success' as const, onClick: () => setPayStatus(e._id, 'approved') }] : []),
+                                ...(e.status === 'approved' && isApprover ? [{ key: 'paid', label: t('hr.markPaid'), tone: 'success' as const, onClick: () => setPayStatus(e._id, 'paid') }] : []),
+                                ...(e.status === 'paid' && isApprover ? [{ key: 'reverse', label: t('hr.reverse'), onClick: () => setPayStatus(e._id, 'reversed') }] : []),
+                              ]}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {payroll.length === 0 && (
+                <EmptyState
+                  icon={Wallet}
+                  title="No payroll entries"
+                  message={`${t('hr.noPayrollEntries', { period: payrollPeriod })} ${t('hr.addPayrollEntry')} ${t('hr.aboveToStartRegister')}`}
+                  action={{ label: t('hr.addPayrollEntry'), onClick: () => setPayrollOpen(true) }}
+                />
+              )}
+            </div>
           </div>
         )}
           </section>
@@ -741,7 +1065,7 @@ export default function HRPage() {
             <div className="modal-content card-elevated p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold">{t('hr.requestLeave')}</h3>
-                <button onClick={() => setLeaveOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
+                <button onClick={() => setLeaveOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -790,7 +1114,7 @@ export default function HRPage() {
             <div className="modal-content card-elevated p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold">{t('hr.scheduleShift')}</h3>
-                <button onClick={() => setScheduleOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
+                <button onClick={() => setScheduleOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -851,7 +1175,7 @@ export default function HRPage() {
             <div className="modal-content card-elevated p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold">{t('hr.addPayrollEntryPeriod', { period: payrollPeriod })}</h3>
-                <button onClick={() => setPayrollOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
+                <button onClick={() => setPayrollOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -905,4 +1229,3 @@ export default function HRPage() {
     </>
   );
 }
-

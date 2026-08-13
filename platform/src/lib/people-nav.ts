@@ -1,32 +1,25 @@
 /**
- * "People & HR" navigation and the global "Add" menu — pure definitions.
+ * The global "Add" menu — pure definitions.
  *
- * Kept out of the components so the routes, role gating, and active-state
- * rules can be unit-tested without a DOM, matching how the rest of the app
- * tests dashboards (pure combiner exported, component stays thin).
+ * Kept out of the component so the destinations and role gating can be
+ * unit-tested without a DOM, matching how the rest of the app tests dashboards
+ * (pure logic exported, component stays thin).
  *
  * Two gates must agree for any destination here, exactly as elsewhere in the
  * app: `ROLE_ROUTE_TABLE[role].allowed` decides whether the page loads, and
  * `isHrefAllowed` decides whether the menu row renders. Note `isHrefAllowed`
  * has no super_admin wildcard — it reads the literal allowed list — so every
  * route named here is also present in super_admin's table entry.
+ *
+ * The People & HR NAVIGATION itself is not built here: it is hand-authored per
+ * role in `ROLE_PERMISSIONS[role].navItems` (permissions.ts), the same as every
+ * other nav section, and rendered by the existing module menu.
  */
 
 import type { UserRole } from './db-types';
 import type { NavIcon } from './permissions';
 import { isHrefAllowed } from '@/components/ehr/ehr-navigation';
-import {
-  Users, UserCheck, KeyRound, ClipboardList, CalendarClock, Wallet, MessageSquare, LayoutDashboard,
-} from '@/components/icons/lucide';
-
-export interface PeopleNavEntry {
-  key: string;
-  label: string;
-  href: string;
-  icon: NavIcon;
-  description?: string;
-  section?: string;
-}
+import { UserCheck, ClipboardList, CalendarClock, MessageSquare } from '@/components/icons/lucide';
 
 /**
  * Where a role manages login credentials. Staff records and user accounts are
@@ -43,45 +36,6 @@ export function usersHrefForRole(role: UserRole | string): string | null {
 export interface PeopleNavContext {
   role: UserRole | string;
   allowedRoutes: readonly string[];
-}
-
-/**
- * The People & HR dropdown, filtered to what this role may actually open.
- * Every entry points at a real route; there are no placeholder rows.
- */
-export function buildPeopleNavEntries({ role, allowedRoutes }: PeopleNavContext): PeopleNavEntry[] {
-  const usersHref = usersHrefForRole(role);
-  const candidates: PeopleNavEntry[] = [
-    { key: 'overview', label: 'Overview', href: '/dashboard/hr', icon: LayoutDashboard, description: 'Workforce at a glance', section: 'PEOPLE & HR' },
-    { key: 'roster', label: 'Staff Roster', href: '/hr?tab=roster', icon: Users, description: 'Everyone who works here', section: 'PEOPLE & HR' },
-    ...(usersHref
-      ? [{ key: 'accounts', label: 'User Accounts & Access', href: usersHref, icon: KeyRound, description: 'Logins, roles, permissions', section: 'PEOPLE & HR' } as PeopleNavEntry]
-      : []),
-    { key: 'leave', label: 'Leave Requests', href: '/hr?tab=leave', icon: ClipboardList, description: 'Approve and track absence', section: 'SCHEDULING' },
-    { key: 'schedule', label: 'Shift Schedule', href: '/hr?tab=schedule', icon: CalendarClock, description: 'Who is on duty', section: 'SCHEDULING' },
-    { key: 'payroll', label: 'Payroll', href: '/hr?tab=payroll', icon: Wallet, description: 'Pay periods and registers', section: 'SCHEDULING' },
-    { key: 'inquiries', label: 'Patient Inquiries', href: '/inquiries', icon: MessageSquare, description: 'Inbound enquiries to triage', section: 'PATIENTS' },
-  ];
-
-  return candidates.filter(entry => isHrefAllowed(entry.href, allowedRoutes));
-}
-
-/** True when `pathname` + `search` is the page this entry points at. */
-export function isPeopleEntryActive(entry: PeopleNavEntry, pathname: string, search = ''): boolean {
-  const [entryPath, entryQuery] = entry.href.split('?');
-  if (pathname !== entryPath) return false;
-  if (!entryQuery) return true;
-  // Tab-scoped entries (/hr?tab=leave) are active only for their own tab.
-  // `/hr` with no tab shows the roster, so the roster row owns that case.
-  const wanted = new URLSearchParams(entryQuery).get('tab');
-  if (!wanted) return true;
-  const actual = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get('tab');
-  return (actual || 'roster') === wanted;
-}
-
-/** True when the current route lives anywhere inside the People & HR menu. */
-export function isPeopleSectionActive(entries: PeopleNavEntry[], pathname: string): boolean {
-  return entries.some(entry => pathname === entry.href.split('?')[0]);
 }
 
 export interface AddMenuEntry {

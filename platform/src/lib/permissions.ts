@@ -47,6 +47,9 @@ import {
   FileText,
   RefreshCw,
   Flag,
+  KeyRound,
+  CalendarClock,
+  ClipboardList,
 } from '@/components/icons/lucide';
 import { BRAND_DARKER, BRAND_PRIMARY, BRAND_SECONDARY } from './theme-colors';
 
@@ -104,7 +107,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/admin/audit', label: 'Audit Logs', icon: FileText, section: 'COMMAND' },
       { href: '/admin/organizations', label: 'Organizations', icon: Building2, section: 'TENANTS' },
       { href: '/hospitals', label: 'Facilities', icon: HospitalIcon, section: 'TENANTS' },
-      { href: '/admin/users', label: 'Users & Access', icon: Users, section: 'TENANTS' },
+      // Account administration is listed once, under PEOPLE & HR below —
+      // it was also here under TENANTS, giving one page two nav homes.
       { href: '/admin/support', label: 'Support Operations', icon: MessageSquare, section: 'TENANTS' },
       { href: '/admin/system', label: 'System Health', icon: Server, section: 'PLATFORM OPERATIONS' },
       { href: '/admin/sync', label: 'Sync & Jobs', icon: RefreshCw, section: 'PLATFORM OPERATIONS' },
@@ -131,6 +135,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/dashboard/state', label: 'County', icon: LayoutDashboard, section: 'WORKSPACES' },
       { href: '/government', label: 'Government', icon: Building2, section: 'WORKSPACES' },
       { href: '/facility-management', label: 'Facility Ops', icon: HospitalIcon, section: 'WORKSPACES' },
+      // PEOPLE & HR — the whole workforce area in one section (see org_admin).
+      { href: '/dashboard/hr', label: 'People Overview', icon: Gauge, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=roster', label: 'Staff Roster', icon: Stethoscope, section: 'PEOPLE & HR' },
+      { href: '/admin/users', label: 'User Accounts & Access', icon: KeyRound, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
+      { href: '/inquiries', label: 'Patient Inquiries', icon: MessageSquare, section: 'PEOPLE & HR' },
     ],
     color: BRAND_SECONDARY,
     gradientFrom: BRAND_DARKER,
@@ -157,10 +169,17 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/hospitals', label: 'Facilities', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
       { href: '/wards', label: 'Bed Management', icon: BedDouble, section: 'FACILITIES & OPERATIONS' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'FACILITIES & OPERATIONS' },
-      // Staff, accounts, leave, shifts, payroll and patient enquiries all live
-      // in the labelled "People & HR" rail dropdown (lib/people-nav.ts). No
-      // entry here — two routes to the same page is the duplication that made
-      // this nav hard to reason about.
+      // PEOPLE & HR — one section, seven real destinations, so the whole
+      // workforce area is reachable from the module menu instead of hiding
+      // behind a single "Doctors & Staff" link that landed on a roster with
+      // no way back out to leave, shifts or payroll.
+      { href: '/dashboard/hr', label: 'People Overview', icon: Gauge, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=roster', label: 'Staff Roster', icon: Stethoscope, section: 'PEOPLE & HR' },
+      { href: '/org-admin/users', label: 'User Accounts & Access', icon: KeyRound, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
+      { href: '/inquiries', label: 'Patient Inquiries', icon: MessageSquare, section: 'PEOPLE & HR' },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL SERVICES' },
       { href: '/pharmacy', label: 'Prescriptions & Medicines', icon: Pill, section: 'CLINICAL SERVICES' },
       { href: '/blood-bank', label: 'Blood Bank', icon: Droplets, section: 'CLINICAL SERVICES' },
@@ -449,10 +468,16 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/dashboard', label: 'Hospital Dashboard', icon: LayoutDashboard, section: 'ADMINISTRATION' },
       { href: '/hospitals', label: 'Hospital Network', icon: HospitalIcon, section: 'ADMINISTRATION' },
       { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'ADMINISTRATION' },
-      // HR destinations live in the labelled "People & HR" rail dropdown.
       { href: '/facility-overview', label: 'Facility Overview', icon: Gauge, section: 'ADMINISTRATION' },
       { href: '/equipment', label: 'Assets', icon: Package, section: 'ADMINISTRATION' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'ADMINISTRATION' },
+      // PEOPLE & HR — the whole workforce area in one section (see org_admin).
+      { href: '/dashboard/hr', label: 'People Overview', icon: Gauge, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=roster', label: 'Staff Roster', icon: Stethoscope, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
+      { href: '/inquiries', label: 'Patient Inquiries', icon: MessageSquare, section: 'PEOPLE & HR' },
       { href: '/emergency-preparedness', label: 'Emergency Prep', icon: ShieldAlert, section: 'ADMINISTRATION' },
       { href: '/controlled-substances', label: 'Controlled Substances', icon: ClipboardCheck, section: 'SERVICES' },
       { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'ADMINISTRATION' },
@@ -555,8 +580,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'FACILITY' },
       { href: '/facility-overview', label: 'Facility Overview', icon: Gauge, section: 'FACILITY' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'FACILITY' },
-      // HR destinations live in the labelled "People & HR" rail dropdown.
       { href: '/equipment', label: 'Assets & Equipment', icon: Package, section: 'FACILITY' },
+      // PEOPLE & HR — the whole workforce area in one section (see org_admin).
+      { href: '/dashboard/hr', label: 'People Overview', icon: Gauge, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=roster', label: 'Staff Roster', icon: Stethoscope, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
+      { href: '/hr?tab=payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
+      { href: '/inquiries', label: 'Patient Inquiries', icon: MessageSquare, section: 'PEOPLE & HR' },
       { href: '/billing', label: 'Billing', icon: Receipt, section: 'FINANCE' },
       { href: '/payments', label: 'Revenue & Bills', icon: Wallet, section: 'FINANCE' },
       { href: '/payments/claims', label: 'Insurance Claims', icon: Receipt, section: 'FINANCE' },

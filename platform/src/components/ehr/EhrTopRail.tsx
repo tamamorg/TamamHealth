@@ -4,7 +4,6 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Calendar,
-  ChevronDown,
   HelpCircle,
   LayoutDashboard,
   LogOut,
@@ -29,9 +28,7 @@ import { formatPhoneDisplay } from '@/lib/field-formats';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrModuleMenu from './EhrModuleMenu';
 import EhrTopActions from './EhrTopActions';
-import EhrRailMenu from './EhrRailMenu';
 import QuickActions from '@/components/QuickActions';
-import { buildPeopleNavEntries, isPeopleEntryActive, isPeopleSectionActive } from '@/lib/people-nav';
 import {
   activeNavItem,
   getPrimaryShortcutItems,
@@ -120,27 +117,6 @@ export default function EhrTopRail() {
     [headerShortcutHrefs, navItems],
   );
 
-  // People & HR — a LABELLED dropdown, unlike the icon-only module trigger.
-  // Renders only for roles that can open at least one of its destinations, so
-  // it disappears for clinical roles rather than showing dead rows.
-  const peopleEntries = useMemo(
-    () => (currentUser ? buildPeopleNavEntries({ role: currentUser.role, allowedRoutes }) : []),
-    [currentUser, allowedRoutes],
-  );
-  // Query string drives which HR tab is marked current; usePathname drops it.
-  const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
-  const peopleMenuItems = useMemo(
-    () => peopleEntries.map(entry => ({
-      key: entry.key,
-      label: entry.label,
-      icon: entry.icon,
-      description: entry.description,
-      section: entry.section,
-      active: isPeopleEntryActive(entry, pathname || '', currentSearch),
-      onSelect: () => router.push(entry.href),
-    })),
-    [peopleEntries, pathname, currentSearch, router],
-  );
 
   const navLabel = (item: NavItem): string => {
     const keyMap: Record<string, string> = {
@@ -276,17 +252,6 @@ export default function EhrTopRail() {
           badges={moduleBadges}
         />
 
-        {peopleMenuItems.length > 0 && (
-          <EhrRailMenu
-            label="People & HR"
-            icon={Users}
-            items={peopleMenuItems}
-            menuTitle="People & HR"
-            menuSubtitle={roleLabel}
-            ariaLabel="People and HR menu"
-            active={isPeopleSectionActive(peopleEntries, pathname || '')}
-          />
-        )}
 
       </nav>
 
