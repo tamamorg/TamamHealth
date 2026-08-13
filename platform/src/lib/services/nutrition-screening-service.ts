@@ -10,7 +10,7 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import { nutritionScreeningsDB } from '../db';
-import type { NutritionScreeningDoc, NutritionStatus } from '../db-types';
+import type { NutritionFollowUpAction, NutritionScreeningDoc, NutritionStatus } from '../db-types';
 import { findByType } from './db-query';
 import { filterByScope, type DataScope } from './data-scope';
 import { logAuditSafe } from './audit-service';
@@ -48,6 +48,7 @@ export interface AddNutritionScreeningInput {
   heightCm?: number;
   edema: boolean;
   isAnc: boolean;
+  notes?: string;
   screeningDate?: string;
   screenedById?: string;
   screenedByName?: string;
@@ -63,6 +64,7 @@ export async function addNutritionScreening(input: AddNutritionScreeningInput): 
   }
   const db = nutritionScreeningsDB();
   const now = new Date().toISOString();
+  const status = classifyScreening(input.muac, input.edema, input.isAnc);
   const doc: NutritionScreeningDoc = {
     _id: `nscr-${uuidv4().slice(0, 8)}`,
     type: 'nutrition_screening',
@@ -75,7 +77,9 @@ export async function addNutritionScreening(input: AddNutritionScreeningInput): 
     heightCm: input.heightCm,
     edema: input.edema,
     isAnc: input.isAnc,
-    status: classifyScreening(input.muac, input.edema, input.isAnc),
+    notes: input.notes?.trim() || undefined,
+    status,
+    followUpAction: status === 'Normal' ? undefined : 'needed',
     screeningDate: input.screeningDate || now.slice(0, 10),
     screenedById: input.screenedById,
     screenedByName: input.screenedByName,
@@ -95,3 +99,39 @@ export async function addNutritionScreening(input: AddNutritionScreeningInput): 
   emitSyncEvent({ resourceType: 'nutrition_screening', resourceId: doc._id, operation: 'create', resourceVersion: doc._rev, hospitalId: doc.hospitalId, orgId: doc.orgId });
   return doc;
 }
+
+export async function updateNutritionScreening(
+  id: string,
+  patch: Partial<Pick<NutritionScreeningDoc, 'notes' | 'followUpAction' | 'followUpAt'>>,
+  actor?: { id?: string; name?: string },
+): Promise<NutritionScreeningDoc | null> {
+  const db = nutritionScreeningsDB();
+  let existing: NutritionScreeningDoc;
+  try {
+    existing = (await db.get(id)) as NutritionScreeningDoc;
+  } catch {
+    return null;
+  }
+  const now = new Date().toISOString();
+  const updated: NutritionScreeningDoc = {
+    ...existing,
+    ...patch,
+    notes: patch.notes !== undefined ? (patch.notes.trim() || undefined) : existing.notes,
+    updatedAt: now,
+  };
+  if (patch.followUpAction && patch.followUpAction !== 'needed' && !patch.followUpAt) {
+    updated.followUpAt = now;
+  }
+  const resp = await db.put(updated);
+  updated._rev = resp.rev;
+  await logAuditSafe(
+    'UPDATE_NUTRITION_SCREENING',
+    actor?.id,
+    actor?.name,
+    `Nutrition screening ${id}: ${patch.followUpAction || 'notes updated'}`,
+  );
+  emitSyncEvent({ resourceType: 'nutrition_screening', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, hospitalId: updated.hospitalId, orgId: updated.orgId });
+  return updated;
+}
+
+export type { NutritionFollowUpAction };

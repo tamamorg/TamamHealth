@@ -14,9 +14,14 @@ import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 
-/** Open tasks first; within a group, earliest due date first, then newest. */
+const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, normal: 2, low: 3 };
+
+/** Open tasks first; then priority; then earliest due date; then newest. */
 function taskOrder(a: ClinicianTaskDoc, b: ClinicianTaskDoc): number {
   if (a.status !== b.status) return a.status === 'open' ? -1 : 1;
+  const ap = PRIORITY_RANK[a.priority || 'normal'] ?? 2;
+  const bp = PRIORITY_RANK[b.priority || 'normal'] ?? 2;
+  if (ap !== bp) return ap - bp;
   const ad = a.dueDate || '9999-12-31';
   const bd = b.dueDate || '9999-12-31';
   if (ad !== bd) return ad < bd ? -1 : 1;
@@ -40,7 +45,7 @@ export interface CreateTaskInput {
   title: string;
   description?: string;
   dueDate?: string;
-  priority?: 'normal' | 'high';
+  priority?: 'low' | 'normal' | 'medium' | 'high';
   patientId?: string;
   patientName?: string;
   hospitalId?: string;

@@ -46,5 +46,15 @@ export function useNutritionScreenings() {
     return doc;
   }, [load]);
 
-  return { screenings, loading, add, reload: load };
+  const update = useCallback(async (
+    id: string,
+    patch: Partial<Pick<NutritionScreeningDoc, 'notes' | 'followUpAction' | 'followUpAt'>>,
+  ) => {
+    const { updateNutritionScreening } = await import('../services/nutrition-screening-service');
+    const doc = await updateNutritionScreening(id, patch);
+    await load();
+    return doc;
+  }, [load]);
+
+  return { screenings, loading, add, update, reload: load };
 }

@@ -509,6 +509,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     navItems: [
       { href: '/dashboard/nutrition', label: 'Nutrition Dashboard', icon: LayoutDashboard, section: 'NUTRITION' },
       { href: '/patients', label: 'Patients', icon: Users, section: 'NUTRITION' },
+      { href: '/referrals', label: 'Referrals', icon: Send, section: 'NUTRITION' },
       { href: '/mch-analytics', label: 'MCH Analytics', icon: HeartPulse, section: 'PROGRAMS' },
       { href: '/messages', label: 'Messages', icon: MessageSquare, section: 'MORE' },
     ],

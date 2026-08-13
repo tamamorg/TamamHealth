@@ -547,18 +547,8 @@ export default function EhrCareDashboard({
 
       <div className={`ehr-workspace-grid ${effectiveView === 'calendar' ? 'is-calendar' : 'is-dashboard'}`}>
         <aside className="ehr-left-rail">
-          {showCalendar && (
-            <EhrMiniCalendar
-              month={calendarMonth}
-              selectedDate={selectedDate}
-              today={todayIso}
-              eventDates={eventDates}
-              onMonthChange={setCalendarMonth}
-              onDateSelect={selectDate}
-            />
-          )}
-          {/* Same markup and classes as the Clinical Officer rail search, so
-              every role gets one search field of one design and width. */}
+          {/* Search above the calendar — same order as the clinical worklist
+              rail so filter visibility isn't buried under the mini-calendar. */}
           {onSearchChange && (
             <div className="ehr-rail-search" data-tour="rail-search">
               <Search className="ehr-rail-search-icon w-4 h-4" />
@@ -580,6 +570,16 @@ export default function EhrCareDashboard({
                 </button>
               )}
             </div>
+          )}
+          {showCalendar && (
+            <EhrMiniCalendar
+              month={calendarMonth}
+              selectedDate={selectedDate}
+              today={todayIso}
+              eventDates={eventDates}
+              onMonthChange={setCalendarMonth}
+              onDateSelect={selectDate}
+            />
           )}
           {showChart && (chart ?? (
             <EhrWeekActivityChart
