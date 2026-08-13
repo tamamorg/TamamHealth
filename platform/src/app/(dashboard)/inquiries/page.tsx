@@ -13,13 +13,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Modal from '@/components/Modal';
 import EmptyState from '@/components/EmptyState';
+import AddInquiryDialog from '@/components/create-dialogs/AddInquiryDialog';
 import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
 import Select from '@/components/Select';
 import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import {
-  MessageSquarePlus, X, Phone, CalendarClock, XCircle, UserCheck, UserX,
+  MessageSquarePlus, Phone, CalendarClock, XCircle, UserCheck, UserX,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -39,7 +39,6 @@ import {
   filterEnquiries,
   setEnquiryStatus,
   assignEnquiry,
-  createEnquiry,
 } from '@/lib/services/enquiry-service';
 
 /** Flat status-pill palette — always paired with the text label, never color alone. */
@@ -91,8 +90,6 @@ const ACTION_ICON: Record<InquiryActionSpec['key'], React.ReactNode> = {
   unassign: <UserX className="w-4 h-4" />,
 };
 
-const emptyAddForm = { patientName: '', patientPhone: '', subject: '', body: '', assigneeId: '' };
-
 export default function InquiriesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,9 +112,6 @@ export default function InquiriesPage() {
   const [assignedFilter, setAssignedFilter] = useState(searchParams?.get('assigned') || 'all');
 
   const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState(emptyAddForm);
-  const [addSaving, setAddSaving] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
 
   // Keep status/assigned synced both ways with the URL — same pattern as the
   // HR page's tab param — so a sidebar/dashboard link (?status=new) applies
@@ -255,37 +249,6 @@ export default function InquiriesPage() {
         else handleUnassign(m._id);
       },
     }));
-
-  const handleCreateInquiry = async () => {
-    if (!addForm.patientName.trim() || !addForm.subject.trim() || !addForm.body.trim()) {
-      setAddError('Patient name, subject, and message are required.');
-      return;
-    }
-    setAddSaving(true);
-    setAddError(null);
-    try {
-      const assignee = addForm.assigneeId ? facilityUsers.find(u => u._id === addForm.assigneeId) : undefined;
-      const created = await createEnquiry({
-        patientName: addForm.patientName.trim(),
-        patientPhone: addForm.patientPhone.trim() || undefined,
-        subject: addForm.subject.trim(),
-        body: addForm.body.trim(),
-        facilityId: currentUser?.hospitalId,
-        facilityName: currentUser?.hospitalName,
-        orgId: currentUser?.orgId,
-        assignedTo: assignee ? { id: assignee._id, name: assignee.name } : undefined,
-      });
-      setMessages(prev => [created, ...prev]);
-      setAddOpen(false);
-      setAddForm(emptyAddForm);
-      showToast('Inquiry logged.', 'success');
-    } catch (err) {
-      console.error('[inquiries] create failed:', err);
-      setAddError(err instanceof Error ? err.message : 'Failed to log the inquiry.');
-    } finally {
-      setAddSaving(false);
-    }
-  };
 
   const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 
@@ -433,55 +396,14 @@ export default function InquiriesPage() {
       </div>
 
       {addOpen && (
-        <Modal onClose={() => { setAddOpen(false); setAddError(null); }}>
-          <div className="modal-content card-elevated p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">Add inquiry</h3>
-              <button
-                onClick={() => { setAddOpen(false); setAddError(null); }}
-                className="p-1.5 rounded-lg"
-                style={{ background: 'var(--overlay-subtle)' }}
-                title="Close"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Patient name*</label>
-                <input value={addForm.patientName} onChange={e => setAddForm(f => ({ ...f, patientName: e.target.value }))} placeholder="Full name" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Phone</label>
-                <input value={addForm.patientPhone} onChange={e => setAddForm(f => ({ ...f, patientPhone: e.target.value }))} placeholder="Optional" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Subject*</label>
-                <input value={addForm.subject} onChange={e => setAddForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Prescription refill" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Message*</label>
-                <textarea rows={3} value={addForm.body} onChange={e => setAddForm(f => ({ ...f, body: e.target.value }))} placeholder="What the patient asked, in their own words" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Assign to</label>
-                <Select value={addForm.assigneeId} onChange={e => setAddForm(f => ({ ...f, assigneeId: e.target.value }))}>
-                  <option value="">Unassigned</option>
-                  {facilityUsers.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
-                </Select>
-              </div>
-              {addError && <p className="text-xs" style={{ color: 'var(--color-danger)' }}>{addError}</p>}
-            </div>
-            <hr className="section-divider" />
-            <div className="flex gap-2 mt-2">
-              <button onClick={() => { setAddOpen(false); setAddError(null); }} className="btn btn-secondary flex-1" disabled={addSaving}>Cancel</button>
-              <button onClick={handleCreateInquiry} className="btn btn-primary flex-1" disabled={addSaving}>
-                {addSaving ? 'Saving…' : 'Log inquiry'}
-              </button>
-            </div>
-          </div>
-        </Modal>
+        <AddInquiryDialog
+          onClose={() => setAddOpen(false)}
+          onCreated={created => {
+            setMessages(prev => [created, ...prev]);
+            setAddOpen(false);
+            showToast('Inquiry logged.', 'success');
+          }}
+        />
       )}
     </main>
   );

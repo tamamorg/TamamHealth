@@ -38,6 +38,10 @@ import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/Ehr
 import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import EmptyState from '@/components/EmptyState';
+import AddInquiryDialog from '@/components/create-dialogs/AddInquiryDialog';
+import RequestLeaveDialog from '@/components/create-dialogs/RequestLeaveDialog';
+import CreateShiftDialog from '@/components/create-dialogs/CreateShiftDialog';
+import AddPayrollEntryDialog from '@/components/create-dialogs/AddPayrollEntryDialog';
 import { formatMoney } from '@/lib/format-utils';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import { getRoleConfig } from '@/lib/permissions';
@@ -349,6 +353,17 @@ const LEAVE_DECISION_OPTIONS = [
   { value: 'rejected', label: 'Reject' },
 ];
 
+/** Add-menu entries whose form opens on this page instead of navigating. The
+ *  value is where the user lands once the record is written. */
+const ADD_DIALOG_DESTINATIONS = {
+  inquiry: '/inquiries',
+  leave: '/hr/leave',
+  shift: '/hr/schedule',
+  payroll: '/hr/payroll',
+} as const;
+type AddDialogKey = keyof typeof ADD_DIALOG_DESTINATIONS;
+const isAddDialogKey = (key: string): key is AddDialogKey => key in ADD_DIALOG_DESTINATIONS;
+
 const CENTER_TITLES: Record<QueueTab, string> = {
   inquiries: 'Recent Inquiries',
   leave: 'Pending Leave',
@@ -513,18 +528,25 @@ export default function FacilityManagementDashboard() {
     { name: 'Pending', value: overview.cashFlow.pending, color: CASH_PENDING },
   ].filter(d => d.value > 0), [overview.cashFlow]);
 
-  // The global "Add" menu — permission-gated entries from people-nav, mapped
-  // onto navigation. Hidden entirely (empty array) when this role has none.
+  // The global "Add" menu — permission-gated entries from people-nav. The three
+  // records this dashboard can create open their dialog HERE, on the page the
+  // user was already looking at, and only route to the destination once the
+  // record exists; anything else (staff accounts) still navigates, because its
+  // form lives on a page of its own.
+  const [addDialog, setAddDialog] = useState<AddDialogKey | null>(null);
   const addMenuItems: RailMenuItem[] = useMemo(() => {
     if (!currentUser) return [];
     const allowedRoutes = getRoleConfig(currentUser.role).allowedRoutes;
-    return buildAddMenuEntries({ role: currentUser.role, allowedRoutes }).map(entry => ({
-      key: entry.key,
-      label: entry.label,
-      icon: entry.icon,
-      description: entry.description,
-      onSelect: () => router.push(entry.href),
-    }));
+    return buildAddMenuEntries({ role: currentUser.role, allowedRoutes }).map(entry => {
+      const dialogKey = isAddDialogKey(entry.key) ? entry.key : null;
+      return {
+        key: entry.key,
+        label: entry.label,
+        icon: entry.icon,
+        description: entry.description,
+        onSelect: dialogKey ? () => setAddDialog(dialogKey) : () => router.push(entry.href),
+      };
+    });
   }, [currentUser, router]);
 
   const updateEnquiryStatusLocally = (id: string, status: EnquiryStatus) => {
@@ -875,6 +897,51 @@ export default function FacilityManagementDashboard() {
           </div>
         )}
       />
+
+      {/* Create-in-place, then go. Each dialog writes the record from here and
+          only then routes to the page that owns it, so the user never lands on
+          an empty form somewhere else. */}
+      {addDialog === 'inquiry' && (
+        <AddInquiryDialog
+          onClose={() => setAddDialog(null)}
+          onCreated={created => {
+            setEnquiries(prev => [created, ...prev]);
+            setAddDialog(null);
+            showToast('Inquiry logged.', 'success');
+            router.push(ADD_DIALOG_DESTINATIONS.inquiry);
+          }}
+        />
+      )}
+      {addDialog === 'leave' && (
+        <RequestLeaveDialog
+          onClose={() => setAddDialog(null)}
+          onCreated={() => {
+            setAddDialog(null);
+            retryExtra();
+            router.push(ADD_DIALOG_DESTINATIONS.leave);
+          }}
+        />
+      )}
+      {addDialog === 'shift' && (
+        <CreateShiftDialog
+          onClose={() => setAddDialog(null)}
+          defaultDate={today}
+          onCreated={shiftDate => {
+            setAddDialog(null);
+            retryExtra();
+            router.push(`${ADD_DIALOG_DESTINATIONS.shift}?date=${shiftDate}`);
+          }}
+        />
+      )}
+      {addDialog === 'payroll' && (
+        <AddPayrollEntryDialog
+          onClose={() => setAddDialog(null)}
+          onCreated={() => {
+            setAddDialog(null);
+            router.push(ADD_DIALOG_DESTINATIONS.payroll);
+          }}
+        />
+      )}
     </main>
   );
 }

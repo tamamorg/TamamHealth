@@ -1409,8 +1409,8 @@ export default function PharmacyPage() {
 
       {/* Restock modal — top up an existing inventory line with quantity + optional batch/expiry */}
       {restockTarget && (
-        <Modal onClose={() => setRestockTarget(null)}>
-          <div className="modal-content card-elevated p-6 max-w-md w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        <Modal onClose={() => setRestockTarget(null)} width={448}>
+          <div className="modal-content card-elevated p-6 w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-semibold">{t('pharmacy.receiveStock')}</h3>

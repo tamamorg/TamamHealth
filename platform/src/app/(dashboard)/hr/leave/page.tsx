@@ -8,20 +8,20 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ClipboardList, Plus, X } from '@/components/icons/lucide';
-import Modal from '@/components/Modal';
+import { ClipboardList, Plus } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import RequestLeaveDialog from '@/components/create-dialogs/RequestLeaveDialog';
 import EhrListHeader, { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
-import type { LeaveRequestDoc, LeaveStatus, LeaveType } from '@/lib/db-types-hr';
+import type { LeaveRequestDoc, LeaveStatus } from '@/lib/db-types-hr';
 import {
-  HrPageShell, LEAVE_STATUSES, LEAVE_TYPES, STATUS_TOKENS, StaffCell, Th,
+  HrPageShell, LEAVE_STATUSES, STATUS_TOKENS, StaffCell, Th,
   parseLeaveStatusFromParams, useHrContext, useUrlParams,
 } from '../hr-shared';
 
 export default function HrLeavePage() {
-  const { t, currentUser, users, facilityId, facilityName, isApprover, showToast } = useHrContext();
+  const { t, currentUser, isApprover, showToast } = useHrContext();
   const searchParams = useSearchParams();
   const updateUrlParams = useUrlParams('/hr/leave');
 
@@ -31,12 +31,6 @@ export default function HrLeavePage() {
     () => parseLeaveStatusFromParams(searchParams ?? new URLSearchParams()),
   );
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    userId: '', leaveType: 'annual' as LeaveType,
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-    reason: '',
-  });
 
   const reload = useCallback(async () => {
     const { getAllLeaveRequests } = await import('@/lib/services/leave-service');
@@ -60,32 +54,6 @@ export default function HrLeavePage() {
   const setStatusFilterAndUrl = (status: LeaveStatus | 'all') => {
     setStatusFilter(status);
     updateUrlParams({ status: status === 'all' ? null : status });
-  };
-
-  const handleRequestLeave = async () => {
-    if (!form.userId) { showToast(t('hr.selectStaffMember'), 'error'); return; }
-    if (form.endDate < form.startDate) { showToast(t('hr.endDateAfterStart'), 'error'); return; }
-    const user = users.find(u => u._id === form.userId);
-    if (!user) return;
-    try {
-      const { requestLeave } = await import('@/lib/services/leave-service');
-      await requestLeave({
-        userId: user._id, userName: user.name, role: user.role,
-        facilityId: user.hospitalId || facilityId || '',
-        facilityName: user.hospitalName || facilityName,
-        leaveType: form.leaveType,
-        startDate: form.startDate, endDate: form.endDate,
-        reason: form.reason.trim() || undefined,
-        orgId: user.orgId,
-      });
-      showToast(t('hr.leaveSubmittedFor', { name: user.name }), 'success');
-      setOpen(false);
-      setForm({ userId: '', leaveType: 'annual', startDate: new Date().toISOString().slice(0, 10), endDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10), reason: '' });
-      reload();
-    } catch (err) {
-      console.error(err);
-      showToast(t('hr.leaveSubmitFailed'), 'error');
-    }
   };
 
   const decide = async (id: string, status: 'approved' | 'rejected') => {
@@ -221,52 +189,10 @@ export default function HrLeavePage() {
       </div>
 
       {open && (
-        <Modal onClose={() => setOpen(false)}>
-          <div className="modal-content card-elevated p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">{t('hr.requestLeave')}</h3>
-              <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
-                <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
-                  <option value="">{t('hr.selectStaffOption')}</option>
-                  {(isApprover ? users : users.filter(u => u._id === currentUser?._id)).map(u => (
-                    <option key={u._id} value={u._id}>{u.name} ({u.role.replace(/_/g, ' ')})</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelType')}</label>
-                  <Select value={form.leaveType} onChange={e => setForm({ ...form, leaveType: e.target.value as LeaveType })}>
-                    {LEAVE_TYPES.map(lt => <option key={lt.id} value={lt.id}>{t(`hr.leaveType_${lt.id}`)}</option>)}
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStart')}</label>
-                  <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelEnd')}</label>
-                  <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelReason')}</label>
-                <textarea rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder={t('hr.optional')} />
-              </div>
-            </div>
-            <hr className="section-divider" />
-            <div className="flex gap-2 mt-2">
-              <button onClick={() => setOpen(false)} className="btn btn-secondary flex-1">{t('hr.cancel')}</button>
-              <button onClick={handleRequestLeave} className="btn btn-primary flex-1">{t('hr.submit')}</button>
-            </div>
-          </div>
-        </Modal>
+        <RequestLeaveDialog
+          onClose={() => setOpen(false)}
+          onCreated={() => { setOpen(false); reload(); }}
+        />
       )}
     </HrPageShell>
   );

@@ -313,8 +313,8 @@ export default function AssetsPage() {
 
         {/* Maintenance modal */}
         {serviceFor && (
-          <Modal onClose={() => setServiceFor(null)}>
-            <div className="modal-content card-elevated p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+          <Modal onClose={() => setServiceFor(null)} width={448}>
+            <div className="modal-content card-elevated p-6 w-full" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-base font-semibold">{t('equipment.logServiceTitle')}</h3>
