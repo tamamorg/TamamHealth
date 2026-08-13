@@ -4,13 +4,13 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Calendar,
-  ClipboardPen,
   HelpCircle,
   LayoutDashboard,
   LogOut,
   MessageSquare,
   Plus,
   Search,
+  Send,
   Settings,
   Users,
   X,
@@ -350,10 +350,11 @@ export default function EhrTopRail() {
             title={t('frontDesk.registerNewPatient')}
             data-track="patient.create"
           >
-            {/* The intake form's clipboard-and-pen, not a person-plus: starting
-                a patient here is the same act as the intake module's, so the
-                header wears the icon the user already associates with it. */}
-            <ClipboardPen className="w-4 h-4" />
+            {/* The intake form's kite, not a person-plus: starting a patient
+                here is the same act as the intake module's, so the header
+                wears the one glyph the intake form carries everywhere — nav
+                item, front-desk strip, clinical strip, intake page. */}
+            <Send className="w-4 h-4" />
           </button>
         )}
         <QuickActions notificationCount={unreadCount} />

@@ -1339,6 +1339,7 @@ export default function EhrClinicalDashboard({
             aria-label="Intake Form"
             onClick={() => setIntakeOpen(true)}
           >
+            {/* Same intake glyph as the nav item and the front-desk strip. */}
             <Send className="w-4 h-4" /> Intake Form
           </button>
         </div>

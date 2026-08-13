@@ -14,7 +14,7 @@ import type {
   PatientDoc,
   PatientIntakeFormDoc,
 } from '@/lib/db-types';
-import { ClipboardPen, X } from '@/components/icons/lucide';
+import { Send, X } from '@/components/icons/lucide';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import SendIntakeFormsModal from '@/components/intake/SendIntakeFormsModal';
 
@@ -363,7 +363,7 @@ export default function PatientIntakePage() {
                         <td>{formatDate(form.receivedAt || form.requestedAt)}</td>
                         <td>
                           <span className="inline-flex items-center gap-2">
-                            <ClipboardPen className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                            <Send className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
                             {form.patientName}
                           </span>
                         </td>
