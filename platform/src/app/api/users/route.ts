@@ -10,9 +10,15 @@ import {
 } from '@/lib/api-auth';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+// Reading the staff directory is org-scoped (buildScopeFromAuth) and the rows
+// come back through redactUserForClient — it is a colleague list, not PHI.
+// `hospital_manager` runs the facility's roster, shifts, leave and payroll off
+// exactly this list, and is the role the Facility Management dashboard belongs
+// to, so it reads here alongside medical_superintendent. Writes stay narrower:
+// only WRITE_ROLES may create or change an account.
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
-  'pharmacist', 'medical_superintendent', 'hrio',
+  'pharmacist', 'medical_superintendent', 'hospital_manager', 'hrio',
 ];
 const WRITE_ROLES: UserRole[] = [
   'super_admin', 'org_admin',

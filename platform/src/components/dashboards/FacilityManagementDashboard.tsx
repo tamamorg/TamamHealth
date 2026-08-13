@@ -24,8 +24,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  Activity, Users, BedDouble, Wallet, UserCheck, Clock,
-  CalendarClock, AlertTriangle, RefreshCw, Phone, XCircle, Check, X,
+  Activity, Wallet, UserCheck,
+  AlertTriangle, RefreshCw, Phone, XCircle, Check, X,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -41,11 +41,11 @@ import EmptyState from '@/components/EmptyState';
 import { formatMoney } from '@/lib/format-utils';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import { getRoleConfig } from '@/lib/permissions';
-import { buildAddMenuEntries } from '@/lib/people-nav';
+import { buildAddMenuEntries, usersHrefForRole } from '@/lib/people-nav';
 import { ROLE_LABEL } from '@/lib/role-display';
 import {
-  ENQUIRY_STATUS_LABELS, deriveEnquiryStatus, enquiryType, enquiryAssignee, summariseEnquiries,
-  getPatientEnquiries, type EnquiryStatus,
+  ENQUIRY_STATUS_LABELS, ENQUIRY_STATUSES, deriveEnquiryStatus, enquiryType, enquiryAssignee,
+  summariseEnquiries, getPatientEnquiries, type EnquiryStatus,
 } from '@/lib/services/enquiry-service';
 import type { MessageDoc, UserDoc, PatientDoc, StaffScheduleDoc } from '@/lib/db-types';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
@@ -64,7 +64,6 @@ const WeeklyActivityChart = dynamic(() => import('./_FacilityCharts').then(m => 
 
 const CHART_BLUE = '#2a78d6';   // appointments
 const CHART_GREEN = '#199e70';  // new patients
-const CHART_RED = '#e34948';    // canceled
 const CASH_RECEIVED = '#0ca30c';
 const CASH_PENDING = '#eda100';
 const CASH_PENDING_TEXT = '#a16207'; // legible amber for text on light cards
@@ -133,6 +132,9 @@ export interface FacilityOverviewInput {
   schedules: StaffScheduleDoc[];
   staffingGaps: StaffingGap[];
   availableProviderIds: Set<string>;
+  /** Where this role reads the staff list. The HR module's "Staff Roster" was
+   *  the same roster as the accounts page, so every staff figure links here. */
+  usersHref: string;
   availableBeds: number;
   billing: { totalRevenue: number; totalOutstanding: number } | null;
 }
@@ -157,12 +159,14 @@ export interface FacilityInquiryRow {
   assignee: string | null;
 }
 
-export interface FacilityAvailabilityRow {
+/** A row on the Active Staff queue tab — enabled accounts marked available
+ *  today, shaped like the other two tabs' rows. */
+export interface FacilityStaffRow {
   id: string;
   name: string;
   role: string;
   department: string;
-  /** e.g. "Morning · 08:00–16:00", or null when today carries no schedule row for them. */
+  /** e.g. "Morning · 08:00–16:00", or null when today carries no schedule row. */
   shift: string | null;
 }
 
@@ -186,18 +190,18 @@ export interface FacilityOverview {
   /** Total matches behind `inquiryRows` (which is capped at 5 idle / 20 while
    *  searching) — kept distinct so a caller can tell "5 of 5" from "5 of 40". */
   inquiryMatchCount: number;
-  availabilityRows: FacilityAvailabilityRow[];
   /** Pending leave requests (status === 'pending'), filtered by the same
    *  `search` text as the inquiries preview — the Pending Leave tab's queue. */
   pendingLeaveRows: FacilityLeaveRow[];
-  /** Today's cover per shift type, absentees excluded. */
-  shiftBreakdown: { key: string; label: string; count: number; accent: string }[];
-  /** Approved leave starting today or later — the next five. */
-  upcomingLeave: { id: string; name: string; leaveType: string; startDate: string; days: number }[];
-  /** Total approved-and-upcoming, which may exceed the five listed. */
-  upcomingLeaveCount: number;
-  /** Headcount per role, busiest first. */
-  roleCounts: { role: string; label: string; count: number }[];
+  /** Enabled accounts marked available today: the queue tab's rows, its pill
+   *  count, and the roster link that reproduces it. `count` is '—' when the
+   *  users fetch failed. */
+  activeStaff: {
+    rows: FacilityStaffRow[];
+    count: number | string;
+    href: string;
+    unavailable: boolean;
+  };
   cashFlow: { received: number; pending: number; totalInvoice: number };
 }
 
@@ -211,13 +215,16 @@ export interface FacilityOverview {
 export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOverview {
   const {
     today, search, users, usersUnavailable, patients, enquiries, leave,
-    schedules, staffingGaps, availableProviderIds, availableBeds, billing,
+    schedules, staffingGaps, availableProviderIds, availableBeds, billing, usersHref,
   } = input;
 
   const doctors = users.filter(u => DOCTOR_ROLES.has(u.role));
   const nurses = users.filter(u => NURSE_ROLES.has(u.role));
-  const activeStaff = users.filter(u => u.isActive !== false);
-  const availableStaff = users.filter(u => availableProviderIds.has(u._id));
+  // One staff-state figure, not two: "active" (an enabled account) barely moved
+  // off Total Staff, so the useful number is the intersection — enabled *and*
+  // marked available today. It reads beside the queue heading rather than in the
+  // Facility Overview rail, so the count a manager acts on sits with the work.
+  const activeStaff = users.filter(u => u.isActive !== false && availableProviderIds.has(u._id));
   const pendingLeave = leave.filter(l => l.status === 'pending');
   const unfilledShifts = staffingGaps.reduce((sum, g) => sum + g.gap, 0);
   const enquirySummary = summariseEnquiries(enquiries);
@@ -227,19 +234,17 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
   const staffTone = usersUnavailable ? ('warning' as const) : undefined;
 
   const metrics: FacilityOverviewMetric[] = [
-    { key: 'staff-total', label: 'Total Staff', value: staffCount(users.length), href: '/hr?tab=roster', tone: staffTone },
-    { key: 'staff-active', label: 'Active Staff', value: staffCount(activeStaff.length), href: '/hr?tab=roster&status=active', tone: staffTone },
-    { key: 'staff-available', label: 'Available Staff', value: staffCount(availableStaff.length), href: '/hr?tab=roster&availability=available', tone: staffTone },
-    { key: 'doctors', label: 'Total Doctors', value: staffCount(doctors.length), href: '/hr?tab=roster&role=doctor', tone: staffTone },
-    { key: 'nurses', label: 'Total Nurses', value: staffCount(nurses.length), href: '/hr?tab=roster&role=nurse', tone: staffTone },
+    { key: 'staff-total', label: 'Total Staff', value: staffCount(users.length), href: usersHref, tone: staffTone },
+    { key: 'doctors', label: 'Total Doctors', value: staffCount(doctors.length), href: usersHref, tone: staffTone },
+    { key: 'nurses', label: 'Total Nurses', value: staffCount(nurses.length), href: usersHref, tone: staffTone },
     { key: 'patients', label: 'Total Patients', value: patients.length, href: '/patients' },
     { key: 'beds', label: 'Available Beds', value: availableBeds, href: '/wards' },
     { key: 'inquiries-open', label: 'Open Inquiries', value: enquirySummary.open, href: '/inquiries?status=new', tone: enquirySummary.open > 0 ? 'warning' : undefined },
-    { key: 'leave-pending', label: 'Pending Leave', value: pendingLeave.length, href: '/hr?tab=leave&status=pending', tone: pendingLeave.length > 0 ? 'warning' : undefined },
-    { key: 'shifts-today', label: "Today's Shifts", value: schedules.length, href: `/hr?tab=schedule&date=${today}` },
+    { key: 'leave-pending', label: 'Pending Leave', value: pendingLeave.length, href: '/hr/leave?status=pending', tone: pendingLeave.length > 0 ? 'warning' : undefined },
+    { key: 'shifts-today', label: "Today's Shifts", value: schedules.length, href: `/hr/schedule?date=${today}` },
     // "Unfilled" = short against a configured per-shift minimum, not a vacant
     // position record — this data model has no such record (see getStaffingGaps).
-    { key: 'shifts-unfilled', label: 'Unfilled Shifts', value: unfilledShifts, href: '/hr?tab=schedule&gaps=1', tone: unfilledShifts > 0 ? 'danger' : undefined },
+    { key: 'shifts-unfilled', label: 'Unfilled Shifts', value: unfilledShifts, href: '/hr/schedule?gaps=1', tone: unfilledShifts > 0 ? 'danger' : undefined },
   ];
 
   // Recent Inquiries: the idle view is a top-5 digest of the newest (callers
@@ -269,21 +274,6 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
     };
   });
 
-  const availabilityRows: FacilityAvailabilityRow[] = users
-    .filter(u => u.isActive !== false && availableProviderIds.has(u._id))
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .slice(0, 5)
-    .map(u => {
-      const shift = schedules.find(s => s.userId === u._id);
-      return {
-        id: u._id,
-        name: u.name,
-        role: ROLE_LABEL[u.role] || u.role,
-        department: u.department || u.hospitalName || 'General',
-        shift: shift ? `${titleCase(shift.shiftType)} · ${shift.startTime}–${shift.endTime}` : null,
-      };
-    });
-
   // Pending Leave tab: same idle-digest-free, search-widens shape as HR's own
   // landing dashboard (`dashboard/hr/page.tsx`'s `filteredPending`) — no cap,
   // since a facility's pending-decision queue runs short by nature.
@@ -306,39 +296,21 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
     status: r.status,
   }));
 
-  // Today's cover, by shift. Absent staff are excluded — a roster line for
-  // someone who called in sick is not cover.
-  const covered = schedules.filter(s => s.status !== 'absent');
-  const shiftBreakdown = [
-    { key: 'morning', label: 'Morning', count: covered.filter(s => s.shiftType === 'morning').length, accent: '#15795C' },
-    { key: 'afternoon', label: 'Afternoon', count: covered.filter(s => s.shiftType === 'afternoon').length, accent: '#E4A84B' },
-    { key: 'night', label: 'Night', count: covered.filter(s => s.shiftType === 'night').length, accent: '#015697' },
-    { key: 'on_call', label: 'On call', count: covered.filter(s => s.isOnCall).length, accent: '#2191D0' },
-  ];
-
-  // Approved leave that has not started yet — the absences to plan around.
-  const upcomingLeave = leave
-    .filter(l => l.status === 'approved' && l.startDate >= today)
-    .sort((a, b) => a.startDate.localeCompare(b.startDate))
-    .slice(0, 5)
-    .map(l => ({
-      id: l._id,
-      name: l.userName,
-      leaveType: l.leaveType,
-      startDate: l.startDate,
-      days: l.days,
-    }));
-  const upcomingLeaveCount = leave.filter(l => l.status === 'approved' && l.startDate >= today).length;
-
-  // Headcount per role, busiest first — the shape of the workforce.
-  const roleCounts = Object.entries(
-    users.reduce<Record<string, number>>((acc, u) => {
-      acc[u.role] = (acc[u.role] || 0) + 1;
-      return acc;
-    }, {}),
-  )
-    .map(([role, count]) => ({ role, label: ROLE_LABEL[role as UserDoc['role']] || role.replace(/_/g, ' '), count }))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  // Active Staff rows — the same `search` text as the other two tabs, matched
+  // against the fields the row actually shows.
+  const activeStaffRows: FacilityStaffRow[] = activeStaff
+    .map(u => {
+      const shift = schedules.find(s => s.userId === u._id);
+      return {
+        id: u._id,
+        name: u.name,
+        role: ROLE_LABEL[u.role] || u.role.replace(/_/g, ' '),
+        department: u.department || u.hospitalName || 'General',
+        shift: shift ? `${titleCase(shift.shiftType)} · ${shift.startTime}–${shift.endTime}` : null,
+      };
+    })
+    .filter(r => !q || `${r.name} ${r.role} ${r.department}`.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const received = billing?.totalRevenue ?? 0;
   const pendingAmount = billing?.totalOutstanding ?? 0;
@@ -347,12 +319,13 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
     metrics,
     inquiryRows,
     inquiryMatchCount: filteredEnquiries.length,
-    availabilityRows,
     pendingLeaveRows,
-    shiftBreakdown,
-    upcomingLeave,
-    upcomingLeaveCount,
-    roleCounts,
+    activeStaff: {
+      rows: activeStaffRows,
+      count: staffCount(activeStaff.length),
+      href: usersHref,
+      unavailable: usersUnavailable,
+    },
     cashFlow: { received, pending: pendingAmount, totalInvoice: received + pendingAmount },
   };
 }
@@ -363,7 +336,30 @@ const EXTRA_LABELS: Record<ExtraKey, string> = {
   leave: 'leave requests', schedule: 'shift schedule', gaps: 'staffing gaps',
 };
 
-type QueueTab = 'inquiries' | 'leave';
+type QueueTab = 'inquiries' | 'leave' | 'staff';
+
+/** The inquiry ladder, as the row pill's picker renders it. */
+const ENQUIRY_STATUS_OPTIONS = ENQUIRY_STATUSES.map(value => ({ value, label: ENQUIRY_STATUS_LABELS[value] }));
+
+/** A pending leave request's two outcomes, plus the rung it is already on so
+ *  the picker opens showing the current state rather than a decision. */
+const LEAVE_DECISION_OPTIONS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approve' },
+  { value: 'rejected', label: 'Reject' },
+];
+
+const CENTER_TITLES: Record<QueueTab, string> = {
+  inquiries: 'Recent Inquiries',
+  leave: 'Pending Leave',
+  staff: 'Active Staff',
+};
+
+const SEARCH_PLACEHOLDERS: Record<QueueTab, string> = {
+  inquiries: 'Search inquiries by name, type, or assignee…',
+  leave: 'Search leave requests by name, role, or type…',
+  staff: 'Search staff by name, role, or department…',
+};
 
 // Same approver role list as the full HR page's leave tab (src/app/(dashboard)/hr/page.tsx)
 // and its own landing dashboard (dashboard/hr/page.tsx) — who can decide a
@@ -466,6 +462,11 @@ export default function FacilityManagementDashboard() {
 
   const usersUnavailable = !!usersError && users.length === 0;
 
+  // Every staff figure on this page links to the one staff list this role has.
+  // The four roles that reach /facility-management all resolve to one; the
+  // fallback only guards the type, and lands on the page they are already on.
+  const staffListHref = usersHrefForRole(currentUser?.role || '') || '/facility-management';
+
   const overview = useMemo(() => buildFacilityOverview({
     today,
     search: queueSearch,
@@ -477,13 +478,15 @@ export default function FacilityManagementDashboard() {
     schedules,
     staffingGaps,
     availableProviderIds,
+    usersHref: staffListHref,
     availableBeds,
     billing,
-  }), [today, queueSearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, availableBeds, billing]);
+  }), [today, queueSearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, staffListHref, availableBeds, billing]);
 
-  // Weekly patient activity (real: registrations, appointments, cancellations).
+  // Weekly patient activity (real: registrations and kept appointments —
+  // cancellations are excluded from both series, not charted separately).
   const weekly = useMemo(() => {
-    const rows = WEEKDAYS.map(d => ({ day: d, newPatients: 0, appointments: 0, canceled: 0 }));
+    const rows = WEEKDAYS.map(d => ({ day: d, newPatients: 0, appointments: 0 }));
     const start = new Date(); start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() - weekdayIndex(start)); // Monday of this week
     const end = new Date(start); end.setDate(end.getDate() + 7);
@@ -500,8 +503,7 @@ export default function FacilityManagementDashboard() {
     for (const a of appointments) {
       const i = inWeek(a.appointmentDate);
       if (i < 0) continue;
-      if (a.status === 'cancelled') rows[i].canceled += 1;
-      else rows[i].appointments += 1;
+      if (a.status !== 'cancelled') rows[i].appointments += 1;
     }
     return rows;
   }, [patients, appointments]);
@@ -529,30 +531,22 @@ export default function FacilityManagementDashboard() {
     setEnquiries(prev => prev.map(m => (m._id === id ? { ...m, enquiryStatus: status } : m)));
   };
 
-  // Quick triage actions from the dashboard's own queue — full triage
-  // (reassignment, notes) stays on /inquiries, which owns that surface.
-  const markContacted = async (id: string) => {
+  // Quick triage from the dashboard's own queue — the row's status pill is a
+  // picker, so any rung is one click away; full triage (reassignment, notes)
+  // stays on /inquiries, which owns that surface.
+  const setEnquiryStatusAction = async (id: string, status: EnquiryStatus) => {
     try {
       const { setEnquiryStatus } = await import('@/lib/services/enquiry-service');
-      await setEnquiryStatus(id, 'contacted');
-      updateEnquiryStatusLocally(id, 'contacted');
-      showToast('Marked as contacted.', 'success');
+      await setEnquiryStatus(id, status);
+      updateEnquiryStatusLocally(id, status);
+      showToast(`Inquiry marked ${ENQUIRY_STATUS_LABELS[status].toLowerCase()}.`, 'success');
     } catch (err) {
       console.error('Failed to update inquiry status', err);
       showToast('Could not update the inquiry.', 'error');
     }
   };
-  const closeEnquiry = async (id: string) => {
-    try {
-      const { setEnquiryStatus } = await import('@/lib/services/enquiry-service');
-      await setEnquiryStatus(id, 'closed');
-      updateEnquiryStatusLocally(id, 'closed');
-      showToast('Inquiry closed.', 'success');
-    } catch (err) {
-      console.error('Failed to update inquiry status', err);
-      showToast('Could not update the inquiry.', 'error');
-    }
-  };
+  const markContacted = (id: string) => setEnquiryStatusAction(id, 'contacted');
+  const closeEnquiry = (id: string) => setEnquiryStatusAction(id, 'closed');
 
   const isLeaveApprover = !!currentUser && LEAVE_APPROVER_ROLES.has(currentUser.role);
 
@@ -674,15 +668,22 @@ export default function FacilityManagementDashboard() {
 
   // Empty state, its action, and the search placeholder all follow the active
   // tab — each queue tab reads its own data source and its own failure mode.
-  const emptyTitle = activeTab === 'inquiries'
-    ? (inquiriesFailed ? "Couldn't load inquiries" : hasQuery ? 'No inquiries match your search' : 'No recent inquiries')
-    : (leaveFailed ? "Couldn't load leave requests" : hasQuery ? 'No leave requests match your search' : 'No leave requests waiting on a decision');
-  const emptyActionLabel = activeTab === 'inquiries'
-    ? (inquiriesFailed ? 'Retry' : 'View all')
-    : (leaveFailed ? 'Retry' : 'View all');
-  const onEmptyAction = activeTab === 'inquiries'
-    ? (inquiriesFailed ? retryExtra : () => router.push('/inquiries'))
-    : (leaveFailed ? retryExtra : () => router.push('/hr?tab=leave'));
+  const staffFailed = overview.activeStaff.unavailable || loadErrors.has('availability');
+  const emptyTitle = activeTab === 'staff'
+    ? (staffFailed ? "Couldn't load staff" : hasQuery ? 'No staff match your search' : 'No staff available right now')
+    : activeTab === 'inquiries'
+      ? (inquiriesFailed ? "Couldn't load inquiries" : hasQuery ? 'No inquiries match your search' : 'No recent inquiries')
+      : (leaveFailed ? "Couldn't load leave requests" : hasQuery ? 'No leave requests match your search' : 'No leave requests waiting on a decision');
+  const emptyActionLabel = activeTab === 'staff'
+    ? (staffFailed ? 'Retry' : 'View roster')
+    : activeTab === 'inquiries'
+      ? (inquiriesFailed ? 'Retry' : 'View all')
+      : (leaveFailed ? 'Retry' : 'View all');
+  const onEmptyAction = activeTab === 'staff'
+    ? (staffFailed ? retryAll : () => router.push(overview.activeStaff.href))
+    : activeTab === 'inquiries'
+      ? (inquiriesFailed ? retryExtra : () => router.push('/inquiries'))
+      : (leaveFailed ? retryExtra : () => router.push('/hr/leave'));
 
   const initialLoading = usersLoading || patientsLoading || wardsLoading || appointmentsLoading || extraLoading;
 
@@ -720,10 +721,13 @@ export default function FacilityManagementDashboard() {
         title="Facility Management"
         greetingName={currentUser.name}
         dateLabel={formatDateTitle(toIsoDate(new Date()))}
-        centerTitle={activeTab === 'inquiries' ? 'Recent Inquiries' : 'Pending Leave'}
+        centerTitle={CENTER_TITLES[activeTab]}
+        // Active Staff is a third queue tab, not a rail metric: the roster a
+        // manager works from reads like the other two lists.
         tabs={[
           { key: 'inquiries', label: 'Inquiries', count: overview.inquiryRows.length },
           { key: 'leave', label: 'Pending Leave', count: overview.pendingLeaveRows.length },
+          { key: 'staff', label: 'Active Staff', count: overview.activeStaff.rows.length },
         ]}
         // Neither queue is a single day's schedule — an inquiry stays open
         // across days and a leave request stays pending across days — so the
@@ -732,15 +736,26 @@ export default function FacilityManagementDashboard() {
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab as QueueTab)}
         searchValue={queueSearch}
-        searchPlaceholder={activeTab === 'inquiries'
-          ? 'Search inquiries by name, type, or assignee…'
-          : 'Search leave requests by name, role, or type…'}
+        searchPlaceholder={SEARCH_PLACEHOLDERS[activeTab]}
         onSearchChange={setQueueSearch}
         filters={[]}
         actions={[
-          { label: 'Find staff availability', icon: UserCheck, onClick: () => router.push('/hr?tab=roster&availability=available') },
+          { label: 'View staff accounts', icon: UserCheck, onClick: () => router.push(staffListHref) },
         ]}
-        rows={activeTab === 'inquiries'
+        rows={activeTab === 'staff'
+          ? overview.activeStaff.rows.map((r): EhrCareDashboardRow => ({
+              id: r.id,
+              title: r.name,
+              subtitle: r.role,
+              statusLabel: r.shift ? 'On shift' : 'Available',
+              statusTone: 'ready',
+              careTeam: r.role,
+              careTeamLabel: 'Role',
+              location: r.department,
+              locationLabel: 'Department',
+              locationSecondary: r.shift || undefined,
+            }))
+          : activeTab === 'inquiries'
           ? overview.inquiryRows.map((r): EhrCareDashboardRow => ({
               id: r.id,
               title: r.name,
@@ -751,6 +766,11 @@ export default function FacilityManagementDashboard() {
               status: r.status,
               statusLabel: r.statusLabel,
               statusTone: enquiryStatusTone(r.status),
+              // The pill is the control: every rung of the inquiry ladder is
+              // one pick away, instead of expanding the row for two buttons.
+              statusValue: r.status,
+              statusOptions: ENQUIRY_STATUS_OPTIONS,
+              onStatusChange: (value: string) => setEnquiryStatusAction(r.id, value as EnquiryStatus),
               careTeam: r.assignee || 'Unassigned',
               careTeamLabel: 'Assigned to',
               location: r.channel,
@@ -769,6 +789,15 @@ export default function FacilityManagementDashboard() {
               statusLabel: titleCase(r.leaveType),
               statusSecondary: `${r.days} day${r.days === 1 ? '' : 's'}`,
               statusTone: 'warning',
+              // Only an approver gets the picker; everyone else keeps a plain
+              // pill, matching who the service will actually let decide.
+              ...(isLeaveApprover && r.status === 'pending' ? {
+                statusValue: r.status,
+                statusOptions: LEAVE_DECISION_OPTIONS,
+                onStatusChange: (value: string) => {
+                  if (value === 'approved' || value === 'rejected') decideLeaveAction(r.id, value);
+                },
+              } : {}),
               careTeam: r.role ? titleCase(r.role) : undefined,
               careTeamLabel: 'Role',
               location: r.facility,
@@ -778,11 +807,6 @@ export default function FacilityManagementDashboard() {
             }))}
         metrics={overview.metrics}
         metricsTitle="Facility Overview"
-        metricsActions={[
-          { label: 'Manage Roster', icon: Users, onClick: () => router.push('/hr?tab=roster') },
-          { label: 'Schedule Shifts', icon: CalendarClock, onClick: () => router.push('/hr?tab=schedule') },
-          { label: 'View Wards', icon: BedDouble, onClick: () => router.push('/wards') },
-        ]}
         emptyTitle={emptyTitle}
         emptyActionLabel={emptyActionLabel}
         onEmptyAction={onEmptyAction}
@@ -798,7 +822,6 @@ export default function FacilityManagementDashboard() {
                 series={[
                   { key: 'appointments', name: 'Appointments', color: CHART_BLUE },
                   { key: 'newPatients', name: 'New Patients', color: CHART_GREEN },
-                  { key: 'canceled', name: 'Canceled', color: CHART_RED },
                 ]}
               />
             </div>
@@ -810,233 +833,48 @@ export default function FacilityManagementDashboard() {
         headerExtra={addMenuItems.length > 0 ? (
           <EhrRailMenu variant="primary" label="Add" ariaLabel="Add a new record" items={addMenuItems} menuTitle="Add" />
         ) : undefined}
-        // Cash Flow and Staff Availability sit directly under the weekly
-        // activity chart — `railContent` renders immediately after it.
+        // Cash Flow sits directly under the weekly activity chart —
+        // `railContent` renders immediately after it.
         railContent={(
-          <>
-            {/* Cash Flow */}
-            <div className="dash-card overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                <Wallet className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cash Flow</span>
-              </div>
-              {loadErrors.has('billing') ? (
-                <EmptyState
-                  icon={AlertTriangle}
-                  title="Couldn't load billing data"
-                  message="Billing figures failed to load. Try again."
-                  action={{ label: 'Retry', onClick: retryExtra }}
-                />
-              ) : (
-                // Stacked, not side-by-side: the rail is far narrower than the
-                // three-column grid this card used to sit in.
-                <div className="flex flex-col items-center gap-3 p-4">
-                  <div className="relative flex-shrink-0" style={{ width: 124, height: 124 }}>
-                    <CashFlowDonut data={cashData} />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{formatMoney(overview.cashFlow.totalInvoice)}</span>
-                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Total invoice</span>
-                    </div>
-                  </div>
-                  <div className="w-full space-y-2">
-                    <div className="rounded-xl p-2.5" style={{ background: 'rgba(12,163,12,0.10)', border: '1px solid rgba(12,163,12,0.28)' }}>
-                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Received Amount</p>
-                      <p className="text-base font-bold" style={{ color: CASH_RECEIVED }}>{formatMoney(overview.cashFlow.received)}</p>
-                    </div>
-                    <div className="rounded-xl p-2.5" style={{ background: 'rgba(237,161,0,0.12)', border: '1px solid rgba(237,161,0,0.35)' }}>
-                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Pending Amount</p>
-                      <p className="text-base font-bold" style={{ color: CASH_PENDING_TEXT }}>{formatMoney(overview.cashFlow.pending)}</p>
-                    </div>
+          <div className="dash-card overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
+              <Wallet className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cash Flow</span>
+            </div>
+            {loadErrors.has('billing') ? (
+              <EmptyState
+                icon={AlertTriangle}
+                title="Couldn't load billing data"
+                message="Billing figures failed to load. Try again."
+                action={{ label: 'Retry', onClick: retryExtra }}
+              />
+            ) : (
+              // Donut left, figures right. The ring carries the weight here —
+              // the two amounts are captions on it, so they stay small enough
+              // that the whole card reads in one glance.
+              <div className="flex items-center gap-2.5 p-3">
+                <div className="relative flex-shrink-0" style={{ width: 116, height: 116 }}>
+                  <CashFlowDonut data={cashData} />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2">
+                    <span className="text-[11px] font-bold leading-tight text-center" style={{ color: 'var(--text-primary)' }}>{formatMoney(overview.cashFlow.totalInvoice)}</span>
+                    <span className="text-[8px] uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Total</span>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* Staff Availability */}
-            <div className="dash-card overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                <div className="flex items-center gap-2">
-                  <UserCheck className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Staff Availability</span>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(12,163,12,0.10)', border: '1px solid rgba(12,163,12,0.28)' }}>
+                    <p className="text-[8.5px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Received</p>
+                    <p className="text-[11px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_RECEIVED }}>{formatMoney(overview.cashFlow.received)}</p>
+                  </div>
+                  <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(237,161,0,0.12)', border: '1px solid rgba(237,161,0,0.35)' }}>
+                    <p className="text-[8.5px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Pending</p>
+                    <p className="text-[11px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_PENDING_TEXT }}>{formatMoney(overview.cashFlow.pending)}</p>
+                  </div>
                 </div>
-                <button
-                  onClick={() => router.push('/hr?tab=roster&availability=available')}
-                  className="text-[12px] font-medium"
-                  style={{ color: 'var(--accent-primary)' }}
-                  title="View all available staff"
-                  aria-label="View all available staff"
-                >
-                  View all
-                </button>
               </div>
-              {usersUnavailable ? (
-                <EmptyState
-                  icon={AlertTriangle}
-                  title="Couldn't load staff data"
-                  message="Staff records failed to load. Try again."
-                  action={{ label: 'Retry', onClick: () => reloadUsers() }}
-                />
-              ) : overview.availabilityRows.length === 0 ? (
-                <EmptyState
-                  title="No staff available right now"
-                  message="Nobody on the roster is currently marked available."
-                  action={{ label: 'View roster', onClick: () => router.push('/hr?tab=roster') }}
-                />
-              ) : (
-                <div className="p-2">
-                  {overview.availabilityRows.map(row => (
-                    <div key={row.id} className="flex items-center gap-3 px-3 py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style={{ background: 'var(--accent-primary)' }}>
-                        {(row.name || '?').split(' ').map(s => s[0]).slice(0, 2).join('')}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{row.name}</div>
-                        <div className="text-[10.5px] truncate" style={{ color: 'var(--text-muted)' }}>{row.role} · {row.department}</div>
-                      </div>
-                      <span className="text-[11px] font-semibold text-right" style={{ color: 'var(--color-success)' }}>
-                        {row.shift || 'Available'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
+            )}
+          </div>
         )}
-      >
-        {/* Workforce panels, folded in from the People Overview page so this is
-            the single operational home. All three read the data this dashboard
-            already loads — no extra fetches. */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3" style={{ minWidth: 0 }}>
-          {/* Today's shifts */}
-          <div className="dash-card">
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Today&apos;s Shifts</span>
-              </div>
-              <button
-                onClick={() => router.push(`/hr?tab=schedule&date=${today}`)}
-                className="text-[12px] font-medium"
-                style={{ color: 'var(--accent-primary)' }}
-                title="Open today's shift schedule"
-                aria-label="Open today's shift schedule"
-              >
-                View all
-              </button>
-            </div>
-            {loadErrors.has('schedule') ? (
-              <EmptyState
-                icon={AlertTriangle}
-                title="Couldn't load shifts"
-                message="Today's schedule failed to load. Try again."
-                action={{ label: 'Retry', onClick: retryExtra }}
-              />
-            ) : (
-              <div className="p-4 space-y-2">
-                {overview.shiftBreakdown.map(shift => (
-                  <div key={shift.key} className="flex items-center justify-between text-[12.5px]">
-                    <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-                      <span className="w-2 h-2 rounded-full" style={{ background: shift.accent }} />
-                      {shift.label}
-                    </span>
-                    <span className="font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{shift.count}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Upcoming leave */}
-          <div className="dash-card">
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2">
-                <CalendarClock className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Upcoming Leave</span>
-              </div>
-              <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                {overview.upcomingLeaveCount} approved
-              </span>
-            </div>
-            {loadErrors.has('leave') ? (
-              <EmptyState
-                icon={AlertTriangle}
-                title="Couldn't load leave"
-                message="Leave requests failed to load. Try again."
-                action={{ label: 'Retry', onClick: retryExtra }}
-              />
-            ) : overview.upcomingLeave.length === 0 ? (
-              <EmptyState
-                title="No leave booked"
-                message="Nobody has approved leave starting from today."
-                action={{ label: 'View leave', onClick: () => router.push('/hr?tab=leave') }}
-              />
-            ) : (
-              <div className="p-2">
-                {overview.upcomingLeave.map(l => (
-                  <div key={l.id} className="flex items-center gap-3 px-3 py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12.5px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{l.name}</div>
-                      <div className="text-[10.5px]" style={{ color: 'var(--text-muted)' }}>
-                        <span className="capitalize">{l.leaveType}</span> · {l.startDate}
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(33, 145, 208, 0.14)', color: '#2191D0' }}>{l.days}d</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Roster by role */}
-          <div className="dash-card">
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Roster by Role</span>
-              </div>
-              <button
-                onClick={() => router.push('/hr?tab=roster')}
-                className="text-[12px] font-medium"
-                style={{ color: 'var(--accent-primary)' }}
-                title="Open the staff roster"
-                aria-label="Open the staff roster"
-              >
-                View all
-              </button>
-            </div>
-            {usersUnavailable ? (
-              <EmptyState
-                icon={AlertTriangle}
-                title="Couldn't load staff data"
-                message="Staff records failed to load. Try again."
-                action={{ label: 'Retry', onClick: () => reloadUsers() }}
-              />
-            ) : overview.roleCounts.length === 0 ? (
-              <EmptyState
-                title="No staff registered"
-                message="Nobody is on this facility's roster yet."
-                action={{ label: 'View roster', onClick: () => router.push('/hr?tab=roster') }}
-              />
-            ) : (
-              <div className="p-4 space-y-2">
-                {overview.roleCounts.map(entry => (
-                  <button
-                    key={entry.role}
-                    type="button"
-                    onClick={() => router.push(`/hr?tab=roster&role=${entry.role}`)}
-                    className="w-full flex items-center justify-between text-[12.5px]"
-                    title={`View ${entry.label} staff`}
-                  >
-                    <span style={{ color: 'var(--text-secondary)' }}>{entry.label}</span>
-                    <span className="font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{entry.count}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </EhrCareDashboard>
+      />
     </main>
   );
 }

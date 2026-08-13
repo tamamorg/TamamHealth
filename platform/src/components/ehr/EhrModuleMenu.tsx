@@ -25,7 +25,6 @@ export default function EhrModuleMenu({
   return (
     <div className="ehr-module-menu" role="menu">
       <div className="ehr-module-menu-head">
-        <strong>Tamam modules</strong>
         <span>{roleLabel}</span>
       </div>
       <div className="ehr-module-menu-scroll">

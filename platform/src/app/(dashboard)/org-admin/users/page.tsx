@@ -16,6 +16,7 @@ import { FilterSelect } from '@/components/filters';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import { generateTempPassword } from '@/lib/temp-password';
+import { canCreateUsers } from '@/lib/people-nav';
 
 const MIN_PASSWORD_LENGTH = 8;
 import type { UserDoc, HospitalDoc, UserRole } from '@/lib/db-types';
@@ -375,12 +376,17 @@ export default function OrgUsersPage() {
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={() => { setError(''); setFormPassword(generateTempPassword()); setShowPassword(true); setShowCreateModal(true); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: brandColor, color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-                >
-                  <Plus className="w-4 h-4" /> {t('orgUsers.createUser')}
-                </button>
+                {/* Read and write diverge here: the facility roles read this
+                    list as their staff roster, but /api/users' WRITE_ROLES is
+                    super_admin + org_admin, so anyone else would just 403. */}
+                {canCreateUsers(currentUser?.role || '') && (
+                  <button
+                    onClick={() => { setError(''); setFormPassword(generateTempPassword()); setShowPassword(true); setShowCreateModal(true); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: brandColor, color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    <Plus className="w-4 h-4" /> {t('orgUsers.createUser')}
+                  </button>
+                )}
               </>
             }
           />

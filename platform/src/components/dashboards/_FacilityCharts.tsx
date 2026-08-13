@@ -36,8 +36,10 @@ export function CashFlowDonut({ data }: { data: CashSlice[] }) {
         <Pie
           data={slices}
           dataKey="value"
-          innerRadius={44}
-          outerRadius={60}
+          // Percentages, not pixels: the card sizes this donut down to sit
+          // beside its figures, and fixed radii would clip the ring.
+          innerRadius="70%"
+          outerRadius="97%"
           paddingAngle={data.length > 1 ? 3 : 0}
           stroke="none"
         >
@@ -52,7 +54,9 @@ export interface WeeklyPoint {
   day: string;
   appointments: number;
   newPatients: number;
-  canceled: number;
+  /** Only present when a caller charts cancellations — `series` decides what
+   *  is actually drawn, so a point may legitimately omit it. */
+  canceled?: number;
 }
 
 export interface WeeklyActivityChartProps {
@@ -63,7 +67,9 @@ export interface WeeklyActivityChartProps {
 
 /** Weekly patient activity — area / line / stacked-bar, driven by ChartCard. */
 export function WeeklyActivityChart({ data, chartType, series }: WeeklyActivityChartProps) {
-  const legendProps = { wrapperStyle: { fontSize: 11 }, iconType: 'circle' as const };
+  // `nowrap` keeps the series on one line: the chart lives in a narrow rail,
+  // where recharts' default wrapping stacks two short labels vertically.
+  const legendProps = { wrapperStyle: { fontSize: 11, whiteSpace: 'nowrap' as const }, iconType: 'circle' as const };
 
   if (chartType === 'area') {
     return (

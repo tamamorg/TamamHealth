@@ -226,6 +226,9 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/appointments', '/telehealth', '/facility-assessments', '/data-quality',
       '/billing', '/payments', '/payments/claims', '/patient-intake',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
+      // The staff list. The HR module's own "Staff Roster" was the same roster
+      // under another name, so the accounts page is now the only one.
+      '/org-admin/users',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
     ],
     defaultDashboard: '/dashboard',
@@ -281,6 +284,9 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/reports', '/data-quality', '/vital-statistics', '/dhis2-export', '/public-stats',
       // Facility operations
       '/equipment', '/hr', '/dashboard/hr', '/inquiries',
+      // The staff list. The HR module's own "Staff Roster" was the same roster
+      // under another name, so the accounts page is now the only one.
+      '/org-admin/users',
       // Finance oversight
       '/billing', '/payments', '/payments/claims',
       // Clinical context (read). Lab/pharmacy are operational service queues run

@@ -19,7 +19,7 @@
 import type { UserRole } from './db-types';
 import type { NavIcon } from './permissions';
 import { isHrefAllowed } from '@/components/ehr/ehr-navigation';
-import { UserCheck, ClipboardList, CalendarClock, MessageSquare } from '@/components/icons/lucide';
+import { UserCheck, ClipboardList, CalendarClock, MessageSquare, Wallet } from '@/components/icons/lucide';
 
 /**
  * Where a role manages login credentials. Staff records and user accounts are
@@ -29,8 +29,22 @@ import { UserCheck, ClipboardList, CalendarClock, MessageSquare } from '@/compon
  */
 export function usersHrefForRole(role: UserRole | string): string | null {
   if (role === 'super_admin') return '/admin/users';
-  if (role === 'org_admin') return '/org-admin/users';
+  // The org-scoped accounts page is the single staff list: the separate HR
+  // "Staff Roster" was the same roster under another name and has been
+  // removed, so the roles that ran a facility read their people here too.
+  if (role === 'org_admin' || role === 'medical_superintendent' || role === 'hospital_manager') {
+    return '/org-admin/users';
+  }
   return null;
+}
+
+/**
+ * Who may CREATE an account, which is narrower than who may read the list:
+ * /api/users' WRITE_ROLES is super_admin and org_admin only, so offering
+ * "Add staff member" to a facility manager would just 403.
+ */
+export function canCreateUsers(role: UserRole | string): boolean {
+  return role === 'super_admin' || role === 'org_admin';
 }
 
 export interface PeopleNavContext {
@@ -58,12 +72,13 @@ export interface AddMenuEntry {
 export function buildAddMenuEntries({ role, allowedRoutes }: PeopleNavContext): AddMenuEntry[] {
   const usersHref = usersHrefForRole(role);
   const candidates: AddMenuEntry[] = [
-    ...(usersHref
+    ...(usersHref && canCreateUsers(role)
       ? [{ key: 'staff', label: 'Add staff member', href: `${usersHref}?new=1`, icon: UserCheck, description: 'Creates their login too' } as AddMenuEntry]
       : []),
     { key: 'inquiry', label: 'Add patient inquiry', href: '/inquiries?new=1', icon: MessageSquare, description: 'Log a call or walk-in' },
-    { key: 'shift', label: 'Create shift', href: '/hr?tab=schedule&new=1', icon: CalendarClock, description: 'Roster someone on duty' },
-    { key: 'leave', label: 'Record leave request', href: '/hr?tab=leave&new=1', icon: ClipboardList, description: 'Log time off' },
+    { key: 'shift', label: 'Create shift', href: '/hr/schedule?new=1', icon: CalendarClock, description: 'Roster someone on duty' },
+    { key: 'leave', label: 'Request leave', href: '/hr/leave?new=1', icon: ClipboardList, description: 'Log time off' },
+    { key: 'payroll', label: 'Add payroll entry', href: '/hr/payroll?new=1', icon: Wallet, description: 'Open this period\u2019s register' },
   ];
 
   return candidates.filter(entry => isHrefAllowed(entry.href, allowedRoutes));

@@ -4167,25 +4167,16 @@ html:has(.ehr-top-rail) {
   border-radius: 12px 12px 0 0;
 }
 
+/* Role label only — the "Tamam modules" title was dropped; the panel hangs off
+   the module trigger, so it does not need to name itself. */
 .ehr-module-menu-head {
-  padding: 12px 14px 10px;
+  padding: 10px 14px 9px;
   border-bottom: 1px solid var(--ehr-border);
   background: transparent;
 }
 
-.ehr-module-menu-head strong,
 .ehr-module-menu-head span {
   display: block;
-}
-
-.ehr-module-menu-head strong {
-  color: var(--ehr-text);
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.ehr-module-menu-head span {
-  margin-top: 2px;
   color: var(--ehr-muted);
   font-size: 11px;
   font-weight: 700;
@@ -4193,7 +4184,7 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-module-menu-scroll {
-  max-height: calc(min(560px, 100vh - 66px) - 58px);
+  max-height: calc(min(560px, 100vh - 66px) - 36px);
   overflow-y: auto;
   padding: 8px;
 }

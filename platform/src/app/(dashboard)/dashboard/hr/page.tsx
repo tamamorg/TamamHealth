@@ -211,7 +211,7 @@ export default function HRDashboardPage() {
         filters={[]}
         actions={[
           { label: t('hr.manageStaff'), icon: Users, onClick: () => router.push('/hr') },
-          { label: t('hr.newLeaveRequest'), icon: Plus, onClick: () => router.push('/hr?tab=leave'), tone: 'primary' },
+          { label: t('hr.newLeaveRequest'), icon: Plus, onClick: () => router.push('/hr/leave'), tone: 'primary' },
         ]}
         chartSeriesNames={['Pending', 'Approved']}
         chartItems={hrChartItems}
@@ -245,12 +245,12 @@ export default function HRDashboardPage() {
         ]}
         metricsTitle={t('hr.dashboardTitle')}
         metricsActions={[
-          { label: t('hr.scheduleShifts'), icon: Calendar, onClick: () => router.push('/hr?tab=schedule') },
-          { label: t('hr.payrollRegister'), icon: Wallet, onClick: () => router.push('/hr?tab=payroll') },
+          { label: t('hr.scheduleShifts'), icon: Calendar, onClick: () => router.push('/hr/schedule') },
+          { label: t('hr.payrollRegister'), icon: Wallet, onClick: () => router.push('/hr/payroll') },
         ]}
         emptyTitle={t('hr.noPendingLeave')}
         emptyActionLabel={t('hr.viewAll')}
-        onEmptyAction={() => router.push('/hr?tab=leave')}
+        onEmptyAction={() => router.push('/hr/leave')}
       />
     </main>
   );

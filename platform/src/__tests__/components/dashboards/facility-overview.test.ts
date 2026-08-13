@@ -6,9 +6,8 @@
  *
  * Every input is already resolved and already scope-filtered, so this suite
  * only exercises the assembling logic: metric values and their deep links, the
- * degraded /api/users path, and the three workforce panels folded in from the
- * People Overview page. `today` is passed in, so nothing here depends on the
- * wall clock. Mirrors the house pattern in components/doctor/worklist.test.ts.
+ * degraded /api/users path, and the queues. `today` is passed in, so nothing
+ * here depends on the wall clock. Mirrors the house pattern in components/doctor/worklist.test.ts.
  */
 
 import {
@@ -52,6 +51,7 @@ function input(over: Partial<FacilityOverviewInput> = {}): FacilityOverviewInput
     schedules: [],
     staffingGaps: [],
     availableProviderIds: new Set<string>(),
+    usersHref: '/org-admin/users',
     availableBeds: 0,
     billing: null,
     ...over,
@@ -62,7 +62,7 @@ const metric = (out: ReturnType<typeof buildFacilityOverview>, key: string) =>
   out.metrics.find(m => m.key === key)!;
 
 describe('metrics', () => {
-  test('counts staff by role and links each metric to its pre-filtered page', () => {
+  test('counts staff by role and links each metric to a destination', () => {
     const out = buildFacilityOverview(input({
       users: [
         user({ _id: 'u1', role: 'doctor' }),
@@ -71,19 +71,15 @@ describe('metrics', () => {
         user({ _id: 'u4', role: 'midwife' }),
         user({ _id: 'u5', role: 'pharmacist', isActive: false }),
       ],
-      availableProviderIds: new Set(['u1', 'u3']),
     }));
 
     expect(metric(out, 'staff-total').value).toBe(5);
-    expect(metric(out, 'staff-active').value).toBe(4);      // u5 deactivated
-    expect(metric(out, 'staff-available').value).toBe(2);
     expect(metric(out, 'doctors').value).toBe(2);           // doctor + clinical_officer
     expect(metric(out, 'nurses').value).toBe(2);            // nurse + midwife
 
-    expect(metric(out, 'doctors').href).toBe('/hr?tab=roster&role=doctor');
-    expect(metric(out, 'nurses').href).toBe('/hr?tab=roster&role=nurse');
-    expect(metric(out, 'staff-active').href).toBe('/hr?tab=roster&status=active');
-    expect(metric(out, 'staff-available').href).toBe('/hr?tab=roster&availability=available');
+    // Staff figures all land on the one staff list this role has.
+    expect(metric(out, 'doctors').href).toBe('/org-admin/users');
+    expect(metric(out, 'nurses').href).toBe('/org-admin/users');
   });
 
   test('every metric carries a destination', () => {
@@ -100,95 +96,64 @@ describe('metrics', () => {
       ],
     }));
     expect(metric(out, 'shifts-today').value).toBe(2);
-    expect(metric(out, 'shifts-today').href).toBe(`/hr?tab=schedule&date=${TODAY}`);
+    expect(metric(out, 'shifts-today').href).toBe(`/hr/schedule?date=${TODAY}`);
     expect(metric(out, 'shifts-unfilled').value).toBe(5);
   });
 
   test('a failed users fetch reads as unknown, never as a real zero', () => {
     // A quiet 0 here would tell a manager the facility has no staff.
     const out = buildFacilityOverview(input({ users: [], usersUnavailable: true }));
-    for (const key of ['staff-total', 'staff-active', 'staff-available', 'doctors', 'nurses']) {
+    for (const key of ['staff-total', 'doctors', 'nurses']) {
       expect(metric(out, key).value).toBe('—');
       expect(metric(out, key).tone).toBe('warning');
     }
+    // The queue-heading figure degrades the same way.
+    expect(out.activeStaff.count).toBe('—');
+    expect(out.activeStaff.unavailable).toBe(true);
     // Non-staff metrics are unaffected.
     expect(metric(out, 'beds').value).toBe(0);
   });
 });
 
-describe("Today's Shifts panel", () => {
-  test('breaks cover down by shift type and counts on-call separately', () => {
-    const out = buildFacilityOverview(input({
-      schedules: [
-        shift({ _id: 's1', shiftType: 'morning' }),
-        shift({ _id: 's2', shiftType: 'morning' }),
-        shift({ _id: 's3', shiftType: 'afternoon' }),
-        shift({ _id: 's4', shiftType: 'night' }),
-        shift({ _id: 's5', shiftType: 'on_call', isOnCall: true }),
-      ],
-    }));
-    const by = Object.fromEntries(out.shiftBreakdown.map(s => [s.key, s.count]));
-    expect(by).toEqual({ morning: 2, afternoon: 1, night: 1, on_call: 1 });
-  });
-
-  test('an absent staff member is not cover', () => {
-    const out = buildFacilityOverview(input({
-      schedules: [
-        shift({ _id: 's1', shiftType: 'morning' }),
-        shift({ _id: 's2', shiftType: 'morning', status: 'absent' }),
-      ],
-    }));
-    expect(out.shiftBreakdown.find(s => s.key === 'morning')!.count).toBe(1);
-  });
-});
-
-describe('Upcoming Leave panel', () => {
-  test('lists approved leave starting today or later, soonest first', () => {
-    const out = buildFacilityOverview(input({
-      leave: [
-        leaveReq({ _id: 'l1', status: 'approved', startDate: '2026-09-01', userName: 'Later' }),
-        leaveReq({ _id: 'l2', status: 'approved', startDate: '2026-08-20', userName: 'Sooner' }),
-        leaveReq({ _id: 'l3', status: 'approved', startDate: '2026-08-01', userName: 'Past' }),
-        leaveReq({ _id: 'l4', status: 'pending', startDate: '2026-08-25', userName: 'Undecided' }),
-      ],
-    }));
-    expect(out.upcomingLeave.map(l => l.name)).toEqual(['Sooner', 'Later']);
-    expect(out.upcomingLeaveCount).toBe(2);
-  });
-
-  test('leave starting today still counts as upcoming', () => {
-    const out = buildFacilityOverview(input({
-      leave: [leaveReq({ _id: 'l1', status: 'approved', startDate: TODAY })],
-    }));
-    expect(out.upcomingLeave).toHaveLength(1);
-  });
-
-  test('the list is capped at five but the count is not', () => {
-    const out = buildFacilityOverview(input({
-      leave: Array.from({ length: 8 }, (_, i) =>
-        leaveReq({ _id: `l${i}`, status: 'approved', startDate: `2026-08-2${i}` })),
-    }));
-    expect(out.upcomingLeave).toHaveLength(5);
-    expect(out.upcomingLeaveCount).toBe(8);
-  });
-});
-
-describe('Roster by Role panel', () => {
-  test('counts headcount per role, busiest first', () => {
+describe('active staff figure', () => {
+  test('counts enabled accounts that are available today, and links to the staff list', () => {
     const out = buildFacilityOverview(input({
       users: [
-        user({ _id: 'u1', role: 'nurse' }),
-        user({ _id: 'u2', role: 'nurse' }),
+        user({ _id: 'u1', role: 'doctor' }),
         user({ _id: 'u3', role: 'nurse' }),
-        user({ _id: 'u4', role: 'doctor' }),
+        user({ _id: 'u5', role: 'pharmacist', isActive: false }),
       ],
+      // u5 is marked available but deactivated — it must not be counted.
+      availableProviderIds: new Set(['u1', 'u3', 'u5']),
     }));
-    expect(out.roleCounts[0]).toMatchObject({ role: 'nurse', count: 3 });
-    expect(out.roleCounts[1]).toMatchObject({ role: 'doctor', count: 1 });
+    expect(out.activeStaff.count).toBe(2);
+    expect(out.activeStaff.unavailable).toBe(false);
+    expect(out.activeStaff.href).toBe('/org-admin/users');
+    expect(out.activeStaff.rows.map(r => r.id)).toEqual(['u1', 'u3']);
   });
 
-  test('no staff yields an empty list, so the panel can show its empty state', () => {
-    expect(buildFacilityOverview(input()).roleCounts).toEqual([]);
+  test('the tab search narrows the rows by name, role or department', () => {
+    const staff = [
+      user({ _id: 'u1', role: 'doctor', name: 'Grace Achai' }),
+      user({ _id: 'u2', role: 'pharmacist', name: 'John Bol' }),
+    ];
+    const withSearch = (search: string) => buildFacilityOverview(input({
+      users: staff, availableProviderIds: new Set(['u1', 'u2']), search,
+    })).activeStaff;
+    expect(withSearch('grace').rows).toHaveLength(1);
+    expect(withSearch('pharmacist').rows).toHaveLength(1);
+    expect(withSearch('zzz').rows).toHaveLength(0);
+    // The pill count is the roster figure, not the filtered list.
+    expect(withSearch('zzz').count).toBe(2);
+  });
+
+  test('a shift on the day is shown against the row', () => {
+    const out = buildFacilityOverview(input({
+      users: [user({ _id: 'u1', role: 'nurse' })],
+      availableProviderIds: new Set(['u1']),
+      schedules: [shift({ _id: 's1', userId: 'u1', shiftType: 'morning' })],
+    }));
+    expect(out.activeStaff.rows[0].shift).toBe('Morning · 08:00–16:00');
   });
 });
 
