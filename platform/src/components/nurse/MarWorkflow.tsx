@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useWards } from '@/lib/hooks/useWards';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { Pill, X, CheckCircle2, RotateCcw, Filter } from '@/components/icons/lucide';
+import { Pill, CheckCircle2, RotateCcw } from '@/components/icons/lucide';
 import type { MedicationAdministration } from '@/lib/db-types';
 import { useMarEntries, type MAREntry } from './shared';
 import ListSearch from './ListSearch';
+import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import { initials, stateTint, AVATAR_TINT_NEUTRAL } from '@/lib/patient-utils';
 import { formatTimeUntil } from '@/lib/format-utils';
 
@@ -61,18 +62,6 @@ export default function MarWorkflow({ onAdminister }: { onAdminister?: () => voi
   const [search, setSearch] = useState('');
   // Status filter — narrows the rows to a single administration status.
   const [statusFilter, setStatusFilter] = useState<'all' | MAREntry['status']>('all');
-  // The Filters panel opens as a dropdown anchored to its trigger — same
-  // pattern as the patients list. Close on outside click or Escape.
-  const [showFilters, setShowFilters] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!showFilters) return;
-    const onDown = (e: MouseEvent) => { if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilters(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowFilters(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [showFilters]);
   const q = search.trim().toLowerCase();
   const filteredEntries = marEntries.filter(e => {
     if (statusFilter !== 'all' && e.status !== statusFilter) return false;
@@ -317,63 +306,29 @@ export default function MarWorkflow({ onAdminister }: { onAdminister?: () => voi
         {/* Search + filter row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ListSearch value={search} onChange={setSearch} placeholder={t('nurse.searchPatientPlaceholder')} />
-          <div className="relative" ref={filterRef}>
-            <button
-              onClick={() => setShowFilters(s => !s)}
-              aria-expanded={showFilters}
-              aria-label={t('patients.filtersTitle')}
-              title={t('patients.filtersTitle')}
-              style={{
-                position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 38, height: 38, padding: 0, borderRadius: 999,
-                border: `1px solid ${statusFilter !== 'all' ? 'var(--accent-primary)' : 'var(--border-light)'}`,
-                background: statusFilter !== 'all' ? 'rgba(33,145,208,0.08)' : 'var(--bg-card-solid)',
-                color: statusFilter !== 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                cursor: 'pointer', flexShrink: 0,
-              }}
-            >
-              <Filter className="w-4 h-4" />
-              {statusFilter !== 'all' && (
-                <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
-                  1
-                </span>
-              )}
-            </button>
-            {showFilters && (
-              <div
-                className="absolute right-0 mt-2 rounded-2xl overflow-hidden z-50"
-                style={{ width: 220, background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
-              >
-                <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('patients.filtersTitle')}</span>
-                  <div className="flex items-center gap-2">
-                    {statusFilter !== 'all' && (
-                      <button onClick={() => setStatusFilter('all')} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>{t('nurse.clearAllFilters')}</button>
-                    )}
-                    <button type="button" onClick={() => setShowFilters(false)} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label={t('action.close')}>
-                      <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                    </button>
-                  </div>
-                </div>
-                <div className="py-1">
-                  {STATUS_FILTERS.map(f => {
-                    const on = statusFilter === f.key;
-                    return (
-                      <button
-                        key={f.key}
-                        onClick={() => { setStatusFilter(f.key); setShowFilters(false); }}
-                        className="w-full flex items-center justify-between px-4 py-2 text-[13px] text-left hover:bg-[var(--overlay-subtle)]"
-                        style={{ color: on ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: on ? 600 : 400 }}
-                      >
-                        {f.label}
-                        {on && <CheckCircle2 className="w-3.5 h-3.5" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          <EhrListFilters
+            activeCount={statusFilter !== 'all' ? 1 : 0}
+            onClear={() => setStatusFilter('all')}
+            label={t('patients.filtersTitle')}
+            panelWidth={220}
+          >
+            <div className="flex flex-col" style={{ margin: -6 }}>
+              {STATUS_FILTERS.map(f => {
+                const on = statusFilter === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => setStatusFilter(f.key)}
+                    className="w-full flex items-center justify-between px-2 py-2 text-[13px] text-left rounded-lg hover:bg-[var(--overlay-subtle)]"
+                    style={{ color: on ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: on ? 600 : 400 }}
+                  >
+                    {f.label}
+                    {on && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  </button>
+                );
+              })}
+            </div>
+          </EhrListFilters>
         </div>
       </div>
       <div className="flex-1" style={{ overflow: 'auto', minHeight: 0 }}>

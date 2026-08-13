@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Building2, BedDouble, Users, Stethoscope, WifiOff,
   Zap, ZapOff, Sun, Truck, Signal, Clock, Activity,
-  MapPin, HeartPulse, X, Filter,
+  MapPin, HeartPulse, X,
   FlaskConical, Download, Eye, Settings,
   Syringe, Baby, Pill, ShieldCheck, Microscope,
 } from '@/components/icons/lucide';
@@ -17,7 +17,7 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { FilterSelect } from '@/components/filters';
-import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { EhrListFilters, EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import type { HospitalDoc, UserRole } from '@/lib/db-types';
 
 // Roles that can open the per-hospital management dashboard. The route itself
@@ -131,19 +131,6 @@ function HospitalsPageInner() {
   const [filterService, setFilterService] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [colorMetric, setColorMetric] = useState<PerformanceMetricKey>('serviceReadinessScore');
-  // Filters popover (anchored to the "Filters" pill in the facility list header,
-  // matching the patients/referrals filter-panel pattern rather than a
-  // standalone row of selects sitting above the table).
-  const [showFilters, setShowFilters] = useState(false);
-  const filtersRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!showFilters) return;
-    const onDown = (e: MouseEvent) => { if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) setShowFilters(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowFilters(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [showFilters]);
 
   // Counties for selected state
   const availableCounties = useMemo(() => {
@@ -270,45 +257,24 @@ function HospitalsPageInner() {
                 search={{ value: search, onChange: setSearch, placeholder: t('hospitals.searchPlaceholder'), ariaLabel: t('hospitals.searchPlaceholder') }}
                 actions={
                   <>
-                    <div className="relative" ref={filtersRef}>
-                      <EhrListHeaderButton onClick={() => setShowFilters(s => !s)} active={activeFilterCount > 0} ariaExpanded={showFilters} ariaLabel={t('hospitals.filters')}>
-                        <Filter className="w-4 h-4" />
-                        {activeFilterCount > 0 && (
-                          <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
-                            {activeFilterCount}
-                          </span>
+                    <EhrListFilters
+                      activeCount={activeFilterCount}
+                      onClear={clearHospitalFilters}
+                      label={t('hospitals.filters')}
+                      panelWidth={560}
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                        <FilterDropdown label={t('hospitals.filterState')} value={filterState} onChange={setFilterState} options={[{ value: 'all', label: t('hospitals.allStates') }, ...states.map(s => ({ value: s, label: s }))]} />
+                        {availableCounties.length > 0 && (
+                          <FilterDropdown label={t('hospitals.filterCounty')} value={filterCounty} onChange={setFilterCounty} options={[{ value: 'all', label: t('hospitals.allCounties') }, ...availableCounties.map(c => ({ value: c, label: c }))]} />
                         )}
-                      </EhrListHeaderButton>
-                      {showFilters && (
-                        <div
-                          className="absolute right-0 mt-2 rounded-2xl overflow-hidden z-50"
-                          style={{ width: 'min(92vw, 560px)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
-                        >
-                          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('hospitals.filters')}</span>
-                            <div className="flex items-center gap-2">
-                              {activeFilterCount > 0 && (
-                                <button onClick={clearHospitalFilters} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>{t('nurse.clearAllFilters')}</button>
-                              )}
-                              <button type="button" onClick={() => setShowFilters(false)} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label={t('action.close')}>
-                                <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                            <FilterDropdown label={t('hospitals.filterState')} value={filterState} onChange={setFilterState} options={[{ value: 'all', label: t('hospitals.allStates') }, ...states.map(s => ({ value: s, label: s }))]} />
-                            {availableCounties.length > 0 && (
-                              <FilterDropdown label={t('hospitals.filterCounty')} value={filterCounty} onChange={setFilterCounty} options={[{ value: 'all', label: t('hospitals.allCounties') }, ...availableCounties.map(c => ({ value: c, label: c }))]} />
-                            )}
-                            <FilterDropdown label={t('hospitals.filterType')} value={filterType} onChange={setFilterType} options={[{ value: 'all', label: t('hospitals.allTypes') }, ...Object.entries(TYPE_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
-                            <FilterDropdown label={t('hospitals.filterOwnership')} value={filterOwnership} onChange={setFilterOwnership} options={[{ value: 'all', label: t('hospitals.allOwnership') }, ...Object.entries(OWNERSHIP_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
-                            <FilterDropdown label={t('hospitals.filterService')} value={filterService} onChange={setFilterService} options={[{ value: 'all', label: t('hospitals.allServices') }, ...Object.entries(SERVICE_FLAG_ICONS).map(([k, v]) => ({ value: k, label: t(v.labelKey) }))]} />
-                            <FilterDropdown label={t('hospitals.filterStatus')} value={filterStatus} onChange={setFilterStatus} options={[{ value: 'all', label: t('hospitals.allStatus') }, ...Object.entries(STATUS_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
-                            <FilterDropdown label={t('hospitals.colorBy')} value={colorMetric} onChange={v => setColorMetric(v as PerformanceMetricKey)} options={METRIC_KEYS.map(k => ({ value: k, label: METRIC_LABELS[k] }))} />
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                        <FilterDropdown label={t('hospitals.filterType')} value={filterType} onChange={setFilterType} options={[{ value: 'all', label: t('hospitals.allTypes') }, ...Object.entries(TYPE_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
+                        <FilterDropdown label={t('hospitals.filterOwnership')} value={filterOwnership} onChange={setFilterOwnership} options={[{ value: 'all', label: t('hospitals.allOwnership') }, ...Object.entries(OWNERSHIP_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
+                        <FilterDropdown label={t('hospitals.filterService')} value={filterService} onChange={setFilterService} options={[{ value: 'all', label: t('hospitals.allServices') }, ...Object.entries(SERVICE_FLAG_ICONS).map(([k, v]) => ({ value: k, label: t(v.labelKey) }))]} />
+                        <FilterDropdown label={t('hospitals.filterStatus')} value={filterStatus} onChange={setFilterStatus} options={[{ value: 'all', label: t('hospitals.allStatus') }, ...Object.entries(STATUS_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
+                        <FilterDropdown label={t('hospitals.colorBy')} value={colorMetric} onChange={v => setColorMetric(v as PerformanceMetricKey)} options={METRIC_KEYS.map(k => ({ value: k, label: METRIC_LABELS[k] }))} />
+                      </div>
+                    </EhrListFilters>
                     <EhrListHeaderButton onClick={handleExport} ariaLabel={t('action.export')}>
                       <Download className="w-4 h-4" />
                     </EhrListHeaderButton>

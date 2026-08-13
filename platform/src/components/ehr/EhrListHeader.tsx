@@ -11,7 +11,8 @@
  * patients header (muted/blue/amber/green/bronze). Search and actions are
  * optional slots so pages keep their own filter popovers and buttons.
  */
-import { useEffect, useRef, useState, type ReactNode, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type ChangeEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Filter, X } from '@/components/icons/lucide';
 
 export interface EhrListHeaderStat {
@@ -148,9 +149,18 @@ export function EhrListHeaderButton({
 /**
  * EhrListFilters — the "Filters" pill + popover pattern from the patients
  * registry header. Renders an `EhrListHeaderButton` (with an active-count
- * badge) that toggles a dropdown panel; the panel's contents (selects,
- * chips, whatever a page needs) are passed as `children`. Closes on outside
- * click or Escape, same as the patients filter panel.
+ * badge) that toggles a panel; the panel's contents (selects, chips, whatever
+ * a page needs) are passed as `children`.
+ *
+ * The panel is PORTALLED to <body> and positioned `fixed` from the trigger's
+ * measured rect, not absolutely-positioned inside the header. Every list page
+ * puts this button inside a `.card-elevated overflow-hidden` toolbar, so an
+ * absolute panel was clipped by the card the moment it was wider or taller
+ * than the space left inside it — the filters were there, you just couldn't
+ * read or reach half of them. Same reason `EhrRailMenu` and `RowActionsMenu`
+ * portal. Coordinates are clamped to the viewport on both axes and the body
+ * scrolls internally, so the whole panel is always on screen whatever the
+ * trigger's position or the panel's height.
  */
 export function EhrListFilters({
   activeCount,
@@ -158,6 +168,7 @@ export function EhrListFilters({
   children,
   label = 'Filters',
   panelWidth = 320,
+  align = 'right',
 }: {
   /** Number of filters currently applied — drives the badge and the active/blue button state. */
   activeCount: number;
@@ -165,25 +176,60 @@ export function EhrListFilters({
   onClear?: () => void;
   children: ReactNode;
   label?: string;
-  panelWidth?: number | string;
+  panelWidth?: number;
+  /** Which trigger edge the panel lines up with before clamping. */
+  align?: 'left' | 'right';
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const place = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const margin = 8;
+    const width = Math.min(panelWidth, window.innerWidth - margin * 2);
+    const rawLeft = align === 'right' ? rect.right - width : rect.left;
+    setCoords({
+      top: rect.bottom + 8,
+      left: Math.max(margin, Math.min(rawLeft, window.innerWidth - width - margin)),
+      width,
+      // Whatever is left below the trigger. The body scrolls inside this, so a
+      // long filter list stays reachable instead of running off the fold.
+      maxHeight: Math.max(180, window.innerHeight - rect.bottom - 8 - margin),
+    });
+  }, [align, panelWidth]);
+
+  useLayoutEffect(() => { if (open) place(); }, [open, place]);
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    // Scroll/resize close rather than reposition: the trigger can leave the
+    // viewport entirely, and a panel chasing it reads as a glitch.
+    const onViewportChange = () => setOpen(false);
     document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
     return () => {
       document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
     };
   }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={triggerRef}>
       <EhrListHeaderButton onClick={() => setOpen(o => !o)} active={activeCount > 0} ariaExpanded={open} ariaLabel={label}>
         <Filter className="w-4 h-4" />
         {activeCount > 0 && (
@@ -192,13 +238,16 @@ export function EhrListFilters({
           </span>
         )}
       </EhrListHeaderButton>
-      {open && (
+      {open && coords && typeof document !== 'undefined' && createPortal(
         <div
-          className="absolute right-0 mt-2 rounded-2xl overflow-hidden z-50"
-          style={{ width: panelWidth, maxWidth: '92vw', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
+          ref={panelRef}
+          role="dialog"
+          aria-label={label}
+          className="ehr-list-filters-panel"
+          style={{ top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight }}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{label}</span>
+          <div className="ehr-list-filters-head">
+            <span>{label}</span>
             <div className="flex items-center gap-2">
               {activeCount > 0 && onClear && (
                 <button type="button" onClick={onClear} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>Clear all</button>
@@ -208,8 +257,9 @@ export function EhrListFilters({
               </button>
             </div>
           </div>
-          <div className="p-4 flex flex-col gap-3">{children}</div>
-        </div>
+          <div className="ehr-list-filters-body">{children}</div>
+        </div>,
+        document.body,
       )}
     </div>
   );

@@ -921,7 +921,9 @@ export default function EhrCareDashboard({
               <button
                 key={metric.label}
                 type="button"
-                className={`${metric.tone === 'danger' ? 'danger' : metric.tone === 'warning' ? 'warning' : ''} ${metric.active ? 'active' : ''}`.trim()}
+                // `success` was missing here, so a metric asking for it fell
+                // through to the neutral grey — a healthy count looked inert.
+                className={`${metric.tone && metric.tone !== 'neutral' ? metric.tone : ''} ${metric.active ? 'active' : ''}`.trim()}
                 onClick={metric.onClick || (metric.href ? () => router.push(metric.href as string) : undefined)}
               >
                 <span>{metric.label}</span>
