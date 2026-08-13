@@ -54,6 +54,254 @@ export const VITAL_RANGES: Record<'temperature' | 'pulse' | 'respiratoryRate' | 
   muac: [5, 50],
 };
 
+export type TriageVitalField =
+  | 'temperature'
+  | 'pulse'
+  | 'respiratoryRate'
+  | 'oxygenSaturation'
+  | 'systolic'
+  | 'diastolic'
+  | 'weight'
+  | 'painScore'
+  | 'bloodGlucose'
+  | 'gcs'
+  | 'muac';
+
+export type TriageVitalsInput = Partial<Record<TriageVitalField, string | number>>;
+
+const TRIAGE_RANGE_FIELD: Record<TriageVitalField, keyof typeof VITAL_RANGES> = {
+  temperature: 'temperature',
+  pulse: 'pulse',
+  respiratoryRate: 'respiratoryRate',
+  oxygenSaturation: 'spo2',
+  systolic: 'systolic',
+  diastolic: 'diastolic',
+  weight: 'weight',
+  painScore: 'painScore',
+  bloodGlucose: 'bloodGlucose',
+  gcs: 'gcs',
+  muac: 'muac',
+};
+
+const TRIAGE_VITAL_LABEL: Record<TriageVitalField, string> = {
+  temperature: 'Temperature',
+  pulse: 'Pulse',
+  respiratoryRate: 'Respiratory rate',
+  oxygenSaturation: 'Oxygen saturation',
+  systolic: 'Systolic blood pressure',
+  diastolic: 'Diastolic blood pressure',
+  weight: 'Weight',
+  painScore: 'Pain score',
+  bloodGlucose: 'Blood glucose',
+  gcs: 'GCS',
+  muac: 'MUAC',
+};
+
+const TRIAGE_VITAL_UNIT: Record<TriageVitalField, string> = {
+  temperature: '°C',
+  pulse: 'bpm',
+  respiratoryRate: 'breaths/min',
+  oxygenSaturation: '%',
+  systolic: 'mmHg',
+  diastolic: 'mmHg',
+  weight: 'kg',
+  painScore: '',
+  bloodGlucose: 'mmol/L',
+  gcs: '',
+  muac: 'cm',
+};
+
+const INTEGER_TRIAGE_VITALS = new Set<TriageVitalField>([
+  'pulse', 'respiratoryRate', 'oxygenSaturation', 'systolic', 'diastolic',
+  'painScore', 'gcs',
+]);
+
+/**
+ * Parse a complete decimal string. Unlike parseFloat, this rejects partial
+ * values such as `80abc`, exponent notation, Infinity, and punctuation-only
+ * input instead of silently accepting the numeric prefix.
+ */
+export function parseStrictVitalNumber(raw?: string | number): number | null {
+  const value = raw === undefined || raw === null ? '' : String(raw).trim();
+  if (!value || !/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Field-level blocking errors for the nurse triage form. Empty fields remain optional. */
+export function validateTriageVitals(vitals: TriageVitalsInput): Partial<Record<TriageVitalField, string>> {
+  const errors: Partial<Record<TriageVitalField, string>> = {};
+
+  for (const field of Object.keys(TRIAGE_RANGE_FIELD) as TriageVitalField[]) {
+    const supplied = vitals[field];
+    const raw = supplied === undefined || supplied === null ? '' : String(supplied).trim();
+    if (!raw) continue;
+    const value = parseStrictVitalNumber(raw);
+    const [min, max] = VITAL_RANGES[TRIAGE_RANGE_FIELD[field]];
+    const unit = TRIAGE_VITAL_UNIT[field];
+
+    if (value === null) {
+      errors[field] = `${TRIAGE_VITAL_LABEL[field]} must be a number.`;
+    } else if (INTEGER_TRIAGE_VITALS.has(field) && !Number.isInteger(value)) {
+      errors[field] = `${TRIAGE_VITAL_LABEL[field]} must be a whole number.`;
+    } else if (value < min || value > max) {
+      errors[field] = `${TRIAGE_VITAL_LABEL[field]} must be between ${min} and ${max}${unit ? ` ${unit}` : ''}.`;
+    }
+  }
+
+  const systolic = parseStrictVitalNumber(vitals.systolic);
+  const diastolic = parseStrictVitalNumber(vitals.diastolic);
+  if (!errors.systolic && !errors.diastolic && systolic !== null && diastolic !== null && systolic <= diastolic) {
+    errors.systolic = 'Systolic blood pressure must be higher than diastolic blood pressure.';
+    errors.diastolic = 'Diastolic blood pressure must be lower than systolic blood pressure.';
+  }
+
+  return errors;
+}
+
+export interface TriageVitalWarning {
+  field: TriageVitalField;
+  code: string;
+  urgency: 'RED' | 'YELLOW';
+  message: string;
+}
+
+function warning(
+  field: TriageVitalField,
+  code: string,
+  urgency: TriageVitalWarning['urgency'],
+  message: string,
+): TriageVitalWarning {
+  return { field, code, urgency, message };
+}
+
+/**
+ * Identify dangerous but physiologically possible readings.
+ *
+ * Thresholds follow the WHO/ICRC/MSF Interagency Integrated Triage Tool
+ * (IITT): age-specific high-risk vital signs require up-triage/immediate
+ * review, while explicit RED criteria (for example adult HR <50 or >150 and
+ * known hypoglycaemia) require immediate high-acuity care. MUAC follows WHO's
+ * <11.5 cm severe acute malnutrition threshold for children 6–59 months.
+ * NEWS2 supplies the adult low-systolic boundary and AHA/ACC guidance supplies
+ * the severe-hypertension boundary because IITT does not define a general,
+ * non-pregnancy numeric BP boundary.
+ */
+export function getTriageVitalWarnings(
+  vitals: TriageVitalsInput,
+  patientAgeYears?: number,
+): TriageVitalWarning[] {
+  const blockingErrors = validateTriageVitals(vitals);
+  const value = (field: TriageVitalField) => blockingErrors[field]
+    ? null
+    : parseStrictVitalNumber(vitals[field]);
+  const temperature = value('temperature');
+  const pulse = value('pulse');
+  const rr = value('respiratoryRate');
+  const spo2 = value('oxygenSaturation');
+  const systolic = value('systolic');
+  const diastolic = value('diastolic');
+  const pain = value('painScore');
+  const glucose = value('bloodGlucose');
+  const gcs = value('gcs');
+  const muac = value('muac');
+  const warnings: TriageVitalWarning[] = [];
+  const isChild = patientAgeYears !== undefined && patientAgeYears < 12;
+  const isAdult = patientAgeYears === undefined || patientAgeYears >= 18;
+
+  if (temperature !== null && (temperature < 36 || temperature > 39)) {
+    const neonatalEmergency = patientAgeYears !== undefined && patientAgeYears < (2 / 12);
+    warnings.push(warning(
+      'temperature',
+      neonatalEmergency ? 'IITT_NEONATE_TEMPERATURE_RED' : 'IITT_HIGH_RISK_TEMPERATURE',
+      neonatalEmergency ? 'RED' : 'YELLOW',
+      neonatalEmergency
+        ? `Temperature ${temperature}°C meets RED criteria for an infant under 2 months; move to high-acuity care immediately.`
+        : `Temperature ${temperature}°C is high risk; up-triage for immediate clinician review.`,
+    ));
+  }
+
+  if (spo2 !== null && spo2 < 92) {
+    warnings.push(warning(
+      'oxygenSaturation',
+      'IITT_HIGH_RISK_SPO2',
+      'YELLOW',
+      `Oxygen saturation ${spo2}% is high risk; up-triage for immediate clinician review.`,
+    ));
+  }
+
+  if (pulse !== null) {
+    if (!isChild && (pulse < 50 || pulse > 150)) {
+      warnings.push(warning('pulse', 'IITT_ADULT_PULSE_RED', 'RED', `Pulse ${pulse} bpm meets RED criteria; move to high-acuity care immediately.`));
+    } else if (!isChild && (pulse < 60 || pulse > 130)) {
+      warnings.push(warning('pulse', 'IITT_ADULT_HIGH_RISK_PULSE', 'YELLOW', `Pulse ${pulse} bpm is high risk; up-triage for immediate clinician review.`));
+    } else if (isChild) {
+      const [low, high] = patientAgeYears! < 1 ? [90, 180] : patientAgeYears! < 5 ? [80, 160] : [70, 140];
+      if (pulse < low || pulse > high) {
+        warnings.push(warning('pulse', 'IITT_CHILD_HIGH_RISK_PULSE', 'YELLOW', `Pulse ${pulse} bpm is high risk for this child's age; up-triage for immediate clinician review.`));
+      }
+    }
+  }
+
+  if (rr !== null) {
+    if (!isChild && (rr < 10 || rr > 30)) {
+      warnings.push(warning('respiratoryRate', 'IITT_ADULT_HIGH_RISK_RR', 'YELLOW', `Respiratory rate ${rr}/min is high risk; up-triage for immediate clinician review.`));
+    } else if (isChild) {
+      const [low, high] = patientAgeYears! < 1 ? [25, 50] : patientAgeYears! < 5 ? [20, 40] : [10, 30];
+      if (rr < low || rr > high) {
+        warnings.push(warning('respiratoryRate', 'IITT_CHILD_HIGH_RISK_RR', 'YELLOW', `Respiratory rate ${rr}/min is high risk for this child's age; up-triage for immediate clinician review.`));
+      }
+    }
+  }
+
+  if (isAdult && systolic !== null && (systolic <= 90 || systolic > 180)) {
+    warnings.push(warning('systolic', 'ADULT_HIGH_RISK_SYSTOLIC_BP', 'YELLOW', `Systolic blood pressure ${systolic} mmHg requires immediate clinician review and repeat measurement.`));
+  }
+  if (isAdult && diastolic !== null && (diastolic <= 40 || diastolic > 120)) {
+    warnings.push(warning('diastolic', 'ADULT_HIGH_RISK_DIASTOLIC_BP', 'YELLOW', `Diastolic blood pressure ${diastolic} mmHg requires immediate clinician review and repeat measurement.`));
+  }
+
+  if (pain !== null && pain >= 7) {
+    warnings.push(warning('painScore', 'IITT_SEVERE_PAIN', 'YELLOW', `Pain score ${pain}/10 is severe; up-triage for prompt assessment and analgesia.`));
+  }
+  if (glucose !== null && glucose < 3) {
+    warnings.push(warning('bloodGlucose', 'IITT_HYPOGLYCAEMIA_RED', 'RED', `Blood glucose ${glucose} mmol/L meets RED hypoglycaemia criteria; treat and move to high-acuity care immediately.`));
+  } else if (glucose !== null && glucose >= 25) {
+    warnings.push(warning('bloodGlucose', 'HIGH_RISK_HYPERGLYCAEMIA', 'YELLOW', `Blood glucose ${glucose} mmol/L is critically high; arrange immediate clinician review.`));
+  }
+  if (gcs !== null && gcs <= 8) {
+    warnings.push(warning('gcs', 'SEVERE_IMPAIRED_CONSCIOUSNESS_RED', 'RED', `GCS ${gcs}/15 indicates severe impaired consciousness; move to high-acuity care immediately.`));
+  } else if (gcs !== null && gcs < 15) {
+    warnings.push(warning('gcs', 'ALTERED_CONSCIOUSNESS_HIGH_RISK', 'YELLOW', `GCS ${gcs}/15 indicates altered consciousness; up-triage for immediate clinician review.`));
+  }
+  if (muac !== null && patientAgeYears !== undefined && patientAgeYears >= 0.5 && patientAgeYears < 5 && muac < 11.5) {
+    warnings.push(warning('muac', 'WHO_SEVERE_ACUTE_MALNUTRITION', 'YELLOW', `MUAC ${muac} cm indicates severe acute malnutrition for age 6–59 months; refer for full assessment.`));
+  }
+
+  return warnings;
+}
+
+const PRIORITY_RANK = { GREEN: 0, YELLOW: 1, RED: 2 } as const;
+
+/** Highest urgency from the ABCC assessment and all valid vital warnings. */
+export function recommendTriagePriority(
+  assessedPriority: 'RED' | 'YELLOW' | 'GREEN' | '',
+  warnings: TriageVitalWarning[],
+): 'RED' | 'YELLOW' | 'GREEN' | '' {
+  if (!assessedPriority) return '';
+  return warnings.reduce<'RED' | 'YELLOW' | 'GREEN'>((current, item) =>
+    PRIORITY_RANK[item.urgency] > PRIORITY_RANK[current] ? item.urgency : current,
+  assessedPriority);
+}
+
+export function isLowerTriagePriority(
+  priority: 'RED' | 'YELLOW' | 'GREEN' | '',
+  recommendation: 'RED' | 'YELLOW' | 'GREEN' | '',
+): boolean {
+  if (!priority || !recommendation) return false;
+  return PRIORITY_RANK[priority] < PRIORITY_RANK[recommendation];
+}
+
 /**
  * Flag which vitals are abnormal (outside normal clinical range). Returns a
  * map of fieldName → true for each abnormal value. Mirrors the long-standing
@@ -91,10 +339,10 @@ export function getVitalFlags(data: VitalsInput): Record<string, boolean> {
  * Returns true when empty (optional) or valid; false for garbage/out-of-range.
  */
 export function isVitalInRange(field: keyof typeof VITAL_RANGES, raw?: string): boolean {
-  if (!raw) return true;
-  const n = parseFloat(raw);
+  if (!raw?.trim()) return true;
+  const n = parseStrictVitalNumber(raw);
   const [min, max] = VITAL_RANGES[field];
-  return !isNaN(n) && n >= min && n <= max;
+  return n !== null && n >= min && n <= max;
 }
 
 /**

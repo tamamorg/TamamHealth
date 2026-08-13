@@ -8,6 +8,38 @@ import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 import { jubaDate } from '../time-juba';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
+import { isLowerTriagePriority, validateTriageVitals } from '../clinical/vitals';
+
+function assertTriageVitalSafety(doc: Partial<TriageDoc>): void {
+  const errors = validateTriageVitals({
+    temperature: doc.temperature,
+    pulse: doc.pulse,
+    respiratoryRate: doc.respiratoryRate,
+    oxygenSaturation: doc.oxygenSaturation,
+    systolic: doc.systolic,
+    diastolic: doc.diastolic,
+    weight: doc.weight,
+    painScore: doc.painScore,
+    bloodGlucose: doc.bloodGlucose,
+    gcs: doc.gcs,
+    muac: doc.muac,
+  });
+  const firstError = Object.values(errors)[0];
+  if (firstError) throw new Error(firstError);
+
+  const overrideReason = doc.vitalUrgencyOverrideReason?.trim();
+  if (doc.vitalUrgencyOverridden && !overrideReason) {
+    throw new Error('A reason is required to override the recommended triage urgency.');
+  }
+  if (
+    doc.priority &&
+    doc.vitalUrgencyRecommendation &&
+    isLowerTriagePriority(doc.priority, doc.vitalUrgencyRecommendation) &&
+    (!doc.vitalUrgencyOverridden || !overrideReason)
+  ) {
+    throw new Error('Saving below the recommended triage urgency requires a recorded override reason.');
+  }
+}
 
 /**
  * ETAT priority calculator — encodes the WHO decision tree.
@@ -75,6 +107,7 @@ export async function getActiveTriage(scope?: DataScope): Promise<TriageDoc[]> {
 export async function createTriage(
   data: Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>
 ): Promise<TriageDoc> {
+  assertTriageVitalSafety(data);
   const db = triageDB();
   const now = new Date().toISOString();
   const doc: TriageDoc = withPendingOfflineSync({
@@ -89,6 +122,11 @@ export async function createTriage(
   await logAuditSafe('TRIAGE_RECORDED', data.triagedBy, data.triagedByName,
     `${data.priority} triage for ${data.patientName} (${data.patientId})`
   );
+  if (data.vitalUrgencyOverridden) {
+    await logAuditSafe('TRIAGE_URGENCY_OVERRIDE', data.triagedBy, data.triagedByName,
+      `Vital urgency ${data.vitalUrgencyRecommendation} overridden to ${data.priority} for ${data.patientName} (${data.patientId}). Reason: ${data.vitalUrgencyOverrideReason?.trim()}`
+    );
+  }
   emitSyncEvent({
     resourceType: 'triage',
     resourceId: doc._id,
@@ -118,11 +156,22 @@ export async function updateTriage(
     }
 
     const updated: TriageDoc = withPendingOfflineSync({ ...existing, ...updates, updatedAt: new Date().toISOString() });
+    assertTriageVitalSafety(updated);
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     if (updates.status) {
       await logAuditSafe('TRIAGE_STATUS_CHANGE', updates.handoffTo, updates.handoffToName,
         `Triage ${id}: ${existing.status} → ${updates.status} for ${existing.patientName}`
+      );
+    }
+    if (
+      updated.vitalUrgencyOverridden &&
+      (!existing.vitalUrgencyOverridden ||
+        existing.vitalUrgencyOverrideReason !== updated.vitalUrgencyOverrideReason ||
+        existing.priority !== updated.priority)
+    ) {
+      await logAuditSafe('TRIAGE_URGENCY_OVERRIDE', existing.triagedBy, existing.triagedByName,
+        `Vital urgency ${updated.vitalUrgencyRecommendation} overridden to ${updated.priority} for ${updated.patientName} (${updated.patientId}). Reason: ${updated.vitalUrgencyOverrideReason?.trim()}`
       );
     }
     emitSyncEvent({

@@ -12,8 +12,15 @@ import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
 import type { PatientDoc, TriageDisposition } from '@/lib/db-types';
 import { jubaDate } from '@/lib/time-juba';
 import { useToast } from '@/components/Toast';
-import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
-import { isVitalInRange, VITAL_RANGES } from '@/lib/clinical/vitals';
+import { patientAge, patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
+import {
+  getTriageVitalWarnings,
+  isLowerTriagePriority,
+  recommendTriagePriority,
+  validateTriageVitals,
+  type TriageVitalField,
+  type TriageVitalWarning,
+} from '@/lib/clinical/vitals';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
   Activity, Clock, X, AlertTriangle, Wind, Brain, Heart,
@@ -26,6 +33,62 @@ import { waitLabel } from '@/components/ehr/EhrVisitPopup';
 import ListSearch from './ListSearch';
 import RowActionsMenu, { type RowAction } from '@/components/referrals/RowActionsMenu';
 import Select from '@/components/Select';
+
+function VitalInputField({
+  field,
+  label,
+  value,
+  placeholder,
+  inputMode,
+  error,
+  warning,
+  onChange,
+}: {
+  field: TriageVitalField;
+  label: string;
+  value: string;
+  placeholder: string;
+  inputMode: 'numeric' | 'decimal';
+  error?: string;
+  warning?: TriageVitalWarning;
+  onChange: (value: string) => void;
+}) {
+  const message = error || warning?.message;
+  const messageId = `triage-vital-${field}-message`;
+  const tone = error || warning?.urgency === 'RED' ? 'var(--color-danger)' : 'var(--color-warning)';
+
+  return (
+    <div data-vital-field={field}>
+      <label htmlFor={`triage-vital-${field}`} className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
+        {label}
+      </label>
+      <input
+        id={`triage-vital-${field}`}
+        type="text"
+        inputMode={inputMode}
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        placeholder={placeholder}
+        aria-invalid={Boolean(error)}
+        aria-describedby={message ? messageId : undefined}
+        style={{
+          width: '100%',
+          padding: '5px 8px',
+          borderRadius: 6,
+          fontSize: 12,
+          background: 'var(--bg-card)',
+          border: `1px solid ${message ? tone : 'var(--border-light)'}`,
+          color: 'var(--text-primary)',
+        }}
+      />
+      {message && (
+        <p id={messageId} role={error ? 'alert' : 'status'} className="mt-1 text-[9px] leading-tight font-medium" style={{ color: tone }}>
+          {error || `${warning?.urgency}: ${warning?.message}`}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // Mode-of-arrival → Source column label, using the same terms as the ETAT
 // form's own <select> options.
@@ -111,6 +174,8 @@ export default function TriageWorkflow({
   const [destinationClinic, setDestinationClinic] = useState('');
   const [assignedProviderId, setAssignedProviderId] = useState('');
   const [handoffNote, setHandoffNote] = useState('');
+  const [overrideVitalUrgency, setOverrideVitalUrgency] = useState(false);
+  const [vitalUrgencyOverrideReason, setVitalUrgencyOverrideReason] = useState('');
   const [triageSubmitting, setTriageSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState('patient');
 
@@ -137,6 +202,25 @@ export default function TriageWorkflow({
       : patients.find(p => p._id === triagePatientId) || null,
     [lockedPatient, triagePatientId, patients]
   );
+  const selectedPatientAge = selectedTriagePatient ? patientAge(selectedTriagePatient) ?? undefined : undefined;
+  const vitalErrors = useMemo(() => validateTriageVitals(triageVitals), [triageVitals]);
+  const vitalWarnings = useMemo(
+    () => getTriageVitalWarnings(triageVitals, selectedPatientAge),
+    [triageVitals, selectedPatientAge],
+  );
+  const warningByVital = useMemo(() => {
+    const result = new Map<TriageVitalField, TriageVitalWarning>();
+    for (const item of vitalWarnings) {
+      const current = result.get(item.field);
+      if (!current || item.urgency === 'RED') result.set(item.field, item);
+    }
+    return result;
+  }, [vitalWarnings]);
+  const recommendedPriority = recommendTriagePriority(triageData.priority, vitalWarnings);
+  const recommendationRaisesPriority = isLowerTriagePriority(triageData.priority, recommendedPriority);
+  const effectivePriority = recommendationRaisesPriority && !overrideVitalUrgency
+    ? recommendedPriority
+    : triageData.priority;
   const availableProviders = useMemo(() => users.filter(user =>
     user.isActive !== false &&
     ['doctor', 'clinical_officer', 'clinician', 'medical_superintendent'].includes(user.role) &&
@@ -191,6 +275,8 @@ export default function TriageWorkflow({
     setDestinationClinic(ti.destinationClinic || '');
     setAssignedProviderId(ti.assignedProviderId || '');
     setHandoffNote(ti.handoffNote || '');
+    setOverrideVitalUrgency(Boolean(ti.vitalUrgencyOverridden));
+    setVitalUrgencyOverrideReason(ti.vitalUrgencyOverrideReason || '');
   };
 
   // Disposition a triaged patient straight from the queue row — mark them seen,
@@ -286,6 +372,8 @@ export default function TriageWorkflow({
     setDestinationClinic('');
     setAssignedProviderId('');
     setHandoffNote('');
+    setOverrideVitalUrgency(false);
+    setVitalUrgencyOverrideReason('');
   };
 
   const triagePriorityColor = (priority: string) => {
@@ -313,20 +401,16 @@ export default function TriageWorkflow({
       showToast(t('nurse.noActiveUser'), 'error');
       return;
     }
-    // Validate any entered vitals are numeric and physiologically plausible,
-    // so garbage strings ("abc", "999") are never persisted to the record.
-    // Maps each triage form field to its key in the shared VITAL_RANGES table
-    // (the form labels SpO₂ as `oxygenSaturation`; the shared table uses `spo2`).
-    const vitalFieldMap: Record<keyof typeof triageVitals, keyof typeof VITAL_RANGES> = {
-      temperature: 'temperature', pulse: 'pulse', respiratoryRate: 'respiratoryRate',
-      systolic: 'systolic', diastolic: 'diastolic', oxygenSaturation: 'spo2', weight: 'weight',
-      painScore: 'painScore', bloodGlucose: 'bloodGlucose', gcs: 'gcs', muac: 'muac',
-    };
-    for (const key of Object.keys(vitalFieldMap) as (keyof typeof triageVitals)[]) {
-      if (!isVitalInRange(vitalFieldMap[key], triageVitals[key])) {
-        showToast(t('nurse.invalidVital', { field: t(`nurse.vital_${key}`) }), 'error');
-        return;
-      }
+    const firstVitalError = Object.values(vitalErrors)[0];
+    if (firstVitalError) {
+      showToast(firstVitalError, 'error');
+      document.getElementById('triage-vital-safety-summary')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (recommendationRaisesPriority && overrideVitalUrgency && !vitalUrgencyOverrideReason.trim()) {
+      showToast('Record a clinical reason before overriding the recommended urgency.', 'error');
+      document.getElementById('triage-vital-override-reason')?.focus();
+      return;
     }
     try {
       setTriageSubmitting(true);
@@ -340,7 +424,7 @@ export default function TriageWorkflow({
         // This form IS the clinician assessment — the submit guard above
         // refuses to save until every ABCC dimension is chosen (KAN-100).
         assessmentSource: 'clinician' as const,
-        priority: triageData.priority as 'RED' | 'YELLOW' | 'GREEN',
+        priority: effectivePriority as 'RED' | 'YELLOW' | 'GREEN',
         temperature: triageVitals.temperature || undefined,
         pulse: triageVitals.pulse || undefined,
         respiratoryRate: triageVitals.respiratoryRate || undefined,
@@ -352,6 +436,14 @@ export default function TriageWorkflow({
         bloodGlucose: triageVitals.bloodGlucose || undefined,
         gcs: triageVitals.gcs || undefined,
         muac: triageVitals.muac || undefined,
+        vitalUrgencyRecommendation: vitalWarnings.length > 0
+          ? recommendedPriority as 'RED' | 'YELLOW' | 'GREEN'
+          : undefined,
+        vitalUrgencyWarnings: vitalWarnings.length > 0 ? vitalWarnings : undefined,
+        vitalUrgencyOverridden: recommendationRaisesPriority && overrideVitalUrgency,
+        vitalUrgencyOverrideReason: recommendationRaisesPriority && overrideVitalUrgency
+          ? vitalUrgencyOverrideReason.trim()
+          : undefined,
         modeOfArrival: triageContext.modeOfArrival || undefined,
         symptomDuration: triageContext.symptomDuration || undefined,
         referralSource: triageContext.referralSource || undefined,
@@ -433,7 +525,7 @@ export default function TriageWorkflow({
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast(t('nurse.triageSaved', { priority: triageData.priority, name: patientFullName(selectedTriagePatient) }), 'success');
+      showToast(t('nurse.triageSaved', { priority: effectivePriority, name: patientFullName(selectedTriagePatient) }), 'success');
       // Reset form only on success
       clearForm();
     } catch (err) {
@@ -560,7 +652,7 @@ export default function TriageWorkflow({
                 {/* No clear button on the per-patient page: the patient is the
                     page, not a field on it. */}
                 {!lockedPatientId && (
-                  <button onClick={() => { setTriagePatientId(''); setTriagePatientSearch(''); }} className="p-1.5 rounded-lg flex-shrink-0" style={{ background: 'var(--overlay-subtle)' }}>
+                  <button onClick={() => { setTriagePatientId(''); setTriagePatientSearch(''); setOverrideVitalUrgency(false); setVitalUrgencyOverrideReason(''); }} className="p-1.5 rounded-lg flex-shrink-0" style={{ background: 'var(--overlay-subtle)' }}>
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -584,7 +676,7 @@ export default function TriageWorkflow({
                     {triagePatientMatches.map(p => (
                       <button
                         key={p._id}
-                        onClick={() => { setTriagePatientId(p._id); setTriagePatientSearch(''); }}
+                        onClick={() => { setTriagePatientId(p._id); setTriagePatientSearch(''); setOverrideVitalUrgency(false); setVitalUrgencyOverrideReason(''); }}
                         className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--overlay-subtle)]"
                         style={{ borderBottom: '1px solid var(--border-light)' }}
                       >
@@ -611,6 +703,79 @@ export default function TriageWorkflow({
               style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
             />
           </div>
+
+          {(Object.keys(vitalErrors).length > 0 || vitalWarnings.length > 0) && (
+            <div
+              id="triage-vital-safety-summary"
+              role="alert"
+              aria-live="polite"
+              className="p-3 rounded-xl"
+              style={{
+                background: Object.keys(vitalErrors).length > 0 || vitalWarnings.some(item => item.urgency === 'RED')
+                  ? 'rgba(239,68,68,0.10)'
+                  : 'rgba(245,158,11,0.12)',
+                border: `1px solid ${Object.keys(vitalErrors).length > 0 || vitalWarnings.some(item => item.urgency === 'RED')
+                  ? 'var(--color-danger)'
+                  : 'var(--color-warning)'}`,
+              }}
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: Object.keys(vitalErrors).length > 0 || vitalWarnings.some(item => item.urgency === 'RED') ? 'var(--color-danger)' : 'var(--color-warning)' }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {Object.keys(vitalErrors).length > 0
+                      ? 'Vital signs need correction before Save'
+                      : recommendedPriority
+                        ? `Clinical safety warning · Recommended ${recommendedPriority}`
+                        : 'Clinical safety warning · Complete ABCC to calculate urgency'}
+                  </p>
+                  {Object.entries(vitalErrors).map(([field, message]) => (
+                    <p key={field} className="text-[10px] mt-1" style={{ color: 'var(--color-danger)' }}>{message}</p>
+                  ))}
+                  {vitalWarnings.map(item => (
+                    <p key={item.code} className="text-[10px] mt-1" style={{ color: 'var(--text-secondary)' }}>
+                      <strong>{item.urgency}:</strong> {item.message}
+                    </p>
+                  ))}
+                  {recommendationRaisesPriority && !overrideVitalUrgency && (
+                    <p className="text-[10px] font-semibold mt-2" style={{ color: 'var(--text-primary)' }}>
+                      Save will use {recommendedPriority} instead of the ABCC-only {triageData.priority} priority.
+                    </p>
+                  )}
+                  {recommendationRaisesPriority && (
+                    <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-light)' }}>
+                      <label className="flex items-start gap-2 text-[10px] font-semibold cursor-pointer" style={{ color: 'var(--text-primary)' }}>
+                        <input
+                          type="checkbox"
+                          checked={overrideVitalUrgency}
+                          onChange={event => setOverrideVitalUrgency(event.target.checked)}
+                          className="mt-0.5"
+                        />
+                        Override and save at the ABCC-only {triageData.priority} priority
+                      </label>
+                      {overrideVitalUrgency && (
+                        <div className="mt-2">
+                          <label htmlFor="triage-vital-override-reason" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--color-danger)' }}>
+                            Clinical reason for override (required)
+                          </label>
+                          <textarea
+                            id="triage-vital-override-reason"
+                            rows={2}
+                            value={vitalUrgencyOverrideReason}
+                            onChange={event => setVitalUrgencyOverrideReason(event.target.value)}
+                            placeholder="Document reassessment findings and why the lower urgency is clinically appropriate."
+                            className="w-full px-2 py-1.5 rounded-lg text-xs mt-1"
+                            style={{ background: 'var(--bg-card)', border: '1px solid var(--color-danger)', color: 'var(--text-primary)' }}
+                            required
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ABCC Assessment */}
           <div id="triage-section-assessment" className="grid grid-cols-1 sm:grid-cols-2 gap-3 scroll-mt-3">
@@ -745,15 +910,22 @@ export default function TriageWorkflow({
           </div>
 
           {/* Triage Result */}
-          {triageData.priority && (
+          {triageData.priority && effectivePriority && (
             <div
               className="p-4 rounded-2xl text-center transition-all"
               style={{
-                background: triagePriorityColor(triageData.priority).bg,
-                color: triagePriorityColor(triageData.priority).text,
+                background: triagePriorityColor(effectivePriority).bg,
+                color: triagePriorityColor(effectivePriority).text,
               }}
             >
-              <p className="text-base font-bold">{triagePriorityColor(triageData.priority).label}</p>
+              <p className="text-base font-bold">{triagePriorityColor(effectivePriority).label}</p>
+              {recommendationRaisesPriority && (
+                <p className="text-[10px] mt-1 font-semibold opacity-90">
+                  {overrideVitalUrgency
+                    ? `Override selected · recommended ${recommendedPriority}`
+                    : `Escalated from ABCC ${triageData.priority} by vital-sign warning`}
+                </p>
+              )}
               {selectedTriagePatient && (
                 <p className="text-xs mt-1 opacity-80">{t('nurse.patientLabel', { name: patientFullName(selectedTriagePatient) })}</p>
               )}
@@ -767,50 +939,34 @@ export default function TriageWorkflow({
               <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.vitalsAtTriage')}</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.tempC')}</label>
-                <input type="text" inputMode="decimal" value={triageVitals.temperature} onChange={e => setTriageVitals({ ...triageVitals, temperature: e.target.value })} placeholder="37.0" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.pulse')}</label>
-                <input type="text" inputMode="numeric" value={triageVitals.pulse} onChange={e => setTriageVitals({ ...triageVitals, pulse: e.target.value })} placeholder="80" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.rr')}</label>
-                <input type="text" inputMode="numeric" value={triageVitals.respiratoryRate} onChange={e => setTriageVitals({ ...triageVitals, respiratoryRate: e.target.value })} placeholder="18" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.spo2Pct')}</label>
-                <input type="text" inputMode="numeric" value={triageVitals.oxygenSaturation} onChange={e => setTriageVitals({ ...triageVitals, oxygenSaturation: e.target.value })} placeholder="98" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.sysBp')}</label>
-                <input type="text" inputMode="numeric" value={triageVitals.systolic} onChange={e => setTriageVitals({ ...triageVitals, systolic: e.target.value })} placeholder="120" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.diaBp')}</label>
-                <input type="text" inputMode="numeric" value={triageVitals.diastolic} onChange={e => setTriageVitals({ ...triageVitals, diastolic: e.target.value })} placeholder="80" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.weightKg')}</label>
-                <input type="text" inputMode="decimal" value={triageVitals.weight} onChange={e => setTriageVitals({ ...triageVitals, weight: e.target.value })} placeholder="65" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.painScore')}</label>
-                <input type="text" inputMode="numeric" value={triageVitals.painScore} onChange={e => setTriageVitals({ ...triageVitals, painScore: e.target.value })} placeholder="0" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.bloodGlucose')}</label>
-                <input type="text" inputMode="decimal" value={triageVitals.bloodGlucose} onChange={e => setTriageVitals({ ...triageVitals, bloodGlucose: e.target.value })} placeholder="5.5" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.gcs')}</label>
-                <input type="text" inputMode="numeric" value={triageVitals.gcs} onChange={e => setTriageVitals({ ...triageVitals, gcs: e.target.value })} placeholder="15" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('nurse.muac')}</label>
-                <input type="text" inputMode="decimal" value={triageVitals.muac} onChange={e => setTriageVitals({ ...triageVitals, muac: e.target.value })} placeholder="23.5" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
+              {([
+                { field: 'temperature', label: t('nurse.tempC'), placeholder: '37.0', inputMode: 'decimal' },
+                { field: 'pulse', label: t('nurse.pulse'), placeholder: '80', inputMode: 'numeric' },
+                { field: 'respiratoryRate', label: t('nurse.rr'), placeholder: '18', inputMode: 'numeric' },
+                { field: 'oxygenSaturation', label: t('nurse.spo2Pct'), placeholder: '98', inputMode: 'numeric' },
+                { field: 'systolic', label: t('nurse.sysBp'), placeholder: '120', inputMode: 'numeric' },
+                { field: 'diastolic', label: t('nurse.diaBp'), placeholder: '80', inputMode: 'numeric' },
+                { field: 'weight', label: t('nurse.weightKg'), placeholder: '65', inputMode: 'decimal' },
+                { field: 'painScore', label: t('nurse.painScore'), placeholder: '0', inputMode: 'numeric' },
+                { field: 'bloodGlucose', label: t('nurse.bloodGlucose'), placeholder: '5.5', inputMode: 'decimal' },
+                { field: 'gcs', label: t('nurse.gcs'), placeholder: '15', inputMode: 'numeric' },
+                { field: 'muac', label: t('nurse.muac'), placeholder: '23.5', inputMode: 'decimal' },
+              ] as const).map(item => (
+                <VitalInputField
+                  key={item.field}
+                  {...item}
+                  value={triageVitals[item.field]}
+                  error={vitalErrors[item.field]}
+                  warning={warningByVital.get(item.field)}
+                  onChange={value => {
+                    setTriageVitals(previous => ({ ...previous, [item.field]: value }));
+                    // A changed reading invalidates any earlier override
+                    // attestation; the nurse must review and affirm it again.
+                    setOverrideVitalUrgency(false);
+                    setVitalUrgencyOverrideReason('');
+                  }}
+                />
+              ))}
             </div>
           </div>
 

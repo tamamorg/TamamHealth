@@ -1681,6 +1681,19 @@ export interface TriageDoc extends BaseDoc {
   bloodGlucose?: string;    // mmol/L
   gcs?: string;             // Glasgow Coma Scale 3–15
   muac?: string;            // mid-upper arm circumference, cm
+  /** Highest priority recommended after combining ABCC with vital warnings. */
+  vitalUrgencyRecommendation?: TriagePriority;
+  /** Clinical warning snapshot shown to the nurse when this record was saved. */
+  vitalUrgencyWarnings?: Array<{
+    field: string;
+    code: string;
+    urgency: 'RED' | 'YELLOW';
+    message: string;
+  }>;
+  /** True only when the nurse deliberately saved below the recommendation. */
+  vitalUrgencyOverridden?: boolean;
+  /** Mandatory clinical rationale whenever vitalUrgencyOverridden is true. */
+  vitalUrgencyOverrideReason?: string;
   // Context
   chiefComplaint?: string;
   notes?: string;
