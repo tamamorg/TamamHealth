@@ -32,6 +32,45 @@ const ROLE_OPTIONS = (() => {
 const ACCENT = 'var(--accent-primary)';
 const ACCENT_DEEP = 'var(--accent-hover)';
 
+/**
+ * The seeded demo roster, shown only where `NEXT_PUBLIC_DEMO_MODE` is on (the
+ * tamamhealth-v6 deployment). Passwords are never hard-coded — they are minted
+ * per environment and fetched at runtime from `/api/demo-credentials`, which
+ * only answers in demo mode.
+ *
+ * One login per distinct role, batched by facility and escalating up the health
+ * system: Juba Teaching Hospital carries the whole patient journey in the order
+ * a patient meets each role (reception → registration → triage → consult →
+ * diagnostics → pharmacy → billing → records), then the other facilities, then
+ * group and county oversight, ending at the Ministry of Health and the platform
+ * admin. `group` drives the section headers.
+ */
+const DEMO_ACCOUNTS: { group: string; role: string; user: string }[] = [
+  { group: 'Juba Teaching Hospital',    role: 'Medical Receptionist',   user: 'desk.amira' },
+  { group: 'Juba Teaching Hospital',    role: 'Registration Clerk',     user: 'reg.clerk' },
+  { group: 'Juba Teaching Hospital',    role: 'Clinic Clerk',           user: 'clinic.clerk' },
+  { group: 'Juba Teaching Hospital',    role: 'Triage Nurse',           user: 'triage.mary' },
+  { group: 'Juba Teaching Hospital',    role: 'Rooming Nurse',          user: 'rooming.sara' },
+  { group: 'Juba Teaching Hospital',    role: 'Doctor',                 user: 'clinician.peter' },
+  { group: 'Juba Teaching Hospital',    role: 'Radiologist',            user: 'rad.tamamhealth' },
+  { group: 'Juba Teaching Hospital',    role: 'Pharmacist',             user: 'pharma.rose' },
+  { group: 'Juba Teaching Hospital',    role: 'Nutritionist',           user: 'nutr.nyabol' },
+  { group: 'Juba Teaching Hospital',    role: 'Cashier',                user: 'cashier.deng' },
+  { group: 'Juba Teaching Hospital',    role: 'Medical Biller',         user: 'biller.nyandeng' },
+  { group: 'Juba Teaching Hospital',    role: 'Data Entry Clerk',       user: 'data.ayen' },
+  { group: 'Juba Teaching Hospital',    role: 'Records / HMIS Officer', user: 'hmis.john' },
+  { group: 'Wau State Hospital',        role: 'Clinical Officer',       user: 'co.deng' },
+  { group: 'Malakal Teaching Hospital', role: 'Nurse',                  user: 'nurse.stella' },
+  { group: 'Malakal Teaching Hospital', role: 'Midwife',                user: 'midwife.nyakong' },
+  { group: 'Bentiu State Hospital',     role: 'Lab Tech',               user: 'lab.gatluak' },
+  { group: 'Mercy Hospital Group',      role: 'Org Admin',              user: 'org.admin' },
+  { group: 'County Health Office',      role: 'County Health Director', user: 'county.lopez' },
+  { group: 'Ministry of Health',        role: 'Government',             user: 'admin' },
+  { group: 'Ministry of Health',        role: 'Super Admin',            user: 'superadmin' },
+];
+
+const DEMO_GROUPS = Array.from(new Set(DEMO_ACCOUNTS.map(a => a.group)));
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -69,6 +108,23 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated && currentUser) router.push(resolveLandingPage(currentUser.role));
   }, [isAuthenticated, currentUser, router]);
+
+  /** One tap = filled form + signed in, so a demo never stalls on a password. */
+  const signInAsDemo = async (user: string) => {
+    const pw = demoCreds[user];
+    setUsername(user);
+    setPassword(pw || '');
+    setRoleChoice('');
+    setRoleQuery('');
+    if (!pw) { setError('Demo credentials are still loading — try that account again in a moment.'); return; }
+    setError('');
+    setLoading(true);
+    try {
+      const result = await login(user, pw);
+      if (result) router.push(resolveLandingPage(result));
+      else { setError('That demo account could not sign in.'); setLoading(false); }
+    } catch { setError('Login failed. Please try again.'); setLoading(false); }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

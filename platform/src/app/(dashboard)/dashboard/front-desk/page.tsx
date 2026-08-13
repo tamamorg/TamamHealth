@@ -1095,8 +1095,7 @@ export default function FrontDeskDashboardPage() {
   const actions = useMemo<EhrCareDashboardAction[]>(() => ([
     { label: 'Find availability', icon: Plus, onClick: () => setBookingOpen(true), tone: 'primary' as const },
     // The intake form wears one glyph everywhere it appears — the nav item,
-    // the top rail's patient-create button, and here. `Send` described the
-    // delivery, not the thing being delivered.
+    // the top rail's patient-create button, the clinical strip, and here.
     ...(canUseRoute('/patient-intake') ? [{ label: 'Intake Form', icon: Send, onClick: () => setIntakeOpen(true), tone: 'primary' as const }] : []),
     ...(canUseRoute('/patients') ? [{ label: t('frontDesk.registerNewPatient'), icon: UserPlus, onClick: () => setRegisterOpen(true) }] : []),
   ]), [canUseRoute, t]);
