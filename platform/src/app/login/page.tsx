@@ -436,15 +436,17 @@ const sharedStyles = (
     .tl-field { display: flex; flex-direction: column; gap: 7px; }
     .tl-field label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
     .tl-input-wrap { position: relative; display: flex; align-items: center; }
-    .tl-input { width: 100%; padding: 13px 16px; font-size: 14.5px; color: var(--text-primary); background: var(--overlay-subtle); border: 1.5px solid transparent; border-radius: 999px; outline: none; transition: border-color .15s, background .15s, box-shadow .15s; }
-    .tl-input::placeholder { color: var(--text-muted); }
-    .tl-input:focus { border-color: ${ACCENT}; background: var(--bg-card-solid); box-shadow: none; }
-    .tl-input[readonly] { cursor: default; }
-    .tl-input-password { padding-right: 46px; }
+    /* Scoped under .tl-shell: globals.css styles input[type=...] directly, which
+       outranks a bare class and squashes these fields to the square app-wide look. */
+    .tl-shell .tl-input { width: 100%; height: 52px; padding: 0 16px; font-size: 14.5px; color: var(--text-primary); background: var(--overlay-subtle); border: 1.5px solid transparent; border-radius: 999px; outline: none; transition: border-color .15s, background .15s, box-shadow .15s; }
+    .tl-shell .tl-input::placeholder { color: var(--text-muted); }
+    .tl-shell .tl-input:focus { border-color: ${ACCENT}; background: var(--bg-card-solid); box-shadow: none !important; }
+    .tl-shell .tl-input[readonly] { cursor: default; }
+    .tl-shell .tl-input-password { padding-right: 46px; }
     .tl-input-eye { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 6px; }
     .tl-input-eye:hover { color: ${ACCENT_DEEP}; }
     .tl-error { padding: 10px 13px; font-size: 12.5px; color: var(--color-danger); background: var(--color-danger-bg); border: 1px solid color-mix(in srgb, var(--color-danger) 22%, transparent); border-radius: 10px; }
-    .tl-submit { width: 100%; padding: 14px 24px; margin-top: 4px; font-size: 15px; font-weight: 700; color: var(--color-white); background: var(--accent-primary); border: none; border-radius: 999px; cursor: pointer; transition: transform .12s, box-shadow .15s, opacity .15s; box-shadow: none; }
+    .tl-submit { width: 100%; height: 52px; padding: 0 24px; margin-top: 4px; font-size: 15px; font-weight: 700; color: var(--color-white); background: var(--accent-primary); border: none; border-radius: 999px; cursor: pointer; transition: transform .12s, box-shadow .15s, opacity .15s; box-shadow: none; }
     .tl-submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: none; }
     .tl-submit:disabled { opacity: .6; cursor: not-allowed; }
     .tl-submit-loading { display: inline-flex; align-items: center; gap: 8px; }
