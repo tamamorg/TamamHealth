@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, Eye, EyeOff, ChevronRight, X } from '@/components/icons/lucide';
-import { Icon } from '@/components/icons';
+import { ChevronDown, Eye, EyeOff } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
@@ -33,105 +32,6 @@ const ROLE_OPTIONS = (() => {
 const ACCENT = 'var(--accent-primary)';
 const ACCENT_DEEP = 'var(--accent-hover)';
 
-// Real display names for each demo account (from the seed roster).
-const ACCOUNT_NAME: Record<string, string> = {
-  'desk.amira': 'Amira Juma Hassan',
-  'reg.clerk': 'Grace Poni Lukudu',
-  'clinic.clerk': 'Joseph Taban Lado',
-  'cashier.deng': 'Deng Akec Ring',
-  'biller.nyandeng': 'Nyandeng Chol Atem',
-  'triage.mary': 'Mary Nyaruai Gai',
-  'rooming.sara': 'Sara Aluel Bol',
-  'nurse.stella': 'Stella Keji Lemi',
-  'midwife.nyakong': 'Nyakong Gatkuoth',
-  'co.deng': 'Deng Mabior Kuol',
-  'clinician.peter': 'Dr. Peter Garang Deng',
-  'lab.gatluak': 'Gatluak Puok',
-  'rad.tamamhealth': 'Ladu Soro',
-  'pharma.rose': 'Rose Gbudue',
-  'nutr.nyabol': 'Nyabol Koang Jal',
-  'data.ayen': 'Ayen Dut Malual',
-  'hmis.john': 'John Majok Chol',
-  'org.admin': 'Mercy Org Administrator',
-  'county.lopez': 'Dr. Lopez Lokai Modi',
-  'admin': 'Ministry of Health',
-  'superadmin': 'TamamHealth Platform Admin',
-};
-
-// Hero-image pool — every user's sign-in screen gets a distinct photo. With more
-// accounts than photos a few repeat, but never adjacent within a group.
-const IMAGE_POOL = [
-  '/assets/patients/community-health-worker.jpg',
-  '/assets/community-health-worker.jpg',
-  '/assets/patients/portrait-man-camera.jpg',
-  '/assets/patients/portrait-man-beanie.jpg',
-  '/assets/health-data.jpg',
-  '/assets/patients/doctor-writing-notes.jpg',
-  '/assets/patients/african-nurse.jpg',
-  '/assets/african-nurse.jpg',
-  '/assets/patients/doctor-nurse-consultation.jpg',
-  '/assets/doctor-nurse-consultation.jpg',
-  '/assets/patients/doctor-prescription.jpg',
-  '/assets/patients/doctor-tablet-review.jpg',
-  '/assets/doctor-tablet-smiling.jpg',
-  '/assets/patients/doctor-tablet-smiling.jpg',
-  '/assets/patients/founder-teny.jpg',
-  '/assets/patients/founder-ekow.jpg',
-  '/assets/patients/founder-toye.jpg',
-  '/assets/moh.jpg',
-  '/assets/landing-img.jpg',
-];
-
-// Demo roster — passwords are fetched at runtime from /api/demo-credentials.
-// One login per distinct role: no duplicates. The workflow-station roles from
-// the EHR Clinical Flow doc are the source of truth; the older overlapping
-// roles (Doctor, HRIO, Med. Superintendent) map onto Clinician, Records/HMIS
-// Officer, and Facility Administrator respectively. The Medical Receptionist
-// (front_desk) is surfaced explicitly so its Reception dashboard is reachable.
-// Batched by facility, escalating up the health system: Juba Teaching Hospital
-// carries the full patient journey start-to-finish (reception → registration →
-// triage → consult → diagnostics → pharmacy → billing → records), then the
-// other facilities, then group/county oversight, ending at the Ministry of
-// Health and platform admin. The `group` drives the section headers.
-const demoAccounts: { role: string; roleKey: UserRole; user: string; desc: string; hospital: string; group: string }[] = [
-  // 1 ── Juba Teaching Hospital: the whole journey at one facility, in the
-  //      order a patient meets each role.
-  { group: 'Juba Teaching Hospital',    role: 'Medical Receptionist',   roleKey: 'front_desk',                 user: 'desk.amira',       desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Registration Clerk',     roleKey: 'central_registration_clerk', user: 'reg.clerk',        desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Clinic Clerk',           roleKey: 'clinic_clerk',               user: 'clinic.clerk',     desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Triage Nurse',           roleKey: 'triage_nurse',               user: 'triage.mary',      desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Rooming Nurse',          roleKey: 'rooming_nurse',              user: 'rooming.sara',     desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Doctor',                 roleKey: 'clinician',                  user: 'clinician.peter',  desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Radiologist',            roleKey: 'radiologist',                user: 'rad.tamamhealth',  desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Pharmacist',             roleKey: 'pharmacist',                 user: 'pharma.rose',      desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Nutritionist',           roleKey: 'nutritionist',               user: 'nutr.nyabol',      desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Cashier',                roleKey: 'cashier',                    user: 'cashier.deng',     desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Medical Biller',         roleKey: 'medical_biller',             user: 'biller.nyandeng',  desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Data Entry Clerk',       roleKey: 'data_entry_clerk',           user: 'data.ayen',        desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-  { group: 'Juba Teaching Hospital',    role: 'Records / HMIS Officer', roleKey: 'records_hmis_officer',       user: 'hmis.john',        desc: 'Juba Teaching Hospital',    hospital: 'hosp-001' },
-
-  // 2 ── Wau State Hospital.
-  { group: 'Wau State Hospital',        role: 'Clinical Officer',       roleKey: 'clinical_officer',           user: 'co.deng',          desc: 'Wau State Hospital',        hospital: 'hosp-002' },
-
-  // 3 ── Malakal Teaching Hospital.
-  { group: 'Malakal Teaching Hospital', role: 'Nurse',                  roleKey: 'nurse',                      user: 'nurse.stella',     desc: 'Malakal Teaching Hospital', hospital: 'hosp-003' },
-  { group: 'Malakal Teaching Hospital', role: 'Midwife',                roleKey: 'midwife',                    user: 'midwife.nyakong',  desc: 'Malakal Teaching Hospital', hospital: 'hosp-003' },
-
-  // 4 ── Bentiu State Hospital.
-  { group: 'Bentiu State Hospital',     role: 'Lab Tech',               roleKey: 'lab_tech',                   user: 'lab.gatluak',      desc: 'Bentiu State Hospital',     hospital: 'hosp-004' },
-
-  // 5 ── Oversight above the facility: hospital group → county.
-  { group: 'Mercy Hospital Group',      role: 'Org Admin',              roleKey: 'org_admin',                  user: 'org.admin',        desc: 'Mercy Hospital Group',      hospital: '' },
-  { group: 'County Health Office',      role: 'County Health Director', roleKey: 'county_health_director',     user: 'county.lopez',     desc: 'County Health Office',      hospital: '' },
-
-  // 6 ── Ministry of Health & platform: national reporting, then platform admin.
-  { group: 'Ministry of Health',        role: 'Government',             roleKey: 'government',                 user: 'admin',            desc: 'National MoH oversight',    hospital: '' },
-  { group: 'Ministry of Health',        role: 'Super Admin',            roleKey: 'super_admin',                user: 'superadmin',       desc: 'Platform-wide access',      hospital: '' },
-];
-
-type Account = typeof demoAccounts[number];
-
-const imageForIndex = (i: number) => IMAGE_POOL[i % IMAGE_POOL.length];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -141,10 +41,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [demoCreds, setDemoCreds] = useState<Record<string, string>>({});
-  // The user the visitor tapped. `null` = show the account list. The string
-  // 'manual' = blank, fully-editable form for non-demo / production sign-in.
-  const [selected, setSelected] = useState<Account | 'manual' | null>(null);
   const [hospitalId, setHospitalId] = useState('');
   // '' = sign in as the account's own role; a value = requested role
   // (honoured by the server only for the super-admin).
@@ -153,7 +49,6 @@ export default function LoginPage() {
   // open, the chosen role's label once picked) and whether the menu shows.
   const [roleQuery, setRoleQuery] = useState('');
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
-  const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
 
   const roleLabelFor = (value: UserRole | '') =>
     value ? (ROLE_OPTIONS.find(r => r.value === value)?.label || '') : '';
@@ -172,54 +67,9 @@ export default function LoginPage() {
     setRoleMenuOpen(false);
   };
 
-  // Pull freshly-generated demo passwords from the server (one-time per load).
-  useEffect(() => {
-    if (!demoEnabled) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/demo-credentials', { cache: 'no-store' });
-        if (!res.ok) return;
-        const body = await res.json() as { profiles: { username: string; password: string | null }[] };
-        if (cancelled) return;
-        const map: Record<string, string> = {};
-        for (const p of body.profiles) if (p.password) map[p.username] = p.password;
-        setDemoCreds(map);
-      } catch { /* demo creds are a convenience; fail silently */ }
-    })();
-    return () => { cancelled = true; };
-  }, [demoEnabled]);
-
   useEffect(() => {
     if (isAuthenticated && currentUser) router.push(resolveLandingPage(currentUser.role));
   }, [isAuthenticated, currentUser, router]);
-
-  // Open a demo user's sign-in screen with their credentials pre-filled.
-  const pickUser = (acc: Account) => {
-    setError('');
-    setUsername(acc.user);
-    setPassword(demoCreds[acc.user] || '');
-    setHospitalId(acc.hospital || '');
-    setRoleChoice(acc.roleKey);
-    setRoleQuery(ROLE_OPTIONS.find(r => r.value === acc.roleKey)?.label || acc.role);
-    setRoleMenuOpen(false);
-    setShowPassword(false);
-    setSelected(acc);
-  };
-
-  const openManual = () => {
-    setError('');
-    setUsername('');
-    setPassword('');
-    setHospitalId('');
-    setRoleChoice('');
-    setRoleQuery('');
-    setRoleMenuOpen(false);
-    setShowPassword(false);
-    setSelected('manual');
-  };
-
-  const backToList = () => { setSelected(null); setError(''); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,30 +100,20 @@ export default function LoginPage() {
     );
   }
 
-  // ─────────────────────────── Per-user split sign-in ───────────────────────────
-  if (selected) {
-    const acc = selected === 'manual' ? null : selected;
-    const idx = acc ? demoAccounts.findIndex(a => a.user === acc.user) : -1;
-    const hero = acc ? imageForIndex(idx) : '/assets/landing-img.jpg';
-    const fullName = acc ? (ACCOUNT_NAME[acc.user] || acc.role) : '';
-
-    return (
+  // ─────────────────────────── Sign-in ───────────────────────────
+  return (
       <div className="tl-shell">
         <div className="tl-split">
           {/* ── Left: form ── */}
           <section className="tl-pane tl-form-pane">
-            {/* Close/back — shown on small screens where the hero (and its X) is hidden. */}
-            <button type="button" onClick={backToList} aria-label="Close" className="tl-form-close"><X size={18} /></button>
             <header className="tl-brand">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/tamamhealth-logo-full.svg" alt="Tamam Healthcare System" className="tl-brand-logo" />
             </header>
 
             <div className="tl-form-wrap">
-              <h1 className="tl-title">{acc ? 'Welcome back' : 'Sign in'}</h1>
-              <p className="tl-subtitle">
-                {acc ? acc.desc : 'Enter your account credentials'}
-              </p>
+              <h1 className="tl-title">Sign in</h1>
+              <p className="tl-subtitle">Enter your account credentials</p>
 
               {!dbReady && (
                 <div className="tl-db-banner"><span className="tl-spin" /> Initializing offline database…</div>
@@ -283,10 +123,10 @@ export default function LoginPage() {
                 {/* Full name */}
                 <div className="tl-field">
                   <label htmlFor="tl-name">Full name</label>
-                  <input id="tl-name" type="text" value={acc ? fullName : username}
-                    onChange={acc ? undefined : (e) => setUsername(e.target.value)}
-                    readOnly={!!acc} placeholder={acc ? '' : 'Username or Staff ID'}
-                    className="tl-input" autoComplete={acc ? 'off' : 'username'} />
+                  <input id="tl-name" type="text" value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Username or Staff ID"
+                    className="tl-input" autoComplete="username" />
                 </div>
 
                 {/* Role — everyone signs in as their own role; the platform
@@ -368,11 +208,7 @@ export default function LoginPage() {
               </form>
 
               <p className="tl-foot">
-                {acc ? (
-                  <button type="button" className="tl-link" onClick={openManual}>Use a different account</button>
-                ) : (
-                  <a href="/patient-portal" className="tl-link">Sign in as a patient</a>
-                )}
+                <a href="/patient-portal" className="tl-link">Sign in as a patient</a>
                 <span className="tl-foot-sep">·</span>
                 <a href="/terms" target="_blank" rel="noopener noreferrer" className="tl-link">Terms &amp; Conditions</a>
               </p>
@@ -380,9 +216,7 @@ export default function LoginPage() {
           </section>
 
           {/* ── Right: hero ── */}
-          <section className="tl-hero" style={{ backgroundImage: `url(${hero})` }}>
-            <button type="button" onClick={backToList} aria-label="Close" className="tl-hero-close"><X size={18} /></button>
-
+          <section className="tl-hero" style={{ backgroundImage: "url(/assets/landing-img.jpg)" }}>
             {/* One composed poster block on a single left axis. */}
             <div className="tl-hero-panel">
               <span className="tl-hero-eyebrow">Tamam Healthcare System</span>
@@ -393,67 +227,6 @@ export default function LoginPage() {
         {sharedStyles}
       </div>
     );
-  }
-
-  // ─────────────────────────── Account list ───────────────────────────
-  return (
-    <div className="tl-shell">
-      <div className="tl-list-card">
-        <header className="tl-brand tl-brand-list">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/tamamhealth-logo-full.svg" alt="Tamam Healthcare System" className="tl-brand-logo" />
-        </header>
-
-        <div className="tl-list-head">
-          <h1 className="tl-title">Choose your account</h1>
-          <p className="tl-subtitle">Select a user to open their sign-in screen.</p>
-        </div>
-
-        {!dbReady && (
-          <div className="tl-db-banner"><span className="tl-spin" /> Initializing offline database…</div>
-        )}
-
-        <div className="tl-list">
-          {demoEnabled ? demoAccounts.map((acc, i) => {
-            const showHeader = i === 0 || demoAccounts[i - 1].group !== acc.group;
-            const name = ACCOUNT_NAME[acc.user] || acc.role;
-            return (
-              <Fragment key={acc.user}>
-                {showHeader && <div className="tl-group">{acc.group}</div>}
-                <button type="button" onClick={() => pickUser(acc)} className="tl-user">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageForIndex(i)} alt="" aria-hidden className="tl-user-avatar" />
-                  <div className="tl-user-meta">
-                    <span className="tl-user-name">{name}</span>
-                    {/* The group header already names the facility — only repeat
-                        desc when it adds something (e.g. MoH rows). */}
-                    <span className="tl-user-role">{acc.desc === acc.group ? acc.role : `${acc.role} · ${acc.desc}`}</span>
-                  </div>
-                  <ChevronRight size={16} className="tl-user-chev" />
-                </button>
-              </Fragment>
-            );
-          }) : null}
-          {!demoEnabled && (
-            <button type="button" onClick={openManual} className="tl-user">
-              <span className="tl-user-avatar tl-user-avatar-icon"><Icon name="user" size={18} color={ACCENT_DEEP} /></span>
-              <div className="tl-user-meta">
-                <span className="tl-user-name">Sign in</span>
-                <span className="tl-user-role">Enter your account credentials</span>
-              </div>
-              <ChevronRight size={16} className="tl-user-chev" />
-            </button>
-          )}
-        </div>
-
-        <div className="tl-list-foot">
-          <a href="/patient-portal" className="tl-link"><Icon name="patient" size={15} color={ACCENT_DEEP} /> Sign in as a patient</a>
-          {demoEnabled && <button type="button" className="tl-link" onClick={openManual}>Other account</button>}
-        </div>
-      </div>
-      {sharedStyles}
-    </div>
-  );
 }
 
 // Shared styled-jsx for both views (blue + lavender theme).
