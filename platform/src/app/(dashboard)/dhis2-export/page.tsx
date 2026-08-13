@@ -136,7 +136,7 @@ export default function DHIS2ExportPage() {
     { label: t('dhis2.summaryMalariaCases'), value: diseaseAlerts.filter(a => a.disease?.toLowerCase().includes('malaria')).length, icon: AlertTriangle, color: 'var(--color-danger)' },
     { label: t('dhis2.summaryActiveSurveillanceAlerts'), value: diseaseAlerts.length, icon: AlertTriangle, color: 'var(--color-warning)' },
     { label: t('dhis2.summaryAncVisits'), value: ancStats?.totalVisits || 0, icon: FileText, color: '#EC4899' },
-    { label: t('dhis2.summaryImmunizationsGiven'), value: immStats?.totalVaccinations || 0, icon: CheckCircle, color: '#10B944' },
+    { label: t('dhis2.summaryImmunizationsGiven'), value: immStats?.totalVaccinations || 0, icon: CheckCircle, color: 'var(--color-success-text)' },
     { label: t('dhis2.summaryTotalPatients'), value: patients.length, icon: Database, color: '#8B5CF6' },
   ];
 
@@ -177,11 +177,11 @@ export default function DHIS2ExportPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             dhis2Configured
-              ? { label: t('dhis2.statConnection'), value: t('dhis2.statConnectionActive'), icon: Wifi, color: '#10B944', sub: dhis2Host || '' }
-              : { label: t('dhis2.statConnection'), value: 'Not configured', icon: Wifi, color: 'var(--color-warning)', sub: 'Set NEXT_PUBLIC_DHIS2_BASE_URL' },
+              ? { label: t('dhis2.statConnection'), value: t('dhis2.statConnectionActive'), icon: Wifi, color: 'var(--color-success-text)', sub: dhis2Host || '' }
+              : { label: t('dhis2.statConnection'), value: 'Not configured', icon: Wifi, color: 'var(--color-warning-text)', sub: 'Set NEXT_PUBLIC_DHIS2_BASE_URL' },
             { label: t('dhis2.tabDataElements'), value: snapshotValues ? `${lastPushSucceeded ? elementCount : 0}/${elementCount}` : '—', icon: Database, color: 'var(--accent-primary)', sub: snapshotValues ? t('sync.synced') : 'No sync run yet' },
-            { label: t('dhis2.statReportsDue'), value: String(reportsSubmitted ? 0 : REPORT_TYPES.length), icon: FileText, color: 'var(--color-warning)', sub: t('dhis2.statPendingCompletion') },
-            { label: t('dhis2.statLastSync'), value: lastSyncedLabel ? lastSyncShort : 'Never', icon: Clock, color: '#015697', sub: lastSyncedLabel || 'Run a sync to push data' },
+            { label: t('dhis2.statReportsDue'), value: String(reportsSubmitted ? 0 : REPORT_TYPES.length), icon: FileText, color: 'var(--color-warning-text)', sub: t('dhis2.statPendingCompletion') },
+            { label: t('dhis2.statLastSync'), value: lastSyncedLabel ? lastSyncShort : 'Never', icon: Clock, color: 'var(--accent-hover)', sub: lastSyncedLabel || 'Run a sync to push data' },
           ].map((stat) => (
             <div key={stat.label} className="card-elevated p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -203,7 +203,7 @@ export default function DHIS2ExportPage() {
               className="flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors"
               style={{
                 color: activeTab === tab.id ? 'var(--accent-primary)' : 'var(--text-muted)',
-                borderBottom: activeTab === tab.id ? '2px solid #2191D0' : '2px solid transparent',
+                borderBottom: activeTab === tab.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
               }}
             >
               <tab.icon className="w-4 h-4" />
@@ -291,7 +291,7 @@ export default function DHIS2ExportPage() {
                       className="h-full rounded-full transition-all duration-500"
                       style={{
                         width: `${reportCompleteness}%`,
-                        background: reportCompleteness === 100 ? '#10B944' : reportCompleteness > 50 ? 'var(--accent-primary)' : 'var(--color-warning)',
+                        background: reportCompleteness === 100 ? 'var(--color-success)' : reportCompleteness > 50 ? 'var(--accent-primary)' : 'var(--color-warning)',
                       }}
                     />
                   </div>
@@ -318,7 +318,7 @@ export default function DHIS2ExportPage() {
                       className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                       style={{
                         background: 'rgba(16,185,68,0.08)',
-                        color: '#10B944',
+                        color: 'var(--color-success-text)',
                         border: '1px solid rgba(16,185,68,0.15)',
                         cursor: syncing ? 'not-allowed' : 'pointer',
                       }}
@@ -456,11 +456,11 @@ export default function DHIS2ExportPage() {
                   style={{ borderColor: 'var(--border-light)', background: 'var(--overlay-subtle)' }}
                 >
                   <div className="flex items-center gap-3 mb-2">
-                    <FileSpreadsheet className="w-5 h-5" style={{ color: '#10B944' }} />
+                    <FileSpreadsheet className="w-5 h-5" style={{ color: 'var(--color-success-text)' }} />
                     <span className="font-semibold text-sm">CSV</span>
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('dhis2.csvDesc')}</p>
-                  <div className="mt-3 flex items-center gap-2 text-xs font-medium" style={{ color: '#10B944' }}>
+                  <div className="mt-3 flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--color-success-text)' }}>
                     {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                     {t('dhis2.downloadCsv')}
                   </div>
@@ -495,11 +495,11 @@ export default function DHIS2ExportPage() {
                 }}
               >
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{
-                  background: entry.status === 'success' ? '#10B944' : entry.status === 'error' ? 'var(--color-danger)' : 'var(--accent-primary)',
+                  background: entry.status === 'success' ? 'var(--color-success)' : entry.status === 'error' ? 'var(--color-danger)' : 'var(--accent-primary)',
                 }} />
                 <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--text-muted)', minWidth: '150px' }}>{new Date(entry.time).toLocaleString()}</span>
                 <span className="text-sm" style={{
-                  color: entry.status === 'error' ? 'var(--color-danger)' : 'var(--text-secondary)',
+                  color: entry.status === 'error' ? 'var(--color-danger-text)' : 'var(--text-secondary)',
                 }}>{entry.message}</span>
               </div>
             ))}

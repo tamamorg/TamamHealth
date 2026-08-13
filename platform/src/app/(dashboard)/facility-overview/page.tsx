@@ -154,11 +154,11 @@ function FacilityOverview() {
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--text-muted)' }} /> Not yet submitted
                 </span>
               ) : hasPendingChanges ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(252,211,77,0.12)', color: 'var(--color-warning)' }}>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(252,211,77,0.12)', color: 'var(--color-warning-text)' }}>
                   <Clock className="w-3 h-3" /> Changes pending submission
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: 'var(--color-success)' }}>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: 'var(--color-success-text)' }}>
                   <CheckCircle className="w-3 h-3" /> Submitted to Ministry of Health
                 </span>
               )}
@@ -183,7 +183,7 @@ function FacilityOverview() {
                 {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
               </button>
               {submitError && (
-                <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger)' }}>
+                <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
                   <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
                 </span>
               )}
@@ -210,7 +210,7 @@ function FacilityOverview() {
             <StatCard icon={Baby} label="Births Registered" value={String(births.length)} tint="var(--accent-primary)" />
             <StatCard icon={Skull} label="Deaths Registered" value={String(deaths.length)} tint="var(--text-muted)" />
             <StatCard icon={HeartPulse} label="ANC Visits" value={String(ancVisits.length)} tint="#ec4899" />
-            <StatCard icon={Syringe} label="Immunizations" value={String(immunizations.length)} tint="#22c55e" />
+            <StatCard icon={Syringe} label="Immunizations" value={String(immunizations.length)} tint="var(--color-success)" />
           </div>
         </div>
 
@@ -247,9 +247,9 @@ function FacilityOverview() {
               return <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No monthly trend data recorded for this facility yet.</p>;
             }
             const visitSeries = [
-              { key: 'OPD Visits', color: '#2191D0' },
+              { key: 'OPD Visits', color: 'var(--accent-primary)' },
               { key: 'ANC Visits', color: '#ec4899' },
-              { key: 'Immunizations', color: '#22c55e' },
+              { key: 'Immunizations', color: 'var(--color-success-text)' },
             ];
             const commonProps = { data: trend, margin: { top: 8, right: 16, left: -8, bottom: 0 } };
             const legendProps = { iconType: 'circle' as const, iconSize: 8, wrapperStyle: { fontSize: '0.75rem', paddingTop: '4px' } };
@@ -285,18 +285,18 @@ function FacilityOverview() {
               <ResponsiveContainer width="100%" height={260}>
                 <AreaChart {...commonProps}>
                   <defs>
-                    <linearGradient id="gOpd" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2191D0" stopOpacity={0.4} /><stop offset="95%" stopColor="#2191D0" stopOpacity={0} /></linearGradient>
+                    <linearGradient id="gOpd" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0} /></linearGradient>
                     <linearGradient id="gAnc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ec4899" stopOpacity={0.4} /><stop offset="95%" stopColor="#ec4899" stopOpacity={0} /></linearGradient>
-                    <linearGradient id="gImm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.4} /><stop offset="95%" stopColor="#22c55e" stopOpacity={0} /></linearGradient>
+                    <linearGradient id="gImm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--color-success)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--color-success)" stopOpacity={0} /></linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
                   <XAxis dataKey="month" tick={axisTick} />
                   <YAxis tick={axisTick} />
                   <Tooltip {...chartTooltipStyle} />
                   <Legend {...legendProps} />
-                  <Area type="monotone" dataKey="OPD Visits" stroke="#2191D0" fill="url(#gOpd)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="OPD Visits" stroke="var(--accent-primary)" fill="url(#gOpd)" strokeWidth={2} />
                   <Area type="monotone" dataKey="ANC Visits" stroke="#ec4899" fill="url(#gAnc)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="Immunizations" stroke="#22c55e" fill="url(#gImm)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="Immunizations" stroke="var(--color-success)" fill="url(#gImm)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             );

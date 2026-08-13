@@ -145,7 +145,7 @@ export function VitalCard({
             <span
               style={{
                 fontSize: 11, fontWeight: 700,
-                color: trend.direction === 'up' ? 'var(--color-success-text)' : trend.direction === 'down' ? 'var(--color-danger)' : 'var(--text-muted)',
+                color: trend.direction === 'up' ? 'var(--color-success-text)' : trend.direction === 'down' ? 'var(--color-danger-text)' : 'var(--text-muted)',
                 fontVariantNumeric: 'tabular-nums',
               }}
             >

@@ -878,7 +878,7 @@ export default function PatientDetailPage() {
 
           /* ── Header band ── */
           .rx-header {
-            background: #015697 !important;
+            background: var(--accent-hover) !important;
             padding: 10mm 14mm 8mm;
             display: flex;
             align-items: center;
@@ -926,14 +926,14 @@ export default function PatientDetailPage() {
           /* ── Patient banner ── */
           .rx-patient-banner {
             background: #f0f6fb !important;
-            border-bottom: 2px solid #015697 !important;
+            border-bottom: 2px solid var(--accent-hover) !important;
             padding: 6mm 14mm;
             page-break-inside: avoid;
           }
           .rx-patient-name {
             font-size: 15pt;
             font-weight: 700;
-            color: #015697 !important;
+            color: var(--accent-hover) !important;
             margin-bottom: 5pt;
           }
           .rx-patient-grid {
@@ -966,8 +966,8 @@ export default function PatientDetailPage() {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.8pt;
-            color: #015697 !important;
-            border-bottom: 1.5pt solid #015697 !important;
+            color: var(--accent-hover) !important;
+            border-bottom: 1.5pt solid var(--accent-hover) !important;
             padding-bottom: 2pt;
             margin-bottom: 5pt;
           }
@@ -1000,11 +1000,11 @@ export default function PatientDetailPage() {
             color: #1a1a1a !important;
           }
           .rx-row:last-child { border-bottom: none !important; }
-          .rx-row b { color: #015697 !important; }
+          .rx-row b { color: var(--accent-hover) !important; }
 
           /* ── Diagnosis rows ── */
           .rx-dx-row { display: flex; gap: 8pt; align-items: baseline; margin-bottom: 3pt; }
-          .rx-dx-code { font-size: 7pt; font-weight: 700; background: #e8f2fa !important; color: #015697 !important; padding: 1pt 5pt; border-radius: 3pt; flex-shrink: 0; }
+          .rx-dx-code { font-size: 7pt; font-weight: 700; background: #e8f2fa !important; color: var(--accent-hover) !important; padding: 1pt 5pt; border-radius: 3pt; flex-shrink: 0; }
           .rx-dx-name { font-size: 8.5pt; color: #1a1a1a !important; }
           .rx-dx-type { font-size: 7pt; color: #888 !important; margin-left: 4pt; }
 
@@ -1020,7 +1020,7 @@ export default function PatientDetailPage() {
           .rx-sig-block {
             margin-top: 14pt;
             padding-top: 10pt;
-            border-top: 1.5pt solid #015697 !important;
+            border-top: 1.5pt solid var(--accent-hover) !important;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30pt;
@@ -1742,7 +1742,7 @@ export default function PatientDetailPage() {
               {patient.preferredPharmacy && (
                 <div className="card-elevated px-5 py-3 flex items-center gap-3">
                   <div className="icon-box-sm flex-shrink-0">
-                    <Building2 className="w-3.5 h-3.5" style={{ color: '#2191D0' }} />
+                    <Building2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Preferred Pharmacy</p>
@@ -1837,15 +1837,15 @@ export default function PatientDetailPage() {
                         <tr key={entry.id}>
                           <td className="font-mono text-xs">{formatDate(entry.at)}</td>
                           <td><span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={sourceStyle}>{entry.source}</span></td>
-                          <td style={{ color: entry.temperature !== undefined && entry.temperature > 37.5 ? 'var(--color-danger)' : 'inherit', fontWeight: entry.temperature !== undefined && entry.temperature > 37.5 ? 600 : 400 }}>
+                          <td style={{ color: entry.temperature !== undefined && entry.temperature > 37.5 ? 'var(--color-danger-text)' : 'inherit', fontWeight: entry.temperature !== undefined && entry.temperature > 37.5 ? 600 : 400 }}>
                             {entry.temperature ?? '—'}
                           </td>
-                          <td style={{ color: entry.systolic !== undefined && entry.systolic > 140 ? 'var(--color-danger)' : 'inherit', fontWeight: entry.systolic !== undefined && entry.systolic > 140 ? 600 : 400 }}>
+                          <td style={{ color: entry.systolic !== undefined && entry.systolic > 140 ? 'var(--color-danger-text)' : 'inherit', fontWeight: entry.systolic !== undefined && entry.systolic > 140 ? 600 : 400 }}>
                             {hasBp ? `${entry.systolic}/${entry.diastolic}` : '—'}
                           </td>
-                          <td style={{ color: entry.pulse !== undefined && entry.pulse > 100 ? 'var(--color-danger)' : 'inherit' }}>{entry.pulse ?? '—'}</td>
+                          <td style={{ color: entry.pulse !== undefined && entry.pulse > 100 ? 'var(--color-danger-text)' : 'inherit' }}>{entry.pulse ?? '—'}</td>
                           <td>{entry.respiratoryRate ?? '—'}</td>
-                          <td style={{ color: entry.oxygenSaturation !== undefined && entry.oxygenSaturation < 95 ? 'var(--color-danger)' : 'inherit' }}>
+                          <td style={{ color: entry.oxygenSaturation !== undefined && entry.oxygenSaturation < 95 ? 'var(--color-danger-text)' : 'inherit' }}>
                             {entry.oxygenSaturation !== undefined ? `${entry.oxygenSaturation}%` : '—'}
                           </td>
                           <td>{entry.weight ?? '—'}</td>
@@ -2079,8 +2079,8 @@ export default function PatientDetailPage() {
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                 />
               </div>
-              {messageError && <p className="text-[12px]" role="alert" style={{ color: 'var(--color-danger)' }}>{messageError}</p>}
-              {messageSent && <p className="text-[12px] font-semibold" role="status" style={{ color: 'var(--color-success)' }}>Message saved and queued.</p>}
+              {messageError && <p className="text-[12px]" role="alert" style={{ color: 'var(--color-danger-text)' }}>{messageError}</p>}
+              {messageSent && <p className="text-[12px] font-semibold" role="status" style={{ color: 'var(--color-success-text)' }}>Message saved and queued.</p>}
             </div>
 
             <div className="flex items-center justify-end gap-2 mt-5">
@@ -2138,8 +2138,8 @@ export default function PatientDetailPage() {
               </div>
               <div>
                 <label htmlFor="edit-phone" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Phone</label>
-                <input id="edit-phone" type="tel" value={editForm.phone} onChange={e => { setEditForm({ ...editForm, phone: e.target.value }); if (editErrors.phone) setEditErrors({}); }} aria-invalid={!!editErrors.phone} style={editErrors.phone ? { borderColor: 'var(--color-danger)' } : {}} />
-                {editErrors.phone && <p className="text-[11px] mt-1" role="alert" style={{ color: 'var(--color-danger)' }}>{editErrors.phone}</p>}
+                <input id="edit-phone" type="tel" value={editForm.phone} onChange={e => { setEditForm({ ...editForm, phone: e.target.value }); if (editErrors.phone) setEditErrors({}); }} aria-invalid={!!editErrors.phone} />
+                {editErrors.phone && <p className="text-[11px] mt-1" role="alert" style={{ color: 'var(--color-danger-text)' }}>{editErrors.phone}</p>}
               </div>
               {/* State/county are pick-lists, not free text: registration writes
                   from these same lists, and every geographic rollup (surveillance,

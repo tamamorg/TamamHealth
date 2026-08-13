@@ -93,7 +93,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
           {(isRecording || isPaused) && (
             <span className="text-xs font-mono font-bold px-2 py-1 rounded" style={{
               background: isRecording ? 'rgba(229,46,66,0.12)' : 'var(--overlay-subtle)',
-              color: isRecording ? 'var(--color-danger)' : 'var(--text-secondary)',
+              color: isRecording ? 'var(--color-danger-text)' : 'var(--text-secondary)',
             }}>
               {isRecording && <span className="inline-block w-1.5 h-1.5 rounded-full mr-1.5 animate-pulse" style={{ background: 'var(--color-danger)' }} />}
               {formatDuration(scribe.duration)}
@@ -206,7 +206,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
           background: 'rgba(229,46,66,0.08)', border: '1px solid rgba(229,46,66,0.2)',
         }}>
           <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: 'var(--color-danger)' }} />
-          <p className="text-xs" style={{ color: 'var(--color-danger)' }}>{scribe.error}</p>
+          <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{scribe.error}</p>
         </div>
       )}
 
@@ -271,7 +271,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             </FieldSection>
 
             <FieldSection
-              icon={Thermometer} label={t('scribe.sectionVitals')} color="#2191D0"
+              icon={Thermometer} label={t('scribe.sectionVitals')} color="var(--accent-primary)"
               expanded={expandedSections.has('vitals')}
               onToggle={() => toggleSection('vitals')}
               empty={!Object.values(scribe.extraction.vitals).some(v => v)}
@@ -320,7 +320,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             </FieldSection>
 
             <FieldSection
-              icon={AlertTriangle} label={t('scribe.sectionDiagnoses')} color="#E4A84B"
+              icon={AlertTriangle} label={t('scribe.sectionDiagnoses')} color="var(--color-warning-text)"
               expanded={expandedSections.has('diagnoses')}
               onToggle={() => toggleSection('diagnoses')}
               empty={scribe.extraction.diagnoses.length === 0}
@@ -330,14 +330,14 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
                 {scribe.extraction.diagnoses.map((dx, i) => (
                   <div key={i} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
                     {dx.icd10Hint && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: 'rgba(228,168,75,0.12)', color: 'var(--color-warning)' }}>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: 'rgba(228,168,75,0.12)', color: 'var(--color-warning-text)' }}>
                         {dx.icd10Hint}
                       </span>
                     )}
                     <span className="text-xs font-medium flex-1" style={{ color: 'var(--text-primary)' }}>{dx.name}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{
                       background: dx.certainty === 'confirmed' ? 'rgba(33, 145, 208, 0.12)' : 'rgba(252,211,77,0.12)',
-                      color: dx.certainty === 'confirmed' ? 'var(--accent-primary)' : 'var(--color-warning)',
+                      color: dx.certainty === 'confirmed' ? 'var(--accent-primary)' : 'var(--color-warning-text)',
                     }}>{dx.certainty}</span>
                   </div>
                 ))}
@@ -364,7 +364,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             </FieldSection>
 
             <FieldSection
-              icon={Heart} label={t('scribe.sectionAllergies')} color="#C44536"
+              icon={Heart} label={t('scribe.sectionAllergies')} color="var(--color-danger-text)"
               expanded={expandedSections.has('allergies')}
               onToggle={() => toggleSection('allergies')}
               empty={scribe.extraction.allergies.length === 0}
@@ -373,7 +373,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
               <div className="flex flex-wrap gap-1.5">
                 {scribe.extraction.allergies.map((a, i) => (
                   <span key={i} className="text-xs px-2 py-1 rounded-full" style={{
-                    background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)', border: '1px solid rgba(229,46,66,0.2)',
+                    background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)', border: '1px solid rgba(229,46,66,0.2)',
                   }}>
                     {a.allergen}{a.reaction ? ` → ${a.reaction}` : ''}
                   </span>
@@ -430,7 +430,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
               <div className="p-3 rounded-lg" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-warning)' }}>{t('scribe.conflictsHeader')}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-warning-text)' }}>{t('scribe.conflictsHeader')}</span>
                 </div>
                 {scribe.extraction.conflicts.map((c, i) => (
                   <p key={i} className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>

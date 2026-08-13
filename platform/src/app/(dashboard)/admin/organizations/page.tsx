@@ -37,7 +37,7 @@ type OrgFormData = {
 
 const emptyForm: OrgFormData = {
   name: '', slug: '', orgType: 'public', contactEmail: '', country: 'South Sudan',
-  primaryColor: '#2191D0', secondaryColor: '#015697', accentColor: '#2191D0',
+  primaryColor: 'var(--accent-primary)', secondaryColor: 'var(--accent-hover)', accentColor: 'var(--accent-primary)',
   subscriptionPlan: 'professional', subscriptionStatus: 'trial',
   maxUsers: 50, maxHospitals: 10,
   epidemicIntelligence: true, mchAnalytics: true, dhis2Export: false,
@@ -251,13 +251,13 @@ export default function AdminOrganizationsPage() {
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full" style={{
                         background: org.orgType === 'public' ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)',
-                        color: org.orgType === 'public' ? 'var(--color-success)' : 'var(--color-danger)',
+                        color: org.orgType === 'public' ? 'var(--color-success-text)' : 'var(--color-danger-text)',
                       }}>{org.orgType}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{
                         background: org.subscriptionPlan === 'enterprise' ? 'rgba(124,58,237,0.12)' : org.subscriptionPlan === 'professional' ? 'rgba(33, 145, 208, 0.12)' : 'rgba(107,114,128,0.12)',
-                        color: org.subscriptionPlan === 'enterprise' ? 'var(--accent-primary)' : org.subscriptionPlan === 'professional' ? '#2191D0' : '#6B7280',
+                        color: org.subscriptionPlan === 'enterprise' ? 'var(--accent-primary)' : org.subscriptionPlan === 'professional' ? 'var(--accent-primary)' : '#6B7280',
                       }}>{org.subscriptionPlan}</span>
                     </td>
                     <td className="px-4 py-3">
@@ -266,7 +266,7 @@ export default function AdminOrganizationsPage() {
                           background: org.subscriptionStatus === 'active' ? 'var(--color-success)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning)' : 'var(--color-danger)',
                         }} />
                         <span style={{
-                          color: org.subscriptionStatus === 'active' ? 'var(--color-success)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning)' : 'var(--color-danger)',
+                          color: org.subscriptionStatus === 'active' ? 'var(--color-success-text)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
                         }}>{org.subscriptionStatus}</span>
                       </span>
                     </td>
@@ -315,7 +315,7 @@ export default function AdminOrganizationsPage() {
             <div className="space-y-5">
               {/* Basic Info */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger)' }}>{t('orgAdmin.sectionBasicInfo')}</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionBasicInfo')}</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label style={labelStyle}>{t('orgAdmin.labelName')}</label>
@@ -350,7 +350,7 @@ export default function AdminOrganizationsPage() {
 
               {/* Subscription */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger)' }}>{t('orgAdmin.sectionSubscription')}</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionSubscription')}</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label style={labelStyle}>{t('orgAdmin.labelPlan')}</label>
@@ -382,7 +382,7 @@ export default function AdminOrganizationsPage() {
 
               {/* Branding */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger)' }}>{t('orgAdmin.sectionBranding')}</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionBranding')}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { key: 'primaryColor' as const, label: t('orgAdmin.colorPrimary') },
@@ -404,7 +404,7 @@ export default function AdminOrganizationsPage() {
 
               {/* Feature Flags */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger)' }}>{t('orgAdmin.sectionFeatureFlags')}</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionFeatureFlags')}</h4>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                   {[
                     { key: 'epidemicIntelligence' as const, label: t('orgAdmin.featureEpidemicIntelligence') },

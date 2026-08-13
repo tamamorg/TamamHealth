@@ -352,8 +352,8 @@ export default function ReferralsPage() {
           </div>
           {demo.allergies?.length > 0 && demo.allergies[0] !== 'None known' && (
             <div className="mt-3 flex items-center gap-2">
-              <AlertTriangle className="w-3.5 h-3.5" style={{ color: '#F87171' }} />
-              <span className="text-xs font-medium" style={{ color: '#F87171' }}>
+              <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-danger-text)' }} />
+              <span className="text-xs font-medium" style={{ color: 'var(--color-danger-text)' }}>
                 {t('referrals.allergiesLabel', { list: demo.allergies.join(', ') })}
               </span>
             </div>
@@ -361,7 +361,7 @@ export default function ReferralsPage() {
           {demo.chronicConditions?.length > 0 && demo.chronicConditions[0] !== 'None' && (
             <div className="mt-1 flex items-center gap-2">
               <Activity className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />
-              <span className="text-xs font-medium" style={{ color: 'var(--color-warning)' }}>
+              <span className="text-xs font-medium" style={{ color: 'var(--color-warning-text)' }}>
                 {t('referrals.chronicLabel', { list: demo.chronicConditions.join(', ') })}
               </span>
             </div>
@@ -378,7 +378,7 @@ export default function ReferralsPage() {
           <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center gap-2 mb-3">
               <div className="icon-box-sm">
-                <Stethoscope className="w-4 h-4" style={{ color: '#2191D0' }} />
+                <Stethoscope className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
               </div>
               <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.medicalRecords', { count: pkg.medicalRecords.length })}</span>
             </div>
@@ -476,7 +476,7 @@ export default function ReferralsPage() {
                   {pkg.labResults.map((lab, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
                       <td className="py-1.5 pr-3 font-medium">{lab.testName}</td>
-                      <td className="py-1.5 pr-3" style={{ color: lab.abnormal ? (lab.critical ? 'var(--color-danger)' : 'var(--color-warning)') : 'inherit', fontWeight: lab.abnormal ? 600 : 400 }}>
+                      <td className="py-1.5 pr-3" style={{ color: lab.abnormal ? (lab.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: lab.abnormal ? 600 : 400 }}>
                         {lab.result} {lab.unit}
                       </td>
                       <td className="py-1.5 pr-3" style={{ color: 'var(--text-muted)' }}>{lab.referenceRange}</td>
@@ -779,8 +779,8 @@ export default function ReferralsPage() {
                 {detailReferral.outcome && (
                   <div className="mb-3 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)' }}>
                     <div className="flex items-center gap-2 mb-2">
-                      <ClipboardCheck className="w-4 h-4" style={{ color: '#16A34A' }} />
-                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#16A34A' }}>{t('referrals.outcomeReceived')}</p>
+                      <ClipboardCheck className="w-4 h-4" style={{ color: 'var(--color-success-text)' }} />
+                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-success-text)' }}>{t('referrals.outcomeReceived')}</p>
                       <Badge tone="success">{t(`referrals.disposition_${detailReferral.outcome.disposition}`)}</Badge>
                     </div>
                     <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{detailReferral.outcome.summary}</p>
@@ -813,7 +813,7 @@ export default function ReferralsPage() {
                     </div>
                     <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
                       <div className="icon-box-sm">
-                        <AlertTriangle className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />
+                        <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-danger-text)' }} />
                       </div>
                       {t('referrals.noDataPackage')}
                     </div>

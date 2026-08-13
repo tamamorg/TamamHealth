@@ -106,7 +106,7 @@ export default function BillingHomePage() {
           </Select>
         </div>
 
-        {error && <div className="bl-card" style={{ padding: '14px 18px', color: 'var(--color-danger)' }}>{error}</div>}
+        {error && <div className="bl-card" style={{ padding: '14px 18px', color: 'var(--color-danger-text)' }}>{error}</div>}
 
         <div className="bl-card">
           <div className="bl-card-head">

@@ -437,7 +437,7 @@ function FacilityList({ hospitals, colorMetric, onSelect, canManage }: {
                 <td>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 999, textTransform: 'capitalize',
-                    color: h.syncStatus === 'online' ? 'var(--color-success)' : h.syncStatus === 'syncing' ? 'var(--color-warning)' : 'var(--text-muted)',
+                    color: h.syncStatus === 'online' ? 'var(--color-success-text)' : h.syncStatus === 'syncing' ? 'var(--color-warning-text)' : 'var(--text-muted)',
                     background: h.syncStatus === 'online' ? 'color-mix(in srgb, var(--color-success) 12%, transparent)' : h.syncStatus === 'syncing' ? 'color-mix(in srgb, var(--color-warning) 12%, transparent)' : 'var(--overlay-subtle)',
                   }}>
                     {h.syncStatus}
@@ -577,8 +577,8 @@ function FacilityProfile({ hospital, onClose, canManage }: {
             ) : (
             <ResponsiveContainer width="100%" height={50}>
               <LineChart data={hospital.monthlyTrends} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-                <Line type="monotone" dataKey="opdVisits" stroke="#2191D0" strokeWidth={1.5} dot={false} />
-                <Line type="monotone" dataKey="reportingTimeliness" stroke="#1F9D6F" strokeWidth={1.5} dot={false} />
+                <Line type="monotone" dataKey="opdVisits" stroke="var(--accent-primary)" strokeWidth={1.5} dot={false} />
+                <Line type="monotone" dataKey="reportingTimeliness" stroke="var(--color-success)" strokeWidth={1.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
             )}
@@ -594,9 +594,9 @@ function FacilityProfile({ hospital, onClose, canManage }: {
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('hospitals.bedsHeader', { count: hospital.totalBeds })}</div>
           <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
             {[
-              { label: t('hospitals.bedsIcu'), value: hospital.icuBeds, color: 'var(--color-danger)' },
+              { label: t('hospitals.bedsIcu'), value: hospital.icuBeds, color: 'var(--color-danger-text)' },
               { label: t('hospitals.bedsMaternity'), value: hospital.maternityBeds, color: '#EC4899' },
-              { label: t('hospitals.bedsPediatric'), value: hospital.pediatricBeds, color: '#2191D0' },
+              { label: t('hospitals.bedsPediatric'), value: hospital.pediatricBeds, color: 'var(--accent-primary)' },
               { label: t('hospitals.bedsGeneral'), value: Math.max(0, hospital.totalBeds - hospital.icuBeds - hospital.maternityBeds - hospital.pediatricBeds), color: 'var(--text-muted)' },
             ].map(b => (
               <div key={b.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
@@ -622,8 +622,8 @@ function FacilityProfile({ hospital, onClose, canManage }: {
               { label: t('hospitals.staffDoctors'), value: hospital.doctors, color: 'var(--accent-primary)' },
               { label: t('hospitals.staffClinicalOfficers'), value: hospital.clinicalOfficers, color: '#A78BFA' },
               { label: t('hospitals.staffNurses'), value: hospital.nurses, color: '#EC4899' },
-              { label: t('hospitals.staffLabTech'), value: hospital.labTechnicians, color: 'var(--color-warning)' },
-              { label: t('hospitals.staffPharmacists'), value: hospital.pharmacists, color: 'var(--color-success)' },
+              { label: t('hospitals.staffLabTech'), value: hospital.labTechnicians, color: 'var(--color-warning-text)' },
+              { label: t('hospitals.staffPharmacists'), value: hospital.pharmacists, color: 'var(--color-success-text)' },
             ].map(s => (
               <div key={s.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
@@ -641,12 +641,12 @@ function FacilityProfile({ hospital, onClose, canManage }: {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {hospital.hasElectricity ? <InfraBadge icon={Zap} label={t('hospitals.infraPower')} color="#FCD34D" bg="rgba(252,211,77,0.10)" />
               : <InfraBadge icon={ZapOff} label={t('hospitals.infraNoPower')} color="#8A9E9A" bg="rgba(100,116,139,0.10)" />}
-            {hospital.hasGenerator && <InfraBadge icon={Activity} label={t('hospitals.infraGenerator')} color="#1F9D6F" bg="rgba(31, 157, 111,0.10)" />}
+            {hospital.hasGenerator && <InfraBadge icon={Activity} label={t('hospitals.infraGenerator')} color="var(--color-success-text)" bg="rgba(31, 157, 111,0.10)" />}
             {hospital.hasSolar && <InfraBadge icon={Sun} label={t('hospitals.infraSolar')} color="#FCD34D" bg="rgba(252,211,77,0.08)" />}
-            {hospital.hasInternet ? <InfraBadge icon={Signal} label={hospital.internetType} color="#2191D0" bg="rgba(96,165,250,0.10)" />
+            {hospital.hasInternet ? <InfraBadge icon={Signal} label={hospital.internetType} color="var(--accent-primary)" bg="rgba(96,165,250,0.10)" />
               : <InfraBadge icon={WifiOff} label={t('hospitals.infraNoInternet')} color="#8A9E9A" bg="rgba(100,116,139,0.10)" />}
-            {hospital.hasAmbulance && <InfraBadge icon={Truck} label={t('hospitals.infraAmbulance')} color="#EF4444" bg="rgba(239,68,68,0.08)" />}
-            {hospital.emergency24hr && <InfraBadge icon={HeartPulse} label={t('hospitals.infra24hrEr')} color="#EF4444" bg="rgba(239,68,68,0.08)" />}
+            {hospital.hasAmbulance && <InfraBadge icon={Truck} label={t('hospitals.infraAmbulance')} color="var(--color-danger-text)" bg="rgba(239,68,68,0.08)" />}
+            {hospital.emergency24hr && <InfraBadge icon={HeartPulse} label={t('hospitals.infra24hrEr')} color="var(--color-danger-text)" bg="rgba(239,68,68,0.08)" />}
           </div>
           {hospital.electricityHours > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>

@@ -195,9 +195,9 @@ export default function ConsultationProgressTracker({
           className="flex items-start gap-2 mt-3 p-2.5 rounded-lg"
           style={{ background: 'rgba(196,69,54,.08)', border: '1px solid rgba(196,69,54,.22)' }}
         >
-          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-danger, #C24536)' }} />
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-danger, #DC2626)' }} />
           <span className="min-w-0">
-            <span className="block text-[12px] font-bold" style={{ color: 'var(--color-danger, #C24536)' }}>{exception.label}</span>
+            <span className="block text-[12px] font-bold" style={{ color: 'var(--color-danger, #DC2626)' }}>{exception.label}</span>
             <span className="block text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>{exception.detail}</span>
           </span>
         </div>

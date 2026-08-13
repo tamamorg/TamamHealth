@@ -8,16 +8,27 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertTriangle, CalendarClock, Plus, Trash2 } from '@/components/icons/lucide';
-import RowActionsMenu from '@/components/RowActionsMenu';
+import { AlertTriangle, CalendarClock, Plus } from '@/components/icons/lucide';
 import CreateShiftDialog from '@/components/create-dialogs/CreateShiftDialog';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
+import RowStatusSelect from '@/components/ehr/RowStatusSelect';
 import EmptyState from '@/components/EmptyState';
 import type { StaffScheduleDoc } from '@/lib/db-types';
 import {
-  HrPageShell, SHIFT_TYPES, StaffCell, Th, parseScheduleDateFromParams,
+  HrPageShell, SCHEDULE_STATUS_TOKENS, SHIFT_TOKENS, SHIFT_TYPES, StaffIdentity,
+  formatHrDate, parseScheduleDateFromParams, shiftDuration, statusPillStyle,
   useHrContext, useUrlParams, type StaffingGap,
 } from '../hr-shared';
+
+// Columns: Staff · Shift · Time · Department · Status — five, matching the
+// patient registry exactly, so the template comes from `.appointment-card-flow`
+// and is never restated here.
+
+/** Sentinel for the one row action that isn't a status move. */
+const REMOVE_SHIFT = '__remove';
+
+/** Lifecycle rungs offered by a row's status pill, in ladder order. */
+const SCHEDULE_STATUS_OPTIONS: StaffScheduleDoc['status'][] = ['scheduled', 'confirmed', 'completed', 'absent', 'swapped'];
 
 export default function HrSchedulePage() {
   const { t, facilityId, showToast } = useHrContext();
@@ -78,17 +89,28 @@ export default function HrSchedulePage() {
     }
   };
 
+  const setShiftStatus = async (id: string, status: StaffScheduleDoc['status']) => {
+    try {
+      const { updateSchedule } = await import('@/lib/services/staff-scheduling-service');
+      await updateSchedule(id, { status });
+      reload();
+    } catch {
+      showToast(t('hr.shiftStatusFailed'), 'error');
+    }
+  };
+
   return (
     <HrPageShell>
-      <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
         <EhrListHeader
           title="Shift schedule"
           stats={[
             { label: 'Shifts', value: schedules.length, color: 'var(--text-muted)' },
-            { label: t('hr.shiftType_morning'), value: schedules.filter(s => s.shiftType === 'morning').length, color: 'var(--color-success)' },
-            { label: t('hr.shiftType_afternoon'), value: schedules.filter(s => s.shiftType === 'afternoon').length, color: '#B8741C' },
-            { label: t('hr.shiftType_night'), value: schedules.filter(s => s.shiftType === 'night').length, color: '#015697' },
-            { label: t('hr.shiftType_on_call'), value: schedules.filter(s => s.shiftType === 'on_call').length, color: '#2191D0' },
+            ...SHIFT_TYPES.map(shift => ({
+              label: t(`hr.shiftType_${shift}`),
+              value: schedules.filter(s => s.shiftType === shift).length,
+              color: SHIFT_TOKENS[shift].color,
+            })),
           ]}
           actions={
             <>
@@ -100,9 +122,9 @@ export default function HrSchedulePage() {
                 className="listpage-toolbar-date"
                 style={{ flex: 1, minWidth: 0 }}
               />
-              <button type="button" className="listpage-icon-btn listpage-icon-btn-primary" onClick={() => setOpen(true)} title={t('hr.scheduleShift')} aria-label={t('hr.scheduleShift')}>
+              <EhrListHeaderButton primary onClick={() => setOpen(true)} ariaLabel={t('hr.scheduleShift')}>
                 <Plus className="w-4 h-4" color="#fff" />
-              </button>
+              </EhrListHeaderButton>
             </>
           }
         />
@@ -149,54 +171,84 @@ export default function HrSchedulePage() {
             Fully staffed — every shift type meets its configured minimum for {date}.
           </div>
         )}
-        <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
-          <table className="w-full" style={{ minWidth: 720 }}>
-            <thead>
-              <tr>
-                <Th>{t('hr.colStaff')}</Th>
-                <Th>{t('hr.labelShift')}</Th>
-                <Th>Time</Th>
-                <Th>{t('hr.labelDepartment')}</Th>
-                <Th />
-              </tr>
-            </thead>
-            <tbody>
-              {SHIFT_TYPES.flatMap(shift => schedules.filter(s => s.shiftType === shift)).map(s => {
-                const shiftColor = s.shiftType === 'morning' ? 'var(--color-success-text)' : s.shiftType === 'afternoon' ? '#B8741C' : s.shiftType === 'night' ? '#015697' : 'var(--accent-primary)';
-                return (
-                  <tr key={s._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td className="px-4 py-2.5"><StaffCell name={s.userName} sub={s.role.replace(/_/g, ' ')} /></td>
-                    <td className="px-4 py-2.5">
-                      <span className="inline-flex items-center gap-1.5 text-[13px] capitalize" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: shiftColor }} />
-                        {t(`hr.shiftType_${s.shiftType}`)}
-                        {s.isOnCall && <span className="ml-1 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(59, 130, 246, 0.16)', color: 'var(--accent-primary)' }}>{t('hr.onCall')}</span>}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-[13px] whitespace-nowrap tabular-nums" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{s.startTime}–{s.endTime}</td>
-                    <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{s.department || '—'}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex justify-end">
-                        <RowActionsMenu
-                          actions={[
-                            { key: 'remove', label: t('hr.removeShift'), tone: 'danger', icon: <Trash2 className="w-4 h-4" />, onClick: () => removeShift(s._id) },
-                          ]}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {schedules.length === 0 && (
-            <EmptyState
-              icon={CalendarClock}
-              title="No shifts scheduled"
-              message={`${t('hr.noShiftsScheduled', { date })} ${t('hr.scheduleShift')} ${t('hr.aboveToAddOne')}`}
-              action={{ label: 'Create shift', onClick: () => setOpen(true) }}
-            />
-          )}
+        {/* The patient registry's list, exactly: the same surface + flow
+            wrappers, so the column template, 14px gutters and 16px side inset
+            all come from `.appointment-card-flow` rather than being restated
+            here. Five columns and no actions gutter — the row's actions live
+            in its status pill. */}
+        <div className="appointment-card-surface patients-list-surface">
+          <div className="appointment-card-flow">
+            {/* The column head is the roster's frame, not a label for the rows
+                that happen to be loaded: it stays put on an empty day, so the
+                list never collapses into a bare message. */}
+            <div className="appointment-card-head" aria-hidden="true">
+              <span>{t('hr.colStaff')}</span>
+              <span>{t('hr.labelShift')}</span>
+              <span>Time</span>
+              <span>{t('hr.labelDepartment')}</span>
+              <span>{t('hr.colStatus')}</span>
+            </div>
+            {schedules.length === 0 && (
+              <EmptyState
+                icon={CalendarClock}
+                title="No shifts scheduled"
+                message={`${t('hr.noShiftsScheduled', { date })} ${t('hr.scheduleShift')} ${t('hr.aboveToAddOne')}`}
+                action={{ label: 'Create shift', onClick: () => setOpen(true) }}
+              />
+            )}
+            {SHIFT_TYPES.flatMap(shift => schedules.filter(s => s.shiftType === shift)).map(s => {
+              const shiftTok = SHIFT_TOKENS[s.shiftType];
+              const statusTok = SCHEDULE_STATUS_TOKENS[s.status] ?? SCHEDULE_STATUS_TOKENS.scheduled;
+              return (
+                <div key={s._id} className="ehr-appointment-row appointment-card-row" style={{ cursor: 'default' }}>
+                  <StaffIdentity name={s.userName} sub={s.role.replace(/_/g, ' ')} capitalizeSub />
+
+                  {/* Shift — a tinted chip, so the shift's colour reads at a
+                      glance the way it did as a dot, at the pill metrics every
+                      other list column already uses. */}
+                  <div className="ehr-appointment-department appointment-card-department">
+                    <span className="appointment-status-pill capitalize" style={statusPillStyle(shiftTok)}>
+                      {t(`hr.shiftType_${s.shiftType}`)}
+                    </span>
+                  </div>
+
+                  {/* Time — the window, with its length underneath. */}
+                  <div className="ehr-appointment-time">
+                    <strong className="tabular-nums">{s.startTime}–{s.endTime}</strong>
+                    <span>{shiftDuration(s.startTime, s.endTime)}{s.isOnCall ? ` · ${t('hr.onCall')}` : ''}</span>
+                  </div>
+
+                  <div className="appointment-card-provider">
+                    <strong>{s.department || 'No department'}</strong>
+                    <span title={s.notes || undefined}>{s.notes || t('hr.labelDepartment')}</span>
+                  </div>
+
+                  {/* The pill moves the shift along its lifecycle; removing it
+                      is the one action that isn't a state, so it sits in its
+                      own group at the foot of the same menu. */}
+                  <div className="appointment-card-status">
+                    <RowStatusSelect
+                      label={statusTok.label}
+                      value={s.status}
+                      ariaLabel={`Shift status for ${s.userName}`}
+                      style={statusPillStyle(statusTok)}
+                      options={[
+                        ...SCHEDULE_STATUS_OPTIONS
+                          .filter(status => status !== s.status)
+                          .map(status => ({ value: status, label: SCHEDULE_STATUS_TOKENS[status].label })),
+                        { value: REMOVE_SHIFT, label: t('hr.removeShift'), group: t('hr.labelShift') },
+                      ]}
+                      onSelect={next => {
+                        if (next === REMOVE_SHIFT) removeShift(s._id);
+                        else setShiftStatus(s._id, next as StaffScheduleDoc['status']);
+                      }}
+                    />
+                    <small>{formatHrDate(s.shiftDate, { month: 'short', day: 'numeric' })}</small>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

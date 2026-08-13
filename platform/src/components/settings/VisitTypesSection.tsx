@@ -241,7 +241,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
                 style={{
                   width: 32, height: 32, borderRadius: 999, flexShrink: 0,
                   border: '1px solid var(--border-light)', background: 'transparent',
-                  color: 'var(--color-danger)', cursor: 'pointer',
+                  color: 'var(--color-danger-text)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >

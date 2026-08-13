@@ -90,7 +90,7 @@ export default function LoginPage() {
         </div>
         <p>Redirecting to your dashboard…</p>
         <style jsx>{`
-          .tl-loading { min-height: 100vh; display: flex; flex-direction: column; gap: 16px; align-items: center; justify-content: center; background: var(--bg-app, #fff); }
+          .tl-loading { min-height: 100vh; display: flex; flex-direction: column; gap: 16px; align-items: center; justify-content: center; background: var(--bg-app, #EFF8FD); }
           .tl-loading-mark { animation: tl-pulse 1.2s ease-in-out infinite; }
           .tl-loading p { color: ${ACCENT_DEEP}; font-size: 14px; font-weight: 600; }
           @keyframes tl-pulse { 0%,100% { opacity: .55; transform: scale(.96);} 50% { opacity: 1; transform: scale(1);} }

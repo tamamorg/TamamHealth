@@ -100,7 +100,7 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
               <button onClick={handleScan} disabled={phase === 'scanning'} className="btn btn-primary" style={{ opacity: phase === 'scanning' ? 0.6 : 1 }}>
                 <ScanLine className="w-4 h-4" /> {t('fingerprint.identifyScan')}
               </button>
-              {error && <p className="text-[11px]" role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+              {error && <p className="text-[11px]" role="alert" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
             </div>
           )}
 

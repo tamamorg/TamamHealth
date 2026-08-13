@@ -112,7 +112,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                 }}
               >
                 <td style={{ fontWeight: 600 }}>{l.testName}</td>
-                <td style={{ color: l.abnormal ? (l.critical ? 'var(--color-danger)' : 'var(--color-warning)') : 'inherit', fontWeight: l.abnormal ? 700 : 400 }}>
+                <td style={{ color: l.abnormal ? (l.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: l.abnormal ? 700 : 400 }}>
                   {l.result || '—'}{l.unit ? ` ${l.unit}` : ''}
                 </td>
                 <td>{l.referenceRange || '—'}</td>

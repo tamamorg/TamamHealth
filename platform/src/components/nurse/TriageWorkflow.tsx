@@ -617,7 +617,7 @@ export default function TriageWorkflow({
             {/* Airway */}
             <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center gap-2 mb-2">
-                <Wind className="w-4 h-4" style={{ color: '#2191D0' }} />
+                <Wind className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                 <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.airway')}</span>
               </div>
               <div className="flex gap-2">
@@ -710,7 +710,7 @@ export default function TriageWorkflow({
             {/* Consciousness (AVPU) */}
             <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center gap-2 mb-2">
-                <Brain className="w-4 h-4" style={{ color: '#2191D0' }} />
+                <Brain className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                 <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.consciousnessAvpu')}</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5 keep-cols">

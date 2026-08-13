@@ -146,7 +146,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                       <td style={{ fontWeight: 600 }}>
                         {im.vaccine}
                         {im.adverseReaction && (
-                          <div style={{ color: 'var(--color-danger)', fontSize: 12, fontWeight: 400 }}>
+                          <div style={{ color: 'var(--color-danger-text)', fontSize: 12, fontWeight: 400 }}>
                             Adverse reaction{im.adverseReactionDetails ? `: ${im.adverseReactionDetails}` : ''}
                           </div>
                         )}

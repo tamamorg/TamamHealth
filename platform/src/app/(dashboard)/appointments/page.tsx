@@ -51,17 +51,17 @@ const AppointmentsCalendar = dynamic(() => import('./_AppointmentsCalendar'), {
 
 /* ─── Config ─── */
 const appointmentTypes: { value: AppointmentType; label: string; icon: typeof Calendar; color: string; bg: string }[] = [
-  { value: 'general',      label: 'General Consultation', icon: Stethoscope,   color: '#2191D0', bg: 'rgba(33,145,208,0.10)' },
-  { value: 'follow_up',    label: 'Follow-Up',            icon: RefreshCw,     color: '#015697', bg: 'rgba(1,86,151,0.10)' },
-  { value: 'specialist',   label: 'Specialist',           icon: User,          color: '#015697', bg: 'rgba(3,105,161,0.10)' },
-  { value: 'anc',          label: 'Antenatal Care',       icon: HeartPulse,    color: '#047857', bg: 'rgba(4,120,87,0.10)' },
-  { value: 'immunization', label: 'Immunization',         icon: Syringe,       color: '#059669', bg: 'rgba(5,150,105,0.10)' },
-  { value: 'lab',          label: 'Laboratory',           icon: FlaskConical,  color: '#2191D0', bg: 'rgba(8,145,178,0.10)' },
-  { value: 'telehealth',   label: 'Telehealth',           icon: Video,         color: '#015697', bg: 'rgba(14,116,144,0.10)' },
-  { value: 'surgical',     label: 'Surgical',             icon: Stethoscope,   color: '#DC2626', bg: 'rgba(220,38,38,0.10)' },
-  { value: 'dental',       label: 'Dental',               icon: Stethoscope,   color: '#015697', bg: 'rgba(29,78,216,0.10)' },
-  { value: 'mental_health',label: 'Mental Health',        icon: HeartPulse,    color: '#D97706', bg: 'rgba(217,119,6,0.10)' },
-  { value: 'walk_in',      label: 'Walk-In',              icon: UserPlus,      color: '#2191D0', bg: 'rgba(33,145,208,0.10)' },
+  { value: 'general',      label: 'General Consultation', icon: Stethoscope,   color: 'var(--accent-primary)', bg: 'rgba(33,145,208,0.10)' },
+  { value: 'follow_up',    label: 'Follow-Up',            icon: RefreshCw,     color: 'var(--accent-hover)', bg: 'rgba(1,86,151,0.10)' },
+  { value: 'specialist',   label: 'Specialist',           icon: User,          color: 'var(--accent-hover)', bg: 'rgba(3,105,161,0.10)' },
+  { value: 'anc',          label: 'Antenatal Care',       icon: HeartPulse,    color: 'var(--color-success-text)', bg: 'rgba(4,120,87,0.10)' },
+  { value: 'immunization', label: 'Immunization',         icon: Syringe,       color: 'var(--color-success-text)', bg: 'rgba(5,150,105,0.10)' },
+  { value: 'lab',          label: 'Laboratory',           icon: FlaskConical,  color: 'var(--accent-primary)', bg: 'rgba(8,145,178,0.10)' },
+  { value: 'telehealth',   label: 'Telehealth',           icon: Video,         color: 'var(--accent-hover)', bg: 'rgba(14,116,144,0.10)' },
+  { value: 'surgical',     label: 'Surgical',             icon: Stethoscope,   color: 'var(--color-danger-text)', bg: 'rgba(220,38,38,0.10)' },
+  { value: 'dental',       label: 'Dental',               icon: Stethoscope,   color: 'var(--accent-hover)', bg: 'rgba(29,78,216,0.10)' },
+  { value: 'mental_health',label: 'Mental Health',        icon: HeartPulse,    color: 'var(--color-warning-text)', bg: 'rgba(217,119,6,0.10)' },
+  { value: 'walk_in',      label: 'Walk-In',              icon: UserPlus,      color: 'var(--accent-primary)', bg: 'rgba(33,145,208,0.10)' },
 ];
 
 // Fallback list when the facility hasn't set its departments in Facility Settings.
@@ -1087,9 +1087,9 @@ export default function AppointmentsPage() {
 
         {/* Cancel */}
         {cancelId && canManageAppointmentSchedule && (
-          <Modal onClose={() => { setCancelId(null); setCancelReason(''); }} title={t('appointments.cancelTitle')} titleColor="#EF4444" icon={<AlertTriangle size={34} style={{ color: 'var(--color-danger)' }} />} size="sm">
+          <Modal onClose={() => { setCancelId(null); setCancelReason(''); }} title={t('appointments.cancelTitle')} titleColor="var(--color-danger)" icon={<AlertTriangle size={34} style={{ color: 'var(--color-danger)' }} />} size="sm">
             <div><label>{t('appointments.labelCancelReason')}</label><textarea value={cancelReason} onChange={e => setCancelReason(e.target.value)} rows={3} placeholder={t('appointments.cancelReasonPlaceholder')} /></div>
-            <ModalActions onCancel={() => { setCancelId(null); setCancelReason(''); }} onConfirm={handleCancel} confirmLabel={t('appointments.cancelTitle')} confirmColor="#EF4444" cancelLabel={t('appointments.goBack')} />
+            <ModalActions onCancel={() => { setCancelId(null); setCancelReason(''); }} onConfirm={handleCancel} confirmLabel={t('appointments.cancelTitle')} confirmColor="var(--color-danger)" cancelLabel={t('appointments.goBack')} />
           </Modal>
         )}
 
@@ -1373,7 +1373,7 @@ function ModalActions({ onCancel, onConfirm, confirmLabel, confirmColor, cancelL
 }
 
 function InsuranceBadge({ insured, compact, pill }: { insured: boolean; compact?: boolean; pill?: boolean }) {
-  const color = insured ? '#047857' : '#64748B';
+  const color = insured ? 'var(--color-success-text)' : '#64748B';
   return (
     <span style={{
       fontSize: compact ? 9 : 11, fontWeight: 700, whiteSpace: 'nowrap',

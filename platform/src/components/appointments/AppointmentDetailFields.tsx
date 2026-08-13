@@ -184,7 +184,7 @@ export default function AppointmentDetailFields({
       {conflict && (
         <p
           role="status"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--color-danger)' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--color-danger-text)' }}
         >
           <AlertTriangle className="w-3.5 h-3.5" />
           {providerName || 'This provider'} already has {conflict.patientName} at {conflict.appointmentTime} — conflicts with another appointment.

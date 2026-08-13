@@ -97,10 +97,10 @@ export default function OrgAdminAnalyticsPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
         {[
-          { label: t('analytics.dau'), value: usage?.dau, icon: Users, color: '#2191D0' },
+          { label: t('analytics.dau'), value: usage?.dau, icon: Users, color: 'var(--accent-primary)' },
           { label: t('analytics.wau'), value: usage?.wau, icon: Activity, color: 'var(--accent-primary)' },
-          { label: t('analytics.sessions'), value: usage?.sessionCount, icon: LayoutDashboard, color: 'var(--color-success)' },
-          { label: t('analytics.events'), value: usage?.eventCount, icon: BarChart3, color: 'var(--color-warning)' },
+          { label: t('analytics.sessions'), value: usage?.sessionCount, icon: LayoutDashboard, color: 'var(--color-success-text)' },
+          { label: t('analytics.events'), value: usage?.eventCount, icon: BarChart3, color: 'var(--color-warning-text)' },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -141,8 +141,8 @@ export default function OrgAdminAnalyticsPage() {
                   <YAxis tick={axisTick} />
                   <Tooltip {...chartTooltipStyle} />
                   <Legend wrapperStyle={{ fontSize: '11px' }} />
-                  <Area type="monotone" dataKey="users" name={t('analytics.legendUsers')} stroke="#2191D0" fill="url(#grad1)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="events" name={t('analytics.events')} stroke="#059669" fill="#059669" fillOpacity={0.12} strokeWidth={2} />
+                  <Area type="monotone" dataKey="users" name={t('analytics.legendUsers')} stroke="var(--accent-primary)" fill="url(#grad1)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="events" name={t('analytics.events')} stroke="var(--color-success)" fill="var(--color-success)" fillOpacity={0.12} strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             );

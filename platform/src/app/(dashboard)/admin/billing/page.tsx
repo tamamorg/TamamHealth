@@ -207,7 +207,7 @@ export default function AdminBillingPage() {
                         ) : (
                           <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{
                             background: org.subscriptionPlan === 'enterprise' ? 'rgba(124,58,237,0.12)' : org.subscriptionPlan === 'professional' ? 'rgba(33, 145, 208, 0.12)' : 'rgba(107,114,128,0.12)',
-                            color: org.subscriptionPlan === 'enterprise' ? 'var(--accent-primary)' : org.subscriptionPlan === 'professional' ? '#2191D0' : '#6B7280',
+                            color: org.subscriptionPlan === 'enterprise' ? 'var(--accent-primary)' : org.subscriptionPlan === 'professional' ? 'var(--accent-primary)' : '#6B7280',
                           }}>{org.subscriptionPlan}</span>
                         )}
                       </td>
@@ -225,7 +225,7 @@ export default function AdminBillingPage() {
                               background: org.subscriptionStatus === 'active' ? 'var(--color-success)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning)' : 'var(--color-danger)',
                             }} />
                             <span style={{
-                              color: org.subscriptionStatus === 'active' ? 'var(--color-success)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning)' : 'var(--color-danger)',
+                              color: org.subscriptionStatus === 'active' ? 'var(--color-success-text)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
                             }}>{org.subscriptionStatus}</span>
                           </span>
                         )}
@@ -247,10 +247,10 @@ export default function AdminBillingPage() {
                       <td className="px-4 py-3">
                         {isEditing ? (
                           <div className="flex items-center gap-1">
-                            <button onClick={() => saveEdit(org._id)} disabled={saving} aria-label="Save" className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--color-success)' }}>
+                            <button onClick={() => saveEdit(org._id)} disabled={saving} aria-label="Save" className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--color-success-text)' }}>
                               <Check className="w-4 h-4" />
                             </button>
-                            <button onClick={cancelEdit} aria-label="Cancel" className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--color-danger)' }}>
+                            <button onClick={cancelEdit} aria-label="Cancel" className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--color-danger-text)' }}>
                               <X className="w-4 h-4" />
                             </button>
                           </div>

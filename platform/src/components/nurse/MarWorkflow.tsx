@@ -175,7 +175,7 @@ export default function MarWorkflow({ onAdminister }: { onAdminister?: () => voi
                   className="px-2 py-2 text-[11px] font-bold uppercase rounded transition-all"
                   style={{
                     background: on ? 'rgba(33,145,208,0.12)' : 'transparent',
-                    color: on ? '#015697' : 'var(--text-secondary)',
+                    color: on ? 'var(--accent-hover)' : 'var(--text-secondary)',
                     border: `1px solid ${on ? 'rgba(33,145,208,0.30)' : 'var(--border-light)'}`,
                     letterSpacing: '0.04em',
                   }}
@@ -302,10 +302,10 @@ export default function MarWorkflow({ onAdminister }: { onAdminister?: () => voi
           <div className="flex items-center gap-3 flex-wrap justify-end pb-0.5">
             {[
               { label: t('patients.all'), value: marEntries.length, color: 'var(--text-muted)' },
-              { label: t('nurse.marOverdue'), value: marEntries.filter(e => e.status === 'overdue').length, color: 'var(--color-danger)' },
-              { label: t('nurse.marDueNow'), value: marEntries.filter(e => e.status === 'due').length, color: '#D97706' },
-              { label: t('nurse.marUpcoming'), value: marEntries.filter(e => e.status === 'upcoming').length, color: '#2191D0' },
-              { label: t('nurse.marGiven'), value: marEntries.filter(e => e.status === 'given').length, color: '#15795C' },
+              { label: t('nurse.marOverdue'), value: marEntries.filter(e => e.status === 'overdue').length, color: 'var(--color-danger-text)' },
+              { label: t('nurse.marDueNow'), value: marEntries.filter(e => e.status === 'due').length, color: 'var(--color-warning-text)' },
+              { label: t('nurse.marUpcoming'), value: marEntries.filter(e => e.status === 'upcoming').length, color: 'var(--accent-primary)' },
+              { label: t('nurse.marGiven'), value: marEntries.filter(e => e.status === 'given').length, color: 'var(--color-success-text)' },
             ].map(s => (
               <span key={s.label} className="inline-flex items-center gap-1 text-[12px]" style={{ color: 'var(--text-muted)' }}>
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.color }} />
@@ -334,7 +334,7 @@ export default function MarWorkflow({ onAdminister }: { onAdminister?: () => voi
             >
               <Filter className="w-4 h-4" />
               {statusFilter !== 'all' && (
-                <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: '#2191D0', color: '#fff' }}>
+                <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
                   1
                 </span>
               )}
@@ -452,7 +452,7 @@ export default function MarWorkflow({ onAdminister }: { onAdminister?: () => voi
                   </div>
 
                   <div className="ehr-appointment-time">
-                    <strong style={overdue ? { color: '#C24135' } : undefined}>{timeText}</strong>
+                    <strong style={overdue ? { color: 'var(--color-danger-text)' } : undefined}>{timeText}</strong>
                     {timeSub && <span className={overdue ? 'is-soon' : ''}>{timeSub}</span>}
                   </div>
 

@@ -40,9 +40,9 @@ type WorkflowStepAction = { label: string; onClick: () => void };
 
 // Interaction severities coming out of drug-interaction-service.checkInteractions().
 const SEVERITY_STYLE: Record<InteractionSeverity, { bg: string; border: string; text: string; label: string }> = {
-  contraindicated: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)', text: 'var(--color-danger)', label: 'CONTRAINDICATED' },
-  serious: { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.22)', text: 'var(--color-danger)', label: 'SERIOUS' },
-  moderate: { bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.3)', text: 'var(--color-warning)', label: 'MODERATE' },
+  contraindicated: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)', text: 'var(--color-danger-text)', label: 'CONTRAINDICATED' },
+  serious: { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.22)', text: 'var(--color-danger-text)', label: 'SERIOUS' },
+  moderate: { bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.3)', text: 'var(--color-warning-text)', label: 'MODERATE' },
 };
 
 function titleCaseDrug(name: string): string {
@@ -65,9 +65,9 @@ function formatMinutes(totalMinutes: number): string {
 // Chart marks (not UI status pills, which keep using the --color-* tokens
 // elsewhere in this file) use the fixed brand chart palette.
 const CHART_BLUE = '#2a78d6';
-const CHART_GREEN = '#199e70';
-const CHART_RED = '#e34948';
-const CHART_AMBER = '#eda100';
+const CHART_GREEN = 'var(--color-success)';
+const CHART_RED = 'var(--color-danger)';
+const CHART_AMBER = 'var(--color-warning)';
 const CHART_NEUTRAL = '#94a3b8'; // "Other" aggregate bucket only — not a brand color
 const DISPENSE_SERIES_COLORS = [CHART_BLUE, CHART_GREEN, CHART_RED, CHART_AMBER];
 const DISPENSED_DONE_STAGES = new Set(['dispensed', 'counseled', 'complete']);
@@ -157,7 +157,7 @@ function DispenseModal({
           <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)' }}>
             <div className="flex items-center gap-2 mb-2">
               <AlertOctagon className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />
-              <span className="text-xs font-bold" style={{ color: 'var(--color-warning)' }}>
+              <span className="text-xs font-bold" style={{ color: 'var(--color-warning-text)' }}>
                 Controlled substance{inv.controlledSchedule ? ` (Schedule ${inv.controlledSchedule})` : ''} — witness required
               </span>
             </div>
@@ -253,7 +253,7 @@ function ReceiveStockModal({ items, onConfirm, onClose, saving }: {
             />
             {selected && qtyNum > 0 && (
               <p className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                {selected.stock} → <strong style={{ color: 'var(--color-success)' }}>{selected.stock + qtyNum}</strong> {unit}
+                {selected.stock} → <strong style={{ color: 'var(--color-success-text)' }}>{selected.stock + qtyNum}</strong> {unit}
               </p>
             )}
           </div>
@@ -818,13 +818,13 @@ export default function PharmacyDashboardPage() {
           <span className="block font-semibold uppercase tracking-wider text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>Stock &amp; batch</span>
           {inv ? (
             <p className="text-xs" style={{ color: 'var(--text-primary)' }}>
-              <strong style={{ color: stockOk ? 'var(--color-success)' : 'var(--color-danger)' }}>{inv.stockLevel} {inv.unit}</strong> available
+              <strong style={{ color: stockOk ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>{inv.stockLevel} {inv.unit}</strong> available
               {inv.batchNumber ? ` · batch ${inv.batchNumber}` : ''}
               {inv.expiryDate ? ` · exp ${inv.expiryDate}` : ''}
               {controlled ? ' · Controlled substance' : ''}
             </p>
           ) : (
-            <p className="text-xs" style={{ color: 'var(--color-danger)' }}>No matching inventory found for {rx.medication}.</p>
+            <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>No matching inventory found for {rx.medication}.</p>
           )}
         </div>
 
@@ -953,10 +953,10 @@ export default function PharmacyDashboardPage() {
                   {[
                     { key: 'stock', label: t('pharmacy.inStock'), icon: Package, color: ACCENT, count: inStockCount },
                     { key: 'received', label: t('pharmacy.stageReceived'), icon: ClipboardList, color: ACCENT, count: reviewCount },
-                    { key: 'payment', label: 'Payment', icon: Clock, color: 'var(--color-warning)', count: paymentDueCount },
-                    { key: 'ready', label: 'Ready', icon: CheckCircle2, color: 'var(--color-success)', count: readyCount },
-                    { key: 'dispensed', label: t('pharmacy.kpiDispensed'), icon: CheckCircle2, color: 'var(--color-success)', count: dispensedCount },
-                    { key: 'reorder', label: t('pharmacy.reorderNeeded'), icon: AlertTriangle, color: 'var(--color-danger)', count: criticalCount + lowStockCount + expiredCount },
+                    { key: 'payment', label: 'Payment', icon: Clock, color: 'var(--color-warning-text)', count: paymentDueCount },
+                    { key: 'ready', label: 'Ready', icon: CheckCircle2, color: 'var(--color-success-text)', count: readyCount },
+                    { key: 'dispensed', label: t('pharmacy.kpiDispensed'), icon: CheckCircle2, color: 'var(--color-success-text)', count: dispensedCount },
+                    { key: 'reorder', label: t('pharmacy.reorderNeeded'), icon: AlertTriangle, color: 'var(--color-danger-text)', count: criticalCount + lowStockCount + expiredCount },
                   ].map((stage, idx, arr) => (
                     <div key={stage.key} className="flex items-center flex-1">
                       <div className="flex-1 p-2.5 rounded-xl transition-all" style={{
@@ -988,8 +988,8 @@ export default function PharmacyDashboardPage() {
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />
                   <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('pharmacy.stockAlerts')}</span>
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>{t('pharmacy.criticalBadge', { count: criticalCount + expiredCount })}</span>
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)' }}>{lowStockCount} {t('pharmacy.kpiLowStock')}</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>{t('pharmacy.criticalBadge', { count: criticalCount + expiredCount })}</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)' }}>{lowStockCount} {t('pharmacy.kpiLowStock')}</span>
                 </div>
                 {canDispense && (
                   <button onClick={() => setShowReceiveStock(true)} className="text-[10px] font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg text-white transition-all hover:opacity-90" style={{ background: 'var(--color-success)' }}>
@@ -1013,12 +1013,12 @@ export default function PharmacyDashboardPage() {
                         <span className="text-[11px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{item.medicationName}</span>
                         <span className="text-[8px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ml-1" style={{
                           background: isDanger ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)',
-                          color: isDanger ? 'var(--color-danger)' : 'var(--color-warning)',
+                          color: isDanger ? 'var(--color-danger-text)' : 'var(--color-warning-text)',
                         }}>{statusLabel}</span>
                       </div>
                       <div className="flex items-center justify-between text-[10px] mb-1.5" style={{ color: 'var(--text-muted)' }}>
                         <span>{item.stockLevel} / {item.reorderLevel} {item.unit}</span>
-                        <span style={{ color: isDanger ? 'var(--color-danger)' : 'var(--color-warning)' }}>{pct}%</span>
+                        <span style={{ color: isDanger ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>{pct}%</span>
                       </div>
                       <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--overlay-subtle)' }}>
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: isDanger ? 'var(--color-danger)' : 'var(--color-warning)' }} />
@@ -1144,7 +1144,7 @@ export default function PharmacyDashboardPage() {
                               ) : (
                                 <span className="font-bold px-1.5 py-0.5 rounded" style={{
                                   background: rag === 'red' ? 'var(--color-danger-bg)' : rag === 'amber' ? 'var(--color-warning-bg)' : 'var(--color-success-bg)',
-                                  color: rag === 'red' ? 'var(--color-danger)' : rag === 'amber' ? 'var(--color-warning)' : 'var(--color-success)',
+                                  color: rag === 'red' ? 'var(--color-danger-text)' : rag === 'amber' ? 'var(--color-warning-text)' : 'var(--color-success-text)',
                                 }}>
                                   {Math.round(daysRemaining * 10) / 10}d
                                 </span>

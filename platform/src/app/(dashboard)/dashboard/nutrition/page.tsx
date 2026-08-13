@@ -343,7 +343,7 @@ export default function NutritionDashboard() {
             <span className="ehr-visit-pop-label">{t('nutrition.colEdema')}</span>
             <div>
               {s.edema
-                ? <strong style={{ color: 'var(--color-danger)' }}>{t('nutrition.edemaYes')}</strong>
+                ? <strong style={{ color: 'var(--color-danger-text)' }}>{t('nutrition.edemaYes')}</strong>
                 : <p>{t('nutrition.edemaNo')}</p>}
             </div>
           </div>
@@ -385,7 +385,7 @@ export default function NutritionDashboard() {
                     </button>
                   </>
                 ) : (
-                  <span className="text-[11px] font-semibold" style={{ color: 'var(--color-success)' }}>
+                  <span className="text-[11px] font-semibold" style={{ color: 'var(--color-success-text)' }}>
                     {followUpLabel(s.followUpAction)}
                   </span>
                 )}
@@ -490,10 +490,10 @@ export default function NutritionDashboard() {
               </div>
               <div className="p-4 space-y-3">
                 {[
-                  { label: t('nutrition.classSam'), count: stats.sam, color: 'var(--color-danger)', desc: t('nutrition.classSamDesc') },
-                  { label: t('nutrition.classMam'), count: stats.mam, color: 'var(--color-warning)', desc: t('nutrition.classMamDesc') },
-                  { label: t('nutrition.classAtRisk'), count: stats.atRisk, color: 'var(--color-warning)', desc: t('nutrition.classAtRiskDesc') },
-                  { label: t('nutrition.classNormal'), count: stats.normal, color: 'var(--color-success)', desc: t('nutrition.classNormalDesc') },
+                  { label: t('nutrition.classSam'), count: stats.sam, color: 'var(--color-danger-text)', desc: t('nutrition.classSamDesc') },
+                  { label: t('nutrition.classMam'), count: stats.mam, color: 'var(--color-warning-text)', desc: t('nutrition.classMamDesc') },
+                  { label: t('nutrition.classAtRisk'), count: stats.atRisk, color: 'var(--color-warning-text)', desc: t('nutrition.classAtRiskDesc') },
+                  { label: t('nutrition.classNormal'), count: stats.normal, color: 'var(--color-success-text)', desc: t('nutrition.classNormalDesc') },
                 ].map(item => {
                   const pct = stats.total > 0 ? Math.round((item.count / stats.total) * 100) : 0;
                   return (
@@ -565,7 +565,7 @@ export default function NutritionDashboard() {
                     />
                   </div>
                   {supplyFormError && (
-                    <p className="text-xs mt-1.5 font-semibold" style={{ color: 'var(--color-danger)' }}>{supplyFormError}</p>
+                    <p className="text-xs mt-1.5 font-semibold" style={{ color: 'var(--color-danger-text)' }}>{supplyFormError}</p>
                   )}
                   <button
                     onClick={submitSupplyItem}
@@ -611,7 +611,7 @@ export default function NutritionDashboard() {
                         style={{ width: 18, height: 18, background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-medium)', cursor: 'pointer', fontSize: 12, lineHeight: 1 }}
                       >−</button>
                       <span className="text-xs font-bold" style={{
-                        color: item.status === 'critical' ? 'var(--color-danger)' : item.status === 'low' ? 'var(--color-warning)' : 'var(--text-primary)',
+                        color: item.status === 'critical' ? 'var(--color-danger-text)' : item.status === 'low' ? 'var(--color-warning-text)' : 'var(--text-primary)',
                         minWidth: 64, textAlign: 'center',
                       }}>{item.stock} {item.unit}</span>
                       <button
@@ -774,7 +774,7 @@ export default function NutritionDashboard() {
             </div>
 
             {formError && (
-              <p className="text-xs mt-2 font-semibold" style={{ color: 'var(--color-danger)' }}>{formError}</p>
+              <p className="text-xs mt-2 font-semibold" style={{ color: 'var(--color-danger-text)' }}>{formError}</p>
             )}
 
             <div className="flex items-center justify-end gap-2 mt-4">

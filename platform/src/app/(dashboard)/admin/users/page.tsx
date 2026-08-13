@@ -279,8 +279,8 @@ export default function AdminUsersPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
           {[
             { label: t('adminUsers.statTotalUsers'), value: users.length, icon: Users, color: 'var(--accent-primary)' },
-            { label: t('adminUsers.statActiveUsers'), value: users.filter(u => u.isActive).length, icon: UserCheck, color: 'var(--color-success)' },
-            { label: t('adminUsers.statInactiveUsers'), value: users.filter(u => !u.isActive).length, icon: UserX, color: 'var(--color-danger)' },
+            { label: t('adminUsers.statActiveUsers'), value: users.filter(u => u.isActive).length, icon: UserCheck, color: 'var(--color-success-text)' },
+            { label: t('adminUsers.statInactiveUsers'), value: users.filter(u => !u.isActive).length, icon: UserX, color: 'var(--color-danger-text)' },
             { label: t('adminUsers.statAdminUsers'), value: users.filter(u => u.role === 'super_admin' || u.role === 'org_admin').length, icon: Shield, color: 'var(--accent-primary)' },
           ].map(stat => (
             <div key={stat.label} className="dash-card" style={{ padding: '14px 16px' }}>
@@ -395,8 +395,8 @@ export default function AdminUsersPage() {
                           <span
                             className="appointment-status-pill"
                             style={u.isActive
-                              ? { borderColor: 'rgba(25,158,112,0.45)', background: 'rgba(25,158,112,0.10)', color: '#167755' }
-                              : { borderColor: 'rgba(227,73,72,0.45)', background: 'rgba(227,73,72,0.10)', color: '#C24135' }}
+                              ? { borderColor: 'rgba(25,158,112,0.45)', background: 'rgba(25,158,112,0.10)', color: 'var(--color-success-text)' }
+                              : { borderColor: 'rgba(227,73,72,0.45)', background: 'rgba(227,73,72,0.10)', color: 'var(--color-danger-text)' }}
                           >
                             {u.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')}
                           </span>
@@ -543,7 +543,7 @@ export default function AdminUsersPage() {
                 </Select>
               </div>
               {addError && (
-                <p className="text-xs" style={{ color: 'var(--color-danger)' }}>{addError}</p>
+                <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{addError}</p>
               )}
             </div>
             <div className="px-5 py-3 border-t flex justify-end gap-2" style={{ borderColor: 'var(--border-light)' }}>
@@ -569,7 +569,7 @@ export default function AdminUsersPage() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ color: 'var(--color-success)' }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ color: 'var(--color-success-text)' }}>
                 <Check className="w-5 h-5" />
               </div>
               <div>
@@ -638,7 +638,7 @@ export default function AdminUsersPage() {
             </div>
 
             {resetError && (
-              <div className="mb-3 p-2 rounded-lg text-xs" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger)' }}>
+              <div className="mb-3 p-2 rounded-lg text-xs" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)' }}>
                 {resetError}
               </div>
             )}

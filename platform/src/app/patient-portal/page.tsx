@@ -880,7 +880,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
               ))}
             </div>
             {chatError && (
-              <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border-medium)', background: 'var(--color-danger-bg)', color: 'var(--color-danger)', fontSize: 12 }}>
+              <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border-medium)', background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', fontSize: 12 }}>
                 {chatError}
               </div>
             )}
@@ -1053,7 +1053,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                 {realAllergies.length === 0 && realConditions.length === 0 && pendingLabs === 0 && (
                   <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--color-success-bg)', border: '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <CheckCircle2 size={14} color="var(--color-success)" />
-                    <span style={{ fontSize: 12, color: 'var(--color-success)', fontWeight: 600 }}>{t('patientPortal.noHealthAlerts')}</span>
+                    <span style={{ fontSize: 12, color: 'var(--color-success-text)', fontWeight: 600 }}>{t('patientPortal.noHealthAlerts')}</span>
                   </div>
                 )}
               </div>
@@ -1256,7 +1256,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 'var(--card-radius)', background: lab.abnormal ? 'var(--color-danger-bg)' : 'var(--color-success-bg)' }}>
                         <div>
                           <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('patientPortal.result')}</div>
-                          <div className="stat-value" style={{ fontSize: 15, fontWeight: 700, color: lab.abnormal ? 'var(--color-danger)' : 'var(--text-primary)' }}>{lab.result}</div>
+                          <div className="stat-value" style={{ fontSize: 15, fontWeight: 700, color: lab.abnormal ? 'var(--color-danger-text)' : 'var(--text-primary)' }}>{lab.result}</div>
                         </div>
                         {lab.referenceRange && (
                           <div style={{ textAlign: 'right' }}>
@@ -1268,7 +1268,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                       {lab.critical && (
                         <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 'var(--card-radius)', background: 'var(--color-danger-bg)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <AlertTriangle size={12} style={{ color: 'var(--color-danger)' }} />
-                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-danger)' }}>{t('patientPortal.criticalResult')}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-danger-text)' }}>{t('patientPortal.criticalResult')}</span>
                         </div>
                       )}
                     </div>
@@ -1386,7 +1386,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{imm.dateGiven}</div>
-                    {imm.nextDueDate && <div style={{ fontSize: 10, color: 'var(--color-warning)', marginTop: 2 }}>{t('patientPortal.nextDue', { date: imm.nextDueDate })}</div>}
+                    {imm.nextDueDate && <div style={{ fontSize: 10, color: 'var(--color-warning-text)', marginTop: 2 }}>{t('patientPortal.nextDue', { date: imm.nextDueDate })}</div>}
                   </div>
                 </div>
               ))}
@@ -1435,7 +1435,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                   <option value="telehealth_audio">{t('patientPortal.visitTelehealthAudio')}</option>
                 </Select>
               </div>
-              {bookingError && <p style={{ fontSize: 12, color: 'var(--color-danger)' }}>{bookingError}</p>}
+              {bookingError && <p style={{ fontSize: 12, color: 'var(--color-danger-text)' }}>{bookingError}</p>}
               <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                 <button onClick={() => { setShowBooking(false); resetBookingForm(); }} className="btn btn-secondary" style={{ flex: 1 }} disabled={bookingSubmitting}>{t('action.cancel')}</button>
                 <button onClick={handleSubmitBooking} className="btn btn-primary" style={{ flex: 1 }} disabled={bookingSubmitting || !bookingDate || !bookingDepartment}>
@@ -1526,7 +1526,7 @@ function ProfileTab({ patient }: { patient: PatientDoc }) {
             {(patient.allergies || []).length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {patient.allergies.map((a, i) => (
-                  <span key={i} style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: 'var(--color-danger-bg)', color: 'var(--color-danger)', border: '1px solid color-mix(in srgb, var(--color-danger) 20%, transparent)' }}>{a}</span>
+                  <span key={i} style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', border: '1px solid color-mix(in srgb, var(--color-danger) 20%, transparent)' }}>{a}</span>
                 ))}
               </div>
             ) : (
@@ -1540,7 +1540,7 @@ function ProfileTab({ patient }: { patient: PatientDoc }) {
             {(patient.chronicConditions || []).length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {patient.chronicConditions.map((c, i) => (
-                  <span key={i} style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: 'var(--color-warning-bg)', color: 'var(--color-warning)', border: '1px solid color-mix(in srgb, var(--color-warning) 20%, transparent)' }}>{c}</span>
+                  <span key={i} style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', border: '1px solid color-mix(in srgb, var(--color-warning) 20%, transparent)' }}>{c}</span>
                 ))}
               </div>
             ) : (
@@ -1846,7 +1846,7 @@ function BillingTab({ patient, sessionToken }: { patient: PatientDoc; sessionTok
           </p>
           {failedCount > 0 && (
             <div style={{ padding: 10, borderRadius: 8, marginBottom: 14, background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 20%, transparent)' }}>
-              <p style={{ fontSize: 12, color: 'var(--color-danger)', fontWeight: 600 }}>
+              <p style={{ fontSize: 12, color: 'var(--color-danger-text)', fontWeight: 600 }}>
                 {t('patientPortal.billsNotUpdated', { count: failedCount })}
               </p>
             </div>
@@ -1918,7 +1918,7 @@ function BillingTab({ patient, sessionToken }: { patient: PatientDoc; sessionTok
           )}
           {payError && (
             <div style={{ padding: 10, borderRadius: 8, background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 20%, transparent)', marginBottom: 14 }}>
-              <p style={{ fontSize: 12, color: 'var(--color-danger)', fontWeight: 600 }}>{payError}</p>
+              <p style={{ fontSize: 12, color: 'var(--color-danger-text)', fontWeight: 600 }}>{payError}</p>
             </div>
           )}
           <div style={{ display: 'flex', gap: 10 }}>
@@ -2103,7 +2103,7 @@ function BillingTab({ patient, sessionToken }: { patient: PatientDoc; sessionTok
                         {remaining > 0 ? (
                           <span style={{ fontSize: 14, fontWeight: 700, color: statusColor(bill.status) }}>{t('patientPortal.amountDue', { amount: remaining.toLocaleString() })}</span>
                         ) : (
-                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-success)' }}>{t('patientPortal.fullyPaid')}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-success-text)' }}>{t('patientPortal.fullyPaid')}</span>
                         )}
                       </div>
                       {bill.status === 'partial' && (

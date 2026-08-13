@@ -15,12 +15,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
 import AddInquiryDialog from '@/components/create-dialogs/AddInquiryDialog';
-import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
 import Select from '@/components/Select';
-import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import {
-  MessageSquarePlus, Phone, CalendarClock, XCircle, UserCheck, UserX,
-} from '@/components/icons/lucide';
+import EhrListHeader, { EhrListFilters, EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import RowStatusSelect, { type RowStatusOption } from '@/components/ehr/RowStatusSelect';
+import { MessageSquarePlus } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { avatarTint, initials } from '@/lib/patient-utils';
@@ -41,12 +39,26 @@ import {
   assignEnquiry,
 } from '@/lib/services/enquiry-service';
 
-/** Flat status-pill palette — always paired with the text label, never color alone. */
-const STATUS_TOKENS: Record<EnquiryStatus, { color: string; bg: string }> = {
-  new: { color: '#B8741C', bg: 'rgba(228, 168, 75, 0.16)' },
-  contacted: { color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)' },
-  appointment_scheduled: { color: 'var(--accent-purple)', bg: 'rgba(124, 58, 237, 0.12)' },
-  closed: { color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)' },
+/** Flat status-pill palette — always paired with the text label, never color
+ *  alone. `border` is carried explicitly rather than derived as `${color}40`,
+ *  which produces invalid CSS for the `var(--…)` entries. */
+const STATUS_TOKENS: Record<EnquiryStatus, { color: string; bg: string; border: string }> = {
+  new: { color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)', border: 'rgba(228, 168, 75, 0.45)' },
+  contacted: { color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
+  appointment_scheduled: { color: 'var(--accent-purple)', bg: 'rgba(124, 58, 237, 0.12)', border: 'rgba(124, 58, 237, 0.35)' },
+  closed: { color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)', border: 'rgba(27, 158, 119, 0.40)' },
+};
+
+// Column template for the inquiry list head + rows:
+// Patient · Type · Received · Assigned to · Status · actions
+// Same tracks as the patient registry and User Accounts — identity column at
+// minmax(320px, 1.6fr), four equal data columns — plus the 44px kebab gutter.
+const INQUIRY_GRID = 'minmax(320px, 1.6fr) repeat(4, minmax(150px, 1fr)) 44px';
+
+const CHANNEL_LABELS: Record<MessageDoc['channel'], string> = {
+  app: 'Patient app',
+  sms: 'SMS',
+  both: 'App + SMS',
 };
 
 /** Unique, sorted enquiry "types" (subject lines) present in the list — feeds the type filter. */
@@ -56,16 +68,23 @@ export function buildTypeOptions(messages: MessageDoc[]): string[] {
   return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
+/** Assignment moves aren't triage states, so they ride the status pill under
+ *  their own heading with these sentinel values. */
+export const ASSIGN_TO_ME = '__assign-me' as const;
+export const UNASSIGN = '__unassign' as const;
+
 export interface InquiryActionSpec {
-  key: 'contacted' | 'appointment' | 'closed' | 'assign-me' | 'unassign';
+  value: EnquiryStatus | typeof ASSIGN_TO_ME | typeof UNASSIGN;
   label: string;
-  disabled: boolean;
+  group?: string;
 }
 
 /**
- * Pure derivation of the row action-menu contents (label + enabled state) for
- * one enquiry. Kept free of handlers/JSX so it can be unit-tested without a
- * DOM — the component below maps each spec onto a live `RowAction`.
+ * Pure derivation of the options a row's status pill offers. Kept free of
+ * handlers/JSX so it can be unit-tested without a DOM. The current triage
+ * state and any no-op assignment move are omitted rather than shown disabled:
+ * a native select's disabled options are still announced, and the pill already
+ * displays the current state.
  */
 export function buildInquiryActions(
   message: Pick<MessageDoc, 'enquiryStatus' | 'enquiryAssignedToId'>,
@@ -74,21 +93,13 @@ export function buildInquiryActions(
   const status = deriveEnquiryStatus(message);
   const isAssignedToMe = !!currentUserId && message.enquiryAssignedToId === currentUserId;
   return [
-    { key: 'contacted', label: 'Mark contacted', disabled: status === 'contacted' },
-    { key: 'appointment', label: 'Appointment scheduled', disabled: status === 'appointment_scheduled' },
-    { key: 'closed', label: 'Close', disabled: status === 'closed' },
-    { key: 'assign-me', label: 'Assign to me', disabled: isAssignedToMe },
-    { key: 'unassign', label: 'Unassign', disabled: !message.enquiryAssignedToId },
+    ...(status !== 'contacted' ? [{ value: 'contacted' as const, label: 'Mark contacted' }] : []),
+    ...(status !== 'appointment_scheduled' ? [{ value: 'appointment_scheduled' as const, label: 'Appointment scheduled' }] : []),
+    ...(status !== 'closed' ? [{ value: 'closed' as const, label: 'Close' }] : []),
+    ...(!isAssignedToMe ? [{ value: ASSIGN_TO_ME, label: 'Assign to me', group: 'Assignment' }] : []),
+    ...(message.enquiryAssignedToId ? [{ value: UNASSIGN, label: 'Unassign', group: 'Assignment' }] : []),
   ];
 }
-
-const ACTION_ICON: Record<InquiryActionSpec['key'], React.ReactNode> = {
-  contacted: <Phone className="w-4 h-4" />,
-  appointment: <CalendarClock className="w-4 h-4" />,
-  closed: <XCircle className="w-4 h-4" />,
-  'assign-me': <UserCheck className="w-4 h-4" />,
-  unassign: <UserX className="w-4 h-4" />,
-};
 
 export default function InquiriesPage() {
   const router = useRouter();
@@ -234,27 +245,20 @@ export default function InquiriesPage() {
     }
   };
 
-  const rowActions = (m: MessageDoc): RowAction[] =>
-    buildInquiryActions(m, currentUser?._id).map(spec => ({
-      key: spec.key,
-      label: spec.label,
-      disabled: spec.disabled,
-      tone: spec.key === 'closed' ? 'danger' : spec.key === 'contacted' || spec.key === 'appointment' ? 'success' : 'default',
-      icon: ACTION_ICON[spec.key],
-      onClick: () => {
-        if (spec.key === 'contacted') handleSetStatus(m._id, 'contacted');
-        else if (spec.key === 'appointment') handleSetStatus(m._id, 'appointment_scheduled');
-        else if (spec.key === 'closed') handleSetStatus(m._id, 'closed');
-        else if (spec.key === 'assign-me') handleAssignToMe(m._id);
-        else handleUnassign(m._id);
-      },
-    }));
+  const rowOptions = (m: MessageDoc): RowStatusOption[] =>
+    buildInquiryActions(m, currentUser?._id).map(spec => ({ value: spec.value, label: spec.label, group: spec.group }));
+
+  const applyRowAction = (id: string, value: string) => {
+    if (value === ASSIGN_TO_ME) handleAssignToMe(id);
+    else if (value === UNASSIGN) handleUnassign(id);
+    else handleSetStatus(id, value as EnquiryStatus);
+  };
 
   const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-      <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
         <EhrListHeader
           title="Patient Inquiries"
           stats={[
@@ -301,97 +305,100 @@ export default function InquiriesPage() {
                   </label>
                 </div>
               </EhrListFilters>
-              <button
-                type="button"
-                className="listpage-icon-btn listpage-icon-btn-primary"
-                onClick={() => setAddOpen(true)}
-                title="Add inquiry"
-                aria-label="Add inquiry"
-              >
+              <EhrListHeaderButton primary onClick={() => setAddOpen(true)} ariaLabel="Add inquiry">
                 <MessageSquarePlus size={16} color="#fff" />
-              </button>
+              </EhrListHeaderButton>
             </>
           }
         />
 
-        <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
-          <table className="w-full" style={{ minWidth: 760 }}>
-            <thead>
-              <tr>
-                {['Patient', 'Type', 'Date', 'Status', 'Assigned to', ''].map(h => (
-                  <th
-                    key={h || 'actions'}
-                    className={`${h ? 'text-left' : ''} px-4 py-2.5`}
-                    style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}
-                  >
-                    {h && <span className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">{h}</span>}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={6} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading inquiries…</td></tr>
-              )}
-              {!loading && error && (
-                <tr><td colSpan={6} className="p-8 text-center">
-                  <p className="mb-2" style={{ color: 'var(--color-danger)' }}>{error}</p>
-                  <button type="button" className="btn btn-secondary" onClick={loadEnquiries}>Retry</button>
-                </td></tr>
-              )}
-              {!loading && !error && messages.length === 0 && (
-                <tr><td colSpan={6} className="p-0">
-                  <EmptyState
-                    icon={MessageSquarePlus}
-                    title="No patient inquiries yet"
-                    message="Inbound messages from the patient portal land here for triage. You can also log a call or walk-in inquiry manually."
-                    action={{ label: 'Add inquiry', onClick: () => setAddOpen(true) }}
-                  />
-                </td></tr>
-              )}
-              {!loading && !error && messages.length > 0 && filtered.length === 0 && (
-                <tr><td colSpan={6} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No inquiries match your filters.</td></tr>
-              )}
-              {!loading && !error && filtered.map(m => {
-                const status = deriveEnquiryStatus(m);
-                const tok = STATUS_TOKENS[status];
-                const assignee = enquiryAssignee(m);
-                return (
-                  <tr key={m._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="ehr-patient-icon" style={avatarTint(m.patientName || m._id)}>
-                          {initials(m.patientName)}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-[14px] truncate" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{m.patientName || 'Unknown patient'}</div>
-                          {m.patientPhone && <div className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>{m.patientPhone}</div>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{enquiryType(m)}</td>
-                    <td className="px-4 py-2.5 text-[13px] whitespace-nowrap" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{formatCompactDateTime(m.sentAt || m.createdAt)}</td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md whitespace-nowrap"
-                        style={{ background: tok.bg, color: tok.color, border: `1px solid ${tok.color}40` }}
-                      >
-                        {ENQUIRY_STATUS_LABELS[status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-[13px]" style={{ color: assignee ? 'var(--ehr-muted, var(--text-secondary))' : 'var(--text-muted)' }}>
-                      {assignee || 'Unassigned'}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex justify-end">
-                        <RowActionsMenu ariaLabel={`Actions for ${m.patientName || 'this inquiry'}`} actions={rowActions(m)} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* The patient registry's list, exactly: the same surface + flow
+            wrappers, so the column template, 14px gutters and 16px side inset
+            all come from `.appointment-card-flow` rather than being restated
+            here. Five columns and no actions gutter — the row's actions live
+            in its status pill. */}
+        <div className="appointment-card-surface patients-list-surface">
+          <div className="appointment-card-flow">
+            {/* The column head is the queue's frame, not a label for the rows
+                that happen to be loaded: it stays put while loading and when a
+                filter matches nothing, so the list never collapses into a bare
+                message. */}
+            <div className="appointment-card-head" aria-hidden="true">
+              <span>Patient</span>
+              <span>Type</span>
+              <span>Received</span>
+              <span>Assigned to</span>
+              <span>Status</span>
+            </div>
+
+            {loading && <div className="appointment-card-empty">Loading inquiries…</div>}
+            {!loading && error && (
+              <div className="appointment-card-empty" style={{ gap: 10 }}>
+                <p style={{ color: 'var(--color-danger-text)' }}>{error}</p>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={loadEnquiries}>Retry</button>
+              </div>
+            )}
+            {!loading && !error && messages.length === 0 && (
+              <EmptyState
+                icon={MessageSquarePlus}
+                title="No patient inquiries yet"
+                message="Inbound messages from the patient portal land here for triage. You can also log a call or walk-in inquiry manually."
+                action={{ label: 'Add inquiry', onClick: () => setAddOpen(true) }}
+              />
+            )}
+            {!loading && !error && messages.length > 0 && filtered.length === 0 && (
+              <div className="appointment-card-empty">No inquiries match your filters.</div>
+            )}
+            {!loading && !error && filtered.map(m => {
+              const status = deriveEnquiryStatus(m);
+              const tok = STATUS_TOKENS[status];
+              const assignee = enquiryAssignee(m);
+              return (
+                <div key={m._id} className="ehr-appointment-row appointment-card-row" style={{ cursor: 'default' }}>
+                  <div className="ehr-appointment-identity">
+                    <div className="ehr-patient-icon" style={avatarTint(m.patientName || m._id)}>
+                      {initials(m.patientName)}
+                    </div>
+                    <div className="ehr-appointment-main appointment-card-patient">
+                      <strong>{m.patientName || 'Unknown patient'}</strong>
+                      <p>{m.patientPhone || 'No phone on file'}</p>
+                    </div>
+                  </div>
+
+                  {/* Type — the subject line, with the message itself beneath
+                      it so a row can be triaged without opening anything. */}
+                  <div className="appointment-card-provider">
+                    <strong>{enquiryType(m)}</strong>
+                    <span title={m.body || undefined}>{m.body?.trim() || 'No message body'}</span>
+                  </div>
+
+                  <div className="ehr-appointment-time">
+                    <strong>{formatCompactDateTime(m.sentAt || m.createdAt)}</strong>
+                    <span>{CHANNEL_LABELS[m.channel] || 'Patient app'}</span>
+                  </div>
+
+                  <div className="appointment-card-provider">
+                    <strong>{assignee || 'Unassigned'}</strong>
+                    <span>{assignee ? 'Front desk owner' : 'Needs an owner'}</span>
+                  </div>
+
+                  {/* Triage and ownership both move from the pill: the status
+                      rungs first, then assignment in its own group. */}
+                  <div className="appointment-card-status">
+                    <RowStatusSelect
+                      label={ENQUIRY_STATUS_LABELS[status]}
+                      value={status}
+                      ariaLabel={`Triage ${m.patientName || 'this inquiry'}`}
+                      style={{ borderColor: tok.border, background: tok.bg, color: tok.color }}
+                      options={rowOptions(m)}
+                      onSelect={value => applyRowAction(m._id, value)}
+                    />
+                    <small>{m.fromHospitalName || 'Patient portal'}</small>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

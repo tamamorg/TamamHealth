@@ -80,7 +80,7 @@ function findAdministration(
 }
 
 const STATUS_TINT: Record<MedicationAdministration['status'], { bg: string; color: string; ring: string; label: string }> = {
-  given:     { bg: 'rgba(31, 157, 111,0.12)',  color: '#047857',                ring: 'rgba(31, 157, 111,0.30)', label: 'Given' },
+  given:     { bg: 'rgba(31, 157, 111,0.12)',  color: 'var(--color-success-text)',                ring: 'rgba(31, 157, 111,0.30)', label: 'Given' },
   missed:    { bg: 'rgba(196,69,54,0.12)',   color: 'var(--tamamhealth-red)', ring: 'rgba(196,69,54,0.30)',  label: 'Missed' },
   refused:   { bg: 'rgba(228,168,75,0.18)',  color: 'var(--color-warning)',   ring: 'rgba(228,168,75,0.32)', label: 'Refused' },
   held:      { bg: 'rgba(100,116,139,0.12)', color: '#475569',                ring: 'rgba(100,116,139,0.26)', label: 'Held' },
@@ -351,7 +351,7 @@ export default function MARPage() {
                 </div>
                 <div>
                   <div className="text-[10.5px] font-bold uppercase" style={{
-                    color: 'var(--color-warning)', letterSpacing: '0.06em',
+                    color: 'var(--color-warning-text)', letterSpacing: '0.06em',
                   }}>
                     {t('mar.isolationRequired')}
                   </div>
@@ -429,7 +429,7 @@ export default function MARPage() {
                       >
                         <div className="flex items-start gap-2">
                           <div className="icon-box-sm shrink-0">
-                            <Pill className="w-3.5 h-3.5" style={{ color: '#015697' }} />
+                            <Pill className="w-3.5 h-3.5" style={{ color: 'var(--accent-hover)' }} />
                           </div>
                           <div className="min-w-0">
                             <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -498,7 +498,7 @@ export default function MARPage() {
               >
                 <div className="flex items-start gap-3 min-w-0">
                   <div className="icon-box">
-                    <Pill className="w-4 h-4" style={{ color: '#015697' }} />
+                    <Pill className="w-4 h-4" style={{ color: 'var(--accent-hover)' }} />
                   </div>
                   <div className="min-w-0">
                     <div className="text-[10.5px] font-bold uppercase" style={{

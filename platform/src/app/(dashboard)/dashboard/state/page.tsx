@@ -24,9 +24,9 @@ import {
 // (not the --viz-* EHR tokens, which are reserved for the shared Day
 // statistics widget's inpatient/outpatient pair).
 const CHART_BLUE = '#2a78d6';
-const CHART_GREEN = '#199e70';
-const CHART_RED = '#e34948';
-const CHART_AMBER = '#eda100';
+const CHART_GREEN = 'var(--color-success)';
+const CHART_RED = 'var(--color-danger)';
+const CHART_AMBER = 'var(--color-warning)';
 const DISEASE_LINE_COLORS = [CHART_BLUE, CHART_GREEN, CHART_RED];
 
 // Same local CSV-download helper duplicated across reports/pharmacy/hospitals/

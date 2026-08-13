@@ -133,7 +133,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
               <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'transparent' }}>
                 <X className="w-6 h-6" style={{ color: 'var(--color-danger)' }} />
               </div>
-              <p className="text-sm" style={{ color: 'var(--color-danger)' }}>{error}</p>
+              <p className="text-sm" style={{ color: 'var(--color-danger-text)' }}>{error}</p>
               <button
                 onClick={onClose}
                 className="btn btn-secondary text-xs mt-2"

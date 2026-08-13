@@ -24,8 +24,8 @@ export default function AdminConfigPage() {
   const { config, loading, update } = usePlatformConfig();
 
   const [platformName, setPlatformName] = useState('');
-  const [defaultPrimaryColor, setDefaultPrimaryColor] = useState('#2191D0');
-  const [defaultSecondaryColor, setDefaultSecondaryColor] = useState('#015697');
+  const [defaultPrimaryColor, setDefaultPrimaryColor] = useState('var(--accent-primary)');
+  const [defaultSecondaryColor, setDefaultSecondaryColor] = useState('var(--accent-hover)');
   const [savingIdentity, setSavingIdentity] = useState(false);
 
   const [trialDays, setTrialDays] = useState(30);

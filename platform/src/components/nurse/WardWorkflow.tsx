@@ -318,7 +318,7 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                   onClick={() => toggleAcuity('RED')}
                   aria-pressed={acuity === 'RED'}
                 >
-                  <span className="ward-stat-dot" style={{ background: '#DC2626' }} />
+                  <span className="ward-stat-dot" style={{ background: 'var(--color-danger)' }} />
                   {t('nurse.summaryCritical')} ({summary.critical})
                 </button>
                 <button
@@ -327,7 +327,7 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                   onClick={() => toggleAcuity('YELLOW')}
                   aria-pressed={acuity === 'YELLOW'}
                 >
-                  <span className="ward-stat-dot" style={{ background: '#D97706' }} />
+                  <span className="ward-stat-dot" style={{ background: 'var(--color-warning)' }} />
                   {t('nurse.summaryUrgent')} ({summary.urgent})
                 </button>
                 <button
@@ -336,7 +336,7 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                   onClick={() => toggleAcuity('GREEN')}
                   aria-pressed={acuity === 'GREEN'}
                 >
-                  <span className="ward-stat-dot" style={{ background: '#15795C' }} />
+                  <span className="ward-stat-dot" style={{ background: 'var(--color-success)' }} />
                   {t('nurse.summaryStable')} ({summary.stable})
                 </button>
               </div>
@@ -472,7 +472,7 @@ export default function WardWorkflow({ search, showHeader = true }: { search?: s
                       </div>
 
                       <div className="ehr-appointment-time">
-                        <strong style={overTarget ? { color: 'var(--color-danger)' } : undefined}>{waitText}</strong>
+                        <strong style={overTarget ? { color: 'var(--color-danger-text)' } : undefined}>{waitText}</strong>
                         {waitSubtext && (
                           <span className={overTarget ? 'is-soon' : ''}>{waitSubtext}</span>
                         )}

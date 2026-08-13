@@ -267,7 +267,7 @@ export default function PaymentPanel({
               "it worked" signal on its own. */}
           <div style={{
             padding: '28px 20px', textAlign: 'center',
-            borderBottom: '1px solid var(--ehr-border, #D8E3EC)',
+            borderBottom: '1px solid var(--ehr-border, #DDEAF3)',
           }}>
             <div style={{
               width: 56, height: 56, borderRadius: '50%', margin: '0 auto 12px',
@@ -276,7 +276,7 @@ export default function PaymentPanel({
               <CheckCircle2 size={56} style={{ color: 'var(--color-success)' }} />
             </div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{t('payments.paymentRecorded')}</h3>
-            <p style={{ margin: '6px 0 0', fontSize: 26, fontWeight: 800, color: 'var(--color-success)' }}>
+            <p style={{ margin: '6px 0 0', fontSize: 26, fontWeight: 800, color: 'var(--color-success-text)' }}>
               {formatMoney(parseFloat(amount), { currency })}
             </p>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>{patientName}</p>
@@ -324,7 +324,7 @@ export default function PaymentPanel({
 
           {emailSent && (
             <div style={{ padding: '0 20px 12px' }}>
-              <div className="bl-muted" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #F8FBFD)', border: '1px solid var(--ehr-border, #D8E3EC)', borderRadius: 6, textAlign: 'center' }}>
+              <div className="bl-muted" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #F8FBFD)', border: '1px solid var(--ehr-border, #DDEAF3)', borderRadius: 6, textAlign: 'center' }}>
                 {t('payments.receiptSentTo', { email: emailAddress })}
               </div>
             </div>
@@ -332,7 +332,7 @@ export default function PaymentPanel({
 
           {emailError && !emailSent && (
             <div style={{ padding: '0 20px 12px' }}>
-              <div className="bl-danger" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #F8FBFD)', border: '1px solid var(--ehr-border, #D8E3EC)', borderRadius: 6, textAlign: 'center' }}>
+              <div className="bl-danger" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #F8FBFD)', border: '1px solid var(--ehr-border, #DDEAF3)', borderRadius: 6, textAlign: 'center' }}>
                 {emailError}
               </div>
             </div>

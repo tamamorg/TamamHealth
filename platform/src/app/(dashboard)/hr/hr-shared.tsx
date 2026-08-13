@@ -18,6 +18,7 @@ import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { avatarTint } from '@/lib/patient-utils';
 import type { LeaveRequestDoc, LeaveStatus, LeaveType, PayrollEntryDoc } from '@/lib/db-types-hr';
 import type { StaffScheduleDoc } from '@/lib/db-types';
 
@@ -33,22 +34,76 @@ export const LEAVE_TYPES: { id: LeaveType; label: string }[] = [
 
 export const LEAVE_STATUSES: LeaveStatus[] = ['pending', 'approved', 'rejected', 'cancelled', 'taken'];
 
-export const STATUS_TOKENS: Record<LeaveRequestDoc['status'], { label: string; color: string; bg: string }> = {
-  pending:   { label: 'Pending',   color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)' },
-  approved:  { label: 'Approved',  color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)' },
-  rejected:  { label: 'Rejected',  color: 'var(--color-danger-500)', bg: 'rgba(196, 69, 54, 0.14)' },
-  cancelled: { label: 'Cancelled', color: '#5A7370', bg: 'rgba(90, 115, 112, 0.14)' },
-  taken:     { label: 'Taken',     color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)' },
+/**
+ * Status tints for the card-row pills. `border` is carried explicitly rather
+ * than derived as `${color}40`: half these colours are `var(--…)` tokens, and
+ * concatenating an alpha suffix onto a var() reference produces invalid CSS
+ * (the border silently falls back to the pill's default hairline).
+ */
+export interface StatusToken { label: string; color: string; bg: string; border: string }
+
+export const STATUS_TOKENS: Record<LeaveRequestDoc['status'], StatusToken> = {
+  pending:   { label: 'Pending',   color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)', border: 'rgba(228, 168, 75, 0.45)' },
+  approved:  { label: 'Approved',  color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)', border: 'rgba(27, 158, 119, 0.40)' },
+  rejected:  { label: 'Rejected',  color: 'var(--color-danger-500)', bg: 'rgba(196, 69, 54, 0.14)', border: 'rgba(196, 69, 54, 0.40)' },
+  cancelled: { label: 'Cancelled', color: '#5A7370', bg: 'rgba(90, 115, 112, 0.14)', border: 'rgba(90, 115, 112, 0.40)' },
+  taken:     { label: 'Taken',     color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
 };
 
-export const PAYROLL_STATUS_TOKENS: Record<PayrollEntryDoc['status'], { label: string; color: string; bg: string }> = {
-  draft:    { label: 'Draft',    color: '#5A7370', bg: 'rgba(90, 115, 112, 0.14)' },
-  approved: { label: 'Approved', color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)' },
-  paid:     { label: 'Paid',     color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.14)' },
-  reversed: { label: 'Reversed', color: 'var(--color-danger-500)', bg: 'rgba(196, 69, 54, 0.14)' },
+export const PAYROLL_STATUS_TOKENS: Record<PayrollEntryDoc['status'], StatusToken> = {
+  draft:    { label: 'Draft',    color: '#5A7370', bg: 'rgba(90, 115, 112, 0.14)', border: 'rgba(90, 115, 112, 0.40)' },
+  approved: { label: 'Approved', color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
+  paid:     { label: 'Paid',     color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.14)', border: 'rgba(27, 158, 119, 0.40)' },
+  reversed: { label: 'Reversed', color: 'var(--color-danger-500)', bg: 'rgba(196, 69, 54, 0.14)', border: 'rgba(196, 69, 54, 0.40)' },
 };
+
+/** Shift lifecycle — `StaffScheduleDoc.status`, surfaced by the schedule list's
+ *  Status column (the old table dropped it entirely). */
+export const SCHEDULE_STATUS_TOKENS: Record<StaffScheduleDoc['status'], StatusToken> = {
+  scheduled: { label: 'Scheduled', color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
+  confirmed: { label: 'Confirmed', color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)', border: 'rgba(27, 158, 119, 0.40)' },
+  completed: { label: 'Completed', color: '#5A7370', bg: 'rgba(90, 115, 112, 0.14)', border: 'rgba(90, 115, 112, 0.40)' },
+  absent:    { label: 'Absent',    color: 'var(--color-danger-500)', bg: 'rgba(196, 69, 54, 0.14)', border: 'rgba(196, 69, 54, 0.40)' },
+  swapped:   { label: 'Swapped',   color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)', border: 'rgba(228, 168, 75, 0.45)' },
+};
+
+/** Tint a shared `.appointment-status-pill` with a status token — the pill
+ *  keeps the list-wide metrics, only its colours change. */
+export const statusPillStyle = (tok: StatusToken) => ({
+  borderColor: tok.border,
+  background: tok.bg,
+  color: tok.color,
+});
 
 export const SHIFT_TYPES: StaffScheduleDoc['shiftType'][] = ['morning', 'afternoon', 'night', 'on_call'];
+
+/** Per-shift accent, shared by the schedule list's shift chip and the header
+ *  stat dots so a shift reads the same colour in both places. */
+export const SHIFT_TOKENS: Record<StaffScheduleDoc['shiftType'], StatusToken> = {
+  morning:   { label: 'Morning',   color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)', border: 'rgba(27, 158, 119, 0.40)' },
+  afternoon: { label: 'Afternoon', color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)', border: 'rgba(228, 168, 75, 0.45)' },
+  night:     { label: 'Night',     color: 'var(--accent-hover)', bg: 'rgba(1, 86, 151, 0.12)', border: 'rgba(1, 86, 151, 0.35)' },
+  on_call:   { label: 'On call',   color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
+};
+
+/**
+ * Length of a shift as "8h" / "7h 30m". A night shift's end time is smaller
+ * than its start (22:00 → 06:00), so the span wraps through midnight rather
+ * than going negative.
+ */
+export function shiftDuration(start: string, end: string): string {
+  const toMinutes = (value: string) => {
+    const [h, m] = (value || '').split(':').map(Number);
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : NaN;
+  };
+  const from = toMinutes(start);
+  const to = toMinutes(end);
+  if (Number.isNaN(from) || Number.isNaN(to)) return '—';
+  const minutes = ((to - from + 1440) % 1440) || 1440;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+}
 
 /** The HR areas, in nav order — the one list every route and the legacy
  *  `?tab=` redirect agree on. */
@@ -92,24 +147,36 @@ export function sectionFromTabParam(tab: string | null | undefined): HrSection |
 export const staffInitials = (name: string) =>
   name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase() || '?';
 
-export function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return (
-    <th className={`${right ? 'text-right' : 'text-left'} px-4 py-2.5`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}>
-      <span className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">{children}</span>
-    </th>
-  );
+/**
+ * Date-only formatter for HR's `YYYY-MM-DD` fields. A bare date string parses
+ * as UTC midnight, which renders as the PREVIOUS day anywhere west of
+ * Greenwich, so anchor it to local midnight before formatting.
+ */
+export function formatHrDate(
+  value?: string,
+  opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' },
+) {
+  if (!value) return '—';
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value);
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString(undefined, opts);
 }
 
-/** Staff table cell — 40px square avatar + 14/800 name + muted subline.
- *  `capitalizeSub` for role sublines ("front desk" → "Front Desk"); off for
- *  usernames, which must keep their exact casing. */
-export function StaffCell({ name, sub, capitalizeSub = false }: { name: string; sub?: string; capitalizeSub?: boolean }) {
+/**
+ * Staff identity cell for the HR card-row lists — a tinted 40px avatar plus
+ * the name/role stack, on the same `.ehr-appointment-identity` /
+ * `.appointment-card-patient` classes the patient registry and User Accounts
+ * rows use, so all of them share one type scale and one avatar treatment.
+ *
+ * `capitalizeSub` for role sublines ("front desk" → "Front Desk"); off for
+ * usernames, which must keep their exact casing.
+ */
+export function StaffIdentity({ name, sub, capitalizeSub = false }: { name: string; sub?: string; capitalizeSub?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5 min-w-0">
-      <div className="ehr-patient-icon">{staffInitials(name)}</div>
-      <div className="min-w-0">
-        <div className="text-[14px] truncate" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{name}</div>
-        {sub && <div className={`text-[11px] truncate ${capitalizeSub ? 'capitalize' : ''}`.trim()} style={{ color: 'var(--text-muted)' }}>{sub}</div>}
+    <div className="ehr-appointment-identity">
+      <div className="ehr-patient-icon" style={avatarTint(name)}>{staffInitials(name)}</div>
+      <div className="ehr-appointment-main appointment-card-patient">
+        <strong>{name}</strong>
+        {sub && <p className={capitalizeSub ? 'capitalize' : undefined}>{sub}</p>}
       </div>
     </div>
   );

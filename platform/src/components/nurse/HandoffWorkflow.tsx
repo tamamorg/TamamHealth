@@ -207,9 +207,9 @@ export default function HandoffWorkflow({
   // Real KPI strip — only counts we actually have. Colors are the design's
   // semantic text tints (blue / danger / danger / warning).
   const stats = [
-    { icon: BedDouble, label: t('nurse.totalPatients'), value: totalPatients, color: '#2191D0' },
-    { icon: AlertCircle, label: t('nurse.criticalPatients'), value: criticalCount, color: '#C24135' },
-    { icon: Pill, label: t('nurse.medicationsOverdue'), value: overdueMarCount, color: '#C24135' },
+    { icon: BedDouble, label: t('nurse.totalPatients'), value: totalPatients, color: 'var(--accent-primary)' },
+    { icon: AlertCircle, label: t('nurse.criticalPatients'), value: criticalCount, color: 'var(--color-danger-text)' },
+    { icon: Pill, label: t('nurse.medicationsOverdue'), value: overdueMarCount, color: 'var(--color-danger-text)' },
     { icon: Pill, label: t('nurse.medicationsDueNow'), value: dueMarCount, color: '#B55E13' },
   ];
 
@@ -256,7 +256,7 @@ export default function HandoffWorkflow({
             ))}
             {latest.status === 'acknowledged' ? (
               <div className="flex items-center justify-between gap-2">
-                <p className="ehr-handoff-note" style={{ color: '#167755', fontWeight: 700 }}>
+                <p className="ehr-handoff-note" style={{ color: 'var(--color-success-text)', fontWeight: 700 }}>
                   {t('nurse.handoffAcknowledgedBy', {
                     name: latest.acknowledgedByName ?? '',
                     time: latest.acknowledgedAt ? new Date(latest.acknowledgedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
@@ -309,7 +309,7 @@ export default function HandoffWorkflow({
       <section className="ehr-handoff-section">
         <div className="ehr-handoff-section-head">
           <div>
-            <AlertCircle style={{ color: '#C24135' }} />
+            <AlertCircle style={{ color: 'var(--color-danger-text)' }} />
             <h3>{t('nurse.patientHandover')}</h3>
           </div>
           <b className="ehr-handoff-badge" data-tone={criticalCount > 0 ? 'red' : undefined}>{criticalCount}</b>

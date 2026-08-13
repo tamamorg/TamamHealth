@@ -79,8 +79,8 @@ export default function PublicStatsPage() {
                   {[
                     { label: t('publicStats.healthFacilities'), value: hospitals.length, icon: Building2, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
                     { label: t('patients.kpiTotalPatients'), value: totalPop.toLocaleString(), icon: Users, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
-                    { label: t('publicStats.hospitalBeds'), value: totalBeds.toLocaleString(), icon: BedDouble, color: 'var(--color-warning)', bg: 'rgba(252,211,77,0.12)' },
-                    { label: t('publicStats.healthWorkers'), value: totalStaff.toLocaleString(), icon: Stethoscope, color: '#2191D0', bg: 'rgba(56,189,248,0.12)' },
+                    { label: t('publicStats.hospitalBeds'), value: totalBeds.toLocaleString(), icon: BedDouble, color: 'var(--color-warning-text)', bg: 'rgba(252,211,77,0.12)' },
+                    { label: t('publicStats.healthWorkers'), value: totalStaff.toLocaleString(), icon: Stethoscope, color: 'var(--accent-primary)', bg: 'rgba(56,189,248,0.12)' },
                     { label: t('publicStats.dhis2Coverage'), value: `${dqData?.dhis2Adoption ?? 0}%`, icon: Wifi, color: scoreColor(dqData?.dhis2Adoption ?? 0), bg: 'rgba(33, 145, 208, 0.12)' },
                   ].map(stat => (
                     <div key={stat.label} className="kpi">
@@ -121,7 +121,7 @@ export default function PublicStatsPage() {
                   </div>
                   <div className="flex justify-between text-xs">
                     <span style={{ color: 'var(--text-secondary)' }}>{t('publicStats.femaleBirths')}</span>
-                    <span className="font-bold" style={{ color: 'var(--color-danger)' }}>{birthStats.byGender.female}</span>
+                    <span className="font-bold" style={{ color: 'var(--color-danger-text)' }}>{birthStats.byGender.female}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span style={{ color: 'var(--text-secondary)' }}>{t('publicStats.caesareanRate')}</span>
@@ -157,7 +157,7 @@ export default function PublicStatsPage() {
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="p-3 rounded-lg" style={{ background: 'rgba(229,46,66,0.08)' }}>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('publicStats.totalDeaths')}</p>
-                    <p className="text-xl font-bold" style={{ color: 'var(--color-danger)' }}>{deathStats.total}</p>
+                    <p className="text-xl font-bold" style={{ color: 'var(--color-danger-text)' }}>{deathStats.total}</p>
                   </div>
                   <div className="p-3 rounded-lg" style={{ background: 'var(--accent-light)' }}>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('publicStats.icd11Coded')}</p>
@@ -167,15 +167,15 @@ export default function PublicStatsPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span style={{ color: 'var(--text-secondary)' }}>{t('publicStats.maternalDeaths')}</span>
-                    <span className="font-bold" style={{ color: 'var(--color-danger)' }}>{deathStats.maternalDeaths}</span>
+                    <span className="font-bold" style={{ color: 'var(--color-danger-text)' }}>{deathStats.maternalDeaths}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span style={{ color: 'var(--text-secondary)' }}>{t('publicStats.under5Deaths')}</span>
-                    <span className="font-bold" style={{ color: 'var(--color-warning)' }}>{deathStats.under5Deaths}</span>
+                    <span className="font-bold" style={{ color: 'var(--color-warning-text)' }}>{deathStats.under5Deaths}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span style={{ color: 'var(--text-secondary)' }}>{t('publicStats.neonatalDeaths')}</span>
-                    <span className="font-bold" style={{ color: 'var(--color-warning)' }}>{deathStats.neonatalDeaths}</span>
+                    <span className="font-bold" style={{ color: 'var(--color-warning-text)' }}>{deathStats.neonatalDeaths}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span style={{ color: 'var(--text-secondary)' }}>{t('publicStats.deathNotificationRate')}</span>
@@ -197,7 +197,7 @@ export default function PublicStatsPage() {
                       {deathStats.topCauses.slice(0, 5).map((c, i) => (
                         <div key={c.code} className="flex items-center gap-2">
                           <span className="text-[10px] font-bold w-4" style={{ color: 'var(--text-muted)' }}>{i + 1}</span>
-                          <span className="font-mono text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }}>{c.code}</span>
+                          <span className="font-mono text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{c.code}</span>
                           <span className="text-[10px] flex-1 truncate">{c.cause}</span>
                           <span className="text-xs font-bold">{c.count}</span>
                         </div>

@@ -13,6 +13,14 @@ import NotificationsPanel from '@/components/NotificationsPanel';
 import TasksPanel from '@/components/TasksPanel';
 import { useTasks } from '@/lib/hooks/useTasks';
 
+/**
+ * The rail's one count colour (`.ehr-top-action-badge`, the module shortcut
+ * badges). Every badge on the blue bar is this red — the tasks badge used to
+ * be `--accent-primary`, i.e. blue on blue, so all a user saw was a floating
+ * white digit with no pill behind it.
+ */
+const RAIL_BADGE_RED = '#E05A3A';
+
 export default function QuickActions({ notificationCount }: {
   /** Unread bell count. Supplied by the rail, which already loads the feed for
    *  the module shortcut badges — loading it here too would run every source
@@ -52,7 +60,7 @@ export default function QuickActions({ notificationCount }: {
       >
         <ClipboardCheck className="w-5 h-5" />
         {openTasks.length > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-[3px] rounded-full flex items-center justify-center text-[8px] font-bold text-white" style={{ background: 'var(--accent-primary)', boxShadow: '0 0 0 1.5px var(--bg-card)' }}>
+          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-[3px] rounded-full flex items-center justify-center text-[8px] font-bold text-white" style={{ background: RAIL_BADGE_RED, boxShadow: '0 0 0 1.5px var(--bg-card)' }}>
             {openTasks.length > 99 ? '99+' : openTasks.length}
           </span>
         )}
@@ -69,7 +77,7 @@ export default function QuickActions({ notificationCount }: {
       >
         <Bell className="w-5 h-5" />
         {notifCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-[3px] rounded-full flex items-center justify-center text-[8px] font-bold text-white" style={{ background: '#E05A3A', boxShadow: '0 0 0 1.5px var(--bg-card)' }}>
+          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-[3px] rounded-full flex items-center justify-center text-[8px] font-bold text-white" style={{ background: RAIL_BADGE_RED, boxShadow: '0 0 0 1.5px var(--bg-card)' }}>
             {notifCount > 99 ? '99+' : notifCount}
           </span>
         )}
@@ -88,7 +96,7 @@ export default function QuickActions({ notificationCount }: {
         >
           <Megaphone className="w-5 h-5" />
           {unread > 0 && (
-            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full border-2 border-white" aria-hidden="true" style={{ background: '#E05A3A' }} />
+            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full border-2 border-white" aria-hidden="true" style={{ background: RAIL_BADGE_RED }} />
           )}
         </button>
         {announceOpen && (

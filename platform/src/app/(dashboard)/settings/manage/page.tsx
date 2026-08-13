@@ -466,8 +466,8 @@ export default function SettingsPage() {
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
   };
   const btnPrimary: React.CSSProperties = {
-    background: '#2191D0', color: 'white',
-    border: '1px solid #2191D0', borderRadius: '999px', padding: '9px 16px',
+    background: 'var(--accent-primary)', color: 'white',
+    border: '1px solid var(--accent-primary)', borderRadius: '999px', padding: '9px 16px',
     fontSize: '13px', fontWeight: 800, cursor: 'pointer',
     display: 'flex', alignItems: 'center', gap: '8px',
   };
@@ -674,7 +674,7 @@ export default function SettingsPage() {
                               background: h.syncStatus === 'online' ? 'var(--accent-primary)' : h.syncStatus === 'syncing' ? 'var(--color-warning)' : 'var(--text-muted)',
                             }} />
                             <span style={{
-                              color: h.syncStatus === 'online' ? 'var(--accent-primary)' : h.syncStatus === 'syncing' ? 'var(--color-warning)' : 'var(--text-muted)',
+                              color: h.syncStatus === 'online' ? 'var(--accent-primary)' : h.syncStatus === 'syncing' ? 'var(--color-warning-text)' : 'var(--text-muted)',
                             }}>{h.syncStatus === 'online' ? 'Online' : h.syncStatus === 'syncing' ? 'Syncing' : 'Offline'}</span>
                           </span>
                         </td>
@@ -699,7 +699,7 @@ export default function SettingsPage() {
                     Push facility data to the national HMIS (DHIS2). Last synced: {lastSyncedLabel}.
                   </p>
                   {!dhis2Configured && (
-                    <p style={{ fontSize: 12, color: 'var(--color-warning)', marginTop: 4 }}>
+                    <p style={{ fontSize: 12, color: 'var(--color-warning-text)', marginTop: 4 }}>
                       DHIS2 not configured — Sync Now prepares the export locally but won&apos;t reach a server until NEXT_PUBLIC_DHIS2_BASE_URL is set.
                     </p>
                   )}
@@ -731,9 +731,9 @@ export default function SettingsPage() {
                   }
                 >
                   {overallStatus === 'synced'
-                    ? <Check className="w-4 h-4 flex-shrink-0" style={{ color: '#059669' }} />
+                    ? <Check className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--color-success-text)' }} />
                     : <RefreshCw className="w-4 h-4 flex-shrink-0" style={{ color: overallStatus === 'error' ? 'var(--color-danger)' : 'var(--text-muted)' }} />}
-                  <span style={{ fontSize: 13, fontWeight: 500, color: overallStatus === 'synced' ? '#059669' : overallStatus === 'error' ? 'var(--color-danger)' : 'var(--text-secondary)' }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: overallStatus === 'synced' ? 'var(--color-success-text)' : overallStatus === 'error' ? 'var(--color-danger-text)' : 'var(--text-secondary)' }}>
                     {lastPush.message}
                   </span>
                 </div>
@@ -754,27 +754,27 @@ export default function SettingsPage() {
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                       {elementGroups.length} data groups from last sync ({dhis2Log?.lastDataset?.period})
                     </span>
-                    <span style={{ fontSize: 12, color: overallStatus === 'error' ? 'var(--color-danger)' : 'var(--text-muted)' }}>
+                    <span style={{ fontSize: 12, color: overallStatus === 'error' ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>
                       {overallStatus === 'synced' ? 'All pushed' : overallStatus === 'error' ? 'Push failed' : 'Prepared, not pushed'}
                     </span>
                   </div>
                   {/* Progress bar — one atomic push covers every group, so it's all-or-nothing */}
                   <div style={{ height: 6, borderRadius: 3, background: 'var(--border-light)', overflow: 'hidden', marginBottom: 16 }}>
-                    <div style={{ height: '100%', width: overallStatus === 'synced' ? '100%' : '0%', background: overallStatus === 'error' ? '#C44536' : '#059669', borderRadius: 3, transition: 'width 0.6s ease' }} />
+                    <div style={{ height: '100%', width: overallStatus === 'synced' ? '100%' : '0%', background: overallStatus === 'error' ? 'var(--color-danger)' : 'var(--color-success)', borderRadius: 3, transition: 'width 0.6s ease' }} />
                   </div>
 
                   {elementGroups.map(g => {
                     const s =
-                      overallStatus === 'synced' ? { bg: 'rgba(5,150,105,0.1)', fg: '#059669', label: 'Synced' }
-                      : overallStatus === 'error' ? { bg: 'rgba(196,69,54,0.1)', fg: '#C44536', label: 'Error' }
-                      : { bg: 'rgba(245,158,11,0.1)', fg: '#D97706', label: 'Pending' };
+                      overallStatus === 'synced' ? { bg: 'rgba(5,150,105,0.1)', fg: 'var(--color-success-text)', label: 'Synced' }
+                      : overallStatus === 'error' ? { bg: 'rgba(196,69,54,0.1)', fg: 'var(--color-danger-text)', label: 'Error' }
+                      : { bg: 'rgba(245,158,11,0.1)', fg: 'var(--color-warning-text)', label: 'Pending' };
                     return (
                       <div key={g.label} className="flex items-start justify-between py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
                         <div className="min-w-0">
                           <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{g.label}</span>
                           <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{g.elements.length} indicator{g.elements.length > 1 ? 's' : ''}</p>
                           {overallStatus === 'error' && lastPush && (
-                            <p style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 2 }}>{lastPush.message}</p>
+                            <p style={{ fontSize: 11, color: 'var(--color-danger-text)', marginTop: 2 }}>{lastPush.message}</p>
                           )}
                         </div>
                         <span className="flex-shrink-0 ml-3 text-[11px] font-semibold px-2.5 py-0.5 rounded-full" style={{ background: s.bg, color: s.fg }}>
@@ -1044,7 +1044,7 @@ export default function SettingsPage() {
                       <input type="checkbox"
                         checked={hospitalForm[f.key as keyof typeof hospitalForm] as boolean}
                         onChange={e => setHospitalForm(p => ({ ...p, [f.key]: e.target.checked }))}
-                        className="w-4 h-4 rounded accent-[#2191D0]"
+                        className="w-4 h-4 rounded accent-[var(--accent-primary)]"
                       />
                       {f.label}
                     </label>

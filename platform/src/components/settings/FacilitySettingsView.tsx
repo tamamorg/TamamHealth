@@ -327,7 +327,7 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
                           type="button"
                           onClick={() => setDraft({ ...draft, labCatalog: draft.labCatalog.filter((_, idx) => idx !== i) })}
                           className="p-1.5 rounded-lg"
-                          style={{ color: 'var(--color-danger)' }}
+                          style={{ color: 'var(--color-danger-text)' }}
                           aria-label="Remove test"
                         >
                           <Trash2 className="w-4 h-4" />

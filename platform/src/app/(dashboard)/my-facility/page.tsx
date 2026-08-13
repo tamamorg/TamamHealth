@@ -206,12 +206,12 @@ export default function MyFacilityPage() {
         <DashboardGreetingHeader actions={
           <>
             {error && (
-              <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger)' }}>
+              <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
                 <AlertTriangle className="w-3.5 h-3.5" /> {error}
               </span>
             )}
             {saved && (
-              <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+              <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-success-text)' }}>
                 <CheckCircle className="w-3.5 h-3.5" /> {t('myFacility.savedSuccessfully')}
               </span>
             )}
@@ -280,7 +280,7 @@ export default function MyFacilityPage() {
 
           {/* Staffing */}
           <div className={sectionClass}>
-            {sectionTitle(<Users className="w-3.5 h-3.5" style={{ color: '#2191D0' }} />, t('myFacility.staffing'), 'rgba(33, 145, 208, 0.12)')}
+            {sectionTitle(<Users className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />, t('myFacility.staffing'), 'rgba(33, 145, 208, 0.12)')}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {numberInput(t('dashboard.doctors'), doctors, setDoctors)}
               {numberInput(t('dataEntry.nurses'), nurses, setNurses)}
@@ -377,12 +377,12 @@ export default function MyFacilityPage() {
                           Not yet submitted
                         </span>
                       ) : hasPendingChanges ? (
-                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(252,211,77,0.12)', color: 'var(--color-warning)' }}>
+                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(252,211,77,0.12)', color: 'var(--color-warning-text)' }}>
                           <Clock className="w-3 h-3" />
                           Changes pending submission
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: 'var(--color-success)' }}>
+                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: 'var(--color-success-text)' }}>
                           <CheckCircle className="w-3 h-3" />
                           Submitted to Ministry of Health
                         </span>
@@ -411,7 +411,7 @@ export default function MyFacilityPage() {
                         {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
                       </button>
                       {submitError && (
-                        <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger)' }}>
+                        <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
                           <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
                         </span>
                       )}

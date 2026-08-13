@@ -118,7 +118,7 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
       {errors.length > 0 && (
         <div className="mt-3 space-y-1">
           {errors.map((err, i) => (
-            <div key={i} className="flex items-center gap-2 p-2 rounded-lg text-xs" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }}>
+            <div key={i} className="flex items-center gap-2 p-2 rounded-lg text-xs" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>
               <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
               {err}
               <button onClick={() => setErrors(prev => prev.filter((_, j) => j !== i))} className="ml-auto">

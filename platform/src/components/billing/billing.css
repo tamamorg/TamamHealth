@@ -357,8 +357,26 @@
 }
 /* !important + .bl-root scoping: the legacy globals.css cascade paints table
    heads white; this is the same escape hatch openmrs-chart.css uses. */
-.bl-root .bl-table thead th {
+/* `:not(.bl-right)` matters: this selector is (0,3,1) and `.bl-right` is
+   (0,1,0), so a blanket `text-align: left` here silently overruled every
+   right-aligned header. Numeric columns ended up with the label pinned to one
+   edge of a 196px column and the figure to the other — the table read as
+   badly spaced when the columns were in fact exactly equal. */
+.bl-root .bl-table thead th:not(.bl-right) {
   text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ehr-text-title, #132C44);
+  background: #E3E9EF !important;
+  padding: 10px 18px;
+  white-space: nowrap;
+}
+
+/* Everything above minus the alignment, for the columns that align right. */
+.bl-root .bl-table thead th.bl-right {
+  text-align: right;
   font-size: 12px;
   font-weight: 700;
   text-transform: none;
@@ -377,6 +395,26 @@
 .bl-table tbody tr:last-child td { border-bottom: none; }
 .bl-table tbody tr:hover td { background: var(--ehr-hover, #FAFCFE); }
 .bl-table .bl-num { font-variant-numeric: tabular-nums; }
+
+/* Even columns — the work queues.
+
+   Auto layout sizes every column to its longest cell, so one long payer name
+   or invoice number stretched its column to 200px while "Paid" and "Status"
+   were squeezed next to it: the same table looked different on every dataset.
+   `fixed` divides the width equally instead, giving a stable grid that does
+   not reflow as rows load. Long values ellipsize rather than widening the
+   column; the row's popup carries the full text. */
+.bl-table--even { table-layout: fixed; }
+
+.bl-table--even thead th,
+.bl-table--even tbody td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A clickable row needs to say so — the queue's rows open a detail popup. */
+.bl-table--rows-open tbody tr { cursor: pointer; }
 
 .bl-link {
   color: var(--accent-primary, #2563eb);

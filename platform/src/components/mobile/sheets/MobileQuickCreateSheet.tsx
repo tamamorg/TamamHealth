@@ -21,7 +21,13 @@ export default function MobileQuickCreateSheet({ open, onClose }: MobileQuickCre
     () => uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes),
     [roleConfig, allowedRoutes]
   );
-  const shortcuts = useMemo(() => getPrimaryShortcutItems(navItems, currentUser?.role, 4), [navItems, currentUser?.role]);
+  // Same rule as the top rail: "quick create" is for work destinations, and the
+  // role's own dashboard is always one tap away on the mobile tab bar — so it
+  // only fills a slot here as a last resort.
+  const shortcuts = useMemo(
+    () => getPrimaryShortcutItems(navItems, currentUser?.role, 4, roleConfig?.defaultDashboard),
+    [navItems, currentUser?.role, roleConfig?.defaultDashboard],
+  );
 
   return (
     <MobileBottomSheet open={open} onClose={onClose} title="Quick create">

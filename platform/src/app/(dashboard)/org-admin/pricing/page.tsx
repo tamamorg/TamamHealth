@@ -175,7 +175,7 @@ export default function ServicePricingPage() {
                     </td>
                     <td className="px-4 py-2.5 text-right whitespace-nowrap">
                       <button onClick={() => openEdit(fee)} className="text-[12px] font-semibold mr-3" style={{ color: 'var(--accent-text)' }}>Edit</button>
-                      <button onClick={() => setRemovingFee(fee)} aria-label="Remove fee" title="Remove fee" className="p-1.5 rounded-lg transition-colors hover:bg-red-50" style={{ color: 'var(--color-danger)' }}><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => setRemovingFee(fee)} aria-label="Remove fee" title="Remove fee" className="p-1.5 rounded-lg transition-colors hover:bg-red-50" style={{ color: 'var(--color-danger-text)' }}><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>
                 ))}

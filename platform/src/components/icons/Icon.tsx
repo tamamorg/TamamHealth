@@ -3,7 +3,7 @@
 import { forwardRef } from 'react';
 import type { CSSProperties, ForwardRefExoticComponent, RefAttributes, SVGProps } from 'react';
 import * as Lucide from 'lucide-react';
-import { BRAND_PRIMARY } from '@/lib/theme-colors';
+
 
 export type IconName = string;
 
@@ -20,7 +20,14 @@ export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'color' | 'ref'
   ref?: React.Ref<SVGSVGElement>;
 }
 
-export const BLUE_LINE_ICON = BRAND_PRIMARY;
+/**
+ * The default line-icon colour. A CSS variable, not the BRAND_PRIMARY literal:
+ * lucide writes `color` out as a literal `stroke=` presentation attribute, so
+ * a hex here froze every default icon at the platform blue and no amount of
+ * org branding could repaint it. Presentation attributes do resolve var(), so
+ * the token reaches the glyph.
+ */
+export const BLUE_LINE_ICON = 'var(--accent-primary)';
 
 export const CATEGORY_ACCENTS: Record<string, string> = {
   clinical: BLUE_LINE_ICON,

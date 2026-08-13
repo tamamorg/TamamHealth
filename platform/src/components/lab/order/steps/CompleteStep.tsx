@@ -26,7 +26,7 @@ export default function CompleteStep({ controller }: { controller: LabOrderContr
         style={{ border: '1px solid var(--labord-line)', borderRadius: 4, marginBottom: 16, background: 'var(--labord-surface-soft)' }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--color-success, #1F8A4C)' }} aria-hidden />
+          <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--color-success, #059669)' }} aria-hidden />
           <span>
             <span className="labord-pick-name">{t('labOrder.placed', { count: draft.tests.length })}</span>
             <span className="labord-pick-meta" style={{ display: 'block' }}>

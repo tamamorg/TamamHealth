@@ -40,9 +40,9 @@ function isStationTab(value: string | null): value is StationTab {
 }
 
 // Chart palette per design spec: flat clinical look, matched to triage colors.
-const CHART_GREEN = '#199e70';
-const CHART_RED = '#e34948';
-const CHART_AMBER = '#eda100';
+const CHART_GREEN = 'var(--color-success)';
+const CHART_RED = 'var(--color-danger)';
+const CHART_AMBER = 'var(--color-warning)';
 
 // Only plots a time when the source field is a full timestamp (contains a
 // clock component) — registration/admission dates are sometimes date-only,

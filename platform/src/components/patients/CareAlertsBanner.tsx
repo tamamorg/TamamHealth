@@ -69,7 +69,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
       {active.map((a) => {
         const high = a.priority === 'high';
         const bg = high ? 'rgba(229,46,66,0.12)' : 'rgba(217,119,6,0.12)';
-        const color = high ? 'var(--color-danger)' : '#B45309';
+        const color = high ? 'var(--color-danger)' : 'var(--color-warning-text)';
         return (
           <div key={a.id} className="card-elevated p-3 flex items-center gap-3" style={{ background: bg, border: `1px solid ${color}40` }}>
             <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color }} />
@@ -126,7 +126,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
         </div>
       )}
 
-      {error && <p className="text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+      {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
     </div>
   );
 }

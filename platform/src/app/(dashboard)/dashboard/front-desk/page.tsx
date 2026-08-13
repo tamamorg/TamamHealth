@@ -28,7 +28,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { getRoleConfig } from '@/lib/permissions';
-import EhrCareDashboard, { type EhrCareDashboardAction, type EhrCareDashboardMetric, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
+import EhrCareDashboard, { useRowCollapse, type EhrCareDashboardAction, type EhrCareDashboardMetric, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import {
@@ -132,6 +132,36 @@ interface CheckoutTarget {
 
 function patientFacilityName(patient: PatientDoc | undefined, fallback = 'Facility'): string {
   return (patient as (PatientDoc & { registrationHospitalName?: string }) | undefined)?.registrationHospitalName || fallback;
+}
+
+/**
+ * The inline appointment editor, wired to close its own row on save.
+ *
+ * The rows are built in a `useMemo`, where `useRowCollapse()` cannot be
+ * called — so the hook lives here, in a component that renders inside the
+ * expanded row and therefore sees the context. Without it these editors were
+ * passed `onClose={() => undefined}`: saving showed its toast and left the
+ * panel sitting open.
+ */
+function RowAppointmentEditor({
+  appointment,
+  appointments,
+  patient,
+}: {
+  appointment: React.ComponentProps<typeof AppointmentEditModal>['appointment'];
+  appointments: React.ComponentProps<typeof AppointmentEditModal>['appointments'];
+  patient: React.ComponentProps<typeof AppointmentEditModal>['patient'];
+}) {
+  const collapse = useRowCollapse();
+  return (
+    <AppointmentEditModal
+      inline
+      appointment={appointment}
+      appointments={appointments}
+      patient={patient}
+      onClose={collapse}
+    />
+  );
 }
 
 export default function FrontDeskDashboardPage() {
@@ -1141,12 +1171,10 @@ export default function FrontDeskDashboardPage() {
         // dashboard's rows drop down into a visit — no pop-up over the list, and
         // nothing restating what the row already shows.
         popupDetail: (
-          <AppointmentEditModal
-            inline
+          <RowAppointmentEditor
             appointment={appointment}
             appointments={appointments}
             patient={patient}
-            onClose={() => undefined}
           />
         ),
       };
@@ -1322,12 +1350,10 @@ export default function FrontDeskDashboardPage() {
         // Rows with no booking at all still get the legacy panel: there is
         // nothing for the editor to edit.
         popupDetail: queueAppointment ? (
-          <AppointmentEditModal
-            inline
+          <RowAppointmentEditor
             appointment={queueAppointment}
             appointments={appointments}
             patient={patient}
-            onClose={() => undefined}
           />
         ) : (
           <>
@@ -2019,15 +2045,15 @@ function CheckoutModal({
           ) : owes ? (
             <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#EF4444' }}>Outstanding balance</span>
-                <Wallet className="w-4 h-4" style={{ color: '#EF4444' }} />
+                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-danger-text)' }}>Outstanding balance</span>
+                <Wallet className="w-4 h-4" style={{ color: 'var(--color-danger-text)' }} />
               </div>
-              <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: '#EF4444' }}>{formatMoney(balance)}</p>
+              <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: 'var(--color-danger-text)' }}>{formatMoney(balance)}</p>
               {canCollectPayment ? (
                 <button
                   onClick={() => onCollectPayment(target.patientId)}
                   className="mt-2.5 w-full text-[12px] font-semibold py-2 rounded-lg text-white transition-opacity hover:opacity-90 flex items-center justify-center gap-1.5"
-                  style={{ background: '#EF4444' }}
+                  style={{ background: 'var(--color-danger)' }}
                 >
                   <Wallet className="w-4 h-4" />Collect payment
                 </button>
@@ -2049,7 +2075,7 @@ function CheckoutModal({
 
           {gate && gate.blocking.length > 0 && (
             <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#B45309' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-warning-text)' }}>
                 Checkout blocked — unresolved items
               </p>
               <ul className="space-y-1.5">
@@ -2126,7 +2152,7 @@ function CheckoutModal({
                 }}
                 disabled={!canSubmit}
                 className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                style={{ background: blocked ? '#B45309' : 'var(--color-success)' }}
+                style={{ background: blocked ? 'var(--color-warning)' : 'var(--color-success)' }}
               >
                 <CheckCircle className="w-4 h-4" />
                 {completing ? 'Closing…' : blocked ? 'Override & check out' : 'Complete checkout'}

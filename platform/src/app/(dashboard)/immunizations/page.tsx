@@ -31,7 +31,7 @@ const SITES: Array<'left arm' | 'right arm' | 'left thigh' | 'right thigh' | 'or
 const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 
 const statusConfig = {
-  completed: { color: '#059669', bg: 'rgba(5,150,105,0.12)', icon: CheckCircle2, label: 'Completed' },
+  completed: { color: 'var(--color-success-text)', bg: 'rgba(5,150,105,0.12)', icon: CheckCircle2, label: 'Completed' },
   scheduled: { color: 'var(--color-warning)', bg: 'rgba(252,211,77,0.12)', icon: Clock, label: 'Scheduled' },
   overdue: { color: 'var(--color-danger)', bg: 'rgba(229,46,66,0.12)', icon: AlertTriangle, label: 'Overdue' },
   missed: { color: 'var(--text-muted)', bg: 'rgba(100,116,139,0.12)', icon: XCircle, label: 'Missed' },
@@ -439,7 +439,7 @@ export default function ImmunizationsPage() {
           style={{ color: activeTab === 'defaulters' ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
           {t('immun.tabDefaulters', { count: defaulterStats?.uniqueChildren || 0 })}
           {defaulterStats && defaulterStats.critical > 0 && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(229,46,66,0.15)', color: 'var(--color-danger)' }}>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(229,46,66,0.15)', color: 'var(--color-danger-text)' }}>
               {t('immun.criticalBadge', { count: defaulterStats.critical })}
             </span>
           )}
@@ -466,14 +466,14 @@ export default function ImmunizationsPage() {
                   >
                     <div className="flex items-center gap-3">
                       <span className="icon-box-sm">
-                        <Syringe className="w-4 h-4" style={{ color: '#059669' }} />
+                        <Syringe className="w-4 h-4" style={{ color: 'var(--color-success-text)' }} />
                       </span>
                       <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{vaccine}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(5,150,105,0.1)', color: '#059669' }}>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(5,150,105,0.1)', color: 'var(--color-success-text)' }}>
                         {total} completed
                       </span>
                       {overdueCount > 0 && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger)' }}>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)' }}>
                           {overdueCount} overdue
                         </span>
                       )}
@@ -486,7 +486,7 @@ export default function ImmunizationsPage() {
                       {/* Completed */}
                       {given.length > 0 && (
                         <div className="px-4 py-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#059669' }}>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-success-text)' }}>
                             Completed ({given.length})
                           </p>
                           <div className="space-y-1.5">
@@ -503,7 +503,7 @@ export default function ImmunizationsPage() {
                                     </span>
                                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{
                                       background: scheduledOnTime ? 'rgba(5,150,105,0.1)' : 'rgba(245,158,11,0.1)',
-                                      color: scheduledOnTime ? '#059669' : '#B8741C',
+                                      color: scheduledOnTime ? 'var(--color-success-text)' : 'var(--color-warning-text)',
                                     }}>
                                       {scheduledOnTime ? 'On schedule' : 'Late'}
                                     </span>
@@ -521,7 +521,7 @@ export default function ImmunizationsPage() {
                       {/* Overdue */}
                       {overdueItems.length > 0 && (
                         <div className="px-4 py-3" style={{ borderTop: given.length > 0 ? '1px solid var(--border-light)' : undefined }}>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-danger)' }}>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-danger-text)' }}>
                             Overdue ({overdueItems.length})
                           </p>
                           <div className="space-y-1.5">
@@ -536,7 +536,7 @@ export default function ImmunizationsPage() {
                                   </span>
                                   <div className="flex items-center gap-3">
                                     <span style={{ color: 'var(--text-muted)' }}>Due: {new Date(d.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }}>
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>
                                       {overdueLabel}
                                     </span>
                                   </div>
@@ -568,7 +568,7 @@ export default function ImmunizationsPage() {
           <div className="card-elevated p-5 mb-6">
             <h3 className="font-semibold text-sm mb-0 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               <span className="icon-box-sm">
-                <Syringe className="w-4 h-4" style={{ color: '#059669' }} />
+                <Syringe className="w-4 h-4" style={{ color: 'var(--color-success-text)' }} />
               </span>
               {t('immun.coverageByAntigen')}
             </h3>
@@ -603,7 +603,7 @@ export default function ImmunizationsPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="icon-box-sm">
-                  <Syringe className="w-4 h-4" style={{ color: '#059669' }} />
+                  <Syringe className="w-4 h-4" style={{ color: 'var(--color-success-text)' }} />
                 </span>
                 <h3 className="font-semibold text-sm">{t('immun.coverageByAgeCohort')}</h3>
               </div>

@@ -119,7 +119,7 @@ export default function ChartSummaryPanel({
           <div style={sectionHeader}>
             <span>Medications</span>
             {currentMeds.length > 0 && (
-              <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(33,145,208,0.12)', color: '#2191D0', borderRadius: 10, padding: '1px 7px' }}>{currentMeds.length}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(33,145,208,0.12)', color: 'var(--accent-primary)', borderRadius: 10, padding: '1px 7px' }}>{currentMeds.length}</span>
             )}
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-3 scrollbar-none">

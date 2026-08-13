@@ -267,7 +267,7 @@ export default function ANCPage() {
               ] as const).map((step, i) => {
                 const pct = stats.totalMothers > 0 ? Math.round((step.count / stats.totalMothers) * 100) : 0;
                 const dropoff = i > 0 ? Math.max(0, ([stats.continuum.anc1, stats.continuum.anc2, stats.continuum.anc3, stats.continuum.anc4, stats.continuum.anc5plus][i - 1]) - step.count) : 0;
-                const barColor = step.key === 'anc4' ? 'var(--accent-primary)' : pct >= 50 ? '#015697' : pct >= 25 ? 'var(--color-warning)' : 'var(--color-danger)';
+                const barColor = step.key === 'anc4' ? 'var(--accent-primary)' : pct >= 50 ? 'var(--accent-hover)' : pct >= 25 ? 'var(--color-warning)' : 'var(--color-danger)';
                 return (
                   <div key={step.key} className="flex items-center gap-3">
                     <span className="text-xs font-medium w-44 text-right" style={{ color: 'var(--text-secondary)' }}>{step.label}</span>
@@ -280,7 +280,7 @@ export default function ANCPage() {
                       </div>
                     </div>
                     {i > 0 && dropoff > 0 ? (
-                      <span className="text-[10px] font-mono w-16 text-right" style={{ color: 'var(--color-danger)' }}>{t('anc.dropCount', { count: dropoff })}</span>
+                      <span className="text-[10px] font-mono w-16 text-right" style={{ color: 'var(--color-danger-text)' }}>{t('anc.dropCount', { count: dropoff })}</span>
                     ) : (
                       <span className="text-[10px] w-16" />
                     )}
@@ -432,7 +432,7 @@ export default function ANCPage() {
                               <hr className="section-divider" />
                               <div className="flex flex-wrap gap-1">
                                 {(v.riskFactors || []).map(rf => (
-                                  <span key={rf} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger)' }}>
+                                  <span key={rf} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)' }}>
                                     {rf.replace(/_/g, ' ')}
                                   </span>
                                 ))}
@@ -712,7 +712,7 @@ export default function ANCPage() {
                         style={{
                           borderColor: form.riskFactors.includes(rf) ? 'var(--color-danger)' : 'var(--border-light)',
                           background: form.riskFactors.includes(rf) ? 'rgba(229,46,66,0.12)' : 'transparent',
-                          color: form.riskFactors.includes(rf) ? 'var(--color-danger)' : 'var(--text-muted)',
+                          color: form.riskFactors.includes(rf) ? 'var(--color-danger-text)' : 'var(--text-muted)',
                         }}
                       >
                         {rf.replace(/_/g, ' ')}

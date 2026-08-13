@@ -72,10 +72,13 @@ export function initials(name: string): string {
  *  values as the triage-tinted `.ehr-patient-icon` variants in globals.css. */
 export interface AvatarTint { background: string; color: string }
 
-export const AVATAR_TINT_RED: AvatarTint = { background: '#FFF0EF', color: '#C24135' };
-export const AVATAR_TINT_AMBER: AvatarTint = { background: '#FFF4E9', color: '#B55E13' };
-export const AVATAR_TINT_GREEN: AvatarTint = { background: '#E8F7F1', color: '#167755' };
-export const AVATAR_TINT_NEUTRAL: AvatarTint = { background: '#EEF4F6', color: '#3D5967' };
+// These four were literal copies of the --semantic-* tints, so a change to the
+// palette moved every pill in the app except the avatars. They read the tokens
+// now; the values are unchanged.
+export const AVATAR_TINT_RED: AvatarTint = { background: 'var(--semantic-danger-bg)', color: 'var(--semantic-danger)' };
+export const AVATAR_TINT_AMBER: AvatarTint = { background: 'var(--semantic-warning-bg)', color: 'var(--semantic-warning)' };
+export const AVATAR_TINT_GREEN: AvatarTint = { background: 'var(--semantic-success-bg)', color: 'var(--semantic-success)' };
+export const AVATAR_TINT_NEUTRAL: AvatarTint = { background: 'var(--semantic-neutral-bg)', color: 'var(--semantic-neutral)' };
 
 const AVATAR_TINTS: AvatarTint[] = [AVATAR_TINT_RED, AVATAR_TINT_AMBER, AVATAR_TINT_GREEN];
 

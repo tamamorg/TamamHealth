@@ -331,7 +331,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                       {task.patientName && <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>re: {task.patientName}</div>}
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         {(!d || d.overdue || d.text === 'Today') && (
-                          <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: d?.overdue ? 'var(--color-danger)' : 'var(--text-muted)' }}>
+                          <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: d?.overdue ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>
                             {d?.overdue ? <Clock className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
                             {d ? (d.overdue ? 'Overdue' : d.text) : 'No date'}
                           </span>

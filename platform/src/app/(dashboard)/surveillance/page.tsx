@@ -35,7 +35,7 @@ const COLORS = {
   malaria: 'var(--accent-primary)',
   cholera: 'var(--color-danger)',
   measles: 'var(--color-warning)',
-  pneumonia: '#2191D0',
+  pneumonia: 'var(--accent-primary)',
   diarrhea: 'var(--color-success)',
   tb: '#D4A843',
   hiv: 'var(--accent-primary)',
@@ -51,9 +51,9 @@ const severityOrder: Record<string, number> = {
 
 // Alert level styling
 const alertLevelConfig: Record<string, { bg: string; color: string; iconColor: string }> = {
-  emergency: { bg: 'rgba(229,46,66,0.16)', color: '#F87171', iconColor: 'var(--color-danger)' },
+  emergency: { bg: 'rgba(229,46,66,0.16)', color: 'var(--color-danger-text)', iconColor: 'var(--color-danger)' },
   warning: { bg: 'rgba(252,211,77,0.12)', color: '#FB923C', iconColor: 'var(--color-warning)' },
-  watch: { bg: 'rgba(252,211,77,0.14)', color: 'var(--color-warning)', iconColor: '#CA8A04' },
+  watch: { bg: 'rgba(252,211,77,0.14)', color: 'var(--color-warning)', iconColor: 'var(--color-warning)' },
   normal: { bg: 'rgba(62,207,142,0.12)', color: 'var(--color-success)', iconColor: 'var(--color-success)' },
 };
 
@@ -123,7 +123,7 @@ const alertLevelTone: Record<string, BadgeTone> = {
 const alertDotColors: Record<string, string> = {
   emergency: 'var(--color-danger)',
   warning: 'var(--color-warning)',
-  watch: '#CA8A04',
+  watch: 'var(--color-warning)',
   normal: 'var(--color-success)',
 };
 
@@ -439,7 +439,7 @@ export default function SurveillancePage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-2">
                 <div className="icon-box-sm">
-                  <Activity className="w-3.5 h-3.5" style={{ color: '#2191D0' }} />
+                  <Activity className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
                 </div>
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('surveillance.totalCasesThisWeek')}</span>
                 <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{totalCases.toLocaleString()}</span>
@@ -708,7 +708,7 @@ export default function SurveillancePage() {
                       <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>0</span>
                       <span aria-hidden="true" style={{
                         width: 96, height: 8, borderRadius: 999,
-                        background: 'linear-gradient(90deg, #EEF4F6, #F3C489, #C24135)',
+                        background: 'linear-gradient(90deg, #EEF4F6, #F3C489, var(--color-danger))',
                         border: '1px solid var(--border-light)',
                       }} />
                       <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
@@ -821,7 +821,7 @@ export default function SurveillancePage() {
                               <Minus className="w-3 h-3" style={{ color: 'var(--color-warning)' }} />
                             )}
                             <span className="text-[10px] font-medium" style={{
-                              color: alert.trend === 'increasing' ? 'var(--color-danger)' : alert.trend === 'decreasing' ? 'var(--color-success)' : 'var(--color-warning)'
+                              color: alert.trend === 'increasing' ? 'var(--color-danger-text)' : alert.trend === 'decreasing' ? 'var(--color-success-text)' : 'var(--color-warning-text)'
                             }}>
                               {alert.trend}
                             </span>
@@ -904,7 +904,7 @@ export default function SurveillancePage() {
                                   <Minus className="w-3 h-3" style={{ color: 'var(--color-warning)' }} />
                                 )}
                                 <span className="text-[10px] font-medium" style={{
-                                  color: isUp ? 'var(--color-danger)' : isDown ? 'var(--color-success)' : 'var(--color-warning)'
+                                  color: isUp ? 'var(--color-danger-text)' : isDown ? 'var(--color-success-text)' : 'var(--color-warning-text)'
                                 }}>
                                   {isUp ? '+' : ''}{change}
                                 </span>
@@ -917,7 +917,7 @@ export default function SurveillancePage() {
                               {row.deaths}
                             </td>
                             <td className="px-3 py-2 text-xs text-right" style={{
-                              color: row.cfrPercent >= 10 ? 'var(--color-danger)' : row.cfrPercent >= 5 ? 'var(--color-warning)' : 'var(--text-secondary)',
+                              color: row.cfrPercent >= 10 ? 'var(--color-danger-text)' : row.cfrPercent >= 5 ? 'var(--color-warning-text)' : 'var(--text-secondary)',
                               fontWeight: row.cfrPercent >= 10 ? 600 : 400,
                               borderBottom: '1px solid var(--table-row-border)'
                             }}>
@@ -939,7 +939,7 @@ export default function SurveillancePage() {
                         <td className="px-3 py-2 text-center">
                           <div className="inline-flex items-center gap-0.5">
                             <TrendingUp className="w-3 h-3" style={{ color: 'var(--color-danger)' }} />
-                            <span className="text-[10px] font-medium" style={{ color: 'var(--color-danger)' }}>
+                            <span className="text-[10px] font-medium" style={{ color: 'var(--color-danger-text)' }}>
                               +{idsrSummary.reduce((s, r) => s + r.casesThisWeek, 0) - idsrSummary.reduce((s, r) => s + r.casesPrevWeek, 0)}
                             </span>
                           </div>

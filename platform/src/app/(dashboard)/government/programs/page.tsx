@@ -101,20 +101,20 @@ export default function DiseaseProgramsPage() {
               <div className="grid grid-cols-3 gap-2">
                 <StatTile label="Coverage" value={`${immStats.coverageRate}%`} color="#2a78d6" />
                 <StatTile label="Fully immunized" value={immStats.fullyImmunized.toLocaleString()} sub={`of ${immStats.totalChildren.toLocaleString()} children`} />
-                <StatTile label="Overdue / missed" value={(immStats.overdue + immStats.missed).toLocaleString()} color="#eda100" />
+                <StatTile label="Overdue / missed" value={(immStats.overdue + immStats.missed).toLocaleString()} color="var(--color-warning-text)" />
               </div>
             ) : (
               <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>No data on file for immunization coverage.</p>
             )}
           </ProgramCard>
 
-          <ProgramCard icon={HeartPulse} iconColor="#199e70" title="RMNCAH — Antenatal Care" period="All records · National"
+          <ProgramCard icon={HeartPulse} iconColor="var(--color-success)" title="RMNCAH — Antenatal Care" period="All records · National"
             links={[{ label: 'Open ANC', href: '/anc' }, { label: 'Open MCH analytics', href: '/mch-analytics' }]}>
             {ancStats ? (
               <div className="grid grid-cols-3 gap-2">
-                <StatTile label="ANC4+ rate" value={`${ancStats.anc4PlusRate}%`} color="#199e70" />
+                <StatTile label="ANC4+ rate" value={`${ancStats.anc4PlusRate}%`} color="var(--color-success-text)" />
                 <StatTile label="Mothers on record" value={ancStats.totalMothers.toLocaleString()} />
-                <StatTile label="High-risk pregnancies" value={ancStats.highRiskCount.toLocaleString()} color="#e34948" />
+                <StatTile label="High-risk pregnancies" value={ancStats.highRiskCount.toLocaleString()} color="var(--color-danger-text)" />
               </div>
             ) : (
               <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>No data on file for antenatal care coverage.</p>

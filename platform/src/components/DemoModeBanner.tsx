@@ -36,7 +36,7 @@ export default function DemoModeBanner({ dense = false }: DemoModeBannerProps) {
         borderRadius: 'var(--card-radius)',
         background: 'rgba(228, 168, 75, 0.10)',
         border: '1px solid rgba(228, 168, 75, 0.30)',
-        color: '#B8741C',
+        color: 'var(--color-warning-text)',
         fontSize: dense ? 11.5 : 12.5,
         fontWeight: 600,
       }}

@@ -24,7 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  Activity, Wallet, UserCheck,
+  Activity, Wallet, UserCheck, Plus,
   AlertTriangle, RefreshCw, Phone, XCircle, Check, X,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
@@ -67,10 +67,10 @@ const WeeklyActivityChart = dynamic(() => import('./_FacilityCharts').then(m => 
 });
 
 const CHART_BLUE = '#2a78d6';   // appointments
-const CHART_GREEN = '#199e70';  // new patients
+const CHART_GREEN = 'var(--color-success)';  // new patients
 const CASH_RECEIVED = '#0ca30c';
-const CASH_PENDING = '#eda100';
-const CASH_PENDING_TEXT = '#a16207'; // legible amber for text on light cards
+const CASH_PENDING = 'var(--color-warning)';
+const CASH_PENDING_TEXT = 'var(--color-warning)'; // legible amber for text on light cards
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /** JS getDay() (0=Sun..6=Sat) → our Mon-first index (0=Mon..6=Sun). */
@@ -542,8 +542,6 @@ export default function FacilityManagementDashboard() {
       return {
         key: entry.key,
         label: entry.label,
-        icon: entry.icon,
-        description: entry.description,
         onSelect: dialogKey ? () => setAddDialog(dialogKey) : () => router.push(entry.href),
       };
     });
@@ -853,7 +851,7 @@ export default function FacilityManagementDashboard() {
         // not in the rail: `actions` only carries {label,icon,onClick}, so a
         // dropdown needs the component slot.
         headerExtra={addMenuItems.length > 0 ? (
-          <EhrRailMenu variant="primary" label="Add" ariaLabel="Add a new record" items={addMenuItems} menuTitle="Add" />
+          <EhrRailMenu variant="primary" label="Add" icon={Plus} hideChevron ariaLabel="Add a new record" items={addMenuItems} />
         ) : undefined}
         // Cash Flow sits directly under the weekly activity chart —
         // `railContent` renders immediately after it.

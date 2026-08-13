@@ -39,7 +39,7 @@ const SEVERITY_STYLES: Record<Severity, { bg: string; border: string; color: str
   warning: {
     bg: 'rgba(228, 168, 75, 0.10)',
     border: 'rgba(228, 168, 75, 0.30)',
-    color: '#B8741C',
+    color: 'var(--color-warning-text)',
     label: 'WARNING',
   },
   info: {
@@ -262,7 +262,7 @@ export default function AlertsPage() {
           stats={[
             { label: 'Total',    value: counts.all,      color: 'var(--text-muted)' },
             { label: 'Critical', value: counts.critical, color: 'var(--color-danger)' },
-            { label: 'Warning',  value: counts.warning,  color: '#B8741C' },
+            { label: 'Warning',  value: counts.warning,  color: 'var(--color-warning-text)' },
             { label: 'Info',     value: counts.info,     color: 'var(--accent-primary)' },
           ]}
         />

@@ -32,6 +32,9 @@ export type RoleSettingsSpec = {
   /** "You control" chips. */
   chips: string[];
   /** Role accent for avatar/identity bar/scope border. */
+  /** Identity, not status: the category-axis hue behind this role's avatar
+   *  on their own settings page. Never a success/warning/danger colour — a
+   *  green chip must not read as "resolved" when it only means "pharmacist". */
   accent: string;
   sections: RoleSettingSection[];
 };
@@ -75,7 +78,7 @@ function securitySection(twoFactor: boolean, idle: string, mask: boolean): RoleS
 }
 
 const DOCTOR: RoleSettingsSpec = {
-  title: 'Doctor', accent: '#015697',
+  title: 'Doctor', accent: 'var(--color-info-text)',
   subtitle: 'Consultation defaults, prescribing safety, and your queue preferences',
   scope: 'You can change your own clinical defaults and notifications. Formulary, tariffs, and triage rules are facility-wide and set by an administrator.',
   chips: ['Consultation defaults', 'Prescribing prompts', 'Queue order', 'My alerts'],
@@ -120,7 +123,7 @@ const DOCTOR: RoleSettingsSpec = {
 };
 
 const NURSE: RoleSettingsSpec = {
-  title: 'Nurse', accent: '#0E7490',
+  title: 'Nurse', accent: 'var(--category-clinical)',
   subtitle: 'Ward assignment, vitals and MAR rounds, handoff and shift preferences',
   scope: 'You can set your ward, rounding intervals, and alerts. Triage scales and medication policy are facility-wide.',
   chips: ['Ward & shift', 'Rounding intervals', 'MAR prompts', 'My alerts'],
@@ -165,7 +168,7 @@ const NURSE: RoleSettingsSpec = {
 };
 
 const PHARMACIST: RoleSettingsSpec = {
-  title: 'Pharmacist', accent: '#167755',
+  title: 'Pharmacist', accent: 'var(--category-clinical)',
   subtitle: 'Dispensing rules, stock thresholds, and controlled-substance handling',
   scope: 'You manage dispensing behaviour and stock alert levels. The national formulary and price list are facility-wide.',
   chips: ['Dispensing rules', 'Reorder levels', 'Register checks', 'My alerts'],
@@ -209,7 +212,7 @@ const PHARMACIST: RoleSettingsSpec = {
 };
 
 const LAB: RoleSettingsSpec = {
-  title: 'Laboratory technician', accent: '#0E7490',
+  title: 'Laboratory technician', accent: 'var(--category-lab)',
   subtitle: 'Worklist, sample handling, result verification and critical-value alerts',
   scope: 'You control worklist and verification behaviour. Test panels, reference ranges, and pricing are facility-wide.',
   chips: ['Worklist order', 'Sample rules', 'Verification', 'My alerts'],
@@ -253,7 +256,7 @@ const LAB: RoleSettingsSpec = {
 };
 
 const FRONTDESK: RoleSettingsSpec = {
-  title: 'Front desk & billing', accent: '#B55E13',
+  title: 'Front desk & billing', accent: 'var(--category-transfer)',
   subtitle: 'Registration, check-in routing, payments and receipt handling',
   scope: 'You control registration and payment-desk behaviour. Tariffs, exemptions, and insurance contracts are facility-wide.',
   chips: ['Registration rules', 'Check-in routing', 'Payment desk', 'My alerts'],
@@ -299,7 +302,7 @@ const FRONTDESK: RoleSettingsSpec = {
 };
 
 const ADMIN: RoleSettingsSpec = {
-  title: 'Facility administrator', accent: '#3D5967',
+  title: 'Facility administrator', accent: 'var(--category-admin)',
   subtitle: 'Facility-wide configuration, users, reporting and integrations',
   scope: 'You set the policies every other role inherits. Changes here apply facility-wide and are recorded in the audit log.',
   chips: ['Facility profile', 'Users & roles', 'Clinical policy', 'Reporting', 'Integrations'],
@@ -365,7 +368,7 @@ const ADMIN: RoleSettingsSpec = {
 
 /** Generic fallback for roles without a bespoke design page. */
 const GENERIC: RoleSettingsSpec = {
-  title: 'Staff member', accent: '#3D5967',
+  title: 'Staff member', accent: 'var(--category-admin)',
   subtitle: 'Your account, alerts, and session preferences',
   scope: 'You can change your own preferences and notifications. Facility-wide policy is set by an administrator.',
   chips: ['My account', 'My alerts', 'My sessions'],

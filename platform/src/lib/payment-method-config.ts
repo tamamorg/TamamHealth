@@ -39,7 +39,7 @@ export const PAYMENT_METHOD_CONFIG: Record<string, PaymentMethodConfig> = {
   airtel: { label: 'Airtel Money', shortLabel: 'Airtel', icon: Smartphone, color: '#E53935' },
   mtn_momo: { label: 'MTN Mobile Money', shortLabel: 'MTN MoMo', icon: Smartphone, color: '#FFC107' },
   m_gurush: { label: 'm-GURUSH', shortLabel: 'm-GURUSH', icon: Smartphone, color: '#0EA5A4' },
-  card: { label: 'Card (Flutterwave)', shortLabel: 'Card', icon: CreditCard, color: '#2191D0' },
+  card: { label: 'Card (Flutterwave)', shortLabel: 'Card', icon: CreditCard, color: 'var(--accent-primary)' },
   bank_transfer: { label: 'Bank Transfer', shortLabel: 'Bank', icon: Building2, color: '#607D8B' },
   insurance: { label: 'Insurance Payment', shortLabel: 'Insurance', icon: Shield, color: '#9C27B0' },
   waiver: { label: 'Fee Waiver', shortLabel: 'Waiver', icon: Gift, color: '#FF9800' },

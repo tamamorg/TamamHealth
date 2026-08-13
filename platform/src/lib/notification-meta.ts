@@ -18,15 +18,15 @@ export interface NotificationMeta {
 }
 
 export const NOTIFICATION_META: Record<NotificationType, NotificationMeta> = {
-  alert: { icon: AlertTriangle, color: 'var(--color-danger)', bg: 'rgba(196, 69, 54, 0.12)', label: 'Surveillance' },
+  alert: { icon: AlertTriangle, color: 'var(--color-danger)', bg: 'var(--color-danger-bg)', label: 'Surveillance' },
   // Rose, not another red: triage sits next to the danger-red surveillance
   // alert in the same feed, so it needs a hue far enough away to tell apart at
   // chip size (~333° vs ~8°). The ETAT acuity itself rides on `severity`, which
   // is what turns a RED triage critical — the type colour stays constant so the
   // source is still readable at a glance.
-  triage: { icon: Activity, color: '#BE185D', bg: 'rgba(190, 24, 93, 0.10)', label: 'Triage' },
+  triage: { icon: Activity, color: 'var(--category-maternal)', bg: 'var(--category-maternal-bg)', label: 'Triage' },
   referral: { icon: ArrowRightLeft, color: 'var(--tb-blue-700)', bg: 'rgba(33, 145, 208, 0.12)', label: 'Referrals' },
-  lab: { icon: FlaskConical, color: '#7C3AED', bg: 'rgba(124, 58, 237, 0.10)', label: 'Lab' },
+  lab: { icon: FlaskConical, color: 'var(--category-lab)', bg: 'var(--category-lab-bg)', label: 'Lab' },
   appointment: { icon: Calendar, color: 'var(--tb-blue-800)', bg: 'rgba(1, 86, 151, 0.10)', label: 'Schedule' },
   intake: { icon: ClipboardCheck, color: 'var(--color-success)', bg: 'rgba(5, 150, 105, 0.10)', label: 'Intake' },
   prescription: { icon: Pill, color: 'var(--color-warning)', bg: 'rgba(217, 119, 6, 0.12)', label: 'Pharmacy' },
@@ -34,7 +34,7 @@ export const NOTIFICATION_META: Record<NotificationType, NotificationMeta> = {
   // Internal transfers share the arrows glyph with referrals but take the gold
   // accent — the two move a patient in different senses (ownership vs facility)
   // and must not read as the same queue at a glance.
-  transfer: { icon: ArrowRightLeft, color: '#92400E', bg: 'rgba(217, 119, 6, 0.12)', label: 'Transfers' },
+  transfer: { icon: ArrowRightLeft, color: 'var(--category-transfer)', bg: 'var(--category-transfer-bg)', label: 'Transfers' },
 };
 
 /** Order the source filters are presented in — urgency first, admin last. */
@@ -43,8 +43,8 @@ export const NOTIFICATION_TYPE_ORDER: NotificationType[] = [
 ];
 
 export const SEVERITY_META: Record<NotificationSeverity, { label: string; color: string; bg: string }> = {
-  critical: { label: 'Critical', color: 'var(--color-danger)', bg: 'rgba(196, 69, 54, 0.12)' },
-  warning: { label: 'Needs action', color: '#B8741C', bg: 'rgba(228, 168, 75, 0.16)' },
+  critical: { label: 'Critical', color: 'var(--color-danger-text)', bg: 'var(--color-danger-bg)' },
+  warning: { label: 'Needs action', color: 'var(--color-warning-text)', bg: 'var(--color-warning-bg)' },
   info: { label: 'For information', color: 'var(--accent-primary)', bg: 'var(--accent-light)' },
 };
 

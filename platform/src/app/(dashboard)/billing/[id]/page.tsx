@@ -754,7 +754,7 @@ export default function BillDetailPage() {
                         const qty = Math.max(1, parseInt(e.target.value, 10) || 1);
                         setPendingItems(prev => prev.map(p => (p.id === item.id ? { ...p, quantity: qty, totalPrice: qty * p.unitPrice } : p)));
                       }}
-                      style={{ font: 'inherit', border: '1px solid var(--ehr-border, #D8E3EC)', borderRadius: 5 }}
+                      style={{ font: 'inherit', border: '1px solid var(--ehr-border, #DDEAF3)', borderRadius: 5 }}
                     />
                     <span className="bl-fee-price">{money(item.totalPrice)}</span>
                     <button type="button" className="bl-fee-add" onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}>Remove</button>
@@ -801,7 +801,7 @@ export default function BillDetailPage() {
             </p>
             <div className="bl-modal-actions">
               <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
-              <button type="button" className="bl-btn bl-btn--dark" style={{ background: 'var(--color-danger, #DA1E28)' }} onClick={handleDelete} disabled={busy}>
+              <button type="button" className="bl-btn bl-btn--dark" style={{ background: 'var(--color-danger, #DC2626)' }} onClick={handleDelete} disabled={busy}>
                 {busy ? 'Deleting…' : 'Delete bill'}
               </button>
             </div>

@@ -311,7 +311,7 @@ export default function DeathsPage() {
                   <td className="text-xs font-mono">{d.dateOfDeath}</td>
                   <td>
                     <div>
-                      {d.underlyingICD11 && <span className="font-mono text-[10px] px-1.5 py-0.5 rounded mr-1" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }}>{d.underlyingICD11}</span>}
+                      {d.underlyingICD11 && <span className="font-mono text-[10px] px-1.5 py-0.5 rounded mr-1" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.underlyingICD11}</span>}
                       <span className="text-xs">{d.underlyingCause || d.immediateCause}</span>
                     </div>
                   </td>
@@ -356,12 +356,12 @@ export default function DeathsPage() {
                         </div>
                         <hr className="section-divider" />
                         <div className="p-3 rounded-lg" style={{ background: 'rgba(229,46,66,0.06)', border: '1px solid rgba(229,46,66,0.15)' }}>
-                          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-danger)' }}>{t('deaths.causeChain')}</p>
+                          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-danger-text)' }}>{t('deaths.causeChain')}</p>
                           <div className="data-row-divider-sm text-xs">
-                            <p><span className="font-medium">{t('deaths.causeImmediate')}</span> {d.immediateCause} {d.immediateICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }}>{d.immediateICD11}</span>}</p>
-                            {d.antecedentCause1 && <p><span className="font-medium">{t('deaths.causeDueTo')}</span> {d.antecedentCause1} {d.antecedentICD11_1 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }}>{d.antecedentICD11_1}</span>}</p>}
-                            {d.antecedentCause2 && <p><span className="font-medium">{t('deaths.causeDueToC')}</span> {d.antecedentCause2} {d.antecedentICD11_2 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }}>{d.antecedentICD11_2}</span>}</p>}
-                            {d.underlyingCause && <p><span className="font-medium">{t('deaths.causeUnderlying')}</span> {d.underlyingCause} {d.underlyingICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }}>{d.underlyingICD11}</span>}</p>}
+                            <p><span className="font-medium">{t('deaths.causeImmediate')}</span> {d.immediateCause} {d.immediateICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.immediateICD11}</span>}</p>
+                            {d.antecedentCause1 && <p><span className="font-medium">{t('deaths.causeDueTo')}</span> {d.antecedentCause1} {d.antecedentICD11_1 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.antecedentICD11_1}</span>}</p>}
+                            {d.antecedentCause2 && <p><span className="font-medium">{t('deaths.causeDueToC')}</span> {d.antecedentCause2} {d.antecedentICD11_2 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.antecedentICD11_2}</span>}</p>}
+                            {d.underlyingCause && <p><span className="font-medium">{t('deaths.causeUnderlying')}</span> {d.underlyingCause} {d.underlyingICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.underlyingICD11}</span>}</p>}
                             {d.contributingConditions && <p><span className="font-medium">{t('deaths.causeContributing')}</span> {d.contributingConditions}</p>}
                           </div>
                         </div>

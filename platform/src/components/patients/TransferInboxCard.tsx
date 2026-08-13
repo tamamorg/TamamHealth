@@ -107,7 +107,7 @@ export default function TransferInboxCard({ limit = 6 }: { limit?: number }) {
                 <div className="icon-box-sm flex-shrink-0">
                   {overdue
                     ? <Clock className="w-4 h-4" style={{ color: 'var(--color-danger-500)' }} />
-                    : <ArrowRightLeft className="w-4 h-4" style={{ color: '#B8741C' }} />}
+                    : <ArrowRightLeft className="w-4 h-4" style={{ color: 'var(--color-warning-text)' }} />}
                 </div>
                 <button
                   className="flex-1 min-w-0 text-left"

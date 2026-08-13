@@ -122,7 +122,11 @@ describe('buildAddMenuEntries', () => {
   test('there is no separate "create user account" action — staff and login are one record', () => {
     const entries = buildAddMenuEntries({ role: 'super_admin', allowedRoutes: allowedFor('super_admin') });
     expect(entries.map(e => e.label.toLowerCase()).filter(l => l.includes('user account'))).toHaveLength(0);
-    expect(entries.find(e => e.key === 'staff')!.description).toMatch(/login/i);
+    // The single staff entry IS the account-creating one — it points at the
+    // users console's create form. (This used to also assert a "Creates their
+    // login too" subline; the menu no longer renders per-item clarifiers, so
+    // the rule is pinned to the destination instead of to copy.)
+    expect(entries.find(e => e.key === 'staff')!.href).toMatch(/\/users\?new=1$/);
   });
 
   test('a role that cannot administer accounts keeps the entries it can use', () => {

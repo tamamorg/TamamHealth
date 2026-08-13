@@ -106,7 +106,7 @@ export default function AdminAnalyticsPage() {
   // Plan distribution data for pie chart
   const planDistribution = [
     { name: t('analytics.planBasic'), value: organizations.filter(o => o.subscriptionPlan === 'basic').length, color: '#6B7280' },
-    { name: t('analytics.planProfessional'), value: organizations.filter(o => o.subscriptionPlan === 'professional').length, color: '#2191D0' },
+    { name: t('analytics.planProfessional'), value: organizations.filter(o => o.subscriptionPlan === 'professional').length, color: 'var(--accent-primary)' },
     { name: t('analytics.planEnterprise'), value: organizations.filter(o => o.subscriptionPlan === 'enterprise').length, color: 'var(--accent-primary)' },
   ].filter(d => d.value > 0);
 
@@ -155,10 +155,10 @@ export default function AdminAnalyticsPage() {
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
           {[
-            { label: t('analytics.totalOrganizations'), value: organizations.length, icon: Building2, color: 'var(--color-danger)' },
-            { label: t('analytics.totalUsers'), value: totalUsersAll, icon: Users, color: '#2191D0' },
-            { label: t('patients.kpiTotalPatients'), value: totalPatientsAll, icon: HeartPulse, color: 'var(--color-success)' },
-            { label: t('analytics.avgPatientsPerOrg'), value: organizations.length > 0 ? Math.round(totalPatientsAll / organizations.length) : 0, icon: TrendingUp, color: 'var(--color-warning)' },
+            { label: t('analytics.totalOrganizations'), value: organizations.length, icon: Building2, color: 'var(--color-danger-text)' },
+            { label: t('analytics.totalUsers'), value: totalUsersAll, icon: Users, color: 'var(--accent-primary)' },
+            { label: t('patients.kpiTotalPatients'), value: totalPatientsAll, icon: HeartPulse, color: 'var(--color-success-text)' },
+            { label: t('analytics.avgPatientsPerOrg'), value: organizations.length > 0 ? Math.round(totalPatientsAll / organizations.length) : 0, icon: TrendingUp, color: 'var(--color-warning-text)' },
           ].map(stat => (
             <div key={stat.label} className="dash-card" style={{ padding: '14px 16px' }}>
               <div className="flex items-center gap-2 mb-2">
@@ -199,7 +199,7 @@ export default function AdminAnalyticsPage() {
                       <XAxis dataKey="name" tick={axisTick} />
                       <YAxis tick={axisTick} />
                       <Tooltip {...chartTooltipStyle} />
-                      <Area type="monotone" dataKey="patients" stroke="#2191D0" fill="url(#grad1)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="patients" stroke="var(--accent-primary)" fill="url(#grad1)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 );
@@ -212,7 +212,7 @@ export default function AdminAnalyticsPage() {
                       <XAxis dataKey="name" tick={axisTick} />
                       <YAxis tick={axisTick} />
                       <Tooltip {...chartTooltipStyle} />
-                      <Line type="monotone" dataKey="patients" stroke="#2191D0" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="patients" stroke="var(--accent-primary)" strokeWidth={2} dot={{ r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 );
@@ -223,7 +223,7 @@ export default function AdminAnalyticsPage() {
                     <XAxis dataKey="name" tick={axisTick} />
                     <YAxis tick={axisTick} />
                     <Tooltip {...chartTooltipStyle} />
-                    <Bar dataKey="patients" fill="#2191D0" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="patients" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               );
@@ -321,8 +321,8 @@ export default function AdminAnalyticsPage() {
               }
               const commonProps = { data: growthData, margin: { top: 5, right: 10, left: 0, bottom: 5 } };
               const lines = [
-                { key: 'users', color: '#2191D0', name: t('analytics.legendUsers') },
-                { key: 'patients', color: '#059669', name: t('analytics.legendPatients') },
+                { key: 'users', color: 'var(--accent-primary)', name: t('analytics.legendUsers') },
+                { key: 'patients', color: 'var(--color-success-text)', name: t('analytics.legendPatients') },
                 { key: 'organizations', color: '#7C3AED', name: t('analytics.legendOrganizations') },
               ];
               if (chartType === 'area') {
@@ -387,12 +387,12 @@ export default function AdminAnalyticsPage() {
                 return (
                   <ResponsiveContainer width="100%" height={260}>
                     <AreaChart {...commonProps}>
-                      <AreaGradients color1="#D97706" />
+                      <AreaGradients color1="var(--color-warning)" />
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
                       <XAxis dataKey="name" tick={axisTick} />
                       <YAxis tick={axisTick} />
                       <Tooltip {...chartTooltipStyle} />
-                      <Area type="monotone" dataKey="users" stroke="#D97706" fill="url(#grad1)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="users" stroke="var(--color-warning)" fill="url(#grad1)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 );
@@ -405,7 +405,7 @@ export default function AdminAnalyticsPage() {
                       <XAxis dataKey="name" tick={axisTick} />
                       <YAxis tick={axisTick} />
                       <Tooltip {...chartTooltipStyle} />
-                      <Line type="monotone" dataKey="users" stroke="#D97706" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="users" stroke="var(--color-warning)" strokeWidth={2} dot={{ r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 );
@@ -416,7 +416,7 @@ export default function AdminAnalyticsPage() {
                     <XAxis dataKey="name" tick={axisTick} />
                     <YAxis tick={axisTick} />
                     <Tooltip {...chartTooltipStyle} />
-                    <Bar dataKey="users" fill="#D97706" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="users" fill="var(--color-warning)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               );
@@ -454,12 +454,12 @@ export default function AdminAnalyticsPage() {
                         <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{org.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--color-success)' }}>{data?.patients ?? '...'}</td>
-                    <td className="px-4 py-3 text-sm font-bold" style={{ color: '#2191D0' }}>{data?.users ?? '...'}</td>
+                    <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--color-success-text)' }}>{data?.patients ?? '...'}</td>
+                    <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--accent-primary)' }}>{data?.users ?? '...'}</td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{
                         background: org.subscriptionPlan === 'enterprise' ? 'rgba(124,58,237,0.12)' : org.subscriptionPlan === 'professional' ? 'rgba(33, 145, 208, 0.12)' : 'rgba(107,114,128,0.12)',
-                        color: org.subscriptionPlan === 'enterprise' ? 'var(--accent-primary)' : org.subscriptionPlan === 'professional' ? '#2191D0' : '#6B7280',
+                        color: org.subscriptionPlan === 'enterprise' ? 'var(--accent-primary)' : org.subscriptionPlan === 'professional' ? 'var(--accent-primary)' : '#6B7280',
                       }}>{org.subscriptionPlan}</span>
                     </td>
                     <td className="px-4 py-3">
@@ -468,7 +468,7 @@ export default function AdminAnalyticsPage() {
                           background: org.subscriptionStatus === 'active' ? 'var(--color-success)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning)' : 'var(--color-danger)',
                         }} />
                         <span style={{
-                          color: org.subscriptionStatus === 'active' ? 'var(--color-success)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning)' : 'var(--color-danger)',
+                          color: org.subscriptionStatus === 'active' ? 'var(--color-success-text)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
                         }}>{org.subscriptionStatus}</span>
                       </span>
                     </td>
@@ -492,10 +492,10 @@ export default function AdminAnalyticsPage() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
           {[
-            { label: t('analytics.dau'), value: usage?.dau ?? '—', color: '#2191D0' },
+            { label: t('analytics.dau'), value: usage?.dau ?? '—', color: 'var(--accent-primary)' },
             { label: t('analytics.wau'), value: usage?.wau ?? '—', color: 'var(--accent-primary)' },
-            { label: t('analytics.sessions'), value: usage?.sessionCount ?? '—', color: 'var(--color-success)' },
-            { label: t('analytics.events'), value: usage?.eventCount ?? '—', color: 'var(--color-warning)' },
+            { label: t('analytics.sessions'), value: usage?.sessionCount ?? '—', color: 'var(--color-success-text)' },
+            { label: t('analytics.events'), value: usage?.eventCount ?? '—', color: 'var(--color-warning-text)' },
           ].map(stat => (
             <div key={stat.label} className="dash-card" style={{ padding: '14px 16px' }}>
               <span className="kpi-card-title">{stat.label}</span>
@@ -528,8 +528,8 @@ export default function AdminAnalyticsPage() {
                     <YAxis tick={axisTick} />
                     <Tooltip {...chartTooltipStyle} />
                     <Legend wrapperStyle={{ fontSize: '11px' }} />
-                    <Area type="monotone" dataKey="users" name={t('analytics.legendUsers')} stroke="#2191D0" fill="url(#grad1)" strokeWidth={2} />
-                    <Area type="monotone" dataKey="events" name={t('analytics.events')} stroke="#059669" fill="#059669" fillOpacity={0.12} strokeWidth={2} />
+                    <Area type="monotone" dataKey="users" name={t('analytics.legendUsers')} stroke="var(--accent-primary)" fill="url(#grad1)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="events" name={t('analytics.events')} stroke="var(--color-success)" fill="var(--color-success)" fillOpacity={0.12} strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               );
@@ -595,7 +595,7 @@ export default function AdminAnalyticsPage() {
                   {(usage?.perOrg || []).slice(0, 12).map((row) => (
                     <tr key={row.orgId} style={{ borderBottom: '1px solid var(--border-light)' }}>
                       <td className="px-4 py-2 text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{row.orgId}</td>
-                      <td className="px-4 py-2 text-sm font-bold" style={{ color: '#2191D0' }}>{row.users}</td>
+                      <td className="px-4 py-2 text-sm font-bold" style={{ color: 'var(--accent-primary)' }}>{row.users}</td>
                       <td className="px-4 py-2 text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{row.events}</td>
                     </tr>
                   ))}

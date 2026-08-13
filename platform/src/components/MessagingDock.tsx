@@ -54,8 +54,8 @@ const NON_MESSAGEABLE_ROLES: UserRole[] = ['super_admin', 'government'];
  * panel becoming a wall of red, which is how alarm fatigue starts.
  */
 const URGENCY_TINT: Record<PatientTransferUrgency, { rail: string; label: string; text: string }> = {
-  emergency: { rail: 'var(--color-danger)',  label: 'Emergency', text: 'var(--color-danger)' },
-  urgent:    { rail: 'var(--color-warning)', label: 'Urgent',    text: 'var(--color-warning)' },
+  emergency: { rail: 'var(--color-danger)',  label: 'Emergency', text: 'var(--color-danger-text)' },
+  urgent:    { rail: 'var(--color-warning)', label: 'Urgent',    text: 'var(--color-warning-text)' },
   routine:   { rail: 'var(--accent-primary)', label: 'Routine',  text: 'var(--text-muted)' },
 };
 
@@ -608,7 +608,7 @@ export default function MessagingDock() {
                   <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
                     <Paperclip className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                     <span className="truncate max-w-[80px]" style={{ color: 'var(--text-secondary)' }}>{att.name}</span>
-                    <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))} className="flex-shrink-0" style={{ color: 'var(--color-danger)' }}><X className="w-3 h-3" /></button>
+                    <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))} className="flex-shrink-0" style={{ color: 'var(--color-danger-text)' }}><X className="w-3 h-3" /></button>
                   </div>
                 ))}
               </div>

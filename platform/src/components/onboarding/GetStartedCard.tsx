@@ -148,7 +148,7 @@ function AllDoneBanner({ onFinish }: { onFinish: () => void }) {
     >
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: 'rgba(31, 157, 111,0.12)' }}>
-          <Star className="w-5 h-5" style={{ color: '#1F9D6F' }} />
+          <Star className="w-5 h-5" style={{ color: 'var(--color-success-text)' }} />
         </div>
         <div>
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>You’re all set! 🎉</p>
@@ -199,7 +199,7 @@ function SectionCard({
         <div className="flex items-center gap-3">
           {!unlocked && <Lock className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
           {unlocked && complete && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: '#1F9D6F' }}>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: 'var(--color-success)' }}>
               <Check className="w-3.5 h-3.5 text-white" />
             </span>
           )}
@@ -236,7 +236,7 @@ function SectionCard({
                   className="flex-shrink-0"
                 >
                   {isDone ? (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: '#1F9D6F' }}>
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: 'var(--color-success)' }}>
                       <Check className="w-3.5 h-3.5 text-white" />
                     </span>
                   ) : (

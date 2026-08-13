@@ -17,9 +17,7 @@
  */
 
 import type { UserRole } from './db-types';
-import type { NavIcon } from './permissions';
 import { isHrefAllowed } from '@/components/ehr/ehr-navigation';
-import { UserCheck, ClipboardList, CalendarClock, MessageSquare, Wallet } from '@/components/icons/lucide';
 
 /**
  * Where a role manages login credentials. Staff records and user accounts are
@@ -56,8 +54,6 @@ export interface AddMenuEntry {
   key: string;
   label: string;
   href: string;
-  icon: NavIcon;
-  description?: string;
 }
 
 /**
@@ -73,12 +69,12 @@ export function buildAddMenuEntries({ role, allowedRoutes }: PeopleNavContext): 
   const usersHref = usersHrefForRole(role);
   const candidates: AddMenuEntry[] = [
     ...(usersHref && canCreateUsers(role)
-      ? [{ key: 'staff', label: 'Add staff member', href: `${usersHref}?new=1`, icon: UserCheck, description: 'Creates their login too' } as AddMenuEntry]
+      ? [{ key: 'staff', label: 'Add staff member', href: `${usersHref}?new=1` } as AddMenuEntry]
       : []),
-    { key: 'inquiry', label: 'Add patient inquiry', href: '/inquiries?new=1', icon: MessageSquare, description: 'Log a call or walk-in' },
-    { key: 'shift', label: 'Create shift', href: '/hr/schedule?new=1', icon: CalendarClock, description: 'Roster someone on duty' },
-    { key: 'leave', label: 'Request leave', href: '/hr/leave?new=1', icon: ClipboardList, description: 'Log time off' },
-    { key: 'payroll', label: 'Add payroll entry', href: '/hr/payroll?new=1', icon: Wallet, description: 'Open this period\u2019s register' },
+    { key: 'inquiry', label: 'Add patient inquiry', href: '/inquiries?new=1' },
+    { key: 'shift', label: 'Create shift', href: '/hr/schedule?new=1' },
+    { key: 'leave', label: 'Request leave', href: '/hr/leave?new=1' },
+    { key: 'payroll', label: 'Add payroll entry', href: '/hr/payroll?new=1' },
   ];
 
   return candidates.filter(entry => isHrefAllowed(entry.href, allowedRoutes));

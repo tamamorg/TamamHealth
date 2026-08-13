@@ -66,7 +66,7 @@ export default function OrgUsersPage() {
   const [handoff, setHandoff] = useState<{ username: string; password: string; kind: 'created' | 'reset' } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const brandColor = currentUser?.branding?.primaryColor || '#2191D0';
+  const brandColor = currentUser?.branding?.primaryColor || 'var(--accent-primary)';
 
   // Close the filters popover on outside click / Escape — same pattern as
   // the hospitals/wards "Filters" pill.
@@ -310,7 +310,7 @@ export default function OrgUsersPage() {
           </div>
         )}
         {error && !showCreateModal && !showResetModal && (
-          <div className="mb-4 p-3 rounded-lg text-sm font-medium flex-shrink-0" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger)', border: '1px solid rgba(229,46,66,0.2)' }}>
+          <div className="mb-4 p-3 rounded-lg text-sm font-medium flex-shrink-0" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(229,46,66,0.2)' }}>
             {error}
           </div>
         )}
@@ -447,8 +447,8 @@ export default function OrgUsersPage() {
                         <span
                           className="appointment-status-pill"
                           style={user.isActive
-                            ? { borderColor: 'rgba(25,158,112,0.45)', background: 'rgba(25,158,112,0.10)', color: '#167755' }
-                            : { borderColor: 'rgba(227,73,72,0.45)', background: 'rgba(227,73,72,0.10)', color: '#C24135' }}
+                            ? { borderColor: 'rgba(25,158,112,0.45)', background: 'rgba(25,158,112,0.10)', color: 'var(--color-success-text)' }
+                            : { borderColor: 'rgba(227,73,72,0.45)', background: 'rgba(227,73,72,0.10)', color: 'var(--color-danger-text)' }}
                         >
                           {user.isActive ? t('orgUsers.statusActive') : t('orgUsers.statusInactive')}
                         </span>
@@ -492,7 +492,7 @@ export default function OrgUsersPage() {
             </div>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg text-sm flex items-center gap-2" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger)', border: '1px solid rgba(229,46,66,0.2)' }}>
+              <div className="mb-4 p-3 rounded-lg text-sm flex items-center gap-2" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(229,46,66,0.2)' }}>
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
@@ -643,7 +643,7 @@ export default function OrgUsersPage() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'transparent', color: 'var(--color-success)' }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'transparent', color: 'var(--color-success-text)' }}>
                 <Check className="w-5 h-5" />
               </div>
               <div>
@@ -712,7 +712,7 @@ export default function OrgUsersPage() {
             </div>
 
             {error && (
-              <div className="mb-3 p-2 rounded-lg text-xs" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger)' }}>
+              <div className="mb-3 p-2 rounded-lg text-xs" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)' }}>
                 {error}
               </div>
             )}

@@ -12,7 +12,7 @@
  * There is no role switcher — each user sees only their own settings.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Modal from '@/components/Modal';
 import { useApp } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -37,6 +37,8 @@ import OrgHospitalsPage from '@/app/(dashboard)/org-admin/hospitals/page';
 import OrgUsersPage from '@/app/(dashboard)/org-admin/users/page';
 import ServicePricingPage from '@/app/(dashboard)/org-admin/pricing/page';
 import ManagementSettingsPage from '@/app/(dashboard)/settings/manage/page';
+import ItOperationsPanel, { IT_OPERATIONS_JOB_COUNT } from '@/components/admin/ItOperationsPanel';
+import { SettingsHostProvider } from '@/components/settings/SettingsHost';
 import {
   SYSTEM_ADMIN_SECTIONS_META,
   systemAdminSectionCount,
@@ -47,9 +49,9 @@ import {
 } from '@/components/settings/SystemAdminSections';
 import { getDhis2SyncLog, isDhis2Configured, type Dhis2SyncLogDoc } from '@/lib/services/dhis2-sync-log-service';
 import {
-  AlertTriangle, Bell, BedDouble, Building2, Check, ChevronRight, Clock, CreditCard,
-  FileText, FlaskConical, KeyRound, List, Lock, Palette, Pencil, Pill, Plus, RefreshCw,
-  Settings, Shield, Stethoscope, Trash2, User, Users, Zap, type LucideIcon,
+  AlertTriangle, ArrowLeft, Bell, BedDouble, Building2, Check, ChevronRight, Clock,
+  CreditCard, FileText, FlaskConical, KeyRound, List, Lock, Palette, Pencil, Pill, Plus,
+  RefreshCw, Server, Settings, Shield, Stethoscope, Trash2, User, Users, Zap, type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 
@@ -152,7 +154,36 @@ export default function RoleSettingsView() {
     return defaults;
   };
 
-  const [activePanel, setActivePanel] = useState<string>('account');
+  // The panel history. The last entry is what's on screen; everything before
+  // it is where Back goes. A stack rather than a single id because embedded
+  // consoles link to each other (IT Operations → Workflow settings → …) and
+  // without one there'd be no way out except the rail, which loses your place.
+  const [panelStack, setPanelStack] = useState<string[]>(['account']);
+  const activePanel = panelStack[panelStack.length - 1];
+  // Rail clicks REPLACE the stack (you picked a destination, not a detour);
+  // in-panel links PUSH onto it, so Back returns to where you came from.
+  const setActivePanel = useCallback((id: string) => setPanelStack([id]), []);
+
+  // `?panel=` picks the panel to open on arrival — /system-admin redirects
+  // here with it, and it makes any panel deep-linkable. Applied in an effect
+  // rather than as the initial state because a client-side `router.replace`
+  // can render this component before `window.location` carries the new query,
+  // which silently dropped the param and landed everyone on My account.
+  // `useSearchParams` would read it correctly but would put this route behind
+  // a Suspense boundary. The ref makes it strictly a first-paint concern, so
+  // a later rail click is never yanked back to the deep-linked panel.
+  const panelParamRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || panelParamRef.current) return;
+    const panel = new URLSearchParams(window.location.search).get('panel');
+    panelParamRef.current = true;
+    if (panel) setPanelStack([panel]);
+  }, []);
+  const pushPanel = useCallback((id: string) => {
+    setPanelStack(stack => (stack[stack.length - 1] === id ? stack : [...stack, id]));
+  }, []);
+  const goBack = useCallback(() => setPanelStack(stack => (stack.length > 1 ? stack.slice(0, -1) : stack)), []);
+  const settingsHost = useMemo(() => ({ openPanel: pushPanel }), [pushPanel]);
   const [saving, setSaving] = useState(false);
 
   // ── Password + PIN popups (real account actions) ──
@@ -282,12 +313,18 @@ export default function RoleSettingsView() {
     if (showSystemAdmin) {
       groups.push({
         title: 'System administration',
-        items: SYSTEM_ADMIN_SECTIONS_META.map(section => ({
-          id: `sysadmin-${section.id}`,
-          label: section.label,
-          icon: section.icon,
-          badge: String(systemAdminSectionCount(section.id, sysAdminData)),
-        })),
+        items: [
+          // IT Operations leads the group, the same position it held as the
+          // console's first sidebar section. Several roles (org_admin among
+          // them) have no /it nav entry, so this is their only way in.
+          { id: 'sysadmin-itops', label: 'IT Operations', icon: Server, badge: String(IT_OPERATIONS_JOB_COUNT) },
+          ...SYSTEM_ADMIN_SECTIONS_META.map(section => ({
+            id: `sysadmin-${section.id}`,
+            label: section.label,
+            icon: section.icon,
+            badge: String(systemAdminSectionCount(section.id, sysAdminData)),
+          })),
+        ],
       });
     }
     return groups;
@@ -666,6 +703,13 @@ export default function RoleSettingsView() {
         </section>
       );
     }
+    if (activePanel === 'sysadmin-itops') {
+      return (
+        <section className="ehr-set-section ehr-set-embed">
+          <ItOperationsPanel embedded />
+        </section>
+      );
+    }
     if (activePanel.startsWith('sysadmin-')) {
       const sectionId = activePanel.slice('sysadmin-'.length) as typeof SYSTEM_ADMIN_SECTIONS_META[number]['id'];
       return (
@@ -727,6 +771,13 @@ export default function RoleSettingsView() {
   };
 
   const userInitials = initials(currentUser.name || spec.title);
+  // Label of the panel Back returns to, resolved from the rail so it reads
+  // the same as the item the user originally clicked.
+  const backLabel = panelStack.length > 1
+    ? navGroups.flatMap(g => g.items).find(item => item.id === panelStack[panelStack.length - 2])?.label
+      ?? spec.sections.find(s => s.id === panelStack[panelStack.length - 2])?.title
+      ?? null
+    : null;
   const isNavActive = (id: string) => {
     if (activePanel === id) return true;
     const editorParent: Record<string, string> = {
@@ -744,6 +795,20 @@ export default function RoleSettingsView() {
       {/* ── Page header: breadcrumb + role chip · saved state + actions ── */}
       <section className="ehr-set-header">
         <div className="ehr-set-header-left">
+          {/* Back appears only once there's somewhere to go back TO — a
+              permanently-present control that sometimes does nothing is worse
+              than one that arrives when it means something. */}
+          {panelStack.length > 1 && (
+            <button
+              type="button"
+              className="ehr-set-back"
+              onClick={goBack}
+              aria-label={backLabel ? `Back to ${backLabel}` : 'Back'}
+              title={backLabel ? `Back to ${backLabel}` : 'Back'}
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
           <h1>Settings</h1>
           <ChevronRight className="w-3.5 h-3.5" />
           <span
@@ -753,6 +818,14 @@ export default function RoleSettingsView() {
             <i style={{ background: spec.accent }}>{userInitials}</i>
             {spec.title}
           </span>
+          {/* The trail only shows the panel you'd return to, not the whole
+              stack: it's an escape hatch, not a site map. */}
+          {backLabel && (
+            <>
+              <ChevronRight className="w-3.5 h-3.5" />
+              <button type="button" className="ehr-set-crumb" onClick={goBack}>{backLabel}</button>
+            </>
+          )}
         </div>
         <div className="ehr-set-header-actions">
           <span className={`ehr-set-saved ${dirty ? 'is-dirty' : ''}`.trim()}>
@@ -794,9 +867,14 @@ export default function RoleSettingsView() {
           </nav>
         </aside>
 
-        {/* ── Right: exactly the panel the sidebar selected ── */}
+        {/* ── Right: exactly the panel the sidebar selected. Wrapped in the
+               host so anything embedded here (IT Operations, the sysadmin
+               sections, the org editors) opens hosted destinations as another
+               Settings panel instead of navigating out of the page. ── */}
         <main className="ehr-set-main">
-          {renderPanel()}
+          <SettingsHostProvider value={settingsHost}>
+            {renderPanel()}
+          </SettingsHostProvider>
         </main>
       </section>
 

@@ -44,7 +44,7 @@ function tintIndex(name: string, buckets: number): number {
 }
 
 const TINTS = [
-  { bg: '#E3F0FA', fg: '#015697' },
+  { bg: '#E3F0FA', fg: 'var(--accent-hover)' },
   { bg: '#E7F4EC', fg: '#1F6B43' },
   { bg: '#FBEBE6', fg: '#9C4221' },
   { bg: '#EEEBFA', fg: '#4C36A8' },

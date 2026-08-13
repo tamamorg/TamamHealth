@@ -99,7 +99,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               {d.signature ? (
                 <span
                   className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap"
-                  style={{ background: 'rgba(21,121,92,0.12)', color: 'var(--color-success)' }}
+                  style={{ background: 'rgba(21,121,92,0.12)', color: 'var(--color-success-text)' }}
                   title={`Signed by ${d.signature.name}${d.signature.signedBy === 'patient' ? '' : ` (${d.signature.relationship || d.signature.signedBy})`} · ${formatDateTime(d.signature.signedAt)}${d.signature.witnessName ? ` · witnessed by ${d.signature.witnessName}` : ''}`}
                 >
                   <Lock className="w-2.5 h-2.5" /> Signed
@@ -107,7 +107,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               ) : (
                 <span
                   className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap"
-                  style={{ background: 'rgba(252,211,77,0.18)', color: '#B45309' }}
+                  style={{ background: 'rgba(252,211,77,0.18)', color: 'var(--color-warning-text)' }}
                 >
                   Unsigned
                 </span>
@@ -115,7 +115,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               <span className="flex-1" />
               <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 {!d.signature && (
-                  <button className="p-1 rounded transition-colors hover:bg-green-50" disabled={busy} title="Take signature" onClick={() => { setSigningEntry({ id: d.id, type: d.type, description: d.description }); setSignForm(EMPTY_SIGN_FORM); setError(null); }} style={{ color: 'var(--color-success)' }}>
+                  <button className="p-1 rounded transition-colors hover:bg-green-50" disabled={busy} title="Take signature" onClick={() => { setSigningEntry({ id: d.id, type: d.type, description: d.description }); setSignForm(EMPTY_SIGN_FORM); setError(null); }} style={{ color: 'var(--color-success-text)' }}>
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -127,7 +127,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
                     <Edit3 className="w-3.5 h-3.5" />
                   </button>
                 )}
-                <button className="p-1 rounded transition-colors hover:bg-red-50" disabled={busy} title="Revoke" onClick={() => { setRemovingEntry({ id: d.id, type: d.type, description: d.description }); setRemovalReason(''); setError(null); }} style={{ color: 'var(--color-danger)' }}>
+                <button className="p-1 rounded transition-colors hover:bg-red-50" disabled={busy} title="Revoke" onClick={() => { setRemovingEntry({ id: d.id, type: d.type, description: d.description }); setRemovalReason(''); setError(null); }} style={{ color: 'var(--color-danger-text)' }}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -151,7 +151,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               </Select>
             </div>
             <input autoFocus value={addForm.description} onChange={(e) => setAddForm({ ...addForm, description: e.target.value })} placeholder="Description (e.g. Consent to treat signed)" className={inputCls} style={inputStyle} />
-            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setAdding(false)}>Cancel</button>
               <button className="btn btn-sm btn-primary" disabled={busy || addForm.description.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/directive-service'); await svc.addDirective(patient._id, { ...addForm, ...author }); }, () => setAdding(false))}>Save directive</button>
@@ -175,7 +175,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               </Select>
             </div>
             <input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" className={inputCls} style={inputStyle} />
-            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setEditingEntry(null)}>Cancel</button>
               <button className="btn btn-sm btn-primary" disabled={busy || editForm.description.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/directive-service'); await svc.updateDirective(patient._id, editingEntry.id, editForm); }, () => setEditingEntry(null))}>Save changes</button>
@@ -238,7 +238,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               Witnessed by {author.recordedByName || 'the signed-in user'}. A signature cannot be edited afterwards —
               a consent taken in error is revoked and taken again.
             </p>
-            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setSigningEntry(null)}>Cancel</button>
               <button
@@ -274,7 +274,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               Revoke <strong>{typeLabel(removingEntry.type)}</strong>? A reason is required.
             </p>
             <input autoFocus value={removalReason} onChange={(e) => setRemovalReason(e.target.value)} placeholder="Reason for revoking" className={inputCls} style={inputStyle} />
-            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setRemovingEntry(null)}>Cancel</button>
               <button className="btn btn-sm" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/directive-service'); await svc.removeDirective(patient._id, removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 8, padding: '6px 16px', fontSize: 13 }}>Confirm revocation</button>

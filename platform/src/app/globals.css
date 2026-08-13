@@ -1022,17 +1022,20 @@
   --radius-card: 8px;
   --radius-pill: 999px;
 
+  /* Brand washes below are color-mix on --accent-primary, not frozen rgba:
+     a rebranded tenant must get their own hue in every tint that means
+     "a wash of the accent", not just in the solid fills. */
   --bg-app:        var(--tb-blue-50);
   --bg-primary:    var(--tb-blue-50);
-  --bg-secondary:  rgba(33, 145, 208, 0.08);
+  --bg-secondary:  color-mix(in srgb, var(--accent-primary) 8%, transparent);
   --bg-card:       var(--color-white);
   --bg-card-solid: var(--color-white);
   --bg-card-hover: var(--color-cream-75);
   --bg-input:      var(--color-white);
   --bg-sidebar:    var(--color-white);
-  --overlay-subtle: rgba(33, 145, 208, 0.07);
-  --overlay-light:  rgba(33, 145, 208, 0.10);
-  --overlay-medium: rgba(33, 145, 208, 0.16);
+  --overlay-subtle: color-mix(in srgb, var(--accent-primary) 7%, transparent);
+  --overlay-light:  color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  --overlay-medium: color-mix(in srgb, var(--accent-primary) 16%, transparent);
   --overlay-backdrop: rgba(15, 23, 42, 0.56);
 
   /* ── The platform's 4 main colors ──
@@ -1054,6 +1057,11 @@
   --accent-text:     var(--color-brand-700);
   --accent-light:    rgba(16, 25, 90, 0.08);
   --accent-border:   var(--tb-blue-900);
+  /* Foreground for content sitting ON the accent. Overwritten per-tenant by
+     brandingToCSSVars, which picks white or dark ink from the brand's
+     luminance — the platform's own blue takes white. */
+  --accent-on: var(--color-white);
+  --accent-on-hover: var(--color-white);
   --accent-orange: #CA4D1C;
   --accent-purple: #7847EB;
 
@@ -1093,13 +1101,13 @@
   --toggle-track: var(--color-slate-300);
 
   /* Scrollbar */
-  --scrollbar-thumb: rgba(33, 145, 208, 0.18);
-  --scrollbar-thumb-hover: rgba(33, 145, 208, 0.32);
+  --scrollbar-thumb: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--accent-primary) 32%, transparent);
 
   /* Table */
-  --table-header-bg: rgba(33, 145, 208, 0.10);
+  --table-header-bg: color-mix(in srgb, var(--accent-primary) 10%, transparent);
   --table-row-border: var(--border-light);
-  --table-row-hover: rgba(33, 145, 208, 0.07);
+  --table-row-hover: color-mix(in srgb, var(--accent-primary) 7%, transparent);
 
   /* Nav — dark text on light sidebar. Hover/active fill white text, which
      needs the darker navy (not the lighter secondary-accent blue) to clear
@@ -1112,7 +1120,7 @@
 
   /* Button secondary */
   --btn-secondary-bg: var(--color-white);
-  --btn-secondary-hover-bg: rgba(33, 145, 208, 0.10);
+  --btn-secondary-hover-bg: color-mix(in srgb, var(--accent-primary) 10%, transparent);
   --btn-secondary-hover-border: var(--color-brand-500);
 
   /* Status — colorblind-safe (Okabe-Ito derived) */
@@ -1133,7 +1141,7 @@
   --color-danger-bg: rgba(196, 69, 54, 0.10);
   --color-info: var(--color-brand-500);                /* fills/icons */
   --color-info-text: var(--color-brand-700);           /* AA-passing variant for text */
-  --color-info-bg: rgba(33, 145, 208, 0.12);
+  --color-info-bg: color-mix(in srgb, var(--accent-primary) 12%, transparent);
   --color-success-border: #15B8A6;
   --color-warning-border: #F59E0B;
   --color-danger-border: #F87171;
@@ -1178,6 +1186,35 @@
   --semantic-inactive: #607385;
   --semantic-inactive-bg: #EEF1F4;
   --semantic-inactive-border: #D8E3EC;
+
+  /* ── Category hues ── a second axis, orthogonal to status.
+     Status says how something is GOING (success/warning/danger/info); a
+     category says what KIND of thing it is. They were being mixed: a role
+     accent borrowed the success green, a lab chip borrowed a status purple,
+     so a green pill meant "pharmacist" in one place and "resolved" in
+     another. These have no urgency meaning and never stand in for one.
+     Text-safe (≥4.5:1 on white) because they label chips and rows. */
+  --category-clinical: #0E7490;   /* nursing / triage-desk / IT-ish teal */
+  --category-clinical-bg: #EDF8FB;
+  --category-lab: #6D45C2;        /* laboratory violet */
+  --category-lab-bg: #F6F1FF;
+  --category-maternal: #BE185D;   /* MCH / triage rose */
+  --category-maternal-bg: #FDF2F7;
+  --category-transfer: #92400E;   /* patient movement gold */
+  --category-transfer-bg: #FBF1E7;
+  --category-admin: #3D5967;      /* administration slate */
+  --category-admin-bg: #EEF4F6;
+
+  /* ── Sequential performance ramp ── a THIRD axis: ordered, not categorical
+     and not status. WHO-style red → amber → gold → green for a 0-100 score.
+     It borrows the status hues at the ends (a failing facility really is in
+     danger) but needs four DISTINGUISHABLE stops, which the status scale
+     cannot give: it only has three. Used as meter fills and large KPI
+     numerals, so the 3:1 bar applies. */
+  --perf-critical: var(--color-danger);   /* < 40 */
+  --perf-poor: var(--color-warning);      /* 40-59 */
+  --perf-fair: #A98207;                   /* 60-79 — gold, distinct from amber */
+  --perf-good: var(--color-success);      /* 80+ */
 
   /* Chart colors — brand-aligned series */
   --color-chart-1: var(--color-brand-500);
@@ -1856,6 +1893,139 @@ input:focus, select:focus, textarea:focus {
 
 input::placeholder, textarea::placeholder {
   color: var(--text-muted);
+}
+
+/* ══════════════════ Toast ══════════════════
+   A receipt, not a banner: read in one glance, then gone. Three faults —
+   the surface used the 3:1 rung under 13.5px white text (3.77:1 for success),
+   the 44px close button stretched the box so its glyph sat adrift in a
+   corner, and that glyph was low-contrast white-on-green. The 44px pointer
+   target is now a ::after overlay, so a11y keeps it without the layout
+   paying for it. */
+.ehr-toast {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--card-radius);
+  box-shadow: 0 10px 28px -12px rgba(16, 42, 67, 0.45);
+  max-width: 100%;
+}
+
+.ehr-toast-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  /* lucide writes stroke as a presentation attribute, so `color` alone would
+     leave the glyph its default ink on the coloured surface. */
+  color: currentColor;
+  stroke: currentColor;
+}
+
+.ehr-toast-text {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  padding-block: 1px;
+  overflow-wrap: anywhere;
+}
+
+.ehr-toast-action {
+  flex-shrink: 0;
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.ehr-toast-action:hover { background: rgba(255, 255, 255, 0.3); }
+
+.ehr-toast-close {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ehr-toast-close:hover { background: rgba(255, 255, 255, 0.22); color: #fff; }
+.ehr-toast-close svg { color: currentColor; stroke: currentColor; }
+
+/* The 44px pointer target WCAG asks for, without a 44px box in the layout. */
+.ehr-toast-close::after { content: ''; position: absolute; inset: -8px; }
+
+.ehr-toast-close:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+
+/* ══════════════════ Field state ══════════════════
+   One convention for every form in the app, not one per page.
+
+   Before this, only the patient-registration namespace (`.omrs-reg`) styled an
+   invalid control; everywhere else a page set `borderColor` inline at whatever
+   red it had to hand, or showed nothing at all and left the user to guess
+   which field the toast was about.
+
+   Colour is never the only signal — `aria-invalid` is what assistive tech
+   reads, the ring is what a sighted user sees, and pages still render the
+   message text. A red border alone would fail SC 1.4.1 (use of colour). */
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--color-danger);
+  /* A second ring rather than a thicker border: the control must not resize
+     when it goes invalid, or the layout jumps as you type. */
+  box-shadow: 0 0 0 3px var(--color-danger-bg);
+}
+
+input[aria-invalid="true"]:focus,
+select[aria-invalid="true"]:focus,
+textarea[aria-invalid="true"]:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px var(--color-danger-bg) !important;
+}
+
+/* The message under an invalid control. `-text` rung: this is 12px prose, so
+   the 3:1 fill red would not be readable. */
+.field-error,
+[role="alert"].field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--type-size-caption);
+  line-height: var(--type-leading-caption);
+  color: var(--color-danger-text);
+}
+
+/* Required marker. Carried by the LABEL, not the control, so it is announced
+   with the field name and survives a control that renders its own chrome. */
+.field-required::after {
+  content: '*';
+  margin-inline-start: 2px;
+  color: var(--color-danger-text);
+  font-weight: var(--type-weight-bold);
+}
+
+/* A field the user may read but not change reads as inert — never as disabled
+   danger. */
+input[readonly],
+textarea[readonly] {
+  background: var(--overlay-subtle);
+  color: var(--text-secondary);
 }
 
 select {
@@ -2878,8 +3048,8 @@ thead th {
   --ehr-border: #D8E3EC;
   --ehr-text: #102634;
   --ehr-muted: #597386;
-  --ehr-blue: var(--tb-blue-900);
-  --ehr-blue-light: rgba(16, 25, 90, 0.08);
+  --ehr-blue: var(--accent-primary);
+  --ehr-blue-light: color-mix(in srgb, var(--accent-primary) 8%, transparent);
   --ehr-conflict: #FFE9ED;
   --ehr-conflict-text: #A9354B;
   --ehr-good: #1F7A67;
@@ -3934,8 +4104,10 @@ html:has(.ehr-top-rail) {
   align-items: center;
   gap: 12px;
   padding: 0 12px;
-  /* Deep navy — --tb-blue-900, shared with the marketing site header. */
-  background: var(--tb-blue-900);
+  /* The tenant's own colour, not the platform's: the rail is the most visible
+     surface in the app, and org branding rewrites --accent-primary. Falls back
+     to --tb-blue-900 (the marketing header's navy) when no org has branded. */
+  background: var(--accent-primary);
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: none;
@@ -9238,10 +9410,10 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   --ehr-border-soft: #E5EDF4;
   --ehr-text: #102634;
   --ehr-muted: #5B7284;
-  --ehr-blue: var(--tb-blue-900);
-  --ehr-blue-strong: var(--tb-blue-800);
-  --ehr-blue-light: rgba(16, 25, 90, 0.08);
-  --ehr-focus-ring: rgba(16, 25, 90, 0.18);
+  --ehr-blue: var(--accent-primary);
+  --ehr-blue-strong: var(--accent-hover);
+  --ehr-blue-light: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  --ehr-focus-ring: color-mix(in srgb, var(--accent-primary) 18%, transparent);
   background: var(--ehr-page-bg) !important;
 }
 
@@ -10782,6 +10954,11 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 .modal-content {
   position: relative;
   width: 100%;
+  /* What the full-bleed header rule below pulls itself back out by. These
+     panels carry Tailwind's `p-6`, and the bleed used to assume 20px — which
+     left a 4px white gutter down both sides of every blue title bar. */
+  --modal-pad: 24px;
+  --modal-radius: var(--card-radius);
   border-radius: var(--card-radius);
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border);
@@ -11389,6 +11566,10 @@ span:has(> svg:only-child) {
   padding: 16px;
 }
 .modal-panel {
+  /* See --modal-pad on .modal-content: the blue title bar bleeds out by
+     exactly this much, so the two must stay in step. */
+  --modal-pad: 24px;
+  --modal-radius: var(--card-radius);
   background: var(--glass-bg-strong);
   border-radius: var(--card-radius);
   border: 1px solid var(--glass-border);
@@ -18557,13 +18738,19 @@ textarea.ehr-handoff-input {
   white-space: nowrap;
 }
 
+/* Truncates like the `strong` above it: these sublines are single-line labels
+   (a role, a facility, a leave reason), and one long value wrapping would
+   knock its row's height out of line with every other card in the list. */
 .appointment-card-provider span {
   display: block;
+  overflow: hidden;
   margin-top: 3px;
   color: var(--ehr-muted, var(--text-muted));
   font-size: 11px;
   font-weight: 700;
   line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .appointment-card-row .ehr-appointment-department {
@@ -20857,6 +21044,45 @@ textarea.ehr-handoff-input {
   color: #B7C6D2;
 }
 
+/* Back out of a panel opened from inside another panel. Rendered only when
+   the stack has somewhere to return to, so it never sits there inert. */
+.ehr-set-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--bg-card-solid);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ehr-set-back:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+/* The "where Back goes" crumb — a button, so it reads and behaves like the
+   back control it duplicates rather than like a link off the page. */
+.ehr-set-crumb {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ehr-set-crumb:hover {
+  color: var(--accent-primary);
+}
+
 .ehr-set-role-chip {
   display: inline-flex;
   align-items: center;
@@ -20933,19 +21159,23 @@ textarea.ehr-handoff-input {
   color: var(--tb-blue-800, #015697);
 }
 
-/* Design-literal blues — org branding rewrites --accent-primary at runtime,
-   which washed these buttons out for org-branded admins. */
+/* Brand-aware again. These were pinned to the platform blue because a pale
+   org colour washed the white label out — but the answer to "white is
+   illegible on their colour" is to stop assuming white, not to overrule the
+   tenant's brand. `--accent-on` is computed from the accent's luminance in
+   `brandingToCSSVars`, so a light brand gets dark ink and a dark one keeps
+   white; it is plain white by default, so an unbranded install is unchanged. */
 .ehr-set-btn.primary {
   padding: 0 16px;
-  border-color: #2191D0;
-  background: #2191D0;
-  color: #fff;
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--accent-on);
 }
 
 .ehr-set-btn.primary:hover {
-  border-color: #015697;
-  background: #015697;
-  color: #fff;
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+  color: var(--accent-on-hover);
 }
 
 .ehr-set-btn[disabled] {
@@ -26713,11 +26943,16 @@ table.patient-data-table.patient-data-table {
         list — a title row never does, a body wrapper almost always does. That
         is what stops a modal whose first child wraps everything from turning
         blue end to end.
-     4. `:not(.modal-content):not(.card-elevated)` excludes the panel-surface
-        classes outright. Guard 3 alone is not enough for a dialog whose body
-        holds only buttons — the front-desk check-in modal (choice buttons, no
-        inputs) matched as one giant "header" and rendered blue end to end. A
-        surface class marks a panel by definition, never a title row.
+     4. `:not(.modal-content):not(.card-elevated):not(.bl-root)` excludes the
+        panel-surface classes outright. Guard 3 alone is not enough for a
+        dialog whose body holds only buttons — the front-desk check-in modal
+        (choice buttons, no inputs) matched as one giant "header" and rendered
+        blue end to end. `.bl-root` is the same trap in the billing module: the
+        patient-account popup wraps its whole body in one, and that body is
+        sections and read-only figures — an `h3` per section, not a single
+        form control between them — so it matched and the entire popup came
+        out blue-on-blue. A surface class marks a panel by definition, never a
+        title row.
 
    `!important` on the colours is not decoration: every one of those headers
    sets `color: var(--text-primary)` inline on its own `<h2>`, and inline wins
@@ -26725,46 +26960,48 @@ table.patient-data-table.patient-data-table {
    overridden here.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)),
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
-  /* Full-bleed to the panel edges. The panels pad themselves (14–20px), so the
-     bar is pulled back out to meet the border and the radius is matched to the
-     dialog's own 6px so the two corners sit flush. */
-  margin: -20px -20px 18px !important;
-  padding: 14px 18px !important;
-  border-radius: 6px 6px 0 0 !important;
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)),
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
+  /* Full-bleed to the panel edges. Each panel declares its own padding and
+     radius in `--modal-pad` / `--modal-radius`, so the bar meets the border
+     exactly rather than being pulled back by a guessed amount — 20px was
+     right for `.modal-panel` and 4px short on every `p-6` `.modal-content`,
+     which is where the white gutter around the blue came from. */
+  margin: calc(-1 * var(--modal-pad, 20px)) calc(-1 * var(--modal-pad, 20px)) 18px !important;
+  padding: 14px var(--modal-pad, 18px) !important;
+  border-radius: var(--modal-radius, 6px) var(--modal-radius, 6px) 0 0 !important;
   background: var(--accent-primary, #2191D0) !important;
   color: #fff !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b),
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b) {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b),
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b) {
   color: #fff !important;
 }
 
 /* The subtitle line ("Step 1 of 4 · Visit") is muted grey inline — on blue it
    needs to stay secondary without disappearing. */
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p,
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p {
   color: rgba(255, 255, 255, 0.82) !important;
 }
 
 /* Close and back buttons: the tinted grey disc they carry inline is invisible
    on blue, so they become a translucent white one. */
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button,
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button {
   background: rgba(255, 255, 255, 0.16) !important;
   color: #fff !important;
   border-color: transparent !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover,
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover {
   background: rgba(255, 255, 255, 0.28) !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg,
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg {
   color: #fff !important;
   stroke: currentColor !important;
 }
@@ -26774,7 +27011,7 @@ table.patient-data-table.patient-data-table {
    `.modal-panel` (overflow: auto), buys a scrollbar rather than a wider bar.
    So the generic rule above stays conservative and the two panel classes that
    carry a known padding get an exact match here. */
-.modal-portal-backdrop [role="dialog"] > .modal-panel > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
+.modal-portal-backdrop [role="dialog"] > .modal-panel > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
   margin: -24px -24px 20px !important;
   padding: 16px 22px !important;
 }
@@ -26789,7 +27026,7 @@ table.patient-data-table.patient-data-table {
    is the same shape — an unpadded panel whose sections pad themselves — so
    without this it wore the -20px pull-back as a bar bleeding right across
    the page, covering the page header. */
-.modal-portal-backdrop [role="dialog"] > :is(.modal-content, .card-elevated, .cn-meds):not([class~="p-4"]):not([class~="p-5"]):not([class~="p-6"]) > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
+.modal-portal-backdrop [role="dialog"] > :is(.modal-content, .card-elevated, .cn-meds):not([class~="p-4"]):not([class~="p-5"]):not([class~="p-6"]) > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
   margin: 0 !important;
 }
 
@@ -26962,6 +27199,37 @@ table.patient-data-table.patient-data-table {
   outline-offset: 2px;
 }
 
+/* The header action strip styles every button inside it as a neutral outlined
+   pill (`.ehr-schedule-actions button`, specificity 0,1,1), which outranked
+   `.ehr-rail-menu-trigger-primary` and left the filled "Add" trigger white.
+   Repaint it here at matching specificity, keeping the strip's 999px pill so
+   Add and Print read as the same control — one filled, one outlined. */
+.ehr-schedule-actions .ehr-rail-menu-trigger-primary {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.ehr-schedule-actions .ehr-rail-menu-trigger-primary:hover,
+.ehr-schedule-actions .ehr-rail-menu-trigger-primary.open {
+  border-color: var(--tb-blue-800, #015697);
+  background: var(--tb-blue-800, #015697);
+  color: #fff;
+}
+
+/* The global `svg.lucide` rule pins icon colour (and lucide writes stroke as a
+   literal attribute), so the Add "+" would otherwise stay slate on brand blue.
+   Same repaint the accent-filled visit-pop action needs. */
+.ehr-schedule-actions .ehr-rail-menu-trigger-primary svg.lucide,
+.ehr-schedule-actions .ehr-rail-menu-trigger-primary svg.lucide * {
+  color: #fff;
+  stroke: #fff;
+  fill: none;
+}
+
+/* Hangs flush off the bottom of its trigger, so the flat top edge is what
+   joins the two — a fully rounded panel butted against the button reads as a
+   separate floating card resting on top of it. */
 .ehr-rail-menu-panel {
   position: fixed;
   max-height: min(560px, calc(100vh - 96px));
@@ -26969,89 +27237,35 @@ table.patient-data-table.patient-data-table {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0 0 10px 10px;
   background: var(--ehr-panel);
   color: var(--ehr-text);
-  box-shadow: 0 14px 30px rgba(9, 30, 66, 0.16);
+  box-shadow: 0 10px 22px rgba(9, 30, 66, 0.14);
   z-index: 1250;
-}
-
-.ehr-rail-menu-head {
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--ehr-border);
-}
-
-.ehr-rail-menu-head strong,
-.ehr-rail-menu-head span {
-  display: block;
-}
-
-.ehr-rail-menu-head strong {
-  color: var(--ehr-text);
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.ehr-rail-menu-head span {
-  margin-top: 2px;
-  color: var(--ehr-muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
 }
 
 .ehr-rail-menu-scroll {
   overflow-y: auto;
-  padding: 8px;
-}
-
-.ehr-rail-menu-section {
-  margin: 7px 10px 5px;
-  color: var(--ehr-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  padding: 5px;
 }
 
 .ehr-rail-menu-item {
   width: 100%;
-  min-height: 40px;
+  min-height: 32px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
-  padding: 6px 10px;
+  overflow: hidden;
+  padding: 5px 9px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: var(--nav-text);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   text-align: left;
-}
-
-.ehr-rail-menu-item svg {
-  flex: 0 0 auto;
-}
-
-.ehr-rail-menu-item-text {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.ehr-rail-menu-item-text > span {
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.ehr-rail-menu-item-text > small {
-  margin-top: 1px;
-  color: var(--ehr-muted);
-  font-size: 11px;
-  font-weight: 600;
 }
 
 /* Hover is a quiet tint, never the filled pill — sharing one rule with
@@ -27071,10 +27285,6 @@ table.patient-data-table.patient-data-table {
 .ehr-rail-menu-item.active:hover {
   background: var(--tb-blue-900);
   color: #fff;
-}
-
-.ehr-rail-menu-item.active .ehr-rail-menu-item-text > small {
-  color: rgba(255, 255, 255, 0.75);
 }
 
 .ehr-rail-menu-item:disabled {

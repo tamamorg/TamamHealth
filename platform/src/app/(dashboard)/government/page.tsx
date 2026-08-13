@@ -35,10 +35,10 @@ import { getANCStats } from '@/lib/services/anc-service';
 
 // Restrained public-health palette.
 const BLUE = '#2a78d6';
-const GREEN = '#199e70';
-const RED = '#e34948';
-const AMBER = '#eda100';
-const DEEP = '#015697';
+const GREEN = 'var(--color-success)';
+const RED = 'var(--color-danger)';
+const AMBER = 'var(--color-warning)';
+const DEEP = 'var(--accent-hover)';
 
 type ImmunizationStats = Awaited<ReturnType<typeof getImmunizationStats>>;
 type ANCStats = Awaited<ReturnType<typeof getANCStats>>;
@@ -180,20 +180,20 @@ function CoverageBar({ value, label, sub, color }: {
 // two series ever share a color — cycling previously gave Kala-azar the same
 // red as Malaria.
 const DISEASE_COLORS: Record<string, string> = {
-  malaria: '#e34948',
+  malaria: 'var(--color-danger)',
   cholera: '#2a78d6',
   measles: '#7847EB',
-  pneumonia: '#eda100',
+  pneumonia: 'var(--color-warning)',
   diarrhea: '#0f9488',
   'acute watery diarrhea': '#0f9488',
-  tuberculosis: '#015697',
-  tb: '#015697',
+  tuberculosis: 'var(--accent-hover)',
+  tb: 'var(--accent-hover)',
   hiv: '#CA4D1C',
   'hiv/aids': '#CA4D1C',
   meningitis: '#a94a7f',
   measles_rubella: '#7847EB',
 };
-const DISEASE_FALLBACK = ['#199e70', '#8f6a13', '#d6659b', '#5b67d8', '#64748B'];
+const DISEASE_FALLBACK = ['var(--color-success)', '#8f6a13', '#d6659b', '#5b67d8', '#64748B'];
 
 // Facility-type donut palette + labels (matches the hospital registry vocab).
 // PHCU was slate (#64748B) — it read as gray and was near-indistinguishable
@@ -201,8 +201,8 @@ const DISEASE_FALLBACK = ['#199e70', '#8f6a13', '#d6659b', '#5b67d8', '#64748B']
 const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
   national_referral: { label: 'National Referral', color: '#2a78d6' },
   state_hospital: { label: 'State Hospital', color: '#7847EB' },
-  county_hospital: { label: 'County Hospital', color: '#199e70' },
-  phcc: { label: 'PHCC', color: '#eda100' },
+  county_hospital: { label: 'County Hospital', color: 'var(--color-success-text)' },
+  phcc: { label: 'PHCC', color: 'var(--color-warning-text)' },
   phcu: { label: 'PHCU', color: '#CA4D1C' },
 };
 

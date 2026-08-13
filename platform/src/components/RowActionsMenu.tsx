@@ -59,7 +59,7 @@ export default function RowActionsMenu({ actions, ariaLabel = 'Actions' }: { act
   if (!actions.length) return null;
 
   const toneColor = (tone?: string) =>
-    tone === 'success' ? '#16A34A' : tone === 'danger' ? 'var(--color-danger)' : 'var(--text-primary)';
+    tone === 'success' ? 'var(--color-success)' : tone === 'danger' ? 'var(--color-danger)' : 'var(--text-primary)';
 
   return (
     <>

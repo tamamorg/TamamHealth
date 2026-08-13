@@ -75,7 +75,7 @@ export default function SuperintendentDashboard() {
 
   const kpis = [
     { id: 'staff', label: t('dashboard.activeStaff'), value: facilityUsers.length || (totalDoctors + totalNurses), sub: t('superintendent.staffSub', { doctors: totalDoctors, nurses: totalNurses }), Icon: Users, color: 'var(--accent-primary)', href: '/hr' },
-    { id: 'beds', label: t('dashboard.bedOccupancy'), value: `${occupancyPct}%`, sub: t('superintendent.bedsSub', { occupied: bedOccupancy, total: bedTotal }), Icon: BedDouble, color: '#15795C', href: '/wards' },
+    { id: 'beds', label: t('dashboard.bedOccupancy'), value: `${occupancyPct}%`, sub: t('superintendent.bedsSub', { occupied: bedOccupancy, total: bedTotal }), Icon: BedDouble, color: 'var(--color-success-text)', href: '/wards' },
     { id: 'leave', label: t('hr.kpiPendingLeave'), value: pendingLeave.length, sub: t('superintendent.leaveSub', { count: onLeaveToday.length }), Icon: ClipboardCheck, color: pendingLeave.length > 0 ? 'var(--color-danger-500)' : 'var(--accent-primary)', href: '/hr/leave', alarm: pendingLeave.length > 0 },
     { id: 'alerts', label: t('dashboard.activeAlerts'), value: activeAlerts.length, sub: t('superintendent.alertsSub', { count: pendingReferrals.length }), Icon: AlertTriangle, color: activeAlerts.length > 0 ? 'var(--color-danger-500)' : 'var(--accent-primary)', href: '/surveillance', alarm: activeAlerts.length > 0 },
   ];
@@ -124,7 +124,7 @@ export default function SuperintendentDashboard() {
             </div>
             {activeAlerts.length === 0 ? (
               <div className="p-10 text-center" style={{ color: 'var(--text-muted)' }}>
-                <Activity className="w-8 h-8 mx-auto mb-2" style={{ color: '#15795C', opacity: 0.6 }} />
+                <Activity className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--color-success-text)', opacity: 0.6 }} />
                 {t('epidemic.noActiveDiseaseAlerts')}
               </div>
             ) : (
@@ -137,11 +137,11 @@ export default function SuperintendentDashboard() {
                     style={{ textAlign: 'left' }}
                   >
                     <div className="icon-box-sm flex-shrink-0">
-                      <AlertTriangle className="w-4 h-4" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : '#B8741C' }} />
+                      <AlertTriangle className="w-4 h-4" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : 'var(--color-warning)' }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{a.disease || t('superintendent.alertFallback')}</div>
-                      <div className="text-[11.5px] mt-0.5 capitalize" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : '#B8741C' }}>
+                      <div className="text-[11.5px] mt-0.5 capitalize" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : 'var(--color-warning-text)' }}>
                         {a.alertLevel} · {[a.county, a.state].filter(Boolean).join(', ') || t('superintendent.locationFallback')} · {t('dashboard.casesCount', { count: a.cases })}
                       </div>
                     </div>

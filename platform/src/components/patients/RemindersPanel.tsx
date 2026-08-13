@@ -121,7 +121,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
               <div key={r._id} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', opacity: muted ? 0.6 : 1 }}>
                 <div className="flex-1 min-w-0">
                   <div className="text-[12px]" style={{ color: 'var(--text-primary)' }}>{r.message}</div>
-                  <div className="inline-flex items-center gap-1 text-[11px]" style={{ color: overdue ? 'var(--color-danger)' : 'var(--text-muted)' }}>
+                  <div className="inline-flex items-center gap-1 text-[11px]" style={{ color: overdue ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>
                     {overdue && <Clock className="w-3 h-3" />}
                     <span>{CHANNELS.find(c => c.v === r.channel)?.label} · {r.status === 'queued' ? `send ${r.sendDate}` : r.status}</span>
                   </div>
@@ -138,7 +138,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
         </div>
       )}
 
-      {error && <p className="text-[11px] mt-1" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+      {error && <p className="text-[11px] mt-1" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
     </div>
   );
 }

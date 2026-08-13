@@ -40,7 +40,6 @@ const PRIMARY_SHORTCUT_PRIORITY = [
   '/appointments',
   '/lab',
   '/reports',
-  '/system-admin',
   '/surveillance',
   '/pharmacy',
   '/wards',
@@ -132,15 +131,23 @@ function sortByShortcutPriority(list: NavItem[]): NavItem[] {
  *   2. Messages.
  *   3. Dashboard-duplicate destinations — used when still needed to reach the
  *      requested header size.
- *   4. The role's own dashboard, last. The module trigger beside this row now
+ *   4. The role's own dashboard, last. The module trigger beside this row
  *      carries the dashboard glyph and its menu leads with Dashboard, so a
  *      shortcut to it was the same destination twice in adjacent buttons. It
  *      stays as the final fallback rather than being dropped outright, so a
  *      specialist role with a short menu still fills the row.
+ *
+ * `homeHref` is what makes tier 4 work for every role, not just the ones whose
+ * home lives under `/dashboard`. An org admin lands on `/facility-management`
+ * and a super admin on `/admin` — both labelled "Dashboard" in their nav — so
+ * without it those roles spent a shortcut slot on the button the user is
+ * already standing on, and a real destination fell off the end of the row.
  */
-export function getPrimaryShortcutItems(items: NavItem[], role?: UserRole, maxItems = 5) {
+export function getPrimaryShortcutItems(items: NavItem[], role?: UserRole, maxItems = 5, homeHref?: string) {
   const duplicateRoutes = role ? HEADER_SHORTCUT_DUPLICATE_ROUTES[role] : undefined;
-  const isDashboard = (href: string) => href === '/dashboard' || href.startsWith('/dashboard/');
+  const home = homeHref?.split('?')[0];
+  const isDashboard = (href: string) =>
+    href === '/dashboard' || href.startsWith('/dashboard/') || (!!home && href === home);
 
   const tier1 = sortByShortcutPriority(
     items.filter(item => !isDashboard(item.href) && item.href !== '/messages' && !duplicateRoutes?.includes(item.href)),

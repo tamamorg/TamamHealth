@@ -9,16 +9,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClipboardList, Plus } from '@/components/icons/lucide';
-import RowActionsMenu from '@/components/RowActionsMenu';
 import RequestLeaveDialog from '@/components/create-dialogs/RequestLeaveDialog';
-import EhrListHeader, { EhrListFilters } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { EhrListFilters, EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
+import RowStatusSelect from '@/components/ehr/RowStatusSelect';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import type { LeaveRequestDoc, LeaveStatus } from '@/lib/db-types-hr';
 import {
-  HrPageShell, LEAVE_STATUSES, STATUS_TOKENS, StaffCell, Th,
-  parseLeaveStatusFromParams, useHrContext, useUrlParams,
+  HrPageShell, LEAVE_STATUSES, STATUS_TOKENS, StaffIdentity, formatHrDate,
+  parseLeaveStatusFromParams, statusPillStyle, useHrContext, useUrlParams,
 } from '../hr-shared';
+
+// Columns: Staff · Leave type · Dates · Decision · Status — five, matching the
+// patient registry exactly, so the template comes from `.appointment-card-flow`
+// and is never restated here.
+
+const dayCount = (days: number) => `${days} ${days === 1 ? 'day' : 'days'}`;
 
 export default function HrLeavePage() {
   const { t, currentUser, isApprover, showToast } = useHrContext();
@@ -82,12 +88,12 @@ export default function HrLeavePage() {
 
   return (
     <HrPageShell>
-      <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
         <EhrListHeader
           title="Leave requests"
           stats={[
             { label: 'Total', value: leave.length, color: 'var(--text-muted)' },
-            { label: 'Pending', value: leave.filter(r => r.status === 'pending').length, color: '#B8741C' },
+            { label: 'Pending', value: leave.filter(r => r.status === 'pending').length, color: 'var(--color-warning-text)' },
             { label: 'Approved', value: leave.filter(r => r.status === 'approved').length, color: 'var(--color-success)' },
             { label: 'Rejected', value: leave.filter(r => r.status === 'rejected').length, color: 'var(--color-danger)' },
           ]}
@@ -109,82 +115,97 @@ export default function HrLeavePage() {
                   </Select>
                 </div>
               </EhrListFilters>
-              <button type="button" className="listpage-icon-btn listpage-icon-btn-primary" onClick={() => setOpen(true)} title={t('hr.requestLeave')} aria-label={t('hr.requestLeave')}>
+              <EhrListHeaderButton primary onClick={() => setOpen(true)} ariaLabel={t('hr.requestLeave')}>
                 <Plus className="w-4 h-4" color="#fff" />
-              </button>
+              </EhrListHeaderButton>
             </>
           }
         />
-        <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
-          <table className="w-full" style={{ minWidth: 760 }}>
-            <thead>
-              <tr>
-                <Th>{t('hr.colStaff')}</Th>
-                <Th>{t('hr.labelType')}</Th>
-                <Th>Dates</Th>
-                <Th right>Days</Th>
-                <Th>{t('hr.colStatus')}</Th>
-                {isApprover && <Th />}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleLeave.map(r => {
-                const tok = STATUS_TOKENS[r.status];
-                return (
-                  <tr key={r._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td className="px-4 py-2.5"><StaffCell name={r.userName} sub={r.role.replace(/_/g, ' ')} /></td>
-                    <td className="px-4 py-2.5">
-                      <div className="text-[13px] capitalize" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{t(`hr.leaveType_${r.leaveType}`)}</div>
-                      {r.reason && <div className="text-[11px] truncate" style={{ color: 'var(--text-muted)', maxWidth: 220 }} title={r.reason}>“{r.reason}”</div>}
-                    </td>
-                    <td className="px-4 py-2.5 text-[13px] whitespace-nowrap" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.startDate} → {r.endDate}</td>
-                    <td className="px-4 py-2.5 text-[13px] text-right tabular-nums" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.days}</td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md whitespace-nowrap"
-                        style={{ background: tok.bg, color: tok.color, border: `1px solid ${tok.color}40` }}
-                        title={r.decisionNotes ? t('hr.noteLabel', { note: r.decisionNotes }) : undefined}
-                      >
-                        {t(`hr.leaveStatus_${r.status}`)}
-                      </span>
-                    </td>
-                    {isApprover && (
-                      <td className="px-4 py-2.5">
-                        <div className="flex justify-end">
-                          {r.status === 'pending' && (
-                            <RowActionsMenu
-                              actions={[
-                                { key: 'approve', label: t('hr.approve'), tone: 'success', onClick: () => decide(r._id, 'approved') },
-                                { key: 'reject', label: t('hr.reject'), tone: 'danger', onClick: () => decide(r._id, 'rejected') },
-                              ]}
-                            />
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {visibleLeave.length === 0 && (
-            <EmptyState
-              icon={ClipboardList}
-              title={leave.length === 0 ? 'No leave requests yet' : 'No matching leave requests'}
-              message={
-                leave.length === 0
-                  ? `${t('hr.noLeaveRequestsYet')} ${t('hr.requestLeave')} ${t('hr.above')}`
-                  : search
-                    ? `No leave requests match "${search}".`
-                    : 'No leave requests match the selected status.'
-              }
-              action={
-                leave.length === 0
-                  ? { label: t('hr.requestLeave'), onClick: () => setOpen(true) }
-                  : { label: 'Clear filters', onClick: () => { setSearch(''); setStatusFilterAndUrl('all'); } }
-              }
-            />
-          )}
+        {/* The patient registry's list, exactly: the same surface + flow
+            wrappers, so the column template, 14px gutters and 16px side inset
+            all come from `.appointment-card-flow` rather than being restated
+            here. Five columns and no actions gutter — the row's actions live
+            in its status pill. */}
+        <div className="appointment-card-surface patients-list-surface">
+          <div className="appointment-card-flow">
+            {/* The column head is the queue's frame, not a label for the rows
+                that happen to be loaded: it stays put when a filter matches
+                nothing, so the list never collapses into a bare message. */}
+            <div className="appointment-card-head" aria-hidden="true">
+              <span>{t('hr.colStaff')}</span>
+              <span>{t('hr.labelType')}</span>
+              <span>Dates</span>
+              <span>Decision</span>
+              <span>{t('hr.colStatus')}</span>
+            </div>
+            {visibleLeave.length === 0 && (
+              <EmptyState
+                icon={ClipboardList}
+                title={leave.length === 0 ? 'No leave requests yet' : 'No matching leave requests'}
+                message={
+                  leave.length === 0
+                    ? `${t('hr.noLeaveRequestsYet')} ${t('hr.requestLeave')} ${t('hr.above')}`
+                    : search
+                      ? `No leave requests match "${search}".`
+                      : 'No leave requests match the selected status.'
+                }
+                action={
+                  leave.length === 0
+                    ? { label: t('hr.requestLeave'), onClick: () => setOpen(true) }
+                    : { label: 'Clear filters', onClick: () => { setSearch(''); setStatusFilterAndUrl('all'); } }
+                }
+              />
+            )}
+            {visibleLeave.map(r => {
+              const tok = STATUS_TOKENS[r.status];
+              return (
+                <div key={r._id} className="ehr-appointment-row appointment-card-row" style={{ cursor: 'default' }}>
+                  <StaffIdentity name={r.userName} sub={r.role.replace(/_/g, ' ')} capitalizeSub />
+
+                  {/* Leave type — value + the requester's own words. */}
+                  <div className="appointment-card-provider">
+                    <strong className="capitalize">{t(`hr.leaveType_${r.leaveType}`)}</strong>
+                    <span title={r.reason || undefined}>{r.reason ? `“${r.reason}”` : 'No reason given'}</span>
+                  </div>
+
+                  {/* Dates — the span, with its length underneath. */}
+                  <div className="ehr-appointment-time">
+                    <strong>{formatHrDate(r.startDate, { month: 'short', day: 'numeric' })} → {formatHrDate(r.endDate)}</strong>
+                    <span>{dayCount(r.days)}</span>
+                  </div>
+
+                  {/* Decision — who ruled on it, and any note they left. */}
+                  <div className="appointment-card-provider">
+                    <strong>{r.decidedByName || 'Awaiting decision'}</strong>
+                    <span title={r.decisionNotes || undefined}>
+                      {r.decisionNotes
+                        ? t('hr.noteLabel', { note: r.decisionNotes })
+                        : r.decidedAt ? `Decided ${formatHrDate(r.decidedAt)}` : 'Pending review'}
+                    </span>
+                  </div>
+
+                  {/* Approve/reject are this row's only actions and they are
+                      both status moves, so the pill carries them. A viewer who
+                      can't decide, or a request already decided, gets the
+                      plain read-only pill. */}
+                  <div className="appointment-card-status">
+                    <RowStatusSelect
+                      label={t(`hr.leaveStatus_${r.status}`)}
+                      value={r.status}
+                      ariaLabel={`Leave status for ${r.userName}`}
+                      style={statusPillStyle(tok)}
+                      options={isApprover && r.status === 'pending' ? [
+                        { value: 'approved', label: t('hr.approve') },
+                        { value: 'rejected', label: t('hr.reject') },
+                      ] : []}
+                      onSelect={next => decide(r._id, next as 'approved' | 'rejected')}
+                    />
+                    <small>Requested {formatHrDate(r.requestedAt, { month: 'short', day: 'numeric' })}</small>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

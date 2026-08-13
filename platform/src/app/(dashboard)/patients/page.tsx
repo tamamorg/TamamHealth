@@ -252,10 +252,10 @@ export default function PatientsPage() {
                 <div className="flex items-center gap-3 flex-wrap justify-end pb-0.5">
                   {[
                     { label: t('patients.statRegistered'), value: patientKpis.total, color: 'var(--text-muted)' },
-                    { label: t('patient.male'), value: patientKpis.male, color: '#2191D0' },
-                    { label: t('patient.female'), value: patientKpis.female, color: '#D97706' },
-                    { label: t('patients.statNewThisMonth'), value: patientKpis.newThisMonth, color: '#15795C' },
-                    { label: isBilling ? t('patients.statOutstanding') : t('patients.statUnassigned'), value: isBilling ? patientKpis.outstanding : patientKpis.unassigned, color: '#B8741C' },
+                    { label: t('patient.male'), value: patientKpis.male, color: 'var(--accent-primary)' },
+                    { label: t('patient.female'), value: patientKpis.female, color: 'var(--color-warning-text)' },
+                    { label: t('patients.statNewThisMonth'), value: patientKpis.newThisMonth, color: 'var(--color-success-text)' },
+                    { label: isBilling ? t('patients.statOutstanding') : t('patients.statUnassigned'), value: isBilling ? patientKpis.outstanding : patientKpis.unassigned, color: 'var(--color-warning-text)' },
                   ].map(s => (
                     <span key={s.label} className="inline-flex items-center gap-1 text-[12px]" style={{ color: 'var(--text-muted)' }}>
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.color }} />
@@ -294,7 +294,7 @@ export default function PatientsPage() {
                   >
                     <Filter className="w-4 h-4" />
                     {activeFilterCount > 0 && (
-                      <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: '#2191D0', color: '#fff' }}>
+                      <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
                         {activeFilterCount}
                       </span>
                     )}
@@ -505,7 +505,7 @@ export default function PatientsPage() {
                   </button>
                 </div>
                 {lookupError && (
-                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--color-danger)' }}>{lookupError}</p>
+                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--color-danger-text)' }}>{lookupError}</p>
                 )}
               </div>
 

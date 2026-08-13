@@ -12,8 +12,8 @@ import { isClinicalAuthorRole } from '@/lib/clinical-roles';
 import Select from '@/components/Select';
 
 const STATUS_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
-  open: { bg: 'rgba(217,119,6,0.12)', fg: '#B45309', label: 'Open' },
-  responded: { bg: 'rgba(21,121,92,0.12)', fg: 'var(--color-success)', label: 'Responded' },
+  open: { bg: 'rgba(217,119,6,0.12)', fg: 'var(--color-warning-text)', label: 'Open' },
+  responded: { bg: 'rgba(21,121,92,0.12)', fg: 'var(--color-success-text)', label: 'Responded' },
   closed: { bg: 'var(--overlay-subtle)', fg: 'var(--text-muted)', label: 'Closed' },
 };
 
@@ -141,7 +141,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
 
               {n.response && (
                 <div className="mt-2 rounded-md p-2" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)' }}>
-                  <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-success)' }}>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-success-text)' }}>
                     Response · {n.respondedByName} · {formatDateTime(n.respondedAt)}
                   </div>
                   <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>{n.response}</p>
@@ -174,7 +174,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
         })}
       </ul>
 
-      {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+      {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
     </div>
   );
 }

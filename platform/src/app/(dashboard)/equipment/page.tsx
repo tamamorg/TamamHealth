@@ -9,7 +9,7 @@ import { useAssets } from '@/lib/hooks/useAssets';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AssetDoc, AssetCategory, AssetStatus } from '@/lib/db-types-asset';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
 
 const CATEGORIES: { id: AssetCategory; labelKey: string }[] = [
@@ -26,11 +26,11 @@ const CATEGORIES: { id: AssetCategory; labelKey: string }[] = [
 ];
 
 const STATUS_TOKENS: Record<AssetStatus, { labelKey: string; color: string; bg: string }> = {
-  operational:    { labelKey: 'equipment.statusOperational',     color: '#15795C', bg: 'rgba(27, 158, 119, 0.12)' },
-  needs_service:  { labelKey: 'equipment.statusNeedsService',   color: '#B8741C', bg: 'rgba(228, 168, 75, 0.16)' },
-  under_repair:   { labelKey: 'equipment.statusUnderRepair',    color: '#2191D0', bg: 'rgba(33, 145, 208, 0.12)' },
+  operational:    { labelKey: 'equipment.statusOperational',     color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)' },
+  needs_service:  { labelKey: 'equipment.statusNeedsService',   color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)' },
+  under_repair:   { labelKey: 'equipment.statusUnderRepair',    color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
   decommissioned: { labelKey: 'equipment.statusDecommissioned',  color: '#5A7370', bg: 'rgba(90, 115, 112, 0.14)' },
-  lost_or_stolen: { labelKey: 'equipment.statusLostOrStolen',   color: '#C44536', bg: 'rgba(196, 69, 54, 0.14)' },
+  lost_or_stolen: { labelKey: 'equipment.statusLostOrStolen',   color: 'var(--color-danger-text)', bg: 'rgba(196, 69, 54, 0.14)' },
 };
 
 export default function AssetsPage() {
@@ -131,28 +131,20 @@ export default function AssetsPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        {/* KPI strip */}
-        {summary && (
-          <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', alignItems: 'stretch' }}>
-            {[
-              { label: t('equipment.kpiTotal'), value: summary.total, accent: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.08)', border: 'rgba(59, 130, 246, 0.22)' },
-              { label: t('equipment.kpiOperational'), value: summary.operational, accent: '#15795C', bg: 'rgba(27, 158, 119, 0.10)', border: 'rgba(27, 158, 119, 0.26)' },
-              { label: t('equipment.kpiNeedsService'), value: summary.needsService, accent: '#B8741C', bg: 'rgba(228, 168, 75, 0.12)', border: 'rgba(228, 168, 75, 0.30)' },
-              { label: t('equipment.kpiUnderRepair'), value: summary.underRepair, accent: '#2191D0', bg: 'rgba(33, 145, 208, 0.10)', border: 'rgba(59, 130, 246, 0.26)' },
-              { label: t('equipment.kpiServiceDueSoon'), value: summary.serviceDueSoon, accent: '#C44536', bg: 'rgba(196, 69, 54, 0.10)', border: 'rgba(196, 69, 54, 0.26)' },
-            ].map(k => (
-              <div key={k.label} style={{ padding: '14px 16px', borderRadius: 10, background: k.bg, border: `1px solid ${k.border}` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: k.accent }}>{k.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: -0.5, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, marginTop: 2 }}>{k.value}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Asset table */}
+        {/* Asset table. The register's counts ride in the list header as dot
+            chips — the same row every other module list uses — rather than a
+            KPI strip above the card, which cost a band of vertical space and
+            was the only place in the app still framing counts as cards. */}
         <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title={t('equipment.topBarTitle')}
+            stats={summary ? [
+              { label: t('equipment.kpiTotal'), value: summary.total, color: LIST_STAT_COLORS.muted },
+              { label: t('equipment.kpiOperational'), value: summary.operational, color: LIST_STAT_COLORS.green },
+              { label: t('equipment.kpiNeedsService'), value: summary.needsService, color: LIST_STAT_COLORS.amber },
+              { label: t('equipment.kpiUnderRepair'), value: summary.underRepair, color: LIST_STAT_COLORS.blue },
+              { label: t('equipment.kpiServiceDueSoon'), value: summary.serviceDueSoon, color: 'var(--color-danger)' },
+            ] : []}
             search={{ value: globalSearch, onChange: setGlobalSearch, placeholder: 'Search assets…' }}
             actions={
               <button onClick={() => setCreateOpen(true)} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -207,7 +199,7 @@ export default function AssetsPage() {
                     </td>
                     <td className="text-xs">
                       {a.nextServiceDueAt ? (
-                        <span style={{ color: dueSoon ? '#C44536' : 'var(--text-secondary)' }} className="inline-flex items-center gap-1">
+                        <span style={{ color: dueSoon ? 'var(--color-danger-text)' : 'var(--text-secondary)' }} className="inline-flex items-center gap-1">
                           {a.nextServiceDueAt}
                         </span>
                       ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}

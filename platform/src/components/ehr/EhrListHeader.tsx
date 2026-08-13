@@ -24,10 +24,10 @@ export interface EhrListHeaderStat {
 /** Flat stat-dot palette shared with the patients registry header. */
 export const LIST_STAT_COLORS = {
   muted: 'var(--text-muted)',
-  blue: '#2191D0',
-  amber: '#D97706',
-  green: '#15795C',
-  bronze: '#B8741C',
+  blue: 'var(--accent-primary)',
+  amber: 'var(--color-warning)',
+  green: 'var(--color-success)',
+  bronze: 'var(--color-warning)',
   // Sixth slot for headers whose stats partition into four buckets plus two
   // lead counts (reports: total + categories + the four report cadences).
   purple: 'var(--accent-purple)',
@@ -57,7 +57,9 @@ export default function EhrListHeader({
   return (
     <div className={`px-4 pt-4 pb-3 flex-shrink-0 ${className}`}>
       <div className={`flex items-end justify-between gap-3 flex-wrap ${hasSecondRow ? 'mb-3' : ''}`}>
-        <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: 'var(--text-primary)' }}>
+        {/* #000, not --text-primary: the registry's title is true black and
+            this header exists to reproduce the registry. */}
+        <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000' }}>
           {title}
         </span>
         {stats.length > 0 && (
@@ -95,27 +97,36 @@ export default function EhrListHeader({
 /**
  * EhrListHeaderButton — icon-only toolbar button (38px, icon only — the
  * meaning carries via `ariaLabel`, which also becomes the hover tooltip).
- * `active` renders the blue-tinted state used when filters are applied.
+ * `active` renders the blue-tinted state used when filters are applied;
+ * `primary` renders the filled call-to-action variant (an Add button).
  *
- * Shape and colour come from `.listpage-icon-btn`, the appointments toolbar's
- * button: an 8px-radius square with a blue glyph. It used to be a 999px pill
- * with a grey glyph, which meant the same Download control changed shape
- * between Appointments and Lab.
+ * Shape and colour are the patients registry's own toolbar button — a 38px
+ * 999px pill, grey glyph on white, blue-tinted when active. This header exists
+ * to reproduce the registry, so it can't borrow `.listpage-icon-btn`'s
+ * 8px-radius blue-glyph square: that made the same Filters control change
+ * shape between the registry and every module that adopted this header.
  */
 export function EhrListHeaderButton({
   onClick,
   active = false,
+  primary = false,
   children,
   ariaExpanded,
   ariaLabel,
 }: {
   onClick?: () => void;
   active?: boolean;
+  primary?: boolean;
   /** The icon (plus optional badge) — no text labels; use `ariaLabel`. */
   children: ReactNode;
   ariaExpanded?: boolean;
   ariaLabel?: string;
 }) {
+  const tone = primary
+    ? { border: '1px solid var(--accent-primary)', background: 'var(--accent-primary)', color: '#fff' }
+    : active
+      ? { border: '1px solid var(--accent-primary)', background: 'rgba(33,145,208,0.08)', color: 'var(--accent-primary)' }
+      : { border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-secondary)' };
   return (
     <button
       type="button"
@@ -123,8 +134,11 @@ export function EhrListHeaderButton({
       aria-expanded={ariaExpanded}
       aria-label={ariaLabel}
       title={ariaLabel}
-      className={`listpage-icon-btn ${active ? 'is-active' : ''}`}
-      style={{ position: 'relative' }}
+      style={{
+        position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 38, height: 38, padding: 0, borderRadius: 999,
+        cursor: 'pointer', flexShrink: 0, ...tone,
+      }}
     >
       {children}
     </button>
@@ -173,7 +187,7 @@ export function EhrListFilters({
       <EhrListHeaderButton onClick={() => setOpen(o => !o)} active={activeCount > 0} ariaExpanded={open} ariaLabel={label}>
         <Filter className="w-4 h-4" />
         {activeCount > 0 && (
-          <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: '#2191D0', color: '#fff' }}>
+          <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
             {activeCount}
           </span>
         )}

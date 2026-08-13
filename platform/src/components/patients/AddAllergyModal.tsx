@@ -102,7 +102,7 @@ export default function AddAllergyModal({
           className={inputCls} style={inputStyle}
         />
 
-        {error && <p className="text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+        {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
 
         <div className="flex items-center justify-end gap-2 pt-1">
           <button className="btn btn-sm btn-secondary" disabled={busy} onClick={onClose}>Cancel</button>

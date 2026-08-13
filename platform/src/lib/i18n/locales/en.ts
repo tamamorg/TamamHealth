@@ -2284,6 +2284,7 @@ const en: TranslationMap = {
   'hr.shiftNight': 'Night',
   'hr.shiftOnCall': 'On Call',
   'hr.shiftRemoveFailed': 'Failed to remove shift',
+  'hr.shiftStatusFailed': 'Failed to update shift status',
   'hr.shiftSchedule': 'Shift Schedule',
   'hr.shiftScheduledFor': 'Scheduled {{name}} for {{shift}}',
   'hr.shiftType_afternoon': 'afternoon',

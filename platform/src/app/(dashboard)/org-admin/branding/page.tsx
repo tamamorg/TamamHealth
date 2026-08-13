@@ -22,7 +22,7 @@ export default function OrgBrandingPage() {
   // Form state
   const [orgName, setOrgName] = useState('');
   const [primaryColor, setPrimaryColor] = useState('var(--accent-primary)');
-  const [secondaryColor, setSecondaryColor] = useState('#015697');
+  const [secondaryColor, setSecondaryColor] = useState('var(--accent-hover)');
   const [accentColor, setAccentColor] = useState('var(--accent-primary)');
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
   const [bankDetails, setBankDetails] = useState('');
@@ -39,7 +39,7 @@ export default function OrgBrandingPage() {
           setOrg(o);
           setOrgName(o.name);
           setPrimaryColor(o.primaryColor || 'var(--accent-primary)');
-          setSecondaryColor(o.secondaryColor || '#015697');
+          setSecondaryColor(o.secondaryColor || 'var(--accent-hover)');
           setAccentColor(o.accentColor || 'var(--accent-primary)');
           setLogoUrl(o.logoUrl);
           setBankDetails(o.bankDetails || '');
@@ -122,7 +122,7 @@ export default function OrgBrandingPage() {
     if (!org) return;
     setOrgName(org.name);
     setPrimaryColor(org.primaryColor || 'var(--accent-primary)');
-    setSecondaryColor(org.secondaryColor || '#015697');
+    setSecondaryColor(org.secondaryColor || 'var(--accent-hover)');
     setAccentColor(org.accentColor || 'var(--accent-primary)');
     setLogoUrl(org.logoUrl);
     setBankDetails(org.bankDetails || '');
@@ -187,7 +187,7 @@ export default function OrgBrandingPage() {
           </div>
         )}
         {error && (
-          <div className="mb-4 p-3 rounded-lg text-sm font-medium" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger)', border: '1px solid rgba(229,46,66,0.2)' }}>
+          <div className="mb-4 p-3 rounded-lg text-sm font-medium" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(229,46,66,0.2)' }}>
             {error}
           </div>
         )}

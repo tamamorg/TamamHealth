@@ -121,7 +121,7 @@ export default function NurseVitalsModal({
                   className="w-full rounded border px-2.5 py-2 text-sm"
                   style={{ borderColor: flagged ? 'var(--color-danger)' : 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }}
                 />
-                {flagged && <span className="block mt-1 text-[10px]" style={{ color: 'var(--color-danger)' }}>Check this value</span>}
+                {flagged && <span className="block mt-1 text-[10px]" style={{ color: 'var(--color-danger-text)' }}>Check this value</span>}
               </label>
             );
           })}

@@ -27,7 +27,10 @@ import {
   ScanLine,
   Server,
   Gauge,
-  Receipt,
+  // Bills have ONE nav home in every role: the Wallet on /payments (the Bills &
+  // Claims workspace). The invoice list (/billing) and the claims queue
+  // (/payments/claims) stay routable — reached from that workspace's Actions
+  // menu and its Claims tab — rather than each adding another billing glyph.
   Wallet,
   BedDouble,
   Stethoscope,
@@ -179,15 +182,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL SERVICES' },
       { href: '/pharmacy', label: 'Prescriptions & Medicines', icon: Pill, section: 'CLINICAL SERVICES' },
       { href: '/blood-bank', label: 'Blood Bank', icon: Droplets, section: 'CLINICAL SERVICES' },
-      { href: '/billing', label: 'Billing', icon: Receipt, section: 'FINANCE' },
       { href: '/payments', label: 'Billing & Payments', icon: Wallet, section: 'FINANCE' },
-      { href: '/payments/claims', label: 'Claims', icon: Receipt, section: 'FINANCE' },
       { href: '/reports', label: 'Reports', icon: ClipboardCheck, section: 'INTELLIGENCE & REPORTING' },
       { href: '/equipment', label: 'Assets', icon: Package, section: 'RISK, ASSETS & PREPAREDNESS' },
       { href: '/emergency-preparedness', label: 'Emergency Prep', icon: ShieldAlert, section: 'RISK, ASSETS & PREPAREDNESS' },
-      // IT Operations lives inside System Administration (its first sidebar
-      // section); /it stays routable for deep links but has no nav entry.
-      { href: '/system-admin', label: 'System Administration', icon: Database, section: 'IT & SYSTEM' },
+      // IT Operations and System Administration both live inside the personal
+      // Settings page now (Settings -> System administration); /it and
+      // /system-admin stay routable for deep links but have no nav entry.
       // Org settings live inside the personal Settings page (Settings →
       // Organization); /org-admin/settings redirects there, so no nav item.
     ],
@@ -355,7 +356,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     defaultDashboard: ROLE_ROUTE_TABLE.cashier.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.cashier.allowed],
     navItems: [
-      { href: '/billing', label: 'Billing', icon: Receipt, section: 'CASHIER' },
       { href: '/payments', label: 'Collect Payment', icon: Wallet, section: 'CASHIER' },
       { href: '/patients', label: 'Patient Lookup', icon: Users, section: 'CASHIER' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CASHIER' },
@@ -477,7 +477,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/controlled-substances', label: 'Controlled Substances', icon: ClipboardCheck, section: 'SERVICES' },
       { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'ADMINISTRATION' },
       { href: '/it', label: 'IT Operations', icon: Server, section: 'ADMINISTRATION' },
-      { href: '/system-admin', label: 'System Administration', icon: Settings, section: 'ADMINISTRATION' },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
@@ -487,9 +486,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/lab', label: 'Laboratory', icon: Microscope, section: 'SERVICES' },
       { href: '/pharmacy', label: 'Pharmacy', icon: Pill, section: 'SERVICES' },
       { href: '/blood-bank', label: 'Blood Bank', icon: Droplets, section: 'SERVICES' },
-      { href: '/billing', label: 'Billing', icon: Receipt, section: 'SERVICES' },
       { href: '/payments', label: 'Bills', icon: Wallet, section: 'SERVICES' },
-      { href: '/payments/claims', label: 'Claims', icon: Receipt, section: 'SERVICES' },
       { href: '/epidemic-intelligence', label: 'Epidemic Intel', icon: Biohazard, section: 'INTELLIGENCE' },
       { href: '/mch-analytics', label: 'MCH Analytics', icon: HeartPulse, section: 'INTELLIGENCE' },
       { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'INTELLIGENCE' },
@@ -511,7 +508,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/patients', label: 'Patient Registry', icon: Users, section: 'RECORDS' },
       { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'RECORDS' },
       { href: '/it', label: 'IT Operations', icon: Server, section: 'RECORDS' },
-      { href: '/system-admin', label: 'System Administration', icon: Settings, section: 'RECORDS' },
       { href: '/reports', label: 'Reports', icon: BarChart3, section: 'RECORDS' },
       { href: '/vital-statistics', label: 'Vital Statistics', icon: TrendingUp, section: 'VITAL EVENTS' },
       { href: '/immunizations', label: 'Immunizations', icon: Syringe, section: 'VITAL EVENTS' },
@@ -582,13 +578,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/hr/schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
       { href: '/hr/payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
       { href: '/inquiries', label: 'Patient Inquiries', icon: MessageSquare, section: 'PEOPLE & HR' },
-      { href: '/billing', label: 'Billing', icon: Receipt, section: 'FINANCE' },
       { href: '/payments', label: 'Revenue & Bills', icon: Wallet, section: 'FINANCE' },
-      { href: '/payments/claims', label: 'Insurance Claims', icon: Receipt, section: 'FINANCE' },
       { href: '/reports', label: 'Reports', icon: BarChart3, section: 'REPORTING' },
       { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'REPORTING' },
       { href: '/it', label: 'IT Operations', icon: Server, section: 'REPORTING' },
-      { href: '/system-admin', label: 'System Administration', icon: Settings, section: 'REPORTING' },
       { href: '/vital-statistics', label: 'Vital Statistics', icon: TrendingUp, section: 'REPORTING' },
       { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'REPORTING' },
       { href: '/public-stats', label: 'Public Statistics', icon: Globe, section: 'REPORTING' },
@@ -608,9 +601,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     defaultDashboard: ROLE_ROUTE_TABLE.medical_biller.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.medical_biller.allowed],
     navItems: [
-      { href: '/billing', label: 'Billing', icon: Receipt, section: 'BILLING' },
       { href: '/payments', label: 'Bills & Invoices', icon: Wallet, section: 'BILLING' },
-      { href: '/payments/claims', label: 'Insurance Claims', icon: ClipboardCheck, section: 'BILLING' },
       { href: '/patients', label: 'Patients', icon: Users, section: 'PATIENTS' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'PATIENTS' },
       { href: '/messages', label: 'Messages', icon: MessageSquare, section: 'MORE' },
@@ -724,7 +715,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'RECORDS' },
       { href: '/reports', label: 'Reports', icon: BarChart3, section: 'RECORDS' },
       { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'GOVERNANCE' },
-      { href: '/system-admin', label: 'System Administration', icon: Settings, section: 'GOVERNANCE' },
       { href: '/vital-statistics', label: 'Vital Statistics', icon: TrendingUp, section: 'VITAL EVENTS' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'GOVERNANCE' },
       { href: '/messages', label: 'Messages', icon: MessageSquare, section: 'MORE' },

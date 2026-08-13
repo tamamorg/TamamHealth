@@ -34,7 +34,7 @@ export default function EmptyState({ icon: Icon = Inbox, title, message, action 
       }}>
         <Icon className="w-6 h-6" style={{ color: 'var(--text-muted, #64748b)' }} />
       </div>
-      <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary, #f1f5f9)' }}>{title}</h3>
+      <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary, #0F172A)' }}>{title}</h3>
       <p className="text-xs max-w-xs" style={{ color: 'var(--text-muted, #64748b)' }}>{message}</p>
       {action && (
         <button

@@ -287,11 +287,11 @@ export default function DataEntryDashboard() {
           </div>
           <div className="p-4 space-y-2">
             {[
-              { label: t('encounters.emergency'), value: r.emergencyVisits, color: 'var(--color-danger)' },
+              { label: t('encounters.emergency'), value: r.emergencyVisits, color: 'var(--color-danger-text)' },
               { label: t('dashboard.bedMaternity'), value: r.maternityAdmissions, color: 'var(--accent-primary)' },
               { label: t('dataEntry.newborns'), value: r.newborns, color: 'var(--accent-primary)' },
               { label: t('dataEntry.discharges'), value: r.discharges, color: 'var(--accent-primary)' },
-              { label: t('dataEntry.deaths'), value: r.deaths, color: 'var(--color-danger)' },
+              { label: t('dataEntry.deaths'), value: r.deaths, color: 'var(--color-danger-text)' },
               { label: t('dataEntry.referralsOut'), value: r.referralsOut, color: 'var(--accent-primary)' },
             ].map(row => (
               <div key={row.label} className="flex items-center justify-between py-1" style={{ borderBottom: '1px solid var(--border-light)' }}>
@@ -312,7 +312,7 @@ export default function DataEntryDashboard() {
           </div>
           <div className="p-4 space-y-3">
             {[
-              { label: t('dashboard.bedIcu'), occupied: r.icuOccupied, total: r.icuBeds, color: 'var(--color-danger)' },
+              { label: t('dashboard.bedIcu'), occupied: r.icuOccupied, total: r.icuBeds, color: 'var(--color-danger-text)' },
               { label: t('dashboard.bedMaternity'), occupied: r.maternityOccupied, total: r.maternityBeds, color: '#EC4899' },
               { label: t('dashboard.bedPediatric'), occupied: r.pediatricOccupied, total: r.pediatricBeds, color: 'var(--color-brand-500)' },
             ].map(bed => {
@@ -321,7 +321,7 @@ export default function DataEntryDashboard() {
                 <div key={bed.label}>
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px] font-semibold" style={{ color: 'var(--text-primary)' }}>{bed.label}</span>
-                    <span className="text-[11px] font-bold" style={{ color: pct > 90 ? 'var(--color-danger)' : 'var(--text-secondary)' }}>{bed.occupied}/{bed.total}</span>
+                    <span className="text-[11px] font-bold" style={{ color: pct > 90 ? 'var(--color-danger-text)' : 'var(--text-secondary)' }}>{bed.occupied}/{bed.total}</span>
                   </div>
                   <div className="w-full h-2 rounded-full" style={{ background: 'var(--overlay-medium)' }}>
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: bed.color }} />
@@ -371,18 +371,18 @@ export default function DataEntryDashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{eq.label}</span>
                 </div>
-                <span className="text-sm font-bold" style={{ color: eq.value > 0 ? 'var(--text-primary)' : 'var(--color-danger)' }}>{eq.value}</span>
+                <span className="text-sm font-bold" style={{ color: eq.value > 0 ? 'var(--text-primary)' : 'var(--color-danger-text)' }}>{eq.value}</span>
               </div>
             ))}
             <div style={{ borderTop: '1px solid var(--border-medium)', paddingTop: 8, marginTop: 4 }}>
               {[
-                { label: t('dataEntry.medicineAvailability'), pct: medAvail, color: 'var(--color-success)' },
+                { label: t('dataEntry.medicineAvailability'), pct: medAvail, color: 'var(--color-success-text)' },
                 { label: t('dataEntry.handwashStations'), pct: handwash, color: 'var(--accent-primary)' },
               ].map(m => (
                 <div key={m.label} className="mb-2">
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px] font-semibold" style={{ color: 'var(--text-primary)' }}>{m.label}</span>
-                    <span className="text-[11px] font-bold" style={{ color: m.pct >= 80 ? 'var(--color-success)' : 'var(--color-warning)' }}>{m.pct}%</span>
+                    <span className="text-[11px] font-bold" style={{ color: m.pct >= 80 ? 'var(--color-success-text)' : 'var(--color-warning-text)' }}>{m.pct}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full" style={{ background: 'var(--overlay-medium)' }}>
                     <div className="h-full rounded-full" style={{ width: `${m.pct}%`, background: m.color }} />

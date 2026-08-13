@@ -36,18 +36,18 @@ import type { AuditLogDoc, EncounterDoc, UserDoc } from '@/lib/db-types';
 
 /* Shared chart palette (dataviz-validated, same hues as the other dashboards). */
 const CHART_BLUE = '#2a78d6';
-const CHART_RED = '#e34948';
-const GREEN = '#199e70';
-const AMBER = '#eda100';
+const CHART_RED = 'var(--color-danger)';
+const GREEN = 'var(--color-success)';
+const AMBER = 'var(--color-warning)';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
 
 /* Tinted-surface tokens: the "Received / Pending" tile treatment from the
    org-admin Cash Flow card, generalised to the four platform tones. */
 const TONE_STYLE: Record<Tone, { fill: string; text: string; tint: string; border: string }> = {
-  ok: { fill: GREEN, text: '#167755', tint: 'rgba(25,158,112,0.10)', border: 'rgba(25,158,112,0.28)' },
-  warn: { fill: AMBER, text: '#a16207', tint: 'rgba(237,161,0,0.12)', border: 'rgba(237,161,0,0.35)' },
-  danger: { fill: CHART_RED, text: '#C24135', tint: 'rgba(227,73,72,0.10)', border: 'rgba(227,73,72,0.30)' },
+  ok: { fill: GREEN, text: 'var(--color-success-text)', tint: 'rgba(25,158,112,0.10)', border: 'rgba(25,158,112,0.28)' },
+  warn: { fill: AMBER, text: 'var(--color-warning-text)', tint: 'rgba(237,161,0,0.12)', border: 'rgba(237,161,0,0.35)' },
+  danger: { fill: CHART_RED, text: 'var(--color-danger-text)', tint: 'rgba(227,73,72,0.10)', border: 'rgba(227,73,72,0.30)' },
   muted: { fill: 'var(--text-muted)', text: 'var(--text-secondary)', tint: 'var(--overlay-subtle)', border: 'var(--border-light)' },
 };
 
@@ -685,7 +685,7 @@ export default function AdminDashboardPage() {
                   className="rounded-xl px-3 py-2.5 no-underline hover:border-[var(--accent-primary)]"
                   style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}
                 >
-                  <span className="block text-[12.5px] font-extrabold" style={{ color: '#015697' }}>{cmd.title}</span>
+                  <span className="block text-[12.5px] font-extrabold" style={{ color: 'var(--accent-hover)' }}>{cmd.title}</span>
                   <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>{cmd.desc}</span>
                 </Link>
               ))}

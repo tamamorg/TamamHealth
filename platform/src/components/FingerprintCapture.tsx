@@ -160,7 +160,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
           </div>
 
           {error && (
-            <p className="text-[11px] mt-2" role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>
+            <p className="text-[11px] mt-2" role="alert" style={{ color: 'var(--color-danger-text)' }}>{error}</p>
           )}
 
           {value.length > 0 && (

@@ -3,7 +3,7 @@
 import { useState, useCallback, createContext, useContext, ReactNode } from 'react';
 import { CheckCircle2, AlertTriangle, X } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { DANGER, DANGER_STRONG, SUCCESS, SUCCESS_STRONG, WHITE } from '@/lib/theme-colors';
+import { DANGER_STRONG, SUCCESS_STRONG, WHITE } from '@/lib/theme-colors';
 
 /** An inline action rendered as a button in the toast — e.g. Undo. */
 export interface ToastAction {
@@ -53,32 +53,32 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         aria-label={t('common.notifications')}
         aria-live="polite"
         aria-atomic="false"
-        className="fixed top-4 right-4 z-[9999] flex flex-col gap-2"
-        style={{ maxWidth: '400px' }}
+        className="fixed z-[9999] flex flex-col gap-2 items-end"
+        style={{ top: 16, right: 16, maxWidth: 'min(420px, calc(100vw - 32px))' }}
       >
         {toasts.map(toast => (
           <div
             key={toast.id}
             role="alert"
-            className="flex items-center gap-3 px-4 py-3 shadow-lg animate-fadeInUp"
+            className="ehr-toast animate-fadeInUp"
             style={{
-              background: toast.type === 'success' ? SUCCESS : DANGER,
+              // The STRONG rung, not the base: 13.5px white text sits on this,
+              // and the base fills are only rated for 3:1. Success goes from
+              // 3.77:1 to 5.36:1, danger from 4.83:1 to 8.35:1.
+              background: toast.type === 'success' ? SUCCESS_STRONG : DANGER_STRONG,
               color: WHITE,
-              border: `1px solid ${toast.type === 'success' ? SUCCESS_STRONG : DANGER_STRONG}`,
-              borderRadius: 'var(--card-radius)',
             }}
           >
             {toast.type === 'success' ? (
-              <CheckCircle2 className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+              <CheckCircle2 className="ehr-toast-icon" aria-hidden="true" />
             ) : (
-              <AlertTriangle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+              <AlertTriangle className="ehr-toast-icon" aria-hidden="true" />
             )}
-            <p className="text-sm font-medium flex-1">{toast.message}</p>
+            <p className="ehr-toast-text">{toast.message}</p>
             {toast.action && (
               <button
                 onClick={() => { void toast.action!.onClick(); removeToast(toast.id); }}
-                className="px-3 py-1.5 rounded font-semibold text-sm flex-shrink-0 transition-colors"
-                style={{ background: 'rgba(255,255,255,0.22)', color: WHITE, border: '1px solid rgba(255,255,255,0.45)' }}
+                className="ehr-toast-action"
               >
                 {toast.action.label}
               </button>
@@ -86,9 +86,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <button
               onClick={() => removeToast(toast.id)}
               aria-label={t('common.dismissNotification')}
-              className="p-1.5 rounded hover:bg-white/20 transition-colors flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className="ehr-toast-close"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
         ))}

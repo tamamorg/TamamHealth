@@ -179,7 +179,7 @@ export default function WardsPage() {
               { label: t('ward.kpiTotalBeds'), value: totalBeds, color: LIST_STAT_COLORS.muted },
               { label: t('ward.kpiOccupied'), value: occupiedBeds, color: LIST_STAT_COLORS.blue },
               { label: t('ward.kpiAvailable'), value: availableBeds, color: LIST_STAT_COLORS.green },
-              { label: t('ward.kpiOccupancy'), value: `${occupancyRate}%`, color: occupancyRate > 90 ? '#C44536' : occupancyRate > 75 ? LIST_STAT_COLORS.amber : LIST_STAT_COLORS.blue },
+              { label: t('ward.kpiOccupancy'), value: `${occupancyRate}%`, color: occupancyRate > 90 ? 'var(--color-danger-text)' : occupancyRate > 75 ? LIST_STAT_COLORS.amber : LIST_STAT_COLORS.blue },
             ]}
             search={{ value: admissionSearch, onChange: setAdmissionSearch, placeholder: 'Search by patient, ward, or diagnosis…' }}
             actions={
@@ -189,7 +189,7 @@ export default function WardsPage() {
                     <EhrListHeaderButton onClick={() => setShowWardFilter(s => !s)} active={activeFilterCount > 0} ariaExpanded={showWardFilter} ariaLabel="Filters">
                       <Filter className="w-4 h-4" />
                       {activeFilterCount > 0 && (
-                        <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: '#2191D0', color: '#fff' }}>
+                        <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
                           {activeFilterCount}
                         </span>
                       )}
@@ -218,7 +218,7 @@ export default function WardsPage() {
                 )}
                 <button
                   onClick={() => setAdmitOpen(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: '#2191D0', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: 'var(--accent-primary)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
                   <Plus className="w-4 h-4" /> {t('ward.admitPatient')}
                 </button>
@@ -404,11 +404,11 @@ export default function WardsPage() {
                   {t('ward.followUpRequired')}
                 </label>
                 {dischargeForm.dischargeType === 'death' ? (
-                  <div className="text-[12px] flex items-center gap-2" style={{ color: '#8B2E24' }}>
+                  <div className="text-[12px] flex items-center gap-2" style={{ color: 'var(--color-danger-text)' }}>
                     <AlertTriangle className="w-3.5 h-3.5" /> {t('ward.deathRecordNotice')}
                   </div>
                 ) : (
-                  <div className="text-[12px] flex items-center gap-2" style={{ color: '#15795C' }}>
+                  <div className="text-[12px] flex items-center gap-2" style={{ color: 'var(--color-success-text)' }}>
                     <CheckCircle2 className="w-3.5 h-3.5" /> {t('ward.bedReleasedNotice')}
                   </div>
                 )}

@@ -11,9 +11,9 @@ import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import Select from '@/components/Select';
 
 const CRIT_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
-  severe:   { bg: 'var(--color-danger-bg, rgba(196,69,54,0.12))', fg: 'var(--color-danger)',  label: 'Severe'   },
-  moderate: { bg: 'rgba(217,119,6,0.12)',                         fg: '#B45309',              label: 'Moderate' },
-  mild:     { bg: 'rgba(21,121,92,0.12)',                         fg: 'var(--color-success)', label: 'Mild'     },
+  severe:   { bg: 'var(--color-danger-bg, rgba(196,69,54,0.12))', fg: 'var(--color-danger-text)',  label: 'Severe'   },
+  moderate: { bg: 'rgba(217,119,6,0.12)',                         fg: 'var(--color-warning-text)',              label: 'Moderate' },
+  mild:     { bg: 'rgba(21,121,92,0.12)',                         fg: 'var(--color-success-text)', label: 'Mild'     },
   unknown:  { bg: 'var(--overlay-subtle)',                        fg: 'var(--text-muted)',    label: 'Unknown'  },
 };
 
@@ -105,7 +105,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
                     <button className="p-1 rounded transition-colors hover:bg-blue-50" disabled={busy} title="Edit" onClick={() => openEdit(a)} style={{ color: 'var(--color-primary)' }}>
                       <Edit3 className="w-3 h-3" />
                     </button>
-                    <button className="p-1 rounded transition-colors hover:bg-red-50" disabled={busy} title="Remove" onClick={() => openRemove(a)} style={{ color: 'var(--color-danger)' }}>
+                    <button className="p-1 rounded transition-colors hover:bg-red-50" disabled={busy} title="Remove" onClick={() => openRemove(a)} style={{ color: 'var(--color-danger-text)' }}>
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -151,7 +151,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
               </div>
             </div>
             <input value={editForm.reaction} onChange={(e) => setEditForm({ ...editForm, reaction: e.target.value })} placeholder="Reaction" className={inputCls} style={inputStyle} />
-            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setEditingEntry(null)}>Cancel</button>
               <button className="btn btn-sm btn-primary" disabled={busy || editForm.substance.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.updateAllergy(patient._id, editingEntry.id, editForm); }, () => setEditingEntry(null))}>Save changes</button>
@@ -172,7 +172,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
               Remove <strong>{removingEntry.substance}</strong> from the allergy list? A reason is required.
             </p>
             <input autoFocus value={removalReason} onChange={(e) => setRemovalReason(e.target.value)} placeholder="Reason for removal" className={inputCls} style={inputStyle} />
-            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setRemovingEntry(null)}>Cancel</button>
               <button className="btn btn-sm" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.removeAllergy(patient._id, removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 8, padding: '6px 16px', fontSize: 13 }}>Confirm removal</button>

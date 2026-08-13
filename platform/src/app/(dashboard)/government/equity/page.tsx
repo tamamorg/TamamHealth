@@ -188,9 +188,9 @@ export default function EquityPlanningPage() {
                       <tr key={r.state} style={{ borderBottom: '1px solid var(--border-light)' }}>
                         <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{r.state}</td>
                         <td className="px-4 py-2.5"><MiniBar value={r.facilities} max={maxFacilities} color="#2a78d6" /></td>
-                        <td className="px-4 py-2.5"><MiniBar value={r.activeCases} max={maxCases} color="#e34948" /></td>
-                        <td className="px-4 py-2.5"><MiniBar value={r.immRecords} max={maxImm} color="#199e70" /></td>
-                        <td className="px-4 py-2.5"><MiniBar value={r.ancVisits} max={maxAnc} color="#eda100" /></td>
+                        <td className="px-4 py-2.5"><MiniBar value={r.activeCases} max={maxCases} color="var(--color-danger-text)" /></td>
+                        <td className="px-4 py-2.5"><MiniBar value={r.immRecords} max={maxImm} color="var(--color-success-text)" /></td>
+                        <td className="px-4 py-2.5"><MiniBar value={r.ancVisits} max={maxAnc} color="var(--color-warning-text)" /></td>
                         <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: r.avgCompleteness === null ? 'var(--text-muted)' : 'var(--ehr-muted, var(--text-secondary))' }}>
                           {r.avgCompleteness === null ? 'No data on file' : `${r.avgCompleteness}%`}
                         </td>
@@ -234,7 +234,7 @@ export default function EquityPlanningPage() {
                       <ReferenceLine y={medianCompleteness} stroke="var(--border-light)" strokeDasharray="4 4" />
                       <Scatter data={scatterRows} fill="#2a78d6">
                         {scatterRows.map((r, i) => (
-                          <Cell key={i} fill={r.activeCases > medianCases && (r.avgCompleteness as number) < medianCompleteness ? '#eda100' : '#2a78d6'} />
+                          <Cell key={i} fill={r.activeCases > medianCases && (r.avgCompleteness as number) < medianCompleteness ? 'var(--color-warning)' : '#2a78d6'} />
                         ))}
                       </Scatter>
                     </ScatterChart>
@@ -242,7 +242,7 @@ export default function EquityPlanningPage() {
                 )}
               </div>
               <div className="px-4 pb-4">
-                <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#eda100' }}>High burden / low visibility — priority</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-warning-text)' }}>High burden / low visibility — priority</p>
                 {priorityStates.length === 0 ? (
                   <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>No states currently fall in the high-burden / low-visibility quadrant.</p>
                 ) : (
@@ -281,7 +281,7 @@ export default function EquityPlanningPage() {
                     {accessRows.map(r => (
                       <tr key={r.state} style={{ borderBottom: '1px solid var(--border-light)' }}>
                         <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{r.state}</td>
-                        <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: r.accessGap ? '#e34948' : 'var(--ehr-muted, var(--text-secondary))' }}>{r.facilities}</td>
+                        <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: r.accessGap ? 'var(--color-danger-text)' : 'var(--ehr-muted, var(--text-secondary))' }}>{r.facilities}</td>
                         <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.activeCases.toLocaleString()}</td>
                         <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.ratePer100Cases === null ? '—' : r.ratePer100Cases}</td>
                         <td className="px-4 py-2.5">

@@ -460,7 +460,7 @@ export default function PharmacyPage() {
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div><span className="block font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Ordered</span><strong>{rx.medication}</strong></div>
             <div><span className="block font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Dose</span><strong>{prescriptionSig(rx)}</strong></div>
-            <div><span className="block font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Payment</span><strong style={{ color: paymentClear ? 'var(--color-success)' : 'var(--color-warning)' }}>{paymentClear ? 'Clear' : balanceKnown ? formatMoney(balance) : 'Unknown'}</strong></div>
+            <div><span className="block font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Payment</span><strong style={{ color: paymentClear ? 'var(--color-success-text)' : 'var(--color-warning-text)' }}>{paymentClear ? 'Clear' : balanceKnown ? formatMoney(balance) : 'Unknown'}</strong></div>
             <div><span className="block font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Stage</span><strong>{pharmacyStageLabel(stage)}</strong></div>
           </div>
           {rx.patientId && (
@@ -503,7 +503,7 @@ export default function PharmacyPage() {
               {action.label}
             </button>
             {action.disabledReason && (
-              <p className="text-xs" style={{ color: 'var(--color-warning)' }}>{action.disabledReason}</p>
+              <p className="text-xs" style={{ color: 'var(--color-warning-text)' }}>{action.disabledReason}</p>
             )}
           </div>
         )}
@@ -514,7 +514,7 @@ export default function PharmacyPage() {
                 key={secondary.label}
                 type="button"
                 className="btn btn-secondary"
-                style={secondary.tone === 'danger' ? { color: 'var(--color-danger)' } : undefined}
+                style={secondary.tone === 'danger' ? { color: 'var(--color-danger-text)' } : undefined}
                 onClick={secondary.onClick}
               >
                 {secondary.label}
@@ -875,7 +875,7 @@ export default function PharmacyPage() {
                 >
                   <Filter className="w-4 h-4" />
                   {headerFilterCount > 0 && (
-                    <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: '#2191D0', color: '#fff' }}>
+                    <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
                       {headerFilterCount}
                     </span>
                   )}
@@ -1012,7 +1012,7 @@ export default function PharmacyPage() {
                           <div className="flex items-center gap-2">
                             {rx.medication}
                             {rx.urgency === 'immediate' && (
-                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(217,119,6,0.12)', color: 'var(--color-warning)' }}>Immediate</span>
+                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(217,119,6,0.12)', color: 'var(--color-warning-text)' }}>Immediate</span>
                             )}
                           </div>
                         </td>
@@ -1090,7 +1090,7 @@ export default function PharmacyPage() {
                     <td><span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-medium)', color: 'var(--text-secondary)' }}>{item.category}</span></td>
                     <td>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm" style={{ color: item.status === 'critical' ? 'var(--color-danger)' : item.status === 'low' ? 'var(--color-warning)' : 'inherit' }}>
+                        <span className="font-semibold text-sm" style={{ color: item.status === 'critical' ? 'var(--color-danger-text)' : item.status === 'low' ? 'var(--color-warning-text)' : 'inherit' }}>
                           {item.stockLevel}
                         </span>
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.unit}</span>
@@ -1113,7 +1113,7 @@ export default function PharmacyPage() {
                       </span>
                     </td>
                     <td className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{item.batchNumber}</td>
-                    <td className="text-xs" style={{ color: item.status === 'expired' ? 'var(--color-danger)' : 'var(--text-muted)' }}>
+                    <td className="text-xs" style={{ color: item.status === 'expired' ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>
                       {item.expiryDate}
                     </td>
                     <td className="text-center font-semibold text-sm">{item.dispensedToday}</td>
@@ -1152,13 +1152,13 @@ export default function PharmacyPage() {
                         <div className="icon-box-sm">
                           {item.status === 'critical'
                             ? <AlertOctagon className="w-3.5 h-3.5" style={{ color: 'var(--color-danger)' }} />
-                            : <AlertTriangle className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />}
+                            : <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-warning-text)' }} />}
                         </div>
                         {item.medicationName}
                       </div>
                     </td>
                     <td><span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-medium)', color: 'var(--text-secondary)' }}>{item.category}</span></td>
-                    <td className="font-semibold text-sm" style={{ color: item.status === 'critical' ? 'var(--color-danger)' : 'var(--color-warning)' }}>{item.stockLevel} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
+                    <td className="font-semibold text-sm" style={{ color: item.status === 'critical' ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>{item.stockLevel} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
                     <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.reorderLevel}</td>
                     <td className="font-semibold text-sm" style={{ color: 'var(--accent-primary)' }}>{orderQtyFor(item)} {item.unit}</td>
                     <td>
@@ -1198,7 +1198,7 @@ export default function PharmacyPage() {
                       <td className="font-medium text-sm">{item.medicationName}</td>
                       <td className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{item.batchNumber}</td>
                       <td className="text-sm">{item.stockLevel} <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
-                      <td className="text-xs" style={{ color: expired ? 'var(--color-danger)' : 'var(--text-muted)' }}>{item.expiryDate}</td>
+                      <td className="text-xs" style={{ color: expired ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>{item.expiryDate}</td>
                       <td>
                         <span className={`badge text-[10px] ${expired ? 'badge-emergency' : soon ? 'badge-warning' : 'badge-normal'}`}>
                           {expired ? t('pharmacy.expired') : t('pharmacy.daysLeft', { count: days })}
@@ -1228,7 +1228,7 @@ export default function PharmacyPage() {
                       <span className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>{cat.category}</span>
                       <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{
                         background: okPct > 80 ? 'rgba(74,222,128,0.15)' : okPct > 60 ? 'rgba(251,191,36,0.15)' : 'rgba(248,113,113,0.15)',
-                        color: okPct > 80 ? 'var(--color-success)' : okPct > 60 ? 'var(--color-warning)' : '#F87171',
+                        color: okPct > 80 ? 'var(--color-success-text)' : okPct > 60 ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
                       }}>{okPct}%</span>
                     </div>
                     <p className="text-lg font-bold mb-1.5">{cat.units.toLocaleString()} <span className="text-[10px] font-normal" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.stockLabel')}</span></p>
@@ -1236,9 +1236,9 @@ export default function PharmacyPage() {
                       <div className="h-full rounded-full" style={{ width: `${okPct}%`, background: okPct > 80 ? 'var(--color-success)' : okPct > 60 ? 'var(--color-warning)' : 'var(--color-danger)' }} />
                     </div>
                     <div className="flex justify-between text-[9px]" style={{ color: 'var(--text-muted)' }}>
-                      <span style={{ color: 'var(--color-success)' }}>{t('pharmacy.catOk', { count: cat.adequate })}</span>
-                      <span style={{ color: 'var(--color-warning)' }}>{t('pharmacy.catLow', { count: cat.low })}</span>
-                      <span style={{ color: '#F87171' }}>{t('pharmacy.catCrit', { count: cat.critical + cat.expired })}</span>
+                      <span style={{ color: 'var(--color-success-text)' }}>{t('pharmacy.catOk', { count: cat.adequate })}</span>
+                      <span style={{ color: 'var(--color-warning-text)' }}>{t('pharmacy.catLow', { count: cat.low })}</span>
+                      <span style={{ color: 'var(--color-danger-text)' }}>{t('pharmacy.catCrit', { count: cat.critical + cat.expired })}</span>
                     </div>
                   </div>
                 );
@@ -1345,7 +1345,7 @@ export default function PharmacyPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="icon-box-sm">
-                  <Pill className="w-4 h-4" style={{ color: '#2191D0' }} />
+                  <Pill className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                 </div>
                 <h3 className="text-base font-semibold">{t('pharmacy.receiveStock')}</h3>
               </div>
@@ -1423,7 +1423,7 @@ export default function PharmacyPage() {
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
-                  {t('pharmacy.quantityReceived', { unit: restockTarget.unit })} <span style={{ color: 'var(--color-danger)' }}>*</span>
+                  {t('pharmacy.quantityReceived', { unit: restockTarget.unit })} <span style={{ color: 'var(--color-danger-text)' }}>*</span>
                 </label>
                 <input
                   type="number"

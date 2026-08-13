@@ -99,7 +99,7 @@ export default function AddInquiryDialog({ onClose, onCreated }: AddInquiryDialo
               {facilityUsers.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
             </Select>
           </div>
-          {error && <p className="text-xs" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+          {error && <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
         </div>
         <hr className="section-divider" />
         <div className="flex gap-2 mt-2">

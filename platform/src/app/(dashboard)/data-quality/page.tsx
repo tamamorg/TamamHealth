@@ -18,9 +18,9 @@ const VIEWS: { key: View; label: string }[] = [
   { key: 'outliers', label: 'Possible outliers' },
 ];
 
-const RED = '#e34948';
-const AMBER = '#eda100';
-const GREEN = '#199e70';
+const RED = 'var(--color-danger)';
+const AMBER = 'var(--color-warning)';
+const GREEN = 'var(--color-success)';
 
 function thresholdColor(value: number) {
   return value < 60 ? RED : value < 80 ? AMBER : GREEN;

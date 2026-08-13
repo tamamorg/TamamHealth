@@ -34,9 +34,9 @@ const PAYMENT_METHODS: { key: UiMethod; name: string; icon: typeof Phone; desc: 
   { key: 'mpesa', name: 'M-Pesa', icon: Phone, desc: 'Pay via M-Pesa mobile money', color: '#4CAF50' },
   { key: 'mtn', name: 'MTN Mobile Money', icon: Phone, desc: 'Pay via MTN MoMo', color: '#FFC107' },
   { key: 'airtel', name: 'Airtel Money', icon: Phone, desc: 'Pay via Airtel Money', color: '#E53935' },
-  { key: 'card', name: 'Card Payment', icon: CreditCard, desc: 'Pay with a debit or credit card', color: '#2191D0' },
+  { key: 'card', name: 'Card Payment', icon: CreditCard, desc: 'Pay with a debit or credit card', color: 'var(--accent-primary)' },
   { key: 'bank', name: 'Bank Transfer', icon: Banknote, desc: 'Pay via bank transfer', color: '#00897B' },
-  { key: 'cash', name: 'Cash at Facility', icon: Wallet, desc: 'Pay in cash at the facility desk', color: '#2191D0' },
+  { key: 'cash', name: 'Cash at Facility', icon: Wallet, desc: 'Pay in cash at the facility desk', color: 'var(--accent-primary)' },
 ];
 
 const isMobileMoney = (m: UiMethod | null) => m === 'mpesa' || m === 'mtn' || m === 'airtel';

@@ -1,8 +1,15 @@
 'use client';
 
 /**
- * Labeled dropdown menu — the accessible primitive behind the top rail's
- * "People & HR" navigation and the dashboard's "Add" action menu.
+ * Labeled dropdown menu — the accessible primitive behind the dashboard's
+ * "Add" menu and the billing workspace's "Actions" menu.
+ *
+ * A short list of verbs and nothing else: one line per item, no icons, no
+ * per-item clarifiers, no section headings, no panel title, and the panel
+ * hangs flush off the bottom of its trigger. Those decorations were all here
+ * once. They doubled the panel's height and width around labels like "Create
+ * shift" that already say exactly what they do, and the title just repeated
+ * the button that opened it.
  *
  * Why this exists: the repo had no menu primitive. `EhrModuleMenu` is a
  * fixed-shape mega-panel, `RowActionsMenu` is a kebab with no keyboard model,
@@ -34,11 +41,6 @@ import type { NavIcon } from '@/lib/permissions';
 export interface RailMenuItem {
   key: string;
   label: string;
-  icon?: NavIcon;
-  /** Short clarifier rendered under the label. */
-  description?: string;
-  /** Group heading. Consecutive items sharing a section render under one heading. */
-  section?: string;
   /** Marks the current destination — renders the active well + aria-current. */
   active?: boolean;
   disabled?: boolean;
@@ -50,9 +52,6 @@ interface EhrRailMenuProps {
   label: string;
   icon?: NavIcon;
   items: RailMenuItem[];
-  /** Panel heading. Omit for a bare list. */
-  menuTitle?: string;
-  menuSubtitle?: string;
   /** Tooltip + accessible name. Defaults to `label`. */
   ariaLabel?: string;
   /** Which trigger edge the panel lines up with. */
@@ -61,24 +60,25 @@ interface EhrRailMenuProps {
   variant?: 'rail' | 'primary';
   /** True when the current route lives inside this menu. */
   active?: boolean;
+  /** Hides the trailing chevron. For a trigger whose leading icon already
+   *  says what it does (an Add "+"), the caret is a second, weaker cue for
+   *  the same thing. `aria-haspopup`/`aria-expanded` still announce the menu. */
+  hideChevron?: boolean;
   menuWidth?: number;
   emptyMessage?: string;
   children?: ReactNode;
 }
 
-const VERTICAL_GAP = 6;
-
 export default function EhrRailMenu({
   label,
   icon: TriggerIcon,
   items,
-  menuTitle,
-  menuSubtitle,
   ariaLabel,
   align = 'left',
   variant = 'rail',
   active = false,
-  menuWidth = 268,
+  hideChevron = false,
+  menuWidth = 208,
   emptyMessage = 'Nothing available here for your role.',
 }: EhrRailMenuProps) {
   const [open, setOpen] = useState(false);
@@ -103,7 +103,9 @@ export default function EhrRailMenu({
     const width = Math.min(menuWidth, window.innerWidth - 16);
     const rawLeft = align === 'right' ? rect.right - width : rect.left;
     setCoords({
-      top: rect.bottom + VERTICAL_GAP,
+      // Flush against the trigger, no gap: the two then read as one control
+      // rather than a panel that happens to be floating nearby.
+      top: rect.bottom,
       // Never let the panel run off either edge on a narrow viewport.
       left: Math.max(8, Math.min(rawLeft, window.innerWidth - width - 8)),
     });
@@ -193,14 +195,6 @@ export default function EhrRailMenu({
     ? `ehr-rail-menu-trigger ehr-rail-menu-trigger-primary${open ? ' open' : ''}`
     : `ehr-rail-menu-trigger${open ? ' open' : ''}${active ? ' is-active' : ''}`;
 
-  // Section headings resolved up front. Computing them by mutating a running
-  // variable inside the render map reassigns after render completes, which the
-  // React compiler rejects — and it would break if the list ever re-rendered
-  // partially. Consecutive items sharing a section get one heading.
-  const headings = items.map((item, i) =>
-    item.section && item.section !== items[i - 1]?.section ? item.section : null,
-  );
-
   return (
     <>
       <button
@@ -217,7 +211,7 @@ export default function EhrRailMenu({
       >
         {TriggerIcon && <TriggerIcon className="w-4 h-4" color="currentColor" />}
         <span className="ehr-rail-menu-label">{label}</span>
-        <ChevronDown className="ehr-rail-menu-chevron" color="currentColor" aria-hidden />
+        {!hideChevron && <ChevronDown className="ehr-rail-menu-chevron" color="currentColor" aria-hidden />}
       </button>
 
       {open && coords && typeof document !== 'undefined' && createPortal(
@@ -230,42 +224,26 @@ export default function EhrRailMenu({
           style={{ top: coords.top, left: coords.left, width: Math.min(menuWidth, window.innerWidth - 16) }}
           onKeyDown={onPanelKeyDown}
         >
-          {menuTitle && (
-            <div className="ehr-rail-menu-head">
-              <strong>{menuTitle}</strong>
-              {menuSubtitle && <span>{menuSubtitle}</span>}
-            </div>
-          )}
           <div className="ehr-rail-menu-scroll">
             {items.length === 0 && <p className="ehr-rail-menu-empty">{emptyMessage}</p>}
-            {items.map((item, index) => {
-              const ItemIcon = item.icon;
-              const heading = headings[index];
-              return (
-                <div key={item.key}>
-                  {heading && <p className="ehr-rail-menu-section">{heading}</p>}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    ref={el => { itemRefs.current[index] = el; }}
-                    className={`ehr-rail-menu-item${item.active ? ' active' : ''}`}
-                    // Roving tabindex: only the focused row is tabbable, so the
-                    // menu is one Tab stop rather than one per destination.
-                    tabIndex={index === focusIndex ? 0 : -1}
-                    aria-current={item.active ? 'page' : undefined}
-                    disabled={item.disabled}
-                    onClick={() => select(item)}
-                    onMouseEnter={() => !item.disabled && setFocusIndex(index)}
-                  >
-                    {ItemIcon && <ItemIcon className="w-4 h-4" color="currentColor" />}
-                    <span className="ehr-rail-menu-item-text">
-                      <span>{item.label}</span>
-                      {item.description && <small>{item.description}</small>}
-                    </span>
-                  </button>
-                </div>
-              );
-            })}
+            {items.map((item, index) => (
+              <button
+                key={item.key}
+                type="button"
+                role="menuitem"
+                ref={el => { itemRefs.current[index] = el; }}
+                className={`ehr-rail-menu-item${item.active ? ' active' : ''}`}
+                // Roving tabindex: only the focused row is tabbable, so the
+                // menu is one Tab stop rather than one per destination.
+                tabIndex={index === focusIndex ? 0 : -1}
+                aria-current={item.active ? 'page' : undefined}
+                disabled={item.disabled}
+                onClick={() => select(item)}
+                onMouseEnter={() => !item.disabled && setFocusIndex(index)}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
         </div>,
         document.body,

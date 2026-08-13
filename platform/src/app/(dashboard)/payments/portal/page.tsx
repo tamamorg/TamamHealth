@@ -122,7 +122,7 @@ const buildPaymentMethods = (bankDetails?: string): PaymentMethodDef[] => [
   // Literal hex (the --accent-primary value), not the CSS var — the icon
   // tint below concatenates a hex alpha suffix onto this string, which only
   // works for a hex literal.
-  { id: 'bank', label: 'Bank Transfer', desc: 'Direct bank deposit', icon: Building2, color: '#2191D0', instructions: resolveBankInstructions(bankDetails) },
+  { id: 'bank', label: 'Bank Transfer', desc: 'Direct bank deposit', icon: Building2, color: 'var(--accent-primary)', instructions: resolveBankInstructions(bankDetails) },
 ];
 
 export default function PatientPortalPage() {
@@ -407,7 +407,7 @@ export default function PatientPortalPage() {
                       : t('portal.payAllBills', { count: unpaidBills.length })}
                   </p>
                   <div style={{
-                    background: 'var(--ehr-page-bg, #F8FBFD)', border: '1px solid var(--ehr-border, #D8E3EC)',
+                    background: 'var(--ehr-page-bg, #F8FBFD)', border: '1px solid var(--ehr-border, #DDEAF3)',
                     borderRadius: 6, padding: '14px 18px', textAlign: 'center', marginBottom: 16,
                   }}>
                     <span className="bl-stat-label">{t('portal.totalDue')}</span>
@@ -590,7 +590,7 @@ export default function PatientPortalPage() {
                   {/* Header — plain surface; the method's colour lives only in
                       the small icon chip (the bl-home-icon convention), not a
                       full-width tint. */}
-                  <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--ehr-border, #D8E3EC)' }}>
+                  <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--ehr-border, #DDEAF3)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
                       <div style={{
                         width: 44, height: 44, borderRadius: 10, flexShrink: 0,
@@ -615,7 +615,7 @@ export default function PatientPortalPage() {
                     <h4 className="bl-card-title" style={{ marginBottom: 10 }}>{t('portal.paymentInstructions')}</h4>
                     <div style={{
                       background: 'var(--ehr-page-bg, #F8FBFD)', borderRadius: 6, padding: '14px 16px',
-                      border: '1px solid var(--ehr-border, #D8E3EC)', marginBottom: 18,
+                      border: '1px solid var(--ehr-border, #DDEAF3)', marginBottom: 18,
                     }}>
                       {method.instructions.split('\n').map((line, i) => (
                         <div key={i} style={{
@@ -631,7 +631,7 @@ export default function PatientPortalPage() {
                     <div style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       background: 'var(--ehr-page-bg, #F8FBFD)', borderRadius: 6, padding: '10px 14px',
-                      border: '1px solid var(--ehr-border, #D8E3EC)', marginBottom: 20,
+                      border: '1px solid var(--ehr-border, #DDEAF3)', marginBottom: 20,
                     }}>
                       <div>
                         <div className="bl-muted" style={{ fontSize: 11, marginBottom: 2 }}>{t('lab.reference')}</div>
@@ -647,10 +647,10 @@ export default function PatientPortalPage() {
                     {completeError && (
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: 8,
-                        background: 'var(--ehr-panel, #fff)', border: '1px solid var(--color-danger, #DA1E28)',
+                        background: 'var(--ehr-panel, #fff)', border: '1px solid var(--color-danger, #DC2626)',
                         borderRadius: 6, padding: '10px 14px', marginBottom: 14,
                       }}>
-                        <AlertCircle size={16} color="var(--color-danger, #DA1E28)" style={{ flexShrink: 0 }} />
+                        <AlertCircle size={16} color="var(--color-danger, #DC2626)" style={{ flexShrink: 0 }} />
                         <span className="bl-danger" style={{ fontSize: 12.5 }}>{completeError}</span>
                       </div>
                     )}
@@ -687,7 +687,7 @@ export default function PatientPortalPage() {
                 background: 'rgba(25, 128, 56, 0.10)', // icon wrapped in a span — see globals.css note above
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span><CheckCircle size={32} color="#14713A" /></span>
+                <span><CheckCircle size={32} color="var(--color-success-text)" /></span>
               </div>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--ehr-text-title, #132C44)', margin: '0 0 8px' }}>
                 {t('portal.paymentSubmitted')}
@@ -698,7 +698,7 @@ export default function PatientPortalPage() {
 
               <dl className="bl-totals" style={{
                 background: 'var(--ehr-page-bg, #F8FBFD)', borderRadius: 6, padding: '14px 18px',
-                marginBottom: 22, border: '1px solid var(--ehr-border, #D8E3EC)', textAlign: 'left',
+                marginBottom: 22, border: '1px solid var(--ehr-border, #DDEAF3)', textAlign: 'left',
               }}>
                 <div className="bl-totals-row"><dt>{t('lab.reference')}</dt><dd style={{ fontFamily: 'var(--font-platform-mono)' }}>{selectedBill?.id}</dd></div>
                 <div className="bl-totals-row"><dt>{t('portal.amount')}</dt><dd>{formatMoney(Number(paymentAmount))}</dd></div>

@@ -23,7 +23,7 @@ export function FavoritesBar({
   return (
     <div className="mb-3">
       <div className="flex items-center gap-1.5 mb-1.5">
-        <Star className="w-3.5 h-3.5" style={{ color: 'var(--color-warning, #E4A84B)' }} />
+        <Star className="w-3.5 h-3.5" style={{ color: 'var(--color-warning, #D97706)' }} />
         <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</span>
       </div>
       <div className="flex flex-wrap gap-1.5">
@@ -62,9 +62,9 @@ export function FavoriteStar({
       aria-pressed={active}
       title={title ?? (active ? 'Remove from favorites' : 'Save to favorites')}
       className="flex-shrink-0 p-1 rounded transition-colors"
-      style={{ color: active ? 'var(--color-warning, #E4A84B)' : 'var(--text-muted)' }}
+      style={{ color: active ? 'var(--color-warning, #D97706)' : 'var(--text-muted)' }}
     >
-      <Star className="w-4 h-4" style={active ? { fill: 'var(--color-warning, #E4A84B)' } : undefined} />
+      <Star className="w-4 h-4" style={active ? { fill: 'var(--color-warning, #D97706)' } : undefined} />
     </button>
   );
 }

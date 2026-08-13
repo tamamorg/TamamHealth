@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Calendar,
+  ClipboardPen,
   HelpCircle,
   LayoutDashboard,
   LogOut,
@@ -11,7 +12,6 @@ import {
   Plus,
   Search,
   Settings,
-  UserPlus,
   Users,
   X,
 } from '@/components/icons/lucide';
@@ -104,9 +104,11 @@ export default function EhrTopRail() {
 
   // Keep four high-frequency destinations visible in the header. They are
   // removed from the module menu so each destination has one visible home.
+  // `homeHref` is passed so the role's own dashboard never takes one of the
+  // four — the module trigger to the left of this row already goes there.
   const headerShortcutItems = useMemo(
-    () => getPrimaryShortcutItems(navItems, currentUser?.role, 4),
-    [navItems, currentUser?.role],
+    () => getPrimaryShortcutItems(navItems, currentUser?.role, 4, homeHref),
+    [navItems, currentUser?.role, homeHref],
   );
   const headerShortcutHrefs = useMemo(
     () => new Set(headerShortcutItems.map(item => item.href)),
@@ -225,12 +227,13 @@ export default function EhrTopRail() {
           title="Open module menu"
           data-track="nav.module_menu"
         >
-          {/* The dashboard glyph, fixed — not a hamburger and not the current
-              module's icon. It stays constant so the trigger is always the same
-              button in the same place (a changing glyph read as a mystery
-              button), and because the module list leads with Dashboard this
-              also stands in for the shortcut that used to sit in the row. The
-              open panel attaches directly below. */}
+          {/* The dashboard glyph, fixed — not a hamburger (tried, reverted) and
+              not the current module's icon. It stays constant so the trigger is
+              always the same button in the same place (a changing glyph read as
+              a mystery button), and because it IS the way home, the shortcut row
+              beside it never spends a slot on the role's own dashboard —
+              `getPrimaryShortcutItems` drops that destination to its last
+              fallback tier. The open panel attaches directly below. */}
           <LayoutDashboard className="w-5 h-5" />
         </button>
 
@@ -347,7 +350,10 @@ export default function EhrTopRail() {
             title={t('frontDesk.registerNewPatient')}
             data-track="patient.create"
           >
-            <UserPlus className="w-4 h-4" />
+            {/* The intake form's clipboard-and-pen, not a person-plus: starting
+                a patient here is the same act as the intake module's, so the
+                header wears the icon the user already associates with it. */}
+            <ClipboardPen className="w-4 h-4" />
           </button>
         )}
         <QuickActions notificationCount={unreadCount} />

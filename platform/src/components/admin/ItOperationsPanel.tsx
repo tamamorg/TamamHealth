@@ -11,7 +11,7 @@ import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { SettingsLink } from '@/components/settings/SettingsHost';
 import { useApp } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { apiFetch } from '@/lib/api-fetch';
@@ -42,11 +42,18 @@ const CONSOLE_LINKS = [
   { href: '/data-quality', title: 'Data quality monitor', desc: 'Completeness and validation issues by facility.' },
   { href: '/admin/conflicts', title: 'Conflict queue', desc: 'Reconcile document conflicts from offline edits.' },
   { href: '/facility-settings', title: 'Workflow settings', desc: 'Facility workflow and reporting configuration.' },
-  { href: '/system-admin', title: 'System administration', desc: 'Apps, privileges, metadata, and global properties.' },
+  { href: '/settings?panel=sysadmin-apps', title: 'System administration', desc: 'Apps, privileges, metadata, and global properties.' },
 ];
 
+/** Route the console link's role gate should test — `href` may carry a query. */
+const linkPath = (href: string) => href.split('?')[0];
+
+/** Runnable jobs this panel offers — exported so the Settings rail can badge
+ *  its "IT Operations" entry without hard-coding a number that drifts. */
+export const IT_OPERATIONS_JOB_COUNT = 3;
+
 export default function ItOperationsPanel({ embedded = false }: {
-  /** True when hosted inside /system-admin — hides the self-referential console link. */
+  /** True when hosted inside Settings — hides the self-referential console link. */
   embedded?: boolean;
 }) {
   const { currentUser, isOnline, syncPaused, lastSync, syncNow } = useApp();
@@ -143,9 +150,11 @@ export default function ItOperationsPanel({ embedded = false }: {
   const canRunPlatformPush = currentUser?.role === 'super_admin';
 
   // Only offer consoles this role can actually enter (proxy would bounce
-  // anything else); inside /system-admin the self-link is dropped too.
+  // anything else); embedded in Settings, the System-administration tile is
+  // self-referential — its sections are already in the same rail — so drop it.
   const consoles = CONSOLE_LINKS.filter(c =>
-    currentUser && isPathAllowed(currentUser.role, c.href) && !(embedded && c.href === '/system-admin'));
+    currentUser && isPathAllowed(currentUser.role, linkPath(c.href))
+    && !(embedded && linkPath(c.href) === '/settings'));
 
   return (
     <div className="it-ops-panel">
@@ -210,11 +219,14 @@ export default function ItOperationsPanel({ embedded = false }: {
                 <p className="it-group-label">Consoles</p>
               </div>
               <div className="p-4 pt-1 grid grid-cols-1 md:grid-cols-2 gap-3 mt-auto">
+                {/* SettingsLink, not Link: hosted inside Settings these open
+                    as another Settings panel; on the standalone /it page the
+                    context is absent and they navigate normally. */}
                 {consoles.map(c => (
-                  <Link key={c.href} className="it-tile" href={c.href}>
+                  <SettingsLink key={c.href} className="it-tile" href={c.href}>
                     <strong>{c.title}</strong>
                     <span>{c.desc}</span>
-                  </Link>
+                  </SettingsLink>
                 ))}
               </div>
             </>
@@ -328,7 +340,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           text-decoration: none;
         }
         .it-tile:hover { border-color: var(--accent-primary); }
-        .it-tile strong { color: #015697; font-size: 12.5px; font-weight: 800; }
+        .it-tile strong { color: var(--accent-hover); font-size: 12.5px; font-weight: 800; }
         .it-tile span { color: var(--text-muted); font-size: 11px; }
         .it-store-row {
           display: grid;

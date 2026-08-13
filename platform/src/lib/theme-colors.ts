@@ -1,25 +1,61 @@
-// The platform's 4 main colors: sky blue (primary/--info), a darker blue
-// (secondary — feeds org branding's --accent-hover, pairs with white button
-// text), orange and purple (distinct third/fourth action colors). Clinical
-// safety colors (success/warning/danger) are intentionally kept separate
-// from this set — they're status signals, not brand colors.
+/**
+ * JS mirror of the CSS colour tokens in `src/app/globals.css`.
+ *
+ * `globals.css` is the source of truth — it is what the whole app resolves,
+ * and it is what org branding overrides at runtime (`brandingToCSSVars`).
+ * This file exists only for the handful of places that need a *literal*
+ * colour a CSS variable cannot supply: canvas, a standalone print/receipt
+ * document, or a value handed to a library that does not run inside our
+ * cascade. Everywhere else, use `var(--token)` — a literal here silently
+ * ignores tenant branding.
+ *
+ * `src/__tests__/design/color-tokens.test.ts` parses globals.css and fails if
+ * any value below drifts from its token, so the two cannot disagree again.
+ * They previously did: `danger` was #C44536 while `--color-danger` was
+ * #DC2626, and `success` was #1B9E77 while `--color-success` was #059669 —
+ * one meaning, two colours, depending on which file you happened to read.
+ *
+ * ── The two-tone rule ────────────────────────────────────────────────────
+ * Every status colour comes in two strengths, and which one you want depends
+ * on the *size of the text*, not on taste:
+ *
+ *   BASE (`SUCCESS`, `WARNING`, `DANGER`, `INFO`) clears 3:1 on white.
+ *     Use for: icons, borders, meter and chart fills, and surfaces behind
+ *     large (≥18.66px bold / ≥24px) text.
+ *   STRONG (`*_STRONG`) clears 4.5:1 both as text on white and as a surface
+ *     under white text.
+ *     Use for: any normal-size text — coloured words on a light background,
+ *     and white words on a coloured background (toasts, banners, pills).
+ *
+ * Getting this backwards is how "critical" ended up as the least readable
+ * text on the page: #F87171 scored 2.77:1 in 58 places.
+ */
+
 export const THEME_COLORS = {
+  // ── Brand. Mirrors --tb-blue-*; org branding replaces --accent-primary at
+  // runtime, so prefer var(--accent-primary) over BRAND_PRIMARY in the UI.
   brandPrimary: '#2191D0',
   brandSecondary: '#015697',
   brandDarker: '#2191D0',
   brandOrange: '#CA4D1C',
   brandPurple: '#7847EB',
-  info: '#2191D0',
-  infoLight: '#DDF2FB',
-  success: '#1B9E77',
-  successStrong: '#15795C',
-  successBg: '#DDF2E9',
-  warning: '#D97706',
-  warningStrong: '#9C5E16',
-  warningBg: '#FFF1C7',
-  danger: '#C44536',
-  dangerStrong: '#B93328',
-  dangerBg: '#FCE4DE',
+
+  // ── Status. base = --color-X, strong = --color-X-text, bg = --color-X-bg
+  // flattened onto white (the tints are rgba in CSS; a literal is needed here).
+  info: '#2191D0',            // --color-info
+  infoStrong: '#015697',      // --color-info-text
+  infoLight: '#DDF2FB',       // --tb-blue-100
+  success: '#059669',         // --color-success
+  successStrong: '#15795C',   // --color-success-text
+  successBg: '#E7F5F0',       // --color-success-bg on white
+  warning: '#D97706',         // --color-warning
+  warningStrong: '#9C5E16',   // --color-warning-text
+  warningBg: '#FBEFE2',       // --color-warning-bg on white
+  danger: '#DC2626',          // --color-danger
+  dangerStrong: '#8B2E24',    // --color-danger-text
+  dangerBg: '#F9EAE8',        // --color-danger-bg on white
+
+  // ── Neutrals. Mirrors the --ehr-* / --text-* / --border-* families.
   neutralText: '#39536B',
   neutralMuted: '#8395A8',
   neutralBorder: '#DDEAF3',
@@ -42,6 +78,7 @@ export const BRAND_DARKER = THEME_COLORS.brandDarker;
 export const BRAND_ORANGE = THEME_COLORS.brandOrange;
 export const BRAND_PURPLE = THEME_COLORS.brandPurple;
 export const INFO = THEME_COLORS.info;
+export const INFO_STRONG = THEME_COLORS.infoStrong;
 export const INFO_LIGHT = THEME_COLORS.infoLight;
 export const SUCCESS = THEME_COLORS.success;
 export const SUCCESS_STRONG = THEME_COLORS.successStrong;

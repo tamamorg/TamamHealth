@@ -66,7 +66,7 @@ function CollectPreconditions({ order }: { order: LabResultDoc }) {
         <span
           key={note.key}
           className="labord-chip"
-          style={note.strong ? { borderColor: 'var(--color-warning, #B26A00)', color: 'var(--color-warning, #B26A00)' } : undefined}
+          style={note.strong ? { borderColor: 'var(--color-warning, #D97706)', color: 'var(--color-warning, #D97706)' } : undefined}
         >
           {note.text}
         </span>
@@ -148,7 +148,7 @@ export function CollectStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWor
     <div>
       {rejected && (
         <div className="labord-section">
-          <div className="labord-section-head" style={{ color: 'var(--color-danger, #C22B2B)' }}>
+          <div className="labord-section-head" style={{ color: 'var(--color-danger, #DC2626)' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <AlertTriangle className="w-4 h-4" aria-hidden /> {t('labFlow.rejectedHeading')}
             </span>
@@ -336,7 +336,7 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
         <div className="labord-section-head">
           <span>{t('labFlow.resultHeading')}</span>
           {filed && (
-            <span className="labord-pick-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--color-success, #1F8A4C)' }}>
+            <span className="labord-pick-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--color-success, #059669)' }}>
               <CheckCircle2 className="w-3.5 h-3.5" aria-hidden /> {t('labFlow.filed')}
             </span>
           )}
@@ -397,7 +397,7 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
           </div>
 
           {ctrl.criticalVerdict.isCriticalValue && (
-            <p className="labord-help" style={{ color: 'var(--color-danger, #C22B2B)', fontWeight: 600 }}>
+            <p className="labord-help" style={{ color: 'var(--color-danger, #DC2626)', fontWeight: 600 }}>
               <AlertTriangle className="w-3.5 h-3.5" aria-hidden style={{ display: 'inline', marginRight: 6 }} />
               {t('lab.flagCriticalMsg')}
             </p>
@@ -416,7 +416,7 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
           <div className="labord-section-head">{t('labFlow.amendHeading')}</div>
           <div className="labord-section-body">
             {order.amended && (
-              <p className="labord-help" style={{ marginTop: 0, color: 'var(--color-warning, #B26A00)', fontWeight: 600 }}>
+              <p className="labord-help" style={{ marginTop: 0, color: 'var(--color-warning, #D97706)', fontWeight: 600 }}>
                 {t('labFlow.amendedNotice', {
                   from: order.amendedFrom || '—',
                   by: order.amendedBy || '—',
@@ -460,7 +460,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
             <Field
               label={t('labFlow.value')}
               value={
-                <span style={{ color: order.critical ? 'var(--color-danger, #C22B2B)' : order.abnormal ? 'var(--color-warning, #B26A00)' : undefined }}>
+                <span style={{ color: order.critical ? 'var(--color-danger, #DC2626)' : order.abnormal ? 'var(--color-warning, #D97706)' : undefined }}>
                   {order.result || '—'} {order.unit}
                 </span>
               }
@@ -564,7 +564,7 @@ function CloseoutRow({
         )}
       </span>
       {done ? (
-        <CheckCircle2 className="w-4 h-4" aria-hidden style={{ color: 'var(--color-success, #1F8A4C)' }} />
+        <CheckCircle2 className="w-4 h-4" aria-hidden style={{ color: 'var(--color-success, #059669)' }} />
       ) : (
         <button
           type="button"

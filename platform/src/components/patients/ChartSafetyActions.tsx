@@ -167,7 +167,7 @@ export default function ChartSafetyActions({ patient, iconOnly }: { patient: Pat
               </div>
             )}
 
-            {error && <p className="mt-3 text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+            {error && <p className="mt-3 text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
           </div>
         </Modal>
       )}

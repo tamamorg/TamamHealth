@@ -305,7 +305,7 @@ export default function MessagesPage() {
                         <button onClick={() => { setMenuOpen(false); leaveConversation(activeConversation._id); }} className="w-full text-left px-3 py-2 text-[12px] flex items-center gap-2 hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--text-primary)' }}><LogOut className="w-4 h-4" /> Leave group</button>
                       </>
                     )}
-                    <button onClick={() => { setMenuOpen(false); deleteConversation(activeConversation._id); }} className="w-full text-left px-3 py-2 text-[12px] flex items-center gap-2 hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--color-danger)' }}><Trash2 className="w-4 h-4" /> Delete conversation</button>
+                    <button onClick={() => { setMenuOpen(false); deleteConversation(activeConversation._id); }} className="w-full text-left px-3 py-2 text-[12px] flex items-center gap-2 hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--color-danger-text)' }}><Trash2 className="w-4 h-4" /> Delete conversation</button>
                   </div>
                 )}
               </div>
@@ -386,7 +386,7 @@ export default function MessagesPage() {
                                       <button onClick={() => { setReactingId(reactingId === m._id ? null : m._id); }} title="React" className="w-6 h-6 rounded flex items-center justify-center text-[12px] hover:bg-[var(--overlay-subtle)]">😀</button>
                                       <button onClick={() => { setReplyTo(m); }} title="Reply" className="w-6 h-6 rounded flex items-center justify-center hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--text-muted)' }}><ArrowLeft className="w-3.5 h-3.5" /></button>
                                       {editable && <button onClick={() => startEdit(m)} title="Edit" className="w-6 h-6 rounded flex items-center justify-center hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--text-muted)' }}><Edit3 className="w-3.5 h-3.5" /></button>}
-                                      {mine && <button onClick={() => deleteMessage(m._id)} title="Delete" className="w-6 h-6 rounded flex items-center justify-center hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--color-danger)' }}><Trash2 className="w-3.5 h-3.5" /></button>}
+                                      {mine && <button onClick={() => deleteMessage(m._id)} title="Delete" className="w-6 h-6 rounded flex items-center justify-center hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--color-danger-text)' }}><Trash2 className="w-3.5 h-3.5" /></button>}
                                       {reactingId === m._id && (
                                         <div className="absolute top-7 right-0 flex gap-1 px-2 py-1 rounded-full z-20" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg)' }}>
                                           {QUICK_REACTIONS.map(em => <button key={em} onClick={() => { react(m._id, em); setReactingId(null); }} className="text-[15px] transition-transform">{em}</button>)}

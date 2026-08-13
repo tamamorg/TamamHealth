@@ -390,7 +390,7 @@ export default function RadiologyDashboard() {
 
       {study.findings && (
         <div className="p-3 rounded-lg" style={{ background: '#05966908', border: '1px solid #05966920' }}>
-          <span className="text-[9px] font-bold uppercase" style={{ color: 'var(--color-success)' }}>{t('radiology.findings')}</span>
+          <span className="text-[9px] font-bold uppercase" style={{ color: 'var(--color-success-text)' }}>{t('radiology.findings')}</span>
           <p className="text-xs mt-1" style={{ color: 'var(--text-primary)' }}>{study.findings}</p>
         </div>
       )}
@@ -468,7 +468,7 @@ export default function RadiologyDashboard() {
         <div
           role="status"
           className="mb-3 flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold"
-          style={{ background: 'rgba(5,150,105,0.10)', border: '1px solid rgba(5,150,105,0.25)', color: 'var(--color-success)' }}
+          style={{ background: 'rgba(5,150,105,0.10)', border: '1px solid rgba(5,150,105,0.25)', color: 'var(--color-success-text)' }}
         >
           <CheckCircle2 className="w-3.5 h-3.5" /> {submitToast}
         </div>

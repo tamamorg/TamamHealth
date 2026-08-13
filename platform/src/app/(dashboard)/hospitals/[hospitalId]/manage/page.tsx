@@ -250,7 +250,7 @@ function ErrorBlock({ message }: { message: string }) {
   return (
     <div className="card-elevated" style={{ padding: 40, textAlign: 'center' }}>
       <AlertTriangle className="w-6 h-6 mx-auto mb-2" style={{ color: 'var(--color-danger)' }} />
-      <p style={{ fontSize: 12, color: 'var(--color-danger)' }}>{message}</p>
+      <p style={{ fontSize: 12, color: 'var(--color-danger-text)' }}>{message}</p>
     </div>
   );
 }
@@ -525,7 +525,7 @@ function StaffTab({ scope, hospitalId }: { scope: DataScope | undefined; hospita
                   </td>
                   <td>
                     {u.isActive ? (
-                      <span style={{ fontSize: 11, color: 'var(--color-success)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 11, color: 'var(--color-success-text)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--color-success)' }} />
                         {t('hospitals.statusActive')}
                       </span>
@@ -1041,13 +1041,13 @@ function PerformanceTab({ scope, hospitalId }: { scope: DataScope | undefined; h
   if (error) return <ErrorBlock message={error} />;
 
   const cards: { label: string; value: number | string; icon: typeof Calendar; tint: string }[] = [
-    { label: t('hospitals.kpiVisitsToday'),       value: kpis.visitsToday,                  icon: Calendar,    tint: '#2191D0' },
+    { label: t('hospitals.kpiVisitsToday'),       value: kpis.visitsToday,                  icon: Calendar,    tint: 'var(--accent-primary)' },
     { label: t('hospitals.kpiActiveAdmissions'),  value: kpis.activeAdmissions,             icon: BedDouble,   tint: '#A78BFA' },
-    { label: t('hospitals.kpiDischargesToday'),   value: kpis.dischargesToday,              icon: CheckCircle, tint: '#1F9D6F' },
-    { label: t('hospitals.kpiTransfersToday'),    value: kpis.transfersToday,               icon: ArrowLeft,   tint: '#2191D0' },
-    { label: t('hospitals.kpiAvgLabTat'),         value: kpis.labTatHours || '—',           icon: FlaskConical, tint: '#F59E0B' },
+    { label: t('hospitals.kpiDischargesToday'),   value: kpis.dischargesToday,              icon: CheckCircle, tint: 'var(--color-success)' },
+    { label: t('hospitals.kpiTransfersToday'),    value: kpis.transfersToday,               icon: ArrowLeft,   tint: 'var(--accent-primary)' },
+    { label: t('hospitals.kpiAvgLabTat'),         value: kpis.labTatHours || '—',           icon: FlaskConical, tint: 'var(--color-warning)' },
     { label: t('hospitals.kpiRxDispensedToday'),  value: kpis.prescriptionsDispensedToday,  icon: Pill,        tint: '#EC4899' },
-    { label: t('hospitals.kpiImmunizationsToday'), value: kpis.immunizationsToday,          icon: Syringe,     tint: '#2191D0' },
+    { label: t('hospitals.kpiImmunizationsToday'), value: kpis.immunizationsToday,          icon: Syringe,     tint: 'var(--accent-primary)' },
   ];
 
   return (
@@ -1167,9 +1167,9 @@ function SettingsTab({ hospital, canWrite, onSaved }: {
               value={phone}
               onChange={e => { setPhone(e.target.value); if (fieldErrors.phone) setFieldErrors(fe => ({ ...fe, phone: undefined })); }}
               aria-invalid={!!fieldErrors.phone}
-              style={{ ...inputStyle(canWrite), ...(fieldErrors.phone ? { borderColor: 'var(--color-danger)' } : {}) }}
+              style={inputStyle(canWrite)}
             />
-            {fieldErrors.phone && <p className="text-[11px] mt-1" role="alert" style={{ color: 'var(--color-danger)' }}>{fieldErrors.phone}</p>}
+            {fieldErrors.phone && <p className="text-[11px] mt-1" role="alert" style={{ color: 'var(--color-danger-text)' }}>{fieldErrors.phone}</p>}
           </Field>
           <Field label={t('hospitals.fieldEmail')}>
             <input
@@ -1178,9 +1178,9 @@ function SettingsTab({ hospital, canWrite, onSaved }: {
               value={email}
               onChange={e => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors(fe => ({ ...fe, email: undefined })); }}
               aria-invalid={!!fieldErrors.email}
-              style={{ ...inputStyle(canWrite), ...(fieldErrors.email ? { borderColor: 'var(--color-danger)' } : {}) }}
+              style={inputStyle(canWrite)}
             />
-            {fieldErrors.email && <p className="text-[11px] mt-1" role="alert" style={{ color: 'var(--color-danger)' }}>{fieldErrors.email}</p>}
+            {fieldErrors.email && <p className="text-[11px] mt-1" role="alert" style={{ color: 'var(--color-danger-text)' }}>{fieldErrors.email}</p>}
           </Field>
           <Field label={t('hospitals.operatingStatus')}>
             <Select
@@ -1237,7 +1237,7 @@ function SettingsTab({ hospital, canWrite, onSaved }: {
       {/* Save */}
       <div className="lg:col-span-2 flex items-center justify-end gap-3">
         {err && (
-          <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger)' }}>
+          <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
             <AlertTriangle className="w-3.5 h-3.5" /> {err}
           </span>
         )}

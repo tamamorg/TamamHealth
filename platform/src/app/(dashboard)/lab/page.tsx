@@ -304,7 +304,7 @@ export default function LabPage() {
                     >
                       <Filter className="w-4 h-4" />
                       {headerFilterCount > 0 && (
-                        <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: '#2191D0', color: '#fff' }}>
+                        <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
                           {headerFilterCount}
                         </span>
                       )}
@@ -420,7 +420,7 @@ export default function LabPage() {
                         nameClassName="font-medium text-sm"
                       />
                       {overdue && (
-                        <p className="text-[10px] font-semibold flex items-center gap-1 mt-0.5" style={{ color: 'var(--color-danger)' }}>
+                        <p className="text-[10px] font-semibold flex items-center gap-1 mt-0.5" style={{ color: 'var(--color-danger-text)' }}>
                           <AlertTriangle className="w-3 h-3 flex-shrink-0" />
                           {order.critical ? 'Critical — review overdue' : 'Review overdue'}
                         </p>
@@ -449,7 +449,7 @@ export default function LabPage() {
                     <td>
                       {order.result ? (
                         <div>
-                          <p className="text-sm" style={{ color: order.abnormal ? 'var(--color-danger)' : 'inherit', fontWeight: order.abnormal ? 600 : 400 }}>{order.result}</p>
+                          <p className="text-sm" style={{ color: order.abnormal ? 'var(--color-danger-text)' : 'inherit', fontWeight: order.abnormal ? 600 : 400 }}>{order.result}</p>
                           {order.abnormal && <Badge tone="danger" className="mt-0.5">{t('lab.abnormal')}</Badge>}
                         </div>
                       ) : (
@@ -541,7 +541,7 @@ export default function LabPage() {
                   {importProtocol && (
                     <span className="text-[11px] font-mono px-2 py-1 rounded" style={{
                       background: importProtocol === 'unknown' ? 'rgba(229,46,66,0.1)' : 'var(--accent-light)',
-                      color: importProtocol === 'unknown' ? 'var(--color-danger)' : 'var(--accent-primary)',
+                      color: importProtocol === 'unknown' ? 'var(--color-danger-text)' : 'var(--accent-primary)',
                     }}>
                       protocol: {importProtocol}
                     </span>
@@ -551,7 +551,7 @@ export default function LabPage() {
                 {importWarnings.length > 0 && (
                   <div className="mt-3 p-2.5 rounded-lg" style={{ background: 'rgba(229,46,66,0.06)', border: '1px solid var(--color-danger)' }}>
                     {importWarnings.map((w, i) => (
-                      <p key={i} className="text-[11px]" style={{ color: 'var(--color-danger)' }}>{w}</p>
+                      <p key={i} className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{w}</p>
                     ))}
                   </div>
                 )}
@@ -577,7 +577,7 @@ export default function LabPage() {
                           return (
                             <tr key={`${p.testCode}-${i}`}>
                               <td className="text-sm font-medium">{p.testName || p.testCode}</td>
-                              <td className="text-sm" style={{ color: crit.isCriticalValue ? 'var(--color-danger)' : 'inherit', fontWeight: crit.isCriticalValue ? 600 : 400 }}>{value}</td>
+                              <td className="text-sm" style={{ color: crit.isCriticalValue ? 'var(--color-danger-text)' : 'inherit', fontWeight: crit.isCriticalValue ? 600 : 400 }}>{value}</td>
                               <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{p.unit || '—'}</td>
                               <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{p.referenceRange || '—'}</td>
                               <td>

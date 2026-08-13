@@ -125,7 +125,7 @@ export default function LockScreen({ userName, hasPin, onVerifyPin, onSetPin, on
         </div>
 
         {error && (
-          <p className="text-xs text-center" style={{ color: 'var(--color-danger)' }}>{error}</p>
+          <p className="text-xs text-center" style={{ color: 'var(--color-danger-text)' }}>{error}</p>
         )}
 
         {/* Number pad */}

@@ -177,18 +177,22 @@ export const APPOINTMENT_STATUS_I18N_KEYS: Record<AppointmentStatus, string> = {
  * muted or red so a wall of rows reads at a glance.
  */
 export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, { color: string; bg: string }> = {
-  requested:     { color: '#7C3AED', bg: 'rgba(124,58,237,0.10)' },
-  scheduled:     { color: '#2191D0', bg: 'rgba(33,145,208,0.10)' },
-  reminder_sent: { color: '#0E7490', bg: 'rgba(14,116,144,0.10)' },
-  confirmed:     { color: '#015697', bg: 'rgba(1,86,151,0.10)' },
-  arrived:       { color: '#B45309', bg: 'rgba(180,83,9,0.10)' },
-  checked_in:    { color: '#D97706', bg: 'rgba(217,119,6,0.10)' },
-  triaged:       { color: '#0E7490', bg: 'rgba(14,116,144,0.10)' },
-  in_progress:   { color: '#059669', bg: 'rgba(5,150,105,0.10)' },
-  completed:     { color: '#047857', bg: 'rgba(4,120,87,0.10)' },
-  no_show:       { color: '#64748B', bg: 'rgba(100,116,139,0.10)' },
-  rescheduled:   { color: '#7C3AED', bg: 'rgba(124,58,237,0.10)' },
-  cancelled:     { color: '#DC2626', bg: 'rgba(220,38,38,0.10)' },
+  // `color` is pill TEXT, so every entry takes the darker `-text` rung of its
+  // token pair — the base fills would sit at ~3:1 behind 10px type. The ladder
+  // still warms blue → amber → green; it just says so in tokens now, which is
+  // what lets a tenant's brand blue reach the booked rungs.
+  requested:     { color: 'var(--semantic-request)', bg: 'var(--semantic-request-bg)' },
+  scheduled:     { color: 'var(--accent-primary)', bg: 'var(--color-info-bg)' },
+  reminder_sent: { color: 'var(--semantic-it)', bg: 'var(--semantic-it-bg)' },
+  confirmed:     { color: 'var(--color-info-text)', bg: 'var(--color-info-bg)' },
+  arrived:       { color: 'var(--color-warning-text)', bg: 'var(--color-warning-bg)' },
+  checked_in:    { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
+  triaged:       { color: 'var(--semantic-it)', bg: 'var(--semantic-it-bg)' },
+  in_progress:   { color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
+  completed:     { color: 'var(--color-success-text)', bg: 'var(--color-success-bg)' },
+  no_show:       { color: 'var(--text-muted)', bg: 'var(--semantic-inactive-bg)' },
+  rescheduled:   { color: 'var(--semantic-request)', bg: 'var(--semantic-request-bg)' },
+  cancelled:     { color: 'var(--color-danger)', bg: 'var(--color-danger-bg)' },
 };
 
 /** Row tone for the shared `status-*` pill classes on the role dashboards. */

@@ -387,7 +387,7 @@ export default function PatientIntakePage() {
                               </button>
                             </span>
                           ) : form.status === 'merged' ? (
-                            <span className="text-[12px]" style={{ color: 'var(--color-success)' }}>Merged {formatDate(form.mergedAt)}</span>
+                            <span className="text-[12px]" style={{ color: 'var(--color-success-text)' }}>Merged {formatDate(form.mergedAt)}</span>
                           ) : form.status === 'not_submitted' ? (
                             // The step that closes the loop: a form waiting on
                             // the patient can be answered at the desk or handed
@@ -536,7 +536,7 @@ export default function PatientIntakePage() {
 
             <div className="flex gap-2">
               <button onClick={() => setReviewing(null)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleReject} disabled={merging} className="btn btn-secondary" style={{ color: 'var(--color-danger)' }}>
+              <button onClick={handleReject} disabled={merging} className="btn btn-secondary" style={{ color: 'var(--color-danger-text)' }}>
                 Reject All
               </button>
               <button onClick={handleMerge} disabled={merging} className="btn btn-primary flex-1">

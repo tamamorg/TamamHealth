@@ -32,8 +32,8 @@ const STEP_LABEL: Record<RoomingWorklistEntry['step'], string> = {
  * else here needs to compete for attention.
  */
 function waitTone(minutes: number): { bg: string; fg: string } {
-  if (minutes >= 60) return { bg: 'var(--danger-light)', fg: 'var(--color-danger)' };
-  if (minutes >= 30) return { bg: 'var(--warning-light)', fg: 'var(--color-warning)' };
+  if (minutes >= 60) return { bg: 'var(--danger-light)', fg: 'var(--color-danger-text)' };
+  if (minutes >= 30) return { bg: 'var(--warning-light)', fg: 'var(--color-warning-text)' };
   return { bg: 'var(--overlay-subtle)', fg: 'var(--text-secondary)' };
 }
 
@@ -153,7 +153,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
     return <div className="p-6 text-sm" style={{ color: 'var(--text-muted)' }}>Loading the rooming worklist…</div>;
   }
   if (error) {
-    return <div className="p-6 text-sm" style={{ color: 'var(--color-danger)' }}>{error}</div>;
+    return <div className="p-6 text-sm" style={{ color: 'var(--color-danger-text)' }}>{error}</div>;
   }
 
   return (
@@ -207,7 +207,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                       </span>
                     )}
                     {vitalsRecorded[encounter._id] && (
-                      <span className="text-xs font-semibold" style={{ color: 'var(--color-success)' }}>· Vitals recorded</span>
+                      <span className="text-xs font-semibold" style={{ color: 'var(--color-success-text)' }}>· Vitals recorded</span>
                     )}
                   </div>
                 </div>
@@ -356,7 +356,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                       className="w-full rounded border px-2.5 py-2 text-sm"
                       style={{ borderColor: flagged ? 'var(--color-danger)' : 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }}
                     />
-                    {flagged && <span className="block mt-1 text-[10px]" style={{ color: 'var(--color-danger)' }}>Check this value</span>}
+                    {flagged && <span className="block mt-1 text-[10px]" style={{ color: 'var(--color-danger-text)' }}>Check this value</span>}
                   </label>
                 );
               })}

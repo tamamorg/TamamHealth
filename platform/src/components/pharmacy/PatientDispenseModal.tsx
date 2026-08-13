@@ -48,9 +48,9 @@ type StepKey = 'received' | 'review' | 'checked' | 'payment' | 'dispensed' | 'co
 const DONE_STAGES = new Set<PrescriptionStatus>(['complete']);
 
 const SEVERITY_STYLE: Record<DrugInteraction['severity'], { bg: string; border: string; text: string; label: string }> = {
-  contraindicated: { bg: 'var(--color-danger-bg)', border: 'var(--color-danger-border)', text: 'var(--color-danger)', label: 'Contraindicated' },
-  serious: { bg: 'var(--color-danger-bg)', border: 'var(--color-danger-border)', text: 'var(--color-danger)', label: 'Serious' },
-  moderate: { bg: 'var(--color-warning-bg)', border: 'var(--color-warning-border)', text: 'var(--color-warning)', label: 'Moderate' },
+  contraindicated: { bg: 'var(--color-danger-bg)', border: 'var(--color-danger-border)', text: 'var(--color-danger-text)', label: 'Contraindicated' },
+  serious: { bg: 'var(--color-danger-bg)', border: 'var(--color-danger-border)', text: 'var(--color-danger-text)', label: 'Serious' },
+  moderate: { bg: 'var(--color-warning-bg)', border: 'var(--color-warning-border)', text: 'var(--color-warning-text)', label: 'Moderate' },
 };
 
 /** Stage pill colours, keyed by the tone `pharmacyStageTone()` returns. */
@@ -361,13 +361,13 @@ export default function PatientDispenseModal({
                     <span className="block font-semibold uppercase tracking-wider text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>Stock &amp; batch</span>
                     {inv ? (
                       <p className="text-xs" style={{ color: 'var(--text-primary)' }}>
-                        <strong style={{ color: stockOk ? 'var(--color-success)' : 'var(--color-danger)' }}>{inv.stockLevel} {inv.unit}</strong> available
+                        <strong style={{ color: stockOk ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>{inv.stockLevel} {inv.unit}</strong> available
                         {inv.batchNumber ? ` · batch ${inv.batchNumber}` : ''}
                         {inv.expiryDate ? ` · exp ${inv.expiryDate}` : ''}
                         {inv.controlledSchedule || inv.requiresWitness ? ' · Controlled substance' : ''}
                       </p>
                     ) : (
-                      <p className="text-xs" style={{ color: 'var(--color-danger)' }}>No matching inventory found for {rx.medication}.</p>
+                      <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>No matching inventory found for {rx.medication}.</p>
                     )}
                   </div>
 
@@ -476,7 +476,7 @@ function DispenseConfirm({
         <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)' }}>
           <div className="flex items-center gap-2 mb-2">
             <AlertOctagon className="w-4 h-4" style={{ color: 'var(--color-warning)', stroke: 'var(--color-warning)' }} />
-            <span className="text-xs font-bold" style={{ color: 'var(--color-warning)' }}>
+            <span className="text-xs font-bold" style={{ color: 'var(--color-warning-text)' }}>
               Controlled substance{inv.controlledSchedule ? ` (Schedule ${inv.controlledSchedule})` : ''} — witness required
             </span>
           </div>

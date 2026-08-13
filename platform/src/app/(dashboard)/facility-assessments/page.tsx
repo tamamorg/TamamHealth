@@ -210,7 +210,7 @@ export default function FacilityAssessmentsPage() {
                   <td className="text-xs" style={{ color: scoreColor(a.dataQualityScore) }}>{a.dataQualityScore}%</td>
                   <td>{a.hasDHIS2Reporting ? <Badge tone="success">{t('facilityAssessments.yes')}</Badge> : <Badge tone="warning">{t('facilityAssessments.no')}</Badge>}</td>
                   <td className="text-sm text-center">{a.hisStaffCount} ({a.hisStaffTrained})</td>
-                  <td>{a.hasCleanWater ? <Droplets className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} /> : <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{t('facilityAssessments.no')}</span>}</td>
+                  <td>{a.hasCleanWater ? <Droplets className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} /> : <span className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{t('facilityAssessments.no')}</span>}</td>
                   <td className="text-xs font-mono">
                     <div className="flex items-center gap-1">
                       {a.assessmentDate}

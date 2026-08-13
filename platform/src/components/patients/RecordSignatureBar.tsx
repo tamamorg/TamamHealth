@@ -79,7 +79,7 @@ export default function RecordSignatureBar({ record }: { record: MedicalRecordDo
     if (status === 'awaiting_cosign') {
       return (
         <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: 'rgba(217,119,6,0.12)', color: '#B45309' }}>
+          style={{ background: 'rgba(217,119,6,0.12)', color: 'var(--color-warning-text)' }}>
           <Clock className="w-3 h-3" /> Awaiting co-signature
         </span>
       );
@@ -87,7 +87,7 @@ export default function RecordSignatureBar({ record }: { record: MedicalRecordDo
     // signed or amended
     return (
       <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full"
-        style={{ background: 'rgba(21,121,92,0.12)', color: 'var(--color-success)' }}>
+        style={{ background: 'rgba(21,121,92,0.12)', color: 'var(--color-success-text)' }}>
         <Lock className="w-3 h-3" /> {status === 'amended' ? 'Signed · amended' : 'Signed'}
       </span>
     );
@@ -182,7 +182,7 @@ export default function RecordSignatureBar({ record }: { record: MedicalRecordDo
         </ul>
       )}
 
-      {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+      {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
     </div>
   );
 }

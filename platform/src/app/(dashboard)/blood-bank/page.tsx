@@ -635,7 +635,7 @@ export default function BloodBankPage() {
                     </div>
                   )}
                   {reservePatient && reserveCompatibleGroups && (
-                    <p className="text-xs" style={{ color: isCompatible ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                    <p className="text-xs" style={{ color: isCompatible ? 'var(--color-success-text)' : 'var(--color-warning-text)' }}>
                       {isCompatible
                         ? `Unit ${unit.bloodGroup} is compatible with ${reservePatient.bloodType || 'the patient'}'s blood type.`
                         : `Note: unit ${unit.bloodGroup} is not typically compatible with ${reservePatient.bloodType || "this patient's"} blood type (compatible groups: ${reserveCompatibleGroups.join(', ') || '—'}).`}
@@ -721,7 +721,7 @@ export default function BloodBankPage() {
                       onClick={() => setCrossmatchChoice('compatible')}
                       className="flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all inline-flex items-center justify-center gap-1.5"
                       style={crossmatchChoice === 'compatible'
-                        ? { background: 'var(--color-success-bg, rgba(21,121,92,0.12))', color: 'var(--color-success)', border: '1px solid var(--color-success)' }
+                        ? { background: 'var(--color-success-bg, rgba(21,121,92,0.12))', color: 'var(--color-success-text)', border: '1px solid var(--color-success)' }
                         : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
                     >
                       <CheckCircle2 className="w-4 h-4" /> Compatible
@@ -731,7 +731,7 @@ export default function BloodBankPage() {
                       onClick={() => setCrossmatchChoice('incompatible')}
                       className="flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all inline-flex items-center justify-center gap-1.5"
                       style={crossmatchChoice === 'incompatible'
-                        ? { background: 'var(--color-danger-bg)', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }
+                        ? { background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', border: '1px solid var(--color-danger)' }
                         : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
                     >
                       <XCircle className="w-4 h-4" /> Incompatible

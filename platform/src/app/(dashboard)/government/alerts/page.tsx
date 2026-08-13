@@ -15,8 +15,8 @@ const SECTION_TITLE_STYLE: React.CSSProperties = {
 };
 
 const LEVEL_COLORS: Record<string, string> = {
-  emergency: '#e34948',
-  warning: '#eda100',
+  emergency: 'var(--color-danger)',
+  warning: 'var(--color-warning)',
   watch: '#2a78d6',
   normal: '#8a8f98',
 };
@@ -57,8 +57,8 @@ function LevelPill({ level }: { level: string }) {
 }
 
 function TrendIcon({ trend }: { trend: string }) {
-  if (trend === 'increasing') return <TrendingUp className="w-3.5 h-3.5" style={{ color: '#e34948' }} />;
-  if (trend === 'decreasing') return <TrendingDown className="w-3.5 h-3.5" style={{ color: '#199e70' }} />;
+  if (trend === 'increasing') return <TrendingUp className="w-3.5 h-3.5" style={{ color: 'var(--color-danger-text)' }} />;
+  if (trend === 'decreasing') return <TrendingDown className="w-3.5 h-3.5" style={{ color: 'var(--color-success-text)' }} />;
   return <Minus className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />;
 }
 

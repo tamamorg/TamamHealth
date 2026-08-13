@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ClipboardList, Printer, Search, Stethoscope, Video, X, type LucideIcon } from '@/components/icons/lucide';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
@@ -987,6 +987,22 @@ export default function EhrCareDashboard({
  * progress, the row's actions — but inline, so the queue above it stays
  * readable and a second row can be opened without dismissing the first.
  */
+/**
+ * Lets `popupDetail` content close the row it lives in.
+ *
+ * `expandedRowId` is this component's own state, so a caller building the
+ * detail node had no handle on it — the front desk passed
+ * `onClose={() => undefined}` and its inline appointment editor simply stayed
+ * open after saving, toast and all. Content reads the collapse from context
+ * instead, which resolves where it RENDERS rather than where it was created.
+ */
+const RowCollapseContext = createContext<() => void>(() => {});
+
+/** Close the expanded row this content is rendered inside. */
+export function useRowCollapse(): () => void {
+  return useContext(RowCollapseContext);
+}
+
 function EhrRowDetail({
   row,
   detailTab,
@@ -1025,7 +1041,9 @@ function EhrRowDetail({
   return (
     <div className="ehr-row-detail" role="region" aria-label={`${row.title} details`}>
       {row.popupDetail ? (
-        <div className="ehr-row-detail__custom">{row.popupDetail}</div>
+        <RowCollapseContext.Provider value={onCollapse}>
+          <div className="ehr-row-detail__custom">{row.popupDetail}</div>
+        </RowCollapseContext.Provider>
       ) : (
         <div className="ehr-row-detail__body">
           {fields.map(item => (
@@ -1054,7 +1072,7 @@ function EhrRowDetail({
             key={action.label}
             type="button"
             className="btn btn-secondary btn-sm"
-            style={action.tone === 'danger' ? { color: 'var(--color-danger)', borderColor: 'var(--color-danger)' } : undefined}
+            style={action.tone === 'danger' ? { color: 'var(--color-danger-text)', borderColor: 'var(--color-danger)' } : undefined}
             onClick={() => { action.onClick(); onCollapse(); }}
           >
             {action.label}

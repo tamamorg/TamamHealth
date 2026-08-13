@@ -1691,7 +1691,7 @@ export default function EhrClinicalDashboard({
                           className="ehr-appointment-time"
                           title={columns.overTarget ? 'Wait is over target' : undefined}
                         >
-                          <strong style={columns.overTarget ? { color: '#C24135' } : undefined}>{columns.waitText}</strong>
+                          <strong style={columns.overTarget ? { color: 'var(--color-danger-text)' } : undefined}>{columns.waitText}</strong>
                           {columns.waitSubtext && (
                             <span className={columns.overTarget ? 'is-soon' : ''}>
                               {columns.waitSubtext}
