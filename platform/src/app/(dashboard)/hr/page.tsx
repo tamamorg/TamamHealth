@@ -139,6 +139,9 @@ export default function HRPage() {
   const facilityId = currentUser?.hospitalId;
   const facilityName = currentUser?.hospitalName || t('hr.defaultFacility');
   const isApprover = currentUser?.role && ['org_admin', 'medical_superintendent', 'hospital_manager', 'super_admin'].includes(currentUser.role);
+  // Account creation is restricted to the two admin roles (WRITE_ROLES in
+  // /api/users) — showing the button to anyone else would just 403.
+  const canCreateUsers = currentUser?.role === 'super_admin' || currentUser?.role === 'org_admin';
 
   // ── Loaders ─────────────────────────────────────────────────────────
   const reloadLeave = useCallback(async () => {
@@ -425,6 +428,20 @@ export default function HRPage() {
                   <EhrListHeaderButton onClick={handleDownloadCsv} ariaLabel="Download">
                     <Download className="w-4 h-4" />
                   </EhrListHeaderButton>
+                  {canCreateUsers && (
+                    <button
+                      type="button"
+                      className="listpage-icon-btn listpage-icon-btn-primary"
+                      // Same role-aware target as the facility dashboard: a
+                      // platform super_admin creates accounts in /admin/users;
+                      // an org_admin in their org-scoped page.
+                      onClick={() => router.push(currentUser?.role === 'super_admin' ? '/admin/users?new=1' : '/org-admin/users?new=1')}
+                      title="Add staff"
+                      aria-label="Add staff"
+                    >
+                      <Plus size={16} color="#fff" />
+                    </button>
+                  )}
                 </>
               }
             />

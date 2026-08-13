@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
@@ -30,6 +31,7 @@ const USER_GRID = 'minmax(320px, 1.6fr) repeat(3, minmax(150px, 1fr)) 44px';
 
 export default function OrgUsersPage() {
   const { currentUser, globalSearch } = useApp();
+  const router = useRouter();
   const { t } = useTranslation();
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [hospitals, setHospitals] = useState<HospitalDoc[]>([]);
@@ -77,7 +79,17 @@ export default function OrgUsersPage() {
   }, [showFilters]);
 
   const loadData = useCallback(async () => {
-    if (!currentUser?.orgId) return;
+    // Still hydrating the session — a later run (currentUser dependency)
+    // does the real load, so keep the spinner.
+    if (!currentUser) return;
+    // Signed in but no organization: this page has nothing to scope to.
+    // Returning while `loading` stayed true left the spinner up FOREVER for
+    // the platform super_admin (who has no orgId) — stop loading so the
+    // redirect below (or an empty list) can render instead.
+    if (!currentUser.orgId) {
+      setLoading(false);
+      return;
+    }
     try {
       const scope: DataScope = { orgId: currentUser.orgId, role: currentUser.role as UserRole };
       const [{ getAllUsers }, { getAllHospitals }, { getAvailableRoles }] = await Promise.all([
@@ -109,10 +121,24 @@ export default function OrgUsersPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // A platform-level super_admin has no orgId to scope this page to — their
+  // user management lives at /admin/users. Forward the ?new deep-link so an
+  // "Add user" button that lands here still opens a create form there.
+  useEffect(() => {
+    if (currentUser && !currentUser.orgId && currentUser.role === 'super_admin') {
+      const wantsNew = new URLSearchParams(window.location.search).has('new');
+      router.replace(wantsNew ? '/admin/users?new=1' : '/admin/users');
+    }
+  }, [currentUser, router]);
+
   // Deep link: /org-admin/users?new=1 opens the create-user modal directly
   // (used by the facility dashboard's Add-user button).
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has('new')) setShowCreateModal(true);
+    if (new URLSearchParams(window.location.search).has('new')) {
+      setFormPassword(generateTempPassword());
+      setShowPassword(true);
+      setShowCreateModal(true);
+    }
   }, []);
 
   const ROLES_WITHOUT_HOSPITAL: UserRole[] = ['super_admin', 'org_admin', 'government'];
@@ -350,7 +376,7 @@ export default function OrgUsersPage() {
                   )}
                 </div>
                 <button
-                  onClick={() => { setError(''); setShowCreateModal(true); }}
+                  onClick={() => { setError(''); setFormPassword(generateTempPassword()); setShowPassword(true); setShowCreateModal(true); }}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: brandColor, color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
                   <Plus className="w-4 h-4" /> {t('orgUsers.createUser')}

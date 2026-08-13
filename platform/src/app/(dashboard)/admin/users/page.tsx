@@ -87,8 +87,17 @@ export default function AdminUsersPage() {
   // log's "View in User Management" action). window.location instead of
   // useSearchParams so the page needs no Suspense boundary.
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get('q');
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
     if (q) setSearch(q);
+    // ?new=1 — the facility dashboards' "Add user" buttons deep-link straight
+    // into the create form with a temporary password already generated.
+    if (params.has('new')) {
+      setAddForm({ ...emptyAddForm, password: generateTempPassword() });
+      setShowAddPassword(true);
+      setShowAddUser(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterOrg, setFilterOrg] = useState<string>('all');

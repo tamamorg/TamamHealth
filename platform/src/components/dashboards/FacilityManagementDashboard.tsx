@@ -382,7 +382,10 @@ export default function FacilityManagementDashboard() {
                     <button
                       type="button"
                       className="listpage-icon-btn listpage-icon-btn-primary"
-                      onClick={() => router.push('/org-admin/users?new=1')}
+                      // A platform super_admin has no organization, so the
+                      // org-scoped page can't serve them — their create form
+                      // lives in the platform-wide user management screen.
+                      onClick={() => router.push(currentUser?.role === 'super_admin' ? '/admin/users?new=1' : '/org-admin/users?new=1')}
                       title="Add user"
                       aria-label="Add user"
                     >
