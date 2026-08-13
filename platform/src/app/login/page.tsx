@@ -87,6 +87,29 @@ export default function LoginPage() {
   // open, the chosen role's label once picked) and whether the menu shows.
   const [roleQuery, setRoleQuery] = useState('');
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  // Demo-only account picker. Off unless the deployment says it is a demo, so
+  // production never advertises a roster of accounts.
+  const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+  const [demoCreds, setDemoCreds] = useState<Record<string, string>>({});
+
+  // Passwords are minted per environment; pull them once per load rather than
+  // shipping any in the bundle.
+  useEffect(() => {
+    if (!demoEnabled) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/demo-credentials', { cache: 'no-store' });
+        if (!res.ok) return;
+        const body = await res.json() as { profiles?: { username: string; password: string | null }[] };
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        for (const p of body.profiles || []) if (p.password) map[p.username] = p.password;
+        setDemoCreds(map);
+      } catch { /* the picker is a convenience — the manual form still works */ }
+    })();
+    return () => { cancelled = true; };
+  }, [demoEnabled]);
 
   const roleLabelFor = (value: UserRole | '') =>
     value ? (ROLE_OPTIONS.find(r => r.value === value)?.label || '') : '';
