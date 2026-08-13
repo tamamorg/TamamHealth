@@ -79,6 +79,13 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  // Deep-link support: /admin/users?q=<name> arrives pre-filtered (the audit
+  // log's "View in User Management" action). window.location instead of
+  // useSearchParams so the page needs no Suspense boundary.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q) setSearch(q);
+  }, []);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterOrg, setFilterOrg] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
