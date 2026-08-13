@@ -26,8 +26,7 @@ import { initials, stateTint, AVATAR_TINT_NEUTRAL } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
 import {
   APPOINTMENT_STATUS_TONES, appointmentStatusLabel,
-  APPOINTMENT_STATUS_GROUPS, APPOINTMENT_STATUS_GROUP_LABELS, APPOINTMENT_STATUS_OPTIONS,
-  APPOINTMENT_STATUS_DESCRIPTIONS, canonicalAppointmentStatus,
+  APPOINTMENT_STATUS_GROUPS, APPOINTMENT_STATUS_GROUP_LABELS,
   appointmentStatusGroup, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { useToast } from '@/components/Toast';
@@ -47,6 +46,7 @@ import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDay
 import EhrVisitPopup, { EhrQueueMoveDialog, waitLabel } from '@/components/ehr/EhrVisitPopup';
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';
 import PatientDispenseModal from '@/components/pharmacy/PatientDispenseModal';
+import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
 import SendIntakeFormsModal from '@/components/intake/SendIntakeFormsModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 import Select from '@/components/Select';
@@ -461,7 +461,7 @@ export default function EhrClinicalDashboard({
   clinicianName,
   facilityName,
   patients,
-  appointments,
+  appointments: propAppointments,
   outstanding,
 }: {
   clinicianName: string;
@@ -501,6 +501,18 @@ export default function EhrClinicalDashboard({
     }
     return map;
   }, [patientDocs]);
+  // The board renders the parent-assembled appointments prop, but a status
+  // set from a row's pill must show up immediately — that write refreshes
+  // THIS component's useAppointments instance, not the parent's assembly.
+  // Overlay the live docs onto the prop list (matched by _id) so status and
+  // timestamps are always current, while which appointments belong on the
+  // board stays the parent's decision.
+  const { appointments: liveAppointments, updateStatus: updateAppointmentStatus } = useAppointments();
+  const appointments = useMemo(() => {
+    if (liveAppointments.length === 0) return propAppointments;
+    const liveById = new Map(liveAppointments.map(a => [a._id, a]));
+    return propAppointments.map(a => liveById.get(a._id) || a);
+  }, [propAppointments, liveAppointments]);
   const todayIso = useMemo(() => toIsoDate(new Date()), []);
   const [view, setView] = useState<'dashboard' | 'calendar'>('dashboard');
   const [railOpen, setRailOpen] = useState(false);
@@ -765,7 +777,6 @@ export default function EhrClinicalDashboard({
   // deduped to the newest record per patient.
   const { currentUser } = useAuth();
   const { triages, update: updateTriageDoc } = useTriage();
-  const { updateStatus: updateAppointmentStatus } = useAppointments();
   // "Create clinical note" on a visit card — the appointment already carries
   // the patient, provider, date and telehealth mode the note header needs.
   const { createNote, creating: creatingNote } = useCreateNote(currentUser);
@@ -1707,32 +1718,19 @@ export default function EhrClinicalDashboard({
                               : tone === 'warning' ? 'status-attention'
                               : 'status-scheduled';
                             return (
-                              <span
-                                className={`appointment-status-pill appointment-status-pill--select ${pillClass}`.trim()}
-                                onClick={event => event.stopPropagation()}
-                                onKeyDown={event => event.stopPropagation()}
-                              >
-                                {appointmentStatusLabel(visitStatus)}
-                                <select
-                                  value={canonicalAppointmentStatus(visitStatus)}
-                                  aria-label={`Status for ${row.name}`}
-                                  title={APPOINTMENT_STATUS_DESCRIPTIONS[visitStatus]}
-                                  onChange={async event => {
-                                    event.stopPropagation();
-                                    const next = event.target.value as AppointmentStatus;
-                                    if (next === canonicalAppointmentStatus(visitStatus)) return;
-                                    try {
-                                      await updateAppointmentStatus(row.appointment!._id, next);
-                                    } catch (error) {
-                                      showToast(error instanceof Error ? error.message : 'Could not update visit status.', 'error');
-                                    }
-                                  }}
-                                >
-                                  {APPOINTMENT_STATUS_OPTIONS.map(option => (
-                                    <option key={option} value={option}>{appointmentStatusLabel(option)}</option>
-                                  ))}
-                                </select>
-                              </span>
+                              <AppointmentStatusPillSelect
+                                status={visitStatus}
+                                className={pillClass}
+                                ariaLabel={`Status for ${row.name}`}
+                                role={currentUser?.role}
+                                onChange={async next => {
+                                  try {
+                                    await updateAppointmentStatus(row.appointment!._id, next);
+                                  } catch (error) {
+                                    showToast(error instanceof Error ? error.message : 'Could not update visit status.', 'error');
+                                  }
+                                }}
+                              />
                             );
                           })() : (
                             <span className="appointment-status-pill status-confirmed">{columns.statusText}</span>

@@ -14,7 +14,7 @@
  * written into ~250 call sites and the analytics pipeline, so the label is what
  * moved, not the data.
  */
-import type { AppointmentStatus } from './db-types';
+import type { AppointmentStatus, UserRole } from './db-types';
 
 /**
  * The forward ladder OFFERED to users, in the order reception moves a visit
@@ -76,6 +76,43 @@ export const APPOINTMENT_STATUS_OPTIONS: AppointmentStatus[] = [
   ...APPOINTMENT_STATUS_FLOW,
   ...APPOINTMENT_STATUS_EXITS,
 ];
+
+/**
+ * Who may move a booking where — the role vocabulary behind both the status
+ * pickers and `updateAppointmentStatus`'s write gates, so the dropdown never
+ * offers a rung the service will refuse (it used to: a doctor could pick
+ * "Cancelled" and watch nothing happen).
+ *
+ * Scheduling roles own the book: every rung plus the exits. Clinical roles
+ * advance a visit through care but don't close the book on one — no cancel /
+ * no-show / rescheduled.
+ */
+export const APPOINTMENT_SCHEDULING_ROLES: UserRole[] = [
+  'central_registration_clerk',
+  'clinic_clerk',
+  'front_desk',
+  'medical_superintendent',
+  'org_admin',
+  'super_admin',
+];
+
+export const APPOINTMENT_CLINICAL_ROLES: UserRole[] = [
+  'doctor',
+  'clinical_officer',
+  'nurse',
+  'midwife',
+  'clinician',
+  'triage_nurse',
+  'rooming_nurse',
+];
+
+/** The rungs a role may SET from a status picker; empty = read-only pill. */
+export function appointmentStatusOptionsForRole(role?: UserRole): AppointmentStatus[] {
+  if (!role) return [];
+  if (APPOINTMENT_SCHEDULING_ROLES.includes(role)) return APPOINTMENT_STATUS_OPTIONS;
+  if (APPOINTMENT_CLINICAL_ROLES.includes(role)) return ['checked_in', 'in_progress', 'completed'];
+  return [];
+}
 
 /**
  * Fine-grained statuses wear their canonical rung's label. `confirmed` reads

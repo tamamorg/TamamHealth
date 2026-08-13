@@ -8,7 +8,10 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { jubaDate } from '../time-juba';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
-import { APPOINTMENT_PENDING_STATUSES, APPOINTMENT_SLOT_RELEASED_STATUSES } from '../appointment-status';
+import {
+  APPOINTMENT_PENDING_STATUSES, APPOINTMENT_SLOT_RELEASED_STATUSES,
+  APPOINTMENT_SCHEDULING_ROLES, APPOINTMENT_CLINICAL_ROLES,
+} from '../appointment-status';
 import { isTimeOverlap } from '../appointment-time';
 
 export type AppointmentStatusUpdateExtra = {
@@ -21,14 +24,11 @@ export type AppointmentStatusUpdateExtra = {
   note?: string;
 };
 
-const APPOINTMENT_CONFIRM_ROLES: UserRole[] = [
-  'central_registration_clerk',
-  'clinic_clerk',
-  'front_desk',
-  'medical_superintendent',
-  'org_admin',
-  'super_admin',
-];
+// The role rosters live in appointment-status.ts, next to
+// appointmentStatusOptionsForRole — the status pickers filter their options
+// from the same lists these gates enforce, so the UI can never offer a rung
+// this service will refuse.
+const APPOINTMENT_CONFIRM_ROLES: UserRole[] = APPOINTMENT_SCHEDULING_ROLES;
 
 /**
  * Same roster, for the exits: only reception/scheduling can take a visit off
@@ -36,7 +36,7 @@ const APPOINTMENT_CONFIRM_ROLES: UserRole[] = [
  * canManageAppointmentSchedule in usePermissions.ts — a triage nurse or
  * clinician can advance a visit but has no business closing the book on it.
  */
-const APPOINTMENT_EXIT_ROLES: UserRole[] = APPOINTMENT_CONFIRM_ROLES;
+const APPOINTMENT_EXIT_ROLES: UserRole[] = APPOINTMENT_SCHEDULING_ROLES;
 
 /**
  * Who may check a visit out as completed: reception (the front-desk checkout
@@ -45,14 +45,8 @@ const APPOINTMENT_EXIT_ROLES: UserRole[] = APPOINTMENT_CONFIRM_ROLES;
  * canAdvanceAppointments in usePermissions.ts.
  */
 const APPOINTMENT_COMPLETE_ROLES: UserRole[] = [
-  ...APPOINTMENT_CONFIRM_ROLES,
-  'doctor',
-  'clinical_officer',
-  'nurse',
-  'midwife',
-  'clinician',
-  'triage_nurse',
-  'rooming_nurse',
+  ...APPOINTMENT_SCHEDULING_ROLES,
+  ...APPOINTMENT_CLINICAL_ROLES,
 ];
 
 export async function getAllAppointments(scope?: DataScope): Promise<AppointmentDoc[]> {
@@ -481,6 +475,9 @@ export async function updateAppointmentStatus(
     return updated;
   } catch (err) {
     if (err instanceof BookingConflictError) throw err;
+    // Callers treat null as "the write didn't happen" — but a silent null with
+    // nothing in the console made every failure here undiagnosable.
+    console.warn('[appointment] status update failed:', err);
     return null;
   }
 }

@@ -9,9 +9,9 @@ import BookAppointmentModal from '@/components/appointments/BookAppointmentModal
 import {
   APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS, APPOINTMENT_STATUS_I18N_KEYS,
   APPOINTMENT_CLOSED_STATUSES, APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_FLOW,
-  APPOINTMENT_STATUS_EXITS, APPOINTMENT_STATUS_OPTIONS, APPOINTMENT_STATUS_DESCRIPTIONS,
-  canonicalAppointmentStatus,
+  APPOINTMENT_STATUS_EXITS, canonicalAppointmentStatus,
 } from '@/lib/appointment-status';
+import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
 import Link from 'next/link';
 import AvailabilityModal from '@/components/AvailabilityModal';
 import {
@@ -875,39 +875,20 @@ export default function AppointmentsPage() {
 
                       <div className="appointment-card-status">
                         {/* The pill is the picker — the same pill-wrapped
-                            dropdown the dashboards put on their rows, going
+                            dropdown the dashboards put on their rows, with
+                            options filtered to the viewer's role, going
                             through handleStatusChange so a check-in still
                             opens the visit encounter and a reschedule keeps
-                            its Undo. Roles without any appointment-workflow
-                            permission get the plain pill. */}
-                        {(canConfirmAppointments || canCheckInAppointments) ? (
-                          <span
-                            className={`appointment-status-pill appointment-status-pill--select status-${statusSlug(apt.status)}`}
-                            onClick={event => event.stopPropagation()}
-                            onKeyDown={event => event.stopPropagation()}
-                          >
-                            {t(statusLabelKey[apt.status])}
-                            <select
-                              value={canonicalAppointmentStatus(apt.status)}
-                              aria-label={`Status for ${apt.patientName}`}
-                              title={APPOINTMENT_STATUS_DESCRIPTIONS[apt.status]}
-                              onChange={event => {
-                                event.stopPropagation();
-                                const next = event.target.value as AppointmentStatus;
-                                if (next === canonicalAppointmentStatus(apt.status)) return;
-                                void handleStatusChange(apt._id, next);
-                              }}
-                            >
-                              {APPOINTMENT_STATUS_OPTIONS.map(option => (
-                                <option key={option} value={option}>{t(statusLabelKey[option])}</option>
-                              ))}
-                            </select>
-                          </span>
-                        ) : (
-                          <span className={`appointment-status-pill status-${statusSlug(apt.status)}`}>
-                            {t(statusLabelKey[apt.status])}
-                          </span>
-                        )}
+                            its Undo. Roles with no status options get the
+                            plain pill. */}
+                        <AppointmentStatusPillSelect
+                          status={apt.status}
+                          className={`status-${statusSlug(apt.status)}`}
+                          ariaLabel={`Status for ${apt.patientName}`}
+                          role={currentUser?.role}
+                          labelFor={s => t(statusLabelKey[s])}
+                          onChange={next => handleStatusChange(apt._id, next)}
+                        />
                         <small>{appointmentOperationalCue(apt)}</small>
                       </div>
                     </div>
