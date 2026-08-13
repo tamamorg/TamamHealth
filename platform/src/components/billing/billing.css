@@ -246,7 +246,7 @@
   color: var(--ehr-muted, #8395A8);
   cursor: pointer;
 }
-.bl-draft-remove:hover { color: var(--color-danger, #DA1E28); }
+.bl-draft-remove:hover { color: var(--color-danger, #DC2626); }
 .bl-draft-foot {
   display: flex;
   align-items: flex-end;
@@ -289,21 +289,21 @@
 .bl-draft-error {
   margin: 8px 0 0;
   font-size: 12px;
-  color: var(--color-danger, #DA1E28);
+  color: var(--color-danger, #DC2626);
 }
 
 /* Write-off / adjustment stays the destructive action once it's icon-only.
    The <Icon> shim paints a `color` attribute on the SVG, so the glyph rule
    has to be explicit — same escape hatch `.listpage-icon-btn-primary` uses. */
-.bl-icon-btn--danger { color: var(--color-danger, #DA1E28); }
+.bl-icon-btn--danger { color: var(--color-danger, #DC2626); }
 .bl-icon-btn--danger svg,
 .bl-icon-btn--danger svg.lucide {
-  color: var(--color-danger, #DA1E28);
+  color: var(--color-danger, #DC2626);
   stroke: currentColor;
 }
 .bl-icon-btn--danger:hover {
   background: rgba(218, 30, 40, 0.08);
-  border-color: var(--color-danger, #DA1E28);
+  border-color: var(--color-danger, #DC2626);
 }
 
 /* ── Search ──────────────────────────────────────────────────────── */
@@ -417,7 +417,7 @@
 .bl-table--rows-open tbody tr { cursor: pointer; }
 
 .bl-link {
-  color: var(--accent-primary, #2563eb);
+  color: var(--accent-primary, #2191D0);
   font-weight: 600;
   text-decoration: none;
   background: none;
@@ -443,12 +443,12 @@
   white-space: nowrap;
   text-transform: uppercase;
 }
-.bl-chip--unpaid   { background: rgba(218, 30, 40, 0.09);  color: #B3251E; }
-.bl-chip--partial  { background: rgba(178, 112, 8, 0.10);  color: #8A5A00; }
-.bl-chip--paid     { background: rgba(25, 128, 56, 0.10);  color: #14713A; }
+.bl-chip--unpaid   { background: var(--color-danger-bg);  color: var(--color-danger-text); }
+.bl-chip--partial  { background: var(--color-warning-bg);  color: var(--color-warning-text); }
+.bl-chip--paid     { background: var(--color-success-bg);  color: var(--color-success-text); }
 .bl-chip--waived   { background: var(--ehr-soft, #E9F0F5); color: var(--ehr-text-body, #39536B); }
 .bl-chip--cancelled{ background: var(--ehr-soft, #E9F0F5); color: var(--ehr-muted, #8395A8); text-decoration: line-through; }
-.bl-chip--visit    { background: var(--accent-primary, #2563eb); color: #fff; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.bl-chip--visit    { background: var(--accent-primary, #2191D0); color: #fff; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .bl-chip--ontime   { background: var(--ehr-soft, #E9F0F5); color: var(--ehr-text-body, #39536B); text-transform: none; letter-spacing: 0; font-size: 11px; }
 
 /* ── Pagination footer ───────────────────────────────────────────── */
@@ -528,7 +528,7 @@
   margin: 0;
 }
 .bl-gender { font-size: 15px; font-weight: 700; color: var(--ehr-muted, #8395A8); }
-.bl-gender.male { color: var(--accent-primary, #2563eb); }
+.bl-gender.male { color: var(--accent-primary, #2191D0); }
 .bl-gender.female { color: #C2408A; }
 .bl-banner-meta {
   margin-top: 4px;
@@ -579,9 +579,9 @@
 .bl-btn--primary:hover:not(:disabled) { background: var(--bl-teal-dark); }
 .bl-btn--outline { background: var(--ehr-panel, #fff); color: var(--bl-teal); border-color: var(--bl-teal); }
 .bl-btn--outline:hover:not(:disabled) { background: var(--bl-teal-soft); }
-.bl-btn--link { background: none; color: var(--accent-primary, #2563eb); padding: 10px 4px; }
+.bl-btn--link { background: none; color: var(--accent-primary, #2191D0); padding: 10px 4px; }
 .bl-btn--link:hover:not(:disabled) { text-decoration: underline; }
-.bl-btn--danger-link { background: none; color: var(--color-danger, #DA1E28); padding: 10px 4px; }
+.bl-btn--danger-link { background: none; color: var(--color-danger, #DC2626); padding: 10px 4px; }
 .bl-btn--danger-link:hover:not(:disabled) { text-decoration: underline; }
 .bl-btn--dark { background: #393939; color: #fff; }
 .bl-btn--dark:hover:not(:disabled) { background: #262626; }
@@ -655,7 +655,7 @@
   cursor: pointer;
 }
 .bl-menu button:hover { background: var(--ehr-hover, #FAFCFE); color: var(--ehr-text-title, #132C44); }
-.bl-menu button.bl-menu-danger { color: var(--color-danger, #DA1E28); }
+.bl-menu button.bl-menu-danger { color: var(--color-danger, #DC2626); }
 .bl-menu-backdrop { position: fixed; inset: 0; z-index: 29; }
 
 /* ── Payments + totals layout ────────────────────────────────────── */
@@ -789,7 +789,7 @@
   color: var(--ehr-muted, #8395A8);
 }
 .bl-muted { color: var(--ehr-muted, #8395A8); }
-.bl-danger { color: var(--color-danger, #DA1E28); }
+.bl-danger { color: var(--color-danger, #DC2626); }
 .bl-right { text-align: right; }
 
 /* ══════════════ Shared money-screen furniture ══════════════
@@ -836,8 +836,8 @@
 }
 
 /* A stat that is itself the alarm — an overdue balance, a denied claim. */
-.bl-stat-value--danger { color: var(--color-danger, #DA1E28); }
-.bl-stat-value--good { color: #14713A; }
+.bl-stat-value--danger { color: var(--color-danger, #DC2626); }
+.bl-stat-value--good { color: var(--color-success-text); }
 
 /* Section card — the `bl-card` head treatment (teal underline under the title)
    without assuming a table follows. */
