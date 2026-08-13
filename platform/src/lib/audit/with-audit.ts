@@ -135,6 +135,10 @@ export function withAuditLog<T extends RouteHandler>(handler: T, opts: AuditOpti
     const userId = auth?.sub;
     const username = auth?.username || 'anonymous';
     const category = opts.category || defaultCategory(method);
+    // When a super-admin is signed in AS another role, record the real account
+    // role so impersonated actions are a filterable class in the audit trail
+    // (the acting identity — sub/username — is already the real account).
+    const impersonation = auth?.actualRole ? { actualRole: auth.actualRole } : {};
 
     let response: NextResponse;
     let success = false;
@@ -155,6 +159,7 @@ export function withAuditLog<T extends RouteHandler>(handler: T, opts: AuditOpti
         durationMs: Date.now() - start,
         category,
         error: err instanceof Error ? err.name : 'UnknownError',
+        ...impersonation,
       }, false);
       throw err;
     } finally {
@@ -170,6 +175,7 @@ export function withAuditLog<T extends RouteHandler>(handler: T, opts: AuditOpti
           status,
           durationMs: Date.now() - start,
           category,
+          ...impersonation,
         }, success);
       }
     }

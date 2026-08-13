@@ -46,14 +46,12 @@ export async function GET() {
       '@/lib/seed-credentials'
     );
     const credentials = await getOrCreateSeedCredentials();
-    const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
-
-    // Production mode: disclose NO passwords. This route is unauthenticated and
-    // CSRF-exempt (the browser demo-seed needs it on first boot), so returning
-    // even the bootstrap `admin` password here hands anyone on the internet a
-    // working super-admin credential → full PHI breach. In production the
-    // operator reads the bootstrap password from `.seed-credentials.json`
-    // (mode 0600) or the deploy console, never over HTTP.
+    // Fail CLOSED: only an EXPLICIT demo (NEXT_PUBLIC_DEMO_MODE==='true')
+    // discloses passwords. An unset/typo'd value must not fall open — this
+    // route is unauthenticated and CSRF-exempt, so returning any password
+    // here hands anyone on the internet a working credential → PHI breach.
+    // (Matches config-validation, which also treats only ==='true' as demo.)
+    const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
     if (!isDemo) {
       return NextResponse.json({ profiles: [] });
     }

@@ -13,9 +13,21 @@ import type { UserRole } from '@/lib/db-types';
 // Role picker options — every role in the platform, labeled like the rest of
 // the UI. Everyone signs in as their assigned role; only the platform
 // super-admin may pick a different one and enter that role's workspace.
-const ROLE_OPTIONS = (Object.keys(ROLE_ROUTE_TABLE) as UserRole[])
-  .map((value) => ({ value, label: getRoleConfig(value).label }))
-  .sort((a, b) => a.label.localeCompare(b.label));
+// Some roles share a display label (e.g. `doctor` and `clinician` are both
+// "Doctor"); those get the role key appended so the picker stays unambiguous.
+const ROLE_OPTIONS = (() => {
+  const labelCounts = new Map<string, number>();
+  for (const value of Object.keys(ROLE_ROUTE_TABLE) as UserRole[]) {
+    const label = getRoleConfig(value).label;
+    labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+  }
+  return (Object.keys(ROLE_ROUTE_TABLE) as UserRole[])
+    .map((value) => {
+      const label = getRoleConfig(value).label;
+      return { value, label: (labelCounts.get(label) ?? 0) > 1 ? `${label} (${value})` : label };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+})();
 
 // Tamam brand accent — sourced from the shared theme tokens.
 const ACCENT = 'var(--accent-primary)';
