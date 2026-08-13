@@ -25,11 +25,11 @@ refuses if no strategy is declared). ✅ *code side done — your actions:*
 
 ---
 
-## 2. Get into the data droplet 🔴
+## 2. Get into the data droplet + bring CouchDB up 🔴
 
 Droplet `tamamhealth-data` · id `591879204` · private `10.114.0.3` · `doctl` context `tamamhealth-final-deploy`.
 
-☐ Restore access (pick one):
+☐ **Restore access** (pick one):
 ```bash
 # Option 1: DO Console → Droplets → tamamhealth-data → Access → Launch Console,
 #           then paste your admin public key into /root/.ssh/authorized_keys
@@ -37,14 +37,28 @@ Droplet `tamamhealth-data` · id `591879204` · private `10.114.0.3` · `doctl` 
 doctl compute droplet-action password-reset 591879204
 ```
 
-☐ On the droplet, bring CouchDB up on the VPC IP:
+☐ **Get the repo + env in place** (cloud-init makes `/opt/tamamhealth` but does
+not clone the repo or start the stack):
 ```bash
-grep COUCHDB_PASSWORD /opt/tamamhealth/.env.data                 # save this value → Step 4
-echo 'COUCHDB_BIND_ADDRESS=10.114.0.3' >> /opt/tamamhealth/.env.data
+cd /opt/tamamhealth && git clone <repo> . 2>/dev/null || git pull
+cp infra/digitalocean/data-plane.env.example /opt/tamamhealth/.env   # NOTE: .env, not .env.data —
+                                                                     # `docker compose` auto-loads .env
+```
+
+☐ **Fill `/opt/tamamhealth/.env`** — every `REPLACE` (compose fails fast on any
+missing one): `COUCHDB_USER`, `COUCHDB_PASSWORD` (save it → Step 4), `COUCHDB_SECRET`,
+`COUCHDB_WEBHOOK_SECRET`, `RELEASE_ID` (the git SHA), `CADDY_EMAIL`, `PLATFORM_SYNC_URL`.
+Set the one value that opens the VPC route:
+```bash
+COUCHDB_BIND_ADDRESS=10.114.0.3        # data-plane.env.example ships 127.0.0.1
+```
+
+☐ **Start the stack** (put the `couchdb_data` volume on the encrypted disk from Step 1):
+```bash
 docker compose -f docker-compose.data.yml up -d
 ```
 
-**Verify:** `curl -s localhost:5984/_up` → `{"status":"ok"}`
+**Verify:** `curl -s -u "$COUCHDB_USER:$COUCHDB_PASSWORD" localhost:5984/_up` → `{"status":"ok"}`
 
 ---
 
