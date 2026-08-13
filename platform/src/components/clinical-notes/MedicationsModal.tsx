@@ -465,7 +465,11 @@ export default function MedicationsModal({
           Yes/No answer directly — no radio-then-save two-step. */}
       {consentPromptOpen && (
         <Modal onClose={() => setConsentPromptOpen(false)} width={520} labelledBy="cn-consent-title">
-          <div className="cn-consent-pop" onClick={e => e.stopPropagation()}>
+          {/* `modal-panel` is load-bearing: it is one of the surface classes the
+              global auto-blue-header rule excludes — without it this dialog
+              (headings + buttons only) matches as one giant title bar and
+              paints blue end to end. */}
+          <div className="cn-consent-pop modal-panel" onClick={e => e.stopPropagation()}>
             <div className="cn-meds-header">
               <h2 className="cn-meds-title" id="cn-consent-title">Obtain Consent from Patient</h2>
               <button type="button" className="cn-meds-close" onClick={() => setConsentPromptOpen(false)} aria-label="Close consent">
