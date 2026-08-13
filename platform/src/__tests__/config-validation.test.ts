@@ -29,6 +29,31 @@ describe('production configuration validation', () => {
     expect(validateProductionConfig(validEnvironment())).toEqual([]);
   });
 
+  it('accepts disk-encryption as the declared at-rest strategy (offline-first)', () => {
+    const env = validEnvironment();
+    // Option A: full-disk/volume encryption, no field-level key on the app.
+    delete env.PHI_ENCRYPTION_ENABLED;
+    delete env.PHI_ENCRYPTION_KEY;
+    env.PHI_AT_REST_STRATEGY = 'disk-encryption';
+    expect(validateProductionConfig(env)).toEqual([]);
+  });
+
+  it('fails closed when no at-rest strategy is declared', () => {
+    const env = validEnvironment();
+    delete env.PHI_ENCRYPTION_ENABLED;
+    delete env.PHI_ENCRYPTION_KEY;
+    // No PHI_AT_REST_STRATEGY either.
+    expect(validateProductionConfig(env).join('\n')).toMatch(/PHI at-rest protection must be declared/);
+  });
+
+  it('still validates the field key when field encryption is switched on', () => {
+    const env = validEnvironment();
+    env.PHI_AT_REST_STRATEGY = 'disk-encryption';
+    env.PHI_ENCRYPTION_ENABLED = 'true';
+    env.PHI_ENCRYPTION_KEY = 'too-short';
+    expect(validateProductionConfig(env).join('\n')).toMatch(/PHI_ENCRYPTION_KEY must decode/);
+  });
+
   it('requires tenant databases and a same-origin browser gateway', () => {
     const env = validEnvironment();
     env.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED = 'false';

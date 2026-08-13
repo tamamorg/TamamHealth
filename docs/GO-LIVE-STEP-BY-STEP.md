@@ -7,18 +7,21 @@
 
 ---
 
-## 1. Decide PHI-at-rest 🔴
+## 1. PHI-at-rest = disk encryption 🔴
 
-Patient names, national ID, DOB, and phone are stored **unencrypted** today
-(the encryption key is server-only, but writes happen in the browser). Choose:
+Strategy chosen: **disk/volume encryption** (keeps offline-first). Field-level
+app encryption is a no-op on the browser write path, so it stays off. The app
+now boots on `PHI_AT_REST_STRATEGY=disk-encryption` (wired in `main.tf`; boot
+refuses if no strategy is declared). ✅ *code side done — your actions:*
 
-- ☐ **Option A — disk/volume encryption** (recommended): encrypt the CouchDB
-  volume + require device encryption on clinician laptops. I then correct the
-  app so it stops claiming field-level encryption it doesn't do.
-- ☐ **Option B — route all PHI through the server**: strongest, but ends
-  offline-first. Large change.
-
-**→ Reply "A" or "B" and I implement the code side.**
+- ☐ **CouchDB data on an encrypted volume.** Put `/opt/tamamhealth` CouchDB data
+  on a DigitalOcean Block Storage **Volume** (encrypted at rest by DO), or
+  LUKS-encrypt the disk. Do not leave patient data on the droplet's unencrypted
+  local disk.
+- ☐ **Encrypt clinician devices.** Require full-disk encryption (FileVault /
+  BitLocker / LUKS) on every machine that opens the app — that is where the
+  offline PouchDB copy of PHI lives.
+- ☐ Do **not** set `PHI_ENCRYPTION_ENABLED=true` (it breaks offline reads).
 
 ---
 
@@ -133,6 +136,6 @@ npm run db:verify:couchdb-tenants      # assert each DB grants exactly one org: 
 
 ## I can do next on your word
 
-- ☐ Implement your Step 1 choice (A or B).
 - ☐ Revoke stolen sessions on password change (token-epoch; today a stolen JWT survives a password change ~8h).
 - ☐ Make off-site backup a hard prerequisite in `cloud-init-data-plane.yaml`.
+- ☐ Re-run the security audit's verify pass (died on the session limit) to close the remaining medium findings.

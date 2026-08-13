@@ -132,9 +132,14 @@ resource "digitalocean_app" "tamamhealth" {
         value = var.couchdb_private_url
         scope = "RUN_TIME"
       }
+      # At-rest PHI protection is full-disk/volume encryption on the data
+      # droplet + device encryption on clinician machines. Field-level app
+      # encryption is a no-op on the offline-first browser write path and
+      # breaks browser reads, so it stays OFF (see config-validation.ts and
+      # docs/GO-LIVE-STEP-BY-STEP.md).
       env {
-        key   = "PHI_ENCRYPTION_ENABLED"
-        value = "true"
+        key   = "PHI_AT_REST_STRATEGY"
+        value = "disk-encryption"
         scope = "RUN_TIME"
       }
       env {
