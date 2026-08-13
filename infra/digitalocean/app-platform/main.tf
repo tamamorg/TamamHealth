@@ -132,9 +132,14 @@ resource "digitalocean_app" "tamamhealth" {
         value = var.couchdb_private_url
         scope = "RUN_TIME"
       }
+      # At-rest PHI protection is full-disk/volume encryption on the data
+      # droplet + device encryption on clinician machines. Field-level app
+      # encryption is a no-op on the offline-first browser write path and
+      # breaks browser reads, so it stays OFF (see config-validation.ts and
+      # docs/GO-LIVE-STEP-BY-STEP.md).
       env {
-        key   = "PHI_ENCRYPTION_ENABLED"
-        value = "true"
+        key   = "PHI_AT_REST_STRATEGY"
+        value = "disk-encryption"
         scope = "RUN_TIME"
       }
       env {
@@ -206,16 +211,17 @@ resource "digitalocean_firewall" "data_plane" {
     source_addresses = [var.admin_ssh_cidr]
   }
 
-  inbound_rule {
-    protocol         = "tcp"
-    port_range       = "80"
-    source_addresses = ["0.0.0.0/0", "::/0"]
-  }
-
-  inbound_rule {
-    protocol         = "tcp"
-    port_range       = "443"
-    source_addresses = ["0.0.0.0/0", "::/0"]
+  # Public 80/443 are opt-in (var.enable_public_data_plane, default false).
+  # Committing them as always-open meant a later apply would revert the manual
+  # post-cutover firewall closure and silently re-expose CouchDB to the
+  # internet. Kept off by default so the hardened state is the committed state.
+  dynamic "inbound_rule" {
+    for_each = var.enable_public_data_plane ? ["80", "443"] : []
+    content {
+      protocol         = "tcp"
+      port_range       = inbound_rule.value
+      source_addresses = ["0.0.0.0/0", "::/0"]
+    }
   }
 
   inbound_rule {

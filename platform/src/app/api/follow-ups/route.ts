@@ -89,7 +89,13 @@ async function postHandler(request: NextRequest) {
     }
     body.assignedWorker = body.assignedWorker || auth.sub;
     body.assignedWorkerName = body.assignedWorkerName || auth.name;
-    if (!body.orgId && auth.orgId) body.orgId = auth.orgId;
+    // Tenancy is stamped from the verified auth claim, never trusted from the
+    // client -- a non-admin must not inject records into another org's tenant DB.
+    // Platform/national admins may still target a specific org explicitly.
+    if (auth.role !== 'super_admin' && auth.role !== 'government') {
+      if (auth.orgId) body.orgId = auth.orgId;
+      else delete body.orgId;
+    }
     const { createFollowUp } = await import('@/lib/services/follow-up-service');
     const followUp = await createFollowUp(body as Parameters<typeof createFollowUp>[0]);
     return NextResponse.json({ followUp }, { status: 201 });

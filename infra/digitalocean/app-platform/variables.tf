@@ -111,6 +111,22 @@ variable "runtime_secrets" {
     UPSTASH_REDIS_REST_TOKEN = string
     AIRTEL_WEBHOOK_SECRET    = string
     MPESA_WEBHOOK_SECRET     = string
+    # Required by the app's boot-time config validation: the platform
+    # super-admin's initial password. Must be a strong secret, not the demo
+    # default. The app forces a change on first login.
+    SUPERADMIN_INITIAL_PASSWORD = string
   })
   sensitive = true
+}
+
+variable "enable_public_data_plane" {
+  type        = bool
+  default     = false
+  description = <<-EOT
+    Whether the data droplet exposes 80/443 to the public internet (the legacy
+    direct-CouchDB path via Caddy). Default false keeps only 5984-from-VPC
+    reachable, matching the post-cutover hardened state — so a later `terraform
+    apply` can never silently re-open public CouchDB. Browsers replicate through
+    the authenticated same-origin /api/couch gateway, so this should stay false.
+  EOT
 }

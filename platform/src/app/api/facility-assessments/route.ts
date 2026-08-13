@@ -60,7 +60,13 @@ async function postHandler(request: NextRequest) {
       );
     }
     // Ensure org/hospital context
-    if (!body.orgId && auth.orgId) body.orgId = auth.orgId;
+    // Tenancy is stamped from the verified auth claim, never trusted from the
+    // client -- a non-admin must not inject records into another org's tenant DB.
+    // Platform/national admins may still target a specific org explicitly.
+    if (auth.role !== 'super_admin' && auth.role !== 'government') {
+      if (auth.orgId) body.orgId = auth.orgId;
+      else delete body.orgId;
+    }
     if (!body.hospitalId && auth.hospitalId) body.hospitalId = auth.hospitalId;
     const { createAssessment } = await import('@/lib/services/facility-assessment-service');
     const assessment = await createAssessment(body as Parameters<typeof createAssessment>[0]);

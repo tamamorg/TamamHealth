@@ -18442,6 +18442,23 @@ textarea.ehr-handoff-input {
   font-weight: 700;
 }
 
+/* The appointments page mounts the column head OUTSIDE the scroller: the head
+   is part of the table's frame and only the rows scroll in
+   `.appointment-card-list` below it. Sticky-inside-the-scroller left rows
+   sliding through the container's padding above and behind the labels. */
+.appointment-card-frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #fff;
+}
+.appointment-card-frame .appointment-card-head {
+  position: static;
+  flex: 0 0 auto;
+  padding-top: 10px;
+}
+
 .appointment-card-head {
   position: sticky;
   top: 0;

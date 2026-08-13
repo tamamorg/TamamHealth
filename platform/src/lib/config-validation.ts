@@ -39,24 +39,40 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
     errors.push(`JWT_SECRET must be at least 32 characters in production (got ${jwt.length}).`);
   }
 
-  // --- Field encryption key (encryption at rest) ---------------------------
-  // REQUIRED in production. The previous rule only fired when encryption was
-  // already switched ON, so the dangerous case — an operator who never set the
-  // flag at all and is silently writing plaintext PHI — passed validation
-  // cleanly. That is exactly backwards for a fail-closed check.
-  // Exempt only an explicit demo deployment, which by definition holds seeded
-  // fake data rather than real patients. Any other production boot must encrypt.
+  // --- PHI encryption at rest ---------------------------------------------
+  // Production must DECLARE how PHI is protected at rest — a fail-closed check,
+  // so an operator who sets nothing cannot silently ship plaintext PHI.
+  //
+  // Two valid strategies:
+  //   • 'disk-encryption' (PHI_AT_REST_STRATEGY): full-disk/volume encryption
+  //     on the CouchDB host plus device encryption on clinician machines. This
+  //     is the supported strategy for the offline-first deployment: patient
+  //     writes happen in the browser, where the app-level field key cannot
+  //     live, so field-level encryption is a no-op there and cannot be the
+  //     control. See docs/GO-LIVE-STEP-BY-STEP.md.
+  //   • field-level (PHI_ENCRYPTION_ENABLED=true + PHI_ENCRYPTION_KEY): AES-GCM
+  //     on select server-written fields. Defence-in-depth for a SERVER-ONLY
+  //     deployment; incompatible with offline-first browser reads (the browser
+  //     has no key to decrypt), so do not combine it with browser write paths.
+  // Only an explicit demo (fake data) may run without either.
   const isDemo = env.NEXT_PUBLIC_DEMO_MODE === 'true';
   if (!isDemo && env.NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE === 'true') {
     errors.push('NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE must be false in production — destructive cleanup is an operator-only migration.');
   }
-  if (!isDemo && env.PHI_ENCRYPTION_ENABLED !== 'true') {
+  const diskEncryption = env.PHI_AT_REST_STRATEGY === 'disk-encryption';
+  const fieldEncryption = env.PHI_ENCRYPTION_ENABLED === 'true';
+  if (!isDemo && !diskEncryption && !fieldEncryption) {
     errors.push(
-      'PHI_ENCRYPTION_ENABLED must be "true" in production — patient data would otherwise be stored unencrypted. ' +
-      'Set it and supply PHI_ENCRYPTION_KEY (`openssl rand -base64 32`). ' +
-      'Only an explicit demo deployment (NEXT_PUBLIC_DEMO_MODE=true, seeded fake data) may run without it.',
+      'PHI at-rest protection must be declared in production. Set ' +
+      'PHI_AT_REST_STRATEGY=disk-encryption (full-disk/volume + device encryption — ' +
+      'the supported strategy for offline-first deployments), or ' +
+      'PHI_ENCRYPTION_ENABLED=true with a 32-byte PHI_ENCRYPTION_KEY for a ' +
+      'server-only deployment. Only an explicit demo (NEXT_PUBLIC_DEMO_MODE=true) may run without either.',
     );
-  } else if (env.PHI_ENCRYPTION_ENABLED === 'true') {
+  }
+  // Validate the field-encryption key whenever that layer is switched on,
+  // independent of the declared strategy.
+  if (fieldEncryption) {
     const key = env.PHI_ENCRYPTION_KEY || '';
     if (!key) {
       errors.push('PHI_ENCRYPTION_ENABLED=true but PHI_ENCRYPTION_KEY is unset — generate one with `openssl rand -base64 32`.');

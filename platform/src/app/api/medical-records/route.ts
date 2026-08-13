@@ -58,7 +58,13 @@ async function postHandler(request: NextRequest) {
     sanitized.consultedBy = sanitized.consultedBy || auth.sub;
     sanitized.consultedByName = sanitized.consultedByName || auth.name;
     if (!sanitized.hospitalId && auth.hospitalId) sanitized.hospitalId = auth.hospitalId;
-    if (!sanitized.orgId && auth.orgId) sanitized.orgId = auth.orgId;
+    // Tenancy is stamped from the verified auth claim, never trusted from the
+    // client -- a non-admin must not inject records into another org's tenant DB.
+    // Platform/national admins may still target a specific org explicitly.
+    if (auth.role !== 'super_admin' && auth.role !== 'government') {
+      if (auth.orgId) sanitized.orgId = auth.orgId;
+      else delete sanitized.orgId;
+    }
     const { createMedicalRecord } = await import('@/lib/services/medical-record-service');
     const record = await createMedicalRecord(sanitized as Parameters<typeof createMedicalRecord>[0]);
     return NextResponse.json({ record }, { status: 201 });

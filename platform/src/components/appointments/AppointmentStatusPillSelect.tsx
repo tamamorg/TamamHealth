@@ -1,0 +1,68 @@
+'use client';
+
+/**
+ * The status pill that IS the picker — one implementation for every worklist
+ * row (doctor dashboard, appointments page), so the two can't drift again.
+ *
+ * The pill keeps its tint and label; the real <select> is laid transparently
+ * over it as the hit target (styling in globals.css under
+ * `.appointment-status-pill--select`). Options are filtered by the viewer's
+ * role through the same lists `updateAppointmentStatus` enforces, so the
+ * dropdown never offers a rung the service would silently refuse — a role
+ * with no options at all gets the plain read-only pill. When the current
+ * status is outside the role's choices (a doctor looking at a still-Scheduled
+ * booking), it leads the list disabled so the control reads correctly.
+ */
+
+import { appointmentStatusLabel, appointmentStatusOptionsForRole, canonicalAppointmentStatus, APPOINTMENT_STATUS_DESCRIPTIONS } from '@/lib/appointment-status';
+import type { AppointmentStatus, UserRole } from '@/lib/db-types';
+
+interface AppointmentStatusPillSelectProps {
+  status: AppointmentStatus;
+  /** Tone/status class for the pill (e.g. `status-scheduled`). */
+  className?: string;
+  ariaLabel: string;
+  /** Viewer's role — decides which statuses are offered (none = plain pill). */
+  role?: UserRole;
+  /** Label override so i18n'd surfaces stay translated. */
+  labelFor?: (status: AppointmentStatus) => string;
+  onChange: (next: AppointmentStatus) => void | Promise<void>;
+}
+
+export default function AppointmentStatusPillSelect({
+  status, className = '', ariaLabel, role, labelFor = appointmentStatusLabel, onChange,
+}: AppointmentStatusPillSelectProps) {
+  const choices = appointmentStatusOptionsForRole(role);
+  const current = canonicalAppointmentStatus(status);
+
+  if (choices.length === 0) {
+    return <span className={`appointment-status-pill ${className}`.trim()}>{labelFor(status)}</span>;
+  }
+
+  return (
+    <span
+      className={`appointment-status-pill appointment-status-pill--select ${className}`.trim()}
+      onClick={event => event.stopPropagation()}
+      onKeyDown={event => event.stopPropagation()}
+    >
+      {labelFor(status)}
+      <select
+        value={current}
+        aria-label={ariaLabel}
+        title={APPOINTMENT_STATUS_DESCRIPTIONS[status]}
+        onChange={event => {
+          event.stopPropagation();
+          const next = event.target.value as AppointmentStatus;
+          if (next !== current) void onChange(next);
+        }}
+      >
+        {!choices.includes(current) && (
+          <option value={current} disabled>{labelFor(current)}</option>
+        )}
+        {choices.map(option => (
+          <option key={option} value={option}>{labelFor(option)}</option>
+        ))}
+      </select>
+    </span>
+  );
+}

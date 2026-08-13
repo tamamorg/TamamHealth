@@ -74,8 +74,13 @@ async function postHandler(request: NextRequest) {
     const { sanitizePayload } = await import('@/lib/validation');
     // Sanitize text fields to prevent stored XSS
     const sanitized = sanitizePayload(body);
-    // Attach the creating user's orgId if not specified
-    if (!sanitized.orgId && auth.orgId) sanitized.orgId = auth.orgId;
+    // Tenancy is stamped from the verified auth claim, never trusted from the
+    // client -- a non-admin must not inject records into another org's tenant DB.
+    // Platform/national admins may still target a specific org explicitly.
+    if (auth.role !== 'super_admin' && auth.role !== 'government') {
+      if (auth.orgId) sanitized.orgId = auth.orgId;
+      else delete sanitized.orgId;
+    }
     sanitized.createdBy = auth.sub;
     const patient = await createPatient(sanitized as Parameters<typeof createPatient>[0]);
     return NextResponse.json({ patient }, { status: 201 });

@@ -1,15 +1,23 @@
 /**
- * Field-level encryption at rest (AES-256-GCM) for the most sensitive PHI.
+ * Field-level encryption at rest (AES-256-GCM) for select server-written PHI.
  *
- * This is a defence-in-depth layer ON TOP OF infrastructure disk/volume
- * encryption (see the production runbook). It lets specific high-sensitivity
- * fields be stored as ciphertext so a leaked database dump cannot expose them
- * without the application key.
+ * SCOPE — read before relying on this. The key (PHI_ENCRYPTION_KEY) is a
+ * server-only env var, so `isEncryptionEnabled()` is ALWAYS false in the
+ * browser. This platform is offline-first: patient registration and most
+ * clinical writes happen in the browser against PouchDB, so this layer is a
+ * no-op on the primary write path, and patient demographics (name, national
+ * ID, DOB, phone) are not covered by it at all. It therefore is NOT the
+ * platform's at-rest control — full-disk/volume encryption is
+ * (PHI_AT_REST_STRATEGY=disk-encryption; see docs/GO-LIVE-STEP-BY-STEP.md).
+ *
+ * This layer is only meaningful in a SERVER-ONLY deployment, as defence in
+ * depth for the fields wired through it. Do NOT enable it alongside browser
+ * write paths: a browser reading a server-encrypted value has no key and the
+ * read throws (EncryptionKeyError).
  *
  * Key management:
  *   - The 32-byte key is supplied as base64 via PHI_ENCRYPTION_KEY and gated by
- *     PHI_ENCRYPTION_ENABLED=true (validated fail-closed at boot in
- *     lib/config-validation.ts).
+ *     PHI_ENCRYPTION_ENABLED=true (validated at boot in lib/config-validation.ts).
  *   - Keep the key in your secrets manager (Doppler / AWS Secrets Manager), NOT
  *     in the database or the repo.
  *
