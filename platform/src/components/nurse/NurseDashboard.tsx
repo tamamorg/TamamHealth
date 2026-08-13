@@ -181,7 +181,7 @@ export default function NurseDashboard() {
   const actions = useMemo<EhrCareDashboardAction[]>(() => ([
     { label: 'Admit new patient', icon: Calendar, onClick: () => router.push('/appointments?new=1'), tone: 'primary' },
     { label: 'Print', icon: Printer, onClick: () => setPrintOpen(true), tone: 'neutral' },
-    { label: 'Start Handoff', icon: ArrowRightLeft, onClick: () => setHandoffOpen(true), tone: 'primary' },
+    { label: 'Start Handoff', icon: ArrowRightLeft, onClick: () => setHandoffOpen(true), tourTarget: 'start-handoff', tone: 'primary' },
   ]), [router]);
 
   // The print dialog's choices: the station's two standing registers as pure
