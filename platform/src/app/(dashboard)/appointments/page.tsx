@@ -9,7 +9,8 @@ import BookAppointmentModal from '@/components/appointments/BookAppointmentModal
 import {
   APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS, APPOINTMENT_STATUS_I18N_KEYS,
   APPOINTMENT_CLOSED_STATUSES, APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_FLOW,
-  APPOINTMENT_STATUS_EXITS, canonicalAppointmentStatus,
+  APPOINTMENT_STATUS_EXITS, APPOINTMENT_STATUS_OPTIONS, APPOINTMENT_STATUS_DESCRIPTIONS,
+  canonicalAppointmentStatus,
 } from '@/lib/appointment-status';
 import Link from 'next/link';
 import AvailabilityModal from '@/components/AvailabilityModal';
@@ -172,9 +173,11 @@ export default function AppointmentsPage() {
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
   const [listSearch, setListSearch] = useState('');
   const [listStatus, setListStatus] = useState('all');
-  // The day the redesigned list view is scoped to (header date picker); stat
-  // cards + table both reflect just this day. Defaults to Africa/Juba "today".
-  const [listDate, setListDate] = useState(() => jubaDate());
+  // Optional day scope for the list view (header date picker). Empty — the
+  // default — shows every upcoming appointment from Africa/Juba "today"
+  // forward, sorted by date and time; picking a date narrows stat cards and
+  // table to just that day.
+  const [listDate, setListDate] = useState('');
   // Header "service type" filter (appointment type), applied to the table only.
   // Appointment opened in the click-to-view detail popup.
   const [eventApt, setEventApt] = useState<typeof appointments[0] | null>(null);
@@ -268,7 +271,8 @@ export default function AppointmentsPage() {
    * They used to be separate pieces of state, so moving the calendar to next
    * Tuesday and switching back to the table showed today, and vice versa.
    */
-  const calDate = useMemo(() => new Date(`${listDate}T12:00:00`), [listDate]);
+  // With no day picked (the list's "Upcoming" default) the calendar opens on today.
+  const calDate = useMemo(() => new Date(`${listDate || jubaDate()}T12:00:00`), [listDate]);
   const setCalDate = useCallback((d: Date) => {
     setListDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
   }, []);
@@ -606,10 +610,13 @@ export default function AppointmentsPage() {
     return map;
   }, [patients]);
 
-  // Everything in the redesigned list view is scoped to the header's date.
+  // The list view's scope: the picked day, or — the default — every upcoming
+  // appointment from today forward.
   const dayList = useMemo(
-    () => appointments.filter(a => a.appointmentDate === listDate),
-    [appointments, listDate]
+    () => (listDate
+      ? appointments.filter(a => a.appointmentDate === listDate)
+      : appointments.filter(a => a.appointmentDate >= today)),
+    [appointments, listDate, today]
   );
 
   const dayStats = useMemo(() => {
@@ -639,6 +646,10 @@ export default function AppointmentsPage() {
           identifier.toLowerCase().includes(q) || a.department.toLowerCase().includes(q);
       })
       .sort((a, b) => {
+        // Soonest first: by day, then by time within the day. Matters for the
+        // unscoped "Upcoming" view, where the list spans many days.
+        const byDate = a.appointmentDate.localeCompare(b.appointmentDate);
+        if (byDate !== 0) return byDate;
         const byTime = appointmentTimeMinutes(a.appointmentTime) - appointmentTimeMinutes(b.appointmentTime);
         if (byTime !== 0) return byTime;
         const byStatus = a.status.localeCompare(b.status);
@@ -647,9 +658,11 @@ export default function AppointmentsPage() {
       });
   }, [dayList, listStatus, listSearch, patientById]);
 
-  const dayLabel = listDate === today
-    ? 'Today'
-    : new Date(listDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const dayLabel = !listDate
+    ? 'Upcoming'
+    : listDate === today
+      ? 'Today'
+      : new Date(listDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   const handleDownloadCsv = useCallback(() => {
     const header = ['Patient name', 'Identifier', 'Location', 'Service type', 'Appointment time', 'Visit start time', 'Status'];
@@ -668,7 +681,7 @@ export default function AppointmentsPage() {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `appointments-${listDate}.csv`;
+    link.download = `appointments-${listDate || 'upcoming'}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }, [tableRows, patientById, listDate, t, statusLabelKey]);
@@ -713,7 +726,7 @@ export default function AppointmentsPage() {
             {/* Table card */}
             <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
               <EhrListHeader
-                title={`Appointments for: ${dayLabel}`}
+                title={listDate ? `Appointments for: ${dayLabel}` : 'Upcoming appointments'}
                 stats={[
                   { label: 'Appointments', value: dayStats.total, color: LIST_STAT_COLORS.muted },
                   { label: 'Checked in', value: dayStats.checkedIn, color: LIST_STAT_COLORS.blue },
@@ -727,11 +740,24 @@ export default function AppointmentsPage() {
                     <input
                       type="date"
                       value={listDate}
-                      onChange={e => setListDate(e.target.value || today)}
+                      // Empty = the "Upcoming" default; a picked date narrows to that day.
+                      onChange={e => setListDate(e.target.value)}
                       className="listpage-toolbar-date"
                       style={{ width: 150, flex: '0 0 auto' }}
                       aria-label={t('appointments.labelDate')}
+                      title="Scope the list to one day"
                     />
+                    {listDate && (
+                      <button
+                        type="button"
+                        className="listpage-icon-btn"
+                        onClick={() => setListDate('')}
+                        title="Show all upcoming appointments"
+                        aria-label="Show all upcoming appointments"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
                     <div className={`listpage-icon-select ${listStatus !== 'all' ? 'is-active' : ''}`} title="Filter appointments by status">
                       <Filter size={16} />
                       <Select
@@ -770,11 +796,12 @@ export default function AppointmentsPage() {
                 }
               />
 
-              <div className="appointment-card-list appointments-list-surface">
+              <div className="appointments-list-surface appointment-card-frame">
                     {/* The column head is the table's frame, not a label for
-                        the rows that happen to be loaded: it stays put on a
-                        day with no bookings, so the list never collapses into
-                        a bare message. */}
+                        the rows that happen to be loaded: it sits OUTSIDE the
+                        scroller so only the rows scroll beneath it, and it
+                        stays put on a day with no bookings, so the list never
+                        collapses into a bare message. */}
                     <div className="appointment-card-head" aria-hidden="true">
                       <span>Patient</span>
                       <span>Time</span>
@@ -782,9 +809,10 @@ export default function AppointmentsPage() {
                       <span>Department</span>
                       <span>Status</span>
                     </div>
+                    <div className="appointment-card-list">
                     {tableRows.length === 0 && (
                       <div className="appointment-card-empty">
-                        No appointments for {dayLabel.toLowerCase()}.
+                        {listDate ? `No appointments for ${dayLabel.toLowerCase()}.` : 'No upcoming appointments.'}
                       </div>
                     )}
                     {tableRows.map(apt => {
@@ -846,16 +874,40 @@ export default function AppointmentsPage() {
                       </div>
 
                       <div className="appointment-card-status">
-                        {/* The pill is the picker: reception moves a booking
-                            along the ladder from the row it is reading, rather
-                            than expanding it first. Roles without any
-                            appointment-workflow permission get the plain pill. */}
-                        {/* Display-only. Status is changed in the appointment
-                            editor's Status & billing tab, which is the one
-                            control every role uses. */}
-                        <span className={`appointment-status-pill status-${statusSlug(apt.status)}`}>
-                          {t(statusLabelKey[apt.status])}
-                        </span>
+                        {/* The pill is the picker — the same pill-wrapped
+                            dropdown the dashboards put on their rows, going
+                            through handleStatusChange so a check-in still
+                            opens the visit encounter and a reschedule keeps
+                            its Undo. Roles without any appointment-workflow
+                            permission get the plain pill. */}
+                        {(canConfirmAppointments || canCheckInAppointments) ? (
+                          <span
+                            className={`appointment-status-pill appointment-status-pill--select status-${statusSlug(apt.status)}`}
+                            onClick={event => event.stopPropagation()}
+                            onKeyDown={event => event.stopPropagation()}
+                          >
+                            {t(statusLabelKey[apt.status])}
+                            <select
+                              value={canonicalAppointmentStatus(apt.status)}
+                              aria-label={`Status for ${apt.patientName}`}
+                              title={APPOINTMENT_STATUS_DESCRIPTIONS[apt.status]}
+                              onChange={event => {
+                                event.stopPropagation();
+                                const next = event.target.value as AppointmentStatus;
+                                if (next === canonicalAppointmentStatus(apt.status)) return;
+                                void handleStatusChange(apt._id, next);
+                              }}
+                            >
+                              {APPOINTMENT_STATUS_OPTIONS.map(option => (
+                                <option key={option} value={option}>{t(statusLabelKey[option])}</option>
+                              ))}
+                            </select>
+                          </span>
+                        ) : (
+                          <span className={`appointment-status-pill status-${statusSlug(apt.status)}`}>
+                            {t(statusLabelKey[apt.status])}
+                          </span>
+                        )}
                         <small>{appointmentOperationalCue(apt)}</small>
                       </div>
                     </div>
@@ -867,6 +919,7 @@ export default function AppointmentsPage() {
                     </div>
                   );
                     })}
+                    </div>
               </div>
             </div>
           </>
