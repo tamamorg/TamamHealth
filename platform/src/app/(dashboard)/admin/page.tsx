@@ -154,7 +154,6 @@ export default function AdminDashboardPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLogDoc[]>([]);
   const [syncStats, setSyncStats] = useState({ total: 0, pending: 0, synced: 0, failed: 0, oldestPending: undefined as string | undefined });
   const [conflictCount, setConflictCount] = useState(0);
-  const [pendingAccountRequests, setPendingAccountRequests] = useState(0);
   const [dhis2, setDhis2] = useState<{ configured: boolean; host: string; lastPush?: string }>({ configured: false, host: 'Not configured' });
   const [loading, setLoading] = useState(true);
   const [tenantSearch, setTenantSearch] = useState('');
@@ -204,18 +203,6 @@ export default function AdminDashboardPage() {
           if (!cancelled) setConflictCount(Array.isArray(data.conflicts) ? data.conflicts.length : Array.isArray(data) ? data.length : 0);
         }
       } catch { /* offline — conflicts stay 0 */ }
-    })();
-
-    (async () => {
-      try {
-        const res = await apiFetch('/api/account-requests');
-        if (res.ok) {
-          const data = await res.json();
-          if (!cancelled && Array.isArray(data.requests)) {
-            setPendingAccountRequests(data.requests.filter((r: { status?: string }) => r.status === 'pending').length);
-          }
-        }
-      } catch { /* offline — account requests stay 0 */ }
     })();
 
     (async () => {
@@ -299,9 +286,6 @@ export default function AdminDashboardPage() {
     if (conflictCount > 0) {
       rows.push({ severity: 'medium', title: `${conflictCount} unresolved data conflict${conflictCount === 1 ? '' : 's'}`, detail: 'Reconciliation queue', href: '/admin/conflicts' });
     }
-    if (pendingAccountRequests > 0) {
-      rows.push({ severity: 'medium', title: `${pendingAccountRequests} account request${pendingAccountRequests === 1 ? '' : 's'} pending`, detail: 'Applicants awaiting review', href: '/admin/account-requests' });
-    }
     for (const org of suspendedOrgs) {
       rows.push({ severity: 'medium', title: `Tenant ${org.subscriptionStatus === 'cancelled' ? 'cancelled' : 'suspended'} — ${org.name}`, detail: `${org.subscriptionPlan} plan`, href: '/admin/organizations' });
     }
@@ -332,7 +316,7 @@ export default function AdminDashboardPage() {
     }
     const order: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
     return rows.sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity)).slice(0, 8);
-  }, [failedAudits, syncStats.failed, conflictCount, pendingAccountRequests, suspendedOrgs, trialOrgs, backupOverdue, backupUnknown, backupStatus, rpoHours, config?.maintenanceMode]);
+  }, [failedAudits, syncStats.failed, conflictCount, suspendedOrgs, trialOrgs, backupOverdue, backupUnknown, backupStatus, rpoHours, config?.maintenanceMode]);
 
   /* Tenant health matrix (searchable). */
   const tenantMatrix = useMemo(() => {

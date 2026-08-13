@@ -167,7 +167,6 @@ export async function destroyLocalDatabase(name: string): Promise<void> {
 
 // Typed database accessors
 export const usersDB = () => getDB('tamamhealth_users');
-export const accountRequestsDB = () => getDB('tamamhealth_account_requests');
 export const patientsDB = () => getDB('tamamhealth_patients');
 export const hospitalsDB = () => getDB('tamamhealth_hospitals');
 export const medicalRecordsDB = () => getDB('tamamhealth_medical_records');
@@ -450,7 +449,6 @@ export async function resetAllDatabases(): Promise<void> {
   const PouchDB = loadPouchDB();
   const dbNames = [
     'tamamhealth_users', 'tamamhealth_patients', 'tamamhealth_hospitals',
-    'tamamhealth_account_requests',
     'tamamhealth_medical_records', 'tamamhealth_referrals', 'tamamhealth_lab_results',
     'tamamhealth_disease_alerts', 'tamamhealth_prescriptions', 'tamamhealth_audit_log', 'tamamhealth_usage_events', 'tamamhealth_messages', 'tamamhealth_conversations', 'tamamhealth_patient_notes',
     'tamamhealth_births', 'tamamhealth_deaths', 'tamamhealth_facility_assessments',

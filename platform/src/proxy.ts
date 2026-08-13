@@ -37,7 +37,6 @@ const CSRF_EXEMPT_API_PATHS = new Set<string>([
   '/api/auth/logout',
   '/api/auth/me',
   '/api/demo-credentials',
-  '/api/account-requests/submit',
 ]);
 
 /**
@@ -270,40 +269,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Account-request submission — an applicant has no session yet by
-  // definition. The Origin/Host check above still runs on the POST, and the
-  // route itself rate-limits and validates. Only the narrow /submit path is
-  // public; approve/reject live on the collection route and stay behind auth.
-  if (pathname === '/api/account-requests/submit') {
-    return NextResponse.next();
-  }
-
-  // The signup form's organization/facility directory — read-only, no PHI,
-  // scoped to the exact `?public=organizations` GET. Any other query or
-  // method on the collection route (the reviewer list, approve/reject) still
-  // hits the auth gate below.
-  if (
-    pathname === '/api/account-requests' &&
-    ['GET', 'HEAD'].includes(request.method.toUpperCase()) &&
-    request.nextUrl.searchParams.get('public') === 'organizations'
-  ) {
-    return NextResponse.next();
-  }
-
   // Login page — always public
   if (pathname === '/login') {
     return NextResponse.next();
   }
 
-  // Public pages — root (redirects to /login), public-stats, patient-portal,
-  // legal pages, and the request-an-account form (linked from /login).
+  // Public pages — root (redirects to /login), public-stats, patient-portal, legal pages
   if (
     pathname === '/' ||
     pathname === '/public-stats' ||
     pathname === '/patient-portal' ||
     pathname === '/terms' ||
-    pathname === '/privacy' ||
-    pathname === '/signup'
+    pathname === '/privacy'
   ) {
     return NextResponse.next();
   }

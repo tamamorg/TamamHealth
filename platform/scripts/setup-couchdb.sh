@@ -47,7 +47,6 @@ done
 
 # ---------- 2. Create databases ----------
 DATABASES=(
-  tamamhealth_account_requests
   tamamhealth_adjustments
   tamamhealth_anc
   tamamhealth_announcements

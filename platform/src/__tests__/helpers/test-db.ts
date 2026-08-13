@@ -94,7 +94,6 @@ export function createDBMock() {
     nutritionSuppliesDB: () => getTestDB('test_tamamhealth_nutrition_supplies'),
     patientTransfersDB: () => getTestDB('test_tamamhealth_patient_transfers'),
     problemsDB: () => getTestDB('test_tamamhealth_problems'),
-    accountRequestsDB: () => getTestDB('test_tamamhealth_account_requests'),
     SEED_VERSION: 12,
     isSeeded: async () => false,
     isSeedInProgress: async () => false,

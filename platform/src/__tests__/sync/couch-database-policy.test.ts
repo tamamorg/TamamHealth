@@ -76,7 +76,7 @@ describe('CouchDB database policy', () => {
   describe('server-only databases', () => {
     it.each([
       'tamamhealth_users',
-      'tamamhealth_account_requests',
+      'tamamhealth_usage_events',
       'tamamhealth_unknown_future_database',
     ])('locks %s away from every browser role', name => {
       const policy = databasePolicy(name, afterCutover);

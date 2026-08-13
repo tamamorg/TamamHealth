@@ -111,7 +111,6 @@ const demoAccounts: { role: string; roleKey: UserRole; user: string; desc: strin
 type Account = typeof demoAccounts[number];
 
 const imageForIndex = (i: number) => IMAGE_POOL[i % IMAGE_POOL.length];
-const emailFor = (user: string) => `${user}@tamamhealth.ss`;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -206,7 +205,6 @@ export default function LoginPage() {
     const idx = acc ? demoAccounts.findIndex(a => a.user === acc.user) : -1;
     const hero = acc ? imageForIndex(idx) : '/assets/landing-img.jpg';
     const fullName = acc ? (ACCOUNT_NAME[acc.user] || acc.role) : '';
-    const email = acc ? emailFor(acc.user) : '';
 
     return (
       <div className="tl-shell">
@@ -240,10 +238,10 @@ export default function LoginPage() {
                     className="tl-input" autoComplete={acc ? 'off' : 'username'} />
                 </div>
 
-                {/* Email */}
+                {/* Role */}
                 <div className="tl-field">
-                  <label htmlFor="tl-email">Email</label>
-                  <input id="tl-email" type="text" value={acc ? email : ''}
+                  <label htmlFor="tl-role">Role</label>
+                  <input id="tl-role" type="text" value={acc ? acc.role : ''}
                     readOnly placeholder={acc ? '' : '—'} className="tl-input" />
                 </div>
 
@@ -282,8 +280,6 @@ export default function LoginPage() {
                 ) : (
                   <a href="/patient-portal" className="tl-link">Sign in as a patient</a>
                 )}
-                <span className="tl-foot-sep">·</span>
-                <a href="/signup" className="tl-link">Request an account</a>
                 <span className="tl-foot-sep">·</span>
                 <a href="/terms" target="_blank" rel="noopener noreferrer" className="tl-link">Terms &amp; Conditions</a>
               </p>
@@ -375,7 +371,6 @@ export default function LoginPage() {
 
         <div className="tl-list-foot">
           <a href="/patient-portal" className="tl-link"><Icon name="patient" size={15} color={ACCENT_DEEP} /> Sign in as a patient</a>
-          <a href="/signup" className="tl-link">Request an account</a>
           {demoEnabled && <button type="button" className="tl-link" onClick={openManual}>Other account</button>}
         </div>
       </div>
