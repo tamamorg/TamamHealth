@@ -11,8 +11,9 @@ import { useWards } from '@/lib/hooks/useWards';
 import { formatMoney } from '@/lib/format-utils';
 import {
   Building2, Users, CalendarClock, BedDouble, DollarSign,
-  Wallet, Package, Receipt, BarChart3, ChevronRight, Activity,
+  Wallet, Package, Receipt, BarChart3, ChevronRight, Activity, ClipboardCheck,
 } from '@/components/icons/lucide';
+import { apiFetch } from '@/lib/api-fetch';
 import type { ClaimDoc } from '@/lib/db-types-payments';
 import TransferInboxCard from '@/components/patients/TransferInboxCard';
 
@@ -152,6 +153,28 @@ export default function OrgAdminDashboard() {
     })();
     return () => { cancelled = true; };
   }, [scope]);
+
+  // Account requests live in a server-only database (never replicated to the
+  // browser), so unlike the tiles above this count comes from the API. The
+  // server already scopes the list to this org's org_admin-reviewable requests.
+  const [accountRequests, setAccountRequests] = useState({ pending: 0, total: 0 });
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/account-requests');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.requests)) {
+          setAccountRequests({
+            pending: data.requests.filter((r: { status?: string }) => r.status === 'pending').length,
+            total: data.requests.length,
+          });
+        }
+      } catch { /* offline — the tile stays at 0 */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const loading = hospitalsLoading || usersLoading || appointmentsLoading || wardsLoading || financialsLoading;
 
@@ -328,6 +351,16 @@ export default function OrgAdminDashboard() {
       meterPct: claims.length > 0 ? (pendingClaims.length / claims.length) * 100 : 0,
     },
     {
+      key: 'account-requests',
+      label: 'Account Requests',
+      value: accountRequests.pending,
+      detail: `${accountRequests.total} total request${accountRequests.total === 1 ? '' : 's'} received`,
+      icon: ClipboardCheck,
+      tone: accountRequests.pending > 0 ? 'warning' : 'ok',
+      onClick: () => router.push('/org-admin/account-requests'),
+      meterPct: accountRequests.total > 0 ? (accountRequests.pending / accountRequests.total) * 100 : 0,
+    },
+    {
       key: 'billing',
       label: 'Outstanding Balance',
       value: formatMoney(billing?.totalOutstanding, { currency }),
@@ -352,6 +385,7 @@ export default function OrgAdminDashboard() {
   const shortcuts = [
     { label: 'Facilities', desc: 'Manage hospitals & clinics', icon: Building2, path: '/hospitals' },
     { label: 'Manage Users', desc: 'Staff accounts & access', icon: Users, path: '/org-admin/users' },
+    { label: 'Account Requests', desc: 'Review sign-up requests', icon: ClipboardCheck, path: '/org-admin/account-requests' },
     { label: 'Analytics', desc: 'Usage & activity insights', icon: Activity, path: '/org-admin/analytics' },
     { label: 'Billing & Payments', desc: 'Cash flow, invoices', icon: Wallet, path: '/payments' },
     { label: 'Claims', desc: 'Insurance claim tracking', icon: Receipt, path: '/payments/claims' },
@@ -421,7 +455,7 @@ export default function OrgAdminDashboard() {
           <div className="px-5 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
             <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Operational Status</h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4">
             {riskTiles.map(tile => {
               const Icon = tile.icon;
               const toneColor = tile.tone === 'danger' ? 'var(--color-danger)' : tile.tone === 'warning' ? 'var(--color-warning)' : 'var(--color-success)';
