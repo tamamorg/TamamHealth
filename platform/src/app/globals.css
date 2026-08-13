@@ -27227,6 +27227,48 @@ table.patient-data-table.patient-data-table {
   fill: none;
 }
 
+/* Shared list-page filter popover. Portalled to <body>, so it is `fixed` and
+   the page's own `overflow: hidden` cards can no longer clip it; the inline
+   coordinates come from the trigger's measured rect. The body scrolls on its
+   own so a tall filter set stays fully reachable. */
+.ehr-list-filters-panel {
+  position: fixed;
+  z-index: 1250;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-medium);
+  border-radius: 14px;
+  background: var(--bg-card-solid);
+  box-shadow: 0 16px 40px rgba(9, 30, 66, 0.20);
+}
+
+.ehr-list-filters-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ehr-list-filters-head > span {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ehr-list-filters-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+}
+
 /* Hangs flush off the bottom of its trigger, so the flat top edge is what
    joins the two — a fully rounded panel butted against the button reads as a
    separate floating card resting on top of it. */

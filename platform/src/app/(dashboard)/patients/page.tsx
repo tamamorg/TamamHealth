@@ -276,98 +276,69 @@ export default function PatientsPage() {
                     style={{ padding: '9px 18px', height: 38, borderRadius: 999, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
                   />
                 </div>
-                {/* Filters */}
-                <div className="relative" ref={filterRef}>
-                  <button
-                    onClick={() => setShowFilters(s => !s)}
-                    aria-expanded={showFilters}
-                    aria-label={t('patients.filtersTitle')}
-                    title={t('patients.filtersTitle')}
-                    style={{
-                      position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      width: 38, height: 38, padding: 0, borderRadius: 999,
-                      border: `1px solid ${activeFilterCount ? 'var(--accent-primary)' : 'var(--border-light)'}`,
-                      background: activeFilterCount ? 'rgba(33,145,208,0.08)' : 'var(--bg-card-solid)',
-                      color: activeFilterCount ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                      cursor: 'pointer', flexShrink: 0,
-                    }}
-                  >
-                    <Filter className="w-4 h-4" />
-                    {activeFilterCount > 0 && (
-                      <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
-                        {activeFilterCount}
-                      </span>
-                    )}
-                  </button>
-                  {showFilters && (
-                    <div
-                      className="absolute left-0 mt-2 rounded-2xl overflow-hidden z-50"
-                      style={{ width: 'min(92vw, 560px)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
-                    >
-                      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                        <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('patients.filtersTitle')}</span>
-                        <div className="flex items-center gap-2">
-                          {activeFilterCount > 0 && (
-                            <button onClick={clearFilters} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>{t('nurse.clearAllFilters')}</button>
-                          )}
-                          <button type="button" onClick={() => setShowFilters(false)} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label={t('action.close')}>
-                            <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                          </button>
-                        </div>
+                {/* Filters — the shared portalled popover. It used to be an
+                    absolutely-positioned panel inside this toolbar, which the
+                    card's own `overflow: hidden` clipped: the right-hand
+                    column and the lower checkboxes were unreadable and
+                    unreachable. */}
+                <EhrListFilters
+                  activeCount={activeFilterCount}
+                  onClear={clearFilters}
+                  label={t('patients.filtersTitle')}
+                  panelWidth={560}
+                  align="left"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterOlderThan')}</span>
+                      <div className="relative">
+                        <input type="number" min={0} max={120} value={filters.olderThan} onChange={e => setF('olderThan', e.target.value)} placeholder="—" className="w-full text-sm py-2 pl-3 pr-12" style={fieldStyle} />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('patients.filterYears')}</span>
                       </div>
-                      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                        <label className="flex flex-col gap-1">
-                          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterOlderThan')}</span>
-                          <div className="relative">
-                            <input type="number" min={0} max={120} value={filters.olderThan} onChange={e => setF('olderThan', e.target.value)} placeholder="—" className="w-full text-sm py-2 pl-3 pr-12" style={fieldStyle} />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('patients.filterYears')}</span>
-                          </div>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('nurse.colGender')}</span>
+                      <Select value={filters.gender} onChange={e => setF('gender', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle}>
+                        <option value="">{t('patients.all')}</option>
+                        <option value="Male">{t('patient.male')}</option>
+                        <option value="Female">{t('patient.female')}</option>
+                      </Select>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patient.location')}</span>
+                      <Select value={filters.state} onChange={e => setF('state', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle}>
+                        <option value="">{t('patients.all')}</option>
+                        {states.map(s => <option key={s} value={s}>{s}</option>)}
+                      </Select>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterRegisteredFrom')}</span>
+                      <input type="date" value={filters.registeredFrom} onChange={e => setF('registeredFrom', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle} />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterRegisteredTo')}</span>
+                      <input type="date" value={filters.registeredTo} onChange={e => setF('registeredTo', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle} />
+                    </label>
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-semibold block mb-2" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterShowWith')}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
+                      {([
+                        ['allergies', t('patients.kpiAllergiesFlagged')],
+                        ['chronic', t('patient.chronicConditions')],
+                        ['recent', t('patients.kpiVisitedLast30d')],
+                        ['assignedMe', t('patients.assignedMe')],
+                        ['unassigned', t('patients.assignedUnassigned')],
+                        ...(isBilling ? [['outstanding', t('patients.filterOutstanding')] as const] : []),
+                      ] as const).map(([key, label]) => (
+                        <label key={key} className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--text-primary)' }}>
+                          <input type="checkbox" checked={filters[key]} onChange={e => setF(key, e.target.checked)} className="w-4 h-4 rounded" style={{ accentColor: 'var(--accent-primary)' }} />
+                          {label}
                         </label>
-                        <label className="flex flex-col gap-1">
-                          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('nurse.colGender')}</span>
-                          <Select value={filters.gender} onChange={e => setF('gender', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle}>
-                            <option value="">{t('patients.all')}</option>
-                            <option value="Male">{t('patient.male')}</option>
-                            <option value="Female">{t('patient.female')}</option>
-                          </Select>
-                        </label>
-                        <label className="flex flex-col gap-1">
-                          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patient.location')}</span>
-                          <Select value={filters.state} onChange={e => setF('state', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle}>
-                            <option value="">{t('patients.all')}</option>
-                            {states.map(s => <option key={s} value={s}>{s}</option>)}
-                          </Select>
-                        </label>
-                        <label className="flex flex-col gap-1">
-                          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterRegisteredFrom')}</span>
-                          <input type="date" value={filters.registeredFrom} onChange={e => setF('registeredFrom', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle} />
-                        </label>
-                        <label className="flex flex-col gap-1">
-                          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterRegisteredTo')}</span>
-                          <input type="date" value={filters.registeredTo} onChange={e => setF('registeredTo', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle} />
-                        </label>
-                      </div>
-                      <div className="px-4 pb-4">
-                        <span className="text-[11px] font-semibold block mb-2" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterShowWith')}</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
-                          {([
-                            ['allergies', t('patients.kpiAllergiesFlagged')],
-                            ['chronic', t('patient.chronicConditions')],
-                            ['recent', t('patients.kpiVisitedLast30d')],
-                            ['assignedMe', t('patients.assignedMe')],
-                            ['unassigned', t('patients.assignedUnassigned')],
-                            ...(isBilling ? [['outstanding', t('patients.filterOutstanding')] as const] : []),
-                          ] as const).map(([key, label]) => (
-                            <label key={key} className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--text-primary)' }}>
-                              <input type="checkbox" checked={filters[key]} onChange={e => setF(key, e.target.checked)} className="w-4 h-4 rounded" style={{ accentColor: 'var(--accent-primary)' }} />
-                              {label}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                </EhrListFilters>
                 <button
                   type="button"
                   onClick={handleDownloadCsv}
