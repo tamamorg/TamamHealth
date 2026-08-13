@@ -11,14 +11,21 @@
  * large blank panel whenever a facility had few users. That management now
  * lives on the user-accounts page (/org-admin/users or /admin/users); this
  * screen only previews the data and deep-links out to where it is acted on.
+ *
+ * The center work queue carries two tabs so this is the one operational home
+ * for a facility manager instead of two overlapping dashboards: "Inquiries"
+ * (patient enquiries) and "Pending Leave" (leave requests awaiting a
+ * decision, folded in from the HR landing dashboard at
+ * `src/app/(dashboard)/dashboard/hr/page.tsx` — approve/reject here mirrors
+ * that page's `decideLeave` wiring and approver gating).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  Activity, Stethoscope, Users, BedDouble, Wallet, MessageSquare, UserCheck,
-  CalendarClock, AlertTriangle, RefreshCw, Phone, XCircle,
+  Activity, Users, BedDouble, Wallet, UserCheck,
+  CalendarClock, AlertTriangle, RefreshCw, Phone, XCircle, Check, X,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -159,10 +166,18 @@ export interface FacilityAvailabilityRow {
   shift: string | null;
 }
 
-export interface FacilityDoctorPreview {
+export interface FacilityLeaveRow {
   id: string;
-  name: string;
-  available: boolean;
+  requesterName: string;
+  leaveType: string;
+  days: number;
+  startDate: string;
+  endDate: string;
+  role: string;
+  facility: string;
+  reason?: string;
+  requestedAt: string;
+  status: LeaveRequestDoc['status'];
 }
 
 export interface FacilityOverview {
@@ -172,7 +187,9 @@ export interface FacilityOverview {
    *  searching) — kept distinct so a caller can tell "5 of 5" from "5 of 40". */
   inquiryMatchCount: number;
   availabilityRows: FacilityAvailabilityRow[];
-  doctorsPreview: FacilityDoctorPreview[];
+  /** Pending leave requests (status === 'pending'), filtered by the same
+   *  `search` text as the inquiries preview — the Pending Leave tab's queue. */
+  pendingLeaveRows: FacilityLeaveRow[];
   cashFlow: { received: number; pending: number; totalInvoice: number };
 }
 
@@ -259,8 +276,26 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
       };
     });
 
-  const doctorsPreview: FacilityDoctorPreview[] = doctors.slice(0, 5).map(d => ({
-    id: d._id, name: d.name, available: availableProviderIds.has(d._id),
+  // Pending Leave tab: same idle-digest-free, search-widens shape as HR's own
+  // landing dashboard (`dashboard/hr/page.tsx`'s `filteredPending`) — no cap,
+  // since a facility's pending-decision queue runs short by nature.
+  const matchesLeaveQuery = (r: LeaveRequestDoc) => {
+    if (!q) return true;
+    const haystack = `${r.userName || ''} ${r.role || ''} ${r.leaveType || ''} ${r.facilityName || ''}`.toLowerCase();
+    return haystack.includes(q);
+  };
+  const pendingLeaveRows: FacilityLeaveRow[] = pendingLeave.filter(matchesLeaveQuery).map(r => ({
+    id: r._id,
+    requesterName: r.userName,
+    leaveType: r.leaveType,
+    days: r.days,
+    startDate: r.startDate,
+    endDate: r.endDate,
+    role: r.role,
+    facility: r.facilityName,
+    reason: r.reason,
+    requestedAt: r.requestedAt,
+    status: r.status,
   }));
 
   const received = billing?.totalRevenue ?? 0;
@@ -271,7 +306,7 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
     inquiryRows,
     inquiryMatchCount: filteredEnquiries.length,
     availabilityRows,
-    doctorsPreview,
+    pendingLeaveRows,
     cashFlow: { received, pending: pendingAmount, totalInvoice: received + pendingAmount },
   };
 }
@@ -281,6 +316,13 @@ const EXTRA_LABELS: Record<ExtraKey, string> = {
   billing: 'billing', enquiries: 'inquiries', availability: 'staff availability',
   leave: 'leave requests', schedule: 'shift schedule', gaps: 'staffing gaps',
 };
+
+type QueueTab = 'inquiries' | 'leave';
+
+// Same approver role list as the full HR page's leave tab (src/app/(dashboard)/hr/page.tsx)
+// and its own landing dashboard (dashboard/hr/page.tsx) — who can decide a
+// pending leave request from this dashboard's queue.
+const LEAVE_APPROVER_ROLES = new Set(['org_admin', 'medical_superintendent', 'hospital_manager', 'super_admin']);
 
 export default function FacilityManagementDashboard() {
   const { currentUser } = useAuth();
@@ -303,7 +345,10 @@ export default function FacilityManagementDashboard() {
   const [extraLoading, setExtraLoading] = useState(true);
   const [reloadToken, setReloadToken] = useState(0);
   const hasLoadedExtraRef = useRef(false);
-  const [inquirySearch, setInquirySearch] = useState('');
+  // Shared by both queue tabs — each tab filters its own dataset by the same
+  // text so switching tabs never leaves a stale, unrelated filter in place.
+  const [queueSearch, setQueueSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<QueueTab>('inquiries');
 
   const today = jubaDate();
   const facilityId = currentUser?.hospitalId;
@@ -377,7 +422,7 @@ export default function FacilityManagementDashboard() {
 
   const overview = useMemo(() => buildFacilityOverview({
     today,
-    search: inquirySearch,
+    search: queueSearch,
     users,
     usersUnavailable,
     patients,
@@ -388,7 +433,7 @@ export default function FacilityManagementDashboard() {
     availableProviderIds,
     availableBeds,
     billing,
-  }), [today, inquirySearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, availableBeds, billing]);
+  }), [today, queueSearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, availableBeds, billing]);
 
   // Weekly patient activity (real: registrations, appointments, cancellations).
   const weekly = useMemo(() => {
@@ -463,6 +508,75 @@ export default function FacilityManagementDashboard() {
     }
   };
 
+  const isLeaveApprover = !!currentUser && LEAVE_APPROVER_ROLES.has(currentUser.role);
+
+  // Approve/reject a pending leave request from the dashboard's own queue —
+  // mirrors dashboard/hr/page.tsx's `decideLeaveAction`. `decideLeave` catches
+  // its own "cannot approve your own leave" invariant internally and resolves
+  // to `null` rather than rejecting, so both that case and a hard failure
+  // (import/network) are surfaced as a toast, never an unhandled rejection.
+  const decideLeaveLocally = (id: string, updated: LeaveRequestDoc) => {
+    setLeave(prev => prev.map(l => (l._id === id ? updated : l)));
+  };
+  const decideLeaveAction = async (id: string, status: 'approved' | 'rejected') => {
+    if (!currentUser) return;
+    try {
+      const { decideLeave } = await import('@/lib/services/leave-service');
+      const updated = await decideLeave(id, {
+        status,
+        decidedBy: currentUser._id,
+        decidedByName: currentUser.name,
+      });
+      if (!updated) {
+        showToast("You can't decide your own leave request.", 'error');
+        return;
+      }
+      decideLeaveLocally(id, updated);
+      showToast(status === 'approved' ? 'Leave request approved.' : 'Leave request rejected.', 'success');
+    } catch (err) {
+      console.error('Failed to decide leave request', err);
+      showToast('Could not update the leave request.', 'error');
+    }
+  };
+
+  const renderLeaveDetail = (row: FacilityLeaveRow) => (
+    <div className="ehr-visit-pop ehr-visit-pop--inline">
+      {isLeaveApprover && row.status === 'pending' && (
+        <div className="ehr-visit-pop-tabs">
+          <div className="ehr-visit-pop-actions">
+            <button
+              type="button"
+              className="ehr-visit-pop-icon is-primary"
+              aria-label="Approve leave"
+              title="Approve leave"
+              onClick={() => decideLeaveAction(row.id, 'approved')}
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="ehr-visit-pop-icon"
+              aria-label="Reject leave"
+              title="Reject leave"
+              onClick={() => decideLeaveAction(row.id, 'rejected')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="ehr-visit-pop-body">
+        <div className="ehr-visit-pop-row">
+          {/* Not translated — matches this file's own hardcoded-string
+              precedent (see markContacted/closeEnquiry toasts above) rather
+              than adding an i18n key for a single detail-panel field. */}
+          <span className="ehr-visit-pop-label">Reason</span>
+          <div><p>{row.reason || 'No reason given'}</p></div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderInquiryDetail = (row: FacilityInquiryRow) => (
     <div className="ehr-visit-pop ehr-visit-pop--inline">
       {(row.status === 'new' || row.status === 'contacted') && (
@@ -509,13 +623,20 @@ export default function FacilityManagementDashboard() {
   const hasErrors = failedLabels.length > 0;
 
   const inquiriesFailed = loadErrors.has('enquiries');
-  const emptyTitle = inquiriesFailed
-    ? "Couldn't load inquiries"
-    : inquirySearch.trim()
-      ? 'No inquiries match your search'
-      : 'No recent inquiries';
-  const emptyActionLabel = inquiriesFailed ? 'Retry' : 'View all';
-  const onEmptyAction = inquiriesFailed ? retryExtra : () => router.push('/inquiries');
+  const leaveFailed = loadErrors.has('leave');
+  const hasQuery = queueSearch.trim().length > 0;
+
+  // Empty state, its action, and the search placeholder all follow the active
+  // tab — each queue tab reads its own data source and its own failure mode.
+  const emptyTitle = activeTab === 'inquiries'
+    ? (inquiriesFailed ? "Couldn't load inquiries" : hasQuery ? 'No inquiries match your search' : 'No recent inquiries')
+    : (leaveFailed ? "Couldn't load leave requests" : hasQuery ? 'No leave requests match your search' : 'No leave requests waiting on a decision');
+  const emptyActionLabel = activeTab === 'inquiries'
+    ? (inquiriesFailed ? 'Retry' : 'View all')
+    : (leaveFailed ? 'Retry' : 'View all');
+  const onEmptyAction = activeTab === 'inquiries'
+    ? (inquiriesFailed ? retryExtra : () => router.push('/inquiries'))
+    : (leaveFailed ? retryExtra : () => router.push('/hr?tab=leave'));
 
   const initialLoading = usersLoading || patientsLoading || wardsLoading || appointmentsLoading || extraLoading;
 
@@ -553,36 +674,62 @@ export default function FacilityManagementDashboard() {
         title="Facility Management"
         greetingName={currentUser.name}
         dateLabel={formatDateTitle(toIsoDate(new Date()))}
-        centerTitle="Recent Inquiries"
-        tabs={[{ key: 'inquiries', label: 'Inquiries', count: overview.inquiryRows.length }]}
-        // Enquiries stay open across days (they are not a single day's
-        // schedule), so the calendar's selected day must not hide them.
+        centerTitle={activeTab === 'inquiries' ? 'Recent Inquiries' : 'Pending Leave'}
+        tabs={[
+          { key: 'inquiries', label: 'Inquiries', count: overview.inquiryRows.length },
+          { key: 'leave', label: 'Pending Leave', count: overview.pendingLeaveRows.length },
+        ]}
+        // Neither queue is a single day's schedule — an inquiry stays open
+        // across days and a leave request stays pending across days — so the
+        // calendar's selected day must not hide rows from either tab.
         filterRowsByDate={false}
-        activeTab="inquiries"
-        onTabChange={() => {}}
-        searchValue={inquirySearch}
-        searchPlaceholder="Search inquiries by name, type, or assignee…"
-        onSearchChange={setInquirySearch}
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as QueueTab)}
+        searchValue={queueSearch}
+        searchPlaceholder={activeTab === 'inquiries'
+          ? 'Search inquiries by name, type, or assignee…'
+          : 'Search leave requests by name, role, or type…'}
+        onSearchChange={setQueueSearch}
         filters={[]}
         actions={[
           { label: 'Find staff availability', icon: UserCheck, onClick: () => router.push('/hr?tab=roster&availability=available') },
         ]}
-        rows={overview.inquiryRows.map((r): EhrCareDashboardRow => ({
-          id: r.id,
-          title: r.name,
-          subtitle: r.type,
-          date: r.date,
-          time: r.time,
-          timeSecondary: r.date,
-          status: r.status,
-          statusLabel: r.statusLabel,
-          statusTone: enquiryStatusTone(r.status),
-          careTeam: r.assignee || 'Unassigned',
-          careTeamLabel: 'Assigned to',
-          location: r.channel,
-          locationLabel: 'Channel',
-          popupDetail: renderInquiryDetail(r),
-        }))}
+        rows={activeTab === 'inquiries'
+          ? overview.inquiryRows.map((r): EhrCareDashboardRow => ({
+              id: r.id,
+              title: r.name,
+              subtitle: r.type,
+              date: r.date,
+              time: r.time,
+              timeSecondary: r.date,
+              status: r.status,
+              statusLabel: r.statusLabel,
+              statusTone: enquiryStatusTone(r.status),
+              careTeam: r.assignee || 'Unassigned',
+              careTeamLabel: 'Assigned to',
+              location: r.channel,
+              locationLabel: 'Channel',
+              popupDetail: renderInquiryDetail(r),
+            }))
+          : overview.pendingLeaveRows.map((r): EhrCareDashboardRow => ({
+              id: r.id,
+              title: r.requesterName,
+              subtitle: `${titleCase(r.leaveType)} · ${r.days}d · ${r.startDate} → ${r.endDate}`,
+              compactMeta: `${r.days}d`,
+              date: r.requestedAt.slice(0, 10),
+              time: formatClockTimeOrUndefined(r.requestedAt),
+              timeSecondary: r.requestedAt.slice(0, 10),
+              status: r.status,
+              statusLabel: titleCase(r.leaveType),
+              statusSecondary: `${r.days} day${r.days === 1 ? '' : 's'}`,
+              statusTone: 'warning',
+              careTeam: r.role ? titleCase(r.role) : undefined,
+              careTeamLabel: 'Role',
+              location: r.facility,
+              locationSecondary: `${r.startDate} → ${r.endDate}`,
+              locationLabel: 'Facility',
+              popupDetail: renderLeaveDetail(r),
+            }))}
         metrics={overview.metrics}
         metricsTitle="Facility Overview"
         metricsActions={[
@@ -710,57 +857,7 @@ export default function FacilityManagementDashboard() {
             </div>
           </>
         )}
-      >
-        <div className="grid grid-cols-1 gap-3" style={{ minWidth: 0 }}>
-          {/* Doctors + availability */}
-          <div className="dash-card overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2">
-                <Stethoscope className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Doctors</span>
-              </div>
-              <button onClick={() => router.push('/hr?tab=roster&role=doctor')} className="text-[12px] font-medium" style={{ color: 'var(--accent-primary)' }}>
-                View all
-              </button>
-            </div>
-            {usersUnavailable ? (
-              <EmptyState
-                icon={AlertTriangle}
-                title="Couldn't load staff data"
-                message="Staff records failed to load. Try again."
-                action={{ label: 'Retry', onClick: () => reloadUsers() }}
-              />
-            ) : overview.doctorsPreview.length === 0 ? (
-              <EmptyState
-                title="No doctors on record"
-                message="No one with a doctor/clinical officer role is registered here yet."
-                action={{ label: 'Add staff member', onClick: () => router.push('/hr?tab=roster') }}
-              />
-            ) : (
-              <div className="p-2">
-                <div className="flex items-center gap-3 px-3 py-2" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                  <span className="w-6 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>No</span>
-                  <span className="w-8" aria-hidden />
-                  <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Name</span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Status</span>
-                </div>
-                {overview.doctorsPreview.map((d, i) => (
-                  <div key={d.id} className="flex items-center gap-3 px-3 py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <span className="text-[11px] font-mono w-6" style={{ color: 'var(--text-muted)' }}>{String(i + 1).padStart(2, '0')}</span>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style={{ background: 'var(--accent-primary)' }}>
-                      {(d.name || '?').split(' ').map(s => s[0]).slice(0, 2).join('')}
-                    </div>
-                    <span className="text-[13px] font-medium flex-1 truncate" style={{ color: 'var(--text-primary)' }}>{d.name}</span>
-                    <span className="text-[11px] font-semibold" style={{ color: d.available ? 'var(--color-success)' : 'var(--text-muted)' }}>
-                      {d.available ? 'Available' : 'Unavailable'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </EhrCareDashboard>
+      />
     </main>
   );
 }

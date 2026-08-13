@@ -28,9 +28,18 @@ describe('PEOPLE & HR nav section', () => {
   test.each(HR_ROLES)('%s gets the workforce destinations', role => {
     const hrefs = peopleItems(role).map(i => i.href);
     expect(hrefs).toEqual(expect.arrayContaining([
-      '/dashboard/hr', '/hr?tab=roster', '/hr?tab=leave',
+      '/hr?tab=roster', '/hr?tab=leave',
       '/hr?tab=schedule', '/hr?tab=payroll', '/inquiries',
     ]));
+  });
+
+  test('the HR landing page has no nav row — its content merged into the facility dashboard', () => {
+    // /dashboard/hr and /facility-management were two overlapping operational
+    // homes. The pending-leave queue now lives on the facility dashboard as a
+    // tab, so listing both again would recreate the split.
+    for (const role of ALL_ROLES) {
+      expect(ROLE_PERMISSIONS[role].navItems.map(i => i.href)).not.toContain('/dashboard/hr');
+    }
   });
 
   test('only the two account-administering roles get an accounts row, pointing at their own page', () => {
@@ -69,7 +78,7 @@ describe('PEOPLE & HR nav section', () => {
       const visible = uniqueAllowedNavItems(ROLE_PERMISSIONS[role].navItems, allowedFor(role));
       const groups = groupNavItemsBySection(visible).filter(g => g.section === 'PEOPLE & HR');
       expect(groups).toHaveLength(1);
-      expect(groups[0].items.length).toBeGreaterThanOrEqual(6);
+      expect(groups[0].items.length).toBeGreaterThanOrEqual(5);
     }
   });
 

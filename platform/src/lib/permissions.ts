@@ -136,7 +136,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/government', label: 'Government', icon: Building2, section: 'WORKSPACES' },
       { href: '/facility-management', label: 'Facility Ops', icon: HospitalIcon, section: 'WORKSPACES' },
       // PEOPLE & HR — the whole workforce area in one section (see org_admin).
-      { href: '/dashboard/hr', label: 'People Overview', icon: Gauge, section: 'PEOPLE & HR' },
       { href: '/hr?tab=roster', label: 'Staff Roster', icon: Stethoscope, section: 'PEOPLE & HR' },
       { href: '/admin/users', label: 'User Accounts & Access', icon: KeyRound, section: 'PEOPLE & HR' },
       { href: '/hr?tab=leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
@@ -173,7 +172,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // workforce area is reachable from the module menu instead of hiding
       // behind a single "Doctors & Staff" link that landed on a roster with
       // no way back out to leave, shifts or payroll.
-      { href: '/dashboard/hr', label: 'People Overview', icon: Gauge, section: 'PEOPLE & HR' },
       { href: '/hr?tab=roster', label: 'Staff Roster', icon: Stethoscope, section: 'PEOPLE & HR' },
       { href: '/org-admin/users', label: 'User Accounts & Access', icon: KeyRound, section: 'PEOPLE & HR' },
       { href: '/hr?tab=leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
@@ -472,7 +470,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/equipment', label: 'Assets', icon: Package, section: 'ADMINISTRATION' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'ADMINISTRATION' },
       // PEOPLE & HR — the whole workforce area in one section (see org_admin).
-      { href: '/dashboard/hr', label: 'People Overview', icon: Gauge, section: 'PEOPLE & HR' },
       { href: '/hr?tab=roster', label: 'Staff Roster', icon: Stethoscope, section: 'PEOPLE & HR' },
       { href: '/hr?tab=leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
       { href: '/hr?tab=schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
@@ -582,7 +579,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'FACILITY' },
       { href: '/equipment', label: 'Assets & Equipment', icon: Package, section: 'FACILITY' },
       // PEOPLE & HR — the whole workforce area in one section (see org_admin).
-      { href: '/dashboard/hr', label: 'People Overview', icon: Gauge, section: 'PEOPLE & HR' },
       { href: '/hr?tab=roster', label: 'Staff Roster', icon: Stethoscope, section: 'PEOPLE & HR' },
       { href: '/hr?tab=leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
       { href: '/hr?tab=schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
