@@ -17,7 +17,7 @@ const SECTION_TITLE_STYLE: React.CSSProperties = {
 const LEVEL_COLORS: Record<string, string> = {
   emergency: 'var(--color-danger)',
   warning: 'var(--color-warning)',
-  watch: '#2a78d6',
+  watch: 'var(--chart-1)',
   normal: '#8a8f98',
 };
 

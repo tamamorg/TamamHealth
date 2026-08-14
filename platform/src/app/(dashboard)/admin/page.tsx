@@ -35,7 +35,7 @@ import {
 import type { AuditLogDoc, EncounterDoc, UserDoc } from '@/lib/db-types';
 
 /* Shared chart palette (dataviz-validated, same hues as the other dashboards). */
-const CHART_BLUE = '#2a78d6';
+const CHART_BLUE = 'var(--chart-1)';
 const CHART_RED = 'var(--color-danger)';
 const GREEN = 'var(--color-success)';
 const AMBER = 'var(--color-warning)';
@@ -435,7 +435,7 @@ export default function AdminDashboardPage() {
             <div className="p-5 flex flex-col justify-center h-full">
               {stat(<Building2 className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />, <>Total <b>Organizations</b></>, organizations.length)}
               {stat(<Server className="w-4 h-4" style={{ color: GREEN }} />, <>Total <b>Facilities</b></>, hospitals.length)}
-              {stat(<Users className="w-4 h-4" style={{ color: '#7847EB' }} />, <>Total <b>Users</b></>, users.length.toLocaleString())}
+              {stat(<Users className="w-4 h-4" style={{ color: 'var(--chart-3)' }} />, <>Total <b>Users</b></>, users.length.toLocaleString())}
               {stat(<HeartPulse className="w-4 h-4" style={{ color: '#FB923C' }} />, <>Total <b>Patients</b></>, patientAgg.total.toLocaleString())}
               <div className="flex items-center gap-3 pt-2.5">
                 <div className="icon-box-sm"><Activity className="w-4 h-4" style={{ color: CHART_BLUE }} /></div>

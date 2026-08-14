@@ -301,7 +301,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             </FieldSection>
 
             <FieldSection
-              icon={Stethoscope} label={t('scribe.sectionExamFindings')} color="#A855F7"
+              icon={Stethoscope} label={t('scribe.sectionExamFindings')} color="var(--chart-3)"
               expanded={expandedSections.has('exam')}
               onToggle={() => toggleSection('exam')}
               empty={scribe.extraction.examFindings.length === 0}
@@ -345,7 +345,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             </FieldSection>
 
             <FieldSection
-              icon={Pill} label={t('scribe.sectionMedications')} color="#EC4899"
+              icon={Pill} label={t('scribe.sectionMedications')} color="var(--chart-2)"
               expanded={expandedSections.has('medications')}
               onToggle={() => toggleSection('medications')}
               empty={scribe.extraction.medications.length === 0}
@@ -415,7 +415,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             </FieldSection>
 
             <FieldSection
-              icon={Calendar} label={t('scribe.sectionFollowUp')} color="#8B5CF6"
+              icon={Calendar} label={t('scribe.sectionFollowUp')} color="var(--chart-3)"
               expanded={expandedSections.has('followup')}
               onToggle={() => toggleSection('followup')}
               empty={!scribe.extraction.followUp}

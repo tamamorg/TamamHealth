@@ -29,7 +29,6 @@ export default function ProductsPage() {
               <div className="tm-figure" style={{ position: "relative", height: 200, borderBottom: `3px solid ${p.accent}` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}
                 <img src={p.image} alt={p.imageAlt} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%" }} />
-                <span style={{ position: "absolute", top: 0, right: 0, zIndex: 3, background: p.accent, color: "#FFFFFF", fontSize: 13, letterSpacing: "0.1em", padding: "8px 14px" }}>{p.acronym}</span>
               </div>
               <div style={{ padding: "26px 26px 28px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
                 <h3 style={{ fontSize: 25, margin: 0 }}>{p.title}</h3>

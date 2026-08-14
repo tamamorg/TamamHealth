@@ -31,13 +31,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <Link href="/products" style={{ fontSize: 14, color: "#7FC4EA", textDecoration: "none", letterSpacing: "0.04em" }}>← All products</Link>
           <div className="tm-split" style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 48, alignItems: "center", marginTop: 26 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "flex-start" }}>
-              <span className="fs125" style={{ letterSpacing: "0.14em", padding: "7px 14px", background: "#7FC4EA", color: "#0E2A4A" }}>{p.acronym}</span>
               <h1 style={{ fontSize: "clamp(31px, 5vw, 54px)", margin: 0, color: "#FFFFFF" }}>{p.title}</h1>
               <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7FC4EA" }}>{p.tagline}</span>
               <p style={{ margin: 0, fontSize: 17, lineHeight: 1.7, color: "rgba(255,255,255,0.82)", maxWidth: 640 }}>{d.intro}</p>
               <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap" }}>
                 <Link href="/contact" className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, whiteSpace: "nowrap", flexShrink: 0, background: "#FFFFFF", borderColor: "#FFFFFF", color: "#015697" }}>
-                  Book a Demo
+                  Get in touch
                   <Corners />
                 </Link>
                 <Link href="/login" className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, whiteSpace: "nowrap", flexShrink: 0, background: "transparent", borderColor: "rgba(255,255,255,0.5)", color: "#FFFFFF" }}>
@@ -62,14 +61,20 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <span className="fs125" style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-accent-700)", whiteSpace: "nowrap" }}>How it works</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", marginTop: 8 }}>
+            {/* Native <details>, not a JS accordion: the page is server-rendered
+                and these need no state. It also means the steps stay findable
+                by in-page search and print expanded, which a div-and-useState
+                version would break. Closed by default — the numbered titles are
+                the summary of the day; the detail is there when wanted. */}
             {d.steps.map((s, k) => (
-              <div key={s.t} className="tm-steprow" style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: 28, padding: "26px 0", borderBottom: "1px solid var(--color-divider)", alignItems: "start" }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: 34, lineHeight: 1, color: "#015697" }}>{String(k + 1).padStart(2, "0")}</span>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <h3 style={{ fontSize: 22, margin: 0 }}>{s.t}</h3>
-                  <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.7, color: "var(--color-neutral-800)", maxWidth: 900 }}>{s.b}</p>
-                </div>
-              </div>
+              <details key={s.t} className="tm-steprow" name="patient-day">
+                <summary>
+                  <span className="tm-stepnum">{String(k + 1).padStart(2, "0")}</span>
+                  <h3>{s.t}</h3>
+                  <span className="tm-stepchev" aria-hidden="true">+</span>
+                </summary>
+                <p>{s.b}</p>
+              </details>
             ))}
           </div>
         </div>

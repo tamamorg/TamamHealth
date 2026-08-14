@@ -739,7 +739,7 @@ export const FOOTER_COLS: { accent: string; title: string; links: FooterLink[] }
     title: "Get involved",
     links: [
       { label: "Donate to the pilot", href: "/donate" },
-      { label: "Book a demo", href: "/contact" },
+      { label: "Get in touch", href: "/contact" },
       { label: SUPPORT_EMAIL, href: `mailto:${SUPPORT_EMAIL}`, external: true },
       { label: "Partner with us", href: "/contact" },
     ],

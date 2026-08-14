@@ -187,7 +187,7 @@ export default function EquityPlanningPage() {
                     {sortedRows.map(r => (
                       <tr key={r.state} style={{ borderBottom: '1px solid var(--border-light)' }}>
                         <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{r.state}</td>
-                        <td className="px-4 py-2.5"><MiniBar value={r.facilities} max={maxFacilities} color="#2a78d6" /></td>
+                        <td className="px-4 py-2.5"><MiniBar value={r.facilities} max={maxFacilities} color="var(--chart-1)" /></td>
                         <td className="px-4 py-2.5"><MiniBar value={r.activeCases} max={maxCases} color="var(--color-danger-text)" /></td>
                         <td className="px-4 py-2.5"><MiniBar value={r.immRecords} max={maxImm} color="var(--color-success-text)" /></td>
                         <td className="px-4 py-2.5"><MiniBar value={r.ancVisits} max={maxAnc} color="var(--color-warning-text)" /></td>
@@ -232,9 +232,9 @@ export default function EquityPlanningPage() {
                       }} />
                       <ReferenceLine x={medianCases} stroke="var(--border-light)" strokeDasharray="4 4" />
                       <ReferenceLine y={medianCompleteness} stroke="var(--border-light)" strokeDasharray="4 4" />
-                      <Scatter data={scatterRows} fill="#2a78d6">
+                      <Scatter data={scatterRows} fill="var(--chart-1)">
                         {scatterRows.map((r, i) => (
-                          <Cell key={i} fill={r.activeCases > medianCases && (r.avgCompleteness as number) < medianCompleteness ? 'var(--color-warning)' : '#2a78d6'} />
+                          <Cell key={i} fill={r.activeCases > medianCases && (r.avgCompleteness as number) < medianCompleteness ? 'var(--color-warning)' : 'var(--chart-1)'} />
                         ))}
                       </Scatter>
                     </ScatterChart>

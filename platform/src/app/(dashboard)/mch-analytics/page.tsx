@@ -25,7 +25,7 @@ export default function MCHAnalyticsPage() {
         <main className="page-container flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: 'transparent' }}>
-              <HeartPulse className="w-8 h-8" style={{ color: '#EC4899' }} />
+              <HeartPulse className="w-8 h-8" style={{ color: 'var(--chart-2)' }} />
             </div>
             <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{t('mch.loading')}</p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('mch.loadingSub')}</p>
@@ -72,7 +72,7 @@ export default function MCHAnalyticsPage() {
               </span>
             </div>
             <div className="px-3 py-2 rounded-md" style={{ background: 'rgba(236,72,153,0.08)', border: '1px solid rgba(236,72,153,0.15)' }}>
-              <p className="text-[10px] font-semibold" style={{ color: '#EC4899' }}>{t('mch.highRiskCount', { count: summary.highRiskCount })}</p>
+              <p className="text-[10px] font-semibold" style={{ color: 'var(--chart-2)' }}>{t('mch.highRiskCount', { count: summary.highRiskCount })}</p>
             </div>
           </>
         } />
@@ -80,7 +80,7 @@ export default function MCHAnalyticsPage() {
         {/* ═══ KPI STRIP ═══ */}
         <div className="kpi-grid mb-4">
           {[
-            { label: t('mch.kpiMothersTracked'), value: summary.totalMothersTracked, icon: Users, color: '#EC4899', bg: 'rgba(236,72,153,0.12)' },
+            { label: t('mch.kpiMothersTracked'), value: summary.totalMothersTracked, icon: Users, color: 'var(--chart-2)', bg: 'rgba(236,72,153,0.12)' },
             { label: t('mch.kpiAnc4Rate'), value: `${summary.anc4PlusCoverage}%`, icon: HeartPulse, color: scoreColor(summary.anc4PlusCoverage, 50), bg: 'rgba(236,72,153,0.08)' },
             { label: t('mch.kpiMmr'), value: summary.maternalMortalityRatio.toLocaleString(), icon: Heart, color: summary.maternalMortalityRatio > 500 ? 'var(--color-danger-text)' : 'var(--color-warning-text)', bg: summary.maternalMortalityRatio > 500 ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)' },
             { label: t('mch.kpiNmr'), value: summary.neonatalMortalityRate, icon: Baby, color: summary.neonatalMortalityRate > 30 ? 'var(--color-danger-text)' : 'var(--color-warning-text)', bg: summary.neonatalMortalityRate > 30 ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)' },
@@ -141,14 +141,14 @@ export default function MCHAnalyticsPage() {
             <div className="card-elevated">
               <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
                 <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <HeartPulse className="w-4 h-4" style={{ color: '#EC4899' }} />
+                  <HeartPulse className="w-4 h-4" style={{ color: 'var(--chart-2)' }} />
                   {t('mch.ancCoverageCascade')}
                 </h3>
               </div>
               <div className="p-4 space-y-4">
                 {[
-                  { label: t('mch.anc1Visit'), value: ancCascade.anc1, rate: ancCascade.anc1Rate, target: 90, color: '#EC4899' },
-                  { label: t('mch.anc4Visits'), value: ancCascade.anc4, rate: ancCascade.anc4Rate, target: 50, color: '#A855F7' },
+                  { label: t('mch.anc1Visit'), value: ancCascade.anc1, rate: ancCascade.anc1Rate, target: 90, color: 'var(--chart-2)' },
+                  { label: t('mch.anc4Visits'), value: ancCascade.anc4, rate: ancCascade.anc4Rate, target: 50, color: 'var(--chart-3)' },
                   { label: t('mch.anc8WhoTarget'), value: ancCascade.anc8, rate: ancCascade.anc8Rate, target: 30, color: '#6366F1' },
                 ].map(item => (
                   <div key={item.label}>
@@ -282,7 +282,7 @@ export default function MCHAnalyticsPage() {
             <div className="lg:col-span-2 card-elevated">
               <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
                 <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <Syringe className="w-4 h-4" style={{ color: '#A855F7' }} />
+                  <Syringe className="w-4 h-4" style={{ color: 'var(--chart-3)' }} />
                   {t('mch.immunizationCoverageGaps')}
                 </h3>
               </div>
@@ -350,13 +350,13 @@ export default function MCHAnalyticsPage() {
             {/* Large cascade visual */}
             <div className="card-elevated p-6">
               <h3 className="font-semibold text-sm mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <HeartPulse className="w-4 h-4" style={{ color: '#EC4899' }} />
+                <HeartPulse className="w-4 h-4" style={{ color: 'var(--chart-2)' }} />
                 {t('mch.ancCascadeWhoTitle')}
               </h3>
               <div className="flex items-end justify-center gap-6" style={{ height: '240px' }}>
                 {[
-                  { label: t('mch.anc1Short'), value: ancCascade.anc1, rate: ancCascade.anc1Rate, color: '#EC4899' },
-                  { label: t('mch.anc4Short'), value: ancCascade.anc4, rate: ancCascade.anc4Rate, color: '#A855F7' },
+                  { label: t('mch.anc1Short'), value: ancCascade.anc1, rate: ancCascade.anc1Rate, color: 'var(--chart-2)' },
+                  { label: t('mch.anc4Short'), value: ancCascade.anc4, rate: ancCascade.anc4Rate, color: 'var(--chart-3)' },
                   { label: t('mch.anc8Short'), value: ancCascade.anc8, rate: ancCascade.anc8Rate, color: '#6366F1' },
                 ].map(item => {
                   const maxRate = Math.max(ancCascade.anc1Rate, 1);
@@ -438,7 +438,7 @@ export default function MCHAnalyticsPage() {
               {[
                 { label: t('mch.totalBirths'), value: birthOutcomes.totalBirths, color: 'var(--accent-primary)' },
                 { label: t('mch.facilityDelivery'), value: `${birthOutcomes.facilityDeliveryRate}%`, color: scoreColor(birthOutcomes.facilityDeliveryRate, 50) },
-                { label: t('mch.caesareanRate'), value: `${birthOutcomes.caesareanRate}%`, color: '#A855F7' },
+                { label: t('mch.caesareanRate'), value: `${birthOutcomes.caesareanRate}%`, color: 'var(--chart-3)' },
                 { label: t('mch.lowBirthWeight'), value: `${birthOutcomes.lowBirthWeightRate}%`, sub: t('mch.babiesCount', { count: birthOutcomes.lowBirthWeight }), color: birthOutcomes.lowBirthWeightRate > 15 ? 'var(--color-danger-text)' : 'var(--color-warning-text)' },
               ].map(item => (
                 <div key={item.label} className="card-elevated p-4">
@@ -459,7 +459,7 @@ export default function MCHAnalyticsPage() {
                 <div className="space-y-3">
                   {Object.entries(birthOutcomes.byDeliveryType).map(([type, count]) => {
                     const pct = birthOutcomes.totalBirths > 0 ? Math.round((count / birthOutcomes.totalBirths) * 100) : 0;
-                    const color = type === 'normal' ? 'var(--color-success)' : type === 'caesarean' ? '#A855F7' : 'var(--accent-primary)';
+                    const color = type === 'normal' ? 'var(--color-success)' : type === 'caesarean' ? 'var(--chart-3)' : 'var(--accent-primary)';
                     return (
                       <div key={type}>
                         <div className="flex justify-between text-xs mb-1">
@@ -486,7 +486,7 @@ export default function MCHAnalyticsPage() {
                     .sort(([, a], [, b]) => b - a)
                     .map(([attendant, count]) => {
                       const pct = birthOutcomes.totalBirths > 0 ? Math.round((count / birthOutcomes.totalBirths) * 100) : 0;
-                      const color = attendant === 'doctor' ? 'var(--accent-primary)' : attendant === 'midwife' ? '#EC4899' : attendant === 'nurse' ? 'var(--accent-primary)' : '#FB923C';
+                      const color = attendant === 'doctor' ? 'var(--accent-primary)' : attendant === 'midwife' ? 'var(--chart-2)' : attendant === 'nurse' ? 'var(--accent-primary)' : '#FB923C';
                       return (
                         <div key={attendant}>
                           <div className="flex justify-between text-xs mb-1">
@@ -518,7 +518,7 @@ export default function MCHAnalyticsPage() {
                       <div key={m.month} className="flex-1 flex flex-col items-center gap-1 group">
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity text-center">
                           <p className="text-[10px] font-bold" style={{ color: 'var(--text-primary)' }}>{m.births}</p>
-                          <p className="text-[8px]" style={{ color: '#A855F7' }}>{t('mch.caesareanCount', { count: m.caesarean })}</p>
+                          <p className="text-[8px]" style={{ color: 'var(--chart-3)' }}>{t('mch.caesareanCount', { count: m.caesarean })}</p>
                         </div>
                         <div className="w-full flex flex-col justify-end" style={{ height: '120px' }}>
                           <div className="w-full rounded-t-md" style={{
@@ -663,7 +663,7 @@ export default function MCHAnalyticsPage() {
                         <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('mch.male')}</p>
                       </div>
                       <div className="p-3 rounded-md text-center" style={{ background: 'rgba(236,72,153,0.08)' }}>
-                        <p className="text-xl font-bold" style={{ color: '#EC4899' }}>{neonatalData.byGender?.Female || 0}</p>
+                        <p className="text-xl font-bold" style={{ color: 'var(--chart-2)' }}>{neonatalData.byGender?.Female || 0}</p>
                         <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('mch.female')}</p>
                       </div>
                     </div>
@@ -749,7 +749,7 @@ export default function MCHAnalyticsPage() {
             <div className="card-elevated overflow-hidden">
               <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
                 <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <Syringe className="w-4 h-4" style={{ color: '#A855F7' }} />
+                  <Syringe className="w-4 h-4" style={{ color: 'var(--chart-3)' }} />
                   {t('mch.vaccineCoverageDropout')}
                 </h3>
               </div>

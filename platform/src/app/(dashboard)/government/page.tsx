@@ -32,13 +32,24 @@ import { useDeaths } from '@/lib/hooks/useDeaths';
 import { getNationalDataQuality, type NationalDataQuality } from '@/lib/services/data-quality-service';
 import { getImmunizationStats } from '@/lib/services/immunization-service';
 import { getANCStats } from '@/lib/services/anc-service';
+import { CHART_SERIES, CHART_SERIES_HEX, DISEASE_COLOR } from '@/lib/chart-colors';
 
-// Restrained public-health palette.
-const BLUE = '#2a78d6';
+/* Two jobs, two forms — they were one set of constants doing both, which is
+   how the map turned black.
+
+   MAGNITUDE (the choropleth): `govHeatFill` interpolates a wash toward the
+   layer colour using `parseInt(hex.slice(…))`, so these must be literal hex.
+   They come from the chart scale, not from status. */
+const LAYER_ALERTS = CHART_SERIES_HEX[4];   // orange
+const LAYER_IMMUNIZATION = CHART_SERIES_HEX[5]; // green
+const LAYER_DEEP = '#013D6B';               // brand-800, the reporting layer
+const BLUE = CHART_SERIES_HEX[0];
+
+/* STATUS (on target / follow-up / critical): handed straight to CSS, so these
+   stay tokens and keep tracking the semantic scale. */
 const GREEN = 'var(--color-success)';
-const RED = 'var(--color-danger)';
 const AMBER = 'var(--color-warning)';
-const DEEP = 'var(--accent-hover)';
+const RED = 'var(--color-danger)';
 
 type ImmunizationStats = Awaited<ReturnType<typeof getImmunizationStats>>;
 type ANCStats = Awaited<ReturnType<typeof getANCStats>>;
@@ -179,28 +190,29 @@ function CoverageBar({ value, label, sub, color }: {
 // against each other); anything else draws the next *unused* fallback so no
 // two series ever share a color — cycling previously gave Kala-azar the same
 // red as Malaria.
+/**
+ * Disease colour, from the shared entity map — the same malaria blue this
+ * screen shows is the one /surveillance shows. They used to disagree on every
+ * disease (malaria red here, blue there; cholera blue here, red there), which
+ * made the colour meaningless the moment a reader moved between the two.
+ * Entries the shared map does not know keep their own hues below.
+ */
 const DISEASE_COLORS: Record<string, string> = {
-  malaria: 'var(--color-danger)',
-  cholera: '#2a78d6',
-  measles: '#7847EB',
-  pneumonia: 'var(--color-warning)',
-  diarrhea: '#0f9488',
-  'acute watery diarrhea': '#0f9488',
-  tuberculosis: 'var(--accent-hover)',
-  tb: 'var(--accent-hover)',
-  hiv: '#CA4D1C',
-  'hiv/aids': '#CA4D1C',
-  meningitis: '#a94a7f',
-  measles_rubella: '#7847EB',
+  ...DISEASE_COLOR,
+  'hiv/aids': DISEASE_COLOR.hiv,
+  measles_rubella: DISEASE_COLOR.measles,
+  meningitis: 'var(--chart-3)',
 };
-const DISEASE_FALLBACK = ['var(--color-success)', '#8f6a13', '#d6659b', '#5b67d8', '#64748B'];
+/** Anything unnamed walks the categorical slots in fixed order — never a
+ *  generated hue, and never a status colour. */
+const DISEASE_FALLBACK = [...CHART_SERIES];
 
 // Facility-type donut palette + labels (matches the hospital registry vocab).
 // PHCU was slate (#64748B) — it read as gray and was near-indistinguishable
 // from the referral blue; the warm orange step validates against every neighbor.
 const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
-  national_referral: { label: 'National Referral', color: '#2a78d6' },
-  state_hospital: { label: 'State Hospital', color: '#7847EB' },
+  national_referral: { label: 'National Referral', color: 'var(--chart-1)' },
+  state_hospital: { label: 'State Hospital', color: 'var(--chart-3)' },
   county_hospital: { label: 'County Hospital', color: 'var(--color-success-text)' },
   phcc: { label: 'PHCC', color: 'var(--color-warning-text)' },
   phcu: { label: 'PHCU', color: '#CA4D1C' },
@@ -540,7 +552,8 @@ export default function GovernmentNationalDashboard() {
             {(() => {
               const byName = new Map(barData.map(b => [b.name, b] as const));
               const maxValue = Math.max(0, ...barData.map(b => b.value ?? 0));
-              const layerHex = layer === 'alerts' ? RED : layer === 'immunization' ? GREEN : DEEP;
+              const layerHex = layer === 'alerts' ? LAYER_ALERTS
+                : layer === 'immunization' ? LAYER_IMMUNIZATION : LAYER_DEEP;
               const layerMeta = MAP_LAYERS.find(l => l.key === layer);
               const fillFor = (value: number | null): string => {
                 if (isPercentLayer) {
@@ -564,7 +577,7 @@ export default function GovernmentNationalDashboard() {
                             d={govRingPath(ring)}
                             fill={fillFor(value)}
                             fillOpacity={isPercentLayer && value ? 0.55 : 1}
-                            stroke={isSelected ? DEEP : 'rgba(1, 86, 151, 0.25)'}
+                            stroke={isSelected ? 'var(--brand-800)' : 'rgba(1, 86, 151, 0.25)'}
                             strokeWidth={isSelected ? 2.5 : 1}
                             strokeLinejoin="round"
                             style={{ cursor: 'pointer' }}
@@ -585,7 +598,7 @@ export default function GovernmentNationalDashboard() {
                               {s.name}
                             </text>
                             <text x={c.x} y={c.y + 9} textAnchor="middle" fontSize="9.5" fontWeight="800"
-                              fill={heavy ? '#fff' : DEEP} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                              fill={heavy ? '#fff' : 'var(--brand-800)'} style={{ fontVariantNumeric: 'tabular-nums' }}>
                               {formatValue(value)}
                             </text>
                           </g>
@@ -729,7 +742,7 @@ export default function GovernmentNationalDashboard() {
                     <Tooltip {...tooltipStyle} cursor={{ fill: 'var(--overlay-subtle)' }} />
                     <Legend {...legendProps} />
                     <Bar dataKey="births" name="Births" fill={GREEN} radius={[4, 4, 0, 0]} maxBarSize={20} isAnimationActive={false} />
-                    <Bar dataKey="deaths" name="Deaths" fill={DEEP} radius={[4, 4, 0, 0]} maxBarSize={20} isAnimationActive={false} />
+                    <Bar dataKey="deaths" name="Deaths" fill="var(--chart-3)" radius={[4, 4, 0, 0]} maxBarSize={20} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

@@ -135,9 +135,9 @@ export default function DHIS2ExportPage() {
     { label: t('dhis2.summaryOpdVisits'), value: patients.length, icon: BarChart3, color: 'var(--accent-primary)' },
     { label: t('dhis2.summaryMalariaCases'), value: diseaseAlerts.filter(a => a.disease?.toLowerCase().includes('malaria')).length, icon: AlertTriangle, color: 'var(--color-danger)' },
     { label: t('dhis2.summaryActiveSurveillanceAlerts'), value: diseaseAlerts.length, icon: AlertTriangle, color: 'var(--color-warning)' },
-    { label: t('dhis2.summaryAncVisits'), value: ancStats?.totalVisits || 0, icon: FileText, color: '#EC4899' },
+    { label: t('dhis2.summaryAncVisits'), value: ancStats?.totalVisits || 0, icon: FileText, color: 'var(--chart-2)' },
     { label: t('dhis2.summaryImmunizationsGiven'), value: immStats?.totalVaccinations || 0, icon: CheckCircle, color: 'var(--color-success-text)' },
-    { label: t('dhis2.summaryTotalPatients'), value: patients.length, icon: Database, color: '#8B5CF6' },
+    { label: t('dhis2.summaryTotalPatients'), value: patients.length, icon: Database, color: 'var(--chart-3)' },
   ];
 
   const tabs = [

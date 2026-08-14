@@ -15,7 +15,7 @@
 .labord {
   --labord-rail: 250px;
   --labord-line: var(--ehr-border, #DDEAF3);
-  --labord-surface: var(--bg-card-solid, #F5FBFE);
+  --labord-surface: var(--bg-card-solid, #FFFFFF);
   --labord-surface-soft: #F6F9FC;
   /* Cards read as one system: a tinted header bar over a white body, with a
      slightly firmer border than the page's hairlines so a box is a box. */
@@ -311,7 +311,7 @@
 }
 
 .labord-step--current {
-  background: var(--accent-hover, #015697);
+  background: var(--accent-hover, #012C4E);
   color: #fff;
 }
 
@@ -710,8 +710,8 @@
 }
 
 .labord-btn--primary:hover:not(:disabled) {
-  background: var(--accent-hover, #015697);
-  border-color: var(--accent-hover, #015697);
+  background: var(--accent-hover, #012C4E);
+  border-color: var(--accent-hover, #012C4E);
 }
 
 .labord-btn--ghost { border-color: transparent; }

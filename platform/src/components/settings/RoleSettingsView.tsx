@@ -813,7 +813,7 @@ export default function RoleSettingsView() {
           <ChevronRight className="w-3.5 h-3.5" />
           <span
             className="ehr-set-role-chip"
-            style={{ background: 'rgba(33,145,208,0.10)', color: 'var(--tb-blue-800, #015697)' }}
+            style={{ background: 'rgba(33,145,208,0.10)', color: 'var(--tb-blue-800, #012C4E)' }}
           >
             <i style={{ background: spec.accent }}>{userInitials}</i>
             {spec.title}

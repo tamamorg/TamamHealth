@@ -210,7 +210,7 @@
   position: sticky;
   top: 0;
   z-index: 15;
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
   border-bottom: 1px solid var(--ehr-border, #DDEAF3);
   box-shadow: 0 2px 8px rgba(19, 44, 68, 0.06);
 }
@@ -515,7 +515,7 @@
   padding: 3px 9px 3px 7px;
   border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 5px;
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
   font-family: inherit;
   font-size: 12px;
   color: var(--ehr-text-body, #39536B);
@@ -588,7 +588,7 @@
   padding: 3px 9px 3px 7px;
   border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 5px;
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
   font-family: inherit;
   font-size: 12px;
   color: var(--ehr-text-body, #39536B);
@@ -817,7 +817,7 @@
 }
 
 .omrs-vitals-cell {
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
   border: 1px solid var(--ehr-border-soft, #E7EEF5);
   border-radius: 7px;
   padding: 8px 10px;
@@ -926,7 +926,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--ehr-text-body, #39536B);
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
   border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   padding: 5px 9px;
@@ -1076,7 +1076,7 @@
 }
 
 .omrs-root .omrs-table.omrs-table--zebra tbody tr:nth-child(even) td {
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
 }
 
 /* ── Empty state ── */
@@ -1425,7 +1425,7 @@
   gap: 10px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--ehr-border, #DDEAF3);
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
 }
 
 .omrs-drawer-title {
@@ -1500,7 +1500,7 @@
 
 .omrs-drawer-footer {
   padding: 12px 16px;
-  background: var(--ehr-mission-bg, #2191D0);
+  background: var(--ehr-mission-bg, #144972);
   display: flex;
   align-items: center;
   justify-content: flex-end;

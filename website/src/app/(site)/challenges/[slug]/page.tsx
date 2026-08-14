@@ -87,7 +87,6 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
             {handled.map((p) => (
               <Link key={p.slug} href={`/products/${p.slug}`} className="blueprint tm-handled" style={{ padding: "24px 26px", background: "var(--color-surface)", textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 8 }}>
                 <Corners />
-                <span className="fs12" style={{ letterSpacing: "0.12em", fontWeight: 700, color: "#015697" }}>{p.acronym}</span>
                 <h3 style={{ fontSize: 19, margin: 0 }}>{p.title}</h3>
                 <span style={{ marginTop: 6, fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#015697" }}>Open product →</span>
               </Link>

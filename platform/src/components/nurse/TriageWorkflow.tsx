@@ -648,7 +648,7 @@ export default function TriageWorkflow({
             {/* Breathing */}
             <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center gap-2 mb-2">
-                <Activity className="w-4 h-4" style={{ color: '#A855F7' }} />
+                <Activity className="w-4 h-4" style={{ color: 'var(--chart-3)' }} />
                 <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.breathing')}</span>
               </div>
               <div className="flex gap-2">
@@ -679,7 +679,7 @@ export default function TriageWorkflow({
             {/* Circulation */}
             <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center gap-2 mb-2">
-                <Heart className="w-4 h-4" style={{ color: '#EC4899' }} />
+                <Heart className="w-4 h-4" style={{ color: 'var(--chart-2)' }} />
                 <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.circulation')}</span>
               </div>
               <div className="flex gap-2">

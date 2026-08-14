@@ -1096,7 +1096,7 @@ export default function FrontDeskDashboardPage() {
     { label: 'Find availability', icon: Plus, onClick: () => setBookingOpen(true), tone: 'primary' as const },
     // The intake form wears one glyph everywhere it appears — the nav item,
     // the top rail's patient-create button, the clinical strip, and here.
-    ...(canUseRoute('/patient-intake') ? [{ label: 'Intake Form', icon: Send, onClick: () => setIntakeOpen(true), tone: 'primary' as const }] : []),
+    ...(canUseRoute('/patient-intake') ? [{ label: 'Intake Form', icon: Send, onClick: () => setIntakeOpen(true), tone: 'orange' as const }] : []),
     ...(canUseRoute('/patients') ? [{ label: t('frontDesk.registerNewPatient'), icon: UserPlus, onClick: () => setRegisterOpen(true) }] : []),
   ]), [canUseRoute, t]);
 

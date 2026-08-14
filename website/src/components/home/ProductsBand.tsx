@@ -21,7 +21,9 @@ export default function ProductsBand() {
         <div className="tm-prod-grid" style={{ display: "grid", gridTemplateColumns: "425px 1fr", alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column", padding: "41px 0 0" }}>
             <h2 style={{ fontSize: "clamp(26px, 2.6vw, 34px)", margin: 0, color: "#FFFFFF", letterSpacing: "-0.01em" }}>Products</h2>
-            <div style={{ display: "flex", flexDirection: "column", marginTop: 87 }}>
+            {/* Desktop product picker. Hidden under 760px, where HeroNav below
+                takes over the same job in a form that fits the width. */}
+            <div className="tm-prod-tabs" style={{ display: "flex", flexDirection: "column", marginTop: 87 }}>
               {PRODUCTS.map((t, i) => (
                 <button
                   key={t.slug}

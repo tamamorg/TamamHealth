@@ -34,9 +34,9 @@
 export const THEME_COLORS = {
   // ── Brand. Mirrors --tb-blue-*; org branding replaces --accent-primary at
   // runtime, so prefer var(--accent-primary) over BRAND_PRIMARY in the UI.
-  brandPrimary: '#2191D0',
-  brandSecondary: '#015697',
-  brandDarker: '#2191D0',
+  brandPrimary: '#144972',
+  brandSecondary: '#012C4E',
+  brandDarker: '#144972',
   brandOrange: '#CA4D1C',
   brandPurple: '#7847EB',
 

@@ -1,5 +1,12 @@
 /* ═══ Site chrome: footer ═══
-   Server component — the ≤520px accordions are native <details>, no JS. */
+   Server component — the ≤520px accordions are native <details>, no JS.
+
+   The columns render CLOSED, and CSS forces their content visible above
+   520px (see .tm-foot-col::details-content in globals.css). That inversion is
+   what makes one markup serve both: a phone gets collapsed accordions it can
+   tap open, a desktop gets plain lists. Adding `open` here instead would
+   expand them everywhere — including the phones the accordion exists for —
+   because the initial state of <details> cannot be set per breakpoint. */
 
 import Link from "next/link";
 import { FOOTER_COLS } from "@/lib/site-data";
@@ -14,7 +21,7 @@ export default function SiteFooter() {
           University · starting in South Sudan, built for sub-Saharan Africa.
         </p>
         {FOOTER_COLS.map((col) => (
-          <details key={col.title} className="tm-foot-col" open>
+          <details key={col.title} className="tm-foot-col">
             <summary className="tm-foot-sum">
               <h4 style={{ fontSize: 18, margin: 0, color: col.accent }}>{col.title}</h4>
               <svg className="tm-foot-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-700)" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>

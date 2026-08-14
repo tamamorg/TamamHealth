@@ -23,7 +23,7 @@ import {
 // Chart series colors — fixed palette per the surveillance/analytics spec
 // (not the --viz-* EHR tokens, which are reserved for the shared Day
 // statistics widget's inpatient/outpatient pair).
-const CHART_BLUE = '#2a78d6';
+const CHART_BLUE = 'var(--chart-1)';
 const CHART_GREEN = 'var(--color-success)';
 const CHART_RED = 'var(--color-danger)';
 const CHART_AMBER = 'var(--color-warning)';

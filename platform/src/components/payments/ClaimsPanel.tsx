@@ -521,7 +521,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '10px 12px', borderRadius: 6,
-                    border: '1px solid var(--ehr-border, #DDEAF3)', background: 'var(--ehr-page-bg, #F8FBFD)',
+                    border: '1px solid var(--ehr-border, #DDEAF3)', background: 'var(--ehr-page-bg, #FFFFFF)',
                   }}
                 >
                   <span className={`bl-chip ${CLAIM_STATUS_CHIP[adjPreview]}`}>{t(`claims.status_${adjPreview}`)}</span>

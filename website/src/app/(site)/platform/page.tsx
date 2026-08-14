@@ -23,7 +23,7 @@ export default function PlatformPage() {
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: 22, flexWrap: "wrap", marginTop: 6 }}>
                 <Link href="/contact" className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, background: "#FFFFFF", borderColor: "#FFFFFF", color: "#015697" }}>
-                  Book a Demo
+                  Get in touch
                   <Corners />
                 </Link>
                 <Link href="/products" style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, color: "#7FC4EA", textDecoration: "none" }}>

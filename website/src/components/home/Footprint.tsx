@@ -59,7 +59,10 @@ export default function Footprint() {
           </p>
         </div>
         <div className="tm-map tm-split" style={{ position: "relative", marginTop: 34, display: "grid", gridTemplateColumns: "400px 1fr", alignItems: "center", gap: 0 }}>
-          <div className="blueprint" style={{ background: "var(--color-surface)", padding: "34px 32px 30px", zIndex: 2 }}>
+          {/* Desktop site detail. Hidden under 760px: stacked above the map it
+              pushed the map itself below the fold, and HeroNav already names
+              the selected site. */}
+          <div className="blueprint tm-site-card" style={{ background: "var(--color-surface)", padding: "34px 32px 30px", zIndex: 2 }}>
             <Corners />
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)" }}>{site.tier}</span>
             <h3 style={{ fontSize: 30, margin: "8px 0 4px" }}>{site.name}</h3>

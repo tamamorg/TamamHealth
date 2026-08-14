@@ -156,11 +156,10 @@ section[id] { scroll-margin-top: 130px; }
   flex-shrink: 0;
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-/* The primary call to action is amber on navy ink, not blue on white. Blue is
-   the system's own colour — it carries links, headings and the platform
-   chrome — so a blue CTA sat inside a blue page and stopped reading as the
-   one thing to press. Amber is the only warm colour on the site, used for
-   nothing else. */
+/* The primary call to action is amber on navy ink, per the design. Every blue
+   on this site is structural — links, headings, the navy grounds, the header
+   chrome — so a blue button dissolved into the page it sat on. Amber is the
+   only warm colour here and fills nothing else. */
 .btn-primary { background: #e8863a; border-color: #e8863a; color: #0e2a4a; }
 .btn-primary:hover { background: #d2712a !important; border-color: #d2712a !important; color: #0e2a4a; }
 .btn-secondary { border-color: var(--color-divider); }
@@ -207,6 +206,72 @@ select.input-dark option { color: #0e2a4a; background: #ffffff; }
 }
 .tag-accent { background: #ddf2fb; color: #015697; }
 .tag-outline { border: 1px solid var(--color-accent); color: var(--color-accent); }
+
+/* ── Foldable step rows ──────────────────────────────────────────────
+   The "patient day" list, one <details> per step. Collapsed by default:
+   the numbered titles read as the shape of the day, and the paragraph is
+   there for anyone who wants it. `name="patient-day"` makes them an
+   exclusive accordion — opening one closes the rest — which is what keeps
+   the section scannable rather than turning into the wall it replaced. */
+.tm-steprow {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.tm-steprow > summary {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 28px;
+  align-items: center;
+  padding: 22px 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+/* Safari draws its own triangle without this. */
+.tm-steprow > summary::-webkit-details-marker { display: none; }
+
+.tm-steprow > summary:hover h3 { color: var(--color-accent-700); }
+
+.tm-steprow > summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.tm-stepnum {
+  font-family: var(--font-heading);
+  font-size: 34px;
+  line-height: 1;
+  color: #015697;
+}
+
+.tm-steprow > summary h3 {
+  font-size: 22px;
+  margin: 0;
+}
+
+/* A + that becomes a − when open: the state is legible without colour. */
+.tm-stepchev {
+  font-family: var(--font-body);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--color-accent-700);
+  transition: transform 0.18s ease;
+}
+
+.tm-steprow[open] > summary .tm-stepchev { transform: rotate(45deg); }
+
+.tm-steprow > p {
+  margin: 0;
+  padding: 0 0 26px 124px;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--color-neutral-800);
+  max-width: 900px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-stepchev { transition: none; }
+}
 
 /* ── 3. Page classes ── */
 
@@ -313,6 +378,9 @@ header > div { min-width: 0; }
   .tm-faq-row > p { grid-column: 2 !important; }
   .tm-about-card { grid-template-columns: 1fr !important; }
   .tm-about-card > div:first-of-type { padding: 40px 28px 44px !important; }
+  /* Stacked, the photo leads and the copy follows — and it drops from the
+     desktop's 420px to a banner height so it doesn't dwarf the message. */
+  .tm-about-card .tm-about-fig { order: -1; min-height: 240px !important; height: 240px; }
   .tm-util-contact { display: none !important; }
 }
 @media (max-width: 760px) {
@@ -330,7 +398,8 @@ header > div { min-width: 0; }
   .tm-minh280 { min-height: 196px !important; }
   .tm-map iframe { height: 380px !important; }
   .tm-rule { width: 100% !important; }
-  .tm-steprow { grid-template-columns: 52px 1fr !important; gap: 16px !important; }
+  .tm-steprow > summary { grid-template-columns: 52px 1fr auto !important; gap: 16px !important; }
+  .tm-steprow > p { padding-left: 68px !important; }
   .fs11, .fs115 { font-size: 12.5px; }
   .fs12, .fs125 { font-size: 13px; }
   .tm-flow-step { flex: 1 0 250px !important; }
@@ -342,7 +411,8 @@ header > div { min-width: 0; }
 @media (max-width: 479px) {
   main section { padding-left: 14px !important; padding-right: 14px !important; }
   .tm-g6 { grid-template-columns: 1fr !important; }
-  .tm-steprow { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .tm-steprow > summary { grid-template-columns: 34px 1fr auto !important; gap: 10px !important; }
+  .tm-steprow > p { padding-left: 44px !important; }
   .tm-pad-lg { padding: 22px 18px !important; }
   .tm-rule-sm { width: 100% !important; max-width: 100% !important; }
 }
@@ -374,6 +444,14 @@ header > div { min-width: 0; }
 .tm-foot-sum { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--color-divider); padding-bottom: 7px; }
 .tm-foot-chev { display: none; flex-shrink: 0; transition: transform 0.18s ease; }
 .tm-foot-links { display: flex !important; flex-direction: column; gap: 12px; padding-top: 12px; }
+/* The columns ship closed so phones get real accordions. Above 520px the list
+   has to show anyway, and `display: flex` on the child is not enough on its
+   own: a closed <details> hides its subtree through ::details-content's
+   `content-visibility: hidden`, which no rule on a descendant can reach past.
+   Overriding it here is what lets one markup be a list on desktop and an
+   accordion on a phone — and the ≤520px block below re-hides the links there
+   by targeting .tm-foot-links, which this rule leaves reachable. */
+.tm-foot-col::details-content { content-visibility: visible !important; display: block; }
 @media (max-width: 520px) {
   .tm-foot-col > summary { cursor: pointer; min-height: 46px; }
   .tm-foot-sum { padding: 12px 0; border-bottom: 1px solid var(--color-divider); }
@@ -398,6 +476,15 @@ header > div { min-width: 0; }
   .tm-hero-btns > a { width: 100%; text-align: center; padding: 15px 20px !important; }
 }
 
+/* phones: the products card is copy + link only — the photo ate most of the
+   viewport before the text arrived. */
+@media (max-width: 760px) {
+  .tm-prod-photo { display: none !important; }
+  /* Same rule for the /products listing cards: text-only, so the six cards
+     fit a phone without six full-bleed photos between them. */
+  .tm-prodcard .tm-figure { display: none !important; }
+}
+
 /* mobile insight strip: one card at a time, dashes + steppers */
 @media (max-width: 760px) {
   .tm-strip-rail { grid-template-columns: 100% !important; grid-auto-flow: column; grid-auto-columns: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding: 0 !important; }
@@ -406,6 +493,15 @@ header > div { min-width: 0; }
   .tm-strip-section { display: none !important; }
   .tm-hero-nav { display: flex !important; }
   .tm-desk-steppers { display: none !important; }
+
+  /* Same swap as the strip above: the desktop pickers go, HeroNav stays.
+     The product list is a 6-row column of uppercase labels that ate a whole
+     screen before the product it selects, and the site card stacked above the
+     map pushed the map itself out of view. Both are selectors, and HeroNav is
+     already the mobile selector — keeping them was showing the control twice
+     and the content not at all. */
+  .tm-prod-tabs { display: none !important; }
+  .tm-site-card { display: none !important; }
 }
 
 /* ── One gutter: content columns align with the header logo at every width ── */

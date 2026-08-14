@@ -49,6 +49,35 @@ export function getOrgBranding(org?: OrganizationDoc | null): OrgBranding {
   };
 }
 
+/**
+ * Foreground for text and icons sitting ON a brand colour.
+ *
+ * The settings buttons used to hardcode the platform blue because a pale org
+ * colour left their white label unreadable. Assuming white is the bug: this
+ * picks white or the app's dark ink by whichever clears WCAG 4.5:1 against the
+ * chosen brand, so a tenant may brand freely without making their own primary
+ * actions illegible. Ties go to white.
+ */
+export function accessibleOnColor(hex: string): string {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h.slice(0, 6);
+  const channel = (v: number) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16));
+  if ([r, g, b].some(Number.isNaN)) return WHITE_INK;
+  const lum = 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  const onWhite = 1.05 / (lum + 0.05);
+  const onInk = (lum + 0.05) / (DARK_INK_LUMINANCE + 0.05);
+  return onWhite >= onInk ? WHITE_INK : DARK_INK;
+}
+
+const WHITE_INK = '#FFFFFF';
+/** --color-slate-900, the app's darkest text. */
+const DARK_INK = '#0E2A4A';
+const DARK_INK_LUMINANCE = 0.0219;
+
 export function brandingToCSSVars(branding: OrgBranding): Record<string, string> {
   return {
     '--org-primary': branding.primaryColor,
@@ -60,5 +89,9 @@ export function brandingToCSSVars(branding: OrgBranding): Record<string, string>
     '--accent-light': `${branding.primaryColor}12`,
     '--accent-border': `${branding.primaryColor}30`,
     '--nav-active-bg': branding.primaryColor,
+    // Legibility travels with the brand: a pale primary flips its own label to
+    // dark ink instead of rendering white-on-white.
+    '--accent-on': accessibleOnColor(branding.primaryColor),
+    '--accent-on-hover': accessibleOnColor(branding.secondaryColor),
   };
 }

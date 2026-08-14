@@ -313,7 +313,7 @@ export default function DataEntryDashboard() {
           <div className="p-4 space-y-3">
             {[
               { label: t('dashboard.bedIcu'), occupied: r.icuOccupied, total: r.icuBeds, color: 'var(--color-danger-text)' },
-              { label: t('dashboard.bedMaternity'), occupied: r.maternityOccupied, total: r.maternityBeds, color: '#EC4899' },
+              { label: t('dashboard.bedMaternity'), occupied: r.maternityOccupied, total: r.maternityBeds, color: 'var(--chart-2)' },
               { label: t('dashboard.bedPediatric'), occupied: r.pediatricOccupied, total: r.pediatricBeds, color: 'var(--color-brand-500)' },
             ].map(bed => {
               const pct = bed.total > 0 ? Math.round((bed.occupied / bed.total) * 100) : 0;
@@ -564,7 +564,7 @@ export default function DataEntryDashboard() {
                 {numField(t('dataEntry.electricityHoursToday'), 'electricityHoursToday', Zap)}
 
                 {/* 5. Pharmacy & Lab */}
-                {sectionHeader(Pill, t('dataEntry.pharmacyLaboratory'), '#EC4899')}
+                {sectionHeader(Pill, t('dataEntry.pharmacyLaboratory'), 'var(--chart-2)')}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {numField(t('dataEntry.tracerMedicinesInStock'), 'tracerMedicinesInStock', Pill)}
                   {numField(t('dataEntry.tracerMedicinesTotal'), 'tracerMedicinesTotal')}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ContactForm from "@/components/ContactForm";
 
 export const metadata: Metadata = {
-  title: "Book a demo",
+  title: "Get in touch",
   description: "Facility, NGO, funder, or just curious — tell us what you're building or how you want to help. We answer every message.",
 };
 
@@ -33,7 +33,7 @@ export default function ContactPage() {
         <div className="tm-contact-hero" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 72, alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 30, paddingTop: 12 }}>
             <h1 style={{ fontSize: "clamp(34px, 5.4vw, 62px)", lineHeight: 1.04, margin: 0, color: "#FFFFFF", textWrap: "pretty" }}>
-              Book a demo of TamamHealth
+              Get in touch
             </h1>
             <p style={{ margin: 0, maxWidth: 560, fontSize: 17.5, lineHeight: 1.6, color: "rgba(255,255,255,0.82)" }}>
               Facility, NGO, funder, or just curious — tell us what you&rsquo;re building or how you want to help. We answer every message.

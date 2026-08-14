@@ -168,7 +168,7 @@ export default function TourCard({
           />
         </div>
 
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>{step.title}</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)', margin: '0 0 6px' }}>{step.title}</h3>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 10px' }}>{step.body}</p>
 
         {/* "All steps" overview — the whole journey at a glance, with the

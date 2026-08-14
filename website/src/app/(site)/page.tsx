@@ -26,7 +26,7 @@ export default function HomePage() {
               About Tamam &nbsp;›
             </Link>
           </div>
-          <div style={{ position: "relative", minHeight: 420 }}>
+          <div className="tm-about-fig" style={{ position: "relative", minHeight: 420 }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}
             <img src="/assets/african-nurse.jpg" alt="Health worker helping a patient access their records on a phone" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
           </div>

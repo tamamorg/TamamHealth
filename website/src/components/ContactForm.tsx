@@ -42,7 +42,8 @@ const field: React.CSSProperties = {
   outlineOffset: 2,
 };
 
-const amberBtn: React.CSSProperties = {
+/** Next and Submit carry the site's primary: amber on navy ink. */
+const primaryBtn: React.CSSProperties = {
   appearance: "none",
   cursor: "pointer",
   fontFamily: "var(--font-heading)",
@@ -139,7 +140,7 @@ export default function ContactForm() {
           {/* type="button": step 1 advances the wizard, it never submits. */}
           <button
             type="button" onClick={() => setStep(2)} disabled={!step1Complete} className="blueprint"
-            style={{ ...amberBtn, marginTop: 6, width: "100%", opacity: step1Complete ? 1 : 0.5, cursor: step1Complete ? "pointer" : "not-allowed" }}
+            style={{ ...primaryBtn, marginTop: 6, width: "100%", opacity: step1Complete ? 1 : 0.5, cursor: step1Complete ? "pointer" : "not-allowed" }}
           >
             Next
             <Corners />
@@ -173,7 +174,7 @@ export default function ContactForm() {
               ←
               <Corners />
             </button>
-            <button type="submit" disabled={state === "sending" || state === "sent"} className="blueprint" style={amberBtn}>
+            <button type="submit" disabled={state === "sending" || state === "sent"} className="blueprint" style={primaryBtn}>
               {state === "sent" ? "Message sent ✓" : state === "sending" ? "Sending…" : "Submit"}
               <Corners />
             </button>

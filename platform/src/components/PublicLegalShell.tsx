@@ -134,7 +134,7 @@ export default function PublicLegalShell({
 
 /* Header */
 .lg-header {
-  background: var(--bg-card-solid, #F5FBFE);
+  background: var(--bg-card-solid, #FFFFFF);
   border-bottom: 1px solid var(--border-light, #E3EBF2);
   padding: 14px 0;
 }
@@ -151,7 +151,7 @@ export default function PublicLegalShell({
   font-size: 0.8rem; font-weight: 600; letter-spacing: -0.01em;
   font-family: inherit; cursor: pointer;
   color: var(--text-secondary, #3D5166);
-  background: var(--bg-card-solid, #F5FBFE);
+  background: var(--bg-card-solid, #FFFFFF);
   border: 1px solid var(--border-medium, #D9E4EE);
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
@@ -168,13 +168,13 @@ export default function PublicLegalShell({
   text-decoration: none; padding: 6px 10px; border-radius: 8px;
   transition: color 0.18s ease, background-color 0.18s ease;
 }
-.lg-header__link:hover { color: var(--accent-hover, #015697); background: var(--overlay-subtle, rgba(33,145,208,0.07)); }
+.lg-header__link:hover { color: var(--accent-hover, #012C4E); background: var(--overlay-subtle, rgba(33,145,208,0.07)); }
 .lg-btn-secondary {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 8px 18px; border-radius: var(--btn-radius, 10px);
   font-size: 0.82rem; font-weight: 600; letter-spacing: -0.01em;
   color: var(--text-secondary, #3D5166); text-decoration: none;
-  background: var(--bg-card-solid, #F5FBFE);
+  background: var(--bg-card-solid, #FFFFFF);
   border: 1px solid var(--border-medium, #D9E4EE);
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
@@ -187,7 +187,7 @@ export default function PublicLegalShell({
 /* Content card */
 .lg-main { flex: 1; padding: 48px 0 72px; }
 .lg-card {
-  background: var(--bg-card-solid, #F5FBFE);
+  background: var(--bg-card-solid, #FFFFFF);
   border: 1px solid var(--border-light, #E3EBF2);
   border-radius: var(--card-radius, 14px);
   box-shadow: var(--card-shadow, 0 1px 2px rgba(16, 42, 67, 0.05));

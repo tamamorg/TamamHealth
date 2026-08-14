@@ -171,7 +171,7 @@
 .bl-toolbar-select:hover:not(:disabled):not(:focus) { border-color: var(--bl-teal); }
 .bl-toolbar-select:disabled {
   color: var(--ehr-muted, #8395A8);
-  background-color: var(--ehr-page-bg, #F8FBFD);
+  background-color: var(--ehr-page-bg, #FFFFFF);
   cursor: not-allowed;
 }
 
@@ -314,7 +314,7 @@
   gap: 10px;
   margin: 0 18px 0;
   padding: 0 12px;
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
   border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   color: var(--ehr-muted, #8395A8);
@@ -429,7 +429,7 @@
 .bl-table--rows-open tbody tr { cursor: pointer; }
 
 .bl-link {
-  color: var(--accent-primary, #2191D0);
+  color: var(--accent-primary, #144972);
   font-weight: 600;
   text-decoration: none;
   background: none;
@@ -460,7 +460,7 @@
 .bl-chip--paid     { background: var(--color-success-bg);  color: var(--color-success-text); }
 .bl-chip--waived   { background: var(--ehr-soft, #E9F0F5); color: var(--ehr-text-body, #39536B); }
 .bl-chip--cancelled{ background: var(--ehr-soft, #E9F0F5); color: var(--ehr-muted, #8395A8); text-decoration: line-through; }
-.bl-chip--visit    { background: var(--accent-primary, #2191D0); color: #fff; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.bl-chip--visit    { background: var(--accent-primary, #144972); color: #fff; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .bl-chip--ontime   { background: var(--ehr-soft, #E9F0F5); color: var(--ehr-text-body, #39536B); text-transform: none; letter-spacing: 0; font-size: 11px; }
 
 /* ── Pagination footer ───────────────────────────────────────────── */
@@ -540,7 +540,7 @@
   margin: 0;
 }
 .bl-gender { font-size: 15px; font-weight: 700; color: var(--ehr-muted, #8395A8); }
-.bl-gender.male { color: var(--accent-primary, #2191D0); }
+.bl-gender.male { color: var(--accent-primary, #144972); }
 .bl-gender.female { color: #C2408A; }
 .bl-banner-meta {
   margin-top: 4px;
@@ -591,7 +591,7 @@
 .bl-btn--primary:hover:not(:disabled) { background: var(--bl-teal-dark); }
 .bl-btn--outline { background: var(--ehr-panel, #fff); color: var(--bl-teal); border-color: var(--bl-teal); }
 .bl-btn--outline:hover:not(:disabled) { background: var(--bl-teal-soft); }
-.bl-btn--link { background: none; color: var(--accent-primary, #2191D0); padding: 10px 4px; }
+.bl-btn--link { background: none; color: var(--accent-primary, #144972); padding: 10px 4px; }
 .bl-btn--link:hover:not(:disabled) { text-decoration: underline; }
 .bl-btn--danger-link { background: none; color: var(--color-danger, #DC2626); padding: 10px 4px; }
 .bl-btn--danger-link:hover:not(:disabled) { text-decoration: underline; }

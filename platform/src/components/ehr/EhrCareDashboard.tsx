@@ -26,7 +26,7 @@ export type EhrCareDashboardAction = {
   /** Stable selector used by guided tours to reveal an action-owned panel. */
   tourTarget?: string;
   active?: boolean;
-  tone?: 'primary' | 'neutral' | 'warning' | 'success';
+  tone?: 'primary' | 'orange' | 'neutral' | 'warning' | 'success';
 };
 
 export type EhrCareDashboardTab = {
@@ -550,7 +550,7 @@ export default function EhrCareDashboard({
               alongside Print rather than after it. */}
           {headerExtra}
           {headerActions.map(action => (
-            <button key={action.label} type="button" className={action.tone === 'primary' || action.active ? 'primary' : ''} data-tour={action.tourTarget} onClick={action.onClick}>
+            <button key={action.label} type="button" className={action.tone === 'orange' ? 'orange' : action.tone === 'primary' || action.active ? 'primary' : ''} data-tour={action.tourTarget} onClick={action.onClick}>
               <action.icon className="w-4 h-4" />{action.label}
             </button>
           ))}

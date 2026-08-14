@@ -64,7 +64,7 @@ function formatMinutes(totalMinutes: number): string {
 
 // Chart marks (not UI status pills, which keep using the --color-* tokens
 // elsewhere in this file) use the fixed brand chart palette.
-const CHART_BLUE = '#2a78d6';
+const CHART_BLUE = 'var(--chart-1)';
 const CHART_GREEN = 'var(--color-success)';
 const CHART_RED = 'var(--color-danger)';
 const CHART_AMBER = 'var(--color-warning)';

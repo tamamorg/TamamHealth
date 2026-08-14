@@ -250,7 +250,7 @@ export default function ANCPage() {
           <div className="card-elevated p-5 mb-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <HeartPulse className="w-4 h-4" style={{ color: '#EC4899' }} />
+                <HeartPulse className="w-4 h-4" style={{ color: 'var(--chart-2)' }} />
                 <h3 className="font-semibold text-sm">{t('anc.continuumTitle')}</h3>
               </div>
               <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>
@@ -392,7 +392,7 @@ export default function ANCPage() {
                 {/* Mother Summary */}
                 <div className="card-elevated p-4">
                   <h3 className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    <HeartPulse className="w-4 h-4" style={{ color: '#EC4899' }} />
+                    <HeartPulse className="w-4 h-4" style={{ color: 'var(--chart-2)' }} />
                     Visit History
                   </h3>
                   <hr className="section-divider" />
@@ -483,7 +483,7 @@ export default function ANCPage() {
               </>
             ) : (
               <div className="card-elevated p-8 text-center">
-                <HeartPulse className="w-12 h-12 mx-auto mb-3" style={{ color: '#EC4899', opacity: 0.2 }} />
+                <HeartPulse className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--chart-2)', opacity: 0.2 }} />
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Select a mother to view visit history</p>
               </div>
             )}

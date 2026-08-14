@@ -26,13 +26,16 @@ interface MenuLink {
   href: string;
 }
 
+/* Five links, matching the design. Contact is deliberately not among them:
+   the amber "Get in touch" button beside this list is the route to /contact,
+   and listing it twice made the row's one call to action compete with a plain
+   link to the same page. The About mega menu and the footer still carry it. */
 const NAV_ITEMS: { label: string; href: string; menu: MenuKey | null }[] = [
   { label: "Products", href: "/products", menu: "products" },
   { label: "Platform", href: "/platform", menu: "platform" },
   { label: "The health system", href: "/health-system", menu: "system" },
   { label: "About", href: "/about", menu: "about" },
   { label: "Donate", href: "/donate", menu: null },
-  { label: "Contact", href: "/contact", menu: null },
 ];
 
 const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: string; allHref: string; links: MenuLink[] }> = {
@@ -69,7 +72,7 @@ const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: strin
       { label: "Where care breaks down", note: "The paper problem the platform replaces", href: "/about#crisis" },
       { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: "/login?role=staff" },
       { label: "Patient portal", note: "Records, prescriptions and results", href: "/login?role=patient" },
-      { label: "Book a demo", note: "See it on a real patient day", href: "/contact" },
+      { label: "Get in touch", note: "See it on a real patient day", href: "/contact" },
     ],
   },
   about: {
@@ -98,7 +101,7 @@ const SEARCH_SUGGESTIONS = [
   { label: "DHIS2 reporting", href: "/health-system" },
   { label: "Pilot clinics", href: "/#footprint" },
   { label: "Donate", href: "/donate" },
-  { label: "Book a demo", href: "/contact" },
+  { label: "Get in touch", href: "/contact" },
 ];
 
 export default function SiteHeader() {
@@ -241,9 +244,13 @@ export default function SiteHeader() {
         {/* nav row */}
         <div className="tm-navrow" style={{ maxWidth: 1320, margin: "0 auto", height: barH, padding: "0 32px", display: "flex", alignItems: "center", gap: 40, transition: "height .18s ease" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
+            {/* The full wordmark at every scroll position. The design swaps it
+                for the bare dot mark once the header condenses, which reads as
+                the brand vanishing mid-scroll — the row still has room for the
+                wordmark at 28px, so it keeps its name. */}
             {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo, no optimisation needed */}
             <img
-              src={condensed ? "/assets/tamam-logo-mark.svg" : "/assets/tamam-logo-full.svg"}
+              src="/assets/tamam-logo-full.svg"
               alt="Tamam Healthcare System"
               style={{ height: logoH, width: "auto", transition: "height .18s ease" }}
             />
@@ -268,9 +275,10 @@ export default function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            {/* The rail's only amber: one call to action per screen. */}
+            {/* The rail's one call to action, in the brand accent rather than
+                the deep blue the header itself is drawn in. */}
             <Link href="/contact" className="btn blueprint" style={{ marginLeft: 14, padding: "11px 20px", fontSize: 15, color: "#0E2A4A", whiteSpace: "nowrap", background: "#E8863A", borderColor: "#E8863A" }}>
-              Book a Demo
+              Get in touch
               <Corners />
             </Link>
           </nav>
@@ -315,7 +323,7 @@ export default function SiteHeader() {
               </Link>
             ))}
             <Link href="/contact" className="btn btn-primary" style={{ margin: "16px 28px 0", padding: "14px 0", fontSize: 16, color: "#0E2A4A" }}>
-              Book a Demo
+              Get in touch
             </Link>
           </div>
         )}

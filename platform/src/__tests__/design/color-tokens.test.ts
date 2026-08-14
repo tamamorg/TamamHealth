@@ -17,6 +17,8 @@
 import fs from 'fs';
 import path from 'path';
 import { THEME_COLORS } from '@/lib/theme-colors';
+import { accessibleOnColor } from '@/lib/branding';
+import { CHART_SERIES_HEX } from '@/lib/chart-colors';
 
 const CSS = fs.readFileSync(path.join(process.cwd(), 'src/app/globals.css'), 'utf8');
 
@@ -152,6 +154,36 @@ describe('var() fallbacks tell the truth', () => {
       }
     }
     expect(bad).toEqual([]);
+  });
+});
+
+describe('the chart scale', () => {
+  // The choropleth interpolates with parseInt(hex.slice(...)), so it needs
+  // literals; every other caller uses the var() form. The two must agree or
+  // a chart and a map show different colours for the same series.
+  test.each([0, 1, 2, 3, 4, 5])('CHART_SERIES_HEX[%i] equals its --chart-* token', i => {
+    expect(CHART_SERIES_HEX[i].toUpperCase()).toBe(token(`chart-${i + 1}`));
+  });
+
+  test('every slot clears 3:1 on the card surface', () => {
+    // Cards are a 4% wash of the accent on white.
+    const CARD = '#F6F8F9';
+    for (const hex of CHART_SERIES_HEX) {
+      expect(contrast(hex, CARD)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test('no status colour is used as a series slot', () => {
+    const status = ['color-success', 'color-warning', 'color-danger'].map(t => token(t));
+    for (const hex of CHART_SERIES_HEX) {
+      expect(status).not.toContain(hex.toUpperCase());
+    }
+  });
+
+  test('the sequential ramp is one hue, light to dark', () => {
+    const steps = [1, 2, 3, 4, 5].map(i => token(`chart-seq-${i}`));
+    const lums = steps.map(luminance);
+    for (let i = 1; i < lums.length; i++) expect(lums[i]).toBeLessThan(lums[i - 1]);
   });
 });
 

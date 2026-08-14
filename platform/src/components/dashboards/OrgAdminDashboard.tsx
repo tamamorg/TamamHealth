@@ -267,7 +267,7 @@ export default function OrgAdminDashboard() {
       value: activeAdmissions.length.toLocaleString(),
       sub: `${admissionsToday} admitted · ${dischargesToday} discharged today`,
       icon: BedDouble,
-      color: '#8B5CF6',
+      color: 'var(--chart-3)',
       trend: censusSeries,
       trendCaption: 'Inpatient census, last 14 days',
     },

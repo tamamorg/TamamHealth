@@ -407,7 +407,7 @@ export default function PatientPortalPage() {
                       : t('portal.payAllBills', { count: unpaidBills.length })}
                   </p>
                   <div style={{
-                    background: 'var(--ehr-page-bg, #F8FBFD)', border: '1px solid var(--ehr-border, #DDEAF3)',
+                    background: 'var(--ehr-page-bg, #FFFFFF)', border: '1px solid var(--ehr-border, #DDEAF3)',
                     borderRadius: 6, padding: '14px 18px', textAlign: 'center', marginBottom: 16,
                   }}>
                     <span className="bl-stat-label">{t('portal.totalDue')}</span>
@@ -614,7 +614,7 @@ export default function PatientPortalPage() {
                   <div style={{ padding: '20px 24px' }}>
                     <h4 className="bl-card-title" style={{ marginBottom: 10 }}>{t('portal.paymentInstructions')}</h4>
                     <div style={{
-                      background: 'var(--ehr-page-bg, #F8FBFD)', borderRadius: 6, padding: '14px 16px',
+                      background: 'var(--ehr-page-bg, #FFFFFF)', borderRadius: 6, padding: '14px 16px',
                       border: '1px solid var(--ehr-border, #DDEAF3)', marginBottom: 18,
                     }}>
                       {method.instructions.split('\n').map((line, i) => (
@@ -630,7 +630,7 @@ export default function PatientPortalPage() {
                     {/* Reference to copy */}
                     <div style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      background: 'var(--ehr-page-bg, #F8FBFD)', borderRadius: 6, padding: '10px 14px',
+                      background: 'var(--ehr-page-bg, #FFFFFF)', borderRadius: 6, padding: '10px 14px',
                       border: '1px solid var(--ehr-border, #DDEAF3)', marginBottom: 20,
                     }}>
                       <div>
@@ -697,7 +697,7 @@ export default function PatientPortalPage() {
               </p>
 
               <dl className="bl-totals" style={{
-                background: 'var(--ehr-page-bg, #F8FBFD)', borderRadius: 6, padding: '14px 18px',
+                background: 'var(--ehr-page-bg, #FFFFFF)', borderRadius: 6, padding: '14px 18px',
                 marginBottom: 22, border: '1px solid var(--ehr-border, #DDEAF3)', textAlign: 'left',
               }}>
                 <div className="bl-totals-row"><dt>{t('lab.reference')}</dt><dd style={{ fontFamily: 'var(--font-platform-mono)' }}>{selectedBill?.id}</dd></div>

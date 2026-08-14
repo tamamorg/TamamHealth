@@ -1335,7 +1335,7 @@ export default function EhrClinicalDashboard({
           </button>
           <button
             type="button"
-            className="primary"
+            className="orange"
             aria-label="Intake Form"
             onClick={() => setIntakeOpen(true)}
           >

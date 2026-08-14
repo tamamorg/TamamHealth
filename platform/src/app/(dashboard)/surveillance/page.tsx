@@ -23,6 +23,7 @@ import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { diseaseColor } from '@/lib/chart-colors';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend
@@ -30,15 +31,22 @@ import {
 import ChartCard, { tooltipStyle as chartTooltipStyle, axisTick, AreaGradients } from '@/components/ChartCard';
 import Select from '@/components/Select';
 
-// Chart colors
+/**
+ * Series colour by disease, from the shared entity map.
+ *
+ * This was three separate bugs: malaria, pneumonia and hiv were all the brand
+ * blue — three series painted identically — while cholera wore the danger red
+ * and diarrhoea the success green, so severity and identity used one palette.
+ * And every colour here disagreed with /government's map for the same disease.
+ */
 const COLORS = {
-  malaria: 'var(--accent-primary)',
-  cholera: 'var(--color-danger)',
-  measles: 'var(--color-warning)',
-  pneumonia: 'var(--accent-primary)',
-  diarrhea: 'var(--color-success)',
-  tb: '#D4A843',
-  hiv: 'var(--accent-primary)',
+  malaria: diseaseColor('malaria'),
+  cholera: diseaseColor('cholera'),
+  measles: diseaseColor('measles'),
+  pneumonia: diseaseColor('pneumonia'),
+  diarrhea: diseaseColor('diarrhea'),
+  tb: diseaseColor('tb'),
+  hiv: diseaseColor('hiv'),
 };
 
 // Alert level ordering for severity sorting

@@ -66,7 +66,7 @@ const WeeklyActivityChart = dynamic(() => import('./_FacilityCharts').then(m => 
   loading: () => <div style={{ width: '100%', height: 208 }} />,
 });
 
-const CHART_BLUE = '#2a78d6';   // appointments
+const CHART_BLUE = 'var(--chart-1)';   // appointments
 const CHART_GREEN = 'var(--color-success)';  // new patients
 const CASH_RECEIVED = '#0ca30c';
 const CASH_PENDING = 'var(--color-warning)';

@@ -469,7 +469,11 @@ const loginStyles = (
     .lg-field { display: block; }
     .lg-field--rel { position: relative; }
     .lg-field > label { display: block; font-size: 12px; margin-bottom: 5px; color: rgba(14, 42, 74, 0.7); text-transform: none; letter-spacing: normal; }
-    .lg-input {
+    /* The .lg-root scoping is load-bearing: globals.css paints every
+       input[type=...] with --bg-card-solid at specificity 0,1,1, which
+       outranks a bare .lg-input and left the fields a pale grey. The site's
+       fields are white. */
+    .lg-root .lg-input {
       width: 100%; min-height: 46px; padding: 6px 12px; font: inherit; font-size: 14px;
       color: var(--lg-text); caret-color: var(--lg-accent); background: #FFFFFF;
       border: 1px solid var(--lg-divider); border-radius: 0; box-shadow: none;

@@ -1,14 +1,27 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, JetBrains_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Barlow, Barlow_Condensed, JetBrains_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/lib/context";
 
-// Platform typeface. `--font-dm-sans` / `--font-jetbrains-mono` are consumed by
-// `--font-platform` / `--font-platform-mono` in globals.css. Self-hosted by
+// Platform typeface. `--font-barlow` / `--font-barlow-condensed` /
+// `--font-jetbrains-mono` are consumed by `--font-platform` /
+// `--font-condensed` / `--font-platform-mono` in globals.css. Self-hosted by
 // next/font at build time, so they work offline (offline-first requirement).
-const dmSans = DM_Sans({
+//
+// Barlow replaced DM Sans with the Clinical App design: the app and
+// tamamhealth.org now share one voice, and the condensed cut is what carries
+// the design's headings and its letterspaced uppercase micro-labels — DM Sans
+// has no condensed face, so those labels had to fake it with tracking alone.
+const barlow = Barlow({
   subsets: ["latin"],
-  variable: "--font-dm-sans",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-barlow",
+  display: "swap",
+});
+const barlowCondensed = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-barlow-condensed",
   display: "swap",
 });
 const jetBrainsMono = JetBrains_Mono({
@@ -58,10 +71,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${jetBrainsMono.variable} ${ibmPlexSans.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable} ${jetBrainsMono.variable} ${ibmPlexSans.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
-        <link rel="icon" type="image/svg+xml" href="/assets/logos/SVG/Tamam_Style_Guide-33.svg" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/assets/logos/SVG/Tamam_Style_Guide-33.svg" />
+        {/* The same mark and blue the marketing site serves, from a file
+            named for its job rather than a style-guide export number. The tab
+            icon deliberately does NOT follow the platform accent — it has to
+            stay recognisable next to the site's. */}
+        <link rel="icon" type="image/svg+xml" href="/assets/tamam-favicon.svg" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/assets/tamam-favicon.svg" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="antialiased">
