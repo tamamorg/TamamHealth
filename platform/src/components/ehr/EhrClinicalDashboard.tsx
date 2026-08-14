@@ -1719,10 +1719,9 @@ export default function EhrClinicalDashboard({
                                   chart header keeps the full legal name. */}
                               {shortenPersonName(row.name)}
                             </button>
-                            <p>
-                              {row.reason}
-                              {row.patient && <> · {row.patient.age ? `${row.patient.age}y` : 'Age unknown'} · {row.patient.gender || 'Not recorded'}</>}
-                            </p>
+                            {/* Chief complaint only — demographics live in
+                                the visit popup and the chart, not the row. */}
+                            <p>{row.reason}</p>
                           </div>
                         </div>
 

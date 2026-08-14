@@ -28298,7 +28298,7 @@ table.patient-data-table.patient-data-table {
 }
 .ehr-week-activity-bars {
   gap: 7px;
-  height: 60px;
+  height: 104px; /* taller plot per review — the 60px design strip read too small */
   margin-top: 0;
   padding: 0;
 }

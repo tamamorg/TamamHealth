@@ -1115,14 +1115,13 @@ export default function FrontDeskDashboardPage() {
     const patientById = new Map(patients.map(patient => [patient._id, patient]));
     const appointmentRows: EhrCareDashboardRow[] = visiblePendingAppointments.map(appointment => {
       const patient = patientById.get(appointment.patientId);
-      const patientMeta = patient
-        ? `${patientAgeLabel(patient)}${patient.gender ? ` · ${String(patient.gender).charAt(0).toUpperCase()}` : ''}`
-        : '';
       return {
         id: `pending-appt-${appointment._id}`,
         photoUrl: (patient as { photoUrl?: string } | undefined)?.photoUrl,
         title: appointment.patientName,
-        subtitle: [appointment.reason || 'Scheduled visit', patientMeta].filter(Boolean).join(' · '),
+        // The sub-line is the chief complaint alone — no demographics, no
+        // department; those live in the row's other columns and the popup.
+        subtitle: appointment.reason || 'Scheduled visit',
         meta: `${formatClockTime(appointment.appointmentTime) || 'No time'} · ${appointment.providerName || patient?.assignedDoctorName || 'Unassigned'} · ${appointment.facilityName || currentUser?.hospitalName || 'Facility'}`,
         compactMeta: formatClockTime(appointment.appointmentTime) || 'No time',
         time: formatClockTime(appointment.appointmentTime) || undefined,
@@ -1297,7 +1296,7 @@ export default function FrontDeskDashboardPage() {
         id: entry.id,
         photoUrl: (patient as { photoUrl?: string } | undefined)?.photoUrl,
         title: entry.patientName,
-        subtitle: `${entry.complaint} · ${entry.department}`,
+        subtitle: entry.complaint,
         meta: `${entry.gender} · ${entry.age}${entry.assignedDoctorName ? ` · ${entry.assignedDoctorName}` : ''}`,
         compactMeta: entry.waitMinutes != null ? waitLabel(entry.waitMinutes) : (entry.time || entry.date),
         time: waitTime,
