@@ -17,7 +17,7 @@ import { useTriage } from '@/lib/hooks/useTriage';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useFollowUpsDue } from '@/lib/hooks/useFollowUpsDue';
-import { patientFullName, patientAge } from '@/lib/patient-utils';
+import { patientFullName, patientDisplayName, shortenPersonName, patientAge } from '@/lib/patient-utils';
 import { getDefaultDashboard } from '@/lib/permissions';
 import { getNoteType } from '@/lib/clinical-notes/note-catalog';
 import SuperintendentDashboard from '@/components/dashboards/SuperintendentDashboard';
@@ -156,7 +156,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     surname: p.surname,
     photoUrl: p.photoUrl,
     payorInfo: p.payorInfo,
-    name: patientFullName(p),
+    name: patientDisplayName(p),
     age: patientAge(p) ?? (25 + i * 3),
     gender: p.gender?.[0] || (IS_DEMO ? (i % 2 === 0 ? 'M' : 'F') : ''),
     id: p.hospitalNumber,
@@ -186,7 +186,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
       surname: p.surname,
       photoUrl: p.photoUrl,
       payorInfo: p.payorInfo,
-      name: patientFullName(p),
+      name: patientDisplayName(p),
       age: patientAge(p) ?? (25 + i * 3),
       gender: p.gender?.[0] || (IS_DEMO ? (i % 2 === 0 ? 'M' : 'F') : ''),
       id: p.hospitalNumber,
@@ -272,7 +272,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     }),
     ...unsignedNotes.map(n => ({
       id: n._id,
-      title: n.patientName,
+      title: shortenPersonName(n.patientName),
       subtitle: `${getNoteType(n.noteType).label} note — needs signature`,
       meta: shortDate(n.serviceDate || n.createdAt),
       tone: 'warning' as const,
@@ -286,7 +286,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
 
   const phoneNoteEntries = phoneNotesInbox.map(n => ({
     id: n._id,
-    title: n.patientName || n.callerName || 'Phone note',
+    title: shortenPersonName(n.patientName || n.callerName) || 'Phone note',
     subtitle: n.subject || n.message,
     meta: shortDate(n.createdAt),
     tone: 'warning' as const,
@@ -304,7 +304,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     .filter(r => r.createdBy === currentUser._id && OPEN_REFERRAL_STATUSES.has(r.status));
   const referralEntries = myOpenReferrals.map(r => ({
     id: r._id,
-    title: r.patientName,
+    title: shortenPersonName(r.patientName),
     subtitle: `${r.reason || 'Referral'} → ${r.toHospital || 'receiving facility'}`,
     meta: r.status ? String(r.status).replace(/_/g, ' ') : '',
     href: patientIds.has(r.patientId)
@@ -320,7 +320,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   const telehealthToday = myUpcomingAppts.filter(a => a.appointmentType === 'telehealth' && a.appointmentDate === todayIso);
   const telehealthEntries = telehealthToday.map(a => ({
     id: a._id,
-    title: a.patientName,
+    title: shortenPersonName(a.patientName),
     subtitle: `Telehealth · ${formatClockTime(a.appointmentTime)}${a.reason ? ` · ${a.reason}` : ''}`,
     meta: a.status ? String(a.status).replace(/_/g, ' ') : '',
     tone: 'warning' as const,
@@ -331,7 +331,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
 
   const labEntries = resumableEncounters.map(e => ({
     id: e._id,
-    title: e.patientName,
+    title: shortenPersonName(e.patientName),
     subtitle: e.allResultsBack
       ? 'All results back — resume the visit'
       : `${e.resultsReady} of ${e.resultsTotal} results back`,
@@ -356,7 +356,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   });
   const followUpEntries = dueFollowUps.map(f => ({
     id: f._id,
-    title: f.patientName,
+    title: shortenPersonName(f.patientName),
     subtitle: f.condition,
     meta: shortDate(f.scheduledDate),
     tone: 'warning' as const,

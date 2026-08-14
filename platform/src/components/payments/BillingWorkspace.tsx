@@ -42,6 +42,7 @@ import type { PaymentDoc, ClaimDoc, PaymentPlanDoc, PaymentMethodType } from '@/
 import type { BillingDoc } from '@/lib/db-types-billing';
 import type { EncounterDoc } from '@/lib/db-types';
 import { formatMoney } from '@/lib/format-utils';
+import { shortenPersonName } from '@/lib/patient-utils';
 import '@/components/billing/billing.css';
 
 // Encounter statuses that represent a clinically-finished visit — used to spot
@@ -799,7 +800,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                           key={line.patientId}
                           onClick={() => setSelectedPatientId(line.patientId)}
                           tabIndex={0}
-                          aria-label={`Open account for ${line.patientName}`}
+                          aria-label={`Open account for ${shortenPersonName(line.patientName)}`}
                           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPatientId(line.patientId); } }}
                         >
                           <td>
@@ -810,10 +811,10 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                                 className="bl-link"
                                 style={{ fontWeight: 600 }}
                               >
-                                {line.patientName}
+                                {shortenPersonName(line.patientName)}
                               </button>
                             ) : (
-                              <span style={{ fontWeight: 600 }}>{line.patientName}</span>
+                              <span style={{ fontWeight: 600 }}>{shortenPersonName(line.patientName)}</span>
                             )}
                           </td>
                           <td>
@@ -960,7 +961,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                           style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
                         >
                           <div className="min-w-0">
-                            <div className="bl-fee-name">{line.patientName}</div>
+                            <div className="bl-fee-name">{shortenPersonName(line.patientName)}</div>
                             {line.hospitalNumber && <div className="bl-fee-cat" style={{ fontFamily: 'monospace' }}>{line.hospitalNumber}</div>}
                           </div>
                           <span className="bl-num" style={{ fontWeight: 700, color: 'var(--color-danger-text)' }}>{formatMoney(line.outstanding)}</span>
@@ -1118,7 +1119,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
               style={{ fontSize: 16 }}
               title={t('payments.openPatientRecord')}
             >
-              <span id="billing-detail-name">{line.patientName}</span>
+              <span id="billing-detail-name">{shortenPersonName(line.patientName)}</span>
             </button>
             {line.hospitalNumber && (
               <div className="bl-id-tag" style={{ marginTop: 4, display: 'inline-block' }}>{line.hospitalNumber}</div>

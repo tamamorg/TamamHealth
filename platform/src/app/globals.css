@@ -5221,12 +5221,7 @@ html:has(.ehr-top-rail) {
 .ehr-segmented {
   display: flex;
   align-items: center;
-  gap: 8px;
   flex-wrap: nowrap;
-  padding: 2px;
-  border: 1px solid var(--ehr-border);
-  background: var(--ehr-panel);
-  border-radius: 999px;
 }
 
 /* Calendar view was removed: the toggle is now a single Dashboard pill, so drop
@@ -5237,6 +5232,8 @@ html:has(.ehr-top-rail) {
   background: transparent;
 }
 
+/* Buttons and tabs share a shape, per the Reception/Clinical design: 8px
+   corners on a hairline border, not the 999px pills the app used. */
 .ehr-segmented button,
 .ehr-schedule-actions button,
 .ehr-clinical-strip button {
@@ -5246,12 +5243,39 @@ html:has(.ehr-top-rail) {
   min-height: 36px;
   padding: 0 14px;
   border: 1px solid var(--ehr-border);
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--ehr-panel);
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 700;
 }
+
+/* The queue's view switch is one joined control in the design — uppercase
+   condensed labels on a shared hairline, the selected one filled. Separate
+   pills with gaps read as three buttons that happen to sit together; joined,
+   they read as one control with a current position. */
+/* `.ehr-schedule-shell` in the scoping: that rule sets the shell's font, and a
+   later, more specific selector than a bare `.ehr-segmented button` is what it
+   takes for the tabs to keep the condensed cut inside it. */
+.ehr-segmented button,
+.ehr-schedule-shell .ehr-segmented button {
+  min-height: 0;
+  padding: 8px 16px;
+  border-left-width: 0;
+  border-radius: 0;
+  font-family: var(--font-condensed);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ehr-text-body, #39536B);
+}
+.ehr-segmented button:first-child {
+  border-left-width: 1px;
+  border-radius: 8px 0 0 8px;
+}
+.ehr-segmented button:last-child { border-radius: 0 8px 8px 0; }
+.ehr-segmented.ehr-segmented-single button { border-left-width: 1px; border-radius: 8px; }
 
 .ehr-schedule-actions button:not(.primary):hover {
   border-color: var(--ehr-blue);

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { comparePatients, patientFullName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
+import { comparePatients, patientFullName, patientDisplayName, shortenPersonName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { ScanLine, Hash, X, ArrowRight, Download } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -378,7 +378,7 @@ export default function PatientsPage() {
                       <div className="ehr-appointment-identity">
                         <PatientAvatar patient={patient} size={40} />
                         <div className="ehr-appointment-main appointment-card-patient">
-                          <Link href={`/patients/${patient._id}`} onClick={e => e.stopPropagation()}>{patientFullName(patient)}</Link>
+                          <Link href={`/patients/${patient._id}`} onClick={e => e.stopPropagation()}>{patientDisplayName(patient)}</Link>
                           <p>{patient.hospitalNumber || 'No hospital number'} · {patientAgeLabel(patient)} · {patient.gender || 'Not recorded'}</p>
                         </div>
                       </div>
