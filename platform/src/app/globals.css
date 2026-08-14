@@ -18958,8 +18958,8 @@ textarea.ehr-handoff-input {
   top: 0;
   z-index: 4;
   display: grid;
-  grid-template-columns: minmax(320px, 1.6fr) repeat(4, minmax(150px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 12px;
   align-items: center;
   /* Tracks the row's side padding so the column labels stay over their
      values. */
@@ -18984,8 +18984,8 @@ textarea.ehr-handoff-input {
    row's own inset was what still held the avatar and the status pill off the
    panel edges. Vertical stays at 9px — only the sides tighten. */
 .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: minmax(320px, 1.6fr) repeat(4, minmax(150px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 12px;
   min-height: 64px;
   padding: 9px 4px;
   border-radius: 14px;
@@ -19170,6 +19170,8 @@ textarea.ehr-handoff-input {
 .appointment-card-status {
   display: flex;
   flex-direction: column;
+  /* The five tracks are identical (even spacing); status alone anchors to
+     the far right edge, closing the table the way the design does. */
   align-items: flex-end;
   /* Centered (not bottom-hung) so the status pill sits on the same line as
      the stage/department pill in the neighbouring column. */
@@ -23273,11 +23275,6 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-care-list .appointment-card-head,
-.ehr-care-list .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: minmax(210px, 1.7fr) minmax(88px, 0.8fr) minmax(136px, 1fr) minmax(110px, 0.9fr) minmax(126px, 1fr);
-  gap: 14px;
-}
-
 .ehr-care-list .appointment-card-flow {
   min-width: 740px;
 }
@@ -23299,13 +23296,13 @@ textarea.ehr-handoff-input {
    (doctor worklist, ward board, MAR, care dashboards). The flow wrapper
    carries the tighter centre-panel column template; the surface carries the
    appointments backdrop. */
-/* The column formula is the design's: the name column takes 1.7 shares and
-   never falls below 200px, the four data columns split what is left evenly and
-   never below 112px. It was five hand-tuned widths before, which is why the
-   same table drew ragged columns from one module to the next. */
+/* One shared column formula: five EVEN columns. The design's 1.7-share name
+   column read fine at 1440 but ballooned on wide monitors, leaving a gulf
+   between the name and TIME — evenly spaced columns hold their rhythm at any
+   width (names stay two words, so they fit). */
 .appointment-card-flow .appointment-card-head,
 .appointment-card-flow .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: minmax(200px, 1.7fr) repeat(4, minmax(112px, 1fr));
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
   gap: 12px;
 }
 
