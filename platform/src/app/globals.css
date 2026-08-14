@@ -6668,7 +6668,9 @@ button.ward-stat-chip:focus:not(:focus-visible) {
      only the single-line greeting — no subtitle — so there's no tall middle
      column to top-align against.) */
   align-items: center;
-  gap: 10px;
+  /* Same 18px gutter as the workspace grid below, so the greeting's left
+     edge sits exactly on the centre panel's. */
+  gap: 18px;
   padding-bottom: 12px;
 }
 

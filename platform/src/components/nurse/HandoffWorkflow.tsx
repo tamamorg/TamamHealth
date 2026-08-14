@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
-import { patientFullName } from '@/lib/patient-utils';
+import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import { formatLongDate } from '@/lib/format-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
@@ -240,7 +240,7 @@ export default function HandoffWorkflow({
             )}
             {latest.patients.length > 0 && latest.patients.map(pt => (
               <div key={pt.patientId} className="ehr-handoff-card">
-                <span className="ehr-handoff-name">{pt.patientName}</span>
+                <span className="ehr-handoff-name">{shortenPersonName(pt.patientName)}</span>
                 {(pt.situation || pt.background || pt.assessment || pt.recommendation || pt.tasks?.length) ? (
                   <ul className="ehr-handoff-sbar-list">
                     {pt.situation && <li><b>{t('nurse.sbarSituation')}:</b> {pt.situation}</li>}

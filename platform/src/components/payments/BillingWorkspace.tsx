@@ -674,7 +674,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                   <tbody>
                     {pendingPayments.map(p => (
                       <tr key={p._id}>
-                        <td style={{ fontWeight: 600 }}>{p.patientName}</td>
+                        <td style={{ fontWeight: 600 }}>{shortenPersonName(p.patientName)}</td>
                         <td className="bl-muted" style={{ fontFamily: 'monospace' }}>{p.reference}</td>
                         <td>{getMethodConfig(p.method).label}</td>
                         <td className="bl-muted" style={{ whiteSpace: 'nowrap' }}>
@@ -881,7 +881,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
             <div className="bl-fee-list" style={{ maxHeight: 'none', overflow: 'visible' }}>
               <div className="bl-fee-row">
                 <div className="min-w-0">
-                  <div className="bl-fee-name">{reverseFor.payment.patientName}</div>
+                  <div className="bl-fee-name">{shortenPersonName(reverseFor.payment.patientName)}</div>
                   <div className="bl-fee-cat">
                     {getMethodConfig(reverseFor.payment.method).label}
                     {reverseFor.payment.reference && <span style={{ fontFamily: 'monospace' }}> · {reverseFor.payment.reference}</span>}

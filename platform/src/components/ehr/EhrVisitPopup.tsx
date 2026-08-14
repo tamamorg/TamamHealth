@@ -7,7 +7,7 @@ import Modal from '@/components/Modal';
 import { useMedicalRecords } from '@/lib/hooks/useMedicalRecords';
 import { STAGE_LABELS, type QueueEntry, type QueueStage } from '@/lib/services/patient-queue-service';
 import { formatClockTime } from '@/lib/format-utils';
-import { initials, stateTint } from '@/lib/patient-utils';
+import { initials, stateTint, shortenPersonName } from '@/lib/patient-utils';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import type { AppointmentDoc, TriageDoc } from '@/lib/db-types';
 
@@ -144,7 +144,7 @@ export default function EhrVisitPopup({
               {initials(name)}
             </span>
             <div className="ehr-visit-pop-head-text">
-              <h3 id="ehr-visit-pop-title">{name}</h3>
+              <h3 id="ehr-visit-pop-title">{shortenPersonName(name)}</h3>
               {detail && <p className="ehr-visit-pop-detail">{detail}</p>}
             </div>
             {/* The header carries only what reception triages on at a glance —
@@ -384,7 +384,7 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove }: {
     <Modal onClose={onClose} width={520} labelledBy="ehr-queue-move-title">
       <div className="modal-content card-elevated ehr-queue-move">
         <div className="ehr-queue-move-head">
-          <h3 id="ehr-queue-move-title">Move {entry.patientName}</h3>
+          <h3 id="ehr-queue-move-title">Move {shortenPersonName(entry.patientName)}</h3>
           <button type="button" aria-label="Close" onClick={onClose}><X className="w-4 h-4" /></button>
         </div>
 

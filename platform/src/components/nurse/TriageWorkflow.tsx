@@ -12,7 +12,7 @@ import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
 import type { PatientDoc, TriageDisposition } from '@/lib/db-types';
 import { jubaDate } from '@/lib/time-juba';
 import { useToast } from '@/components/Toast';
-import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
+import { patientFullName, patientGenderAge, initials, shortenPersonName } from '@/lib/patient-utils';
 import { isVitalInRange, VITAL_RANGES } from '@/lib/clinical/vitals';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
@@ -1008,10 +1008,10 @@ export default function TriageWorkflow({
                             entry away. On that page itself the name is already
                             the subject, so it is plain text. */}
                         {lockedPatientId ? (
-                          <span className="ehr-queue-name">{ti.patientName}</span>
+                          <span className="ehr-queue-name">{shortenPersonName(ti.patientName)}</span>
                         ) : (
                           <button type="button" className="ehr-queue-name" onClick={() => router.push(`/triage/${ti.patientId}`)} title={`Triage ${ti.patientName}`}>
-                            {ti.patientName}
+                            {shortenPersonName(ti.patientName)}
                           </button>
                         )}
                         <p>{ti.chiefComplaint || t('nurse.noComplaintRecorded')}</p>

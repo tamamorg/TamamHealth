@@ -19,6 +19,7 @@
  * information a station wants.
  */
 
+import { shortenPersonName } from '@/lib/patient-utils';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Activity } from '@/components/icons/lucide';
@@ -82,7 +83,7 @@ export default function ProgressFeedCard() {
           <li key={ev.id}>
             <button type="button" onClick={() => router.push(ev.href)}>
               <span className="ehr-progress-headline">
-                <b>{ev.patientName}</b>
+                <b>{shortenPersonName(ev.patientName)}</b>
                 {' — '}
                 {ev.label}
               </span>

@@ -11,7 +11,7 @@ import type { MedicationAdministration } from '@/lib/db-types';
 import { useMarEntries, type MAREntry } from './shared';
 import ListSearch from './ListSearch';
 import { EhrListFilters } from '@/components/ehr/EhrListHeader';
-import { initials, stateTint, AVATAR_TINT_NEUTRAL } from '@/lib/patient-utils';
+import { initials, stateTint, AVATAR_TINT_NEUTRAL, shortenPersonName } from '@/lib/patient-utils';
 import { formatTimeUntil } from '@/lib/format-utils';
 
 type AdminStatus = 'given' | 'held' | 'refused' | 'missed';
@@ -400,7 +400,7 @@ export default function MarWorkflow({ onAdminister }: { onAdminister?: () => voi
                     </div>
                     <div className="ehr-appointment-main appointment-card-patient">
                       <button type="button" onClick={(event) => { event.stopPropagation(); router.push(`/patients/${entry.patientId}?tab=prescriptions`); }}>
-                        {entry.patientName}
+                        {shortenPersonName(entry.patientName)}
                       </button>
                       <p>{entry.frequency || 'Scheduled dose'}</p>
                     </div>

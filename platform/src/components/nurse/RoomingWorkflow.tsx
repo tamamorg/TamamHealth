@@ -1,5 +1,6 @@
 'use client';
 
+import { shortenPersonName } from '@/lib/patient-utils';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
@@ -188,7 +189,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                       onClick={() => router.push(`/rooming/${encounter.patientId}`)}
                       title={`Room ${encounter.patientName}`}
                     >
-                      {encounter.patientName}
+                      {shortenPersonName(encounter.patientName)}
                     </button>
                     {encounter.roomNumber && (
                       <span
