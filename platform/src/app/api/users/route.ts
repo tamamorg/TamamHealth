@@ -10,16 +10,17 @@ import {
 } from '@/lib/api-auth';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import { STAFF_DIRECTORY_READ_ROLES } from '@/lib/staff-directory-access';
 // Reading the staff directory is org-scoped (buildScopeFromAuth) and the rows
 // come back through redactUserForClient — it is a colleague list, not PHI.
 // `hospital_manager` runs the facility's roster, shifts, leave and payroll off
 // exactly this list, and is the role the Facility Management dashboard belongs
 // to, so it reads here alongside medical_superintendent. Writes stay narrower:
 // only WRITE_ROLES may create or change an account.
-const READ_ROLES: UserRole[] = [
-  'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
-  'pharmacist', 'medical_superintendent', 'hospital_manager', 'hrio',
-];
+// Shared with `useUsers`, so the client stops asking for a directory it is not
+// allowed to read instead of retrying a 403 on every mount. This route remains
+// the enforcement point — the export only saves a request that would be denied.
+const READ_ROLES: UserRole[] = [...STAFF_DIRECTORY_READ_ROLES];
 const WRITE_ROLES: UserRole[] = [
   'super_admin', 'org_admin',
 ];
