@@ -804,11 +804,11 @@ export default function EhrCareDashboard({
                                 the same control. The row itself is the
                                 affordance — `aria-expanded` still tells
                                 assistive tech what it does. */}
+                            {/* Tinted initials, never photos, in the queue —
+                                the plate colour IS the acuity signal; a photo
+                                would paint over it. Charts keep the photo. */}
                             <div className="ehr-patient-icon" style={stateTint(avatarAcuity)}>
-                              {row.photoUrl
-                                // eslint-disable-next-line @next/next/no-img-element
-                                ? <img src={row.photoUrl} alt="" className="ehr-patient-icon-photo" />
-                                : initials(row.title)}
+                              {initials(row.title)}
                             </div>
                             <div className="ehr-appointment-main appointment-card-patient">
                               {/* Name and its telehealth mark share one line, so
@@ -829,7 +829,8 @@ export default function EhrCareDashboard({
                                     else activate();
                                   }}
                                 >
-                                  {row.title}
+                                  {/* Two words on the row — first and last. */}
+                                  {shortenPersonName(row.title)}
                                 </button>
                                 {/* Marks a remote visit where the name is read,
                                     so the desk can see it without opening a row. */}

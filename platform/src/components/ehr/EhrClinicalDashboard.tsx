@@ -1696,11 +1696,11 @@ export default function EhrClinicalDashboard({
                         }}
                       >
                         <div className="ehr-appointment-identity">
+                          {/* Tinted initials, never photos, in the queue — the
+                              plate colour IS the acuity signal; a photo would
+                              paint over it. The chart still shows the photo. */}
                           <div className="ehr-patient-icon" style={stateTint(row.triagePriority)}>
-                            {row.photoUrl
-                              // eslint-disable-next-line @next/next/no-img-element
-                              ? <img src={row.photoUrl} alt="" className="ehr-patient-icon-photo" />
-                              : initials(row.name)}
+                            {initials(row.name)}
                           </div>
                           <div className="ehr-appointment-main appointment-card-patient">
                             {/* The name opens the chart; the rest of the row
@@ -1715,7 +1715,9 @@ export default function EhrClinicalDashboard({
                                 else openRow();
                               }}
                             >
-                              {row.name}
+                              {/* Two words on the row — first and last; the
+                                  chart header keeps the full legal name. */}
+                              {shortenPersonName(row.name)}
                             </button>
                             <p>
                               {row.reason}
