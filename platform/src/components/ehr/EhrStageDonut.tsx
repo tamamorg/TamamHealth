@@ -1,5 +1,7 @@
 'use client';
 
+import { PieChart } from '@/components/icons/lucide';
+
 /**
  * "Arrivals by stage" — the rail donut from the Reception / Clinical App
  * design: a 92px ring with an 18px hole, the day's total in its middle, and a
@@ -53,7 +55,10 @@ export default function EhrStageDonut({
 
   return (
     <div className="ehr-side-card ehr-stage-donut">
-      <h2>{title}</h2>
+      <div className="ehr-side-card-head">
+        <PieChart className="w-5 h-5" />
+        <h2>{title}</h2>
+      </div>
       <div className="ehr-stage-donut-body">
         <div className="ehr-stage-donut-ring" style={{ background: gradient }} role="img" aria-label={`${total} ${centerLabel}`}>
           <div className="ehr-stage-donut-hole">

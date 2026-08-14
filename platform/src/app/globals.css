@@ -3382,7 +3382,9 @@ thead th {
  * height there would leave a 112px band of nothing above it. `:has()` makes the
  * inset follow whether the rail is actually in the document. */
 :root {
-  --app-top-rail-height: 60px;
+  /* 72px per review — the header grew to match the design preview; every
+     layout offset reads this one variable. */
+  --app-top-rail-height: 72px;
   --app-overlay-top-inset: 0px;
 }
 
@@ -4476,7 +4478,7 @@ html:has(.ehr-top-rail) {
   max-width: 320px;
   color: rgba(255, 255, 255, 0.92);
   font-family: var(--font-condensed);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.13em;
   text-transform: uppercase;
@@ -4535,9 +4537,9 @@ html:has(.ehr-top-rail) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
   border-radius: 999px;
   background: #C2410C;
   box-shadow: 0 0 0 1.5px #144972;
@@ -4551,8 +4553,8 @@ html:has(.ehr-top-rail) {
 
 .ehr-top-modules button,
 .ehr-top-actions button {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4571,8 +4573,8 @@ html:has(.ehr-top-rail) {
 .ehr-top-actions button svg.lucide,
 .ehr-top-calendar-button svg.lucide,
 .ehr-top-search > svg.lucide {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .ehr-top-modules button:hover,
@@ -4594,8 +4596,8 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-top-navlinks button {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4623,9 +4625,9 @@ html:has(.ehr-top-rail) {
 }
 
 /* Hamburger trigger — a single glyph now (the chevron came off with the
-   module icon), so the standard 38px circle needs no widening. */
+   module icon), so the standard 44px circle needs no widening. */
 .ehr-module-trigger {
-  width: 38px !important;
+  width: 44px !important;
 }
 
 /* The hamburger's own panel. Anchored to the trigger (`.ehr-top-modules` is
@@ -4753,9 +4755,9 @@ html:has(.ehr-top-rail) {
   align-items: center;
   width: min(100%, 420px);
   min-width: 0;
-  height: 38px;
+  height: 44px;
   justify-self: end;
-  padding: 0 8px 0 13px;
+  padding: 0 10px 0 15px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
@@ -4781,7 +4783,7 @@ html:has(.ehr-top-rail) {
   outline: none;
   background: transparent;
   color: #ffffff;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -4849,9 +4851,9 @@ html:has(.ehr-top-rail) {
 
 /* Design: a 40px white circle holding a 30px role-colored initials mark. */
 .ehr-avatar {
-  width: 38px !important;
-  min-width: 38px;
-  height: 38px !important;
+  width: 44px !important;
+  min-width: 44px;
+  height: 44px !important;
   padding: 0 !important;
   gap: 8px;
   justify-content: center !important;
@@ -4860,7 +4862,7 @@ html:has(.ehr-top-rail) {
   background: #015697 !important;
   color: #ffffff !important;
   font-family: var(--font-condensed);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -7843,8 +7845,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   }
 
   .ehr-avatar {
-    min-width: 38px;
-    width: 38px !important;
+    min-width: 44px;
+    width: 44px !important;
     padding: 0 !important;
     justify-content: center !important;
   }
@@ -13111,15 +13113,16 @@ span:has(> svg:only-child) {
   --ehr-page-inset: 12px;
 }
 
-/* Compact patient search (restored): the wide design pill crowded the
-   centered facility name, so the rail keeps the previous 220×34 size. */
+/* Patient search at the scaled rail's size: tall enough to match the 44px
+   control cluster, still narrow enough (260px) not to crowd the centered
+   facility name. */
 .ehr-top-search {
-  width: min(100%, 220px);
-  height: 34px;
+  width: min(100%, 260px);
+  height: 44px;
 }
 
 .ehr-top-search input {
-  font-size: 12px;
+  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -28095,16 +28098,15 @@ table.patient-data-table.patient-data-table {
    left-hand number in each comment is what the app had.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* Header: the bar is 60px MINIMUM, not a fixed 60px — the design lets it grow
-   when the row wraps (it measures 80px at 1440 with the search in place).
-   Padding 0/12 → 10/16, gap 12 → 10px 14px, logo 132 → 150. */
+/* Header: 72px minimum per review (the design preview's taller bar), still
+   free to grow when the row wraps. 44px controls and 22px glyphs to scale. */
 .ehr-top-rail {
   height: auto !important;
-  min-height: var(--app-top-rail-height, 60px);
-  padding: 10px 16px !important;
-  gap: 10px 14px !important;
+  min-height: var(--app-top-rail-height, 72px);
+  padding: 12px 20px !important;
+  gap: 12px 16px !important;
 }
-.ehr-top-rail .ehr-top-brand-logo-full { width: 150px; height: auto; max-width: none; }
+.ehr-top-rail .ehr-top-brand-logo-full { width: 170px; height: auto; max-width: none; }
 /* The brand slot is a flex child too — capped, it clipped the 150px logo back to
    its own 138px box through the img's `max-width: 100%`. */
 .ehr-top-rail .ehr-top-brand { flex: none; max-width: none; }
@@ -28944,4 +28946,47 @@ table.patient-data-table.patient-data-table {
   background: var(--ehr-head);
   font-size: 11.5px;
   color: var(--ehr-muted);
+}
+
+/* ══════════════════ Left-rail chart card heads ══════════════════
+   Day activity and Arrivals by stage take the right rail's header language —
+   leading icon, 18px condensed caps, and a hairline rule inside the card
+   padding — so both rails read as one set of labelled instruments rather
+   than two type systems facing each other. */
+.ehr-day-stats .ehr-side-card-head,
+.ehr-stage-donut .ehr-side-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  margin-inline: 0;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--ehr-border, #E3EBF2);
+}
+.ehr-day-stats .ehr-side-card-head h2,
+.ehr-stage-donut .ehr-side-card-head h2 {
+  margin: 0 !important;
+  color: var(--ehr-text-title, var(--ehr-text));
+  font-family: var(--font-condensed);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 24px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* Direct child only: the day variant keeps chevron buttons in this head, and
+   their glyphs must not inherit the 24px title-icon size. */
+.ehr-day-stats .ehr-side-card-head > svg,
+.ehr-stage-donut .ehr-side-card-head > svg {
+  display: block;
+  flex: 0 0 24px;
+  width: 24px !important;
+  height: 24px !important;
+  margin: 0;
+  color: var(--accent-primary);
+  stroke: currentColor;
+}
+.ehr-side-card-head .ehr-week-activity-caption,
+.ehr-side-card-head .ehr-day-stats-nav {
+  margin-left: auto;
 }

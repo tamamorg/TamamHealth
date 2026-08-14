@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from '@/components/icons/lucide';
+import { BarChart3, ChevronLeft, ChevronRight } from '@/components/icons/lucide';
 import { addDays, parseIsoDate, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 
 /** One unit of work plotted on the chart: a row, appointment or order. */
@@ -88,8 +88,9 @@ export default function EhrDayStatsChart({
 
   return (
     <div className="ehr-day-stats">
-      <div className="ehr-day-stats-head">
-        <h3>{title}</h3>
+      <div className="ehr-side-card-head">
+        <BarChart3 className="w-5 h-5" />
+        <h2>{title}</h2>
         <div className="ehr-day-stats-nav">
           <button type="button" aria-label="Previous day" onClick={() => stepFocus(-1)}>
             <ChevronLeft className="w-3.5 h-3.5" />
@@ -202,8 +203,9 @@ export function EhrWeekActivityChart({
 
   return (
     <div className="ehr-day-stats ehr-week-activity">
-      <div className="ehr-day-stats-head">
-        <h3>{title}</h3>
+      <div className="ehr-side-card-head">
+        <BarChart3 className="w-5 h-5" />
+        <h2>{title}</h2>
         <span className="ehr-week-activity-caption">{activeWeekIsCurrent ? 'This week' : 'Latest week'}</span>
       </div>
       {total === 0 ? (
