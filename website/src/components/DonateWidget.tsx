@@ -119,7 +119,7 @@ export default function DonateWidget() {
           <label htmlFor="dn-clinic">Fund a specific clinic (optional)</label>
           <input id="dn-clinic" name="clinic" className="input" placeholder="Facility or state" style={{ background: "#FFFFFF" }} />
         </div>
-        <button type="submit" disabled={state === "sending" || state === "sent"} className="btn btn-primary blueprint" style={{ padding: "14px 0", fontSize: 15.5, color: "#FFFFFF", width: "100%" }}>
+        <button type="submit" disabled={state === "sending" || state === "sent"} className="btn btn-primary blueprint" style={{ padding: "14px 0", fontSize: 15.5, color: "#0E2A4A", width: "100%" }}>
           {state === "sent" ? "Message sent ✓" : state === "sending" ? "Sending…" : "Send message"}
           <Corners />
         </button>

@@ -119,7 +119,7 @@ export default function LoginClient({ initialRole }: { initialRole: LoginRole["k
             <input type="checkbox" style={{ width: 16, height: 16, accentColor: "#015697" }} />
             Keep me signed in on this device
           </label>
-          <button className="btn btn-primary blueprint" onClick={() => { setLoggedIn(true); setRoleListOpen(false); }} style={{ padding: "15px 0", fontSize: 16, color: "#FFFFFF", width: "100%" }}>
+          <button className="btn btn-primary blueprint" onClick={() => { setLoggedIn(true); setRoleListOpen(false); }} style={{ padding: "15px 0", fontSize: 16, color: "#0E2A4A", width: "100%" }}>
             {login.cta}
             <Corners />
           </button>

@@ -39,7 +39,7 @@ export default function HeroShowcase() {
             <h1 style={{ fontSize: "clamp(29px, 4.6vw, 46px)", lineHeight: 1.08, margin: 0, letterSpacing: "-0.02em" }}>{h.title}</h1>
             <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>{h.body}</p>
             <div className="tm-hero-btns" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
-              <Link href={h.href} className="btn btn-primary blueprint" style={{ padding: "13px 26px", fontSize: 15, color: "#FFFFFF" }}>
+              <Link href={h.href} className="btn btn-primary blueprint" style={{ padding: "13px 26px", fontSize: 15, color: "#0E2A4A" }}>
                 Learn more
                 <Corners />
               </Link>

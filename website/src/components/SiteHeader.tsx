@@ -268,7 +268,8 @@ export default function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <Link href="/contact" className="btn blueprint" style={{ marginLeft: 14, padding: "11px 20px", fontSize: 15, color: "#FFFFFF", whiteSpace: "nowrap", background: "#015697", borderColor: "#015697" }}>
+            {/* The rail's only amber: one call to action per screen. */}
+            <Link href="/contact" className="btn blueprint" style={{ marginLeft: 14, padding: "11px 20px", fontSize: 15, color: "#0E2A4A", whiteSpace: "nowrap", background: "#E8863A", borderColor: "#E8863A" }}>
               Book a Demo
               <Corners />
             </Link>
@@ -313,7 +314,7 @@ export default function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <Link href="/contact" className="btn btn-primary" style={{ margin: "16px 28px 0", padding: "14px 0", fontSize: 16, color: "#FFFFFF" }}>
+            <Link href="/contact" className="btn btn-primary" style={{ margin: "16px 28px 0", padding: "14px 0", fontSize: 16, color: "#0E2A4A" }}>
               Book a Demo
             </Link>
           </div>

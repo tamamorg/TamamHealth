@@ -156,8 +156,13 @@ section[id] { scroll-margin-top: 130px; }
   flex-shrink: 0;
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn-primary { background: #015697; border-color: #015697; color: #ffffff; }
-.btn-primary:hover { background: #0e2a4a !important; border-color: #0e2a4a !important; }
+/* The primary call to action is amber on navy ink, not blue on white. Blue is
+   the system's own colour — it carries links, headings and the platform
+   chrome — so a blue CTA sat inside a blue page and stopped reading as the
+   one thing to press. Amber is the only warm colour on the site, used for
+   nothing else. */
+.btn-primary { background: #e8863a; border-color: #e8863a; color: #0e2a4a; }
+.btn-primary:hover { background: #d2712a !important; border-color: #d2712a !important; color: #0e2a4a; }
 .btn-secondary { border-color: var(--color-divider); }
 .btn-secondary:hover { background: rgba(14, 42, 74, 0.07); }
 .btn-secondary:active { background: rgba(14, 42, 74, 0.14); }
