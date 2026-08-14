@@ -5082,14 +5082,6 @@ html:has(.ehr-top-rail) {
   border-radius: 4px !important;
 }
 
-/* Search fields are pills in the design — exempt them from the square-input
-   override above. */
-.tamam-ehr-app .ehr-rail-search input,
-.tamam-ehr-app .ehr-top-search input,
-.tamam-ehr-app .ehr-care-search input {
-  border-radius: 999px !important;
-}
-
 .tamam-ehr-app .page-container:has(> .ehr-schedule-shell) {
   display: flex;
   flex-direction: column;
@@ -5553,16 +5545,66 @@ html:has(.ehr-top-rail) {
   overflow: hidden;
 }
 
+/* The queue header, per the design: title · search · tabs on one row, with the
+   search taking the flexible middle so it sits directly over the table it
+   filters. `auto minmax(180px, 1fr) auto` is the design's own template. */
 .ehr-daybar {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto minmax(180px, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  min-height: 56px;
-  padding: 0 16px;
-  border-bottom: 1px solid #E7EEF5;
+  gap: 16px;
+  min-height: 0;
+  padding: 14px 16px 11px;
+  border-bottom: 1px solid var(--ehr-border);
 }
+
+/* One column short when the dashboard passes no search handler — the title
+   keeps the left, the tabs the right, and nothing stretches to fill a gap
+   that has no field in it. */
+.ehr-daybar:not(:has(.ehr-queue-search)) { grid-template-columns: 1fr auto; }
+
+/* The field itself: the design's 38px pill-less box on the card's own border,
+   capped so it never crowds the tabs. */
+.ehr-queue-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  max-width: 330px;
+  height: 38px;
+  padding: 0 13px;
+  margin: 0 auto;
+  border: 1px solid var(--ehr-border);
+  border-radius: 8px;
+  background: var(--ehr-panel, #FFFFFF);
+}
+.ehr-queue-search:focus-within { border-color: var(--accent-primary); }
+.ehr-queue-search-icon { flex: none; color: var(--ehr-muted); opacity: 0.7; }
+.ehr-queue-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-platform);
+  font-size: 12.5px;
+  color: var(--ehr-text);
+}
+.ehr-queue-search input::-webkit-search-cancel-button { display: none; }
+.ehr-queue-search-clear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ehr-muted);
+  cursor: pointer;
+}
+.ehr-queue-search-clear:hover { background: var(--ehr-soft, #E9F0F5); }
 
 .ehr-daybar > div:first-child {
   display: flex;
@@ -5685,25 +5727,31 @@ html:has(.ehr-top-rail) {
   font-weight: 800;
 }
 
+/* The design's queue is a table, not a stack of cards: rows share one hairline
+   rule and the row under the pointer takes a tint. See `.ehr-care-row` for the
+   same spec on the care-dashboard variant. */
 .ehr-appointment-row {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) max-content;
-  align-items: center;
-  gap: 8px;
-  min-height: 60px;
-  padding: 6px 12px;
-  border: 1px solid var(--ehr-border);
-  border-radius: 14px;
-  background: #fff;
+  grid-template-columns: 40px minmax(0, 1fr) max-content;
+  align-items: start;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
   cursor: pointer;
-  transition: box-shadow 0.15s ease;
+  transition: background 120ms ease;
 }
 
 .ehr-appointment-row:hover {
-  border-color: var(--ehr-blue);
+  background: color-mix(in srgb, var(--ehr-text, #0E2A4A) 4%, transparent);
   box-shadow: none;
 }
+
+.ehr-appointment-row:last-child { border-bottom: 0; }
 
 .ehr-patient-icon {
   width: 40px;
@@ -6740,24 +6788,83 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding-inline: 4px;
 }
 
+/* Row typography, to the design's exact scale. Every queue cell is a 13.5px
+   semibold line over an 11.5px caption; the captions differ only in weight of
+   muting — 55% under the name (it carries sex/age/reason), 48% under the care
+   team and the context, which are quieter still. Cells align to the top rather
+   than the middle so a two-line name does not push its neighbours' captions
+   out of line. */
+.ehr-care-row .ehr-appointment-main,
+.ehr-care-row .ehr-care-cell {
+  align-self: start;
+}
+.ehr-care-row .ehr-row-name,
+.ehr-care-row .ehr-row-name button,
+.ehr-care-row .ehr-care-cell > :first-child {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.ehr-care-row .ehr-appointment-main small,
+.ehr-care-row .ehr-care-cell > :last-child:not(:first-child) {
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+/* The time column is numeric: tabular figures keep 08:30 and 11:15 aligned
+   down the column instead of drifting with the glyph widths. */
+.ehr-care-row .ehr-care-cell-time > :first-child {
+  font-variant-numeric: tabular-nums;
+}
+/* 40px at a 12px corner — a rounded square, not a circle. The design uses the
+   same shape for initials and for a portrait. */
+.ehr-care-row .ehr-appointment-avatar,
+.ehr-care-row .ehr-care-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+/* Column heads: the same 12px condensed label the rest of the app uses, muted
+   to 58% and sitting on the grid's own gutters. */
+.ehr-care-dashboard .ehr-care-head-row {
+  padding: 4px 6px 10px;
+  column-gap: 12px;
+}
+
+/* The queue row, to the Reception/Clinical design.
+
+   The app drew every row as its own bordered card — 1px border, 14px radius,
+   64px tall — so a schedule of eight patients was eight boxes, and the eye had
+   to cross a border to compare two times. The design draws a table: rows share
+   one hairline rule, sit tight to the column grid, and only the row under the
+   pointer gets a tint. Everything below is that spec verbatim — 14px/6px
+   padding, 12px gutters, top-aligned cells, a #EDF2F7 rule. */
 .ehr-care-row {
-  grid-template-columns: var(--care-cols, 42px minmax(220px, 1.8fr) repeat(4, minmax(112px, 1fr)) 44px);
-  column-gap: 16px;
-  min-height: 64px;
-  padding: 9px 14px;
-  border: 1px solid var(--ehr-border);
-  border-radius: 14px;
-  background: #fff;
+  grid-template-columns: var(--care-cols, 40px minmax(200px, 1.7fr) repeat(4, minmax(112px, 1fr)) 44px);
+  column-gap: 12px;
+  min-height: 0;
+  align-items: start;
+  padding: 14px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-radius: 0;
+  background: transparent;
   box-shadow: none !important;
-  transition: box-shadow 140ms ease;
+  transition: background 120ms ease;
 }
 
 .ehr-care-row:hover,
 .ehr-care-row:focus-visible {
-  border-color: var(--ehr-blue, var(--accent-primary));
+  /* A tint, not a border: the design keeps the grid unbroken so the hovered
+     row does not jump against its neighbours. */
+  background: color-mix(in srgb, var(--ehr-text, #0E2A4A) 4%, transparent);
   box-shadow: none !important;
   outline: none;
 }
+
+.ehr-care-row:last-child { border-bottom: 0; }
 
 .ehr-care-row-blank {
   color: var(--ehr-muted);
@@ -6771,7 +6878,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-care-row.ready {
-  background: #fff;
+  background: transparent;
 }
 
 .ehr-care-row.active,
@@ -17498,69 +17605,6 @@ textarea.ehr-handoff-input {
   color: var(--ehr-text);
 }
 
-.ehr-rail-search {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.ehr-rail-search-icon {
-  position: absolute;
-  left: 12px;
-  color: var(--ehr-muted);
-  pointer-events: none;
-}
-
-.ehr-rail-search input {
-  width: 100%;
-  height: 38px;
-  padding: 0 34px;
-  border: 1px solid var(--ehr-border);
-  border-radius: 999px;
-  background: var(--ehr-panel);
-  color: var(--text-strong);
-  font-size: 13px;
-  font-weight: 600;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.ehr-rail-search input::placeholder {
-  color: var(--ehr-muted);
-}
-
-.ehr-rail-search input:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent);
-}
-
-/* Hide the native WebKit search clear control in favour of our own button. */
-.ehr-rail-search input::-webkit-search-cancel-button {
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.ehr-rail-search-clear {
-  position: absolute;
-  right: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  border-radius: 999px;
-  background: var(--ehr-border);
-  color: var(--ehr-muted);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.ehr-rail-search-clear:hover {
-  background: var(--accent-primary);
-  color: #fff;
-}
-
 /* ─── Patient queue (clinician station board) ─── */
 
 .ehr-queue {
@@ -23316,10 +23360,14 @@ textarea.ehr-handoff-input {
    (doctor worklist, ward board, MAR, care dashboards). The flow wrapper
    carries the tighter centre-panel column template; the surface carries the
    appointments backdrop. */
+/* The column formula is the design's: the name column takes 1.7 shares and
+   never falls below 200px, the four data columns split what is left evenly and
+   never below 112px. It was five hand-tuned widths before, which is why the
+   same table drew ragged columns from one module to the next. */
 .appointment-card-flow .appointment-card-head,
 .appointment-card-flow .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: minmax(210px, 1.7fr) minmax(88px, 0.8fr) minmax(136px, 1fr) minmax(110px, 0.9fr) minmax(126px, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(200px, 1.7fr) repeat(4, minmax(112px, 1fr));
+  gap: 12px;
 }
 
 .appointment-card-surface {
@@ -27708,3 +27756,430 @@ table.patient-data-table.patient-data-table {
   .ehr-top-modules .ehr-rail-menu-trigger .ehr-rail-menu-label,
   .ehr-top-modules .ehr-rail-menu-trigger .ehr-rail-menu-chevron { display: none; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Queue rows — the Reception / Clinical App design
+
+   Last in the file on purpose. A row's chrome is set in four earlier layers
+   (the base rule, `.ehr-center-panel`, `.appointment-card-row`, and the
+   care-list pass), each more specific than the one before, so editing the
+   base alone changed nothing on screen. The design's row is stated once here,
+   where it wins, rather than reconciled across four places that disagree.
+
+   The design draws a table, not a stack of cards: rows share one hairline
+   rule, sit on the column grid's own 6px gutter, top-align their cells so a
+   wrapped name cannot shove a neighbour's caption out of line, and take a
+   tint — never a border — under the pointer. `.appointment-card-head` keeps
+   the same 6px side padding, which is the lockstep its own comment asks for:
+   the labels sit directly over the values they name.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.appointment-card-row.ehr-appointment-row,
+.ehr-center-panel .ehr-appointment-row,
+.ehr-center-panel .ehr-appointment-row:not(.ehr-care-row),
+.ehr-center-panel .ehr-care-row,
+.ehr-care-list .appointment-card-row.ehr-appointment-row {
+  align-items: start;
+  column-gap: 12px;
+  min-height: 0;
+  padding: 14px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none !important;
+  transition: background 120ms ease;
+}
+
+.appointment-card-row.ehr-appointment-row:hover,
+.ehr-center-panel .ehr-appointment-row:hover,
+.ehr-center-panel .ehr-care-row:hover,
+.ehr-care-list .appointment-card-row.ehr-appointment-row:hover {
+  background: color-mix(in srgb, var(--ehr-text, #0E2A4A) 4%, transparent);
+  border-color: transparent;
+  box-shadow: none !important;
+}
+
+.appointment-card-row.ehr-appointment-row:last-child,
+.ehr-center-panel .ehr-appointment-row:last-child { border-bottom: 0; }
+
+.appointment-card-head { padding-left: 6px; padding-right: 6px; }
+
+/* The row still carried a top rule (from the grouped-list markup), so two
+   consecutive rows drew two hairlines with a seam between them. One rule per
+   boundary — the bottom one. */
+.appointment-card-row.ehr-appointment-row,
+.ehr-center-panel .ehr-appointment-row,
+.ehr-care-list .appointment-card-row.ehr-appointment-row { border-top: 0 !important; }
+
+/* Row typography, to the design's scale, for BOTH row variants: a 13.5px
+   semibold line over an 11.5px caption. The app's 15px/400 name read as body
+   copy, which is why the queue looked like a list of paragraphs rather than a
+   table of appointments. */
+.ehr-appointment-row .ehr-row-name,
+.ehr-appointment-row .ehr-row-name button,
+.ehr-appointment-row .ehr-row-name-link,
+.ehr-care-row .ehr-row-name,
+.ehr-care-row .ehr-row-name button {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ehr-appointment-row .ehr-appointment-main small,
+.ehr-care-row .ehr-appointment-main small {
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+/* 40px on a 12px corner — the design's rounded square, for initials and for a
+   portrait alike. */
+.ehr-appointment-row .ehr-patient-icon,
+.ehr-appointment-row .ehr-appointment-avatar,
+.ehr-care-row .ehr-appointment-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+/* ═══ Rail donut — "Arrivals by stage", per the design ═══
+   92px ring, an 18px inset hole, the total in condensed 20px, and a legend of
+   stages beside it at 12px. The ring is a conic-gradient on the element
+   itself, so the hole is a real white disc rather than a masked hole — which
+   is what lets the number sit on the card's own background at any zoom. */
+.ehr-stage-donut h2 { margin: 0 0 11px; }
+.ehr-stage-donut-body { display: flex; align-items: center; gap: 14px; }
+.ehr-stage-donut-ring {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  flex: none;
+  border-radius: 50%;
+}
+.ehr-stage-donut-hole {
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  background: var(--ehr-panel, #FFFFFF);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.ehr-stage-donut-hole b {
+  font-family: var(--font-condensed);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ehr-text);
+}
+.ehr-stage-donut-hole span {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ehr-text, #0E2A4A) 52%, transparent);
+}
+.ehr-stage-donut-legend {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ehr-stage-donut-legend li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.ehr-stage-donut-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: color-mix(in srgb, var(--ehr-text, #0E2A4A) 70%, transparent);
+}
+.ehr-stage-donut-legend span > i {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+.ehr-stage-donut-legend b {
+  font-family: var(--font-condensed);
+  font-size: 13.5px;
+  color: var(--ehr-text);
+}
+
+/* ═══ Cleanup: the rail search moved into the queue header ═══
+   `.ehr-rail-search` has no markup left anywhere. Its rules are dropped rather
+   than left to sit dormant, so nothing later collides with the field's new
+   home or resurrects a second search box in the rail. */
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Reception / Clinical App — measured to the design
+
+   Every value below was read off the design rendered at 1440px and compared
+   with the same element in the app, rather than transcribed by eye. The
+   left-hand number in each comment is what the app had.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Header: the bar is 60px MINIMUM, not a fixed 60px — the design lets it grow
+   when the row wraps (it measures 80px at 1440 with the search in place).
+   Padding 0/12 → 10/16, gap 12 → 10px 14px, logo 132 → 150. */
+.ehr-top-rail {
+  height: auto !important;
+  min-height: var(--app-top-rail-height, 60px);
+  padding: 10px 16px !important;
+  gap: 10px 14px !important;
+}
+.ehr-top-rail .ehr-top-brand-logo-full { width: 150px; height: auto; max-width: none; }
+/* The brand slot is a flex child too — capped, it clipped the 150px logo back to
+   its own 138px box through the img's `max-width: 100%`. */
+.ehr-top-rail .ehr-top-brand { flex: none; max-width: none; }
+
+/* The module trigger carries the design's tinted disc; the rest stay quiet
+   until hovered, which is what marks it as the way back to everything. */
+.ehr-top-rail .ehr-module-trigger { background: rgba(255, 255, 255, 0.16); }
+
+/* Workspace: page padding 12/16/16 → 18/22/22, column gap 12 → 18, and both
+   rails' card stacks 12 → 14 (left) and 12 → 16 (right). */
+.ehr-care-dashboard.ehr-schedule-shell,
+.page-container:has(.ehr-workspace-grid) { padding: 18px 22px 22px; }
+.ehr-workspace-grid,
+.ehr-workspace-grid.is-dashboard,
+.ehr-workspace-grid.is-calendar { gap: 18px; }
+
+/* The logo is a flex child in a row that now carries a search: without
+   `flex: none` it shrank to 138px as the row filled, which is why setting a
+   width alone did not hold it at the design's 150. */
+.ehr-top-rail .ehr-top-brand-logo-full { flex: none; }
+.ehr-left-rail { gap: 14px; }
+.ehr-right-rail, .ehr-side-rail { gap: 16px; }
+
+/* Rail cards: 14px padding → 12px, and the design's barely-there lift, which
+   the app had dropped to `none`. */
+.ehr-left-rail .ehr-side-card,
+.ehr-left-rail .ehr-day-stats,
+.ehr-left-rail .ehr-stage-donut {
+  padding: 12px;
+  box-shadow: var(--card-shadow);
+}
+/* The right rail's cards are wider-set: 12px top/bottom, 14px sides. */
+.ehr-right-rail .ehr-side-card,
+.ehr-side-rail .ehr-side-card {
+  padding: 12px 14px;
+}
+
+/* Every card in the workspace carries the design's one hairline shadow. This
+   sits after the rail rules above because several of them ship `box-shadow:
+   none`, which is what left the left rail flat while the right rail lifted. */
+.ehr-side-card,
+.ehr-day-stats,
+.ehr-stage-donut {
+  /* `!important` only because two earlier blocks flatten these cards with
+     `box-shadow: none !important`; the design lifts every card by 1px. */
+  box-shadow: var(--card-shadow) !important;
+}
+
+/* The queue is a card in the design — the app gave it no padding and a 12px
+   corner, so the table ran to the panel edge. 14 top, 16 sides, 4 bottom (the
+   last row's own padding closes the card). */
+.ehr-center-panel {
+  padding: 14px 16px 4px;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+/* The header row and the column heads then sit on the card's own padding, so
+   both lose the side inset they carried to fake it. */
+.ehr-center-panel .ehr-daybar { padding: 0 0 11px; }
+.ehr-center-panel .appointment-card-head { padding: 4px 6px 10px; gap: 12px; }
+
+/* `.page-container` already carries the design's page padding, so the shell
+   inside it was paying for it twice: 44px of the middle column went to a second
+   22px gutter, which is why the queue measured 796 against the design's 840. */
+.page-container > .ehr-schedule-shell,
+.page-container > .ehr-schedule-shell.ehr-care-dashboard { padding: 0; }
+
+/* Same double-inset one level down: the list added its own 10px inside a card
+   that is already padded, so every row started 10px short of the column heads
+   it is supposed to line up under. The card owns the inset now. */
+.ehr-center-panel > .ehr-appointment-list,
+.ehr-center-panel > .ehr-appointment-list.ehr-care-list { padding: 0; }
+
+/* The head above them: name on the left, the day's title elastic in the middle,
+   the controls sized to themselves on the right. */
+.ehr-center-panel .ehr-daybar {
+  grid-template-columns: auto minmax(180px, 1fr) auto;
+  align-items: center;
+}
+
+/* Card titles are the design's h6: 13px, condensed, uppercase, 0.08em. The app
+   was rendering them at 15px sentence-case, which is why the rail read as a
+   stack of paragraphs rather than labelled instruments. */
+.ehr-side-card h2,
+.ehr-day-stats h3,
+.ehr-stage-donut h2 {
+  font-family: var(--font-condensed);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---- The rails, measured against the design ----------------------------- */
+
+/* The month strip: 22px chevrons either side of a condensed, letter-spaced
+   label, sitting 9px above the grid. It was a 13px sentence-case line, which
+   read as a heading instead of the instrument label the design draws. */
+.ehr-mini-calendar-title {
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+.ehr-mini-calendar-title > span {
+  font-family: var(--font-condensed);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.ehr-mini-calendar-title > button {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+}
+
+/* Weekday initials: small, condensed, and quiet enough that the numbers below
+   carry the grid. */
+.ehr-mini-calendar-grid > b {
+  padding-bottom: 3px;
+  font-family: var(--font-condensed);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--text-primary) 48%, transparent);
+}
+
+/* Day cells are 28px pills; a day with something booked carries a 3px dot
+   under the number rather than a fill, so today and selected stay readable. */
+.ehr-mini-calendar-grid > button {
+  position: relative;
+  height: 28px;
+  border-radius: 999px;
+}
+.ehr-mini-calendar-grid > button.has-events::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+/* Right-rail metric rows: label at 72% ink on the left, the number at 19px
+   condensed on the right, each row 10px tall on a hairline. The app drew them
+   at 13px inside a 30px badge, which is why the rail read as a list of chips
+   rather than a column of readings.
+
+   The `:not(.ehr-side-card-icon-row)` arm is not decoration: the rules these
+   replace all carry it, and a plainer selector loses to them. */
+.ehr-right-rail .ehr-side-card > button:not(.ehr-side-card-icon-row) {
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+}
+.ehr-right-rail .ehr-side-card > button:not(.ehr-side-card-icon-row):last-child {
+  border-bottom: 0;
+}
+.ehr-right-rail .ehr-side-card > button:not(.ehr-side-card-icon-row) span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+}
+.ehr-right-rail .ehr-side-card > button:not(.ehr-side-card-icon-row) b {
+  min-width: 0;
+  height: auto;
+  font-family: var(--font-condensed);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* The head sits on its own divider 10px above the first row, inside the card's
+   padding — the design draws no full-bleed rule, so the pull is removed here
+   rather than left to fight the row hairlines below it. */
+.ehr-right-rail .ehr-side-card .ehr-side-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline: 0;
+  padding: 0 0 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--ehr-border, #E3EBF2);
+}
+
+/* Day activity, measured against the design: a 60px plot of 8px bars, 7px
+   between columns, 3px between the two stacked segments, and the day letter 5px
+   under the plot. The app drew it at 128px tall with column-wide bars, which is
+   what made one rail card as tall as the other two together. */
+.ehr-day-stats-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ehr-week-activity-caption {
+  font-size: 11px;
+  font-weight: 500;
+}
+.ehr-week-activity-bars {
+  gap: 7px;
+  height: 60px;
+  margin-top: 0;
+  padding: 0;
+}
+/* The button keeps the full column so the day stays easy to hit; only the
+   painted track narrows to the design's 8px. */
+.ehr-week-activity-track {
+  width: 8px;
+  margin-inline: auto;
+}
+.ehr-week-activity-bars i { border-radius: 0; }
+.ehr-week-activity-bars i:first-child { border-radius: 2px 2px 0 0; }
+.ehr-week-activity-days {
+  gap: 7px;
+  margin-top: 5px;
+  padding: 0;
+}
+
+/* The chart card's head is a title and a caption, not a section rule: the
+   design draws no divider under it and no full-bleed pull, and the 12px it
+   already carries below itself is the whole gap before the plot. */
+.ehr-day-stats .ehr-day-stats-head {
+  margin-inline: 0;
+  padding: 0 0 0;
+  border-bottom: 0;
+}
+.ehr-day-stats .ehr-week-activity-bars { margin-top: 0; }

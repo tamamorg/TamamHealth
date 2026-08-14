@@ -2,11 +2,13 @@
 
 import { Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { shortenPersonName } from '@/lib/patient-utils';
 import { ClipboardList, Printer, Search, Stethoscope, Video, X, type LucideIcon } from '@/components/icons/lucide';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
 import EhrMiniCalendar, { formatDateTitle, parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
+import EhrStageDonut from '@/components/ehr/EhrStageDonut';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import { initials, stateTint } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil } from '@/lib/format-utils';
@@ -223,6 +225,7 @@ export default function EhrCareDashboard({
   chartSeriesNames = ['Open', 'Completed'],
   chartItems,
   showChart = true,
+  showStageDonut = true,
   calendarEventDates,
   metricsTitle = 'Today',
   missionTitle,
@@ -300,6 +303,8 @@ export default function EhrCareDashboard({
    *  one day passes its whole week here instead. */
   chartItems?: DayStatsItem[];
   showChart?: boolean;
+  /** The rail donut. Off for stations whose tabs are not stages. */
+  showStageDonut?: boolean;
   calendarEventDates?: string[];
   metricsTitle?: string;
   missionTitle?: string;
@@ -470,12 +475,21 @@ export default function EhrCareDashboard({
     openDetail(row);
   }, [autoOpenRowId, visibleRows]);
   const selectedDateLabel = showCalendar ? formatDateTitle(selectedDate) : dateLabel;
+  /* Donut segments = the queue's own tabs, minus the "all" tab that is their
+     sum. Reading the tabs rather than counting rows again is what keeps the
+     ring honest: a tab and its slice can only ever show the same figure. */
+  const stageSegments = useMemo(
+    () => tabs
+      .filter(tab => typeof tab.count === 'number' && tab.key !== 'all' && tab.key !== 'everything')
+      .map(tab => ({ name: tab.label, value: tab.count as number })),
+    [tabs],
+  );
   // The dashboard's primary action (first entry) is promoted to the header's
   // top-left slot as the Clinical Officer-style "+" CTA; every other action
   // renders in the right-hand header row (wrapping when needed) — including
   // panel toggles that swap what occupies the center.
   const primaryAction = actions[0];
-  const headerTitle = greetingName ? `Welcome, ${greetingName}` : title;
+  const headerTitle = greetingName ? `Welcome, ${shortenPersonName(greetingName)}` : title;
 
   // Every station header carries a Print action: the shared choose-what /
   // choose-format dialog over the board's current rows, never window.print()'s
@@ -569,29 +583,11 @@ export default function EhrCareDashboard({
               onDateSelect={selectDate}
             />
           )}
-          {/* Search sits below the calendar — the calendar anchors the rail;
-              the search filters the list for whichever day is picked. */}
-          {onSearchChange && (
-            <div className="ehr-rail-search" data-tour="rail-search">
-              <Search className="ehr-rail-search-icon w-4 h-4" />
-              <input
-                type="search"
-                value={searchValue || ''}
-                onChange={(event) => onSearchChange(event.target.value)}
-                placeholder={searchPlaceholder || 'Search'}
-                aria-label={searchPlaceholder || 'Search'}
-              />
-              {searchValue && (
-                <button
-                  type="button"
-                  className="ehr-rail-search-clear"
-                  aria-label="Clear search"
-                  onClick={() => onSearchChange('')}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+          {/* The design's rail runs chart, then donut: the week's shape, then
+              today's split. Its segments are the queue's own tab counts, so
+              the ring and the tabs are the same number twice, never two. */}
+          {showStageDonut && stageSegments.length > 0 && (
+            <EhrStageDonut segments={stageSegments} />
           )}
           {showChart && (chart ?? (
             <EhrWeekActivityChart
@@ -636,6 +632,33 @@ export default function EhrCareDashboard({
                 </p>
               )}
             </div>
+            {/* The design puts the search over the table it filters, not in
+                the rail beside it: the field belongs to the queue, and a
+                search in the far column left the user hunting for what had
+                changed. Centre column of the header's `title | search | tabs`
+                row. */}
+            {onSearchChange && (
+              <div className="ehr-queue-search" data-tour="rail-search">
+                <Search className="ehr-queue-search-icon w-4 h-4" />
+                <input
+                  type="search"
+                  value={searchValue || ''}
+                  onChange={(event) => onSearchChange(event.target.value)}
+                  placeholder={searchPlaceholder || 'Search'}
+                  aria-label={searchPlaceholder || 'Search'}
+                />
+                {searchValue && (
+                  <button
+                    type="button"
+                    className="ehr-queue-search-clear"
+                    aria-label="Clear search"
+                    onClick={() => onSearchChange('')}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
             <div className="ehr-day-tabs" data-tour="station-tabs">
               {tabs.map(tab => (
                 <button
