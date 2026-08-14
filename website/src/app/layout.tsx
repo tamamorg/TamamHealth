@@ -7,7 +7,10 @@ const DESCRIPTION =
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tamamhealth.org"),
-  title: TITLE,
+  title: {
+    default: TITLE,
+    template: "%s — TamamHealth",
+  },
   description: DESCRIPTION,
   manifest: "/manifest.webmanifest",
   icons: {
@@ -38,7 +41,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font -- root layout, applies site-wide */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600;700&display=swap"
           rel="stylesheet"
         />
       </head>

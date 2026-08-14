@@ -355,7 +355,7 @@ export default function PaymentPanel({
         <style>{`
           .pp-pay input:not([type=checkbox]):not([type=radio]), .pp-pay select, .pp-pay textarea {
             width:100% !important; padding:11px 13px !important; border-radius:10px !important;
-            border:1px solid var(--border-light) !important; background:var(--bg-card, #fff) !important;
+            border:1px solid var(--border-light) !important; background:var(--bg-card, #F5FBFE) !important;
             color:var(--text-primary) !important; font-size:14px !important;
             transition:border-color .15s, box-shadow .15s !important;
           }
@@ -370,7 +370,7 @@ export default function PaymentPanel({
              the fields under it, and sized like the panel's other inputs. */
           .pp-pay .pp-method-select {
             width:100%; min-height:42px; padding:0 12px; font-size:14px; font-weight:600;
-            color:var(--text-primary); background:var(--bg-card, #fff);
+            color:var(--text-primary); background:var(--bg-card, #F5FBFE);
             border:1px solid var(--border-light); border-radius:10px; cursor:pointer;
           }
           .pp-pay .pp-method-select:focus-visible { outline:2px solid var(--accent-primary); outline-offset:1px; }
@@ -624,7 +624,7 @@ export default function PaymentPanel({
 
         {/* Footer — flat bl-btn instead of the gradient-fill + drop-shadow
             "glow" button; the amount label already carries the emphasis. */}
-        <div className="bl-root" style={{ padding: '14px 22px 20px', display: 'flex', flexDirection: 'row', gap: 10, position: 'sticky', bottom: 0, background: 'var(--bg-card-solid, #fff)', borderTop: '1px solid var(--border-light)' }}>
+        <div className="bl-root" style={{ padding: '14px 22px 20px', display: 'flex', flexDirection: 'row', gap: 10, position: 'sticky', bottom: 0, background: 'var(--bg-card-solid, #F5FBFE)', borderTop: '1px solid var(--border-light)' }}>
           <button type="button" className="bl-btn bl-btn--ghost" style={{ flex: 1 }} onClick={onCancel}>{t('action.cancel')}</button>
           <button type="button" className="bl-btn bl-btn--primary" style={{ flex: 2 }} disabled={processing} onClick={handleSubmit}>
             {processing ? <><Loader2 size={14} className="animate-spin" /> {t('payments.processing')}</> : t('payments.recordAmount', { amount: parseFloat(amount).toLocaleString(), currency })}

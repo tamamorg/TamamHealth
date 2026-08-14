@@ -960,24 +960,57 @@
   --color-cream-50: #F7FFF0;
   --color-cream-75: #F4FFF0;
   --color-cream-100: #EDFDE5;
-  --color-slate-50: #FCFDFE;
-  --color-slate-100: #E4EBF1;
-  --color-slate-150: #DDE6EE;
-  --color-slate-200: #E2E8F0;
-  --color-slate-300: #CBD5E1;
-  --color-slate-500: #64748B;
-  --color-slate-600: #475569;
-  --color-slate-700: #334155;
-  --color-slate-900: #0F172A;
-  --color-slate-950: #0A1A33;
-  /* Canonical brand blue scale — shared with the marketing site's
-     --tb-blue-* tokens. Every blue in the platform derives from these. */
-  --tb-blue-900: #2191D0;  /* header blue — top rail, mission panels, primary accent */
-  --tb-blue-800: #015697;  /* deep accent — hover states, links, dark buttons */
-  --tb-blue-700: #2191D0;  /* secondary accent — info, borders, nav/tab highlights */
-  --tb-blue-600: #369FDA;  /* lighter tint of the secondary accent — borders, subtle highlights */
-  --tb-blue-100: #DDF2FB;  /* pale tint — light backgrounds */
-  --tb-blue-50:  #EFF8FD;  /* palest tint — section washes */
+  /* ── Neutrals, biased toward the brand ───────────────────────────────
+     Ported from the marketing site, which uses blue-leaning greys against
+     the same blue. The platform's were Tailwind slate — a generic grey
+     that reads cold and unrelated beside #2191D0, and made the two
+     products look like different companies.
+
+     Steps are chosen by measured contrast, not by matching the site's
+     numbering: its neutral-600 (#6C7C8E) is 4.28:1 on white and fails AA
+     for body text, so muted text takes its 700 (#5B6B7E, 5.46:1) and 600
+     is kept for borders and icons where 3:1 is the bar. The site's ink
+     (#0E2A4A, 14.50:1) replaces slate-900. */
+  --color-slate-50: #FAFCFE;
+  --color-slate-100: #E3EBF2;   /* hairline rules */
+  --color-slate-150: #D9E4EE;
+  --color-slate-200: #D4DEE8;
+  --color-slate-300: #BFCEDC;   /* disabled, toggle tracks */
+  --color-slate-500: #5B6B7E;   /* muted text — 5.46:1, was #64748B */
+  --color-slate-600: #4A5D71;
+  --color-slate-700: #3D5166;   /* secondary text — 8.18:1 */
+  --color-slate-900: #0E2A4A;   /* primary ink — 14.50:1, the site's navy */
+  --color-slate-950: #08203A;
+  /* Icons and borders only: 4.28:1 is under AA for text, on purpose. */
+  --color-neutral-600: #6C7C8E;
+  /* ── Brand ramp, ported from the marketing site ──────────────────────
+     The website carries a proper nine-step scale; the platform had six
+     ad-hoc blues, two of which (--tb-blue-900 and -700) were the same
+     colour under different names. Same brand hue, now with rungs to pick
+     from, so a border, a fill and a link stop all reaching for #2191D0.
+
+     Contrast on white, measured: 500 is 3.49:1 (fills, icons, large text
+     only), 600 is 5.12:1 and 700 is 7.56:1 (both safe for body text). The
+     site's own ramp repeated #015697 at 900; that is a mistake rather than
+     a decision, so 900 continues down to #012C4E here. */
+  --brand-100: #F5FBFE;
+  --brand-200: #DDF2FB;
+  --brand-300: #7FC4EA;
+  --brand-400: #52ADDE;
+  --brand-500: #2191D0;
+  --brand-600: #1774A8;
+  --brand-700: #015697;
+  --brand-800: #013D6B;
+  --brand-900: #012C4E;
+
+  /* The established names now read the ramp. Values are unchanged, so
+     nothing repaints: this is a re-sourcing, not a re-colouring. */
+  --tb-blue-900: var(--brand-500);  /* header blue — top rail, primary accent */
+  --tb-blue-800: var(--brand-700);  /* deep accent — hover, links, dark buttons */
+  --tb-blue-700: var(--brand-500);  /* secondary accent — info, borders, tabs */
+  --tb-blue-600: #369FDA;           /* between 400 and 500; kept until callers move */
+  --tb-blue-100: var(--brand-200);  /* pale tint — light backgrounds */
+  --tb-blue-50:  #EFF8FD;           /* palest wash — between 100 and 200 */
 
   --color-brand-300: var(--tb-blue-100);
   --color-brand-400: var(--tb-blue-600);
@@ -998,11 +1031,16 @@
   --color-danger-800: #8B2E24;
   --color-purple-500: #8B5CF6;
   --color-blue-400: var(--tb-blue-600);
-  --color-dark-surface: #11244D;
-  --color-dark-surface-hover: #1A3160;
-  --color-dark-border: #1E3A6B;
-  --color-dark-border-strong: #2C4A82;
-  --color-dark-overlay: #0F2046;
+  /* Deep surfaces, re-based on the site's navy (#0E2A4A — the same value as
+     --color-slate-900 above, which is that navy). The site uses it as a real
+     surface, not just ink: the products band and the primary button's hover
+     both land on it. These were a separate indigo family that read as a
+     third blue next to the brand and the ink. */
+  --color-dark-surface: #0E2A4A;
+  --color-dark-surface-hover: #14375E;
+  --color-dark-border: #1D4570;
+  --color-dark-border-strong: #2A5789;
+  --color-dark-overlay: #0A2039;
 
   /* Tamam brand: supplied platform blue gradient and border color. */
   --brand-hero-bg: var(--color-brand-gradient);
@@ -1025,11 +1063,19 @@
   /* Brand washes below are color-mix on --accent-primary, not frozen rgba:
      a rebranded tenant must get their own hue in every tint that means
      "a wash of the accent", not just in the solid fills. */
-  --bg-app:        var(--tb-blue-50);
-  --bg-primary:    var(--tb-blue-50);
+  /* The marketing site's surface — a pale blue that sits closer to white
+     than the old --tb-blue-50 wash, so cards read as raised rather than
+     floating on tinted paper. */
+  --bg-app:        #F2F8FC;
+  --bg-primary:    #F2F8FC;
   --bg-secondary:  color-mix(in srgb, var(--accent-primary) 8%, transparent);
-  --bg-card:       var(--color-white);
-  --bg-card-solid: var(--color-white);
+  /* Cards are a shade of blue, not white: on the #F2F8FC ground a white card
+     was the only truly neutral surface in the app, so it read as a hole
+     rather than a panel. brand-100 sits a step lighter than the ground, which
+     is what makes it lift; inputs stay pure white so a field still reads as
+     the writable thing on the card. */
+  --bg-card:       var(--brand-100);
+  --bg-card-solid: var(--brand-100);
   --bg-card-hover: var(--color-cream-75);
   --bg-input:      var(--color-white);
   --bg-sidebar:    var(--color-white);
@@ -1062,6 +1108,12 @@
      luminance — the platform's own blue takes white. */
   --accent-on: var(--color-white);
   --accent-on-hover: var(--color-white);
+  /* The top rail's dark blue. Mixed toward the site's navy rather than set
+     to it: a hardcoded #0E2A4A would be dark, but it would also be the one
+     surface a rebranded tenant could never move — which is the bug fixed in
+     the accent audit. At 30% the default lands on #144972, and a tenant's
+     own hue arrives just as deep. White on it is 9.44:1. */
+  --rail-bg: color-mix(in srgb, var(--accent-primary) 30%, #0E2A4A);
   --accent-orange: #CA4D1C;
   --accent-purple: #7847EB;
 
@@ -1092,9 +1144,13 @@
   --panel-shadow:    none;
 
   /* ── Shadows ── barely-there lift on cards only; every other surface stays flat. */
-  --card-shadow:       0 1px 2px rgba(16, 42, 67, 0.05);
-  --card-shadow-lg:    0 10px 24px -16px rgba(16, 42, 67, 0.22);
-  --card-shadow-xl:    none;
+  /* Three steps, ported from the site (which uses 1px / 3px / 12px) and
+     re-inked in the platform's navy rather than its warm grey, so a lifted
+     card still reads blue-biased like everything around it. --card-shadow-xl
+     was `none`, which made "extra large" quieter than large. */
+  --card-shadow:       0 1px 2px rgba(14, 42, 74, 0.10);
+  --card-shadow-lg:    0 3px 10px rgba(14, 42, 74, 0.12);
+  --card-shadow-xl:    0 12px 32px rgba(14, 42, 74, 0.18);
   --card-hover-border: var(--border-medium);
 
   /* Toggle */
@@ -3152,7 +3208,7 @@ html:has(.ehr-top-rail) {
   flex-direction: column;
   height: 100dvh;
   width: 100%;
-  background: var(--bg-app, #F8FBFD);
+  background: var(--bg-app, #F2F8FC);
   color: var(--text-primary);
 }
 
@@ -3976,7 +4032,7 @@ html:has(.ehr-top-rail) {
   max-height: 86%;
   display: flex;
   flex-direction: column;
-  background: var(--bg-app, #F8FBFD);
+  background: var(--bg-app, #F2F8FC);
   border-radius: 24px 24px 0 0;
   overflow: hidden;
   box-shadow: 0 -12px 40px rgba(18, 52, 78, 0.25);
@@ -3994,7 +4050,7 @@ html:has(.ehr-top-rail) {
   width: 40px;
   height: 4px;
   border-radius: 999px;
-  background: var(--border-medium, #D8E3EC);
+  background: var(--border-medium, #D9E4EE);
 }
 
 .mobile-sheet-head {
@@ -4104,10 +4160,10 @@ html:has(.ehr-top-rail) {
   align-items: center;
   gap: 12px;
   padding: 0 12px;
-  /* The tenant's own colour, not the platform's: the rail is the most visible
-     surface in the app, and org branding rewrites --accent-primary. Falls back
-     to --tb-blue-900 (the marketing header's navy) when no org has branded. */
-  background: var(--accent-primary);
+  /* Deep, and still the tenant's: --rail-bg mixes their accent toward the
+     site's navy, so the rail reads as a dark chrome bar rather than a broad
+     wash of brand blue, without going back to a colour branding can't move. */
+  background: var(--rail-bg);
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: none;
@@ -10009,7 +10065,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-list-row--alert span {
-  color: var(--tamamhealth-red, #C44536) !important;
+  color: var(--tamamhealth-red, #DC2626) !important;
 }
 
 .tebra-vitals span {
@@ -12390,7 +12446,7 @@ span:has(> svg:only-child) {
   flex-direction: column;
   gap: 2px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E5EDF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
 }
 
 .appointment-detail-row dt {
@@ -12415,7 +12471,7 @@ span:has(> svg:only-child) {
 .appointment-detail-modal__insurance {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--ehr-border-soft, #E5EDF5);
+  border-top: 1px solid var(--ehr-border-soft, #E7EEF5);
 }
 
 .appointment-detail-modal__insurance-label {
@@ -14226,7 +14282,7 @@ span:has(> svg:only-child) {
   gap: 4px;
   height: 26px;
   padding: 0 9px;
-  border: 1px solid var(--ehr-ledger-border, #d7e2e1);
+  border: 1px solid var(--ehr-ledger-border, #DDEAF3);
   border-radius: 4px;
   background: #fff;
   color: var(--ehr-blue-strong, var(--accent-primary));
@@ -18950,7 +19006,7 @@ textarea.ehr-handoff-input {
 
 .appointment-status-pill--select > select option {
   color: var(--text-primary);
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
 }
 
 .appointment-status-pill--select > select:focus-visible {
@@ -19029,7 +19085,7 @@ textarea.ehr-handoff-input {
   padding: 7px 30px 7px 10px;
   border: 1px solid var(--border-medium, var(--border-light));
   border-radius: 9999px;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
   color: var(--text-primary);
   font-size: 12.5px;
   font-weight: 650;
@@ -19047,7 +19103,7 @@ textarea.ehr-handoff-input {
   padding: 7px 30px 7px 10px;
   border: 1px solid var(--border-medium, var(--border-light));
   border-radius: 9999px;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
   color: var(--text-primary);
   font-size: 12.5px;
   font-weight: 650;
@@ -19448,7 +19504,7 @@ textarea.ehr-handoff-input {
 .tamam-ehr-app .ti-row:not(.ti-head),
 .tamam-ehr-app .ehr-outstanding-entry {
   border: 1px solid var(--ehr-border) !important;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
   box-shadow: none !important;
 }
 
@@ -19462,7 +19518,7 @@ textarea.ehr-handoff-input {
 .tamam-ehr-app .ti-row:not(.ti-head):hover,
 .tamam-ehr-app .ehr-outstanding-entry:hover {
   border-color: var(--ehr-blue) !important;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
   box-shadow: none !important;
 }
 
@@ -23129,7 +23185,7 @@ table.patient-data-table.patient-data-table {
   padding: 9px 16px;
   border-top: 1px solid var(--ehr-border);
   border-bottom: 1px solid var(--ehr-border);
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
   vertical-align: middle;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
@@ -23347,7 +23403,7 @@ table.patient-data-table.patient-data-table {
   padding: 9px 16px;
   border-top: 1px solid var(--ehr-border) !important;
   border-bottom: 1px solid var(--ehr-border) !important;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
   color: var(--text-primary);
   font-size: 13px;
   vertical-align: middle;
@@ -24049,7 +24105,7 @@ table.patient-data-table.patient-data-table {
 }
 .th-join-card {
   width: 100%; max-width: 460px; padding: 28px 24px;
-  background: var(--bg-card-solid, #fff); border-radius: 14px;
+  background: var(--bg-card-solid, #F5FBFE); border-radius: 14px;
   box-shadow: 0 10px 32px rgba(15, 31, 29, 0.12);
 }
 .th-join-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
@@ -24484,7 +24540,7 @@ table.patient-data-table.patient-data-table {
      expanded row hands that job to the group so the block has one outline
      instead of two nested ones. */
   border: 0 !important;
-  border-bottom: 1px solid var(--ehr-border-soft, #E5EDF5) !important;
+  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
 }
@@ -24563,7 +24619,7 @@ table.patient-data-table.patient-data-table {
 .ehr-table-detail-row > td {
   padding: 0 !important;
   background: var(--ehr-page-bg, #F8FBFD);
-  border-bottom: 1px solid var(--border-light, #E4EBF1);
+  border-bottom: 1px solid var(--border-light, #E3EBF2);
 }
 
 .ehr-table-detail-row > td > .ehr-row-detail--table {
@@ -24605,7 +24661,7 @@ table.patient-data-table.patient-data-table {
 .ehr-visit-pop-tabs .ehr-visit-pop-icon,
 .ehr-visit-pop-tabs .ehr-visit-pop-icon:hover {
   padding: 0;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   font-size: 0;
 }
@@ -24633,7 +24689,7 @@ table.patient-data-table.patient-data-table {
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   background: #fff;
   color: var(--text-secondary);
   cursor: pointer;
@@ -24906,7 +24962,7 @@ table.patient-data-table.patient-data-table {
   padding: 9px 11px;
   border: 1px solid var(--border-medium, var(--border-light));
   border-radius: 8px;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
   color: var(--text-primary);
   font-size: 13.5px;
   font-weight: 600;
@@ -25068,7 +25124,7 @@ table.patient-data-table.patient-data-table {
   position: sticky;
   bottom: 0;
   padding: 10px 0;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
 }
 
 /* ── Row dropdown: cards, accent headings, tinted callouts ───────────────────
@@ -25085,7 +25141,7 @@ table.patient-data-table.patient-data-table {
   padding: 12px 14px 14px;
   border: 1px solid var(--border-light);
   border-radius: 12px;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
 }
 
 .appt-edit-shell.is-inline .appt-edit-section {
@@ -25115,14 +25171,14 @@ table.patient-data-table.patient-data-table {
 .appt-edit-shell.is-inline select:hover,
 .appt-edit-shell.is-inline input:not([type='radio']):hover {
   border-color: var(--border-medium, var(--border-light));
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
 }
 
 .appt-edit-shell.is-inline select:focus,
 .appt-edit-shell.is-inline input:focus,
 .appt-edit-shell.is-inline textarea:focus {
   border-color: var(--accent-primary);
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
   box-shadow: 0 0 0 3px rgba(33, 145, 208, 0.14);
 }
 
@@ -25214,7 +25270,7 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   gap: 0 18px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E5EDF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
 }
 
 .appt-edit-shell.is-inline .appt-edit-col > div:last-child {
@@ -25233,7 +25289,7 @@ table.patient-data-table.patient-data-table {
 .appt-edit-shell.is-inline .appt-edit-section {
   margin: 14px 0 0;
   padding: 0 0 6px;
-  border-bottom: 1px solid var(--ehr-border-soft, #E5EDF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 800;
@@ -25274,7 +25330,7 @@ table.patient-data-table.patient-data-table {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0 14px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E5EDF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
 }
 
 .appt-edit-shell.is-inline .appt-edit-row > div {
@@ -25301,7 +25357,7 @@ table.patient-data-table.patient-data-table {
   grid-template-columns: 132px minmax(0, 1fr);
   gap: 0 18px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E5EDF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
 }
 
 .appt-edit-shell.is-inline .appointment-billing-panel dd {
@@ -25313,7 +25369,7 @@ table.patient-data-table.patient-data-table {
   display: flex;
   padding: 10px 0;
   border: 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E5EDF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
   border-radius: 0;
   background: transparent;
 }
@@ -25589,10 +25645,10 @@ table.patient-data-table.patient-data-table {
      is what makes it read as OpenMRS, not the colours. */
   --omrs-ui-01: var(--tb-blue-50, #EFF8FD);        /* form slab */
   --omrs-ui-02: var(--tb-blue-100, #DDF2FB);       /* slab edge */
-  --omrs-ui-03: var(--color-slate-150, #DDE6EE);   /* subtle divider */
-  --omrs-ui-04: var(--color-slate-300, #CBD5E1);   /* field underline */
-  --omrs-ui-05: var(--text-primary, #0F172A);      /* strong text */
-  --omrs-text-02: var(--text-muted, #64748B);      /* labels, secondary text */
+  --omrs-ui-03: var(--color-slate-150, #D9E4EE);   /* subtle divider */
+  --omrs-ui-04: var(--color-slate-300, #BFCEDC);   /* field underline */
+  --omrs-ui-05: var(--text-primary, #0E2A4A);      /* strong text */
+  --omrs-text-02: var(--text-muted, #5B6B7E);      /* labels, secondary text */
   --omrs-field-01: var(--color-white, #fff);       /* field surface on the slab */
   /* Accents — Tamam blue in every slot Carbon fills with blue-60 / teal-60. */
   --omrs-interactive: var(--accent-primary, #2191D0);
@@ -25725,8 +25781,8 @@ table.patient-data-table.patient-data-table {
 
 /* Review stays out of reach until the form would actually submit — offering
    it earlier only produces a bounce back to the first missing field. */
-.omrs-reg-navitem:disabled { cursor: not-allowed; color: var(--color-slate-300, #CBD5E1); }
-.omrs-reg-navitem:disabled .omrs-reg-navarrow { color: var(--color-slate-300, #CBD5E1); }
+.omrs-reg-navitem:disabled { cursor: not-allowed; color: var(--color-slate-300, #BFCEDC); }
+.omrs-reg-navitem:disabled .omrs-reg-navarrow { color: var(--color-slate-300, #BFCEDC); }
 
 .omrs-reg-navlabel {
   flex: 1;
@@ -25946,7 +26002,7 @@ table.patient-data-table.patient-data-table {
 .omrs-reg select { padding-right: 40px; background-position: right 14px center; }
 
 .omrs-reg input::placeholder,
-.omrs-reg textarea::placeholder { color: var(--text-muted, #64748B); opacity: 0.75; }
+.omrs-reg textarea::placeholder { color: var(--text-muted, #5B6B7E); opacity: 0.75; }
 
 /* Carbon focus is a 2px inset blue outline on the whole field, not a ring. */
 .omrs-reg input:focus,
@@ -25964,7 +26020,7 @@ table.patient-data-table.patient-data-table {
 .omrs-reg textarea:disabled {
   background-color: var(--omrs-field-01);
   border-bottom-color: var(--omrs-ui-03);
-  color: var(--color-slate-300, #CBD5E1);
+  color: var(--color-slate-300, #BFCEDC);
   cursor: not-allowed;
 }
 
@@ -26189,7 +26245,7 @@ table.patient-data-table.patient-data-table {
    whole assessment rather than one field among many. */
 .triage-patient-photo {
   width: 168px;
-  border: 1px solid var(--color-slate-300, #CBD5E1);
+  border: 1px solid var(--color-slate-300, #BFCEDC);
   background: #fff;
 }
 .triage-patient-photo-frame {
@@ -26709,10 +26765,10 @@ table.patient-data-table.patient-data-table {
 }
 
 .omrs-reg-reviewgroup {
-  border: 1px solid var(--border-light, #E2E8F0);
+  border: 1px solid var(--border-light, #E3EBF2);
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
 }
 
 .omrs-reg-reviewgroup > header {
@@ -26722,7 +26778,7 @@ table.patient-data-table.patient-data-table {
   gap: 12px;
   padding: 10px 14px;
   background: var(--overlay-subtle);
-  border-bottom: 1px solid var(--border-light, #E2E8F0);
+  border-bottom: 1px solid var(--border-light, #E3EBF2);
 }
 
 .omrs-reg-reviewgroup > header h4 {
@@ -26763,7 +26819,7 @@ table.patient-data-table.patient-data-table {
   align-items: baseline;
   gap: 10px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--border-light, #E2E8F0);
+  border-bottom: 1px solid var(--border-light, #E3EBF2);
   min-width: 0;
 }
 
@@ -26815,8 +26871,8 @@ table.patient-data-table.patient-data-table {
 .pintake-card {
   width: 100%;
   max-width: 460px;
-  background: var(--bg-card-solid, #fff);
-  border: 1px solid var(--border-light, #E2E8F0);
+  background: var(--bg-card-solid, #F5FBFE);
+  border: 1px solid var(--border-light, #E3EBF2);
   border-radius: 14px;
   padding: 24px;
   margin-top: 24px;
@@ -26856,9 +26912,9 @@ table.patient-data-table.patient-data-table {
   padding: 12px 14px;
   font-size: 16px;
   font-family: var(--font-platform);
-  border: 1px solid var(--border-medium, #CBD5E1);
+  border: 1px solid var(--border-medium, #D9E4EE);
   border-radius: 10px;
-  background: var(--bg-card-solid, #fff);
+  background: var(--bg-card-solid, #F5FBFE);
   color: var(--text-primary);
 }
 
