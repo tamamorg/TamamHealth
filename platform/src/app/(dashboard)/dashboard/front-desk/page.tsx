@@ -1579,6 +1579,7 @@ export default function FrontDeskDashboardPage() {
         <EhrCareDashboard
           title=""
           greetingName={currentUser.name || 'front desk'}
+          greetingSubtitle="Front Desk · Reception"
           dateLabel={dateLabel}
           tabs={tabs}
           activeTab={queueFilter}

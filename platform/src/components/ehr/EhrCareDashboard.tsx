@@ -201,6 +201,7 @@ function compareDashboardRows(a: EhrCareDashboardRow, b: EhrCareDashboardRow): n
 export default function EhrCareDashboard({
   title,
   greetingName,
+  greetingSubtitle,
   dateLabel,
   tabs,
   activeTab,
@@ -246,6 +247,8 @@ export default function EhrCareDashboard({
   title: string;
   eyebrow?: string;
   greetingName?: string;
+  /** Small-caps role line under the greeting ("Front Desk · Reception"). */
+  greetingSubtitle?: string;
   dateLabel: string;
   tabs: EhrCareDashboardTab[];
   activeTab: string;
@@ -549,9 +552,10 @@ export default function EhrCareDashboard({
         <div className="ehr-schedule-primary-controls ehr-clinical-dashboard-header-main">
           <div className="ehr-greeting-row">
             <div className="ehr-care-header-copy">
-              {/* Only the "Welcome, {name}" greeting — no eyebrow/subtitle — so
-                  every role matches the Clinical Officer header exactly. */}
               <p className="ehr-care-greeting">{headerTitle}</p>
+              {/* The design's small-caps role line — "Front Desk · Reception".
+                  Stations that don't pass one keep the bare greeting. */}
+              {greetingSubtitle && <p className="ehr-care-greeting-sub">{greetingSubtitle}</p>}
             </div>
           </div>
         </div>

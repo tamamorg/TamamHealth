@@ -46,19 +46,16 @@ export function formatCompactDateTime(iso?: string | null): string {
  */
 export function formatClockTime(value?: string | Date | null): string {
   if (!value) return '';
+  // The design writes clock times as zero-padded 24-hour ("08:30", "14:15")
+  // everywhere — queue rows, chips, feeds — so the one shared formatter does.
   if (typeof value === 'string') {
     // Bare "HH:MM" / "HH:MM:SS" slot with no date component.
     const m = value.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-    if (m) {
-      let h = parseInt(m[1], 10);
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      h = h % 12 || 12;
-      return `${h}:${m[2]} ${ampm}`;
-    }
+    if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
   }
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return typeof value === 'string' ? value : '';
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 /**

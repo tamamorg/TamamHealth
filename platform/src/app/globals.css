@@ -5662,25 +5662,40 @@ html:has(.ehr-top-rail) {
   white-space: nowrap;
 }
 
-/* Daybar filter tabs are pills per the design: white 1px-border chips, the
-   active one filled blue. */
+/* Daybar lane tabs are ONE segmented control per the design: the buttons
+   join edge to edge (shared inner borders, 8px outer corners only), labels in
+   condensed small caps, the active lane filled brand blue. They were separate
+   999px pills before, which read as unrelated filters rather than lanes of
+   one list. */
+.ehr-day-tabs { gap: 0; }
 .ehr-day-tabs button:not(.ehr-mobile-day-check) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
-  padding: 0 13px;
+  height: 34px;
+  padding: 0 16px;
   border: 1px solid var(--ehr-border);
-  border-radius: 999px;
-  background: var(--ehr-panel);
-  color: var(--text-strong);
+  border-left-width: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+  font-family: var(--font-condensed);
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   white-space: nowrap;
+}
+.ehr-day-tabs button:not(.ehr-mobile-day-check):first-child {
+  border-left-width: 1px;
+  border-radius: 8px 0 0 8px;
+}
+.ehr-day-tabs button:not(.ehr-mobile-day-check):last-child {
+  border-radius: 0 8px 8px 0;
 }
 
 .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
-  border-color: var(--ehr-blue);
+  background: #EFF8FD;
   color: var(--tb-blue-800, #012C4E);
 }
 
@@ -14073,7 +14088,7 @@ span:has(> svg:only-child) {
   .ehr-day-tabs {
     display: flex;
     flex-wrap: nowrap;
-    gap: 8px;
+    gap: 0; /* segmented control — the lanes stay joined when they scroll */
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -18167,34 +18182,50 @@ textarea.ehr-handoff-input {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 0; /* one segmented control, not a row of pills */
   flex-wrap: nowrap;
   min-width: 0;
 }
 
+/* The design draws the lanes as ONE joined segmented control: shared inner
+   hairlines, 8px corners on the two outer ends only, condensed small-caps
+   labels ("SCHEDULED · 6"), the active lane filled brand blue. They were
+   separate 999px pills, which read as unrelated filters. */
 .ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check),
 .ehr-assigned-worklist-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 32px;
+  height: 34px;
   min-width: 0;
-  padding: 0 14px;
+  padding: 0 16px;
   border: 1px solid var(--ehr-border);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--text-strong);
+  border-left-width: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+  font-family: var(--font-condensed);
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
+}
+.ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check):first-child,
+.ehr-assigned-worklist-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check):first-child {
+  border-left-width: 1px;
+  border-radius: 8px 0 0 8px;
+}
+.ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check):last-child,
+.ehr-assigned-worklist-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check):last-child {
+  border-radius: 0 8px 8px 0;
 }
 
 .ehr-daybar .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active),
 .ehr-assigned-worklist-daybar .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
-  border-color: var(--ehr-blue);
-  background: #fff;
+  background: #EFF8FD;
   color: var(--tb-blue-800, #012C4E);
 }
 
@@ -28443,3 +28474,58 @@ table.patient-data-table.patient-data-table {
   border-bottom: 0;
 }
 .ehr-day-stats .ehr-week-activity-bars { margin-top: 0; }
+
+/* ---- Clinical dashboard, measured against the Clinical App design -------- */
+
+/* "Go to today" anchors the calendar card: full-width, quiet border, 11px of
+   air before the month strip. */
+.ehr-mini-calendar-goto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  margin-bottom: 11px;
+  padding: 0 10px;
+  background: #FFFFFF;
+  border: 1px solid #D9E4EE;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-condensed);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ehr-mini-calendar-goto:hover { background: #EFF8FD; }
+
+/* The small-caps role line under the greeting — "Doctor · Clinical
+   workspace" at 11.5px, 0.1em, 55% ink. */
+.ehr-care-greeting-sub {
+  margin: 1px 0 0;
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-primary) 55%, transparent);
+}
+
+/* Outstanding items count as the design draws it: a bare 19px condensed
+   number, not a pill — the tone colour carries the meaning, the row hairline
+   carries the shape. (The plate rules above set a 23px badge; stated last so
+   the design wins in one place.) */
+.ehr-right-rail .ehr-outstanding-chips button b,
+.ehr-right-rail .ehr-outstanding-chips button.warning b,
+.ehr-right-rail .ehr-outstanding-chips button.danger b {
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  font-family: var(--font-condensed);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ehr-right-rail .ehr-outstanding-chips button b { color: #144972; }
+.ehr-right-rail .ehr-outstanding-chips button.warning b { color: var(--semantic-warning); }
+.ehr-right-rail .ehr-outstanding-chips button.danger b { color: var(--semantic-danger); }

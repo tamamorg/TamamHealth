@@ -22,8 +22,9 @@ import {
   Video,
   X,
 } from '@/components/icons/lucide';
-import { initials, stateTint, AVATAR_TINT_NEUTRAL } from '@/lib/patient-utils';
+import { initials, stateTint, AVATAR_TINT_NEUTRAL, abbreviateProviderName, shortenPersonName } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
+import EhrStageDonut from '@/components/ehr/EhrStageDonut';
 import {
   APPOINTMENT_STATUS_TONES, appointmentStatusLabel,
   APPOINTMENT_STATUS_GROUPS, APPOINTMENT_STATUS_GROUP_LABELS,
@@ -1313,7 +1314,12 @@ export default function EhrClinicalDashboard({
         </div>
         <div className="ehr-schedule-primary-controls ehr-clinical-dashboard-header-main">
           <div className="ehr-greeting-row">
-            <p className="ehr-care-greeting">Welcome, {clinicianName}</p>
+            <div className="ehr-care-header-copy">
+              {/* The design greets with the short name — "Welcome, Dr. Wani",
+                  never the full legal name — over a small-caps role line. */}
+              <p className="ehr-care-greeting">Welcome, {shortenPersonName(clinicianName)}</p>
+              <p className="ehr-care-greeting-sub">Doctor · Clinical workspace</p>
+            </div>
           </div>
         </div>
         <div className="ehr-schedule-actions">
@@ -1348,6 +1354,19 @@ export default function EhrClinicalDashboard({
       <section className={`ehr-workspace-grid ${view === 'dashboard' ? 'is-dashboard' : 'is-calendar'}`}>
         <aside className="ehr-left-rail">
           <div className="ehr-mini-calendar">
+            {/* The design anchors the calendar card with a full-width "Go to
+                today" — one press home from any month the rail has wandered
+                to. */}
+            <button
+              type="button"
+              className="ehr-mini-calendar-goto"
+              onClick={() => {
+                setSelectedDate(todayIso);
+                setCalendarMonth(startOfMonth(parseIsoDate(todayIso)));
+              }}
+            >
+              <Calendar size={15} /> Go to today
+            </button>
             <div className="ehr-mini-calendar-title">
               <button type="button" onClick={() => setCalendarMonth(current => addMonths(current, -1))} aria-label="Previous month">
                 <ChevronLeft className="w-4 h-4" />
@@ -1383,24 +1402,6 @@ export default function EhrClinicalDashboard({
             </div>
           </div>
 
-          {/* Search sits below the calendar — the calendar anchors the rail;
-              the search filters the list for whichever day is picked. */}
-          <div className="ehr-rail-search">
-            <Search className="ehr-rail-search-icon w-4 h-4" />
-            <input
-              type="search"
-              placeholder="Search appointments"
-              aria-label="Search the day's appointments"
-              value={appointmentSearch}
-              onChange={event => setAppointmentSearch(event.target.value)}
-            />
-            {appointmentSearch && (
-              <button type="button" className="ehr-rail-search-clear" aria-label="Clear search" onClick={() => setAppointmentSearch('')}>
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
           <DayActivityChart
             appointments={filteredAppointments}
             selectedDate={selectedDate}
@@ -1410,6 +1411,20 @@ export default function EhrClinicalDashboard({
               setSelectedDate(iso);
               setCalendarMonth(startOfMonth(parseIsoDate(iso)));
             }}
+          />
+
+          {/* The design's third rail card: the day's list split by acuity —
+              the same ring the reception rail draws by stage, fed here by the
+              triage colours of the doctor's own list, so the ring and the row
+              plates can never disagree. */}
+          <EhrStageDonut
+            title="Today by acuity"
+            centerLabel="on list"
+            segments={[
+              { name: 'Emergency', value: visiblePatientRows.filter(row => row.triagePriority === 'RED').length, color: '#8B2E24' },
+              { name: 'Urgent', value: visiblePatientRows.filter(row => row.triagePriority === 'YELLOW').length, color: '#9C5E16' },
+              { name: 'Routine', value: visiblePatientRows.filter(row => row.triagePriority !== 'RED' && row.triagePriority !== 'YELLOW').length, color: '#15795C' },
+            ]}
           />
         </aside>
 
@@ -1574,8 +1589,33 @@ export default function EhrClinicalDashboard({
             </>
           ) : (
             <>
-	          <div className="ehr-daybar ehr-assigned-worklist-daybar">
-	            <h2>Patients assigned to you</h2>
+	          <div className="ehr-daybar">
+	            {/* The design's queue head: the day itself is the title
+	                ("Thursday, August 13"), the list is described under it, the
+	                search sits over the table it filters, the lanes hang right. */}
+	            <div>
+	              <h2>
+	                {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(parseIsoDate(selectedDate))}
+	              </h2>
+	              <p className="ehr-care-subtitle">
+	                {visiblePatientRows.length} active item{visiblePatientRows.length === 1 ? '' : 's'} · My schedule
+	              </p>
+	            </div>
+	            <div className="ehr-queue-search">
+	              <Search className="ehr-queue-search-icon w-4 h-4" />
+	              <input
+	                type="search"
+	                placeholder="Search appointments"
+	                aria-label="Search the day's appointments"
+	                value={appointmentSearch}
+	                onChange={event => setAppointmentSearch(event.target.value)}
+	              />
+	              {appointmentSearch && (
+	                <button type="button" className="ehr-queue-search-clear" aria-label="Clear search" onClick={() => setAppointmentSearch('')}>
+	                  <X className="w-3.5 h-3.5" />
+	                </button>
+	              )}
+	            </div>
 	            <div className="ehr-day-tabs">
               {APPOINTMENT_STATUS_GROUPS.map(group => (
                 <button
@@ -1588,7 +1628,7 @@ export default function EhrClinicalDashboard({
                   // a list that no longer contains its row.
                   onClick={() => { setVisitRow(null); setWorklistFilter(group); }}
                 >
-                  <strong>{groupCounts[group]}</strong> {APPOINTMENT_STATUS_GROUP_LABELS[group]}
+                  {APPOINTMENT_STATUS_GROUP_LABELS[group]} · {groupCounts[group]}
                 </button>
               ))}
 	            </div>
@@ -1701,8 +1741,10 @@ export default function EhrClinicalDashboard({
                         </div>
 
                         <div className="appointment-card-provider">
-                          <strong>{columns.careTeamPrimary}</strong>
-                          <span>{columns.careTeamSecondary}</span>
+                          {/* Cell-width names — "Dr. J. Wani", not the full
+                              legal name; print keeps the long form. */}
+                          <strong>{abbreviateProviderName(columns.careTeamPrimary)}</strong>
+                          <span>{abbreviateProviderName(columns.careTeamSecondary)}</span>
                         </div>
 
                         <div className="ehr-appointment-department">
@@ -1956,6 +1998,16 @@ export default function EhrClinicalDashboard({
               every station rail carries; it renders nothing when the feed is
               empty or the role has no configured slice. */}
           <ProgressFeedCard />
+          {/* The clinical mission card — the design closes the rail with the
+              day's one instruction, same treatment as reception's "Keep the
+              desk moving". */}
+          <div className="ehr-side-card ehr-mission-card">
+            <div className="ehr-side-card-head ehr-mission-head">
+              <Stethoscope className="w-5 h-5" />
+              <h2>Close the loop</h2>
+            </div>
+            <p>Sign what is waiting, answer the labs that came back, and finish the visits you started.</p>
+          </div>
         </aside>
         )}
       </section>
