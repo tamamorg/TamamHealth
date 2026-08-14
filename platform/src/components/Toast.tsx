@@ -3,7 +3,6 @@
 import { useState, useCallback, createContext, useContext, ReactNode } from 'react';
 import { CheckCircle2, AlertTriangle, X } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { DANGER_STRONG, SUCCESS_STRONG, WHITE } from '@/lib/theme-colors';
 
 /** An inline action rendered as a button in the toast — e.g. Undo. */
 export interface ToastAction {
@@ -54,20 +53,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         aria-live="polite"
         aria-atomic="false"
         className="fixed z-[9999] flex flex-col gap-2 items-end"
-        style={{ top: 16, right: 16, maxWidth: 'min(420px, calc(100vw - 32px))' }}
+        // Below the top rail when one is in the document, the corner when not
+        // (login, mobile shell) — the inset variable tracks that for us.
+        style={{ top: 'calc(var(--app-overlay-top-inset, 0px) + 12px)', right: 16, maxWidth: 'min(420px, calc(100vw - 32px))' }}
       >
         {toasts.map(toast => (
           <div
             key={toast.id}
             role="alert"
-            className="ehr-toast animate-fadeInUp"
-            style={{
-              // The STRONG rung, not the base: 13.5px white text sits on this,
-              // and the base fills are only rated for 3:1. Success goes from
-              // 3.77:1 to 5.36:1, danger from 4.83:1 to 8.35:1.
-              background: toast.type === 'success' ? SUCCESS_STRONG : DANGER_STRONG,
-              color: WHITE,
-            }}
+            className={`ehr-toast ehr-toast--${toast.type} animate-fadeInUp`}
           >
             {toast.type === 'success' ? (
               <CheckCircle2 className="ehr-toast-icon" aria-hidden="true" />
