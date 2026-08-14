@@ -804,11 +804,13 @@ export default function EhrCareDashboard({
                                 the same control. The row itself is the
                                 affordance — `aria-expanded` still tells
                                 assistive tech what it does. */}
-                            {/* Tinted initials, never photos, in the queue —
-                                the plate colour IS the acuity signal; a photo
-                                would paint over it. Charts keep the photo. */}
+                            {/* Photo when the record has one (the acuity tint
+                                still rings it); tinted initials otherwise. */}
                             <div className="ehr-patient-icon" style={stateTint(avatarAcuity)}>
-                              {initials(row.title)}
+                              {row.photoUrl
+                                // eslint-disable-next-line @next/next/no-img-element
+                                ? <img src={row.photoUrl} alt="" className="ehr-patient-icon-photo" />
+                                : initials(row.title)}
                             </div>
                             <div className="ehr-appointment-main appointment-card-patient">
                               {/* Name and its telehealth mark share one line, so

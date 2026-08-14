@@ -1696,11 +1696,13 @@ export default function EhrClinicalDashboard({
                         }}
                       >
                         <div className="ehr-appointment-identity">
-                          {/* Tinted initials, never photos, in the queue — the
-                              plate colour IS the acuity signal; a photo would
-                              paint over it. The chart still shows the photo. */}
+                          {/* Photo when the record has one (the acuity tint
+                              still rings it); tinted initials otherwise. */}
                           <div className="ehr-patient-icon" style={stateTint(row.triagePriority)}>
-                            {initials(row.name)}
+                            {row.photoUrl
+                              // eslint-disable-next-line @next/next/no-img-element
+                              ? <img src={row.photoUrl} alt="" className="ehr-patient-icon-photo" />
+                              : initials(row.name)}
                           </div>
                           <div className="ehr-appointment-main appointment-card-patient">
                             {/* The name opens the chart; the rest of the row

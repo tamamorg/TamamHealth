@@ -1082,9 +1082,12 @@
   /* Ground and cards are both the header's blue, at different strengths:
      10% of the accent on white for the ground, 4% for a card. Same hue, two
      shades, so the card lifts without introducing a second colour. */
-  --bg-app:        color-mix(in srgb, var(--accent-primary) 10%, #FFFFFF);
-  --bg-primary:    color-mix(in srgb, var(--accent-primary) 10%, #FFFFFF);
-  --bg-secondary:  color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  /* White ground everywhere, per the design (--color-bg: #FFFFFF): cards
+     separate by hairline + shadow, not by a tinted page behind them. The old
+     10%-brand wash made every page read slightly dull. */
+  --bg-app:        #FFFFFF;
+  --bg-primary:    #FFFFFF;
+  --bg-secondary:  color-mix(in srgb, var(--accent-primary) 6%, transparent);
   /* Cards are a shade of blue, not white: on the #F2F8FC ground a white card
      was the only truly neutral surface in the app, so it read as a hole
      rather than a panel. brand-100 sits a step lighter than the ground, which
@@ -19212,8 +19215,13 @@ textarea.ehr-handoff-input {
   border-radius: 999px;
   background: #fff;
   color: var(--text-strong);
-  font-size: 12px;
-  font-weight: 800;
+  /* The design's chip voice: condensed small caps — crisper at the same
+     size than the sentence-case 12px it replaces. */
+  font-family: var(--font-condensed);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
 }
@@ -27968,7 +27976,7 @@ table.patient-data-table.patient-data-table {
 .ehr-care-row .ehr-row-name,
 .ehr-care-row .ehr-row-name button {
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 700; /* names lead the row — review asked for bolder */
   line-height: 1.35;
 }
 
@@ -28376,3 +28384,553 @@ table.patient-data-table.patient-data-table {
 .ehr-right-rail .ehr-outstanding-chips button b { color: #144972; }
 .ehr-right-rail .ehr-outstanding-chips button.warning b { color: var(--semantic-warning); }
 .ehr-right-rail .ehr-outstanding-chips button.danger b { color: var(--semantic-danger); }
+
+/* ---- Sharpen pass (review: "clean and sharp, bold where necessary") ----- */
+
+/* Patient names lead their rows at 700 in full ink. */
+.ehr-appointment-main button,
+.ehr-row-name button,
+.appointment-card-patient button {
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+/* The primary line of every data cell holds full ink; captions stay muted. */
+.ehr-appointment-time strong,
+.appointment-card-provider strong,
+.ehr-appointment-department strong {
+  color: var(--text-strong);
+}
+
+/* Acuity cue under the status chip: small but emphatic. */
+.appointment-card-status small {
+  font-weight: 700;
+}
+
+/* ══════════════════ Staff messages page (msgs-*) ══════════════════
+   The chat page on the flat rev: two white panels on hairlines, tracked-caps
+   headers, timestamps inside the bubbles, pill composer. Everything reads
+   from the ehr token set — no glass, no drop shadows beyond the popovers. */
+
+.msgs-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+}
+
+.msgs-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--ehr-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.msgs-panel--list { flex: 0 0 320px; width: 320px; }
+.msgs-panel--thread { flex: 1; min-width: 0; }
+
+/* ── Conversation list ── */
+.msgs-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 16px 10px;
+}
+.msgs-list-head h2 {
+  margin: 0;
+  font-family: var(--font-condensed);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.msgs-new-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent-primary);
+  cursor: pointer;
+}
+.msgs-new-btn:hover { background: var(--ehr-hover); }
+
+.msgs-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 36px;
+  margin: 0 16px 10px;
+  padding: 0 12px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 8px;
+  background: var(--bg-card-solid);
+}
+.msgs-search:focus-within { border-color: var(--accent-primary); }
+.msgs-search svg { flex: none; color: var(--ehr-muted); opacity: 0.7; }
+.msgs-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-platform);
+  font-size: 12.5px;
+  color: var(--ehr-text);
+}
+.msgs-search input::placeholder { color: var(--ehr-muted); }
+.msgs-search input::-webkit-search-cancel-button { display: none; }
+
+.msgs-conv-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+.msgs-sec-label {
+  margin: 0;
+  padding: 12px 16px 5px;
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ehr-muted);
+}
+
+.msgs-conv {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--ehr-border-soft);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.msgs-conv:hover { background: var(--ehr-hover); }
+.msgs-conv.is-active { background: var(--ehr-info-bg); border-bottom-color: transparent; }
+.msgs-conv-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.msgs-conv-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ehr-text);
+}
+.msgs-conv-name svg { flex: none; color: var(--ehr-muted); }
+.msgs-conv-time {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--ehr-muted);
+  font-variant-numeric: tabular-nums;
+}
+.msgs-conv-preview {
+  margin: 2px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+  color: var(--ehr-muted);
+}
+.msgs-conv.is-unread .msgs-conv-name { color: var(--text-strong); }
+.msgs-conv.is-unread .msgs-conv-preview { color: var(--ehr-text-body); font-weight: 600; }
+.msgs-unread-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+}
+
+/* Presence: a small dot, coloured by state, sat in the name line. */
+.msgs-presence-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+/* ── The signed-in user's presence, footer of the list panel ── */
+.msgs-me {
+  position: relative;
+  flex: none;
+  border-top: 1px solid var(--ehr-border-soft);
+}
+.msgs-me-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.msgs-me-btn:hover { background: var(--ehr-hover); }
+.msgs-me-name {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ehr-text);
+}
+.msgs-me-state {
+  margin: 1px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--ehr-muted);
+}
+.msgs-me-menu {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(100% + 6px);
+  z-index: 20;
+  padding: 4px 0;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--ehr-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(16, 38, 52, 0.10);
+}
+.msgs-me-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
+  font-size: 12.5px;
+  color: var(--ehr-text);
+  cursor: pointer;
+}
+.msgs-me-menu button:hover { background: var(--ehr-hover); }
+
+/* ── Thread ── */
+.msgs-thread-head {
+  flex: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--ehr-border);
+}
+.msgs-thread-title {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-condensed);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.msgs-thread-sub {
+  margin: 1px 0 0;
+  font-size: 12.5px;
+  color: var(--ehr-muted);
+}
+.msgs-iconbtn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ehr-muted);
+  cursor: pointer;
+}
+.msgs-iconbtn:hover { background: var(--ehr-hover); color: var(--ehr-text); }
+.msgs-iconbtn.is-on { color: var(--accent-primary); }
+
+.msgs-menu {
+  position: absolute;
+  right: 16px;
+  top: calc(100% + 4px);
+  z-index: 20;
+  width: 200px;
+  padding: 4px 0;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--ehr-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(16, 38, 52, 0.10);
+}
+.msgs-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 12.5px;
+  color: var(--ehr-text);
+  cursor: pointer;
+}
+.msgs-menu button:hover { background: var(--ehr-hover); }
+.msgs-menu button.is-danger { color: var(--ehr-danger-text); }
+
+/* ── Message runs & bubbles ── */
+.msgs-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+.msgs-run { display: flex; flex-direction: column; align-items: flex-start; }
+.msgs-run--mine { align-items: flex-end; }
+.msgs-run-sender {
+  margin: 0 0 4px;
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ehr-muted);
+}
+.msgs-run-sender b { color: var(--ehr-text-body); font-weight: 700; }
+
+.msgs-msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 62%; margin-bottom: 6px; }
+.msgs-run--mine .msgs-msg { align-items: flex-end; }
+.msgs-msg-row { display: flex; align-items: center; gap: 4px; }
+.msgs-run--mine .msgs-msg-row { flex-direction: row-reverse; }
+
+.msgs-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--ehr-info-bg);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ehr-text);
+  user-select: none;
+  overflow-wrap: anywhere;
+}
+.msgs-bubble--mine { background: var(--accent-primary); color: #FFFFFF; }
+.msgs-bubble--deleted {
+  background: transparent;
+  border: 1px dashed var(--ehr-border);
+  color: var(--ehr-muted);
+  font-style: italic;
+}
+.msgs-bubble-time {
+  display: block;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--ehr-muted);
+  font-variant-numeric: tabular-nums;
+}
+.msgs-bubble--mine .msgs-bubble-time { color: rgba(255, 255, 255, 0.68); }
+.msgs-bubble .msgs-mention { font-weight: 700; color: var(--accent-primary); }
+.msgs-bubble--mine .msgs-mention { color: #FFFFFF; text-decoration: underline; }
+
+.msgs-quote {
+  max-width: 100%;
+  margin-bottom: 4px;
+  padding: 4px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-left: 2px solid var(--accent-primary);
+  border-radius: 6px;
+  background: var(--ehr-head);
+  font-size: 11px;
+  color: var(--ehr-muted);
+}
+
+/* Hover toolbar on a message */
+.msgs-msg-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.msgs-msg:hover .msgs-msg-tools,
+.msgs-msg-tools:focus-within { opacity: 1; }
+.msgs-msg-tools > button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ehr-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.msgs-msg-tools > button:hover { background: var(--ehr-hover); color: var(--ehr-text); }
+.msgs-msg-tools > button.is-danger:hover { color: var(--ehr-danger-text); }
+
+.msgs-react-pop {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  gap: 2px;
+  padding: 4px 8px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--ehr-border);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(16, 38, 52, 0.10);
+}
+.msgs-react-pop button { border: 0; background: transparent; font-size: 15px; cursor: pointer; }
+
+.msgs-reactions { display: flex; gap: 4px; margin-top: 4px; }
+.msgs-run--mine .msgs-reactions { flex-direction: row-reverse; }
+.msgs-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 999px;
+  background: var(--bg-card-solid);
+  font-size: 11px;
+  cursor: pointer;
+}
+.msgs-reaction.is-mine { background: var(--ehr-info-bg); border-color: var(--accent-primary); }
+.msgs-reaction span:last-child { color: var(--ehr-muted); }
+
+.msgs-edit-box { display: flex; flex-direction: column; gap: 6px; min-width: 240px; }
+.msgs-edit-box textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 8px;
+  background: var(--bg-card-solid);
+  outline: none;
+  resize: none;
+  font-family: var(--font-platform);
+  font-size: 13px;
+  color: var(--ehr-text);
+}
+.msgs-edit-box textarea:focus { border-color: var(--accent-primary); }
+
+/* ── Info panel ── */
+.msgs-info {
+  flex: 0 0 280px;
+  width: 280px;
+  overflow-y: auto;
+  border-left: 1px solid var(--ehr-border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+.msgs-info-label {
+  margin: 0 0 6px;
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ehr-muted);
+}
+.msgs-info input[type="text"] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 8px;
+  background: var(--bg-card-solid);
+  outline: none;
+  font-family: var(--font-platform);
+  font-size: 13px;
+  color: var(--ehr-text);
+}
+.msgs-info input[type="text"]:focus { border-color: var(--accent-primary); }
+
+/* ── Composer ── */
+.msgs-composer {
+  flex: none;
+  padding: 14px 16px;
+  border-top: 1px solid var(--ehr-border);
+}
+.msgs-composer-row { display: flex; align-items: flex-end; gap: 10px; }
+.msgs-input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 12px 18px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 23px;
+  background: var(--bg-card-solid);
+}
+.msgs-input:focus-within { border-color: var(--accent-primary); }
+.msgs-input textarea {
+  flex: 1;
+  max-height: 120px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  resize: none;
+  font-family: var(--font-platform);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ehr-text);
+}
+.msgs-input textarea::placeholder { color: var(--ehr-muted); }
+.msgs-send {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.msgs-send:disabled { background: var(--ehr-soft); color: var(--ehr-muted); cursor: default; }
+
+.msgs-replying {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  border-left: 2px solid var(--accent-primary);
+  border-radius: 6px;
+  background: var(--ehr-head);
+  font-size: 11.5px;
+  color: var(--ehr-muted);
+}
