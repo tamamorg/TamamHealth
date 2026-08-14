@@ -227,9 +227,12 @@ export function EhrWeekActivityChart({
                 title={dayTitle(day)}
                 onClick={() => onSelectDate?.(day.iso)}
               >
+                {/* The design draws the two series side by side — a navy bar
+                    and an orange bar per day, each scaled to the week's
+                    tallest combined day — not stacked segments. */}
                 <span className="ehr-week-activity-track">
-                  {day.counts[1] > 0 && <i className="ehr-week-seg-out" style={{ height: `${pct(day.counts[1])}%` }} />}
-                  {day.counts[0] > 0 && <i className="ehr-week-seg-in" style={{ height: `${pct(day.counts[0])}%` }} />}
+                  <i className="ehr-week-seg-in" style={{ height: `${pct(day.counts[0])}%` }} />
+                  <i className="ehr-week-seg-out" style={{ height: `${pct(day.counts[1])}%` }} />
                 </span>
               </button>
             );
@@ -244,8 +247,9 @@ export function EhrWeekActivityChart({
         ))}
       </div>
       <div className="ehr-day-stats-legend">
-        <span><i style={{ background: 'var(--viz-inpatient)' }} /> {seriesNames[0]}</span>
-        <span><i style={{ background: 'var(--viz-outpatient)' }} /> {seriesNames[1]}</span>
+        {/* Dots match the bars: the design's navy/orange pair. */}
+        <span><i style={{ background: '#144972' }} /> {seriesNames[0]}</span>
+        <span><i style={{ background: '#C2410C' }} /> {seriesNames[1]}</span>
       </div>
     </div>
   );
@@ -256,7 +260,7 @@ function buildWeekDays(weekStart: Date) {
     const date = addDays(weekStart, index);
     return {
       iso: toIsoDate(date),
-      letter: 'SMTWTFS'[index],
+      letter: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
       counts: [0, 0] as [number, number],
       date,
     };

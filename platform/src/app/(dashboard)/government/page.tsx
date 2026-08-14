@@ -609,7 +609,9 @@ export default function GovernmentNationalDashboard() {
                       ) : (
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px]">0</span>
-                          <span aria-hidden="true" className="flex-1 rounded-full" style={{
+                          {/* gov-scale-bar: opts out of the app-wide inline-gradient purge —
+                              this gradient IS the legend. */}
+                          <span aria-hidden="true" className="gov-scale-bar flex-1 rounded-full" style={{
                             height: 8,
                             background: `linear-gradient(90deg, rgb(247,250,252), ${layerHex})`,
                             border: '1px solid var(--ehr-border, #DDEAF3)',

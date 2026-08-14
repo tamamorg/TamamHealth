@@ -61,9 +61,10 @@ export function shortenPersonName(name?: string | null): string {
 }
 
 /**
- * A staff name the width of a table cell: "Dr. James Wani Igga" → "Dr. J. Igga",
- * "Stella Keji Lemi" → "S. Lemi" — the design's care-team treatment ("Dr. J.
- * Wani"). Names of one or two words (including sentinels like "Doctor
+ * A staff name for display: first and last name only, keeping a leading
+ * title — "Dr. James Wani Igga" → "Dr. James Igga", "Nurse Stella Keji Lemi"
+ * → "Nurse Stella Lemi". Same two-name rule the patient rows follow, per the
+ * design. Names of one or two words (including sentinels like "Doctor
  * unassigned") pass through untouched, so this is safe to wrap around any
  * provider cell. Display rule only, like [[patientDisplayName]].
  */
@@ -72,9 +73,11 @@ export function abbreviateProviderName(name?: string | null): string {
   if (parts.length < 3) return parts.join(' ');
   const norm = (w: string) => w.replace(/[.,]/g, '').toLowerCase();
   if (NAME_TITLE_TOKENS.has(norm(parts[0]))) {
-    return `${parts[0]} ${parts[1][0]}. ${parts[parts.length - 1]}`;
+    // Title + first + last needs four words to be shortening anything.
+    if (parts.length < 4) return parts.join(' ');
+    return `${parts[0]} ${parts[1]} ${parts[parts.length - 1]}`;
   }
-  return `${parts[0][0]}. ${parts[parts.length - 1]}`;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
 /** Two-letter initials for avatars (first name + surname), upper-cased. */

@@ -1317,7 +1317,7 @@ export default function EhrClinicalDashboard({
             <div className="ehr-care-header-copy">
               {/* The design greets with the short name — "Welcome, Dr. Wani",
                   never the full legal name — over a small-caps role line. */}
-              <p className="ehr-care-greeting">Welcome, {shortenPersonName(clinicianName)}</p>
+              <p className="ehr-care-greeting">Welcome, {abbreviateProviderName(clinicianName)}</p>
               <p className="ehr-care-greeting-sub">Doctor · Clinical workspace</p>
             </div>
           </div>

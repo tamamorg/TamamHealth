@@ -2,7 +2,7 @@
 
 import { Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { shortenPersonName } from '@/lib/patient-utils';
+import { shortenPersonName, abbreviateProviderName } from '@/lib/patient-utils';
 import { ClipboardList, Printer, Search, Stethoscope, Video, X, type LucideIcon } from '@/components/icons/lucide';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
@@ -492,7 +492,7 @@ export default function EhrCareDashboard({
   // renders in the right-hand header row (wrapping when needed) — including
   // panel toggles that swap what occupies the center.
   const primaryAction = actions[0];
-  const headerTitle = greetingName ? `Welcome, ${shortenPersonName(greetingName)}` : title;
+  const headerTitle = greetingName ? `Welcome, ${abbreviateProviderName(greetingName)}` : title;
 
   // Every station header carries a Print action: the shared choose-what /
   // choose-format dialog over the board's current rows, never window.print()'s
@@ -588,11 +588,8 @@ export default function EhrCareDashboard({
             />
           )}
           {/* The design's rail runs chart, then donut: the week's shape, then
-              today's split. Its segments are the queue's own tab counts, so
-              the ring and the tabs are the same number twice, never two. */}
-          {showStageDonut && stageSegments.length > 0 && (
-            <EhrStageDonut segments={stageSegments} />
-          )}
+              today's split. The donut's segments are the queue's own tab
+              counts, so the ring and the tabs are the same number twice. */}
           {showChart && (chart ?? (
             <EhrWeekActivityChart
               items={weekChartItems}
@@ -606,6 +603,9 @@ export default function EhrCareDashboard({
               }}
             />
           ))}
+          {showStageDonut && stageSegments.length > 0 && (
+            <EhrStageDonut segments={stageSegments} />
+          )}
           {railContent}
           {filters.length > 0 && (
             <div className="ehr-filter-group">
@@ -850,8 +850,9 @@ export default function EhrCareDashboard({
                           </div>
 
                           <div className="appointment-card-provider">
-                            <strong>{sourceText || 'Unassigned'}</strong>
-                            <span>{sourceSubtext}</span>
+                            {/* Staff names show first + last (title kept). */}
+                            <strong>{abbreviateProviderName(sourceText) || 'Unassigned'}</strong>
+                            <span>{abbreviateProviderName(sourceSubtext)}</span>
                           </div>
 
                           <div className="ehr-appointment-department">
