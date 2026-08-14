@@ -142,7 +142,7 @@ export default function DataQualityPage() {
   return (
     <main className="page-container page-enter">
         <div className="card-elevated px-4 pt-4 pb-3 mb-4">
-          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: 'var(--text-primary)' }}>
+          <span style={{ fontFamily: 'var(--font-condensed)', fontWeight: 600, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
             {t('dataQuality.topBarTitle')}
           </span>
         </div>

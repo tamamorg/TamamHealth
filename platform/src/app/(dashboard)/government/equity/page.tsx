@@ -25,7 +25,7 @@ const VIEWS: { key: View; label: string }[] = [
 ];
 
 const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000',
+  fontFamily: 'var(--font-condensed)', fontWeight: 600, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
 };
 
 function Th({ children, onClick, active, dir }: { children?: React.ReactNode; onClick?: () => void; active?: boolean; dir?: 'asc' | 'desc' }) {
@@ -286,7 +286,7 @@ export default function EquityPlanningPage() {
                         <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.ratePer100Cases === null ? '—' : r.ratePer100Cases}</td>
                         <td className="px-4 py-2.5">
                           {r.accessGap && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md whitespace-nowrap" style={{ background: 'rgba(237,161,0,0.14)', color: '#a06700', border: '1px solid rgba(237,161,0,0.4)' }}>
+                            <span className="gov-chip gap-1" style={{ background: 'rgba(237,161,0,0.14)', color: '#a06700', border: '1px solid rgba(237,161,0,0.4)' }}>
                               <AlertTriangle className="w-3 h-3" /> Access gap
                             </span>
                           )}

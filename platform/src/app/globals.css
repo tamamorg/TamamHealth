@@ -2484,14 +2484,14 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   z-index: 2;
   background: var(--bg-card-solid);
   padding: 10px 16px;
-  font-size: 0.625rem;
+  font-size: 10.5px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  color: #5B6B7E;
   text-align: left;
   border-bottom: 1px solid var(--border-light);
-  font-family: var(--font-platform);
+  font-family: var(--font-condensed);
 }
 .data-table thead th:first-child { border-radius: 4px 0 0 0; }
 .data-table thead th:last-child { border-radius: 0 4px 0 0; }
@@ -2518,12 +2518,13 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   top: 0;
   z-index: 2;
   background: var(--bg-card-solid) !important;
-  color: var(--text-muted) !important;
-  font-size: 10px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.06em !important;
+  color: #5B6B7E !important;
+  font-family: var(--font-condensed) !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
   line-height: 1.2;
-  text-transform: capitalize;
+  text-transform: uppercase;
   white-space: nowrap;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
 }
@@ -2549,12 +2550,28 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   z-index: 2;
   background: var(--bg-card-solid);
   border-bottom: 1px solid var(--border-light);
-  color: var(--text-muted);
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  /* The design's column head: condensed small caps at 0.12em in the quiet
+     slate, on a 10px rhythm. (Was 10px extrabold at 0.06em.) */
+  padding: 10px 16px;
+  color: #5B6B7E;
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* Rows take the design's list rhythm: 13px of breathing room per cell on an
+   #EDF2F7 hairline, values at 13.5px. Utility paddings on the cells lose to
+   this on specificity, which is the point — one rhythm for every card table. */
+.dash-card table.w-full tbody td,
+.card-elevated table.w-full tbody td,
+.ehr-set-section table.w-full tbody td,
+.org-set-card table.w-full tbody td {
+  padding: 13px 16px;
+  border-bottom: 1px solid #EDF2F7;
+  font-size: 13.5px;
 }
 
 .dash-card table.w-full tbody tr,
@@ -2568,7 +2585,24 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
 .card-elevated table.w-full tbody tr:hover,
 .ehr-set-section table.w-full tbody tr:hover,
 .org-set-card table.w-full tbody tr:hover {
-  background: var(--table-row-hover);
+  background: #F7FAFC;
+}
+
+/* The design's status chip: a 24px pill in condensed small caps, tinted by
+   tone. Pages hand it the tone colour; the shape lives here. */
+.gov-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  line-height: 1;
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* ============ Referrals Table — polished list styling ============ */
@@ -11112,19 +11146,37 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tamam-ehr-app .data-table thead th,
 .tamam-ehr-app table thead th {
-  /* Flat header — no tinted band. Solid (not transparent) because these
-     headers are sticky and rows scroll underneath them. */
+  /* The design's one column-head language: condensed small caps at 0.12em in
+     the quiet slate. Solid (not transparent) background because these headers
+     are sticky and rows scroll underneath them. (This was the flat
+     sentence-case 11px header before the Clinical/Reception/Government
+     redesign; every design file draws heads this way, so the app-wide rule is
+     the right place to say it once.) */
   background: var(--bg-card-solid) !important;
-  color: var(--text-strong)!important;
-  font-size: 11px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0 !important;
-  text-transform: none !important;
+  color: #5B6B7E !important;
+  font-family: var(--font-condensed) !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+/* Pages that wrap their head label in a styled span (utility classes) would
+   silently keep the old size/weight — force the label to take the th's. */
+.tamam-ehr-app .data-table thead th span,
+.tamam-ehr-app table thead th span {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  letter-spacing: inherit !important;
+  text-transform: inherit !important;
+  color: inherit !important;
 }
 
 .tamam-ehr-app .data-table tbody td,
 .tamam-ehr-app table tbody td {
-  border-bottom: 1px solid var(--ehr-border) !important;
+  /* The design's row hairline — one shade quieter than the card border. */
+  border-bottom: 1px solid #EDF2F7 !important;
 }
 
 /* Final role-wide override: the EHR theme normalizes table headings to
@@ -11132,11 +11184,12 @@ button.ward-stat-chip:focus:not(:focus-visible) {
    appointments column treatment for every user. */
 .tamam-ehr-app .appointment-table-head th,
 .ehr-chart-content .appointment-table-head th {
-  color: var(--text-muted) !important;
-  font-size: 10px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.06em !important;
-  text-transform: capitalize !important;
+  color: #5B6B7E !important;
+  font-family: var(--font-condensed) !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
 }
 
 @media (max-width: 1180px) {
@@ -19016,11 +19069,12 @@ textarea.ehr-handoff-input {
      values. */
   padding: 0 4px 6px;
   background: #fff;
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: capitalize;
+  color: #5B6B7E;
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
 }
 
@@ -23676,13 +23730,14 @@ table.patient-data-table.patient-data-table {
   border: 0 !important;
   border-radius: 0 !important;
   background: #fff !important;
-  color: var(--text-muted) !important;
-  font-size: 10px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.06em !important;
+  color: #5B6B7E !important;
+  font-family: var(--font-condensed) !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
   line-height: 1.2;
   text-align: left;
-  text-transform: capitalize !important;
+  text-transform: uppercase !important;
   white-space: nowrap;
 }
 
@@ -24338,35 +24393,239 @@ table.patient-data-table.patient-data-table {
   display: none;
 }
 
-/* ── National Dashboard: one screen, no page scroll ────────────────
-   The page is a fixed-height flex column; its two rows share the leftover
-   height and every card clips to its own box, so charts/gauges scale down
-   with the viewport instead of pushing the page taller. Below `lg` the grid
-   collapses to a single column and the page scrolls normally again. */
-@media (min-width: 1024px) {
-  .gov-dash .gov-row > .dash-card,
-  .gov-dash .gov-row > .card-elevated {
-    min-height: 0;
-    overflow: hidden;
-  }
+/* ── National Dashboard (Government App design) ────────────────────
+   The design lays the page as one 6-column grid (gap 14) of self-sized
+   panels — map 4/6, every chart 2/6 — under a 23px condensed title with the
+   crimson Priority-alerts CTA. Panels are the design card: white, hairline
+   border, 8px corner, 1px shadow, a 12/14 head carrying an h6-style title.
+   (This replaces the old fixed-height two-row flex machinery; the design
+   scrolls naturally instead of scaling charts to the viewport.) */
+.gov-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.gov-page-head h1 {
+  margin: 0;
+  font-family: var(--font-condensed);
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+.gov-page-head p { margin: 2px 0 0; font-size: 12px; color: #5B6B7E; }
+.gov-page-head .btn {
+  min-height: 36px;
+  gap: 7px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.gov-page-head .btn-secondary { background: #FFFFFF; border-color: var(--ehr-border); }
+/* The design's one crimson button: alerts are the ministry's call to action. */
+.gov-page-head .btn-alerts { background: #8B2E24; border-color: #8B2E24; color: #ffffff; }
+.gov-page-head .btn-alerts:hover { background: #77271E; border-color: #77271E; }
 
-  /* Card bodies (the part under the panel header) take the remaining height
-     and scroll only if their own content genuinely overflows. */
-  .gov-dash .gov-row > .dash-card > :last-child,
-  .gov-dash .gov-row > .card-elevated > :last-child {
-    min-height: 0;
-    overflow: auto;
-  }
+.gov-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+.gov-span-4 { grid-column: span 4; }
+.gov-span-2 { grid-column: span 2; }
+@media (max-width: 1180px) {
+  .gov-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gov-span-4 { grid-column: 1 / -1; }
+  .gov-span-2 { grid-column: span 1; }
+}
+@media (max-width: 760px) {
+  .gov-grid { grid-template-columns: minmax(0, 1fr); }
+  .gov-span-2 { grid-column: 1 / -1; }
 }
 
-@media (max-width: 1023px) {
-  .gov-dash {
-    overflow-y: auto !important;
-  }
-  .gov-dash .gov-row {
-    flex: none !important;
-  }
+.gov-panel {
+  display: flex;
+  flex-direction: column;
+  background: #FFFFFF;
+  border: 1px solid var(--ehr-border);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  overflow: hidden;
 }
+.gov-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ehr-border);
+}
+.gov-panel-head h3 {
+  margin: 0;
+  font-family: var(--font-condensed);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.gov-panel-head .gov-meta { font-size: 11px; color: #5B6B7E; }
+
+/* Map layer pills sit in their own row under the head, not in it. */
+.gov-map-layers {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  padding: 10px 14px 0;
+}
+.gov-map-layers button {
+  padding: 4px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: #EDF2F7;
+  color: #3D5166;
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.gov-map-layers button.is-active { background: #144972; color: #ffffff; }
+
+.gov-map-body {
+  display: flex;
+  gap: 14px;
+  padding: 12px 14px 14px;
+  align-items: stretch;
+}
+.gov-map-rail {
+  width: 212px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+  color: #5B6B7E;
+}
+.gov-map-legend { padding: 10px 12px; background: #F7FAFC; border-radius: 8px; }
+.gov-map-legend .gov-legend-title {
+  margin: 0 0 6px;
+  font-family: var(--font-condensed);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.gov-map-legend .gov-legend-note { margin: 0 0 8px; font-size: 11px; line-height: 1.45; }
+.gov-map-legend .gov-legend-foot { margin: 8px 0 0; font-size: 10.5px; }
+.gov-map-selected {
+  padding: 10px 12px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.gov-map-selected > b { font-size: 13px; color: var(--text-primary); }
+.gov-map-selected .gov-open-link {
+  margin-top: 3px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  color: #144972;
+  font-family: var(--font-condensed);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.gov-map-hint {
+  padding: 10px 12px;
+  border: 1px dashed #D9E4EE;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+@media (max-width: 900px) {
+  .gov-map-body { flex-direction: column; }
+  .gov-map-rail { width: 100%; }
+}
+
+/* Donut panel: the design's 104px ring with a 20px-inset hole, the total in
+   21px condensed at its centre, and a quiet legend of label · count rows. */
+.gov-donut-body { display: flex; align-items: center; gap: 16px; padding: 14px; }
+.gov-donut-ring { position: relative; width: 104px; height: 104px; flex: none; }
+.gov-donut-hole {
+  position: absolute;
+  inset: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.gov-donut-hole b {
+  font-family: var(--font-condensed);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-primary);
+}
+.gov-donut-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.gov-donut-legend > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.gov-donut-legend span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: #5B6B7E; }
+.gov-donut-legend i { width: 8px; height: 8px; flex: none; border-radius: 50%; }
+.gov-donut-legend b {
+  font-family: var(--font-condensed);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* Ranked panel: 12.5px labels against condensed 13px values on 6px tracks. */
+.gov-rank { padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; }
+.gov-rank-row .gov-rank-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gov-rank-row .gov-rank-line > span { font-size: 12.5px; color: var(--text-primary); }
+.gov-rank-row .gov-rank-line > span small { font-size: 11px; color: #5B6B7E; }
+.gov-rank-row .gov-rank-line > b {
+  font-family: var(--font-condensed);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.gov-rank-row .gov-rank-track {
+  height: 6px;
+  margin-top: 4px;
+  background: #EDF2F7;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.gov-rank-row .gov-rank-track > div { height: 100%; }
+.gov-rank-foot { margin: 0; padding: 0 14px 12px; font-size: 10.5px; color: #5B6B7E; }
+
+/* Chart bodies breathe 14px like every other panel body. */
+.gov-chart-body { padding: 14px; }
 
 /* ── Icons on solid primary icon-buttons must be white ──────────────
    The shared <Icon> shim sets a `color` presentation attribute on the SVG
@@ -27952,7 +28211,8 @@ table.patient-data-table.patient-data-table {
 /* Workspace: page padding 12/16/16 → 18/22/22, column gap 12 → 18, and both
    rails' card stacks 12 → 14 (left) and 12 → 16 (right). */
 .ehr-care-dashboard.ehr-schedule-shell,
-.page-container:has(.ehr-workspace-grid) { padding: 18px 22px 22px; }
+.page-container:has(.ehr-workspace-grid),
+.tamam-ehr-app main.page-container.gov-dash { padding: 18px 22px 22px; }
 .ehr-workspace-grid,
 .ehr-workspace-grid.is-dashboard,
 .ehr-workspace-grid.is-calendar { gap: 18px; }

@@ -12,7 +12,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { Printer } from '@/components/icons/lucide';
 
 const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000',
+  fontFamily: 'var(--font-condensed)', fontWeight: 600, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
 };
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {

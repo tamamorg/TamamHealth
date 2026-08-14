@@ -11,7 +11,7 @@ import type { DiseaseAlertDoc } from '@/lib/db-types';
 
 // ── Shared "flat clinical" section chrome (matches the HR / patients pages) ──
 const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000',
+  fontFamily: 'var(--font-condensed)', fontWeight: 600, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
 };
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -47,10 +47,7 @@ function Th({ children, right }: { children?: React.ReactNode; right?: boolean }
 function LevelPill({ level }: { level: string }) {
   const color = LEVEL_COLORS[level] || LEVEL_COLORS.normal;
   return (
-    <span
-      className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md whitespace-nowrap"
-      style={{ background: `${color}1F`, color, border: `1px solid ${color}40` }}
-    >
+    <span className="gov-chip" style={{ background: `${color}1F`, color, border: `1px solid ${color}40` }}>
       {level}
     </span>
   );
@@ -190,7 +187,7 @@ export default function PriorityAlertsPage() {
       {/* Response guidance — top counties by active case load */}
       <div className="dash-card mt-3">
         <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <span className="text-[14px] font-bold" style={{ color: 'var(--text-primary)' }}>Response guidance</span>
+          <span style={{ fontFamily: 'var(--font-condensed)', fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>Response guidance</span>
         </div>
         <div className="px-4 py-3">
           {topCounties.length === 0 ? (
