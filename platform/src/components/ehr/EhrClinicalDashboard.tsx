@@ -1597,9 +1597,6 @@ export default function EhrClinicalDashboard({
 	              <h2>
 	                {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(parseIsoDate(selectedDate))}
 	              </h2>
-	              <p className="ehr-care-subtitle">
-	                {visiblePatientRows.length} active item{visiblePatientRows.length === 1 ? '' : 's'} · My schedule
-	              </p>
 	            </div>
 	            <div className="ehr-queue-search">
 	              <Search className="ehr-queue-search-icon w-4 h-4" />
