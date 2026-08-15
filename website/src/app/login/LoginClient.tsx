@@ -1,31 +1,42 @@
 "use client";
 
-/* Login screen — ported 1:1, including the design's demo behaviour: the
-   submit flips to the role's success line rather than authenticating
-   (platform accounts are provisioned per facility; this website carries no
-   session). Role tabs deep-link as /login?role=staff|patient|ministry;
-   arriving through such a link locks the picker to that one portal, with
-   "Change" as the way back to the three-way choice. */
+/* Login screen — the site holds no session, so signing in is a hand-off:
+   the form carries the chosen portal and username to the real platform
+   (PLATFORM_URL), where auth and the seeded demo roster live. Role tabs
+   deep-link as /login?role=staff|patient|ministry|superadmin; arriving
+   through such a link locks the picker to that one portal, with "Change"
+   as the way back to the full choice. */
 
 import Link from "next/link";
 import { useState } from "react";
 import Corners from "@/components/Corners";
-import { ROLES, STAFF_USERS, type LoginRole } from "@/lib/site-data";
+import { PLATFORM_URL, ROLES, STAFF_USERS, type LoginRole } from "@/lib/site-data";
 
 const INTRO: Record<LoginRole["key"], string> = {
   staff: "Enter the username and password issued by your facility administrator.",
   patient: "Sign in with your geocode ID or phone number to open your own records.",
   ministry: "Sign in with your official ministry email to open the national dashboard.",
+  superadmin: "The platform administrator account — organisations, provisioning and governance across every deployment.",
 };
 
 export default function LoginClient({ initialRole, initialLocked }: { initialRole: LoginRole["key"]; initialLocked: boolean }) {
   const [role, setRole] = useState<LoginRole["key"]>(initialRole);
   const [locked, setLocked] = useState(initialLocked);
   const [pwShown, setPwShown] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [identifier, setIdentifier] = useState("");
+  const [handingOff, setHandingOff] = useState(false);
   const [roleQuery, setRoleQuery] = useState("");
   const [roleListOpen, setRoleListOpen] = useState(false);
   const login = ROLES.find((r) => r.key === role)!;
+
+  /* Continue on the platform: /login prefills the username from ?u= (never
+     the password), the patient portal has its own sign-in. */
+  const continueToPlatform = () => {
+    setHandingOff(true);
+    const id = identifier.trim() || (role === "superadmin" ? "superadmin" : "");
+    const query = login.path === "/login" && id ? `?u=${encodeURIComponent(id)}` : "";
+    window.location.assign(`${PLATFORM_URL}${login.path}${query}`);
+  };
 
   const q = roleQuery.trim().toLowerCase();
   const roleMatches = q ? STAFF_USERS.filter((u) => `${u.name} ${u.scope}`.toLowerCase().includes(q)) : STAFF_USERS;
@@ -62,7 +73,7 @@ export default function LoginClient({ initialRole, initialLocked }: { initialRol
               {ROLES.map((r) => (
                 <button
                   key={r.key}
-                  onClick={() => { setRole(r.key); setLoggedIn(false); }}
+                  onClick={() => setRole(r.key)}
                   aria-pressed={role === r.key}
                   style={{
                     appearance: "none", cursor: "pointer", flex: 1, border: 0, padding: "11px 4px",
@@ -132,7 +143,7 @@ export default function LoginClient({ initialRole, initialLocked }: { initialRol
           )}
           <div className="field">
             <label htmlFor="lg-id">{login.idLabel}</label>
-            <input id="lg-id" className="input" style={{ minHeight: 46, background: "#FFFFFF" }} placeholder={login.idPlaceholder} />
+            <input id="lg-id" className="input" value={identifier} onChange={(e) => setIdentifier(e.target.value)} style={{ minHeight: 46, background: "#FFFFFF" }} placeholder={login.idPlaceholder} />
           </div>
           <div className="field">
             <label htmlFor="lg-pw">Password</label>
@@ -147,16 +158,19 @@ export default function LoginClient({ initialRole, initialLocked }: { initialRol
             <input type="checkbox" style={{ width: 16, height: 16, accentColor: "#015697" }} />
             Keep me signed in on this device
           </label>
-          <button className="btn btn-primary blueprint" onClick={() => { setLoggedIn(true); setRoleListOpen(false); }} style={{ padding: "15px 0", fontSize: 16, color: "#0E2A4A", width: "100%" }}>
-            {login.cta}
+          <button className="btn btn-primary blueprint" disabled={handingOff} onClick={() => { setRoleListOpen(false); continueToPlatform(); }} style={{ padding: "15px 0", fontSize: 16, color: "#0E2A4A", width: "100%", opacity: handingOff ? 0.6 : 1 }}>
+            {handingOff ? "Opening the platform…" : login.cta}
             <Corners />
           </button>
-          {loggedIn && (
-            <span style={{ fontSize: 14, lineHeight: 1.55, color: "#0B6E5C", borderLeft: "3px solid #0B6E5C", paddingLeft: 12 }}>{login.success}</span>
+          {login.path === "/login" && (
+            <span style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--color-neutral-700)", borderLeft: "3px solid var(--color-accent)", paddingLeft: 12 }}>
+              You&rsquo;ll finish signing in on the platform. Demo deployments offer one-tap demo accounts there — every
+              role from the front desk to the Super Admin, no password needed.
+            </span>
           )}
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap", paddingTop: 4 }}>
             {role !== "patient" && (
-              <button type="button" onClick={() => { setRole("patient"); setLoggedIn(false); }} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", padding: 0, fontFamily: "var(--font-body)", fontSize: 14.5, fontWeight: 700, color: "var(--color-accent-700)", textDecoration: "underline", textUnderlineOffset: 3 }}>
+              <button type="button" onClick={() => setRole("patient")} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", padding: 0, fontFamily: "var(--font-body)", fontSize: 14.5, fontWeight: 700, color: "var(--color-accent-700)", textDecoration: "underline", textUnderlineOffset: 3 }}>
                 Patient portal
               </button>
             )}

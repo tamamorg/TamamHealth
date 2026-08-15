@@ -29438,3 +29438,9 @@ table.patient-data-table.patient-data-table {
 
 /* Update-account popup identity rows. */
 .ehr-set-acct-readonly { border-color: #E3EBF2; background: #F7FAFC; }
+
+/* Management-console tab strip onto the design's nav treatment. */
+.settings-tab-strip { border-color: #E3EBF2; border-radius: 8px; box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05); }
+.settings-tab-strip button { border-radius: 7px; color: #0E2A4A; font-weight: 400; }
+.settings-tab-strip button:hover { background: #F0F6FA; color: #0E2A4A; }
+.settings-tab-strip button.active { background: #EFF8FD; color: #013D6B; font-weight: 600; }

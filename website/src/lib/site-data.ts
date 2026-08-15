@@ -566,13 +566,20 @@ export const STAFF_USERS = [
   { name: "Government Administrator", scope: "National reporting and DHIS2 export" },
 ];
 
+/* The real platform deployment this site hands sign-ins over to. The site
+   itself holds no session — auth, seeded demo accounts and the one-tap
+   roster (front desk through Super Admin) all live on the platform.
+   Locally: set NEXT_PUBLIC_PLATFORM_URL=http://localhost:3000 in .env.local. */
+export const PLATFORM_URL = process.env.NEXT_PUBLIC_PLATFORM_URL ?? "https://tamamhealth-v6.vercel.app";
+
 export interface LoginRole {
-  key: "staff" | "patient" | "ministry";
+  key: "staff" | "patient" | "ministry" | "superadmin";
   label: string;
   idLabel: string;
   idPlaceholder: string;
   cta: string;
-  success: string;
+  /** Path on the platform this portal's sign-in continues to. */
+  path: string;
 }
 
 export const ROLES: LoginRole[] = [
@@ -582,7 +589,7 @@ export const ROLES: LoginRole[] = [
     idLabel: "Username",
     idPlaceholder: "dr.wani",
     cta: "Log in to the platform",
-    success: "Signed in. Opening your facility dashboard — consultation, lab, pharmacy and referrals for your assigned ward.",
+    path: "/login",
   },
   {
     key: "patient",
@@ -590,7 +597,7 @@ export const ROLES: LoginRole[] = [
     idLabel: "Geocode ID or phone",
     idPlaceholder: "BOMA-KJ-HH1001",
     cta: "Open my records",
-    success: "Signed in. Opening your records — visits, prescriptions, lab results and appointment reminders.",
+    path: "/patient-portal",
   },
   {
     key: "ministry",
@@ -598,7 +605,15 @@ export const ROLES: LoginRole[] = [
     idLabel: "Official email",
     idPlaceholder: "name@moh.gov.ss",
     cta: "Open national dashboard",
-    success: "Signed in. Opening the national dashboard — surveillance, vital statistics and DHIS2 export.",
+    path: "/login",
+  },
+  {
+    key: "superadmin",
+    label: "Platform admin",
+    idLabel: "Username",
+    idPlaceholder: "superadmin",
+    cta: "Open the admin console",
+    path: "/login",
   },
 ];
 
