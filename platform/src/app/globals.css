@@ -2328,8 +2328,8 @@ select option {
 select option:hover,
 select option:focus,
 select option:checked {
-  background: rgba(33, 145, 208, 0.14);
-  color: var(--tb-blue-800, #012C4E);
+  background: #EFF8FD;
+  color: #013D6B;
 }
 
 label {
@@ -29237,3 +29237,204 @@ table.patient-data-table.patient-data-table {
   cursor: pointer;
 }
 .ehr-set-danger-btn:hover { background: rgba(139, 46, 36, 0.06); }
+
+/* ═══ Settings design alignment, part 2 — embedded panels every role sees ═══
+   The org-admin panels, facility settings, management console, and users
+   table carried their own older motifs (gradient head bands, icon plates,
+   pill buttons). Brought onto the same design language as the core kit. */
+
+/* Org panels: flat band heads, no icon plates, design card geometry. */
+.org-set-wrapper { background: #FFFFFF; }
+.org-set-head {
+  padding: 10px 16px;
+  background: #F7FAFC;
+  border-bottom-color: #E3EBF2;
+}
+.org-set-head > span,
+.org-set-card-head > span { display: none; }
+.org-set-head h3 {
+  font-family: var(--font-condensed);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0E2A4A;
+}
+.org-set-head small { font-size: 11px; font-weight: 500; color: #94A3B8; }
+.org-set-card { border-radius: 8px; box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05); }
+.org-set-card-head {
+  padding: 10px 14px;
+  background: #F7FAFC;
+  border-bottom-color: #E3EBF2;
+}
+.org-set-card-head h4 {
+  font-family: var(--font-condensed);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0E2A4A;
+}
+.org-set-link-btn {
+  min-height: 28px;
+  border-radius: 6px;
+  border-color: #E3EBF2;
+  color: #144972;
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.org-set-link-btn:hover { border-color: #E3EBF2; background: #EFF8FD; }
+
+/* Facility settings + management console buttons: 8px corners, condensed. */
+.fs-section .btn,
+.settings-manage-shell .btn {
+  border-radius: 8px;
+  font-family: var(--font-condensed);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.fs-section .fs-input,
+.settings-manage-shell input,
+.settings-manage-shell select,
+.settings-manage-shell textarea {
+  border-color: #E3EBF2 !important;
+}
+.fs-facility-tile { border-radius: 8px; box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05); }
+.fs-facility-tile:hover { border-color: #7FC4EA; background: #EFF8FD; }
+.fs-facility-tile strong { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
+
+/* Users & roles table: flat band head, condensed columns, toned chips. */
+.ehr-set-users-head {
+  background: #F7FAFC;
+  border-bottom-color: #E3EBF2;
+}
+.ehr-set-users-head span {
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #5B6B7E;
+}
+.ehr-set-user-row:hover { background: #FBFDFE; }
+.ehr-set-user-id b { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
+.ehr-set-user-status {
+  padding: 0 9px;
+  height: 22px;
+  align-items: center;
+  border: 1px solid #E3EBF2;
+  background: #F7FAFC;
+  color: #5B6B7E;
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.ehr-set-user-status.is-active { background: rgba(21, 121, 92, 0.10); border-color: rgba(21, 121, 92, 0.4); color: #15795C; }
+.ehr-set-user-status.is-off { background: rgba(139, 46, 36, 0.08); border-color: rgba(139, 46, 36, 0.42); color: #8B2E24; }
+
+/* Integrations grid hairlines onto the design's line colour. */
+.ehr-set-integrations { background: #E3EBF2; }
+.ehr-set-integrations > div b { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
+.ehr-set-integrations > div p { color: #5B6B7E; }
+
+/* Security-row action buttons (Change password, Set PIN) onto the design's
+   action-button geometry. This class has no consumer outside settings. */
+.ehr-queue-action-pill {
+  height: 28px;
+  padding: 0 11px;
+  border-color: #E3EBF2;
+  border-radius: 6px;
+  color: #144972;
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ehr-queue-action-pill:hover { background: #EFF8FD; }
+
+/* ═══ Settings design alignment, part 3 — the My-account landing panel ═══
+   The identity card, scope card, "You control" chips, and shortcut tiles kept
+   the previous pass's gradient band and old-accent tints — the first panel
+   every role lands on still read as the old design. Aligned here. */
+
+.ehr-set-account-head {
+  padding: 12px 16px;
+  background: #F7FAFC;
+  border-bottom-color: #E3EBF2;
+}
+.ehr-set-account-head b { font-size: 14px; font-weight: 700; color: #0E2A4A; }
+.ehr-set-account-head small { font-size: 11.5px; font-weight: 500; color: #5B6B7E; }
+.ehr-set-account-head > span { border-radius: 12px; font-weight: 700; }
+.ehr-set-account-gear {
+  border-color: #E3EBF2;
+  background: #FFFFFF;
+  color: #144972;
+}
+.ehr-set-account-gear:hover { background: #EFF8FD; border-color: #7FC4EA; color: #013D6B; }
+
+.ehr-set-account-rows > div { border-bottom-color: #EDF2F7; }
+.ehr-set-account-rows span {
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #5B6B7E;
+}
+.ehr-set-account-rows b { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
+
+/* Scope card + "You control" chips onto the design's card and chip shapes. */
+.ehr-set-scope {
+  border-color: #E3EBF2;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+}
+.ehr-set-scope b { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
+.ehr-set-chips {
+  border-color: #E3EBF2;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+}
+.ehr-set-chips > span {
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #5B6B7E;
+}
+.ehr-set-chips > div span {
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid #52ADDE;
+  background: #EFF8FD;
+  color: #013D6B;
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* Shortcut tiles: white on hairlines, tint on hover, condensed labels. */
+.ehr-set-shortcuts button {
+  border-color: #E3EBF2;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+}
+.ehr-set-shortcuts button:hover { border-color: #7FC4EA; background: #EFF8FD; }
+.ehr-set-shortcuts button > span {
+  border-radius: 8px;
+  background: #EFF8FD;
+  color: #144972;
+}
+.ehr-set-shortcuts button b { font-size: 12.5px; font-weight: 600; color: #0E2A4A; }
+
+/* Update-account popup identity rows. */
+.ehr-set-acct-readonly { border-color: #E3EBF2; background: #F7FAFC; }

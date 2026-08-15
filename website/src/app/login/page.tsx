@@ -12,6 +12,9 @@ const ROLE_KEYS = ["staff", "patient", "ministry"] as const;
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
   const { role } = await searchParams;
-  const initialRole: LoginRole["key"] = (ROLE_KEYS as readonly string[]).includes(role ?? "") ? (role as LoginRole["key"]) : "staff";
-  return <LoginClient initialRole={initialRole} />;
+  const named = (ROLE_KEYS as readonly string[]).includes(role ?? "");
+  const initialRole: LoginRole["key"] = named ? (role as LoginRole["key"]) : "staff";
+  // A link that named its portal (header portal links, product pages) locks
+  // the login to that portal; bare /login still offers all three.
+  return <LoginClient initialRole={initialRole} initialLocked={named} />;
 }

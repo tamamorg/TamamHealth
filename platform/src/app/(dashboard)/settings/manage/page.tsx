@@ -466,15 +466,17 @@ export default function SettingsPage() {
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
   };
   const btnPrimary: React.CSSProperties = {
-    background: 'var(--accent-primary)', color: 'white',
-    border: '1px solid var(--accent-primary)', borderRadius: '999px', padding: '9px 16px',
-    fontSize: '13px', fontWeight: 800, cursor: 'pointer',
+    background: '#144972', color: 'white',
+    border: '1px solid #144972', borderRadius: '8px', padding: '9px 16px',
+    fontFamily: 'var(--font-condensed)', fontSize: '13.5px', fontWeight: 600,
+    letterSpacing: '0.02em', cursor: 'pointer',
     display: 'flex', alignItems: 'center', gap: '8px',
   };
   const btnSecondary: React.CSSProperties = {
-    background: '#fff', color: 'var(--text-primary)',
-    border: '1px solid var(--ehr-border)', borderRadius: '999px', padding: '9px 16px',
-    fontSize: '13px', fontWeight: 750, cursor: 'pointer',
+    background: '#fff', color: '#0E2A4A',
+    border: '1px solid #E3EBF2', borderRadius: '8px', padding: '9px 16px',
+    fontFamily: 'var(--font-condensed)', fontSize: '13.5px', fontWeight: 600,
+    letterSpacing: '0.02em', cursor: 'pointer',
   };
   const labelStyle: React.CSSProperties = {
     fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)',

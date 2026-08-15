@@ -353,52 +353,55 @@ export default function LoginPage() {
             network gaps and syncs when connection returns.
           </span>
 
-          {/* ── Demo accounts ──
-              Only rendered where the deployment declares itself a demo.
-              Grouped by facility and ordered the way a patient meets each role,
-              so a visitor can walk the journey without knowing a username. */}
-          {demoEnabled && (
-            <section className="lg-demo" aria-labelledby="lg-demo-title">
-              <h2 id="lg-demo-title">Choose a demo account</h2>
-              <p>One tap signs you in — seeded data, no real patients.</p>
-              {DEMO_GROUPS.map(group => (
-                <div className="lg-demo-group" key={group}>
-                  <p className="lg-demo-group-name">{group}</p>
-                  <div className="lg-demo-rows">
-                    {DEMO_ACCOUNTS.filter(a => a.group === group).map(acct => (
-                      <button
-                        key={acct.user}
-                        type="button"
-                        className="lg-demo-row"
-                        disabled={loading || !dbReady}
-                        onClick={() => signInAsDemo(acct.user)}
-                      >
-                        <span className="lg-demo-role">{acct.role}</span>
-                        <span className="lg-demo-user">{acct.user}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </section>
-          )}
         </div>
 
-        {/* ── Right: the product panel ── */}
-        <aside className="lg-aside blueprint">
-          <Corners />
-          <span className="lg-eyebrow">One record, every level of care</span>
-          <h2 className="lg-h2">Registration, consultation, lab, pharmacy — one patient story</h2>
-          <p className="lg-aside-copy">
-            Every visit adds to the same record and rolls up into facility dashboards and DHIS2-ready national reports.
-          </p>
-          <a className="lg-aside-link" href="https://tamamhealth.org/products">See the products &nbsp;›</a>
-          <div className="lg-shot blueprint">
+        {/* ── Right: the demo roster on demo deployments, the product panel
+              everywhere else. The roster takes the whole column so every
+              account is on screen beside the form rather than below the fold.
+              Grouped by facility and ordered the way a patient meets each
+              role, so a visitor can walk the journey without knowing a
+              username. */}
+        {demoEnabled ? (
+          <aside className="lg-demo blueprint" aria-labelledby="lg-demo-title">
             <Corners />
-            {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-            <img src="/assets/platform-receptionist.png" alt="The TamamHealth reception dashboard: today's schedule, patient flow and triage queue" />
-          </div>
-        </aside>
+            <h2 id="lg-demo-title">Choose a demo account</h2>
+            <p>One tap signs you in — seeded data, no real patients.</p>
+            {DEMO_GROUPS.map(group => (
+              <div className="lg-demo-group" key={group}>
+                <p className="lg-demo-group-name">{group}</p>
+                <div className="lg-demo-rows">
+                  {DEMO_ACCOUNTS.filter(a => a.group === group).map(acct => (
+                    <button
+                      key={acct.user}
+                      type="button"
+                      className="lg-demo-row"
+                      disabled={loading || !dbReady}
+                      onClick={() => signInAsDemo(acct.user)}
+                    >
+                      <span className="lg-demo-role">{acct.role}</span>
+                      <span className="lg-demo-user">{acct.user}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </aside>
+        ) : (
+          <aside className="lg-aside blueprint">
+            <Corners />
+            <span className="lg-eyebrow">One record, every level of care</span>
+            <h2 className="lg-h2">Registration, consultation, lab, pharmacy — one patient story</h2>
+            <p className="lg-aside-copy">
+              Every visit adds to the same record and rolls up into facility dashboards and DHIS2-ready national reports.
+            </p>
+            <a className="lg-aside-link" href="https://tamamhealth.org/products">See the products &nbsp;›</a>
+            <div className="lg-shot blueprint">
+              <Corners />
+              {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
+              <img src="/assets/platform-receptionist.png" alt="The TamamHealth reception dashboard: today's schedule, patient flow and triage queue" />
+            </div>
+          </aside>
+        )}
       </div>
 
       <footer className="lg-footer">
@@ -460,6 +463,8 @@ const loginStyles = (
       flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 56px;
       max-width: 1320px; width: 100%; margin: 0 auto; padding: 64px 32px 60px; align-items: start;
     }
+    /* With the roster in the right column, trade headroom for roster room. */
+    .lg-grid:has(.lg-demo) { padding-top: 24px; }
     .lg-col { display: flex; flex-direction: column; gap: 20px; }
     .lg-h1 { font-size: 36px; margin: 0 0 4px; }
     .lg-h2 { font-size: 30px; margin: 0; }
@@ -507,7 +512,8 @@ const loginStyles = (
     .lg-rolerow-scope { font-size: 12.5px; color: var(--lg-neutral-600); }
     .lg-rolelist-empty { display: block; padding: 14px; font-size: 13.5px; color: var(--lg-neutral-600); }
 
-    .lg-keep { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--lg-neutral-800); }
+    /* text-transform guard: globals.css uppercases every label. */
+    .lg-keep { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--lg-neutral-800); text-transform: none; letter-spacing: normal; }
     .lg-keep input { width: 16px; height: 16px; accent-color: var(--lg-accent-700); }
 
     .lg-btn {
@@ -533,22 +539,27 @@ const loginStyles = (
     .lg-links a { font-size: 14.5px; font-weight: 700; color: var(--lg-accent-700); text-underline-offset: 3px; }
     .lg-offline { font-size: 13px; line-height: 1.55; color: var(--lg-neutral-600); border-top: 1px solid var(--lg-divider); padding-top: 14px; }
 
-    /* Demo roster — same square language as the fields above it. */
-    .lg-demo { border-top: 1px solid var(--lg-divider); padding-top: 18px; }
-    .lg-demo h2 { font-size: 21px; margin: 0; }
-    .lg-demo > p { margin: 2px 0 14px; font-size: 13.5px; color: var(--lg-neutral-600); }
-    .lg-demo-group + .lg-demo-group { margin-top: 14px; }
-    .lg-demo-group-name { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lg-neutral-600); }
-    .lg-demo-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 6px; }
+    /* Demo roster — fills the right column on demo deployments (the aside's
+       surface language) so the whole roster sits beside the form instead of
+       below the fold. Compact paddings are deliberate: 21 accounts across 7
+       facilities should fit a 900px-tall laptop viewport. */
+    .lg-demo { background: var(--lg-surface); padding: 16px 20px 18px; align-self: start; }
+    .lg-demo h2 { font-size: 19px; margin: 0; }
+    .lg-demo > p { margin: 2px 0 8px; font-size: 13px; color: var(--lg-neutral-600); }
+    .lg-demo-group + .lg-demo-group { margin-top: 8px; }
+    .lg-demo-group-name { margin: 0 0 3px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lg-neutral-600); }
+    .lg-demo-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 4px; }
+    /* Stacked like the role-list rows (name over detail): uniform card height
+       keeps the 21-account roster inside one laptop viewport. */
     .lg-demo-row {
-      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-      padding: 9px 11px; border: 1px solid var(--lg-divider); background: #FFFFFF;
+      display: flex; flex-direction: column; gap: 1px;
+      padding: 5px 10px; border: 1px solid var(--lg-divider); background: #FFFFFF;
       cursor: pointer; font: inherit; text-align: left;
     }
     .lg-demo-row:hover:not(:disabled) { background: var(--lg-accent-100); border-color: var(--lg-accent); }
     .lg-demo-row:disabled { opacity: 0.5; cursor: not-allowed; }
-    .lg-demo-role { font-size: 13.5px; font-weight: 600; color: var(--lg-text); }
-    .lg-demo-user { font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--lg-neutral-600); }
+    .lg-demo-role { font-size: 13px; line-height: 1.25; font-weight: 600; color: var(--lg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lg-demo-user { font-size: 10.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--lg-neutral-600); }
 
     .lg-aside { background: var(--lg-surface); padding: 30px 32px 32px; display: flex; flex-direction: column; gap: 14px; }
     .lg-eyebrow { font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lg-accent-700); }

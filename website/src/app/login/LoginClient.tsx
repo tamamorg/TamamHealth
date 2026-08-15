@@ -3,15 +3,24 @@
 /* Login screen — ported 1:1, including the design's demo behaviour: the
    submit flips to the role's success line rather than authenticating
    (platform accounts are provisioned per facility; this website carries no
-   session). Role tabs deep-link as /login?role=staff|patient|ministry. */
+   session). Role tabs deep-link as /login?role=staff|patient|ministry;
+   arriving through such a link locks the picker to that one portal, with
+   "Change" as the way back to the three-way choice. */
 
 import Link from "next/link";
 import { useState } from "react";
 import Corners from "@/components/Corners";
 import { ROLES, STAFF_USERS, type LoginRole } from "@/lib/site-data";
 
-export default function LoginClient({ initialRole }: { initialRole: LoginRole["key"] }) {
+const INTRO: Record<LoginRole["key"], string> = {
+  staff: "Enter the username and password issued by your facility administrator.",
+  patient: "Sign in with your geocode ID or phone number to open your own records.",
+  ministry: "Sign in with your official ministry email to open the national dashboard.",
+};
+
+export default function LoginClient({ initialRole, initialLocked }: { initialRole: LoginRole["key"]; initialLocked: boolean }) {
   const [role, setRole] = useState<LoginRole["key"]>(initialRole);
+  const [locked, setLocked] = useState(initialLocked);
   const [pwShown, setPwShown] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [roleQuery, setRoleQuery] = useState("");
@@ -33,25 +42,43 @@ export default function LoginClient({ initialRole }: { initialRole: LoginRole["k
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div>
             <h1 style={{ fontSize: 36, margin: "0 0 4px" }}>Log in</h1>
-            <p style={{ margin: 0, fontSize: 15, color: "var(--color-neutral-700)" }}>Enter the username and password issued by your facility administrator.</p>
+            <p style={{ margin: 0, fontSize: 15, color: "var(--color-neutral-700)" }}>{INTRO[role]}</p>
           </div>
-          <div style={{ display: "flex", border: "1px solid var(--color-divider)" }}>
-            {ROLES.map((r) => (
+          {locked ? (
+            <div style={{ display: "flex", alignItems: "stretch", border: "1px solid var(--color-divider)", background: "#015697" }}>
+              <span style={{ flex: 1, textAlign: "center", padding: "11px 4px", fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 14.5, color: "#FFFFFF" }}>
+                {login.label}
+              </span>
               <button
-                key={r.key}
-                onClick={() => { setRole(r.key); setLoggedIn(false); }}
-                aria-pressed={role === r.key}
-                style={{
-                  appearance: "none", cursor: "pointer", flex: 1, border: 0, padding: "11px 4px",
-                  fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 14.5,
-                  background: role === r.key ? "#015697" : "transparent",
-                  color: role === r.key ? "#FFFFFF" : "var(--color-neutral-800)",
-                }}
+                type="button"
+                onClick={() => setLocked(false)}
+                style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontFamily: "var(--font-body)", fontSize: 13, color: "rgba(255,255,255,0.85)", textDecoration: "underline", textUnderlineOffset: 3 }}
               >
-                {r.label}
+                Change
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", border: "1px solid var(--color-divider)" }}>
+              {ROLES.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => { setRole(r.key); setLoggedIn(false); }}
+                  aria-pressed={role === r.key}
+                  style={{
+                    appearance: "none", cursor: "pointer", flex: 1, border: 0, padding: "11px 4px",
+                    fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 14.5,
+                    background: role === r.key ? "#015697" : "transparent",
+                    color: role === r.key ? "#FFFFFF" : "var(--color-neutral-800)",
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* The staff-role combobox is a facility concept — patients sign in
+              by geocode/phone and ministry users by official email. */}
+          {role === "staff" && (
           <div className="field" style={{ position: "relative" }}>
             <label htmlFor="lg-role">Role</label>
             <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--color-divider)", background: "#FFFFFF" }}>
@@ -102,6 +129,7 @@ export default function LoginClient({ initialRole }: { initialRole: LoginRole["k
               </div>
             )}
           </div>
+          )}
           <div className="field">
             <label htmlFor="lg-id">{login.idLabel}</label>
             <input id="lg-id" className="input" style={{ minHeight: 46, background: "#FFFFFF" }} placeholder={login.idPlaceholder} />
@@ -127,9 +155,11 @@ export default function LoginClient({ initialRole }: { initialRole: LoginRole["k
             <span style={{ fontSize: 14, lineHeight: 1.55, color: "#0B6E5C", borderLeft: "3px solid #0B6E5C", paddingLeft: 12 }}>{login.success}</span>
           )}
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap", paddingTop: 4 }}>
-            <button type="button" onClick={() => { setRole("patient"); setLoggedIn(false); }} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", padding: 0, fontFamily: "var(--font-body)", fontSize: 14.5, fontWeight: 700, color: "var(--color-accent-700)", textDecoration: "underline", textUnderlineOffset: 3 }}>
-              Patient portal
-            </button>
+            {role !== "patient" && (
+              <button type="button" onClick={() => { setRole("patient"); setLoggedIn(false); }} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", padding: 0, fontFamily: "var(--font-body)", fontSize: 14.5, fontWeight: 700, color: "var(--color-accent-700)", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                Patient portal
+              </button>
+            )}
             <a href={`mailto:support.tamam@gmail.com?subject=${encodeURIComponent("Trouble signing in")}`} style={{ fontSize: 14.5, fontWeight: 700 }}>Trouble signing in?</a>
           </div>
           <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--color-neutral-600)", borderTop: "1px solid var(--color-divider)", paddingTop: 14 }}>
