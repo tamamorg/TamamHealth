@@ -1759,3 +1759,394 @@ select.cn-select {
 .cn-rx-warnings li[data-severity='serious'] { color: var(--color-danger); }
 .cn-rx-warnings li[data-severity='moderate'] { color: var(--color-warning); }
 .cn-rx-note { color: var(--text-muted); font-style: italic; }
+
+/* ═══════════════ Design alignment — "Encounter Note" (dashboard redesign) ═══════════════
+   The note editor measured against Encounter Note.dc.html in the Claude Design
+   project: white chrome on #E3EBF2 hairlines, chip-fields in the header, a
+   #F7FAFC canvas of flat white block cards with condensed-caps titles, and the
+   sidebar as labelled cards with #F7FAFC head bands. Stated last, as one
+   layer, so the design wins over the module's older warm-gray rules above
+   without re-fighting their specificity notes. */
+
+.cn-editor {
+  --cn-ink: #0E2A4A;
+  --cn-accent: #144972;
+  --cn-accent-deep: #013D6B;
+  --cn-line: #E3EBF2;
+  --cn-line-soft: #EDF2F7;
+  --cn-band: #F7FAFC;
+  --cn-tint: #EFF8FD;
+  --cn-tint-border: #52ADDE;
+  --cn-muted: #5B6B7E;
+  --cn-ghost: #94A3B8;
+  color: var(--cn-ink);
+}
+
+/* ── Header: title block left, chip-fields right ── */
+.cn-header { padding: 12px 18px; border-bottom-color: var(--cn-line); }
+
+.cn-header-id { flex: 1 1 240px; min-width: 0; }
+.cn-header-id .cn-header-title {
+  margin: 0;
+  flex: none;
+  font-family: var(--font-condensed);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: var(--cn-ink);
+}
+.cn-header-context {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cn-muted);
+}
+
+/* Each field is one chip: label + bold value inside a 34px banded box. The
+   control inside sheds its own chrome so the chip reads as a single unit. */
+.cn-header .cn-field {
+  height: 34px;
+  padding: 0 4px 0 11px;
+  gap: 7px;
+  background: var(--cn-band);
+  border: 1px solid var(--cn-line);
+  border-radius: 8px;
+}
+.cn-header .cn-field .cn-label { font-size: 12px; color: var(--cn-muted); }
+.cn-header .cn-field .cn-select,
+.cn-header .cn-field .cn-input,
+.cn-header .cn-field .cn-assign-trigger {
+  height: 30px;
+  min-height: 30px;
+  padding-left: 0;
+  border: 0;
+  border-radius: 8px;
+  background-color: transparent;
+  font-weight: 700;
+  color: var(--cn-ink);
+}
+.cn-header .cn-field .cn-input[type='date'],
+.cn-header .cn-field .cn-input[type='time'] { font-variant-numeric: tabular-nums; }
+.cn-header .cn-field .cn-select:disabled,
+.cn-header .cn-field .cn-input:disabled,
+.cn-header .cn-field .cn-assign-trigger:disabled { background-color: transparent; }
+
+/* Clear note: white bordered chip in condensed caps. */
+.cn-header .cn-btn {
+  height: 34px;
+  min-height: 34px;
+  border-color: var(--cn-line);
+  border-radius: 8px;
+  background-color: #FFFFFF;
+  color: var(--cn-accent);
+  font-family: var(--font-condensed);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.cn-header .cn-btn:hover:not(:disabled) { background: var(--cn-tint); }
+
+/* ── Body: sidebar on white, canvas on the band ── */
+.cn-body { grid-template-columns: minmax(240px, 292px) minmax(0, 1fr); }
+
+.cn-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 14px 16px 18px;
+  border-right-color: var(--cn-line);
+}
+/* The rail scrolls; its cards keep their natural height rather than
+   flex-shrinking to the viewport and clipping their own rows. */
+.cn-sidebar > * { flex: 0 0 auto; }
+.cn-sidebar-card { margin-bottom: 0; border-color: var(--cn-line); border-radius: 8px; }
+.cn-card-head {
+  padding: 10px 12px;
+  background: var(--cn-band);
+  border-bottom-color: var(--cn-line);
+  font-family: var(--font-condensed);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cn-ink);
+}
+.cn-card-head-action {
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cn-accent);
+}
+.cn-card-head-action:hover { text-decoration: none; color: var(--cn-accent-deep); }
+.cn-card-empty {
+  padding: 14px 12px;
+  text-align: left;
+  font-size: 11.5px;
+  color: var(--cn-muted);
+}
+.cn-card-body-roomy { min-height: 0; }
+/* Row-list cards draw their own full-bleed rows — the body sheds its padding. */
+.cn-card-body--flush { padding: 0; }
+
+/* ── Patient identity (bare block, not a card) ── */
+.cn-ident { display: flex; align-items: center; gap: 12px; }
+.cn-ident .cn-patient-photo {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #E7EDF2;
+  color: var(--cn-accent);
+  font-size: 15px;
+}
+.cn-ident-name {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-condensed);
+  font-size: 16.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--cn-ink);
+}
+.cn-ident-line { margin: 2px 0 0; font-size: 11.5px; color: var(--cn-muted); }
+.cn-ident-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.cn-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-family: var(--font-condensed);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+.cn-pill-danger { background: rgba(139, 46, 36, 0.08); border-color: rgba(139, 46, 36, 0.42); color: #8B2E24; }
+.cn-pill-info { background: var(--cn-tint); border-color: var(--cn-tint-border); color: var(--cn-accent-deep); }
+.cn-pill-success { background: rgba(21, 121, 92, 0.08); border-color: rgba(21, 121, 92, 0.42); color: #15795C; }
+
+/* ── Quick links: three icon tiles ── */
+.cn-quick-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cn-quick-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 4px;
+  background: #FFFFFF;
+  border: 1px solid var(--cn-line);
+  border-radius: 8px;
+  color: var(--cn-accent);
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cn-quick-link:hover { background: var(--cn-tint); }
+.cn-quick-link svg { color: currentColor; }
+
+/* ── Section nav: 3px mark + tint for the active row, green dot when filled ── */
+.cn-section-nav { gap: 0; }
+.cn-section-nav-row { gap: 0; }
+.cn-section-nav-row .cn-section-nav-remove { margin-right: 8px; }
+.cn-section-nav-item {
+  padding: 8px 12px;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  font-size: 12.5px;
+  color: var(--cn-ink);
+}
+.cn-section-nav-item:hover { background: var(--cn-band); }
+.cn-section-nav-item[aria-current='true'] {
+  background: var(--cn-tint);
+  border-left-color: var(--cn-accent);
+  color: var(--cn-accent-deep);
+  font-weight: 600;
+}
+.cn-section-nav-badge {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #15795C;
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+}
+
+/* ── Sidebar row lists (patient notes, labs, documents) ── */
+.cn-note-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--cn-line-soft);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.cn-note-row:last-child { border-bottom: 0; }
+.cn-note-row:hover { background: var(--cn-band); }
+.cn-note-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.cn-note-row-top b {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--cn-ink);
+}
+.cn-note-row-top small { flex: none; font-size: 10.5px; color: var(--cn-muted); }
+.cn-note-row-meta { font-size: 11px; color: var(--cn-muted); }
+
+.cn-card-body--flush .cn-rail-row { padding: 8px 12px; border-bottom: 1px solid var(--cn-line-soft); color: var(--cn-ink); }
+.cn-card-body--flush .cn-rail-row:last-child { border-bottom: 0; }
+.cn-rail-row:hover { text-decoration: none; background: var(--cn-band); }
+.cn-rail-row-main { font-size: 12.5px; font-weight: 600; }
+.cn-rail-row-meta, .cn-rail-row-sub { font-size: 10.5px; color: var(--cn-muted); }
+
+/* Documents head filter reads as plain muted text, not a form control. */
+.cn-card-head-filter { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--cn-muted); text-transform: none; letter-spacing: 0; font-family: var(--font-platform); margin: 0; }
+
+/* ── Canvas: banded ground, flat white block cards ── */
+.cn-canvas { background: var(--cn-band); padding: 18px 22px 26px; }
+.cn-canvas > * { max-width: 980px; }
+
+.cn-section {
+  margin-bottom: 14px;
+  padding: 0;
+  background: #FFFFFF;
+  border: 1px solid var(--cn-line);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  overflow: hidden;
+}
+.cn-section.is-active { background: #FFFFFF; border-color: #B5D9FD; }
+
+.cn-section-head {
+  margin-bottom: 0;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--cn-line-soft);
+}
+.cn-section-name {
+  font-family: var(--font-condensed);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cn-ink);
+}
+
+.cn-tool {
+  height: 28px;
+  padding: 0 10px;
+  border-color: var(--cn-line);
+  border-radius: 6px;
+  background: #FFFFFF;
+  color: var(--cn-accent);
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.cn-tool:hover:not(:disabled) { background: var(--cn-tint); }
+/* The section's lead action is highlighted, per the design. */
+.cn-tool-primary { background: var(--cn-tint); border-color: var(--cn-tint-border); color: var(--cn-accent-deep); }
+
+.cn-section-tools .cn-shortcut-input {
+  height: 28px;
+  border-color: var(--cn-line);
+  border-radius: 6px;
+  background: var(--cn-band);
+  color: var(--cn-ink);
+}
+.cn-section-tools .cn-shortcut-input::placeholder { color: var(--cn-ghost); }
+
+.cn-section .cn-textarea,
+.cn-section .cn-derived {
+  margin: 12px 14px 14px;
+  padding: 10px 12px;
+}
+.cn-section .cn-textarea {
+  width: calc(100% - 28px);
+  min-height: 72px;
+  background: var(--cn-band);
+  border: 1px solid var(--cn-line-soft);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.cn-section .cn-derived {
+  background: var(--cn-band);
+  border: 1px solid var(--cn-line-soft);
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--cn-ink);
+}
+/* Snapshot lines render as rows on soft hairlines, like the design's lists. */
+.cn-derived-row { padding: 7px 2px; border-bottom: 1px solid var(--cn-line-soft); }
+.cn-derived-row:last-child { border-bottom: 0; }
+.cn-section .cn-derived:has(.cn-derived-row) { padding: 3px 12px; }
+.cn-derived-empty { color: var(--cn-muted); }
+
+/* ── Signature ── */
+.cn-signature { margin: 20px 0 0; font-family: var(--font-condensed); font-size: 15px; font-weight: 600; color: var(--cn-ink); }
+.cn-signature-note { margin: 2px 0 0; font-size: 11.5px; color: var(--cn-muted); }
+
+/* ── Footer ── */
+.cn-footer { padding: 10px 18px; border-top-color: var(--cn-line); background: #FFFFFF; }
+.cn-footer .cn-btn {
+  min-height: 36px;
+  border-color: var(--cn-line);
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: var(--cn-ink);
+  font-family: var(--font-condensed);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.cn-footer .cn-btn:hover:not(:disabled) { background: var(--cn-band); }
+.cn-footer .cn-btn-primary {
+  min-height: 38px;
+  background: var(--cn-accent);
+  border-color: var(--cn-accent);
+  color: #FFFFFF;
+}
+.cn-footer .cn-btn-primary:hover:not(:disabled) { background: var(--cn-accent-deep); border-color: var(--cn-accent-deep); filter: none; }
+.cn-footer .cn-btn-save {
+  min-height: 38px;
+  background: #015697;
+  border-color: #015697;
+  color: #FFFFFF;
+}
+.cn-footer .cn-btn-save:hover:not(:disabled) { background: #013D6B; border-color: #013D6B; }
+.cn-saved { font-size: 11.5px; color: var(--cn-muted); }
+
+/* ── Locked banner on the band ── */
+.cn-locked-banner {
+  background: var(--cn-tint);
+  border: 1px solid var(--cn-tint-border);
+  border-radius: 8px;
+  color: var(--cn-accent-deep);
+}

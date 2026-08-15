@@ -29,7 +29,7 @@ export default function LoginClient({ initialRole }: { initialRole: LoginRole["k
           <img src="/assets/tamam-logo-full.svg" alt="Tamam Healthcare System" style={{ height: 27, width: "auto" }} />
         </Link>
       </div>
-      <div className="tm-login-grid" style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 56, maxWidth: 1320, width: "100%", margin: "0 auto", padding: "64px 32px 60px", alignItems: "start" }}>
+      <div className="tm-login-grid" style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 56, maxWidth: 1320, width: "100%", margin: "0 auto", padding: "48px 32px", alignItems: "start", alignContent: "center" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div>
             <h1 style={{ fontSize: 36, margin: "0 0 4px" }}>Log in</h1>

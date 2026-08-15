@@ -28990,3 +28990,250 @@ table.patient-data-table.patient-data-table {
 .ehr-side-card-head .ehr-day-stats-nav {
   margin-left: auto;
 }
+
+/* ═══════════ Design alignment — "Super Admin Settings" (dashboard redesign) ═══════════
+   The settings console measured against Super Admin Settings.dc.html: white
+   chrome and nav on #E3EBF2 hairlines, flat #F7FAFC card head-bands with
+   condensed-caps titles, 13.5/600 row labels over muted subs, navy toggles,
+   banded value controls, toned status chips, and a red-toned restricted zone.
+   RoleSettingsView is spec-driven and shared by every role, so this one layer
+   restyles the superadmin console and every other module's settings page.
+   Stated last so the design wins in one place. */
+
+.ehr-set-shell, .ehr-set-grid {
+  --set-ink: #0E2A4A;
+  --set-accent: #144972;
+  --set-accent-deep: #013D6B;
+  --set-line: #E3EBF2;
+  --set-line-soft: #EDF2F7;
+  --set-band: #F7FAFC;
+  --set-tint: #EFF8FD;
+  --set-tint-border: #52ADDE;
+  --set-muted: #5B6B7E;
+  --set-ghost: #94A3B8;
+}
+
+/* ── Header: title + caps context; saved chip; 8px-radius actions ── */
+.ehr-set-header-left h1 {
+  font-family: var(--font-condensed);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--set-ink, #0E2A4A);
+}
+.ehr-set-crumb { font-weight: 600; }
+
+.ehr-set-saved {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--set-line, #E3EBF2);
+  border-radius: 8px;
+  background: var(--set-band, #F7FAFC);
+  color: var(--set-muted, #5B6B7E);
+  font-size: 12px;
+  font-weight: 500;
+}
+.ehr-set-saved i { background: #15795C; }
+.ehr-set-saved.is-dirty { border-color: rgba(156, 94, 22, 0.42); color: #9C5E16; }
+.ehr-set-saved.is-dirty i { background: #9C5E16; }
+
+.ehr-set-btn {
+  min-height: 36px;
+  border-color: var(--set-line, #E3EBF2);
+  border-radius: 8px;
+  color: var(--set-ink, #0E2A4A);
+  font-family: var(--font-condensed);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.ehr-set-btn:hover { border-color: var(--set-tint-border, #52ADDE); background: var(--set-band, #F7FAFC); color: var(--set-ink, #0E2A4A); }
+.ehr-set-btn.primary {
+  background: var(--set-accent, #144972);
+  border-color: var(--set-accent, #144972);
+  color: #FFFFFF;
+}
+.ehr-set-btn.primary:hover { background: var(--set-accent-deep, #013D6B); border-color: var(--set-accent-deep, #013D6B); color: #FFFFFF; }
+
+/* ── Nav: flat white card, tinted active row, quiet neutral badges ── */
+.ehr-set-nav {
+  border-color: var(--set-line, #E3EBF2);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+}
+.ehr-set-nav button {
+  min-height: 34px;
+  border-radius: 7px;
+  color: var(--set-ink, #0E2A4A);
+  font-size: 13px;
+  font-weight: 400;
+}
+.ehr-set-nav button:hover { background: #F0F6FA; color: var(--set-ink, #0E2A4A); }
+.ehr-set-nav button.active { background: var(--set-tint, #EFF8FD); color: var(--set-accent-deep, #013D6B); font-weight: 600; }
+.ehr-set-nav button svg { width: 15px; height: 15px; }
+
+.ehr-set-nav-group + .ehr-set-nav-group { border-top: 0; margin-top: 10px; }
+.ehr-set-nav-group-title {
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  color: var(--set-muted, #5B6B7E);
+}
+.ehr-set-nav-group-title::after { display: none; }
+
+.ehr-set-nav button b,
+.ehr-set-nav button b.is-badge {
+  min-width: 19px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #E7EDF2;
+  color: var(--set-accent, #144972);
+  font-family: var(--font-condensed);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ── Sections: flat cards with #F7FAFC head bands, caps titles, right meta ── */
+.ehr-set-section {
+  border-color: var(--set-line, #E3EBF2);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+}
+.ehr-set-section-head {
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--set-band, #F7FAFC);
+  border-bottom-color: var(--set-line, #E3EBF2);
+}
+/* The design's card heads carry no icon plate — the caps title is the label. */
+.ehr-set-section-head > span { display: none; }
+.ehr-set-section-head h3 {
+  font-family: var(--font-condensed);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--set-ink, #0E2A4A);
+}
+.ehr-set-section-head small {
+  margin-top: 0;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--set-ghost, #94A3B8);
+}
+
+.ehr-set-row {
+  padding: 12px 16px;
+  border-bottom-color: var(--set-line-soft, #EDF2F7);
+}
+.ehr-set-row:hover { background: #FBFDFE; }
+.ehr-set-row-label b { font-size: 13.5px; font-weight: 600; color: var(--set-ink, #0E2A4A); }
+.ehr-set-row-label span { margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--set-muted, #5B6B7E); }
+
+/* ── Row controls ── */
+/* Toggle: 38×21, navy on / mist off; the switch colour is the state, so the
+   ON/OFF text beside it retires. */
+.ehr-set-toggle b { display: none; }
+.ehr-set-toggle > span { width: 38px; height: 21px; background: #C7D5E0; }
+.ehr-set-toggle.is-on > span { background: var(--set-accent, #144972); }
+.ehr-set-toggle > span i { width: 17px; height: 17px; box-shadow: 0 1px 2px rgba(14, 42, 74, 0.25); }
+.ehr-set-toggle.is-on > span i { margin-left: 17px; }
+
+/* Value controls sit on the band, hairline-edged, tabular. */
+.ehr-set-select,
+.tamam-ehr-app select.ehr-set-select {
+  min-height: 30px;
+  padding: 4px 28px 4px 11px;
+  border-color: var(--set-line, #E3EBF2);
+  border-radius: 6px !important;
+  background-color: var(--set-band, #F7FAFC);
+  color: var(--set-ink, #0E2A4A);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.ehr-set-select:hover { border-color: #7FC4EA; background-color: var(--set-tint, #EFF8FD); color: var(--set-ink, #0E2A4A); }
+.ehr-set-input,
+.tamam-ehr-app input.ehr-set-input {
+  min-height: 30px;
+  border-color: var(--set-line, #E3EBF2);
+  border-radius: 6px !important;
+  background: var(--set-band, #F7FAFC);
+  color: var(--set-ink, #0E2A4A);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.ehr-set-input:hover { border-color: #7FC4EA; background: var(--set-tint, #EFF8FD); }
+.ehr-set-input:focus { border-color: #7FC4EA; }
+
+/* Locked / read-only values read as toned pills, per the design's chips. */
+.ehr-set-locked {
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--set-tint-border, #52ADDE);
+  border-radius: 999px;
+  background: var(--set-tint, #EFF8FD);
+  color: var(--set-accent-deep, #013D6B);
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* Integrations status pills: toned, dotted, condensed caps. */
+.ehr-set-int-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--set-line, #E3EBF2);
+  border-radius: 999px;
+  background: var(--set-band, #F7FAFC);
+  color: var(--set-muted, #5B6B7E);
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  font-style: normal;
+}
+.ehr-set-int-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #94A3B8; }
+.ehr-set-int-pill[data-tone='green'] { background: rgba(21, 121, 92, 0.10); border-color: rgba(21, 121, 92, 0.4); color: #15795C; }
+.ehr-set-int-pill[data-tone='green']::before { background: #15795C; }
+.ehr-set-int-pill[data-tone='yellow'] { background: rgba(156, 94, 22, 0.10); border-color: rgba(156, 94, 22, 0.42); color: #9C5E16; }
+.ehr-set-int-pill[data-tone='yellow']::before { background: #9C5E16; }
+.ehr-set-int-pill[data-tone='red'] { background: rgba(139, 46, 36, 0.08); border-color: rgba(139, 46, 36, 0.42); color: #8B2E24; }
+.ehr-set-int-pill[data-tone='red']::before { background: #8B2E24; }
+
+/* ── Restricted actions: red-toned head band, outline red actions ── */
+.ehr-set-danger { border-color: rgba(139, 46, 36, 0.35); }
+.ehr-set-danger .ehr-set-section-head {
+  background: rgba(139, 46, 36, 0.04);
+  border-bottom-color: rgba(139, 46, 36, 0.2);
+}
+.ehr-set-danger .ehr-set-section-head h3 { color: #8B2E24; }
+.ehr-set-danger-btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(139, 46, 36, 0.45);
+  border-radius: 6px;
+  background: #FFFFFF;
+  color: #8B2E24;
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ehr-set-danger-btn:hover { background: rgba(139, 46, 36, 0.06); }

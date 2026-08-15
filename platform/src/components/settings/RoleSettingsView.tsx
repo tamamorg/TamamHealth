@@ -831,12 +831,16 @@ export default function RoleSettingsView() {
           <span className={`ehr-set-saved ${dirty ? 'is-dirty' : ''}`.trim()}>
             <i /> {dirty ? 'Unsaved changes' : 'All changes saved'}
           </span>
-          <button type="button" className="ehr-set-btn" disabled={!dirty || saving} onClick={handleDiscard}>
-            Discard
-          </button>
-          <button type="button" className="ehr-set-btn primary" disabled={!dirty || saving} onClick={() => void handleSave()}>
-            <Check /> {saving ? 'Saving…' : 'Save changes'}
-          </button>
+          {dirty && (
+            <>
+              <button type="button" className="ehr-set-btn" disabled={saving} onClick={handleDiscard}>
+                Discard
+              </button>
+              <button type="button" className="ehr-set-btn primary" disabled={saving} onClick={() => void handleSave()}>
+                <Check /> {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </>
+          )}
         </div>
       </section>
 

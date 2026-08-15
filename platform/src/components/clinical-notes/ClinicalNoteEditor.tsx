@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FileText, Save, Check, Copy, Send, ClipboardList, DollarSign,
-  Plus, AlertTriangle, RefreshCw, ExternalLink, Minus,
+  Plus, AlertTriangle, Minus, Syringe, Activity,
 } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
@@ -580,52 +580,65 @@ export default function ClinicalNoteEditor({
           toolbar belong to the note column, not the page. */}
       <div className="cn-body">
         <aside className="cn-sidebar">
-          {/* Patient identity + chart shortcuts */}
-          <div className="cn-sidebar-card">
-            <p className="cn-card-head">{note.patientName}</p>
-            <div className="cn-card-body">
-              <div className="cn-patient-id">
-                {patient?.photoUrl
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img className="cn-patient-photo" src={patient.photoUrl} alt="" />
-                  : <span className="cn-patient-photo" aria-hidden>{nameInitials(note.patientName)}</span>}
-                <div>
-                  {dobWithAge(note.patientDob) && <p className="cn-patient-line">{dobWithAge(note.patientDob)}</p>}
-                  {patient?.gender && <p className="cn-patient-line">Sex: {patient.gender}</p>}
-                  {patient?.phone && <p className="cn-patient-line">{formatPhoneDisplay(patient.phone)}</p>}
-                  {note.mrn && <p className="cn-patient-line">MRN {note.mrn}</p>}
-                </div>
-              </div>
-              <div className="cn-sidebar-links">
-                <button type="button" className="cn-sidebar-link" onClick={() => router.push(`/patients/${note.patientId}`)}>
-                  Facesheet <ExternalLink size={13} aria-hidden />
-                </button>
-                <button type="button" className="cn-sidebar-link" onClick={() => router.push(`/patients/${note.patientId}?tab=immunizations`)}>
-                  Immunizations <ExternalLink size={13} aria-hidden />
-                </button>
-                <button type="button" className="cn-sidebar-link" onClick={() => router.push(`/patients/${note.patientId}?tab=vitals`)}>
-                  Flowsheets <ExternalLink size={13} aria-hidden />
-                </button>
+          {/* Patient identity — a bare block above the cards, per the design:
+              photo plate, name, one id line, then the risk/status pills. */}
+          <div className="cn-ident">
+            {patient?.photoUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img className="cn-patient-photo" src={patient.photoUrl} alt="" />
+              : <span className="cn-patient-photo" aria-hidden>{nameInitials(note.patientName)}</span>}
+            <div style={{ minWidth: 0 }}>
+              <h2 className="cn-ident-name">{note.patientName}</h2>
+              <p className="cn-ident-line">
+                {[note.mrn, patient?.gender?.[0]?.toUpperCase(), dobWithAge(note.patientDob), patient?.phone ? formatPhoneDisplay(patient.phone) : null]
+                  .filter(Boolean).join(' · ')}
+              </p>
+              <div className="cn-ident-pills">
+                {(patient?.allergies?.length || 0) > 0 && (
+                  <span className="cn-pill cn-pill-danger">Allergies · {patient!.allergies!.length}</span>
+                )}
+                {locked
+                  ? <span className="cn-pill cn-pill-success">Signed</span>
+                  : <span className="cn-pill cn-pill-info">Draft</span>}
               </div>
             </div>
+          </div>
+
+          {/* Chart shortcuts as icon tiles */}
+          <div className="cn-quick-links">
+            <button type="button" className="cn-quick-link" onClick={() => router.push(`/patients/${note.patientId}`)}>
+              <FileText size={16} aria-hidden /> Facesheet
+            </button>
+            <button type="button" className="cn-quick-link" onClick={() => router.push(`/patients/${note.patientId}?tab=immunizations`)}>
+              <Syringe size={16} aria-hidden /> Immunize
+            </button>
+            <button type="button" className="cn-quick-link" onClick={() => router.push(`/patients/${note.patientId}?tab=vitals`)}>
+              <Activity size={16} aria-hidden /> Flowsheets
+            </button>
           </div>
 
           {/* The patient's other notes, newest first */}
           <div className="cn-sidebar-card">
             <p className="cn-card-head">Patient Notes</p>
-            <div className="cn-card-body cn-card-body-roomy">
+            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
               {siblingNotes.length === 0 && (
-                <p className="cn-card-empty">No other notes for this patient</p>
+                <p className="cn-card-empty">No other notes for this patient.</p>
               )}
               {siblingNotes.map(n => (
                 <button
                   key={n._id}
                   type="button"
-                  className="cn-rail-row"
+                  className="cn-note-row"
                   title={`${getNoteType(n.noteType).label} — ${n.serviceDate}`}
                   onClick={() => router.push(`/notes/${n._id}`)}
                 >
-                  {new Date(`${n.serviceDate}T00:00:00`).toLocaleDateString('en-US')}
+                  <span className="cn-note-row-top">
+                    <b>{getNoteType(n.noteType).label}</b>
+                    <small>{new Date(`${n.serviceDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</small>
+                  </span>
+                  <span className="cn-note-row-meta">
+                    {(n.assignedToName || n.authorName || 'Unassigned')}{isNoteLocked(n) ? ' · signed' : ' · draft'}
+                  </span>
                 </button>
               ))}
             </div>
@@ -641,7 +654,7 @@ export default function ClinicalNoteEditor({
                 </button>
               )}
             </p>
-            <div className="cn-card-body">
+            <div className="cn-card-body cn-card-body--flush">
               <nav className="cn-section-nav">
                 {sectionIds.map((id) => {
                   const content = note.sections.find(s => s.sectionId === id);
@@ -693,10 +706,10 @@ export default function ClinicalNoteEditor({
 
           {/* Most recent resulted labs */}
           <div className="cn-sidebar-card">
-            <p className="cn-card-head">Labs/Studies</p>
-            <div className="cn-card-body cn-card-body-roomy">
+            <p className="cn-card-head">Labs / Studies</p>
+            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
               {recentLabs !== null && recentLabs.length === 0 && (
-                <p className="cn-card-empty">You have no previous labs for this patient</p>
+                <p className="cn-card-empty">You have no previous labs for this patient.</p>
               )}
               {(recentLabs || []).map(lab => (
                 <button
@@ -730,9 +743,9 @@ export default function ClinicalNoteEditor({
                 </Select>
               </label>
             </p>
-            <div className="cn-card-body cn-card-body-roomy">
+            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
               {documents !== null && documents.length === 0 && (
-                <p className="cn-card-empty">No documents for this patient</p>
+                <p className="cn-card-empty">No documents for this patient.</p>
               )}
               {(documents || [])
                 .filter(doc => docLabel === 'all' || doc.category === docLabel)
@@ -758,14 +771,14 @@ export default function ClinicalNoteEditor({
         <div className="cn-main">
       {/* Header */}
       <div className="cn-header">
-        <h1 className="cn-header-title">
-          Encounter Note for {note.patientName}
-          {note.mrn && <span className="cn-header-meta">, MRN: {note.mrn}</span>}
-          {note.patientDob && <span className="cn-header-meta"> • DOB: {note.patientDob}</span>}
-        </h1>
-        {/* The note's identity fields — type, date/time of service, assignee —
-            sit in the header beside the patient they belong to, rather than on
-            a second toolbar strip below it. One band of chrome, not two. */}
+        {/* Patient identity lives in the sidebar; the header names the
+            document and its context, per the design. */}
+        <div className="cn-header-id">
+          <h1 className="cn-header-title">Encounter Note</h1>
+          <p className="cn-header-context">
+            {[typeDef.label, note.patientName, note.hospitalName].filter(Boolean).join(' · ')}
+          </p>
+        </div>
         <div className="cn-header-actions">
         <label className="cn-field">
           <span className="cn-label">Note type</span>
@@ -781,10 +794,6 @@ export default function ClinicalNoteEditor({
             ))}
           </Select>
         </label>
-
-        <button type="button" className="cn-btn" onClick={handleClear} disabled={locked}>
-          Clear Note
-        </button>
 
         <label className="cn-field">
           <span className="cn-label">Date</span>
@@ -828,6 +837,10 @@ export default function ClinicalNoteEditor({
             }}
           />
         </div>
+
+        <button type="button" className="cn-btn" onClick={handleClear} disabled={locked}>
+          Clear Note
+        </button>
         </div>
       </div>
 
@@ -894,9 +907,10 @@ export default function ClinicalNoteEditor({
             </button>
           )}
 
-          <p style={{ marginTop: 20, fontWeight: 700, fontSize: 13.5 }}>
-            {note.assignedToName || note.authorName || userName}
-          </p>
+          <p className="cn-signature">{note.assignedToName || note.authorName || userName}</p>
+          {!locked && (
+            <p className="cn-signature-note">Unsigned — signature is applied when you sign the note.</p>
+          )}
       </div>
         </div>
       </div>
@@ -956,7 +970,7 @@ export default function ClinicalNoteEditor({
         </span>
         <button
           type="button"
-          className="cn-btn"
+          className="cn-btn cn-btn-save"
           onClick={handleSaveAndClose}
           title={note.encounterId
             ? 'Saves the draft and pauses the visit for later resume'

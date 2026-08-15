@@ -693,6 +693,128 @@ export const ALIGN_FACTS = [
   { k: "DHIS2 & IDSR", v: "Facility activity rolls up into the national reporting channels already in use" },
 ];
 
+/* ── News & updates ── */
+
+export interface NewsItem {
+  slug: string;
+  /** Short category chip on the card — "Competition", "Milestone", … */
+  tag: string;
+  /** Display date, month-level. */
+  date: string;
+  /** ISO value for <time dateTime>. */
+  dateISO: string;
+  title: string;
+  image: string;
+  imageAlt: string;
+  /** One-sentence card summary. */
+  summary: string;
+  /** Full paragraphs for the /news page. */
+  body: string[];
+  link?: { label: string; href: string };
+}
+
+/** Newest first — the home band shows the first four, /news shows all. */
+export const NEWS: NewsItem[] = [
+  {
+    slug: "a-new-home-on-the-web",
+    tag: "Announcement",
+    date: "August 2026",
+    dateISO: "2026-08",
+    title: "A new tamamhealth.org, built the way we build the platform",
+    image: "/assets/dashboard-live.png",
+    imageAlt: "The TamamHealth facility dashboard",
+    summary:
+      "The site you are reading is new — six products, the six levels of care, and the pilot, drawn in the same design language as the platform itself.",
+    body: [
+      "We have relaunched tamamhealth.org. The new site walks through all six products — hospital, clinic, laboratory, radiology, pharmacy and the patient portal — and through the health system they are built for, level by level, from the Boma health worker to the referral hospital.",
+      "It also shows the work plainly: the deployment footprint across South Sudan, the problems paper records create, and exactly what the $100,000 pilot buys. If you want to see the platform on a real patient day, ask for a demo and we will walk you through one.",
+    ],
+    link: { label: "Request a demo", href: "/contact" },
+  },
+  {
+    slug: "pilot-campaign-live",
+    tag: "The pilot",
+    date: "August 2026",
+    dateISO: "2026-08",
+    title: "$100,000, ten clinics: the Juba pilot campaign is live",
+    image: "/assets/african-nurse.jpg",
+    imageAlt: "Health worker helping a patient access their records on a phone",
+    summary:
+      "We are raising $100,000 to launch TamamHealth in 10 clinics across Juba and greater South Sudan — devices, solar power, training and twelve months of support.",
+    body: [
+      "The pilot is designed to be measured, not asserted: ten clinics across Juba and greater South Sudan, equipped with tablets, solar charging and fingerprint readers, their teams trained on one shared patient record across registration, consultation, lab and pharmacy.",
+      "Every gift is earmarked for the pilot, from $50 that powers a clinic day to $10,000 that launches an entire facility. Clean records roll up into facility dashboards and DHIS2-ready national reports — donors see the same numbers the Ministry sees.",
+    ],
+    link: { label: "Donate to the pilot", href: "/donate" },
+  },
+  {
+    slug: "six-products-one-record",
+    tag: "Product",
+    date: "July 2026",
+    dateISO: "2026-07",
+    title: "One record, six products: the platform grows into a full suite",
+    image: "/assets/platform-receptionist.png",
+    imageAlt: "The front-desk view of the TamamHealth platform",
+    summary:
+      "What began as a single offline-first EMR is now six connected products — HMIS, CMS, LIS, RIS, PMS and the patient portal — sharing one patient record.",
+    body: [
+      "TamamHealth now covers the full facility day: hospital management for referral and county hospitals, clinic management for single-site PHCUs and private practices, laboratory and radiology systems with real order lifecycles, pharmacy with batch and expiry tracking, and a portal where patients read their own records.",
+      "Every product writes to the same offline-first record, so a lab result, a dispensed medicine or a referral is never a separate paper life — it lands back in the encounter it came from, even when the network is down.",
+    ],
+    link: { label: "View all products", href: "/products" },
+  },
+  {
+    slug: "tufts-new-ventures-win",
+    tag: "Competition",
+    date: "April 2026",
+    dateISO: "2026-04",
+    title: "TamamHealth wins the Healthcare track at the Tufts New Ventures Competition",
+    image: "/assets/community-health-worker.jpg",
+    imageAlt: "Community health worker at a primary care clinic",
+    summary:
+      "Our first venture competition, and a $10,000 award — funding tablets, solar power and training for the first pilot clinics.",
+    body: [
+      "TamamHealth won the Healthcare & Life Science track of the Tufts New Ventures Competition, run through the Derby Entrepreneurship Center — our first time entering a venture competition.",
+      "We pitched what we build: an offline-first record system designed from South Sudan's constraints outward — no reliable connectivity, no national IDs, facilities where 13% have any on-site power. The judges saw a working platform, not a slide deck.",
+      "The $10,000 award goes directly into the pilot: tablets, solar charging and training for the first clinics.",
+    ],
+    link: { label: "Meet the team", href: "/about#team" },
+  },
+  {
+    slug: "expert-validation",
+    tag: "Field research",
+    date: "February 2026",
+    dateISO: "2026-02",
+    title: "Every feature tested against the real system, with someone who has run it",
+    image: "/assets/images/community-medication-distribution.jpeg",
+    imageAlt: "A health worker recording medication in a paper register",
+    summary:
+      "In-depth consultation with a South Sudan health-system professional — with experience at every level from Boma village to Ministry — shaped the product's core decisions.",
+    body: [
+      "Before writing more code, we sat down with a South Sudan health-system expert with direct experience at every level of the system, from Boma volunteers to the Ministry of Health, and tested every assumption we had made.",
+      "The geocode household ID (because “this one is Deng, this is Deng, this is Deng”), binary choices instead of free text, unobtrusive voice capture, and real-time immunization defaulter tracking — “even if you don't do these other things, do THIS” — all came out of those conversations and went straight into the product.",
+    ],
+  },
+  {
+    slug: "mvp-in-six-weeks",
+    tag: "Milestone",
+    date: "February 2026",
+    dateISO: "2026-02",
+    title: "From first commit to a working record system in six weeks",
+    image: "/assets/Dashboard.png",
+    imageAlt: "An early build of the TamamHealth dashboard",
+    summary:
+      "Thirty-one functional modules, nine role-based dashboards and a fully offline record — built in six weeks, running in the browser on any device.",
+    body: [
+      "TamamHealth's first working build came together in six weeks of concentrated work: registration, triage, consultation, lab, pharmacy, billing and reporting — thirty-one modules across nine role-based dashboards, with automated tests behind the clinical flows.",
+      "It ran offline from day one. Every screen reads and writes a local database on the device and syncs when a connection appears — because a record system for South Sudan that assumes connectivity is a record system that fails there.",
+    ],
+    link: { label: "How the platform works", href: "/platform" },
+  },
+];
+
+export const newsBySlug = (slug: string) => NEWS.find((n) => n.slug === slug);
+
 /* ── Footer / shared ── */
 
 export const SUPPORT_EMAIL = "support.tamam@gmail.com";
@@ -732,6 +854,7 @@ export const FOOTER_COLS: { accent: string; title: string; links: FooterLink[] }
       { label: "The Problem", href: "/about#crisis" },
       { label: "The Goal", href: "/about#goal" },
       { label: "The Team", href: "/about#team" },
+      { label: "News & updates", href: "/news" },
     ],
   },
   {

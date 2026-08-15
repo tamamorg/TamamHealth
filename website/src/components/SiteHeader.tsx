@@ -26,15 +26,16 @@ interface MenuLink {
   href: string;
 }
 
-/* Five links, matching the design. Contact is deliberately not among them:
-   the amber "Get in touch" button beside this list is the route to /contact,
-   and listing it twice made the row's one call to action compete with a plain
-   link to the same page. The About mega menu and the footer still carry it. */
+/* Six links. Contact is deliberately not among them: the amber "Get in touch"
+   button beside this list is the route to /contact, and listing it twice made
+   the row's one call to action compete with a plain link to the same page.
+   The About mega menu and the footer still carry it. */
 const NAV_ITEMS: { label: string; href: string; menu: MenuKey | null }[] = [
   { label: "Products", href: "/products", menu: "products" },
   { label: "Platform", href: "/platform", menu: "platform" },
   { label: "The health system", href: "/health-system", menu: "system" },
   { label: "About", href: "/about", menu: "about" },
+  { label: "News & updates", href: "/news", menu: null },
   { label: "Donate", href: "/donate", menu: null },
 ];
 
@@ -100,6 +101,7 @@ const SEARCH_SUGGESTIONS = [
   { label: "HMIS for hospitals", href: "/products" },
   { label: "DHIS2 reporting", href: "/health-system" },
   { label: "Pilot clinics", href: "/#footprint" },
+  { label: "News & updates", href: "/news" },
   { label: "Donate", href: "/donate" },
   { label: "Get in touch", href: "/contact" },
 ];

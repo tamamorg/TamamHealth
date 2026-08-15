@@ -3,6 +3,7 @@ import Corners from "@/components/Corners";
 import HeroShowcase from "@/components/home/HeroShowcase";
 import ProductsBand from "@/components/home/ProductsBand";
 import Footprint from "@/components/home/Footprint";
+import NewsBand from "@/components/home/NewsBand";
 
 export default function HomePage() {
   return (
@@ -10,6 +11,7 @@ export default function HomePage() {
       <HeroShowcase />
       <ProductsBand />
       <Footprint />
+      <NewsBand />
 
       {/* About split */}
       <section style={{ padding: "24px 32px 100px", background: "#FFFFFF" }}>

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { CHALLENGES, PRODUCTS } from "@/lib/site-data";
+import { CHALLENGES, NEWS, PRODUCTS } from "@/lib/site-data";
 
 const BASE = "https://tamamhealth.org";
 
@@ -18,6 +18,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     page("/platform", 0.9),
     page("/health-system", 0.8),
     page("/about", 0.8),
+    page("/news", 0.7),
+    ...NEWS.map((n) => page(`/news/${n.slug}`, 0.5)),
     ...CHALLENGES.map((c) => page(`/challenges/${c.slug}`, 0.6)),
     page("/donate", 0.8),
     page("/contact", 0.8),
