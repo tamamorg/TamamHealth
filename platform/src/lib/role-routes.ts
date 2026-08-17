@@ -18,10 +18,16 @@ export interface RoleRouteConfig {
   readonly defaultDashboard: string;
 }
 
+// Nurse-family roles (nurse, triage_nurse, rooming_nurse) no longer have a
+// standalone station dashboard — they land on the shared clinical workspace
+// at /dashboard, Epic Hyperspace-style, role-adapted the same way doctors and
+// clinicians already do. The former /dashboard/nurse station pages (triage
+// board, ward roster, MAR, handoff) are retired in favour of /triage,
+// /wards, /wards/mar, and /wards/handoff below.
 const NURSE_MODULE_ROUTES = [
   // `/triage` is the per-patient triage page the station's queue rows open —
   // the same ETAT assessment, pinned to one patient.
-  '/dashboard/nurse', '/patients', '/triage', '/rooming', '/messages',
+  '/dashboard', '/patients', '/triage', '/rooming', '/messages',
   '/lab', '/immunizations', '/anc', '/births', '/deaths',
   '/settings', '/appointments', '/patient-intake',
   // Nurses document their own encounters (the Nurse Visit note type), so the
@@ -108,24 +114,26 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
 
   nurse: {
     // Ward & bedside care, immunisation, ANC support, vital-event documentation.
-    // Not payment processing (cashier/biller).
+    // Not payment processing (cashier/biller). Lands on the shared clinical
+    // workspace (/dashboard), role-adapted for nursing.
     allowed: NURSE_MODULE_ROUTES,
-    defaultDashboard: '/dashboard/nurse',
+    defaultDashboard: '/dashboard',
   },
 
   midwife: {
     // ICM scope: antenatal care, conducting deliveries, postnatal & newborn
-    // care, obstetric referrals, and maternal/perinatal vital events. Reuses the
-    // nurse station dashboard. No general consultation/prescribing (clinician),
-    // no payment handling, and no laboratory operations page — ANC lab results
-    // are reviewed inside the patient/ANC record, not the lab orders queue.
+    // care, obstetric referrals, and maternal/perinatal vital events. Reuses
+    // the shared clinical workspace (/dashboard), role-adapted for maternity.
+    // No general consultation/prescribing (clinician), no payment handling,
+    // and no laboratory operations page — ANC lab results are reviewed inside
+    // the patient/ANC record, not the lab orders queue.
     allowed: [
-      '/dashboard/nurse', '/patients', '/triage', '/messages',
+      '/dashboard', '/patients', '/triage', '/messages',
       '/anc', '/births', '/deaths', '/immunizations',
       '/wards', '/referrals', '/appointments', '/patient-intake',
       '/notes', '/settings',
     ],
-    defaultDashboard: '/dashboard/nurse',
+    defaultDashboard: '/dashboard',
   },
 
   lab_tech: {
@@ -326,15 +334,15 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
   },
 
   triage_nurse: {
-    // Specialized nurse login, same complete nurse station module.
+    // Specialized nurse login, same merged clinical workspace as nurse.
     allowed: NURSE_MODULE_ROUTES,
-    defaultDashboard: '/dashboard/nurse',
+    defaultDashboard: '/dashboard',
   },
 
   rooming_nurse: {
-    // Specialized nurse login, same complete nurse station module.
+    // Specialized nurse login, same merged clinical workspace as nurse.
     allowed: NURSE_MODULE_ROUTES,
-    defaultDashboard: '/dashboard/nurse',
+    defaultDashboard: '/dashboard',
   },
 
   clinician: {

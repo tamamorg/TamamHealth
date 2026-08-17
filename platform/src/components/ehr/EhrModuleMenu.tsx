@@ -22,12 +22,20 @@ export default function EhrModuleMenu({
   navLabel: (item: NavItem) => string;
   onOpenModule: (href: string) => void;
 }) {
+  const moduleCount = groups.reduce((total, group) => total + group.items.length, 0);
+
   return (
+    /* Laid out like the marketing site's mega menu — a titled panel on the
+       left, the links as a multi-column grid on the right — but compressed to
+       workspace scale: this hangs off a toolbar button mid-task, so it opens
+       shorter and wider instead of as one tall scrolling column. */
     <div className="ehr-module-menu" role="menu">
-      <div className="ehr-module-menu-head">
-        <span>{roleLabel}</span>
+      <div className="ehr-module-menu-intro">
+        <span className="ehr-module-menu-eyebrow">{roleLabel}</span>
+        <h3>Modules</h3>
+        <p>{moduleCount} places your role can open, grouped by the part of the day they belong to.</p>
       </div>
-      <div className="ehr-module-menu-scroll">
+      <div className="ehr-module-menu-grid">
         {groups.map((group, groupIndex) => (
           <section key={`${group.section || 'main'}-${groupIndex}`}>
             {group.section && <p>{group.section}</p>}

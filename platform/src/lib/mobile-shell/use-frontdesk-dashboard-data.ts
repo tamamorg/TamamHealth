@@ -5,6 +5,7 @@ import { useIntakeForms } from '@/lib/hooks/useIntakeForms';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import type { PatientIntakeFormDoc } from '@/lib/db-types';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
+import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 
 /**
  * Front-desk archetype dashboard (front_desk/central_registration_clerk/
@@ -20,9 +21,9 @@ export function useFrontDeskDashboardData(): MobileDashboardData {
     const inOffice = forms.filter((f) => f.status === 'pending_review');
     const finished = forms.filter((f) => f.status === 'merged');
     return [
-      { key: 'scheduled', label: `${scheduled.length} Scheduled`, tone: 'info', items: scheduled },
-      { key: 'in_office', label: `${inOffice.length} In Office`, tone: 'warning', items: inOffice },
-      { key: 'finished', label: `${finished.length} Finished`, tone: 'success', items: finished },
+      { key: 'scheduled', label: `${scheduled.length} ${APPOINTMENT_STATUS_GROUP_LABELS.scheduled}`, tone: 'info', items: scheduled },
+      { key: 'in_office', label: `${inOffice.length} ${APPOINTMENT_STATUS_GROUP_LABELS.in_office}`, tone: 'warning', items: inOffice },
+      { key: 'finished', label: `${finished.length} ${APPOINTMENT_STATUS_GROUP_LABELS.finished}`, tone: 'success', items: finished },
     ];
   }, [forms]);
 

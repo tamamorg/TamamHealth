@@ -147,7 +147,7 @@ export default function SlotPicker({
               >
                 {to12Hour(slot.startTime)}
                 {showProvider && (
-                  <span style={{ display: 'block', fontSize: 10, fontWeight: 500, opacity: 0.75 }}>
+                  <span style={{ display: 'block', fontSize: 10, fontWeight: 500 }}>
                     {slot.providerName}
                   </span>
                 )}

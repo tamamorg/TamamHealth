@@ -270,7 +270,7 @@ export default function ANCPage() {
                 const barColor = step.key === 'anc4' ? 'var(--accent-primary)' : pct >= 50 ? 'var(--accent-hover)' : pct >= 25 ? 'var(--color-warning)' : 'var(--color-danger)';
                 return (
                   <div key={step.key} className="flex items-center gap-3">
-                    <span className="text-xs font-medium w-44 text-right" style={{ color: 'var(--text-secondary)' }}>{step.label}</span>
+                    <span className="text-xs font-bold w-44 text-right" style={{ color: 'var(--text-secondary)' }}>{step.label}</span>
                     <div className="flex-1 h-7 rounded-md overflow-hidden" style={{ background: 'var(--overlay-light)' }}>
                       <div
                         className="h-full rounded-md flex items-center justify-end pr-2 transition-all duration-700"
@@ -339,13 +339,13 @@ export default function ANCPage() {
                         <Link
                           href={`/patients/${latest.motherId}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-sm font-medium truncate block hover:underline"
+                          className="text-sm font-semibold truncate block hover:underline"
                           style={{ color: 'var(--text-primary)' }}
                         >
                           {latest.motherName}
                         </Link>
                       ) : (
-                        <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{latest.motherName}</p>
+                        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{latest.motherName}</p>
                       )}
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {t('anc.motherMeta', { age: latest.motherAge, gravida: latest.gravida, parity: latest.parity, weeks: latest.gestationalAge, facility: latest.facilityName })}
@@ -360,7 +360,7 @@ export default function ANCPage() {
                         <Link
                           href={`/patients/${latest.motherId}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full transition-colors hover:bg-[var(--accent-light)]"
+                          className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full transition-colors hover:bg-[var(--accent-light)]"
                           style={{ color: 'var(--accent-primary)' }}
                           title="View patient record"
                         >
@@ -461,20 +461,20 @@ export default function ANCPage() {
                       <div className="space-y-2 data-row-divider-sm text-xs" style={{ color: 'var(--text-secondary)' }}>
                         <div className="flex justify-between">
                           <span>Delivery Facility</span>
-                          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{latest.birthPlan?.facility || '—'}</span>
+                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{latest.birthPlan?.facility || '—'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Transport</span>
-                          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{latest.birthPlan?.transport || '—'}</span>
+                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{latest.birthPlan?.transport || '—'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Blood Donor</span>
-                          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{latest.birthPlan?.bloodDonor || '—'}</span>
+                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{latest.birthPlan?.bloodDonor || '—'}</span>
                         </div>
                         <hr className="section-divider" />
                         <div className="flex justify-between">
                           <span>Next Visit</span>
-                          <span className="font-medium" style={{ color: 'var(--accent-primary)' }}>{latest.nextVisitDate || '—'}</span>
+                          <span className="font-semibold" style={{ color: 'var(--accent-primary)' }}>{latest.nextVisitDate || '—'}</span>
                         </div>
                       </div>
                     </div>
@@ -543,7 +543,7 @@ export default function ANCPage() {
                               className="w-full px-2.5 py-2 text-left text-xs hover:bg-[var(--overlay-subtle)] transition-colors"
                               style={{ borderBottom: '1px solid var(--border-light)' }}
                             >
-                              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{p.firstName} {p.surname}</p>
+                              <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{p.firstName} {p.surname}</p>
                               <p style={{ color: 'var(--text-muted)' }}>{p.hospitalNumber}{p.estimatedAge ? ` · ${p.estimatedAge}y` : ''}</p>
                             </button>
                           ))}

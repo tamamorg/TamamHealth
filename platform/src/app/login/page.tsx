@@ -14,7 +14,7 @@
  * demo-mode roster, error and loading) keeps working.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
@@ -112,6 +112,25 @@ export default function LoginPage() {
   // production never advertises a roster of accounts.
   const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
   const [demoCreds, setDemoCreds] = useState<Record<string, string>>({});
+
+  // Username handed over from the marketing site's login (?u=). Read from
+  // window rather than useSearchParams — the same pattern the patients and
+  // appointments pages use for their deep links, and it keeps this route out
+  // of a Suspense boundary. Only the username ever travels, never a password,
+  // and the param is stripped once read so it does not linger in the address
+  // bar, history or a referrer header.
+  const handedOffRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || handedOffRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const handed = params.get('u');
+    if (!handed) return;
+    handedOffRef.current = true;
+    setUsername(handed.slice(0, 64));
+    params.delete('u');
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
+  }, []);
 
   // Passwords are minted per environment; pull them once per load rather than
   // shipping any in the bundle.

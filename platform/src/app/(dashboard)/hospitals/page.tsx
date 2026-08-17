@@ -30,7 +30,7 @@ import {
   getPerformanceColor,
   METRIC_LABELS, type PerformanceMetricKey,
 } from '@/lib/performance-colors';
-import { states, statesAndCounties } from '@/data/mock';
+import { states, statesAndCounties } from '@/lib/data/south-sudan-reference';
 
 // ───────────────────────────── helpers ─────────────────────────────
 const TYPE_LABEL_KEYS: Record<string, string> = {

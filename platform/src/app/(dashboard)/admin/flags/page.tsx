@@ -1,14 +1,16 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import type { OrganizationDoc } from '@/lib/db-types';
-import { SaPage, SaCard, SaTable, SaPill } from '@/components/admin/sa-ui';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import { ToggleLeft, ToggleRight } from '@/components/icons/lucide';
+import { SaTable, SaPill } from '@/components/admin/sa-ui';
+import {
+  SadbPage, SadbSettingGroup, SadbSettingRow, SadbToggle, SadbKvRow, SadbHeadLink, SadbSearch,
+} from '@/components/admin/sadb-ui';
 
 type FlagKey = keyof OrganizationDoc['featureFlags'];
 
@@ -25,6 +27,7 @@ const planTone = (plan: OrganizationDoc['subscriptionPlan']) =>
   plan === 'enterprise' ? 'info' as const : plan === 'professional' ? 'ok' as const : 'muted' as const;
 
 export default function AdminFlagsPage() {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { config, loading: configLoading, update: updateConfig } = usePlatformConfig();
@@ -32,10 +35,17 @@ export default function AdminFlagsPage() {
 
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [matrixSearch, setMatrixSearch] = useState('');
+  // Optimistic per-cell overrides so the matrix reads back instantly; cleared
+  // on success (the store has caught up) and on failure (rolled back to the
+  // store's actual value) so a failed write can never leave a cell drifted.
+  const [cellOverrides, setCellOverrides] = useState<Record<string, boolean>>({});
 
-  const globalFlagsOn = config
-    ? (config.globalFeatureFlags.signupsEnabled ? 1 : 0) + (config.maintenanceMode ? 1 : 0)
-    : 0;
+  const clearOverride = (cellKey: string) => setCellOverrides(prev => {
+    if (!(cellKey in prev)) return prev;
+    const next = { ...prev };
+    delete next[cellKey];
+    return next;
+  });
 
   const orgsWithAllFlagsOff = useMemo(
     () => organizations.filter(o => TENANT_FLAGS.every(f => !o.featureFlags[f.key])).length,
@@ -52,17 +62,13 @@ export default function AdminFlagsPage() {
     return best;
   }, [organizations]);
 
-  const toggleGlobalFlag = async (key: 'signupsEnabled' | 'maintenanceMode', next: boolean) => {
+  const toggleSignups = async (next: boolean) => {
     if (!config) return;
-    setSavingKey(key);
+    setSavingKey('signupsEnabled');
     try {
-      if (key === 'signupsEnabled') {
-        await updateConfig({
-          globalFeatureFlags: { ...config.globalFeatureFlags, signupsEnabled: next },
-        }, currentUser?._id, currentUser?.username);
-      } else {
-        await updateConfig({ maintenanceMode: next }, currentUser?._id, currentUser?.username);
-      }
+      await updateConfig({
+        globalFeatureFlags: { ...config.globalFeatureFlags, signupsEnabled: next },
+      }, currentUser?._id, currentUser?.username);
       showToast('Platform flag updated.', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to update flag.', 'error');
@@ -80,10 +86,13 @@ export default function AdminFlagsPage() {
   const toggleTenantFlag = async (org: OrganizationDoc, key: FlagKey, next: boolean) => {
     const cellKey = `${org._id}:${key}`;
     setSavingKey(cellKey);
+    setCellOverrides(prev => ({ ...prev, [cellKey]: next }));
     try {
       await updateOrg(org._id, { featureFlags: { ...org.featureFlags, [key]: next } }, currentUser?._id, currentUser?.username);
       showToast(`${TENANT_FLAGS.find(f => f.key === key)?.label} ${next ? 'enabled' : 'disabled'} for ${org.name}.`, 'success');
+      clearOverride(cellKey);
     } catch (err) {
+      clearOverride(cellKey); // roll back — the write failed, the optimistic value must not stand
       showToast(err instanceof Error ? err.message : 'Failed to update flag.', 'error');
     } finally {
       setSavingKey(null);
@@ -91,63 +100,48 @@ export default function AdminFlagsPage() {
   };
 
   return (
-    <SaPage>
+    <SadbPage>
 
-      <SaCard title="Feature Flags" meta={configLoading ? undefined : `${globalFlagsOn} of 2 on`}>
+      <SadbSettingGroup
+        title="Platform gates"
+        meta={<SadbHeadLink onClick={() => router.push('/admin/config')}>Configuration</SadbHeadLink>}
+      >
         {configLoading || !config ? (
-          <p className="sa-empty">Loading…</p>
+          <p className="sadb-empty">Loading…</p>
         ) : (
           <>
-            <div className="sa-policy-row">
-              <span className="sa-policy-text">
-                <strong>New signups enabled (platform-wide)</strong>
-                <span>Controls whether new organizations can self-register across the entire platform.</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => toggleGlobalFlag('signupsEnabled', !config.globalFeatureFlags.signupsEnabled)}
+            <SadbSettingRow
+              label="New signups enabled (platform-wide)"
+              sub="Controls whether new organizations can self-register across the entire platform."
+            >
+              <SadbToggle
+                checked={config.globalFeatureFlags.signupsEnabled}
+                onChange={toggleSignups}
+                label="New signups enabled (platform-wide)"
                 disabled={savingKey === 'signupsEnabled'}
-                aria-pressed={config.globalFeatureFlags.signupsEnabled}
-              >
-                {config.globalFeatureFlags.signupsEnabled ? (
-                  <ToggleRight className="w-8 h-8" style={{ color: 'var(--color-success)' }} />
-                ) : (
-                  <ToggleLeft className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
-                )}
-              </button>
-            </div>
-            <div className="sa-policy-row">
-              <span className="sa-policy-text">
-                <strong>Maintenance mode (platform-wide)</strong>
-                <span>When on, only super admins can sign in to any organization.</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => toggleGlobalFlag('maintenanceMode', !config.maintenanceMode)}
-                disabled={savingKey === 'maintenanceMode'}
-                aria-pressed={config.maintenanceMode}
-              >
-                {config.maintenanceMode ? (
-                  <ToggleRight className="w-8 h-8" style={{ color: 'var(--color-danger)' }} />
-                ) : (
-                  <ToggleLeft className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
-                )}
-              </button>
-            </div>
+              />
+            </SadbSettingRow>
+            <SadbKvRow
+              label="Maintenance mode (platform-wide)"
+              chip={config.maintenanceMode ? 'ON' : 'OFF'}
+              chipTone={config.maintenanceMode ? 'yellow' : 'neutral'}
+            />
           </>
         )}
-      </SaCard>
+      </SadbSettingGroup>
 
-      <SaCard>
-        <EhrListHeader
-          title="Per-tenant feature matrix"
-          stats={[
-            { label: 'Orgs total', value: orgsLoading ? '…' : organizations.length, color: LIST_STAT_COLORS.muted },
-            { label: 'Orgs with all flags off', value: orgsLoading ? '…' : orgsWithAllFlagsOff, color: orgsWithAllFlagsOff > 0 ? LIST_STAT_COLORS.amber : LIST_STAT_COLORS.muted },
-            { label: mostEnabledFlag ? `Most enabled: ${mostEnabledFlag.label}` : 'Most enabled', value: mostEnabledFlag ? mostEnabledFlag.count : '—', color: LIST_STAT_COLORS.green },
-          ]}
-          search={{ value: matrixSearch, onChange: setMatrixSearch, placeholder: 'Search organizations…', ariaLabel: 'Search organizations' }}
-        />
+      <div className="sadb-card">
+        <div className="sadb-card-head" style={{ padding: '12px 16px' }}>
+          <h3 className="sadb-card-title">Per-tenant feature matrix</h3>
+          <div className="sadb-legend">
+            <span><i style={{ background: 'var(--text-muted)' }} />Orgs total ({orgsLoading ? '…' : organizations.length})</span>
+            <span><i style={{ background: orgsWithAllFlagsOff > 0 ? 'var(--color-warning-600)' : 'var(--text-muted)' }} />All flags off ({orgsLoading ? '…' : orgsWithAllFlagsOff})</span>
+            <span><i style={{ background: 'var(--color-success-800)' }} />{mostEnabledFlag ? `Most enabled: ${mostEnabledFlag.label}` : 'Most enabled'} ({mostEnabledFlag ? mostEnabledFlag.count : '—'})</span>
+          </div>
+        </div>
+        <div className="sadb-search-row">
+          <SadbSearch value={matrixSearch} onChange={setMatrixSearch} placeholder="Search organizations…" ariaLabel="Search organizations" />
+        </div>
         <SaTable
           columns={['Organization', ...TENANT_FLAGS.map(f => f.label)]}
           empty={orgsLoading ? 'Loading organizations…' : 'No organizations match this search.'}
@@ -161,16 +155,14 @@ export default function AdminFlagsPage() {
               </td>
               {TENANT_FLAGS.map(f => {
                 const cellKey = `${org._id}:${f.key}`;
-                const checked = org.featureFlags[f.key];
+                const checked = cellOverrides[cellKey] ?? org.featureFlags[f.key];
                 return (
                   <td key={f.key} style={{ textAlign: 'center' }}>
-                    <input
-                      type="checkbox"
+                    <SadbToggle
                       checked={checked}
                       disabled={savingKey === cellKey}
-                      onChange={e => toggleTenantFlag(org, f.key, e.target.checked)}
-                      aria-label={`${f.label} for ${org.name}`}
-                      style={{ width: 16, height: 16, cursor: 'pointer' }}
+                      onChange={next => toggleTenantFlag(org, f.key, next)}
+                      label={`${f.label} for ${org.name}`}
                     />
                   </td>
                 );
@@ -178,11 +170,11 @@ export default function AdminFlagsPage() {
             </tr>
           ))}
         </SaTable>
-        <p className="sa-card-meta" style={{ padding: '10px 14px', margin: 0, borderTop: '1px solid var(--border-light)' }}>
+        <p className="sadb-card-meta" style={{ padding: '10px 14px', margin: 0, borderTop: '1px solid var(--border-light)' }}>
           Changes apply on the tenant&apos;s next sync.
         </p>
-      </SaCard>
+      </div>
 
-    </SaPage>
+    </SadbPage>
   );
 }

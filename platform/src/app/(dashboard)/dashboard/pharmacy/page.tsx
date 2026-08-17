@@ -14,6 +14,7 @@ import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
 import { checkNewPrescription, type DrugInteraction, type InteractionSeverity } from '@/lib/services/drug-interaction-service';
 import { formatMoney , formatRxSig } from '@/lib/format-utils';
 import { isActivePharmacyStage, isFinanciallyCleared, pharmacyStage, pharmacyStageGroup, pharmacyStageLabel, pharmacyStageTone } from '@/lib/pharmacy-workflow';
+import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { PrescriptionDoc, PharmacyInventoryDoc, UserDoc } from '@/lib/db-types';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import EhrCareDashboard, {
@@ -176,7 +177,7 @@ function DispenseModal({
         )}
 
         <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2 rounded-lg text-sm font-medium transition-all" style={{
+          <button onClick={onCancel} className="flex-1 py-2 rounded-lg text-sm font-bold transition-all" style={{
             background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)',
           }}>{t('action.cancel')}</button>
           <button
@@ -260,7 +261,7 @@ function ReceiveStockModal({ items, onConfirm, onClose, saving }: {
         </div>
 
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-medium transition-all" style={{
+          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-bold transition-all" style={{
             background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)',
           }}>{t('action.cancel')}</button>
           <button
@@ -301,8 +302,8 @@ export default function PharmacyDashboardPage() {
   const [showReceiveStock, setShowReceiveStock] = useState(false);
   const [receivingStock, setReceivingStock] = useState(false);
   // Prescription queue lane filter — the shared three-lane vocabulary every
-  // role dashboard shows: Scheduled = ordered/awaiting pickup by the workflow,
-  // In Office = actively being worked (review → cleared/held), Finished =
+  // role dashboard shows: Upcoming = ordered/awaiting pickup by the workflow,
+  // Checked In = actively being worked (review → cleared/held), Completed =
   // dispensed/counseled/complete.
   const [queueFilter, setQueueFilter] = useState<'scheduled' | 'in_office' | 'finished'>('scheduled');
   // Which stat panel (header toggles) occupies the center instead of the Rx
@@ -857,9 +858,9 @@ export default function PharmacyDashboardPage() {
           // undispensed belongs in today's queue, not off the end of it.
           filterRowsByDate={false}
           tabs={[
-            { key: 'scheduled', label: 'Scheduled', count: scheduledLaneCount },
-            { key: 'in_office', label: 'In Office', count: inOfficeLaneCount },
-            { key: 'finished', label: 'Finished', count: dispensedCount },
+            { key: 'scheduled', label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, count: scheduledLaneCount },
+            { key: 'in_office', label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, count: inOfficeLaneCount },
+            { key: 'finished', label: APPOINTMENT_STATUS_GROUP_LABELS.finished, count: dispensedCount },
           ]}
           activeTab={queueFilter}
           onTabChange={(k) => setQueueFilter(k as typeof queueFilter)}

@@ -496,7 +496,7 @@ function DispenseConfirm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-2 rounded-lg text-sm font-medium"
+          className="flex-1 py-2 rounded-lg text-sm font-bold"
           style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}
         >
           {t('action.cancel')}

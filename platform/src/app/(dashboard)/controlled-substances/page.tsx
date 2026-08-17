@@ -199,7 +199,7 @@ export default function ControlledSubstancesPage() {
                 <tbody>
                   {movements.map(m => (
                     <tr key={m._id}>
-                      <td className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{m.medicationName}</td>
+                      <td className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{m.medicationName}</td>
                       <td>
                         <Badge tone="neutral" uppercase>Sch {m.schedule}</Badge>
                       </td>

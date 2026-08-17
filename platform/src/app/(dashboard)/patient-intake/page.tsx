@@ -290,7 +290,7 @@ export default function PatientIntakePage() {
                   key={tab.key}
                   type="button"
                   onClick={() => setActiveTab(tab.key)}
-                  className="w-full flex items-center justify-between gap-2 text-left text-[13px] font-medium rounded-lg px-3 py-2.5 mb-1"
+                  className="w-full flex items-center justify-between gap-2 text-left text-[13px] font-bold rounded-lg px-3 py-2.5 mb-1"
                   style={active
                     ? { background: 'var(--overlay-subtle)', color: 'var(--accent-primary)' }
                     : { color: 'var(--text-secondary)' }}

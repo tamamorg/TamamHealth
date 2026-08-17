@@ -10,6 +10,7 @@ import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/Ehr
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import Modal from '@/components/Modal';
+import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { LabResultDoc } from '@/lib/db-types';
 import {
   Microscope,
@@ -198,8 +199,8 @@ export default function LabDashboardPage() {
   const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date()), []);
   // Work-queue status filter (shell tabs) + inline search bound to the shell's
   // left rail. The tabs use the shared three-lane vocabulary every role
-  // dashboard shows: Scheduled = ordered/pending, In Office = on the bench
-  // (in progress), Finished = resulted.
+  // dashboard shows: Upcoming = ordered/pending, Checked In = on the bench
+  // (in progress), Completed = resulted.
   const [queueFilter, setQueueFilter] = useState<'scheduled' | 'in_office' | 'finished'>('scheduled');
   const [queueSearch, setQueueSearch] = useState('');
 
@@ -385,9 +386,9 @@ export default function LabDashboardPage() {
           greetingName={currentUser?.name}
           dateLabel={dateLabel}
           tabs={[
-            { key: 'scheduled', label: 'Scheduled', count: Math.min(scheduledMatches.length, LAB_QUEUE_ROW_CAP) },
-            { key: 'in_office', label: 'In Office', count: Math.min(inOfficeMatches.length, LAB_QUEUE_ROW_CAP) },
-            { key: 'finished', label: 'Finished', count: Math.min(finishedMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'scheduled', label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, count: Math.min(scheduledMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'in_office', label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, count: Math.min(inOfficeMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'finished', label: APPOINTMENT_STATUS_GROUP_LABELS.finished, count: Math.min(finishedMatches.length, LAB_QUEUE_ROW_CAP) },
           ]}
           activeTab={queueFilter}
           onTabChange={(k) => setQueueFilter(k as typeof queueFilter)}

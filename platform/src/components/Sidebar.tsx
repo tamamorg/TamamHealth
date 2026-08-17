@@ -366,7 +366,7 @@ export default function Sidebar() {
                       color: loc.code === locale ? 'var(--accent-primary)' : 'var(--text-primary)',
                     }}
                   >
-                    <span className="text-sm font-medium flex-1">{loc.nativeName}</span>
+                    <span className="text-sm font-semibold flex-1">{loc.nativeName}</span>
                     <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{loc.region || ''}</span>
                     {loc.code === locale && <Check className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--accent-primary)' }} />}
                   </button>

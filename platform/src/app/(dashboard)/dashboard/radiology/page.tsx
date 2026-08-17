@@ -6,6 +6,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { addPatientDocument } from '@/lib/services/patient-document-service';
+import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import {
   Upload, CheckCircle2, FileText, BarChart3, TrendingUp, Play, RotateCcw,
 } from '@/components/icons/lucide';
@@ -480,12 +481,12 @@ export default function RadiologyDashboard() {
         dateLabel={dateLabel}
         // The shared three-lane tabs every role dashboard shows, keyed by the
         // study's own status values so the worklist filter needs no mapping:
-        // Scheduled = ordered/pending, In Office = being imaged, Finished =
+        // Upcoming = ordered/pending, Checked In = being imaged, Completed =
         // reported. The stat tiles below keep an All escape hatch.
         tabs={[
-          { key: 'pending', label: 'Scheduled', count: stats.pending },
-          { key: 'in_progress', label: 'In Office', count: stats.inProgress },
-          { key: 'completed', label: 'Finished', count: stats.completed },
+          { key: 'pending', label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, count: stats.pending },
+          { key: 'in_progress', label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, count: stats.inProgress },
+          { key: 'completed', label: APPOINTMENT_STATUS_GROUP_LABELS.finished, count: stats.completed },
         ]}
         activeTab={filterStatus}
         onTabChange={setFilterStatus}
@@ -498,9 +499,9 @@ export default function RadiologyDashboard() {
         filterRowsByDate={false}
         filters={[
           { label: t('radiology.filter_all'), value: stats.total, active: filterStatus === 'all', onClick: () => setFilterStatus('all') },
-          { label: 'Scheduled', value: stats.pending, active: filterStatus === 'pending', onClick: () => setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending') },
-          { label: 'In Office', value: stats.inProgress, active: filterStatus === 'in_progress', onClick: () => setFilterStatus(filterStatus === 'in_progress' ? 'all' : 'in_progress') },
-          { label: 'Finished', value: stats.completed, active: filterStatus === 'completed', onClick: () => setFilterStatus(filterStatus === 'completed' ? 'all' : 'completed') },
+          { label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, value: stats.pending, active: filterStatus === 'pending', onClick: () => setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending') },
+          { label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, value: stats.inProgress, active: filterStatus === 'in_progress', onClick: () => setFilterStatus(filterStatus === 'in_progress' ? 'all' : 'in_progress') },
+          { label: APPOINTMENT_STATUS_GROUP_LABELS.finished, value: stats.completed, active: filterStatus === 'completed', onClick: () => setFilterStatus(filterStatus === 'completed' ? 'all' : 'completed') },
         ]}
         actions={[
           { label: t('radiology.byModality'), icon: BarChart3, onClick: () => togglePanel('modality'), active: centerPanel === 'modality', tone: centerPanel === 'modality' ? 'primary' : 'neutral' },

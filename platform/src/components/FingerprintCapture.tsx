@@ -101,7 +101,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
 
   return (
     <div className="border-t pt-4" style={{ borderColor: 'var(--border-light)' }}>
-      <h4 className="text-sm font-medium mb-1 flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+      <h4 className="text-sm font-semibold mb-1 flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
         <ScanLine className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
         {t('fingerprint.sectionTitle')}
       </h4>
@@ -168,12 +168,12 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
               {value.map(c => (
                 <span
                   key={c.finger}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-md"
                   style={{ background: 'rgba(34,197,94,0.10)', color: '#15803d', border: '1px solid rgba(34,197,94,0.25)' }}
                 >
                   <Check className="w-3 h-3" />
                   {t(FINGER_OPTIONS.find(o => o.value === c.finger)?.labelKey || c.finger)}
-                  <span style={{ opacity: 0.75 }}>{t('fingerprint.qualityShort', { value: c.quality })}</span>
+                  <span>{t('fingerprint.qualityShort', { value: c.quality })}</span>
                   <button type="button" onClick={() => removeCapture(c.finger)} title={t('fingerprint.remove')} className="hover:opacity-70">
                     <X className="w-3 h-3" />
                   </button>

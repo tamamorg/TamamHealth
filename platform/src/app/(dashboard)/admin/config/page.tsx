@@ -1,270 +1,276 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
-import { SaPage, SaCard, SaStatusDot } from '@/components/admin/sa-ui';
+import {
+  SadbPage, SadbShell, useSadbTab, SadbPanelHeader, SadbSettingGroup, SadbSettingRow,
+  SadbToggle, SadbSaveBar, SadbCard, SadbKvRow, SadbHeadLink,
+} from '@/components/admin/sadb-ui';
 import { Building2, Server, ShieldAlert, Shield, MessageSquare } from '@/components/icons/lucide';
-import { Save, ToggleLeft, ToggleRight } from '@/components/icons/lucide';
+import type { PlatformConfigDoc } from '@/lib/db-types';
 
-const inputStyle: React.CSSProperties = {
-  height: 34, padding: '0 10px', border: '1px solid var(--ehr-border)', borderRadius: 8,
-  fontSize: 12.5, color: 'var(--text-primary)', width: '100%',
-};
-const labelStyle: React.CSSProperties = {
-  fontSize: 10, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
-  color: 'var(--text-muted)', marginBottom: 6, display: 'block',
-};
+/** One flat draft covering every editable field across the identity,
+ *  tenant-defaults, and maintenance sections — so the whole page shares a
+ *  single dirty-state and a single save bar instead of three. */
+interface ConfigDraft {
+  platformName: string;
+  defaultPrimaryColor: string;
+  defaultSecondaryColor: string;
+  trialDays: number;
+  maxOrganizations: number;
+  signupsEnabled: boolean;
+  maintenanceMode: boolean;
+}
+
+function draftFromConfig(config: PlatformConfigDoc): ConfigDraft {
+  return {
+    platformName: config.platformName,
+    defaultPrimaryColor: config.defaultPrimaryColor,
+    defaultSecondaryColor: config.defaultSecondaryColor,
+    trialDays: config.globalFeatureFlags.trialDays,
+    maxOrganizations: config.globalFeatureFlags.maxOrganizations,
+    signupsEnabled: config.globalFeatureFlags.signupsEnabled,
+    maintenanceMode: config.maintenanceMode,
+  };
+}
+
+function diffCount(draft: ConfigDraft | null, base: ConfigDraft | null, keys: (keyof ConfigDraft)[]): number {
+  if (!draft || !base) return 0;
+  return keys.reduce((n, k) => n + (draft[k] !== base[k] ? 1 : 0), 0);
+}
+
+const IDENTITY_KEYS: (keyof ConfigDraft)[] = ['platformName', 'defaultPrimaryColor', 'defaultSecondaryColor'];
+const DEFAULTS_KEYS: (keyof ConfigDraft)[] = ['trialDays', 'maxOrganizations', 'signupsEnabled'];
+const MAINTENANCE_KEYS: (keyof ConfigDraft)[] = ['maintenanceMode'];
+
+/** Native color swatch + hex field; the text half uses the kit's modal-input
+ *  style (there is no dedicated sadb color-swatch control — see report). */
+function ColorField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center gap-2" style={{ maxWidth: 220 }}>
+      <input
+        type="color"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{ width: 32, height: 32, border: '1px solid var(--border-light)', borderRadius: 6, cursor: 'pointer', padding: 0, flexShrink: 0 }}
+      />
+      <input
+        className="sadb-modal-input"
+        style={{ fontFamily: 'var(--font-platform-mono)' }}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
 
 export default function AdminConfigPage() {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const { config, loading, update } = usePlatformConfig();
+  const { config, update } = usePlatformConfig();
 
-  const [platformName, setPlatformName] = useState('');
-  const [defaultPrimaryColor, setDefaultPrimaryColor] = useState('var(--accent-primary)');
-  const [defaultSecondaryColor, setDefaultSecondaryColor] = useState('var(--accent-hover)');
-  const [savingIdentity, setSavingIdentity] = useState(false);
+  const [activeTab, setActiveTab] = useSadbTab('identity');
+  const [draft, setDraft] = useState<ConfigDraft | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const [trialDays, setTrialDays] = useState(30);
-  const [maxOrganizations, setMaxOrganizations] = useState(100);
-  const [signupsEnabled, setSignupsEnabled] = useState(true);
-  const [savingTenantDefaults, setSavingTenantDefaults] = useState(false);
+  const configDraft = config ? draftFromConfig(config) : null;
+  const identityDirty = diffCount(draft, configDraft, IDENTITY_KEYS);
+  const defaultsDirty = diffCount(draft, configDraft, DEFAULTS_KEYS);
+  const maintenanceDirty = diffCount(draft, configDraft, MAINTENANCE_KEYS);
+  const dirtyCount = identityDirty + defaultsDirty + maintenanceDirty;
 
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [savingMaintenance, setSavingMaintenance] = useState(false);
-
+  // Dirty-guard: only reseed the draft from config while nothing is pending,
+  // so a background config refresh (another admin's edit, a poll) can never
+  // clobber a form the user is mid-editing.
   useEffect(() => {
-    if (!config) return;
-    setPlatformName(config.platformName);
-    setDefaultPrimaryColor(config.defaultPrimaryColor);
-    setDefaultSecondaryColor(config.defaultSecondaryColor);
-    setTrialDays(config.globalFeatureFlags.trialDays);
-    setMaxOrganizations(config.globalFeatureFlags.maxOrganizations);
-    setSignupsEnabled(config.globalFeatureFlags.signupsEnabled);
-    setMaintenanceMode(config.maintenanceMode);
-  }, [config]);
+    if (!config || dirtyCount > 0) return;
+    setDraft(draftFromConfig(config));
+  }, [config, dirtyCount]);
+
+  const setField = <K extends keyof ConfigDraft>(key: K, value: ConfigDraft[K]) => {
+    setDraft(d => (d ? { ...d, [key]: value } : d));
+  };
 
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
   const policies = config?.superAdminPolicies;
 
-  const saveIdentity = async () => {
-    setSavingIdentity(true);
-    try {
-      await update({ platformName, defaultPrimaryColor, defaultSecondaryColor }, currentUser?._id, currentUser?.username);
-      showToast('Platform identity saved.', 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to save.', 'error');
-    } finally {
-      setSavingIdentity(false);
-    }
-  };
-
-  const saveTenantDefaults = async () => {
-    setSavingTenantDefaults(true);
+  const handleSave = async () => {
+    if (!draft) return;
+    setSaving(true);
     try {
       await update({
-        globalFeatureFlags: { trialDays, maxOrganizations, signupsEnabled },
+        platformName: draft.platformName,
+        defaultPrimaryColor: draft.defaultPrimaryColor,
+        defaultSecondaryColor: draft.defaultSecondaryColor,
+        globalFeatureFlags: {
+          trialDays: draft.trialDays,
+          maxOrganizations: draft.maxOrganizations,
+          signupsEnabled: draft.signupsEnabled,
+        },
+        maintenanceMode: draft.maintenanceMode,
       }, currentUser?._id, currentUser?.username);
-      showToast('Tenant defaults saved.', 'success');
+      showToast('Platform configuration saved.', 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to save.', 'error');
+      showToast(err instanceof Error ? err.message : 'Failed to save configuration.', 'error');
     } finally {
-      setSavingTenantDefaults(false);
+      setSaving(false);
     }
   };
 
-  const saveMaintenance = async (next?: boolean) => {
-    const value = next ?? maintenanceMode;
-    setSavingMaintenance(true);
-    try {
-      await update({ maintenanceMode: value }, currentUser?._id, currentUser?.username);
-      showToast(value ? 'Maintenance mode enabled.' : 'Maintenance mode disabled.', 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to save.', 'error');
-    } finally {
-      setSavingMaintenance(false);
-    }
+  const handleDiscard = () => {
+    if (!config) return;
+    setDraft(draftFromConfig(config));
   };
 
-  // Five distinct topics rather than one list — rendered one at a time from an
-  // in-page rail (same shell as the System Administration console). Switching
-  // is local state only: the URL never changes.
-  const CONFIG_SECTIONS = [
-    { id: 'identity', label: 'Platform identity', icon: Building2 },
-    { id: 'defaults', label: 'Tenant defaults', icon: Server },
-    { id: 'maintenance', label: 'Maintenance', icon: ShieldAlert },
-    { id: 'security', label: 'Security policy defaults', icon: Shield },
-    { id: 'templates', label: 'Notification templates', icon: MessageSquare },
-  ] as const;
-  const [section, setSection] = useState<typeof CONFIG_SECTIONS[number]['id']>('identity');
+  const railGroups = [{
+    title: 'Configuration',
+    items: [
+      { id: 'identity', label: 'Platform identity', icon: Building2, count: identityDirty || undefined },
+      { id: 'defaults', label: 'Tenant defaults', icon: Server, count: defaultsDirty || undefined },
+      { id: 'maintenance', label: 'Maintenance', icon: ShieldAlert, count: maintenanceDirty || undefined },
+      { id: 'security', label: 'Security policy defaults', icon: Shield },
+      { id: 'templates', label: 'Notification templates', icon: MessageSquare },
+    ],
+  }];
 
   return (
-    <SaPage>
-      <div className="ehr-set-grid">
-        <aside className="ehr-set-rail">
-          <nav className="ehr-set-nav" aria-label="Configuration sections">
-            <div className="ehr-set-nav-group">
-              <span className="ehr-set-nav-group-title">Configuration</span>
-              {CONFIG_SECTIONS.map(item => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={section === item.id ? 'active' : undefined}
-                    onClick={() => setSection(item.id)}
-                  >
-                    <Icon />
-                    <em>{item.label}</em>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-        </aside>
-        <main className="ehr-set-main">
+    <SadbPage>
+      <SadbShell groups={railGroups} active={activeTab} onSelect={setActiveTab}>
+        <SadbSaveBar dirtyCount={dirtyCount} saving={saving} onSave={handleSave} onDiscard={handleDiscard} />
 
-        {section === 'identity' && (
-        <SaCard title="Platform identity">
-          {loading ? (
-            <p className="sa-empty">Loading…</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBlock: 12 }}>
-              <div>
-                <label style={labelStyle}>Platform name</label>
-                <input type="text" value={platformName} onChange={e => setPlatformName(e.target.value)} style={inputStyle} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={labelStyle}>Default primary color</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input type="color" value={defaultPrimaryColor} onChange={e => setDefaultPrimaryColor(e.target.value)}
-                      style={{ width: 34, height: 34, border: '1px solid var(--ehr-border)', borderRadius: 8, cursor: 'pointer', padding: 0 }} />
-                    <input type="text" value={defaultPrimaryColor} onChange={e => setDefaultPrimaryColor(e.target.value)}
-                      style={{ ...inputStyle, fontFamily: 'var(--font-platform-mono)' }} />
-                  </div>
-                </div>
-                <div>
-                  <label style={labelStyle}>Default secondary color</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input type="color" value={defaultSecondaryColor} onChange={e => setDefaultSecondaryColor(e.target.value)}
-                      style={{ width: 34, height: 34, border: '1px solid var(--ehr-border)', borderRadius: 8, cursor: 'pointer', padding: 0 }} />
-                    <input type="text" value={defaultSecondaryColor} onChange={e => setDefaultSecondaryColor(e.target.value)}
-                      style={{ ...inputStyle, fontFamily: 'var(--font-platform-mono)' }} />
-                  </div>
-                </div>
-              </div>
-              <button type="button" className="sa-btn primary" onClick={saveIdentity} disabled={savingIdentity} style={{ alignSelf: 'flex-start' }}>
-                <Save className="w-3.5 h-3.5" /> {savingIdentity ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          )}
-        </SaCard>
-        )}
+        {!config || !draft ? (
+          <SadbCard><p className="sadb-empty">Loading configuration…</p></SadbCard>
+        ) : (
+          <>
+            {activeTab === 'identity' && (
+              <>
+                <SadbPanelHeader
+                  title="Platform identity"
+                  note="Name and default brand colors shown across the platform shell and applied to new tenants."
+                />
+                <SadbSettingGroup title="Branding">
+                  <SadbSettingRow label="Platform name" sub="Shown in the app header and browser tab.">
+                    <input
+                      className="sadb-modal-input"
+                      style={{ maxWidth: 260 }}
+                      value={draft.platformName}
+                      onChange={e => setField('platformName', e.target.value)}
+                    />
+                  </SadbSettingRow>
+                  <SadbSettingRow label="Default primary color" sub="Applied to new tenants unless they set their own.">
+                    <ColorField value={draft.defaultPrimaryColor} onChange={v => setField('defaultPrimaryColor', v)} />
+                  </SadbSettingRow>
+                  <SadbSettingRow label="Default secondary color" sub="Applied to new tenants unless they set their own.">
+                    <ColorField value={draft.defaultSecondaryColor} onChange={v => setField('defaultSecondaryColor', v)} />
+                  </SadbSettingRow>
+                </SadbSettingGroup>
+              </>
+            )}
 
-        {section === 'defaults' && (
-        <SaCard title="Tenant defaults">
-          {loading ? (
-            <p className="sa-empty">Loading…</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBlock: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={labelStyle}>Trial days</label>
-                  <input type="number" min={1} max={365} value={trialDays}
-                    onChange={e => setTrialDays(parseInt(e.target.value) || 1)} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Max organizations</label>
-                  <input type="number" min={1} value={maxOrganizations}
-                    onChange={e => setMaxOrganizations(parseInt(e.target.value) || 1)} style={inputStyle} />
-                </div>
-              </div>
-              <div className="sa-policy-row" style={{ padding: 0, border: 0 }}>
-                <span className="sa-policy-text">
-                  <strong>New signups enabled</strong>
-                  <span>Allow new organizations to self-register a trial.</span>
-                </span>
-                <button type="button" onClick={() => setSignupsEnabled(v => !v)} aria-pressed={signupsEnabled}>
-                  {signupsEnabled ? (
-                    <ToggleRight className="w-8 h-8" style={{ color: 'var(--color-success)' }} />
-                  ) : (
-                    <ToggleLeft className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
+            {activeTab === 'defaults' && (
+              <>
+                <SadbPanelHeader
+                  title="Tenant defaults"
+                  note="Trial length, capacity ceiling, and self-service signup applied to every new organization."
+                />
+                <SadbSettingGroup title="Trial & capacity">
+                  <SadbSettingRow label="Trial days" sub="Length of the free trial period for new organizations.">
+                    <input
+                      type="number" min={1} max={365}
+                      className="sadb-modal-input" style={{ maxWidth: 120 }}
+                      value={draft.trialDays}
+                      onChange={e => setField('trialDays', parseInt(e.target.value, 10) || 1)}
+                    />
+                  </SadbSettingRow>
+                  <SadbSettingRow label="Max organizations" sub="Platform-wide ceiling on the number of tenant organizations.">
+                    <input
+                      type="number" min={1}
+                      className="sadb-modal-input" style={{ maxWidth: 120 }}
+                      value={draft.maxOrganizations}
+                      onChange={e => setField('maxOrganizations', parseInt(e.target.value, 10) || 1)}
+                    />
+                  </SadbSettingRow>
+                  <SadbSettingRow label="New signups enabled" sub="Allow new organizations to self-register a trial.">
+                    <SadbToggle
+                      checked={draft.signupsEnabled}
+                      onChange={v => setField('signupsEnabled', v)}
+                      label="New signups enabled"
+                    />
+                  </SadbSettingRow>
+                </SadbSettingGroup>
+              </>
+            )}
+
+            {activeTab === 'maintenance' && (
+              <>
+                <SadbPanelHeader
+                  title="Maintenance"
+                  note="Platform-wide sign-in gate. Only super admins can reach the app while this is on."
+                  tag={config.maintenanceMode ? 'Live now' : 'Operational'}
+                  tagTone={config.maintenanceMode ? 'red' : 'green'}
+                />
+                <SadbSettingGroup title="Sign-in gate">
+                  <SadbSettingRow label="Maintenance mode" sub="When on, only super admins can sign in — all other roles see a maintenance notice.">
+                    <SadbToggle
+                      checked={draft.maintenanceMode}
+                      onChange={v => setField('maintenanceMode', v)}
+                      label="Maintenance mode"
+                    />
+                  </SadbSettingRow>
+                  {draft.maintenanceMode && (
+                    <div className="sadb-signal sadb-signal--yellow" style={{ margin: '0 16px 14px' }}>
+                      <b>{config.maintenanceMode ? 'Maintenance mode is live' : 'This will restrict tenant access'}</b>
+                      <span>
+                        {config.maintenanceMode
+                          ? 'Only super admins can sign in right now — all other roles see a maintenance notice.'
+                          : 'Saving turns this on immediately: all non-super-admin roles will be signed out of new sessions.'}
+                      </span>
+                    </div>
                   )}
-                </button>
-              </div>
-              <button type="button" className="sa-btn primary" onClick={saveTenantDefaults} disabled={savingTenantDefaults} style={{ alignSelf: 'flex-start' }}>
-                <Save className="w-3.5 h-3.5" /> {savingTenantDefaults ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          )}
-        </SaCard>
-        )}
+                  <SadbKvRow label="Build version" value={appVersion} />
+                </SadbSettingGroup>
+              </>
+            )}
 
-        {section === 'maintenance' && (
-        <SaCard title="Maintenance">
-          {loading ? (
-            <p className="sa-empty">Loading…</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBlock: 12 }}>
-              <div className="sa-policy-row" style={{ padding: 0, border: 0 }}>
-                <span className="sa-policy-text">
-                  <strong>Maintenance mode</strong>
-                  <span>When on, only super admins can sign in — all other roles see a maintenance notice.</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => { const next = !maintenanceMode; setMaintenanceMode(next); saveMaintenance(next); }}
-                  disabled={savingMaintenance}
-                  aria-pressed={maintenanceMode}
-                >
-                  {maintenanceMode ? (
-                    <ToggleRight className="w-8 h-8" style={{ color: 'var(--color-danger)' }} />
+            {activeTab === 'security' && (
+              <>
+                <SadbPanelHeader
+                  title="Security policy defaults"
+                  note="Configured from Security & Compliance — this page shows the current values only."
+                  tag="Read-only"
+                />
+                <SadbCard action={<SadbHeadLink onClick={() => router.push('/admin/security')}>Edit in Security &amp; Compliance</SadbHeadLink>}>
+                  {!policies ? (
+                    <p className="sadb-empty">Loading…</p>
                   ) : (
-                    <ToggleLeft className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
+                    <>
+                      <SadbKvRow label="MFA required" value={policies.mfaRequired ? 'Yes' : 'No'} />
+                      <SadbKvRow label="Password minimum length" value={policies.passwordMinLength} />
+                      <SadbKvRow label="Session timeout" value={`${policies.sessionTimeoutMinutes}m`} />
+                      <SadbKvRow label="Dual approval for high-risk actions" value={policies.dualApprovalForHighRisk ? 'Yes' : 'No'} />
+                      <SadbKvRow label="Audit retention" value={`${policies.auditRetentionYears}y`} />
+                      <SadbKvRow label="SSO enabled" value={policies.ssoEnabled ? 'Yes' : 'No'} />
+                    </>
                   )}
-                </button>
-              </div>
-              <SaStatusDot tone={maintenanceMode ? 'danger' : 'ok'} label={maintenanceMode ? 'Platform in maintenance' : 'Platform operational'} />
-              <div className="sa-kv-row" style={{ borderTop: '1px solid var(--border-light)', paddingTop: 8 }}>
-                <span>Build version</span>
-                <span>{appVersion}</span>
-              </div>
-            </div>
-          )}
-        </SaCard>
-        )}
+                </SadbCard>
+              </>
+            )}
 
-        {section === 'security' && (
-        <SaCard title="Security policy defaults" meta="Read-only" actions={
-          <Link href="/admin/security" className="sa-btn">Edit in Security &amp; Compliance</Link>
-        }>
-          {!policies ? (
-            <p className="sa-empty">Loading…</p>
-          ) : (
-            <div className="sa-kv">
-              <div className="sa-kv-row"><span>MFA required</span><span>{policies.mfaRequired ? 'Yes' : 'No'}</span></div>
-              <div className="sa-kv-row"><span>Password minimum length</span><span>{policies.passwordMinLength}</span></div>
-              <div className="sa-kv-row"><span>Session timeout</span><span>{policies.sessionTimeoutMinutes}m</span></div>
-              <div className="sa-kv-row"><span>Dual approval for high-risk actions</span><span>{policies.dualApprovalForHighRisk ? 'Yes' : 'No'}</span></div>
-              <div className="sa-kv-row"><span>Audit retention</span><span>{policies.auditRetentionYears}y</span></div>
-              <div className="sa-kv-row"><span>SSO enabled</span><span>{policies.ssoEnabled ? 'Yes' : 'No'}</span></div>
-            </div>
-          )}
-        </SaCard>
+            {activeTab === 'templates' && (
+              <>
+                <SadbPanelHeader title="Notification templates" note="Copy used for platform email and SMS notifications." />
+                <SadbCard>
+                  <p className="sadb-empty">No template store configured — email and SMS notifications use built-in copy.</p>
+                </SadbCard>
+              </>
+            )}
+          </>
         )}
-
-        {section === 'templates' && (
-        <SaCard title="Notification templates">
-          <p className="sa-empty">No template store configured — email/SMS notifications use built-in copy.</p>
-        </SaCard>
-        )}
-
-        </main>
-      </div>
-    </SaPage>
+      </SadbShell>
+    </SadbPage>
   );
 }

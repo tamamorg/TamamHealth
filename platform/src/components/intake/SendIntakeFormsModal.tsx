@@ -262,7 +262,7 @@ export default function SendIntakeFormsModal({ onClose }: { onClose: () => void 
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--overlay-subtle)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <span className="font-medium">{(p.surname || '').toUpperCase()}, {p.firstName}</span>
+                      <span className="font-semibold">{(p.surname || '').toUpperCase()}, {p.firstName}</span>
                       <span style={{ color: 'var(--text-muted)' }}> ({formatDate(p.dateOfBirth)} · {patientGenderAge(p)})</span>
                     </button>
                   ))}
@@ -279,7 +279,7 @@ export default function SendIntakeFormsModal({ onClose }: { onClose: () => void 
                 {sendForms.map(f => (
                   <span
                     key={f}
-                    className="inline-flex items-center gap-1 text-[12px] font-medium rounded-full px-2.5 py-1"
+                    className="inline-flex items-center gap-1 text-[12px] font-semibold rounded-full px-2.5 py-1"
                     style={{ background: 'var(--overlay-subtle)', color: 'var(--accent-primary)' }}
                   >
                     {f}

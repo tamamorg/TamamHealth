@@ -345,7 +345,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                 const flagged = Boolean(getVitalFlags(vitalsDraft)[field.key]);
                 return (
                   <label key={field.key} className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                    <span className="flex justify-between gap-2 mb-1"><span>{field.label}</span><span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{field.unit}</span></span>
+                    <span className="flex justify-between gap-2 mb-1"><span>{field.label}</span><span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{field.unit}</span></span>
                     <input
                       type="number"
                       inputMode="decimal"

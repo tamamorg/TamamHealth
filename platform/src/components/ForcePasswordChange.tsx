@@ -137,7 +137,7 @@ export default function ForcePasswordChange({
         </button>
         <button
           onClick={onLogout}
-          className="w-full mt-2 text-xs font-medium py-2"
+          className="w-full mt-2 text-xs font-bold py-2"
           style={{ color: 'var(--text-muted)' }}
         >
           Sign out instead
@@ -162,7 +162,7 @@ function PasswordField({
   const visible = show || reveal;
   return (
     <div>
-      <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+      <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
         {label}
       </label>
       <div className="relative">

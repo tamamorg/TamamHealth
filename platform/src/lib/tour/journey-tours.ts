@@ -51,87 +51,62 @@ const finishStep = (route: string): TourStep => ({
 });
 
 // ── Nursing (nurse, midwife, triage/rooming nurse) — USER-JOURNEYS §5 ──────
+// The standalone nurse station is retired: nurse-family roles now land on the
+// same shared clinical workspace as doctors (/dashboard, rendered by
+// NurseHomeView — see components/dashboards/NurseHomeView.tsx), so every step
+// below is anchored to a route + selector that actually exists in that shell.
+// Triage (/triage/[patientId]) and rooming (/rooming/[patientId]) both take a
+// real patient id, so there is no generic route to script a click through —
+// that step describes the flow narratively instead of inventing a selector.
+// Same reasoning for MAR (/wards/mar/[admissionId]): reached per admission
+// from the "Medications due" outstanding entry, not from a static control on
+// the ward board.
 const NURSE_STEPS: TourStep[] = [
   {
     id: 'welcome',
-    route: '/dashboard/nurse',
+    route: '/dashboard',
     target: '.ehr-care-greeting',
-    title: 'Welcome to your Nurse Station',
-    body: 'Let’s walk your shift end to end: triage, the ward board, medication rounds, and handoff. Use Back and Next, or skip anytime.',
+    title: 'Welcome to your clinical workspace',
+    body: 'Let’s walk your shift end to end: your worklist, triage and rooming, the ward board, medication rounds, and handoff. Use Back and Next, or skip anytime.',
     placement: 'bottom',
   },
   {
-    id: 'station-tabs',
-    route: '/dashboard/nurse',
-    target: '[data-tour="station-tabs"]',
-    placement: 'bottom',
-    title: 'One station, four jobs',
-    body: 'Ward, MAR, Triage, and Handoff live as tabs of this station — everything a shift needs without leaving the page.',
+    id: 'worklist',
+    route: '/dashboard',
+    target: '.ehr-appointment-list',
+    title: 'Your worklist',
+    body: 'Today’s ward roster and anyone still moving through rooming, in one list. Click a row to open that patient’s chart.',
+    placement: 'top',
   },
   {
-    id: 'triage',
-    // Triage is a station on the canonical nurse dashboard. Navigating to the
-    // legacy /dashboard/nurse/triage redirect made the tour push that route
-    // again every time Next.js returned to /dashboard/nurse, leaving the app
-    // in an endless pending-navigation state.
-    route: '/dashboard/nurse',
-    target: '[data-tour="triage-form"]',
-    preClickSelector: '[data-tour-tab="triage"]',
-    placement: 'right',
-    title: 'Triage — ETAT assessment',
-    body: 'Walk-ins arrive here as pending from check-in. Record the chief complaint, ETAT ABCC (Airway, Breathing, Circulation, Consciousness), and full vitals — the RED / YELLOW / GREEN priority derives automatically from the danger signs.',
-  },
-  {
-    id: 'triage-disposition',
-    route: '/dashboard/nurse',
-    target: '[data-tour="triage-recent"]',
-    preClickSelector: '[data-tour-tab="triage"]',
+    id: 'dash-outstanding',
+    route: '/dashboard',
+    target: '.ehr-outstanding-card',
+    title: 'Outstanding items',
+    body: 'Medications due, handoffs waiting on your acknowledgement, the rooming queue, and follow-ups due — each opens straight to the patient or the tool that clears it.',
     placement: 'left',
-    title: 'Disposition from Recent Triages',
-    body: 'From the recent list, move each patient along: pending → seen, admitted, referred, or discharged. Edits reuse the same record so the audit trail stays intact.',
+  },
+  {
+    id: 'triage-rooming',
+    route: '/dashboard',
+    target: '',
+    title: 'Triage and rooming',
+    body: 'New arrivals show up in the Rooming queue on the outstanding rail. A patient who hasn’t been triaged yet opens straight into Triage — ETAT ABCC (Airway, Breathing, Circulation, Consciousness) and vitals, with RED / YELLOW / GREEN priority calculated automatically. Once triaged, “Continue rooming” walks them through room assignment and rooming vitals until they’re marked ready — that’s what moves them onto the clinician’s worklist.',
   },
   {
     id: 'ward-board',
-    route: '/dashboard/nurse',
-    target: '[data-tour="ward-board"]',
-    preClickSelector: '[data-tour-tab="ward"]',
-    placement: 'top',
-    title: 'The ward board',
-    body: 'Your acuity-sorted roster — critical patients first, with location and status chips. Row actions: quick Vitals (persists a real vitals record visible on chart trends), re-Triage, and Assign doctor.',
-  },
-  {
-    id: 'mar',
-    route: '/dashboard/nurse',
-    target: '[data-tour="mar-board"]',
-    preClickSelector: '[data-tour-tab="mar"]',
-    placement: 'top',
-    title: 'Medication rounds (MAR)',
-    body: 'Every scheduled dose across your patients, flagged overdue / due / upcoming / given (overdue = more than 1 hour past). Quick-mark “Given”, or open the detail modal for dose, route, witness, and notes — Undo voids append-only.',
-  },
-  {
-    id: 'mar-bedside',
-    route: '/dashboard/nurse',
+    route: '/wards',
     target: '',
-    title: 'Bedside time-grid',
-    body: 'Each admission also has a printable meds × dose-times grid (Wards → admission → MAR): record GIVEN / MISSED / REFUSED / HELD per cell — non-given needs a reason, controlled drugs need a witness.',
-  },
-  {
-    id: 'rooming',
-    route: '/dashboard/nurse',
-    target: '[data-tour="station-tabs"]',
-    preClickSelector: '[data-tour-tab="rooming"]',
-    placement: 'bottom',
-    title: 'Rooming',
-    body: 'The step between triage and the clinician. Acknowledge the patient reached the clinic, put them in a room, take rooming vitals, then mark them ready — each action moves the encounter, so the clinician\u2019s worklist updates on its own. Longest wait sits at the top.',
+    title: 'The ward board',
+    body: 'Your admitted patients, sorted by ward, with diagnosis and severity. Admit a new patient or discharge one from here; occupancy stats sit at the top. Each admission also has its own bedside medication record (the printable time-grid MAR) — reached per admission from the Medications due card on your dashboard.',
   },
   {
     id: 'handoff',
-    route: '/dashboard/nurse',
+    route: '/wards/handoff',
     target: '[data-tour="handoff-sbar"]',
-    preClickSelector: '[data-tour="start-handoff"]',
     placement: 'top',
     title: 'Shift handoff',
-    body: 'The shift auto-detects (day/evening/night). Write a per-patient SBAR for your critical patients, check the shift KPIs, then Sign off — the oncoming nurse acknowledges your handoff.',
+    body: 'The shift auto-detects (day/evening/night). Write a per-patient SBAR for your critical patients, check the shift KPIs, then Sign off — the oncoming nurse acknowledges your handoff from here too.',
   },
   {
     id: 'anc',
@@ -147,15 +122,9 @@ const NURSE_STEPS: TourStep[] = [
     title: 'Immunizations & defaulters',
     body: 'Record doses against each child’s schedule, and work the Defaulters tab — overdue doses can be recalled by SMS to the caregiver, per row or in bulk.',
   },
-  {
-    ...searchStep('/dashboard/nurse'),
-    // Leave the tour-created handoff dialog before spotlighting the dashboard
-    // search. The selector is scoped to that dialog and does not touch any
-    // other modal in the application.
-    preClickSelector: '[data-tour="handoff-sbar"] .ehr-handoff-close',
-  },
-  messagingStep('/dashboard/nurse'),
-  finishStep('/dashboard/nurse'),
+  searchStep('/dashboard'),
+  messagingStep('/dashboard'),
+  finishStep('/dashboard'),
 ];
 
 // ── Laboratory (lab_tech) — §7.1 ───────────────────────────────────────────

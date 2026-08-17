@@ -17,9 +17,11 @@ export default function PatientRoomingPage() {
   const patientId = String(params?.patientId || '');
   const { patients, loading } = usePatients();
   const patient = useMemo(() => patients.find(item => item._id === patientId) || null, [patients, patientId]);
-  const backTarget = currentUser && getRoleConfig(currentUser.role)?.allowedRoutes?.some(route => '/dashboard/nurse'.startsWith(route))
-    ? '/dashboard/nurse?station=rooming'
-    : '/dashboard/nurse';
+  // The standalone nurse station is retired — everyone lands back on their
+  // own role's default dashboard, now the shared clinical workspace.
+  const backTarget = currentUser
+    ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
+    : '/dashboard';
 
   if (loading || !patient) {
     return (

@@ -151,7 +151,7 @@ const inputStyle = { background: 'var(--overlay-subtle)', border: '1px solid var
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</label>
+      <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</label>
       {children}
     </div>
   );

@@ -200,7 +200,7 @@ export default function DHIS2ExportPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors"
+              className="flex items-center gap-2 px-4 py-3 text-sm font-bold whitespace-nowrap transition-colors"
               style={{
                 color: activeTab === tab.id ? 'var(--accent-primary)' : 'var(--text-muted)',
                 borderBottom: activeTab === tab.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
@@ -218,7 +218,7 @@ export default function DHIS2ExportPage() {
             {!snapshotValues ? (
               <div className="text-center py-12">
                 <Database className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No sync has run yet</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>No sync has run yet</p>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                   Press “{t('dhis2.syncNow')}” to generate the current dataset and push it to DHIS2 — the real data elements will appear here.
                 </p>
@@ -245,7 +245,7 @@ export default function DHIS2ExportPage() {
                     }}
                   >
                     <div className="flex items-center gap-2 mb-1 sm:mb-0">
-                      <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                      <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
                         {de.dataElement.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
                       </span>
                     </div>
@@ -303,7 +303,7 @@ export default function DHIS2ExportPage() {
                   <div className="flex items-center gap-2 mt-3">
                     <button
                       onClick={() => setActiveTab('aggregate')}
-                      className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
+                      className="text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
                       style={{
                         background: 'var(--accent-light)',
                         color: 'var(--accent-primary)',
@@ -315,7 +315,7 @@ export default function DHIS2ExportPage() {
                     <button
                       onClick={handleSync}
                       disabled={syncing}
-                      className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      className="text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                       style={{
                         background: 'rgba(16,185,68,0.08)',
                         color: 'var(--color-success-text)',
@@ -357,7 +357,7 @@ export default function DHIS2ExportPage() {
                       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.label}</span>
                     </div>
                     <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{item.value}</p>
-                    <p className="text-[10px] font-medium mt-1" style={{ color: item.color }}>{t('dhis2.mapsToDhis2')}</p>
+                    <p className="text-[10px] font-bold mt-1" style={{ color: item.color }}>{t('dhis2.mapsToDhis2')}</p>
                   </div>
                 ))}
               </div>
@@ -384,7 +384,7 @@ export default function DHIS2ExportPage() {
               <h3 className="font-semibold text-sm mb-4">{t('dhis2.exportConfiguration')}</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('dhis2.reportingPeriod')}</label>
+                  <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('dhis2.reportingPeriod')}</label>
                   <input
                     type="month"
                     value={period}
@@ -394,7 +394,7 @@ export default function DHIS2ExportPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('dhis2.aggregationLevel')}</label>
+                  <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('dhis2.aggregationLevel')}</label>
                   <Select
                     value={exportLevel}
                     onChange={e => setExportLevel(e.target.value as typeof exportLevel)}
@@ -410,7 +410,7 @@ export default function DHIS2ExportPage() {
                   <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>{t('dhis2.tierHelp')}</p>
                 </div>
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider mb-2 block" style={{ color: 'var(--text-muted)' }}>{t('dhis2.dataElementsIncluded')}</label>
+                  <label className="text-xs font-bold uppercase tracking-wider mb-2 block" style={{ color: 'var(--text-muted)' }}>{t('dhis2.dataElementsIncluded')}</label>
                   <div className="space-y-1.5">
                     {[
                       t('dhis2.includePopulationHealth'),
@@ -444,7 +444,7 @@ export default function DHIS2ExportPage() {
                     <span className="font-semibold text-sm">JSON</span>
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('dhis2.jsonDesc')}</p>
-                  <div className="mt-3 flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--accent-primary)' }}>
+                  <div className="mt-3 flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
                     {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                     {t('dhis2.downloadJson')}
                   </div>
@@ -460,7 +460,7 @@ export default function DHIS2ExportPage() {
                     <span className="font-semibold text-sm">CSV</span>
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('dhis2.csvDesc')}</p>
-                  <div className="mt-3 flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--color-success-text)' }}>
+                  <div className="mt-3 flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--color-success-text)' }}>
                     {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                     {t('dhis2.downloadCsv')}
                   </div>

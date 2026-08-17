@@ -166,7 +166,7 @@ export default function ConditionsSection({
             <tbody>
               {ordered.map(p => (
                 <tr key={p._id}>
-                  <td style={{ fontWeight: 600 }}>{p.name}{p.icd11Code ? <span style={{ color: 'var(--ehr-muted, #8395A8)', fontWeight: 400 }}> · {p.icd11Code}</span> : null}</td>
+                  <td style={{ fontWeight: 600 }}>{p.name}{p.icd11Code ? <span style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400 }}> · {p.icd11Code}</span> : null}</td>
                   <td>{p.onsetDate ? formatDate(p.onsetDate) : '—'}</td>
                   <td>
                     {/* The badge IS the control: a condition is retired from the
@@ -221,7 +221,7 @@ export default function ConditionsSection({
               />
             )}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Date of onset</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Date of onset</label>
               <input
                 type="date"
                 value={onsetDate}

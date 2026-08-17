@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, FollowUpDoc, LabResultDoc } from '@/lib/db-types';
 import {
   Calendar,
@@ -17,7 +16,6 @@ import {
   Plus,
   Printer,
   Search,
-  Send,
   Stethoscope,
   Video,
   X,
@@ -48,7 +46,6 @@ import EhrVisitPopup, { EhrQueueMoveDialog, waitLabel } from '@/components/ehr/E
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';
 import PatientDispenseModal from '@/components/pharmacy/PatientDispenseModal';
 import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
-import SendIntakeFormsModal from '@/components/intake/SendIntakeFormsModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 import Select from '@/components/Select';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
@@ -58,11 +55,13 @@ import EhrWorkItemProgress from '@/components/ehr/EhrWorkItemProgress';
 import { useTriage } from '@/lib/hooks/useTriage';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useAuth } from '@/lib/context';
+import { getRoleConfig } from '@/lib/permissions';
+import { isPathAllowed } from '@/lib/role-routes';
+import { uniqueAllowedNavItems, getPrimaryShortcutItems } from '@/components/ehr/ehr-navigation';
 import { buildQueueFromTriage, STAGE_LABELS, type QueueEntry } from '@/lib/services/patient-queue-service';
 import type { TriageDoc } from '@/lib/db-types';
 import { encountersDB, labResultsDB } from '@/lib/db';
 import { makeCoalescer } from '@/lib/hooks/live-reload';
-import { tooltipStyle, axisTick } from '@/components/ChartCard';
 
 export type WorklistPatient = {
   _id: string;
@@ -315,11 +314,27 @@ export function buildActiveTriageByPatient(
   nowMs: number | null,
   windowMs = 24 * 60 * 60 * 1000,
 ): Map<string, TriageDoc> {
-  const latest = new Map<string, TriageDoc>();
-  if (nowMs === null) return latest;
+  if (nowMs === null) return new Map();
   const cutoff = nowMs - windowMs;
+  return buildLatestTriageByPatient(
+    triages.filter(doc => new Date(doc.triagedAt).getTime() >= cutoff),
+  );
+}
+
+/**
+ * The most recent triage per patient at ANY age — the patient's last recorded
+ * ETAT, which is a different question from "who is waiting now".
+ *
+ * The worklist needs both: the 24h map above decides queue membership, while
+ * this one supplies vitals. An inpatient admitted three days ago WAS triaged,
+ * on arrival, and a ward row claiming "no triage vitals recorded" because that
+ * happened outside the queue window reports the opposite of the truth — which
+ * is why two beds on the same ward could show vitals for one patient and
+ * nothing for the next.
+ */
+export function buildLatestTriageByPatient(triages: TriageDoc[]): Map<string, TriageDoc> {
+  const latest = new Map<string, TriageDoc>();
   for (const doc of triages) {
-    if (new Date(doc.triagedAt).getTime() < cutoff) continue;
     const held = latest.get(doc.patientId);
     if (!held || doc.triagedAt > held.triagedAt) latest.set(doc.patientId, doc);
   }
@@ -464,12 +479,22 @@ export default function EhrClinicalDashboard({
   patients,
   appointments: propAppointments,
   outstanding,
+  activityItems,
+  activitySeriesNames,
 }: {
   clinicianName: string;
   facilityName?: string;
   patients: WorklistPatient[];
   appointments: AppointmentDoc[];
   outstanding: OutstandingItem[];
+  /**
+   * Week bars for the day-activity chart, when the role's week isn't made of
+   * appointments. A nurse holds no schedule of their own, so deriving the
+   * chart from `appointments` leaves it permanently empty — their week is
+   * admissions and arrivals instead. Omit to keep the schedule-derived chart.
+   */
+  activityItems?: DayStatsItem[];
+  activitySeriesNames?: [string, string];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -561,7 +586,6 @@ export default function EhrClinicalDashboard({
   // "Print" — choose which lanes and which output (paper/PDF or CSV) instead
   // of window.print()'s whole-dashboard dump.
   const [printOpen, setPrintOpen] = useState(false);
-  const [intakeOpen, setIntakeOpen] = useState(false);
   // Inline search under the mini-calendar that filters the day's appointment list.
   const [appointmentSearch, setAppointmentSearch] = useState('');
   const findPatientInputRef = useRef<HTMLInputElement>(null);
@@ -778,6 +802,35 @@ export default function EhrClinicalDashboard({
   // deduped to the newest record per patient.
   const { currentUser } = useAuth();
   const { triages, update: updateTriageDoc } = useTriage();
+  // Same gate the chart's forms panel uses: triage capture is a route grant,
+  // not a permission flag — doctors and the whole nurse family hold /triage.
+  const canTriage = isPathAllowed(currentUser?.role || '', '/triage');
+  // Nurse-family users read this worklist as ward admissions, rooming
+  // arrivals and triaged walk-ins — never "patients assigned to you" — so the
+  // empty state has to speak that language or an empty ward reads as a bug.
+  const isNurseFamily = currentUser?.role === 'nurse' || currentUser?.role === 'midwife'
+    || currentUser?.role === 'triage_nurse' || currentUser?.role === 'rooming_nurse';
+
+  // Quick links in the header strip, where the Intake Form button used to sit.
+  // Deliberately the destinations the top rail does NOT already carry: the rail
+  // keeps four shortcuts, so repeating them here would spend the widest row on
+  // the page on buttons that already exist two centimetres above it. These are
+  // the next ones down the same priority order, which for a clinician is where
+  // Referrals/Wards land and for a nurse the ward-side pages.
+  const quickNavItems = useMemo(() => {
+    const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
+    if (!roleConfig) return [];
+    const allowed = roleConfig.allowedRoutes || [];
+    const home = roleConfig.defaultDashboard || '/dashboard';
+    const navItems = uniqueAllowedNavItems(roleConfig.navItems || [], allowed);
+    const onRail = new Set(
+      getPrimaryShortcutItems(navItems, currentUser?.role, 4, home).map(item => item.href),
+    );
+    return navItems
+      // `home` is this very page — a button back to where you already are.
+      .filter(item => !onRail.has(item.href) && item.href !== home)
+      .slice(0, 3);
+  }, [currentUser]);
   // "Create clinical note" on a visit card — the appointment already carries
   // the patient, provider, date and telehealth mode the note header needs.
   const { createNote, creating: creatingNote } = useCreateNote(currentUser);
@@ -793,18 +846,47 @@ export default function EhrClinicalDashboard({
     currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  // Read outside the effect (like vizScope above) so the effect closes over a
+  // primitive rather than the whole `currentUser` object, which is what lets
+  // its dependency array stay [vizScope, clinicianId] instead of re-running
+  // on every unrelated currentUser field change.
+  const clinicianId = currentUser?._id;
   useEffect(() => {
     let cancelled = false;
     const loadClinicalViz = async () => {
       try {
-        const [{ getAllEncounters }, { getOverdueUnreviewedResults }] = await Promise.all([
-          import('@/lib/services/encounter-service'),
+        const [{ findByType }, { filterByScope }, { getOverdueUnreviewedResults }] = await Promise.all([
+          import('@/lib/services/db-query'),
+          import('@/lib/services/data-scope'),
           import('@/lib/services/lab-service'),
         ]);
-        const [encounters, overdue] = await Promise.all([
-          getAllEncounters(vizScope),
+        // Narrowed to exactly what consultationsPerDay plots below: THIS
+        // clinician's own encounters over the same trailing-14-day window
+        // (13 days back from local midnight through now). getAllEncounters()
+        // has no clinician/date filter — it pulls every clinical_encounter
+        // doc ever written, for every clinician, re-running on every
+        // encounter write — before this component discards all but a
+        // 14-day, single-clinician slice of it. Composed from the same
+        // findByType + filterByScope primitives getAllEncounters uses
+        // internally (encounter-service.ts:99-103), just with a selector
+        // narrow enough for a Mango index to do the filtering.
+        const cutoff = new Date();
+        cutoff.setHours(0, 0, 0, 0);
+        cutoff.setDate(cutoff.getDate() - 13);
+        const [rawEncounters, overdue] = await Promise.all([
+          clinicianId
+            ? findByType<EncounterDoc>(
+                encountersDB(), 'clinical_encounter',
+                { clinicianId, startedAt: { $gte: cutoff.toISOString() } },
+                { indexFields: ['type', 'clinicianId', 'startedAt'] },
+              )
+            : Promise.resolve([]),
           getOverdueUnreviewedResults(vizScope),
         ]);
+        // Same org/hospital barrier getAllEncounters(scope) applies via
+        // filterByScope internally — kept explicit since bypassing that
+        // helper means this call site owns applying it.
+        const encounters = vizScope ? filterByScope(rawEncounters, vizScope) : rawEncounters;
         if (!cancelled) {
           setAllEncounters(encounters);
           setOverdueLabResults(overdue);
@@ -825,7 +907,7 @@ export default function EhrClinicalDashboard({
       try { encChanges.cancel(); } catch { /* noop */ }
       try { labChanges.cancel(); } catch { /* noop */ }
     };
-  }, [vizScope]);
+  }, [vizScope, clinicianId]);
 
   // "My consultations per day" — encounters this clinician ran (clinicianId
   // match, the same identity the rest of this file uses for "mine"), bucketed
@@ -880,11 +962,19 @@ export default function EhrClinicalDashboard({
       .sort((a, b) => b.hoursOverdue - a.hoursOverdue);
   }, [overdueLabResults, currentUser?.name]);
   // Wall-clock sampled in an effect (render stays pure) and refreshed once a
-  // minute so wait times and the time-aged scores keep aging on screen.
+  // minute so wait times and the time-aged scores keep aging on screen. Every
+  // consumer below (the 24h active-triage window, minutesWaiting/score via
+  // buildQueueFromTriage, and the appointment countdown text) is floor'd to
+  // minutes already, so a 60s tick keeps them accurate without re-rendering
+  // this ~2,100-line dashboard every second. The one sub-minute reader —
+  // formatAppointmentTimeUntil's "in Ns" text for a not-yet-arrived
+  // appointment inside its final minute — only shows that precision in a
+  // ≤60s window and isn't the queue's live-wait signal, so it ages on the
+  // same 60s tick rather than justifying a separate fast-ticking leaf.
   const [queueNowMs, setQueueNowMs] = useState<number | null>(null);
   useEffect(() => {
     setQueueNowMs(Date.now());
-    const timer = setInterval(() => setQueueNowMs(Date.now()), 1_000);
+    const timer = setInterval(() => setQueueNowMs(Date.now()), 60_000);
     return () => clearInterval(timer);
   }, []);
   const activeTriageByPatient = useMemo(
@@ -895,6 +985,10 @@ export default function EhrClinicalDashboard({
     () => buildQueueEntryByPatient(activeTriageByPatient),
     [activeTriageByPatient],
   );
+  // Unwindowed: supplies the visit panel's vitals when the patient has no
+  // active triage (an inpatient's arrival ETAT, a returning patient's last
+  // visit). Never feeds the queue — see buildLatestTriageByPatient.
+  const latestTriageByPatient = useMemo(() => buildLatestTriageByPatient(triages), [triages]);
 
   // Worklist column values for one row, from its queue entry when the patient
   // has arrived and from the appointment alone when they haven't.
@@ -1318,7 +1412,13 @@ export default function EhrClinicalDashboard({
               {/* The design greets with the short name — "Welcome, Dr. Wani",
                   never the full legal name — over a small-caps role line. */}
               <p className="ehr-care-greeting">Welcome, {abbreviateProviderName(clinicianName)}</p>
-              <p className="ehr-care-greeting-sub">Doctor · Clinical workspace</p>
+              {/* This shell is shared by every clinical role (doctors,
+                  clinicians and nurse-family roles alike) — the role line
+                  under the greeting has to name the signed-in user's actual
+                  role rather than assume "Doctor". */}
+              <p className="ehr-care-greeting-sub">
+                {currentUser ? `${getRoleConfig(currentUser.role).label} · Clinical workspace` : 'Clinical workspace'}
+              </p>
             </div>
           </div>
         </div>
@@ -1332,21 +1432,25 @@ export default function EhrClinicalDashboard({
               <Pill className="w-4 h-4" /> Dispense
             </button>
           )}
+          {quickNavItems.map(item => {
+            const ItemIcon = item.icon;
+            return (
+              <button
+                key={item.href}
+                type="button"
+                aria-label={item.label}
+                onClick={() => router.push(item.href)}
+              >
+                <ItemIcon className="w-4 h-4" /> {item.label}
+              </button>
+            );
+          })}
           <button
             type="button"
             aria-label="Print worklist"
             onClick={() => setPrintOpen(true)}
           >
             <Printer className="w-4 h-4" /> Print
-          </button>
-          <button
-            type="button"
-            className="orange"
-            aria-label="Intake Form"
-            onClick={() => setIntakeOpen(true)}
-          >
-            {/* Same intake glyph as the nav item and the front-desk strip. */}
-            <Send className="w-4 h-4" /> Intake Form
           </button>
         </div>
       </section>
@@ -1404,6 +1508,8 @@ export default function EhrClinicalDashboard({
 
           <DayActivityChart
             appointments={filteredAppointments}
+            items={activityItems}
+            seriesNames={activitySeriesNames}
             selectedDate={selectedDate}
             todayIso={todayIso}
             admittedPatientIds={admittedPatientIds}
@@ -1650,11 +1756,23 @@ export default function EhrClinicalDashboard({
                   {visiblePatientRows.length === 0 && (
                     <div className="ehr-empty-state">
                       <ClipboardList className="w-8 h-8" />
-                      <strong>{appointmentQuery ? 'No assigned patients match your search' : 'No patients are assigned to you right now'}</strong>
-                      <span>{appointmentQuery ? `Nothing matches “${appointmentSearch.trim()}”.` : 'Assigned patients will appear here with appointment times when scheduled.'}</span>
+                      <strong>
+                        {appointmentQuery
+                          ? 'No assigned patients match your search'
+                          : isNurseFamily ? 'No patients on your worklist right now' : 'No patients are assigned to you right now'}
+                      </strong>
+                      <span>
+                        {appointmentQuery
+                          ? `Nothing matches “${appointmentSearch.trim()}”.`
+                          : isNurseFamily
+                            ? 'Ward admissions, rooming arrivals and triaged walk-ins appear here as they come in.'
+                            : 'Assigned patients will appear here with appointment times when scheduled.'}
+                      </span>
                       {appointmentQuery
                         ? <button type="button" onClick={() => setAppointmentSearch('')}>Clear search</button>
-                        : <button type="button" onClick={() => router.push('/patients')}>Open patient registry</button>}
+                        : isNurseFamily
+                          ? <button type="button" onClick={() => router.push('/wards')}>Open ward board</button>
+                          : <button type="button" onClick={() => router.push('/patients')}>Open patient registry</button>}
                     </div>
                   )}
                   {visiblePatientRows.length > 0 && filteredPatientRows.length === 0 && (
@@ -1796,6 +1914,7 @@ export default function EhrClinicalDashboard({
                             wait={columns.waitText}
                             appointment={row.appointment}
                             triage={columns.triage}
+                            lastTriage={row.patientId ? latestTriageByPatient.get(row.patientId) ?? null : null}
                             entry={columns.entry}
                             onClose={() => setVisitRow(null)}
                             onCall={() => { setVisitRow(null); void callPatient(row); }}
@@ -1804,6 +1923,9 @@ export default function EhrClinicalDashboard({
                               : undefined}
                             onMove={columns.entry ? () => { setVisitRow(null); setMoveEntry(columns.entry); } : undefined}
                             onOpenChart={row.patientId ? () => router.push(`/patients/${row.patientId}`) : undefined}
+                            onStartTriage={row.patientId && canTriage && (!columns.triage || columns.triage.status === 'pending' || columns.triage.status === 'seen')
+                              ? () => router.push(`/triage/${row.patientId}`)
+                              : undefined}
                             onEscalate={columns.triage?.encounterId && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               ? () => void escalateVisit(columns.triage!)
                               : undefined}
@@ -1963,7 +2085,6 @@ export default function EhrClinicalDashboard({
             />
           )}
 
-          {intakeOpen && <SendIntakeFormsModal onClose={() => setIntakeOpen(false)} />}
         </main>
 
         {view === 'dashboard' && railOpen && (
@@ -2023,11 +2144,15 @@ export default function EhrClinicalDashboard({
    excluded, so the bars stay a truthful picture of the doctor's week. */
 const CHART_HIDDEN_STATUSES: AppointmentStatus[] = ['cancelled', 'no_show'];
 
-function DayActivityChart({ appointments, selectedDate, todayIso, admittedPatientIds, onSelectDate }: {
+function DayActivityChart({ appointments, items: providedItems, seriesNames, selectedDate, todayIso, admittedPatientIds, onSelectDate }: {
   appointments: AppointmentDoc[]; selectedDate: string; todayIso: string; admittedPatientIds: Set<string>;
+  /** Pre-computed bars for roles whose week isn't a schedule (see the prop
+   *  of the same name on EhrClinicalDashboard). */
+  items?: DayStatsItem[];
+  seriesNames?: [string, string];
   onSelectDate?: (iso: string) => void;
 }) {
-  const items = useMemo<DayStatsItem[]>(() => appointments
+  const scheduleItems = useMemo<DayStatsItem[]>(() => appointments
     .filter(appointment => !CHART_HIDDEN_STATUSES.includes(appointment.status))
     .map(appointment => ({
       date: appointment.appointmentDate,
@@ -2037,8 +2162,8 @@ function DayActivityChart({ appointments, selectedDate, todayIso, admittedPatien
 
   return (
     <EhrWeekActivityChart
-      items={items}
-      seriesNames={['Inpatient', 'Outpatient']}
+      items={providedItems ?? scheduleItems}
+      seriesNames={seriesNames ?? ['Inpatient', 'Outpatient']}
       selectedDate={selectedDate}
       todayIso={todayIso}
       onSelectDate={onSelectDate}

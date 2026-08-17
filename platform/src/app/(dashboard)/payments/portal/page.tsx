@@ -475,7 +475,7 @@ export default function PatientPortalPage() {
 
               {/* Security note */}
               <div className="bl-section" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Shield size={30} color="var(--ehr-muted, #8395A8)" style={{ flexShrink: 0 }} />
+                <Shield size={30} color="var(--ehr-muted, #597386)" style={{ flexShrink: 0 }} />
                 <div>
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ehr-text-title, #132C44)' }}>{t('portal.securePayments')}</div>
                   <div className="bl-muted" style={{ fontSize: '0.625rem' }}>{t('portal.securePaymentsDesc')}</div>

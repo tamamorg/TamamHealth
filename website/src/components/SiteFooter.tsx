@@ -50,7 +50,9 @@ export default function SiteFooter() {
         </div>
         <div className="fs125" style={{ display: "flex", gap: 26, flexWrap: "wrap" }}>
           <Link href="/terms" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Terms &amp; Conditions</Link>
-          <Link href="/terms" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Privacy Policy</Link>
+          {/* Privacy lives as a clause inside the terms, so it deep-links to
+              that clause rather than dropping the reader at the page top. */}
+          <Link href="/terms#patient-data" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Privacy Policy</Link>
           <Link href="/login" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Platform login</Link>
         </div>
       </div>

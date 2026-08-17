@@ -30,7 +30,9 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
     <main>
       <section style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "30px 32px 74px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <Link href="/about#crisis" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7FC4EA", textDecoration: "none" }}>← The problem</Link>
+          {/* Back to the rail these cards came from — it lives on the health
+              system page, not on /about. */}
+          <Link href="/health-system#challenges" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7FC4EA", textDecoration: "none" }}>← All challenges</Link>
           <div className="tm-split" style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 48, alignItems: "center", marginTop: 26 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "flex-start" }}>
               <h1 style={{ fontSize: "clamp(31px, 5vw, 54px)", margin: 0, color: "#FFFFFF" }}>{c.title}</h1>
@@ -98,7 +100,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
       <section style={{ padding: "20px 32px 92px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, borderTop: "1px solid var(--color-divider)", paddingTop: 26, flexWrap: "wrap" }}>
           <Link href={`/challenges/${prev.slug}`} style={{ fontSize: 15, color: "#015697", textDecoration: "none" }}>← {prev.title}</Link>
-          <Link href="/about#crisis" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-neutral-600)", textDecoration: "none" }}>All challenges</Link>
+          <Link href="/health-system#challenges" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-neutral-600)", textDecoration: "none" }}>All challenges</Link>
           <Link href={`/challenges/${next.slug}`} style={{ fontSize: 15, color: "#015697", textDecoration: "none" }}>{next.title} →</Link>
         </div>
       </section>

@@ -895,7 +895,7 @@ function TagListEditor({ label, placeholder, values, onChange }: {
         {values.map((v, i) => (
           <span
             key={`${v}-${i}`}
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full"
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1 rounded-full"
             style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
           >
             {v}

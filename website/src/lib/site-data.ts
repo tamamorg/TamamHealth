@@ -494,8 +494,10 @@ export const HEROES: Hero[] = [
     alt: "A crowded pediatric ward",
     accent: "#015697",
     stripKicker: "Ground Truth",
+    /* Not /about#crisis — that is the origin story. The failures this card
+       names are the eight challenge cards, and they live here. */
     stripTitle: "The daily reality inside South Sudan's facilities",
-    href: "/about#crisis",
+    href: "/health-system#challenges",
   },
   {
     kicker: "National Alignment",
@@ -783,9 +785,9 @@ export const NEWS: NewsItem[] = [
     tag: "Competition",
     date: "April 2026",
     dateISO: "2026-04",
-    title: "TamamHealth wins the Healthcare track at the Tufts New Ventures Competition",
-    image: "/assets/community-health-worker.jpg",
-    imageAlt: "Community health worker at a primary care clinic",
+    title: "TamamHealth wins the Healthcare & Life Science track at the Tufts New Ventures Competition",
+    image: "/assets/derby/derby-05.jpg",
+    imageAlt: "The founding team holding the $10,000 check at the Derby Entrepreneurship Center at Tufts",
     summary:
       "Our first venture competition, and a $10,000 award — funding tablets, solar power and training for the first pilot clinics.",
     body: [
@@ -859,7 +861,7 @@ export const FOOTER_COLS: { accent: string; title: string; links: FooterLink[] }
       { label: "The six levels of care", href: "/health-system#levels" },
       { label: "National alignment", href: "/health-system" },
       { label: "Deployment footprint", href: "/#footprint" },
-      { label: "DHIS2 reporting", href: "/health-system" },
+      { label: "DHIS2 reporting", href: "/platform#how-it-works" },
     ],
   },
   {

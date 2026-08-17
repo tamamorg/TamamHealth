@@ -44,7 +44,7 @@ export default function PlatformPage() {
         </div>
       </section>
 
-      <section style={{ padding: "74px 32px 20px" }}>
+      <section id="dashboard" style={{ padding: "74px 32px 20px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 20, paddingBottom: 18, borderBottom: "1px solid var(--color-divider)" }}>
             <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>The facility dashboard</h2>
@@ -68,7 +68,9 @@ export default function PlatformPage() {
         </div>
       </section>
 
-      <section style={{ padding: "66px 32px 70px", background: "#0E2A4A" }}>
+      {/* "How it works" and "DHIS2 reporting" both resolve here: the seven-step
+          flow ends at step 07, the DHIS2-ready national report. */}
+      <section id="how-it-works" style={{ padding: "66px 32px 70px", background: "#0E2A4A" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap", paddingBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.24)" }}>
             <div>
@@ -93,7 +95,7 @@ export default function PlatformPage() {
         </div>
       </section>
 
-      <section style={{ padding: "66px 32px 90px" }}>
+      <section id="offline" style={{ padding: "66px 32px 90px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 26px", paddingBottom: 16, borderBottom: "1px solid var(--color-divider)" }}>Built for power cuts and network gaps</h2>
           <div className="tm-pillars" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>

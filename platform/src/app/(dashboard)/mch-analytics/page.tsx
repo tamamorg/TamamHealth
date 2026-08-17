@@ -153,7 +153,7 @@ export default function MCHAnalyticsPage() {
                 ].map(item => (
                   <div key={item.label}>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
+                      <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('mch.mothersCount', { count: item.value })}</span>
                         <span className="text-sm font-bold" style={{ color: item.rate >= item.target ? 'var(--color-success-text)' : item.color }}>{item.rate}%</span>
@@ -253,7 +253,7 @@ export default function MCHAnalyticsPage() {
                   return (
                     <div key={item.label} className="p-3 rounded-md" style={{ background: `${color}08`, border: `1px solid ${color}15` }}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
+                        <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
                         <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{t('mch.deathsCount', { count: item.deaths })}</span>
                       </div>
                       <div className="flex items-baseline gap-1">
@@ -406,7 +406,7 @@ export default function MCHAnalyticsPage() {
                       const dropoff = d.anc1 > 0 ? Math.round(((d.anc1 - d.anc4) / d.anc1) * 100) : 0;
                       return (
                         <tr key={state}>
-                          <td className="font-medium text-sm">{state}</td>
+                          <td className="font-semibold text-sm">{state}</td>
                           <td>{d.total}</td>
                           <td className="font-semibold">{d.anc1}</td>
                           <td className="font-semibold">{d.anc4}</td>
@@ -558,7 +558,7 @@ export default function MCHAnalyticsPage() {
                     .sort(([, a], [, b]) => b.total - a.total)
                     .map(([state, d]) => (
                       <tr key={state}>
-                        <td className="font-medium text-sm">{state}</td>
+                        <td className="font-semibold text-sm">{state}</td>
                         <td className="font-semibold">{d.total}</td>
                         <td>{d.caesarean}</td>
                         <td>
@@ -722,7 +722,7 @@ export default function MCHAnalyticsPage() {
                       const neo = neonatalData.byState?.[state];
                       return (
                         <tr key={state}>
-                          <td className="font-medium text-sm">{state}</td>
+                          <td className="font-semibold text-sm">{state}</td>
                           <td style={{ color: d.deaths > 0 ? 'var(--color-danger-text)' : 'var(--text-secondary)' }}>{d.deaths}</td>
                           <td>{d.births}</td>
                           <td>
@@ -771,7 +771,7 @@ export default function MCHAnalyticsPage() {
                     const color = gap.coverageRate >= 80 ? 'var(--color-success)' : gap.coverageRate >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
                     return (
                       <tr key={gap.vaccine}>
-                        <td className="font-medium text-sm">{gap.vaccine}</td>
+                        <td className="font-semibold text-sm">{gap.vaccine}</td>
                         <td>{gap.targetPopulation}</td>
                         <td className="font-semibold">{gap.vaccinated}</td>
                         <td>
@@ -825,7 +825,7 @@ export default function MCHAnalyticsPage() {
                   <tbody>
                     {SOUTH_SUDAN_STATES.map(state => (
                       <tr key={state}>
-                        <td className="font-medium text-xs whitespace-nowrap">{state.replace('Northern ', 'N. ').replace('Western ', 'W. ').replace('Eastern ', 'E. ').replace('Central ', 'C. ')}</td>
+                        <td className="font-semibold text-xs whitespace-nowrap">{state.replace('Northern ', 'N. ').replace('Western ', 'W. ').replace('Eastern ', 'E. ').replace('Central ', 'C. ')}</td>
                         {immunizationGaps.map(g => {
                           const stateData = g.byState?.[state];
                           const rate = stateData?.rate || 0;

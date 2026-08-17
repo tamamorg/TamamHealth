@@ -138,13 +138,13 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
             <input value={editForm.substance} onChange={(e) => setEditForm({ ...editForm, substance: e.target.value })} placeholder="Substance" className={inputCls} style={inputStyle} />
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Classification</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Classification</label>
                 <Select value={editForm.classification} onChange={(e) => setEditForm({ ...editForm, classification: e.target.value as AllergyEntry['classification'] })} className="p-2.5 rounded-md text-[12px]" style={inputStyle}>
                   {CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                 </Select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Criticality</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Criticality</label>
                 <Select value={editForm.criticality} onChange={(e) => setEditForm({ ...editForm, criticality: e.target.value as NonNullable<AllergyEntry['criticality']> })} className="p-2.5 rounded-md text-[12px]" style={inputStyle}>
                   {CRITICALITIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </Select>

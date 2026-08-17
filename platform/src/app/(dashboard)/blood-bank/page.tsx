@@ -470,7 +470,7 @@ export default function BloodBankPage() {
                       <td className="text-sm">{COMPONENT_LABEL[u.component] || u.component}</td>
                       <td className="text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>{u.volume}</td>
                       <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(u.collectionDate)}</td>
-                      <td className="text-xs font-medium" style={{ color: expiryColor }}>
+                      <td className="text-xs font-semibold" style={{ color: expiryColor }}>
                         {formatDate(u.expiryDate)}
                         {expired ? ' · expired' : expiringSoon ? ` · ${days}d left` : ''}
                       </td>
@@ -626,7 +626,7 @@ export default function BloodBankPage() {
                               style={{ borderBottom: '1px solid var(--border-light)' }}
                             >
                               <PatientAvatar patient={p} size={26} />
-                              <span className="flex-1 text-[13px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{patientFullName(p)}</span>
+                              <span className="flex-1 text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{patientFullName(p)}</span>
                               <span className="text-[11px] font-mono flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{p.hospitalNumber}</span>
                             </button>
                           ))}

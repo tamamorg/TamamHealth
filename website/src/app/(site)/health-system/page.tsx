@@ -40,7 +40,7 @@ export default function HealthSystemPage() {
         </div>
       </section>
 
-      <section style={{ padding: "78px 32px 84px", background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)" }}>
+      <section id="reality" style={{ padding: "78px 32px 84px", background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 28, flexWrap: "wrap", paddingBottom: 20, borderBottom: "1px solid var(--color-divider)" }}>
             <h2 style={{ fontSize: "clamp(25px, 3.6vw, 40px)", margin: 0 }}>The reality Tamam is built for</h2>
@@ -58,13 +58,15 @@ export default function HealthSystemPage() {
         </div>
       </section>
 
-      <section style={{ padding: "70px 32px 0" }}>
+      {/* The only place the eight challenge cards live — every "all challenges"
+          and "where care breaks down" link in the site resolves to this id. */}
+      <section id="challenges" style={{ padding: "70px 32px 0" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <ChallengesBand />
         </div>
       </section>
 
-      <section style={{ padding: "60px 32px 96px" }}>
+      <section id="diagnosis" style={{ padding: "60px 32px 96px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div className="tm-pad-lg" style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "46px 52px", display: "flex", flexDirection: "column", gap: 16 }}>
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-300)" }}>The Ministry&rsquo;s own diagnosis</span>

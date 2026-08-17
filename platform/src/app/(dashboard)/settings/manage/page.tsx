@@ -12,7 +12,7 @@ import { hasLockPin, setLockPin, clearLockPin } from '@/lib/hooks/useAutoLock';
 import { getUserPrefs, setUserPrefs, DEFAULT_USER_PREFS, type UserPrefs } from '@/lib/user-prefs';
 import { useToast } from '@/components/Toast';
 import { getAvailableRoles, getRoleConfig } from '@/lib/permissions';
-import { statesAndCounties } from '@/data/mock';
+import { statesAndCounties } from '@/lib/data/south-sudan-reference';
 import type { UserRole } from '@/lib/db-types';
 import FilterBar from '@/components/filters/FilterBar';
 import FilterSelect from '@/components/filters/FilterSelect';

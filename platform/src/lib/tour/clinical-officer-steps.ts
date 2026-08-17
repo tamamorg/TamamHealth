@@ -40,7 +40,7 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     route: '/dashboard',
     target: '.ehr-appointment-list',
     title: 'Your schedule',
-    body: 'Everyone booked with you, split into Scheduled, In Office, and Finished. Click a row to open that patient’s chart.',
+    body: 'Everyone booked with you, split into Upcoming, Checked In, and Completed. Click a row to open that patient’s chart.',
     placement: 'top',
   },
   {

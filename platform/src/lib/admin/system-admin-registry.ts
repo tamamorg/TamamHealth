@@ -113,9 +113,12 @@ export const SYSTEM_APP_DEFINITIONS: SystemAppDefinition[] = [
     domain: 'clinical',
     status: 'enabled',
     level: 'facility',
-    route: '/dashboard/nurse',
+    // The standalone nurse station is retired — nursing now works from the
+    // same shared clinical workspace as doctors, role-adapted rather than a
+    // separate app.
+    route: '/dashboard',
     ownerRoles: ['nurse', 'triage_nurse', 'rooming_nurse', ...FACILITY_ADMIN_ROLES],
-    description: 'Capture vitals, acuity, and routing decisions before consultation.',
+    description: 'Capture vitals, acuity, and routing decisions before consultation, from the shared clinical workspace.',
   },
   {
     id: 'referenceapplication.realTime.simpleVisitNote',

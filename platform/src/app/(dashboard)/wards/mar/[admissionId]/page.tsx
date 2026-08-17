@@ -355,7 +355,7 @@ export default function MARPage() {
                   }}>
                     {t('mar.isolationRequired')}
                   </div>
-                  <div className="text-sm font-medium mt-0.5">
+                  <div className="text-sm font-semibold mt-0.5">
                     {admission.isolationReason || t('mar.ppeBeforeEntry')}
                   </div>
                 </div>

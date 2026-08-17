@@ -56,21 +56,23 @@ const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: strin
       { label: "Six levels of care", note: "Community, PHCU, PHCC, county, state, referral", href: "/health-system#levels" },
       { label: "National alignment", note: "Shaped around the 2025 EHSP", href: "/health-system" },
       { label: "Deployment footprint", note: "Pilot and planned sites across South Sudan", href: "/#footprint" },
-      { label: "DHIS2 reporting", note: "Records that roll up into national reports", href: "/health-system" },
-      { label: "The reality we build for", note: "4% have internet, 13% have power", href: "/health-system" },
-      { label: "The Ministry's own diagnosis", note: "Parallel, disconnected systems", href: "/health-system" },
+      { label: "DHIS2 reporting", note: "Records that roll up into national reports", href: "/platform#how-it-works" },
+      { label: "The reality we build for", note: "4% have internet, 13% have power", href: "/health-system#reality" },
+      { label: "The Ministry's own diagnosis", note: "Parallel, disconnected systems", href: "/health-system#diagnosis" },
     ],
   },
   platform: {
     title: "The platform",
     blurb: "One offline-first record behind every product — simple enough for the front desk, strong enough for the nation.",
-    allLabel: "Log in to the platform",
-    allHref: "/login",
+    /* The panel's headline link stays inside the section it heads, like the
+       other three menus. The two portal links below already carry log-in. */
+    allLabel: "The platform",
+    allHref: "/platform",
     links: [
-      { label: "How it works", note: "A patient day, end to end", href: "/platform" },
-      { label: "Facility dashboard", note: "The day's patients at a glance", href: "/platform" },
-      { label: "Offline-first by design", note: "Power cuts, network gaps, role-based access", href: "/platform" },
-      { label: "Where care breaks down", note: "The paper problem the platform replaces", href: "/about#crisis" },
+      { label: "How it works", note: "A patient day, end to end", href: "/platform#how-it-works" },
+      { label: "Facility dashboard", note: "The day's patients at a glance", href: "/platform#dashboard" },
+      { label: "Offline-first by design", note: "Power cuts, network gaps, role-based access", href: "/platform#offline" },
+      { label: "Where care breaks down", note: "The paper problem the platform replaces", href: "/health-system#challenges" },
       { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: "/login?role=staff" },
       { label: "Patient portal", note: "Records, prescriptions and results", href: "/login?role=patient" },
       { label: "Get in touch", note: "See it on a real patient day", href: "/contact" },
@@ -94,12 +96,13 @@ const PORTAL_LINKS = [
   { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: "/login?role=staff" },
   { label: "Patient portal", note: "Your records, prescriptions and results", href: "/login?role=patient" },
   { label: "Ministry dashboard", note: "National reporting and DHIS2 export", href: "/login?role=ministry" },
+  { label: "Platform admin", note: "Organisations, provisioning and governance", href: "/login?role=superadmin" },
 ];
 
 const SEARCH_SUGGESTIONS = [
-  { label: "Offline-first records", href: "/health-system#levels" },
-  { label: "HMIS for hospitals", href: "/products" },
-  { label: "DHIS2 reporting", href: "/health-system" },
+  { label: "Offline-first records", href: "/platform#offline" },
+  { label: "HMIS for hospitals", href: "/products/hmis" },
+  { label: "DHIS2 reporting", href: "/platform#how-it-works" },
   { label: "Pilot clinics", href: "/#footprint" },
   { label: "News & updates", href: "/news" },
   { label: "Donate", href: "/donate" },
@@ -131,11 +134,13 @@ export default function SiteHeader() {
     setUtil(null);
   }
 
+  /* Detail routes highlight the section they belong to: /products/[slug] and
+     /news/[slug] sit under their own nav item, and /challenges/[slug] under
+     "The health system" — that page carries the challenge rail. */
   const activeHref = useMemo(() => {
     const item = NAV_ITEMS.find(
       (n) => pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href + "/")) ||
-        (n.href === "/products" && pathname.startsWith("/products")) ||
-        (n.href === "/about" && pathname.startsWith("/challenges")),
+        (n.href === "/health-system" && pathname.startsWith("/challenges")),
     );
     return item?.href ?? null;
   }, [pathname]);

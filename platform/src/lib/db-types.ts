@@ -434,6 +434,14 @@ export interface DiseaseAlertDoc extends BaseDoc, Omit<DiseaseAlert, 'id'> {
   type: 'disease_alert';
   orgId?: string;
   reportedBy?: string;
+  /** Facility that reported the case. Feeds IDSR facilities-reporting counts. */
+  hospitalId?: string;
+  /** Patient the case belongs to — set on alerts auto-raised from a consultation; manual reports have none. */
+  patientId?: string;
+  /** ICD-11 code of the notifiable diagnosis behind this alert. */
+  icd11Code?: string;
+  /** MedicalRecordDoc the alert was raised from. (record, icd11Code) is the dedupe key that keeps re-saves from double-counting a case. */
+  sourceRecordId?: string;
 }
 
 /**

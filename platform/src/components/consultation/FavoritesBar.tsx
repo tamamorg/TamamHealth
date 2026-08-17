@@ -36,7 +36,7 @@ export function FavoritesBar({
             style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)', border: '1px solid var(--accent-border, var(--border-light))' }}
             title={fav.code}
           >
-            {fav.code && <span className="font-mono opacity-70">{fav.code}</span>}
+            {fav.code && <span className="font-mono">{fav.code}</span>}
             <span className="truncate max-w-[180px]">{fav.label}</span>
           </button>
         ))}

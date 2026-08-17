@@ -165,14 +165,14 @@ export default function MyFacilityPage() {
 
   const numberInput = (label: string, value: number, onChange: (v: number) => void, max?: number) => (
     <div>
-      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+      <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{label}</label>
       <input
         type="number"
         min={0}
         max={max}
         value={value}
         onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-        className="w-full px-3 py-2 rounded-lg text-sm font-medium"
+        className="w-full px-3 py-2 rounded-lg text-sm font-bold"
         style={{
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border-light)',
@@ -185,7 +185,7 @@ export default function MyFacilityPage() {
 
   const toggle = (label: string, checked: boolean, onChange: (v: boolean) => void) => (
     <div className="flex items-center justify-between py-1.5">
-      <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{label}</span>
       <button
         type="button"
         onClick={() => onChange(!checked)}
@@ -206,12 +206,12 @@ export default function MyFacilityPage() {
         <DashboardGreetingHeader actions={
           <>
             {error && (
-              <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
+              <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
                 <AlertTriangle className="w-3.5 h-3.5" /> {error}
               </span>
             )}
             {saved && (
-              <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-success-text)' }}>
+              <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-success-text)' }}>
                 <CheckCircle className="w-3.5 h-3.5" /> {t('myFacility.savedSuccessfully')}
               </span>
             )}
@@ -237,11 +237,11 @@ export default function MyFacilityPage() {
           <div className={sectionClass}>
             {sectionTitle(<Activity className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />, t('myFacility.operationalStatus'))}
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t('myFacility.currentStatus')}</label>
+              <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t('myFacility.currentStatus')}</label>
               <Select
                 value={operationalStatus}
                 onChange={e => setOperationalStatus(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg text-sm font-medium"
+                className="w-full px-3 py-2.5 rounded-lg text-sm font-bold"
                 style={{
                   background: 'var(--bg-secondary)',
                   border: '1px solid var(--border-light)',
@@ -308,7 +308,7 @@ export default function MyFacilityPage() {
               {toggle(t('myFacility.hasInternet'), hasInternet, setHasInternet)}
               {hasInternet && (
                 <div className="pl-4 pb-2">
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t('myFacility.internetType')}</label>
+                  <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t('myFacility.internetType')}</label>
                   <Select
                     value={internetType}
                     onChange={e => setInternetType(e.target.value)}
@@ -411,7 +411,7 @@ export default function MyFacilityPage() {
                         {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
                       </button>
                       {submitError && (
-                        <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
+                        <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
                           <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
                         </span>
                       )}

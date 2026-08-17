@@ -163,7 +163,7 @@ export default function ServicePricingPage() {
               <tbody>
                 {filtered.map(fee => (
                   <tr key={fee._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td className="px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{fee.serviceName}</td>
+                    <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{fee.serviceName}</td>
                     <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>{fee.serviceCode || '—'}</td>
                     <td className="px-4 py-2.5 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{CATEGORIES.find(c => c.value === fee.category)?.label || fee.category}</td>
                     <td className="px-4 py-2.5 text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>{formatMoney(fee.unitPrice, { currency: fee.currency, decimals: 2 })}</td>

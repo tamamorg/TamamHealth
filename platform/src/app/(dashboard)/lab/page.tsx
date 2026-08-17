@@ -417,7 +417,7 @@ export default function LabPage() {
                         showAvatar
                         size={40}
                         secondaryText={order.hospitalNumber || 'ID not recorded'}
-                        nameClassName="font-medium text-sm"
+                        nameClassName="text-sm"
                       />
                       {overdue && (
                         <p className="text-[10px] font-semibold flex items-center gap-1 mt-0.5" style={{ color: 'var(--color-danger-text)' }}>
@@ -426,7 +426,7 @@ export default function LabPage() {
                         </p>
                       )}
                     </td>
-                    <td className="font-medium text-sm">
+                    <td className="font-semibold text-sm">
                       {order.testName}
                       {order.tier && (
                         <Badge tone={order.tier === 'special' ? 'accent' : 'neutral'} uppercase className="ml-2 align-middle">{order.tier}</Badge>
@@ -576,8 +576,8 @@ export default function LabPage() {
                           const crit = evaluateCritical(p.testName, value);
                           return (
                             <tr key={`${p.testCode}-${i}`}>
-                              <td className="text-sm font-medium">{p.testName || p.testCode}</td>
-                              <td className="text-sm" style={{ color: crit.isCriticalValue ? 'var(--color-danger-text)' : 'inherit', fontWeight: crit.isCriticalValue ? 600 : 400 }}>{value}</td>
+                              <td className="text-sm font-semibold">{p.testName || p.testCode}</td>
+                              <td className="text-sm" style={{ color: crit.isCriticalValue ? 'var(--color-danger-text)' : 'inherit', fontWeight: crit.isCriticalValue ? 700 : 600 }}>{value}</td>
                               <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{p.unit || '—'}</td>
                               <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{p.referenceRange || '—'}</td>
                               <td>

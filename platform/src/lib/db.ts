@@ -376,7 +376,22 @@ export const patientTransfersDB = () => getDB('tamamhealth_patient_transfers');
 // clinic with two doctors seeing two patients at 09:00 keeps both bookings, and
 // the day view draws them as equal side-by-side columns. Re-seed so demo days
 // show real parallel clinics rather than one single-file queue.
-export const SEED_VERSION = 70;
+// Bumped to 71: Malakal Teaching Hospital (hosp-003) is now a live facility
+// instead of an empty shell — nurse.stella and midwife.nyakong previously had
+// no doctor, no provider availability, no wards/beds/admissions and no
+// handoffs/rooming activity there, so the merged nurse dashboard and the
+// "Find availability" booking wizard were both empty for the canonical nurse
+// demo login. Added: a Malakal doctor (dr.ochalla) with recurring clinic
+// hours; one ward (4 beds, 3 occupied) with three active admissions attended
+// by him and nursed by nurse.stella; MAR-ready scheduled prescriptions for
+// each admitted patient (q8h/q12h so a dose is always due/overdue); a signed
+// night-shift handoff from midwife.nyakong awaiting stella's acknowledgement;
+// and two rooming-station encounters. `seedAvailability` also now carries a
+// per-row facility (the four Juba rows are unchanged in output).
+// Bumped to 72: every admitted patient now has the arrival triage that sent
+// them to a bed (triage-3b, triage-m5, triage-m6). Three inpatients had none
+// at all, so their worklist rows showed no vitals beside beds that did.
+export const SEED_VERSION = 72;
 
 export async function isSeeded(): Promise<boolean> {
   try {

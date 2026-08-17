@@ -10,6 +10,7 @@
    the design's send button only flips local state, so real submissions go
    through Web3Forms — browser-side by design, the access key only routes mail. */
 
+import Link from "next/link";
 import { useState } from "react";
 import Corners from "@/components/Corners";
 import { WEB3FORMS_ACCESS_KEY } from "@/lib/site-data";
@@ -164,7 +165,7 @@ export default function ContactForm() {
           />
           <p style={{ margin: "4px 0 0", fontSize: 13, lineHeight: 1.55, color: "var(--color-neutral-700)" }}>
             By submitting, you agree that TamamHealth may contact you about this enquiry, as described in our{" "}
-            <a href="/terms" style={{ color: "var(--color-accent-700)" }}>Terms &amp; Privacy</a>.
+            <Link href="/terms" style={{ color: "var(--color-accent-700)" }}>Terms &amp; Privacy</Link>.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "62px 1fr", gap: 12, marginTop: 6 }}>
             <button

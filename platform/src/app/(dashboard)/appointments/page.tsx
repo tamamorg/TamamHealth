@@ -1149,11 +1149,11 @@ export default function AppointmentsPage() {
                                 className="hover:underline"
                                 title={t('appointments.viewPatientRecord')}
                               >
-                                <PatientName name={apt.patientName} nameClassName="text-[13px] font-normal" />
+                                <PatientName name={apt.patientName} nameClassName="text-[13px]" />
                                 <ExternalLink size={10} style={{ opacity: 0.55 }} />
                               </Link>
                             ) : (
-                              <PatientName name={apt.patientName} nameClassName="text-[13px] font-normal" />
+                              <PatientName name={apt.patientName} nameClassName="text-[13px]" />
                             )}
                             {isWI && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: 'rgba(124,58,237,0.08)', color: 'var(--accent-primary)' }}>{t('appointments.walkInBadge')}</span>}
                           </div>

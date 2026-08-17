@@ -70,8 +70,10 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, [tour]);
 
   // Auto-launch once per user, the first time they land on their role's home
-  // dashboard (not just /dashboard — a nurse lands on /dashboard/nurse, a lab
-  // tech on /dashboard/lab, …). The ref is only marked once the timer
+  // dashboard (not just /dashboard — a lab tech lands on /dashboard/lab, a
+  // pharmacist on /dashboard/pharmacy, … nurse-family roles now share
+  // /dashboard with doctors, since the standalone nurse station was merged
+  // into the shared clinical workspace). The ref is only marked once the timer
   // actually fires: context hydration right after login re-runs this effect
   // within the 600ms window, and marking earlier would let the cleanup cancel
   // the launch permanently.

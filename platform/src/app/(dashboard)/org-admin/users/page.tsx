@@ -460,7 +460,7 @@ export default function OrgUsersPage() {
             <div className="space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldFullName')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldFullName')}</label>
                 <input
                   type="text"
                   value={formName}
@@ -473,7 +473,7 @@ export default function OrgUsersPage() {
 
               {/* Username */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldUsername')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldUsername')}</label>
                 <input
                   type="text"
                   value={formUsername}
@@ -487,7 +487,7 @@ export default function OrgUsersPage() {
               {/* Password */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldPassword')}</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldPassword')}</label>
                   <button
                     type="button"
                     onClick={() => { setFormPassword(generateTempPassword()); setShowPassword(true); }}
@@ -525,7 +525,7 @@ export default function OrgUsersPage() {
 
               {/* Role */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldRole')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldRole')}</label>
                 <div className="relative">
                   <Select
                     value={formRole}
@@ -544,7 +544,7 @@ export default function OrgUsersPage() {
               {/* Hospital (conditional) */}
               {needsHospital && (
                 <div>
-                  <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldAssignedHospital')}</label>
+                  <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldAssignedHospital')}</label>
                   <div className="relative">
                     <Select
                       value={formHospitalId}
@@ -566,7 +566,7 @@ export default function OrgUsersPage() {
             <div className="flex items-center justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                 style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
               >
                 {t('action.cancel')}
@@ -574,7 +574,7 @@ export default function OrgUsersPage() {
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                 style={{ background: brandColor }}
               >
                 {creating ? (
@@ -723,7 +723,7 @@ export default function OrgUsersPage() {
               <button
                 onClick={handleResetPassword}
                 disabled={resetting}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
                 style={{ background: 'var(--color-warning)' }}
               >
                 {resetting ? t('orgUsers.resetting') : t('orgUsers.resetPassword')}

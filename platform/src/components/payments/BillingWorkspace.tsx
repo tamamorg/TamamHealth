@@ -1379,7 +1379,7 @@ function Section({ title, icon, count, children }: { title: string; icon: React.
           </div>
           <h3 className="text-sm font-semibold" style={{ color: 'var(--ehr-text-title, #132C44)' }}>{title}</h3>
         </div>
-        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--ehr-muted, #8395A8)' }}>{count}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--ehr-muted, #597386)' }}>{count}</span>
       </div>
       {children}
     </div>
@@ -1388,6 +1388,6 @@ function Section({ title, icon, count, children }: { title: string; icon: React.
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[12px] py-3 px-2" style={{ color: 'var(--ehr-muted, #8395A8)' }}>{children}</div>
+    <div className="text-[12px] py-3 px-2" style={{ color: 'var(--ehr-muted, #597386)' }}>{children}</div>
   );
 }

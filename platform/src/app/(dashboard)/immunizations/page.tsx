@@ -423,19 +423,19 @@ export default function ImmunizationsPage() {
       {/* Tab switcher */}
       <div className="flex gap-0 border-b mt-4 mb-1 overflow-x-auto" style={{ borderColor: 'var(--border-light)' }}>
         <button onClick={() => setActiveTab('records')}
-          className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${activeTab === 'records' ? 'tab-active' : ''}`}
+          className={`px-4 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'records' ? 'tab-active' : ''}`}
           style={{ color: activeTab === 'records' ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
           {t('immun.tabRecords', { count: stats?.totalChildren || 0 })}
         </button>
         {canViewCoverage && (
           <button onClick={() => setActiveTab('by_vaccine')}
-            className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${activeTab === 'by_vaccine' ? 'tab-active' : ''}`}
+            className={`px-4 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'by_vaccine' ? 'tab-active' : ''}`}
             style={{ color: activeTab === 'by_vaccine' ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
             By Vaccine
           </button>
         )}
         <button onClick={() => setActiveTab('defaulters')}
-          className={`px-4 py-3 text-sm font-medium flex items-center gap-2 whitespace-nowrap ${activeTab === 'defaulters' ? 'tab-active' : ''}`}
+          className={`px-4 py-3 text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeTab === 'defaulters' ? 'tab-active' : ''}`}
           style={{ color: activeTab === 'defaulters' ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
           {t('immun.tabDefaulters', { count: defaulterStats?.uniqueChildren || 0 })}
           {defaulterStats && defaulterStats.critical > 0 && (
@@ -469,11 +469,11 @@ export default function ImmunizationsPage() {
                         <Syringe className="w-4 h-4" style={{ color: 'var(--color-success-text)' }} />
                       </span>
                       <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{vaccine}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(5,150,105,0.1)', color: 'var(--color-success-text)' }}>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(5,150,105,0.1)', color: 'var(--color-success-text)' }}>
                         {total} completed
                       </span>
                       {overdueCount > 0 && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)' }}>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)' }}>
                           {overdueCount} overdue
                         </span>
                       )}
@@ -494,14 +494,14 @@ export default function ImmunizationsPage() {
                               const scheduledOnTime = !i.nextDueDate || new Date(i.dateGiven) <= new Date(i.nextDueDate);
                               return (
                                 <div key={i._id} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                                     {i.patientName || 'Unknown'}
                                   </span>
                                   <div className="flex items-center gap-3">
                                     <span style={{ color: 'var(--text-secondary)' }}>
                                       {new Date(i.dateGiven).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                     </span>
-                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{
                                       background: scheduledOnTime ? 'rgba(5,150,105,0.1)' : 'rgba(245,158,11,0.1)',
                                       color: scheduledOnTime ? 'var(--color-success-text)' : 'var(--color-warning-text)',
                                     }}>
@@ -531,7 +531,7 @@ export default function ImmunizationsPage() {
                               const overdueLabel = overdueMo >= 1 ? `Overdue by ${overdueMo}mo` : `Overdue by ${overdueDays}d`;
                               return (
                                 <div key={`${d.patientId}-${d.vaccine}-${d.doseNumber}`} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg" style={{ background: 'rgba(229,46,66,0.05)', border: '1px solid rgba(229,46,66,0.15)' }}>
-                                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                                     {d.patientName || 'Unknown'}
                                   </span>
                                   <div className="flex items-center gap-3">
@@ -576,7 +576,7 @@ export default function ImmunizationsPage() {
             <div className="data-row-divider-sm">
               {coverage.map(c => (
                 <div key={c.vaccine} className="flex items-center gap-3">
-                  <span className="text-xs font-medium w-24 text-right" style={{ color: 'var(--text-secondary)' }}>{c.vaccine}</span>
+                  <span className="text-xs font-bold w-24 text-right" style={{ color: 'var(--text-secondary)' }}>{c.vaccine}</span>
                   <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ background: 'var(--overlay-light)' }}>
                     <div
                       className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
@@ -661,7 +661,7 @@ export default function ImmunizationsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   {defaulterFilter !== 'all' && (
-                    <button onClick={() => setDefaulterFilter('all')} className="text-xs font-medium" style={{ color: 'var(--accent-primary)' }}>{t('immun.clearFilter')}</button>
+                    <button onClick={() => setDefaulterFilter('all')} className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>{t('immun.clearFilter')}</button>
                   )}
                   {canRecordVitalEvents && defaulters.filter(d => defaulterFilter === 'all' || d.urgency === defaulterFilter).length > 0 && (
                     <button
@@ -718,10 +718,10 @@ export default function ImmunizationsPage() {
                     const hasPhone = !!phoneForDefaulter(d.patientId);
                     return (
                       <tr key={rowKey} className="cursor-pointer" onClick={() => router.push(`/patients/${d.patientId}?tab=immunizations`)}>
-                        <td><PatientName patientId={d.patientId} name={d.patientName} gender={d.gender} nameClassName="font-medium text-sm" /></td>
+                        <td><PatientName patientId={d.patientId} name={d.patientName} gender={d.gender} nameClassName="font-semibold text-sm" /></td>
                         <td className="text-xs">{Math.floor(d.ageMonths / 12)}y {d.ageMonths % 12}m</td>
                         <td className="text-xs">{d.gender}</td>
-                        <td className="text-sm font-medium">{d.vaccine}</td>
+                        <td className="text-sm font-semibold">{d.vaccine}</td>
                         <td className="text-xs">#{d.doseNumber}</td>
                         <td className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{d.dueDate}</td>
                         <td className="text-sm font-bold" style={{ color: urgencyColor }}>{d.daysOverdue}d</td>
@@ -758,7 +758,7 @@ export default function ImmunizationsPage() {
           {/* Secondary toolbar — child-status filter + export. Title, stats,
               search, and vaccine filter now live in the shared page header above. */}
           <div className="listpage-table-toolbar">
-            <span className="text-sm font-medium flex-1" style={{ color: 'var(--text-primary)' }}>
+            <span className="text-sm font-semibold flex-1" style={{ color: 'var(--text-primary)' }}>
               {t('immun.vaccinationRecords', { count: filteredChildren.length })}
             </span>
             <Select
@@ -806,7 +806,7 @@ export default function ImmunizationsPage() {
                   className="w-full flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--table-row-hover)] cursor-pointer"
                 >
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{child.patientName}</p>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{child.patientName}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {child.gender} · DOB: {child.dateOfBirth} · {child.facilityName}
                     </p>
@@ -819,7 +819,7 @@ export default function ImmunizationsPage() {
                     <Link
                       href={`/patients/${childId}?tab=immunizations`}
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full transition-colors hover:bg-[var(--accent-light)]"
+                      className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full transition-colors hover:bg-[var(--accent-light)]"
                       style={{ color: 'var(--accent-primary)' }}
                       title={t('immun.viewPatientRecord')}
                     >
@@ -836,7 +836,7 @@ export default function ImmunizationsPage() {
                         const doses = scopedRecords.filter(r => r.vaccine === vac);
                         if (doses.length === 0) return (
                           <div key={vac} className="p-2 rounded-lg border" style={{ borderColor: 'var(--border-light)', background: 'var(--overlay-subtle)' }}>
-                            <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{vac}</p>
+                            <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>{vac}</p>
                             <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>{t('immun.notScheduled')}</p>
                           </div>
                         );
@@ -845,7 +845,7 @@ export default function ImmunizationsPage() {
                           return (
                             <div key={dose._id} className="p-2 rounded-lg border" style={{ borderColor: 'var(--border-light)', background: cfg.bg }}>
                               <div className="flex items-center gap-1 mb-1">
-                                <p className="text-xs font-medium flex-1 min-w-0" style={{ color: cfg.color }}>{dose.vaccine} {dose.doseNumber > 0 ? `#${dose.doseNumber}` : ''}</p>
+                                <p className="text-xs font-bold flex-1 min-w-0" style={{ color: cfg.color }}>{dose.vaccine} {dose.doseNumber > 0 ? `#${dose.doseNumber}` : ''}</p>
                                 {canRecordVitalEvents && (
                                   <button
                                     type="button"
@@ -935,7 +935,7 @@ export default function ImmunizationsPage() {
                               className="w-full px-2.5 py-2 text-left text-xs hover:bg-[var(--overlay-subtle)] transition-colors"
                               style={{ borderBottom: '1px solid var(--border-light)' }}
                             >
-                              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{p.firstName} {p.surname}</p>
+                              <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{p.firstName} {p.surname}</p>
                               <p style={{ color: 'var(--text-muted)' }}>{p.hospitalNumber} · {p.gender}{p.estimatedAge ? ` · ${p.estimatedAge}y` : ''}</p>
                             </button>
                           ))}

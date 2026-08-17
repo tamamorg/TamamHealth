@@ -5,13 +5,15 @@
  * Honest inventory of the integrations that actually exist in this codebase
  * — DHIS2 aggregate export, country-node document replication, and the
  * platform REST API gate. No FHIR/webhook endpoints are wired up yet, so
- * those are shown as explicit "none registered" rows rather than omitted or
- * invented.
+ * those are shown as explicit "none registered" status cards rather than
+ * omitted or invented.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import { SaPage, SaCard, SaStatusDot, SaPill, SaTable, formatWhen } from '@/components/admin/sa-ui';
+import {
+  SadbPage, SadbCard, SadbStatusCard, SadbHeadLink, SadbKvRow, TONE_CHIP,
+} from '@/components/admin/sadb-ui';
+import { SaPill, SaTable, formatWhen } from '@/components/admin/sa-ui';
 import { useToast } from '@/components/Toast';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import {
@@ -22,7 +24,7 @@ import { getSyncEventStats, pushPendingToCountryNode } from '@/lib/services/sync
 import { syncEventsDB } from '@/lib/db';
 import { findByType } from '@/lib/services/db-query';
 import type { SyncEventDoc } from '@/lib/db-types';
-import { ArrowRight, RefreshCw } from '@/components/icons/lucide';
+import { RefreshCw } from '@/components/icons/lucide';
 
 interface QueueHealth {
   total: number;
@@ -112,48 +114,45 @@ export default function AdminInteropPage() {
   const entries = dhisLog?.entries ?? [];
 
   return (
-    <SaPage>
-      <SaCard title="Interoperability" meta={loading || configLoading ? 'Loading…' : 'Integration endpoints'}>
-        <SaTable columns={['Endpoint', 'Kind', 'Target', 'Status', 'Last activity']} minWidth={720}>
-          <tr>
-            <td><strong>DHIS2 export</strong></td>
-            <td>Aggregate export</td>
-            <td>{dhisHost || 'Not configured'}</td>
-            <td><SaStatusDot tone={dhisTone} label={dhisLabel} /></td>
-            <td>{dhisLastActivity}</td>
-          </tr>
-          <tr>
-            <td><strong>Country-node replication</strong></td>
-            <td>Document sync</td>
-            <td>Local outbox → country node</td>
-            <td><SaStatusDot tone={queueTone} label={queueLabel} /></td>
-            <td>{queue ? formatWhen(queue.newestEvent) : '—'}</td>
-          </tr>
-          <tr>
-            <td><strong>API keys</strong></td>
-            <td>REST API</td>
-            <td>Platform REST endpoints</td>
-            <td><SaStatusDot tone={apiKeysEnabled ? 'ok' : 'muted'} label={apiKeysEnabled ? 'Enabled by policy' : 'Disabled by policy'} /></td>
-            <td>—</td>
-          </tr>
-        </SaTable>
-        <div className="sa-kv">
-          <div className="sa-kv-row">
-            <span>FHIR endpoints</span>
-            <span style={{ color: 'var(--text-muted)', fontFamily: 'inherit', fontWeight: 600 }}>None registered</span>
-          </div>
-          <div className="sa-kv-row">
-            <span>Webhooks</span>
-            <span style={{ color: 'var(--text-muted)', fontFamily: 'inherit', fontWeight: 600 }}>None registered</span>
-          </div>
+    <SadbPage>
+      <SadbCard title="Interoperability" meta={loading || configLoading ? 'Loading…' : 'Integration endpoints'}>
+        <div className="sadb-status-grid">
+          <SadbStatusCard
+            name="DHIS2 export"
+            status={dhisLabel}
+            tone={TONE_CHIP[dhisTone]}
+            detail={`Aggregate export · ${dhisHost || 'Not configured'} · Last activity ${dhisLastActivity}`}
+            actionLabel="Open DHIS2 export"
+            onAction={() => router.push('/dhis2-export')}
+          />
+          <SadbStatusCard
+            name="Country-node replication"
+            status={queueLabel}
+            tone={TONE_CHIP[queueTone]}
+            detail={`Document sync · Local outbox → country node · Last activity ${queue ? formatWhen(queue.newestEvent) : '—'}`}
+          />
+          <SadbStatusCard
+            name="API keys"
+            status={apiKeysEnabled ? 'Enabled by policy' : 'Disabled by policy'}
+            tone={apiKeysEnabled ? 'green' : 'neutral'}
+            detail="Platform REST endpoints, gated by super-admin policy."
+          />
+          <SadbStatusCard
+            name="FHIR endpoints"
+            status="Not configured"
+            tone="neutral"
+            detail="No FHIR endpoints are registered on this deployment."
+          />
+          <SadbStatusCard
+            name="Webhooks"
+            status="Not configured"
+            tone="neutral"
+            detail="No webhook subscriptions are registered on this deployment."
+          />
         </div>
-      </SaCard>
+      </SadbCard>
 
-      <SaCard>
-        <EhrListHeader
-          title="DHIS2 push log"
-          stats={[{ label: 'Entries', value: loading ? '—' : entries.length, color: LIST_STAT_COLORS.muted }]}
-        />
+      <SadbCard title="DHIS2 push log" meta={loading ? 'Loading…' : `${entries.length} entries`}>
         <SaTable
           columns={['When', 'Dataset', 'Period', 'Result', 'Detail']}
           empty={loading ? 'Loading…' : 'No DHIS2 push attempts recorded yet.'}
@@ -169,19 +168,18 @@ export default function AdminInteropPage() {
             </tr>
           ))}
         </SaTable>
-      </SaCard>
+      </SadbCard>
 
-      <SaCard>
-        <EhrListHeader
-          title="Failed pushes & retry"
-          stats={[{ label: 'Shown', value: loading ? '—' : `${failedEvents.length}${failedEvents.length === 50 ? ' (capped)' : ''}`, color: failedEvents.length ? 'var(--color-danger)' : LIST_STAT_COLORS.muted }]}
-          actions={
-            <button type="button" className="sa-btn" disabled={retrying} onClick={handleRetryBatch}>
-              <RefreshCw className="w-3.5 h-3.5" />
-              {retrying ? 'Retrying…' : 'Retry batch'}
-            </button>
-          }
-        />
+      <SadbCard
+        title="Failed pushes & retry"
+        meta={loading ? 'Loading…' : `${failedEvents.length} shown${failedEvents.length === 50 ? ' (capped)' : ''}`}
+        action={
+          <button type="button" className="btn btn-secondary btn-sm" disabled={retrying} onClick={handleRetryBatch}>
+            <RefreshCw className="w-3.5 h-3.5" />
+            {retrying ? 'Retrying…' : 'Retry batch'}
+          </button>
+        }
+      >
         <SaTable
           columns={['When', 'Resource', 'Operation', 'Error']}
           empty={loading ? 'Loading…' : 'No failed pushes.'}
@@ -196,30 +194,18 @@ export default function AdminInteropPage() {
             </tr>
           ))}
         </SaTable>
-      </SaCard>
+      </SadbCard>
 
-      <SaCard
+      <SadbCard
         title="Terminology & code mappings"
-        actions={
-          <button type="button" className="sa-btn" onClick={() => router.push('/dhis2-export')}>
-            Open DHIS2 export
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        }
+        action={<SadbHeadLink onClick={() => router.push('/dhis2-export')}>Open DHIS2 export</SadbHeadLink>}
       >
-        <div className="sa-kv">
-          <div className="sa-kv-row">
-            <span>ICD-11 reference set</span>
-            <span style={{ fontFamily: 'inherit', fontWeight: 600 }}>Bundled client-side (icd11-codes.ts) for diagnosis coding</span>
-          </div>
-          <div className="sa-kv-row">
-            <span>DHIS2 data-element mappings</span>
-            <span style={{ fontFamily: 'inherit', fontWeight: 600 }}>
-              Facility &amp; workforce, births/deaths (CRVS), laboratory, pharmacy, immunizations, ANC, disease surveillance, data quality
-            </span>
-          </div>
-        </div>
-      </SaCard>
-    </SaPage>
+        <SadbKvRow label="ICD-11 reference set" value="Bundled client-side (icd11-codes.ts) for diagnosis coding" />
+        <SadbKvRow
+          label="DHIS2 data-element mappings"
+          value="Facility & workforce, births/deaths (CRVS), laboratory, pharmacy, immunizations, ANC, disease surveillance, data quality"
+        />
+      </SadbCard>
+    </SadbPage>
   );
 }

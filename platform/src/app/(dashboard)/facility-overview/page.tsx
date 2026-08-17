@@ -183,7 +183,7 @@ function FacilityOverview() {
                 {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
               </button>
               {submitError && (
-                <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
+                <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
                   <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
                 </span>
               )}

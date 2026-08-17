@@ -268,7 +268,7 @@ export default function EmergencyPreparednessPage() {
                   <div className="flex items-center justify-between gap-3 pt-3 border-t" style={{ borderColor: 'var(--border-light)' }}>
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Incident commander</p>
-                      <p className="text-xs font-medium truncate">{plan.incidentCommander}</p>
+                      <p className="text-xs font-semibold truncate">{plan.incidentCommander}</p>
                       {plan.incidentCommanderPhone && (
                         <p className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
                           <Phone className="w-3 h-3" /> {plan.incidentCommanderPhone}

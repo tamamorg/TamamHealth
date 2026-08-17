@@ -7,6 +7,7 @@ import {
   HelpCircle,
   LayoutDashboard,
   LogOut,
+  Menu,
   MessageSquare,
   Plus,
   Search,
@@ -102,22 +103,19 @@ export default function EhrTopRail() {
     return uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes);
   }, [allowedRoutes, currentUser, roleConfig]);
 
-  // Keep four high-frequency destinations visible in the header. They are
-  // removed from the module menu so each destination has one visible home.
+  // Keep four high-frequency destinations visible in the header as shortcuts.
   // `homeHref` is passed so the role's own dashboard never takes one of the
   // four — the module trigger to the left of this row already goes there.
   const headerShortcutItems = useMemo(
     () => getPrimaryShortcutItems(navItems, currentUser?.role, 4, homeHref),
     [navItems, currentUser?.role, homeHref],
   );
-  const headerShortcutHrefs = useMemo(
-    () => new Set(headerShortcutItems.map(item => item.href)),
-    [headerShortcutItems],
-  );
-  const navGroups = useMemo(
-    () => groupNavItemsBySection(navItems.filter(item => !headerShortcutHrefs.has(item.href))),
-    [headerShortcutHrefs, navItems],
-  );
+  // Every module the role holds, the four header shortcuts included. They used
+  // to be subtracted from here so each destination had exactly one visible
+  // home, but that made the menu an incomplete map: the four most-used
+  // destinations were the four you could not find in the list of everywhere
+  // you can go. A shortcut is a faster route to a place, not a different one.
+  const navGroups = useMemo(() => groupNavItemsBySection(navItems), [navItems]);
 
 
   const navLabel = (item: NavItem): string => {
@@ -227,14 +225,18 @@ export default function EhrTopRail() {
           title="Open module menu"
           data-track="nav.module_menu"
         >
-          {/* The dashboard glyph, fixed — not a hamburger (tried, reverted) and
-              not the current module's icon. It stays constant so the trigger is
-              always the same button in the same place (a changing glyph read as
-              a mystery button), and because it IS the way home, the shortcut row
-              beside it never spends a slot on the role's own dashboard —
-              `getPrimaryShortcutItems` drops that destination to its last
-              fallback tier. The open panel attaches directly below. */}
-          <LayoutDashboard className="w-5 h-5" />
+          {/* A hamburger, fixed — never the current module's icon. It stays
+              constant so the trigger is always the same button in the same
+              place (a changing glyph read as a mystery button), and it is the
+              platform's own `menu` glyph (Icon.tsx), so it carries the same
+              stroke and colour as every other icon on the rail.
+
+              It was the dashboard glyph until the menu became a full module
+              map: that glyph is also the Dashboard row's own icon inside the
+              panel, so the button and one of its items were drawn identically.
+              The hamburger says "everywhere you can go"; the dashboard glyph
+              still says "the dashboard", one row down. */}
+          <Menu className="w-5 h-5" />
         </button>
 
         {moduleOpen && (

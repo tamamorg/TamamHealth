@@ -143,7 +143,7 @@ function TransferCard({
                 </span>
               )}
             </div>
-            <div className="text-[13px] font-medium mt-1.5 truncate">
+            <div className="text-[13px] font-semibold mt-1.5 truncate">
               {describeAssignment(transfer.from)} → {describeAssignment(transfer.to)}
             </div>
             {showClinicalDetail && (

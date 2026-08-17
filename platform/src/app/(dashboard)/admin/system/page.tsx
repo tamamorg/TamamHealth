@@ -8,13 +8,15 @@
  */
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import { SaPage, SaCard, SaTable } from '@/components/admin/sa-ui';
+import { SadbPage, SadbCard, SadbGridList, SadbGridRow, SadbKvRow, SadbChip } from '@/components/admin/sadb-ui';
 
 interface DBStats {
   name: string;
   docCount: number;
 }
+
+/** Store, doc count, and a derived populated/empty status. */
+const GRID_TEMPLATE = 'minmax(0, 1fr) 130px 110px';
 
 export default function AdminSystemPage() {
   const { t } = useTranslation();
@@ -72,45 +74,40 @@ export default function AdminSystemPage() {
   const totalDocs = dbStats.reduce((sum, s) => sum + s.docCount, 0);
 
   return (
-    <SaPage>
-      <SaCard>
-        <EhrListHeader
-          title="System Health"
-          stats={[
-            { label: t('system.totalDocuments'), value: dbStatsLoading ? '…' : totalDocs, color: LIST_STAT_COLORS.blue },
-            { label: 'Databases', value: dbStatsLoading ? '…' : dbStats.length, color: LIST_STAT_COLORS.muted },
-          ]}
-        />
-        <SaTable
-          columns={[t('system.database'), t('system.totalDocuments')]}
+    <SadbPage>
+      <SadbCard
+        title="System Health"
+        meta={dbStatsLoading ? '…' : `${dbStats.length} stores · ${totalDocs.toLocaleString()} documents`}
+      >
+        <SadbGridList
+          template={GRID_TEMPLATE}
+          minWidth={480}
+          head={[t('system.database'), t('system.totalDocuments'), 'Status']}
           empty={dbStatsLoading ? t('system.loadingStats') : undefined}
         >
           {dbStats.map(db => (
-            <tr key={db.name}>
-              <td>{db.name}</td>
-              <td style={{ fontFamily: 'var(--font-platform-mono)', color: db.docCount > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+            <SadbGridRow key={db.name} template={GRID_TEMPLATE}>
+              <span>{db.name}</span>
+              <span
+                className="sadb-tenant-num"
+                style={{ fontFamily: 'var(--font-platform-mono)', color: db.docCount > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}
+              >
                 {db.docCount.toLocaleString()}
-              </td>
-            </tr>
+              </span>
+              <span>
+                <SadbChip tone={db.docCount > 0 ? 'green' : 'neutral'}>{db.docCount > 0 ? 'Populated' : 'Empty'}</SadbChip>
+              </span>
+            </SadbGridRow>
           ))}
-        </SaTable>
-      </SaCard>
+        </SadbGridList>
+      </SadbCard>
 
-      <SaCard title={t('system.systemInfo')}>
-        <div className="sa-kv">
-          {[
-            { label: t('system.storageEngine'), value: 'PouchDB (IndexedDB)' },
-            { label: t('system.platform'), value: 'Next.js 14' },
-            { label: t('system.uiFramework'), value: 'Tailwind CSS' },
-            { label: t('system.auth'), value: 'JWT (Client-side)' },
-          ].map(item => (
-            <div key={item.label} className="sa-kv-row">
-              <span>{item.label}</span>
-              <span>{item.value}</span>
-            </div>
-          ))}
-        </div>
-      </SaCard>
-    </SaPage>
+      <SadbCard title={t('system.systemInfo')}>
+        <SadbKvRow label={t('system.storageEngine')} value="PouchDB (IndexedDB)" />
+        <SadbKvRow label={t('system.platform')} value="Next.js 14" />
+        <SadbKvRow label={t('system.uiFramework')} value="Tailwind CSS" />
+        <SadbKvRow label={t('system.auth')} value="JWT (Client-side)" />
+      </SadbCard>
+    </SadbPage>
   );
 }

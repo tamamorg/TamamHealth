@@ -3,19 +3,29 @@ import type { UserRole } from '@/lib/db-types';
 
 // Routes dropped from a role's top-rail quick-shortcut row because that
 // role's own default dashboard body already has a dedicated, same-intent
-// button for the same route (e.g. Nurse's action strip already has a
-// "Patients" button, so the header doesn't need one too). Only routes with
-// a *verified* body-level duplicate are listed here — a route missing from
-// a role's list still shows in the header as normal.
+// button for the same route (e.g. the clinical dashboard's quick-action row
+// already has a "Patient Intake" button, so the header doesn't need one
+// too). Only routes with a *verified* body-level duplicate are listed here —
+// a route missing from a role's list still shows in the header as normal.
+//
+// Nurse-family roles (nurse, midwife, triage_nurse, rooming_nurse) used to
+// list several more routes here (Patients, Wards, Appointments, Lab,
+// Immunizations, ANC, Referrals) because the standalone nurse station had a
+// tab/station picker with a dedicated button for each. That station body no
+// longer exists — nurse-family now shares the same clinical dashboard shell
+// as doctors — so only the one duplicate verified against that shell
+// (Patient Intake) still applies; the rest went back to showing in the
+// header like any other role until something in the shared body verifiably
+// duplicates them again.
 const HEADER_SHORTCUT_DUPLICATE_ROUTES: Partial<Record<UserRole, string[]>> = {
   doctor: ['/patient-intake'],
   clinical_officer: ['/patient-intake'],
   clinician: ['/patient-intake'],
   medical_superintendent: ['/payments'],
-  nurse: ['/patients', '/wards', '/appointments', '/patient-intake', '/lab', '/immunizations', '/anc'],
-  midwife: ['/patients', '/appointments', '/wards', '/anc', '/immunizations', '/referrals'],
-  triage_nurse: ['/patients', '/wards', '/appointments', '/patient-intake', '/lab', '/immunizations', '/anc'],
-  rooming_nurse: ['/patients', '/wards', '/appointments', '/patient-intake', '/lab', '/immunizations', '/anc'],
+  nurse: ['/patient-intake'],
+  midwife: ['/patient-intake'],
+  triage_nurse: ['/patient-intake'],
+  rooming_nurse: ['/patient-intake'],
   front_desk: ['/patient-intake', '/patients', '/referrals', '/appointments'],
   central_registration_clerk: ['/patients', '/appointments', '/referrals'],
   clinic_clerk: ['/patients', '/appointments'],

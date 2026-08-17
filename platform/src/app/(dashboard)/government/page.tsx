@@ -14,25 +14,32 @@
  * DHIS2 sync log). Missing data renders as an explicit empty state.
  */
 
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  BarChart, Bar, Cell, PieChart, Pie,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
-import { tooltipStyle, axisTick } from '@/components/ChartCard';
-import {
-  Siren, FileText, ChevronRight, ChevronDown, Check, Syringe, HeartPulse,
+  Siren, FileText, ChevronRight, ChevronDown, Check,
 } from '@/components/icons/lucide';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
-import { SOUTH_SUDAN_STATES, SOUTH_SUDAN_BBOX, type GeoState } from '@/data/south-sudan-geo';
+import { SOUTH_SUDAN_STATES } from '@/data/south-sudan-geo';
+import { makeProjector } from '@/lib/maps/south-sudan-projection';
 import { useHospitals } from '@/lib/hooks/useHospitals';
-import { useBirths } from '@/lib/hooks/useBirths';
-import { useDeaths } from '@/lib/hooks/useDeaths';
 import { getNationalDataQuality, type NationalDataQuality } from '@/lib/services/data-quality-service';
 import { getImmunizationStats } from '@/lib/services/immunization-service';
-import { getANCStats } from '@/lib/services/anc-service';
+import { isoWeek } from '@/lib/format-utils';
 import { CHART_SERIES, CHART_SERIES_HEX, DISEASE_COLOR } from '@/lib/chart-colors';
+
+// recharts (~80-100KB) is deferred behind dynamic boundaries so it's fetched
+// only when a chart actually renders — same pattern as
+// FacilityManagementDashboard/_FacilityCharts.
+const FacilityTypeDonut = dynamic(
+  () => import('./_GovernmentCharts').then(m => m.FacilityTypeDonut),
+  { ssr: false, loading: () => <div style={{ width: '100%', height: '100%' }} /> },
+);
+const WeeklyCasesChart = dynamic(
+  () => import('./_GovernmentCharts').then(m => m.WeeklyCasesChart),
+  { ssr: false, loading: () => <div style={{ width: '100%', height: '100%' }} /> },
+);
 
 /* Two jobs, two forms — they were one set of constants doing both, which is
    how the map turned black.
@@ -51,7 +58,6 @@ const AMBER = 'var(--color-warning)';
 const RED = 'var(--color-danger)';
 
 type ImmunizationStats = Awaited<ReturnType<typeof getImmunizationStats>>;
-type ANCStats = Awaited<ReturnType<typeof getANCStats>>;
 
 // ── The ten states, with 3-letter codes for compact bar-chart axis labels ──
 const STATE_TILES: { name: string; abbr: string }[] = [
@@ -76,24 +82,20 @@ const MAP_LAYERS: { key: MapLayer; label: string; legend: string }[] = [
   { key: 'facilities', label: 'Facilities', legend: 'Registered facilities' },
 ];
 
+// Chart-label wrapper around the shared ISO-week calculator: the week number
+// comes from `isoWeek` (the same algorithm /surveillance uses), while the
+// Thursday-of-week date it also needs stays local — it's only used here to
+// format the display month and a chronological sort key, values `isoWeek`
+// doesn't expose.
 function isoWeekLabel(iso: string): { label: string; sortKey: string } {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { label: iso || '?', sortKey: iso || '' };
+  const w = isoWeek(iso);
+  if (Number.isNaN(d.getTime()) || !w) return { label: iso || '?', sortKey: iso || '' };
   const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
   const dayNum = (target.getUTCDay() + 6) % 7;
   target.setUTCDate(target.getUTCDate() - dayNum + 3);
-  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
-  const week = 1 + Math.round(((target.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
   const month = target.toLocaleString('en', { month: 'short', timeZone: 'UTC' });
-  return { label: `W${week} ${month}`, sortKey: target.toISOString().slice(0, 10) };
-}
-
-function monthLabel(iso: string): { label: string; sortKey: string } | null {
-  if (!iso || iso.length < 7) return null;
-  const key = iso.slice(0, 7);
-  const d = new Date(`${key}-01T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return null;
-  return { label: d.toLocaleString('en', { month: 'short', year: '2-digit', timeZone: 'UTC' }), sortKey: key };
+  return { label: `W${w.week} ${month}`, sortKey: target.toISOString().slice(0, 10) };
 }
 
 // Threshold tone for percentage indicators (WHO DQR-style traffic light).
@@ -110,31 +112,7 @@ const GOV_MAP_W = 600;
 const GOV_MAP_H = 440;
 const GOV_MAP_PAD = 12;
 
-function govProject(lat: number, lng: number): { x: number; y: number } {
-  const { minLng, maxLng, minLat, maxLat } = SOUTH_SUDAN_BBOX;
-  const scale = Math.min(
-    (GOV_MAP_W - 2 * GOV_MAP_PAD) / (maxLng - minLng),
-    (GOV_MAP_H - 2 * GOV_MAP_PAD) / (maxLat - minLat),
-  );
-  const ox = (GOV_MAP_W - (maxLng - minLng) * scale) / 2;
-  const oy = (GOV_MAP_H - (maxLat - minLat) * scale) / 2;
-  return { x: ox + (lng - minLng) * scale, y: oy + (maxLat - lat) * scale };
-}
-
-function govRingPath(ring: Array<[number, number]>): string {
-  return ring.map(([lng, lat], i) => {
-    const p = govProject(lat, lng);
-    return `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
-  }).join(' ') + ' Z';
-}
-
-function govCentroid(state: GeoState): { x: number; y: number } {
-  const ring = state.rings.reduce((a, b) => (b.length > a.length ? b : a), state.rings[0]);
-  return govProject(
-    ring.reduce((s, p) => s + p[1], 0) / ring.length,
-    ring.reduce((s, p) => s + p[0], 0) / ring.length,
-  );
-}
+const governmentProjector = makeProjector(GOV_MAP_W, GOV_MAP_H, GOV_MAP_PAD);
 
 /* Magnitude layers shade from a near-white wash toward the layer's brand
    color (sqrt ramp keeps mid-range states readable); zero/no-data states get
@@ -160,28 +138,6 @@ function PanelHead({ title, meta, action }: { title: string; meta?: string; acti
       <div className="flex items-center gap-3">
         {meta && <span className="gov-meta">{meta}</span>}
         {action}
-      </div>
-    </div>
-  );
-}
-
-/** One row of the design's ranked panel: label against a condensed value, on
- *  a 6px track filled to the value and coloured by the WHO threshold tone. */
-function CoverageBar({ value, label, sub, color }: {
-  value: number; label: string; sub?: string; color: string;
-}) {
-  const pct = Math.min(100, Math.max(0, value));
-  return (
-    <div className="gov-rank-row">
-      <div className="gov-rank-line">
-        <span className="truncate">
-          {label}
-          {sub && <small> · {sub}</small>}
-        </span>
-        <b style={{ color }}>{pct}%</b>
-      </div>
-      <div className="gov-rank-track">
-        <div style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
   );
@@ -219,26 +175,13 @@ const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
   phcu: { label: 'PHCU', color: '#CA4D1C' },
 };
 
-// Recharts <Legend> restyled to spec: identity comes from the colored dot,
-// the text stays in neutral ink (series-colored legend text is illegible for
-// light hues and reads loud).
-const legendProps = {
-  iconType: 'circle' as const,
-  iconSize: 8,
-  wrapperStyle: { fontSize: 11, paddingTop: 4 },
-  formatter: (value: React.ReactNode) => <span style={{ color: 'var(--text-secondary)' }}>{value}</span>,
-};
-
 export default function GovernmentNationalDashboard() {
   const router = useRouter();
   const { alerts } = useSurveillance();
   const { hospitals } = useHospitals();
-  const { births } = useBirths();
-  const { deaths } = useDeaths();
 
   const [dq, setDq] = useState<NationalDataQuality | null>(null);
   const [imm, setImm] = useState<ImmunizationStats | null>(null);
-  const [anc, setAnc] = useState<ANCStats | null>(null);
   const [layer, setLayer] = useState<MapLayer>('alerts');
   const [selectedState, setSelectedState] = useState<string | null>(null);
   // Which diseases the weekly-trend chart plots. `null` = all; once the
@@ -248,13 +191,12 @@ export default function GovernmentNationalDashboard() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [dqRes, immRes, ancRes] = await Promise.all([
+      const [dqRes, immRes] = await Promise.all([
         getNationalDataQuality().catch(() => null),
         getImmunizationStats().catch(() => null),
-        getANCStats().catch(() => null),
       ]);
       if (cancelled) return;
-      setDq(dqRes); setImm(immRes); setAnc(ancRes);
+      setDq(dqRes); setImm(immRes);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -463,33 +405,6 @@ export default function GovernmentNationalDashboard() {
     </div>
   ) : null;
 
-  const vitalMonthly = useMemo(() => {
-    const byMonth = new Map<string, { births: number; deaths: number }>();
-    const bump = (iso: string, key: 'births' | 'deaths') => {
-      const m = monthLabel(iso);
-      if (!m) return;
-      const cur = byMonth.get(m.sortKey) || { births: 0, deaths: 0 };
-      cur[key] += 1;
-      byMonth.set(m.sortKey, cur);
-    };
-    for (const b of births) bump(b.dateOfBirth || b.createdAt, 'births');
-    for (const d of deaths) bump(d.dateOfDeath || d.createdAt, 'deaths');
-    if (byMonth.size === 0) return [];
-    // Continuous 6-month axis ending at the latest registration month — months
-    // with no events plot as zero instead of vanishing, so gaps stay honest.
-    // Labels use “Jun ’26” (the bare "Jun 26" read as a day of the month).
-    const latest = Array.from(byMonth.keys()).sort().pop()!;
-    const [ly, lm] = latest.split('-').map(Number);
-    const out: { month: string; births: number; deaths: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(ly, lm - 1 - i, 1);
-      const sortKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const counts = byMonth.get(sortKey) || { births: 0, deaths: 0 };
-      out.push({ month: `${d.toLocaleString('en', { month: 'short' })} ’${String(d.getFullYear()).slice(2)}`, ...counts });
-    }
-    return out;
-  }, [births, deaths]);
-
   const now = new Date();
   const periodLabel = now.toLocaleString('en', { month: 'long', year: 'numeric' });
 
@@ -514,9 +429,11 @@ export default function GovernmentNationalDashboard() {
         </div>
       </div>
 
-      {/* ── The design's 6-column panel grid: map 4/6, every chart 2/6 ── */}
+      {/* ── One viewport, no scrolling: the map fills the left 4/6 across
+          both rows; the right 2/6 stacks Facility types over Weekly cases,
+          the chart flexing to absorb the leftover height. ── */}
       <div className="gov-grid">
-        <section className="gov-panel gov-span-4">
+        <section className="gov-panel gov-span-4 gov-map-panel">
           <PanelHead title="By state" meta="ranked · National" />
           <div className="gov-map-layers">
             {MAP_LAYERS.map(l => (
@@ -550,7 +467,7 @@ export default function GovernmentNationalDashboard() {
                 value === null || value === 0 ? '' : isPercentLayer ? `${value}%` : value.toLocaleString();
               return (
                 <>
-                  <div className="flex-1 min-w-0">
+                  <div className="gov-map-canvas flex-1 min-w-0">
                     <svg viewBox={`0 0 ${GOV_MAP_W} ${GOV_MAP_H}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
                       {SOUTH_SUDAN_STATES.map(s => {
                         const entry = byName.get(s.name);
@@ -559,7 +476,7 @@ export default function GovernmentNationalDashboard() {
                         return s.rings.map((ring, i) => (
                           <path
                             key={`${s.name}-${i}`}
-                            d={govRingPath(ring)}
+                            d={governmentProjector.ringPath(ring)}
                             fill={fillFor(value)}
                             fillOpacity={isPercentLayer && value ? 0.55 : 1}
                             stroke={isSelected ? 'var(--brand-800)' : 'rgba(1, 86, 151, 0.25)'}
@@ -573,7 +490,7 @@ export default function GovernmentNationalDashboard() {
                         ));
                       })}
                       {SOUTH_SUDAN_STATES.map(s => {
-                        const c = govCentroid(s);
+                        const c = governmentProjector.centroid(s);
                         const value = byName.get(s.name)?.value ?? null;
                         const heavy = !isPercentLayer && maxValue > 0 && (value ?? 0) / maxValue > 0.55;
                         return (
@@ -645,30 +562,6 @@ export default function GovernmentNationalDashboard() {
           </div>
         </section>
 
-        {/* Weekly reported cases — the design's paired-bar panel; series stay
-            per-disease with the entity-stable palette and the selector. */}
-        <section className="gov-panel gov-span-2">
-          <PanelHead title="Weekly reported cases" meta="Last 12 weeks · National" action={diseaseSelector} />
-          <div className="gov-chart-body" style={{ height: 208 }}>
-            {weeklyByDisease.length === 0 || diseaseList.length === 0 ? (
-              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No surveillance reports on file.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%" minHeight={0}>
-                <BarChart data={weeklyByDisease} margin={{ top: 6, right: 8, left: -12, bottom: 0 }}>
-                  <CartesianGrid stroke="var(--chart-grid, #E3EBF2)" vertical={false} />
-                  <XAxis dataKey="week" tick={axisTick} tickLine={false} axisLine={false} />
-                  <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip {...tooltipStyle} cursor={{ fill: 'var(--overlay-subtle)' }} />
-                  <Legend {...legendProps} />
-                  {shownDiseases.map(d => (
-                    <Bar key={d} dataKey={d} name={d} fill={diseaseColorMap.get(d)} radius={[2, 2, 0, 0]} maxBarSize={9} isAnimationActive={false} />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </section>
-
         {/* Facility-type mix — the design's 104px donut with a count legend. */}
         <section className="gov-panel gov-span-2">
           <PanelHead title="Facility types" meta={`${hospitals.length.toLocaleString()} registered`} />
@@ -677,14 +570,7 @@ export default function GovernmentNationalDashboard() {
           ) : (
             <div className="gov-donut-body">
               <div className="gov-donut-ring">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={facilityMix} dataKey="value" nameKey="label" innerRadius={32} outerRadius={52} paddingAngle={0} stroke="none" isAnimationActive={false}>
-                      {facilityMix.map(f => <Cell key={f.key} fill={f.color} />)}
-                    </Pie>
-                    <Tooltip {...tooltipStyle} formatter={(v: number | undefined, n) => [v ?? 0, String(n ?? '')]} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <FacilityTypeDonut data={facilityMix} />
                 <div className="gov-donut-hole">
                   <b>{hospitals.length.toLocaleString()}</b>
                 </div>
@@ -701,59 +587,19 @@ export default function GovernmentNationalDashboard() {
           )}
         </section>
 
-        {/* Vital events per month — births vs deaths, the design's pair. */}
-        <section className="gov-panel gov-span-2">
-          <PanelHead title="Vital events per month" meta="Births vs deaths · last 6 months" action={
-            <span className="flex items-center gap-2">
-              <button type="button" className="gov-open-link" style={{ margin: 0 }} onClick={() => router.push('/births')}>Births</button>
-              <button type="button" className="gov-open-link" style={{ margin: 0 }} onClick={() => router.push('/deaths')}>Deaths</button>
-            </span>
-          } />
-          <div className="gov-chart-body" style={{ height: 208 }}>
-            {vitalMonthly.length === 0 ? (
-              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No birth/death registrations on file.</p>
+        {/* Weekly reported cases — the design's paired-bar panel; series stay
+            per-disease with the entity-stable palette and the selector. */}
+        <section className="gov-panel gov-span-2 gov-fill-panel">
+          <PanelHead title="Weekly reported cases" meta="Last 12 weeks · National" action={diseaseSelector} />
+          <div className="gov-chart-body gov-chart-fill" style={{ height: 208 }}>
+            {weeklyByDisease.length === 0 || diseaseList.length === 0 ? (
+              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No surveillance reports on file.</p>
             ) : (
-              <ResponsiveContainer width="100%" height="100%" minHeight={0}>
-                <BarChart data={vitalMonthly} margin={{ top: 6, right: 8, left: -12, bottom: 0 }} barCategoryGap="24%">
-                  <CartesianGrid stroke="var(--chart-grid, #E3EBF2)" vertical={false} />
-                  <XAxis dataKey="month" tick={axisTick} tickLine={false} axisLine={false} />
-                  <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip {...tooltipStyle} cursor={{ fill: 'var(--overlay-subtle)' }} />
-                  <Legend {...legendProps} />
-                  {/* The design's pair: brand ink for births, the warm counter
-                      colour for deaths — the same two hues its bars use. */}
-                  <Bar dataKey="births" name="Births" fill="#144972" radius={[2, 2, 0, 0]} maxBarSize={9} isAnimationActive={false} />
-                  <Bar dataKey="deaths" name="Deaths" fill="#C2410C" radius={[2, 2, 0, 0]} maxBarSize={9} isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
+              <WeeklyCasesChart data={weeklyByDisease} diseases={shownDiseases} colorMap={diseaseColorMap} />
             )}
           </div>
         </section>
 
-        {/* Programme coverage — the design's ranked panel. */}
-        <section className="gov-panel gov-span-2">
-          <PanelHead title="Programme coverage" meta="vs national target" action={
-            <span className="flex items-center gap-2">
-              <button type="button" className="gov-open-link" style={{ margin: 0 }} onClick={() => router.push('/immunizations')}>
-                <Syringe className="w-3 h-3 inline" /> EPI
-              </button>
-              <button type="button" className="gov-open-link" style={{ margin: 0 }} onClick={() => router.push('/anc')}>
-                <HeartPulse className="w-3 h-3 inline" /> ANC
-              </button>
-            </span>
-          } />
-          {/* Birth/death certification lives with the Vital events chart —
-              only reporting + programme indicators here. */}
-          <div className="gov-rank">
-            <CoverageBar value={dq?.avgCompleteness ?? 0} label="Reporting" sub={`${dq?.facilitiesReporting ?? 0}/${dq?.totalFacilities ?? 0} facilities`} color={pctTone(dq?.avgCompleteness ?? 0, 80, 60)} />
-            <CoverageBar value={dq?.avgTimeliness ?? 0} label="Timeliness" sub="latest assessments" color={pctTone(dq?.avgTimeliness ?? 0, 80, 60)} />
-            <CoverageBar value={imm?.coverageRate ?? 0} label="Immunization" sub={`${imm?.totalChildren ?? 0} children`} color={pctTone(imm?.coverageRate ?? 0, 90, 60)} />
-            <CoverageBar value={anc?.anc4PlusRate ?? 0} label="ANC 4+" sub={`${anc?.totalMothers ?? 0} mothers`} color={pctTone(anc?.anc4PlusRate ?? 0, 80, 50)} />
-          </div>
-          <p className="gov-rank-foot">
-            Rates use facility-recorded denominators, not population estimates.
-          </p>
-        </section>
       </div>
 
     </main>

@@ -11,7 +11,7 @@ import type { DiseaseAlertDoc } from '@/lib/db-types';
 
 // ── Shared "flat clinical" section chrome (matches the HR / patients pages) ──
 const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-condensed)', fontWeight: 600, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
+  fontFamily: 'var(--font-condensed)', fontWeight: 800, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
 };
 
 const LEVEL_COLORS: Record<string, string> = {

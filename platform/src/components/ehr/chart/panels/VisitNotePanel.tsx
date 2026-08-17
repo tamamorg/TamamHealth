@@ -214,7 +214,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
           <label className="omrs-panel-label">Primary diagnosis</label>
           {primaryDx ? (
             <div className="omrs-panel-picked-chip">
-              <span>{primaryDx.title} <span style={{ opacity: 0.7 }}>· {primaryDx.code}</span></span>
+              <span>{primaryDx.title} <span style={{ color: 'var(--ehr-muted)' }}>· {primaryDx.code}</span></span>
               <button type="button" onClick={() => setPrimaryDx(null)}>Change</button>
             </div>
           ) : (
@@ -233,7 +233,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
           <label className="omrs-panel-label">Secondary diagnosis</label>
           {secondaryDx ? (
             <div className="omrs-panel-picked-chip">
-              <span>{secondaryDx.title} <span style={{ opacity: 0.7 }}>· {secondaryDx.code}</span></span>
+              <span>{secondaryDx.title} <span style={{ color: 'var(--ehr-muted)' }}>· {secondaryDx.code}</span></span>
               <button type="button" onClick={() => setSecondaryDx(null)}>Change</button>
             </div>
           ) : (
@@ -264,7 +264,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
             <label className="omrs-panel-label">Images</label>
             {images.map((file, i) => (
               <div className="omrs-panel-picked-chip" key={`${file.name}-${i}`}>
-                <span>{file.name} <span style={{ opacity: 0.7 }}>· {(file.size / 1024).toFixed(0)} KB</span></span>
+                <span>{file.name} <span style={{ color: 'var(--ehr-muted)' }}>· {(file.size / 1024).toFixed(0)} KB</span></span>
                 <button type="button" onClick={() => setImages(prev => prev.filter((_, j) => j !== i))} aria-label={`Remove ${file.name}`}>
                   <X size={12} /> Remove
                 </button>

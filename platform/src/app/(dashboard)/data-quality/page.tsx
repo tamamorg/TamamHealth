@@ -142,7 +142,7 @@ export default function DataQualityPage() {
   return (
     <main className="page-container page-enter">
         <div className="card-elevated px-4 pt-4 pb-3 mb-4">
-          <span style={{ fontFamily: 'var(--font-condensed)', fontWeight: 600, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
+          <span style={{ fontFamily: 'var(--font-condensed)', fontWeight: 800, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
             {t('dataQuality.topBarTitle')}
           </span>
         </div>
@@ -165,7 +165,7 @@ export default function DataQualityPage() {
                   <div className="flex justify-between text-xs mb-1">
                     <span style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
                     <span className="font-bold" style={{ color: scoreColor(item.value) }}>{item.value}%
-                      <span className="font-normal ml-1" style={{ color: 'var(--text-muted)' }}>/ {item.target}%</span>
+                      <span className="font-semibold ml-1" style={{ color: 'var(--text-muted)' }}>/ {item.target}%</span>
                     </span>
                   </div>
                   <div className="relative w-full h-3 rounded-full" style={{ background: 'var(--overlay-light)' }}>

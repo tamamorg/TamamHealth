@@ -13,7 +13,7 @@ import { usePharmacyInventory } from '@/lib/hooks/usePharmacyInventory';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
-import { medications } from '@/data/mock';
+import { medications } from '@/lib/data/formulary';
 import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
 import { medicationMatches } from '@/lib/services/dispensing-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -1002,7 +1002,7 @@ export default function PharmacyPage() {
                             showAvatar
                             size={40}
                             secondaryText={patientById.get(rx.patientId)?.hospitalNumber || 'ID not recorded'}
-                            nameClassName="text-sm font-medium"
+                            nameClassName="text-sm"
                           />
                         </td>
                         <td className="text-sm">
@@ -1086,7 +1086,7 @@ export default function PharmacyPage() {
                   <tr key={item._id}>
                     {/* Icon dropped: stock state is already its own Status
                         column, so the glyph was a second, weaker copy of it. */}
-                    <td className="font-medium text-sm">{item.medicationName}</td>
+                    <td className="font-semibold text-sm">{item.medicationName}</td>
                     <td><span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-medium)', color: 'var(--text-secondary)' }}>{item.category}</span></td>
                     <td>
                       <div className="flex items-center gap-2">
@@ -1147,7 +1147,7 @@ export default function PharmacyPage() {
                   <tr><td colSpan={6} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.allStockAdequate')}</td></tr>
                 ) : reorderList.map(item => (
                   <tr key={item._id}>
-                    <td className="font-medium text-sm">
+                    <td className="font-semibold text-sm">
                       <div className="flex items-center gap-2">
                         <div className="icon-box-sm">
                           {item.status === 'critical'
@@ -1158,7 +1158,7 @@ export default function PharmacyPage() {
                       </div>
                     </td>
                     <td><span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-medium)', color: 'var(--text-secondary)' }}>{item.category}</span></td>
-                    <td className="font-semibold text-sm" style={{ color: item.status === 'critical' ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>{item.stockLevel} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
+                    <td className="font-semibold text-sm" style={{ color: item.status === 'critical' ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>{item.stockLevel} <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
                     <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.reorderLevel}</td>
                     <td className="font-semibold text-sm" style={{ color: 'var(--accent-primary)' }}>{orderQtyFor(item)} {item.unit}</td>
                     <td>
@@ -1195,7 +1195,7 @@ export default function PharmacyPage() {
                       {/* Icon dropped: the same calendar on every row said
                           nothing the Expiry and Status columns don't already
                           say, in colour, further right. */}
-                      <td className="font-medium text-sm">{item.medicationName}</td>
+                      <td className="font-semibold text-sm">{item.medicationName}</td>
                       <td className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{item.batchNumber}</td>
                       <td className="text-sm">{item.stockLevel} <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
                       <td className="text-xs" style={{ color: expired ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>{item.expiryDate}</td>
@@ -1231,7 +1231,7 @@ export default function PharmacyPage() {
                         color: okPct > 80 ? 'var(--color-success-text)' : okPct > 60 ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
                       }}>{okPct}%</span>
                     </div>
-                    <p className="text-lg font-bold mb-1.5">{cat.units.toLocaleString()} <span className="text-[10px] font-normal" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.stockLabel')}</span></p>
+                    <p className="text-lg font-bold mb-1.5">{cat.units.toLocaleString()} <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.stockLabel')}</span></p>
                     <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: 'var(--border-light)' }}>
                       <div className="h-full rounded-full" style={{ width: `${okPct}%`, background: okPct > 80 ? 'var(--color-success)' : okPct > 60 ? 'var(--color-warning)' : 'var(--color-danger)' }} />
                     </div>
@@ -1261,7 +1261,7 @@ export default function PharmacyPage() {
                     <button key={p._id} onClick={() => setSelectedPatient(p._id)}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--table-row-hover)]">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{patientName(p)}</p>
+                        <p className="text-sm font-semibold truncate">{patientName(p)}</p>
                         <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
                           {p.hospitalNumber}{rxs.length ? ` · ${t('pharmacy.prescriptionsOnRecord', { count: rxs.length })}` : ''}
                         </p>
@@ -1317,7 +1317,7 @@ export default function PharmacyPage() {
                       const stage = pharmacyStage(rx);
                       return (
                         <tr key={rx._id}>
-                          <td className="font-medium text-sm">{rx.medication}</td>
+                          <td className="font-semibold text-sm">{rx.medication}</td>
                           <td className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{prescriptionSig(rx)}</td>
                           <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{rx.prescribedBy}</td>
                           <td className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{rx.createdAt ? new Date(rx.createdAt).toLocaleDateString('en-GB') : '—'}</td>

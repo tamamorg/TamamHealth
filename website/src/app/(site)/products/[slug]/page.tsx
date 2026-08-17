@@ -39,8 +39,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   Get in touch
                   <Corners />
                 </Link>
-                <Link href="/login" className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, whiteSpace: "nowrap", flexShrink: 0, background: "transparent", borderColor: "rgba(255,255,255,0.5)", color: "#FFFFFF" }}>
-                  Log in
+                {/* The portal this product is actually used through: the
+                    patient portal opens the patient side, every clinical
+                    product the staff side. Bare /login sent all six to the
+                    staff picker, patients included. */}
+                <Link href={p.slug === "pps" ? "/login?role=patient" : "/login?role=staff"} className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, whiteSpace: "nowrap", flexShrink: 0, background: "transparent", borderColor: "rgba(255,255,255,0.5)", color: "#FFFFFF" }}>
+                  {p.slug === "pps" ? "Patient log in" : "Staff log in"}
                   <Corners light />
                 </Link>
               </div>

@@ -143,11 +143,11 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
                 <tr key={e._id}>
                   <td style={{ fontWeight: 600 }}>
                     {e.programName}
-                    {e.notes ? <div style={{ color: 'var(--ehr-muted, #8395A8)', fontWeight: 400, fontSize: 12 }}>{e.notes}</div> : null}
+                    {e.notes ? <div style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400, fontSize: 12 }}>{e.notes}</div> : null}
                   </td>
                   <td>
                     {formatDate(e.enrollmentDate)}
-                    {e.outcomeDate ? <div style={{ color: 'var(--ehr-muted, #8395A8)', fontSize: 12 }}>ended {formatDate(e.outcomeDate)}</div> : null}
+                    {e.outcomeDate ? <div style={{ color: 'var(--ehr-muted, #597386)', fontSize: 12 }}>ended {formatDate(e.outcomeDate)}</div> : null}
                   </td>
                   <td><span className={STATUS_BADGE[e.status]}>{STATUS_LABELS[e.status]}</span></td>
                   <td>
@@ -182,7 +182,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
               <button className="p-1 rounded" onClick={() => !submitting && resetForm()} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Program</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Program</label>
               <Select
                 value={programKey}
                 onChange={e => setProgramKey(e.target.value as ProgramKey)}
@@ -196,7 +196,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
             </div>
             {programKey === 'other' && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Program name</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Program name</label>
                 <input
                   type="text"
                   value={otherName}
@@ -208,7 +208,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
               </div>
             )}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Enrollment date</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Enrollment date</label>
               <input
                 type="date"
                 value={enrollmentDate}
@@ -218,7 +218,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Notes (optional)</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Notes (optional)</label>
               <textarea
                 rows={2}
                 value={notes}

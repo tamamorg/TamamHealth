@@ -24,7 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  Activity, Wallet, UserCheck, Plus,
+  Activity, UserCheck, Plus,
   AlertTriangle, RefreshCw, Phone, XCircle, Check, X,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
@@ -32,17 +32,15 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
-import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useToast } from '@/components/Toast';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
-import EmptyState from '@/components/EmptyState';
 import AddInquiryDialog from '@/components/create-dialogs/AddInquiryDialog';
 import RequestLeaveDialog from '@/components/create-dialogs/RequestLeaveDialog';
 import CreateShiftDialog from '@/components/create-dialogs/CreateShiftDialog';
 import AddPayrollEntryDialog from '@/components/create-dialogs/AddPayrollEntryDialog';
-import { formatMoney } from '@/lib/format-utils';
+import { formatMoney, titleCase } from '@/lib/format-utils';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import { getRoleConfig } from '@/lib/permissions';
 import { buildAddMenuEntries, usersHrefForRole } from '@/lib/people-nav';
@@ -55,22 +53,17 @@ import type { MessageDoc, UserDoc, PatientDoc, StaffScheduleDoc } from '@/lib/db
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 
 // recharts (~80–100 KB) is deferred behind a dynamic boundary so it is fetched
-// only when these charts render (KAN-66). ssr:false because recharts measures
+// only when this chart renders (KAN-66). ssr:false because recharts measures
 // the DOM to size itself.
-const CashFlowDonut = dynamic(() => import('./_FacilityCharts').then(m => m.CashFlowDonut), {
-  ssr: false,
-  loading: () => <div style={{ width: '100%', height: '100%' }} />,
-});
 const WeeklyActivityChart = dynamic(() => import('./_FacilityCharts').then(m => m.WeeklyActivityChart), {
   ssr: false,
   loading: () => <div style={{ width: '100%', height: 208 }} />,
 });
 
-const CHART_BLUE = 'var(--chart-1)';   // appointments
-const CHART_GREEN = 'var(--color-success)';  // new patients
+// Kept from the Cash Flow donut this chart replaced, so received/pending read
+// in the same two colours everywhere in the product.
 const CASH_RECEIVED = '#0ca30c';
 const CASH_PENDING = 'var(--color-warning)';
-const CASH_PENDING_TEXT = 'var(--color-warning)'; // legible amber for text on light cards
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /** JS getDay() (0=Sun..6=Sat) → our Mon-first index (0=Mon..6=Sun). */
@@ -78,11 +71,25 @@ function weekdayIndex(d: Date): number {
   return (d.getDay() + 6) % 7;
 }
 
-interface BillingSummary {
-  totalRevenue: number;
-  totalOutstanding: number;
-  currency: string;
+/** Money axis in a narrow rail: full figures (SSP 1,250,000) blow the tick
+ *  column out, so ticks go compact and the tooltip keeps the exact amount. */
+function compactAmount(value: number): string {
+  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `${Math.round(value / 1_000)}k`;
+  return String(value);
 }
+
+/** Money billed on one day, split by what has actually been collected.
+ *  Cancelled/waived/draft bills are excluded — nothing is owed on them, so
+ *  charting their balance would invent revenue that will never arrive. */
+interface DailyCash {
+  date: string;
+  received: number;
+  pending: number;
+}
+const CHARGEABLE_BILL_STATUSES = new Set([
+  'pending', 'partial', 'paid', 'insurance_pending', 'insurance_approved',
+]);
 
 /** Staffing-gap row shape returned by `getStaffingGaps` — duplicated here
  *  (rather than imported) because the service is loaded dynamically, same
@@ -92,10 +99,6 @@ interface StaffingGap {
   gap: number;
   requiredStaff: number;
   currentStaff: number;
-}
-
-function titleCase(value: string): string {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function formatClockTimeOrUndefined(iso?: string): string | undefined {
@@ -140,7 +143,6 @@ export interface FacilityOverviewInput {
    *  the same roster as the accounts page, so every staff figure links here. */
   usersHref: string;
   availableBeds: number;
-  billing: { totalRevenue: number; totalOutstanding: number } | null;
 }
 
 export interface FacilityOverviewMetric {
@@ -206,7 +208,6 @@ export interface FacilityOverview {
     href: string;
     unavailable: boolean;
   };
-  cashFlow: { received: number; pending: number; totalInvoice: number };
 }
 
 /**
@@ -219,7 +220,7 @@ export interface FacilityOverview {
 export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOverview {
   const {
     today, search, users, usersUnavailable, patients, enquiries, leave,
-    schedules, staffingGaps, availableProviderIds, availableBeds, billing, usersHref,
+    schedules, staffingGaps, availableProviderIds, availableBeds, usersHref,
   } = input;
 
   const doctors = users.filter(u => DOCTOR_ROLES.has(u.role));
@@ -316,9 +317,6 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
     .filter(r => !q || `${r.name} ${r.role} ${r.department}`.toLowerCase().includes(q))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const received = billing?.totalRevenue ?? 0;
-  const pendingAmount = billing?.totalOutstanding ?? 0;
-
   return {
     metrics,
     inquiryRows,
@@ -330,7 +328,6 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
       href: usersHref,
       unavailable: usersUnavailable,
     },
-    cashFlow: { received, pending: pendingAmount, totalInvoice: received + pendingAmount },
   };
 }
 
@@ -390,9 +387,8 @@ export default function FacilityManagementDashboard() {
   const { users, loading: usersLoading, error: usersError, reload: reloadUsers } = useUsers();
   const { patients, loading: patientsLoading } = usePatients();
   const { availableBeds, loading: wardsLoading } = useWards();
-  const { appointments, loading: appointmentsLoading } = useAppointments();
 
-  const [billing, setBilling] = useState<BillingSummary | null>(null);
+  const [cash, setCash] = useState<{ currency: string; days: DailyCash[] }>({ currency: 'SSP', days: [] });
   const [enquiries, setEnquiries] = useState<MessageDoc[]>([]);
   const [availableProviderIds, setAvailableProviderIds] = useState<Set<string>>(new Set());
   const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
@@ -418,10 +414,25 @@ export default function FacilityManagementDashboard() {
     let cancelled = false;
     if (!hasLoadedExtraRef.current) setExtraLoading(true);
 
-    const loadBilling = async () => {
-      const { getBillingSummary } = await import('@/lib/services/billing-service');
-      const s = await getBillingSummary(scope);
-      return { totalRevenue: s.totalRevenue, totalOutstanding: s.totalOutstanding, currency: s.currency };
+    // Received/pending per day, off the bills themselves: `amountPaid` is
+    // already net of reversed payments and `balanceDue` is what is still owed,
+    // so both sides of a day's cash come from one pass over the bill list.
+    // Both are keyed on `encounterDate` — one date semantics, so a day's two
+    // bars always sum to what that day billed.
+    const loadCash = async () => {
+      const { getAllBills } = await import('@/lib/services/billing-service');
+      const bills = await getAllBills(scope);
+      const byDate = new Map<string, DailyCash>();
+      for (const b of bills) {
+        if (!CHARGEABLE_BILL_STATUSES.has(b.status)) continue;
+        const date = (b.encounterDate || '').slice(0, 10);
+        if (!date) continue;
+        const row = byDate.get(date) || { date, received: 0, pending: 0 };
+        row.received += Math.max(0, b.amountPaid || 0);
+        row.pending += Math.max(0, b.balanceDue || 0);
+        byDate.set(date, row);
+      }
+      return { currency: bills[0]?.currency || 'SSP', days: Array.from(byDate.values()) };
     };
     const loadAvailability = async () => {
       // Recurrence-aware: a clinic that runs every Monday has no row dated
@@ -450,7 +461,7 @@ export default function FacilityManagementDashboard() {
     (async () => {
       const failed = new Set<ExtraKey>();
       const [billingRes, enquiriesRes, availRes, leaveRes, schedRes, gapsRes] = await Promise.allSettled([
-        loadBilling(),
+        loadCash(),
         getPatientEnquiries(scope),
         loadAvailability(),
         loadLeave(),
@@ -458,7 +469,7 @@ export default function FacilityManagementDashboard() {
         loadGaps(),
       ]);
       if (cancelled) return;
-      if (billingRes.status === 'fulfilled') setBilling(billingRes.value); else failed.add('billing');
+      if (billingRes.status === 'fulfilled') setCash(billingRes.value); else failed.add('billing');
       if (enquiriesRes.status === 'fulfilled') setEnquiries(enquiriesRes.value); else failed.add('enquiries');
       if (availRes.status === 'fulfilled') setAvailableProviderIds(availRes.value); else failed.add('availability');
       if (leaveRes.status === 'fulfilled') setLeave(leaveRes.value); else failed.add('leave');
@@ -495,38 +506,33 @@ export default function FacilityManagementDashboard() {
     availableProviderIds,
     usersHref: staffListHref,
     availableBeds,
-    billing,
-  }), [today, queueSearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, staffListHref, availableBeds, billing]);
+  }), [today, queueSearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, staffListHref, availableBeds]);
 
-  // Weekly patient activity (real: registrations and kept appointments —
-  // cancellations are excluded from both series, not charted separately).
+  // This week's cash, Monday-first. Days are matched on the local calendar date
+  // string rather than by parsing to Date: `encounterDate` is date-only, and
+  // `new Date('2026-08-12')` is UTC midnight, which lands on the previous day
+  // for anyone west of Greenwich.
   const weekly = useMemo(() => {
-    const rows = WEEKDAYS.map(d => ({ day: d, newPatients: 0, appointments: 0 }));
     const start = new Date(); start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() - weekdayIndex(start)); // Monday of this week
-    const end = new Date(start); end.setDate(end.getDate() + 7);
-    const inWeek = (iso?: string) => {
-      if (!iso) return -1;
-      const dt = new Date(iso);
-      if (dt < start || dt >= end) return -1;
-      return weekdayIndex(dt);
-    };
-    for (const p of patients) {
-      const i = inWeek((p as { createdAt?: string }).createdAt);
-      if (i >= 0) rows[i].newPatients += 1;
-    }
-    for (const a of appointments) {
-      const i = inWeek(a.appointmentDate);
-      if (i < 0) continue;
-      if (a.status !== 'cancelled') rows[i].appointments += 1;
-    }
-    return rows;
-  }, [patients, appointments]);
+    return WEEKDAYS.map((label, i) => {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      const iso = toIsoDate(d);
+      const day = cash.days.find(c => c.date === iso);
+      return { day: label, received: day?.received || 0, pending: day?.pending || 0 };
+    });
+  }, [cash.days]);
 
-  const cashData = useMemo(() => [
-    { name: 'Received', value: overview.cashFlow.received, color: CASH_RECEIVED },
-    { name: 'Pending', value: overview.cashFlow.pending, color: CASH_PENDING },
-  ].filter(d => d.value > 0), [overview.cashFlow]);
+  const cashSeries = useMemo(() => {
+    const money = {
+      axisFormat: compactAmount,
+      tooltipFormat: (v: number) => formatMoney(v, { currency: cash.currency }),
+    };
+    return [
+      { key: 'received', name: 'Received', color: CASH_RECEIVED, ...money },
+      { key: 'pending', name: 'Pending', color: CASH_PENDING, ...money },
+    ];
+  }, [cash.currency]);
 
   // The global "Add" menu — permission-gated entries from people-nav. The three
   // records this dashboard can create open their dialog HERE, on the page the
@@ -705,7 +711,7 @@ export default function FacilityManagementDashboard() {
       ? (inquiriesFailed ? retryExtra : () => router.push('/inquiries'))
       : (leaveFailed ? retryExtra : () => router.push('/hr/leave'));
 
-  const initialLoading = usersLoading || patientsLoading || wardsLoading || appointmentsLoading || extraLoading;
+  const initialLoading = usersLoading || patientsLoading || wardsLoading || extraLoading;
 
   if (!currentUser) return null;
 
@@ -833,17 +839,10 @@ export default function FacilityManagementDashboard() {
         chart={
           <div className="ehr-day-stats">
             <div className="ehr-day-stats-head">
-              <h3>Weekly Patient Activity</h3>
+              <h3>Weekly Cash Flow</h3>
             </div>
             <div style={{ marginTop: 8 }}>
-              <WeeklyActivityChart
-                data={weekly}
-                chartType="bar"
-                series={[
-                  { key: 'appointments', name: 'Appointments', color: CHART_BLUE },
-                  { key: 'newPatients', name: 'New Patients', color: CHART_GREEN },
-                ]}
-              />
+              <WeeklyActivityChart data={weekly} chartType="bar" series={cashSeries} />
             </div>
           </div>
         }
@@ -853,47 +852,6 @@ export default function FacilityManagementDashboard() {
         headerExtra={addMenuItems.length > 0 ? (
           <EhrRailMenu variant="primary" label="Add" icon={Plus} hideChevron ariaLabel="Add a new record" items={addMenuItems} />
         ) : undefined}
-        // Cash Flow sits directly under the weekly activity chart —
-        // `railContent` renders immediately after it.
-        railContent={(
-          <div className="dash-card overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <Wallet className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cash Flow</span>
-            </div>
-            {loadErrors.has('billing') ? (
-              <EmptyState
-                icon={AlertTriangle}
-                title="Couldn't load billing data"
-                message="Billing figures failed to load. Try again."
-                action={{ label: 'Retry', onClick: retryExtra }}
-              />
-            ) : (
-              // Donut left, figures right. The ring carries the weight here —
-              // the two amounts are captions on it, so they stay small enough
-              // that the whole card reads in one glance.
-              <div className="flex items-center gap-2.5 p-3">
-                <div className="relative flex-shrink-0" style={{ width: 116, height: 116 }}>
-                  <CashFlowDonut data={cashData} />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2">
-                    <span className="text-[11px] font-bold leading-tight text-center" style={{ color: 'var(--text-primary)' }}>{formatMoney(overview.cashFlow.totalInvoice)}</span>
-                    <span className="text-[8px] uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Total</span>
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(12,163,12,0.10)', border: '1px solid rgba(12,163,12,0.28)' }}>
-                    <p className="text-[8.5px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Received</p>
-                    <p className="text-[11px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_RECEIVED }}>{formatMoney(overview.cashFlow.received)}</p>
-                  </div>
-                  <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(237,161,0,0.12)', border: '1px solid rgba(237,161,0,0.35)' }}>
-                    <p className="text-[8.5px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Pending</p>
-                    <p className="text-[11px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_PENDING_TEXT }}>{formatMoney(overview.cashFlow.pending)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       />
 
       {/* Create-in-place, then go. Each dialog writes the record from here and

@@ -1222,8 +1222,7 @@ export default function FrontDeskDashboardPage() {
       // uses; this branch called RED "Critical", so one column said two
       // different things depending on which tab you were on.
       const statusContext = acuity ? PRIORITY_META[acuity].label : entry.stageLabel || context;
-      // Wait column: actual queue/slot time on the first line; the shared
-      // dashboard row renders hours/minutes underneath from `timeAt`.
+      // Wait column: the actual queue/slot time, on its own line.
       const waitTime = entry.time || entry.date || undefined;
 
       // Whatever this row is really about: a booking, or a walk-in's triage

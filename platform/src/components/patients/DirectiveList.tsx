@@ -145,7 +145,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               <button className="p-1 rounded hover:bg-red-50 transition-colors" onClick={() => setAdding(false)} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Type</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Type</label>
               <Select value={addForm.type} onChange={(e) => setAddForm({ ...addForm, type: e.target.value as DirectiveType })} className="w-full p-2.5 rounded-md text-[12px]" style={inputStyle}>
                 {TYPE_OPTIONS.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
               </Select>
@@ -169,7 +169,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               <button className="p-1 rounded hover:bg-red-50 transition-colors" onClick={() => setEditingEntry(null)} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Type</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Type</label>
               <Select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value as DirectiveType })} className="w-full p-2.5 rounded-md text-[12px]" style={inputStyle}>
                 {TYPE_OPTIONS.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
               </Select>
@@ -198,7 +198,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               <strong>{typeLabel(signingEntry.type)}</strong> — {signingEntry.description}
             </p>
             <div className="flex flex-col gap-1">
-              <label htmlFor="directive-signedby" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Who is signing</label>
+              <label htmlFor="directive-signedby" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Who is signing</label>
               <Select
                 id="directive-signedby"
                 value={signForm.signedBy}
@@ -210,7 +210,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               </Select>
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="directive-signame" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Name as signed</label>
+              <label htmlFor="directive-signame" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Name as signed</label>
               <input
                 id="directive-signame"
                 autoFocus
@@ -223,7 +223,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
             </div>
             {signForm.signedBy !== 'patient' && (
               <div className="flex flex-col gap-1">
-                <label htmlFor="directive-rel" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Relationship to the patient</label>
+                <label htmlFor="directive-rel" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Relationship to the patient</label>
                 <input
                   id="directive-rel"
                   value={signForm.relationship}

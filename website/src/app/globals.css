@@ -136,6 +136,40 @@ section[id] { scroll-margin-top: 130px; }
 .blueprint > .corner.br { bottom: -6px; right: -6px; }
 .corner-light { color: rgba(255, 255, 255, 0.5) !important; }
 
+/* Horizontal photo gallery — film strip: fixed height, natural aspect ratio,
+   one snap stop per frame, captions wrap to the width of their photo. */
+.tm-gallery {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 6px;
+}
+.tm-gallery::-webkit-scrollbar { display: none; }
+.tm-gallery > figure {
+  flex: 0 0 auto;
+  margin: 0;
+  scroll-snap-align: start;
+}
+.tm-gallery > figure > img {
+  display: block;
+  height: clamp(260px, 30vw, 420px);
+  width: auto;
+  max-width: none; /* frames keep their native aspect; the strip scrolls instead */
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+.tm-gallery > figure > figcaption {
+  width: 0;
+  min-width: 100%;
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.66);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -373,6 +407,10 @@ header > div { min-width: 0; }
   .tm-donate-hero { grid-template-columns: 1fr !important; gap: 34px !important; }
   .tm-goal-row { grid-template-columns: 1fr 1fr !important; }
   .tm-login-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+  /* Four portals do not fit one row on a phone; wrap to a 2×2 block and let
+     each tab keep a tappable width rather than shrinking the labels. */
+  .tm-login-tabs { flex-wrap: wrap; }
+  .tm-login-tabs > button { flex: 1 0 45% !important; }
   .tm-origin { grid-template-columns: 1fr !important; gap: 32px !important; }
   .tm-faq-row { grid-template-columns: 32px 1fr !important; gap: 8px 18px !important; }
   .tm-faq-row > p { grid-column: 2 !important; }

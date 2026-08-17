@@ -204,7 +204,7 @@ export default function MessagesPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-      <span className="flex-shrink-0 mb-2" style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: 'var(--text-primary)' }}>
+      <span className="flex-shrink-0 mb-2" style={{ fontFamily: 'var(--font-platform)', fontWeight: 800, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: 'var(--text-primary)' }}>
         Messages
       </span>
       <div className="msgs-shell">
@@ -584,7 +584,7 @@ function StaffPickerModal({
           {multi && selectedList.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2">
               {selectedList.map(u => (
-                <span key={u._id} className="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: 'var(--ehr-info-bg)', color: 'var(--accent-text)' }}>
+                <span key={u._id} className="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: 'var(--ehr-info-bg)', color: 'var(--accent-text)' }}>
                   <Avatar name={u.name} seed={u.name} size={18} />
                   {u.name.split(' ')[0]}
                   <button onClick={() => toggle(u)} aria-label="Remove" className="ml-0.5"><X className="w-3 h-3" /></button>

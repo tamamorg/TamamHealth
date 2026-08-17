@@ -11,7 +11,7 @@ import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDay
 import EhrStageDonut from '@/components/ehr/EhrStageDonut';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import { initials, stateTint } from '@/lib/patient-utils';
-import { formatAppointmentTimeUntil } from '@/lib/format-utils';
+import { formatAppointmentTimeUntil, titleCase } from '@/lib/format-utils';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import {
   APPOINTMENT_STATUS_TONES, APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_GROUPS,
@@ -74,8 +74,8 @@ export type EhrCareDashboardRow = {
    *  "—". */
   time?: string;
   timeSecondary?: string;
-  /** Full ISO timestamp behind `time`. When set, the Wait column also shows a
-   *  live hours/minutes relative label under the time. */
+  /** Full ISO timestamp behind `time`. Drives the status-pill cue and lets a
+   *  visit on another day show its date instead of a bare clock time. */
   timeAt?: string;
   meta?: string;
   compactMeta?: string;
@@ -133,10 +133,6 @@ export type EhrCareDashboardRow = {
    *  `statusTone` (done → second series, everything else → first). */
   chartSeries?: 0 | 1;
 };
-
-function titleCase(value: string): string {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
 
 /** Rows from a handful of consumers (front desk, nurse) carry a real triage
  *  acuity code on `priority`; everyone else uses `priority` as a free-text
@@ -453,15 +449,22 @@ export default function EhrCareDashboard({
       );
     }
   }, [tabs, activeTab, visibleRows.length, rows.length, selectedDate]);
-  // Live clock for the time column's countdown. Starts null so the
-  // server-rendered markup and the first client render match, then ticks every
-  // second so imminent meetings can show accurate seconds.
+  // Live clock behind each row's time column: the status-pill cue and the
+  // same-day/other-day date choice read it. Starts null so the
+  // server-rendered markup and the first client
+  // render match. Ticks once a minute rather than every second — every
+  // reader is minute-scale in what it actually shows: the 30-minute
+  // "is-soon" tone threshold, the past/future flip, and the same-day/
+  // other-day date choice. The one sub-minute reader, formatAppointmentTimeUntil's
+  // "in Ns" text, only shows that precision inside a ≤60s window before/after
+  // `timeAt`, which isn't worth a second ticking clock (and the full row
+  // re-render it drives) across every station built on this shell.
   const hasCountdown = useMemo(() => visibleRows.some(row => !!row.timeAt), [visibleRows]);
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     if (!hasCountdown) { setNow(null); return; }
     setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 1000);
+    const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, [hasCountdown]);
   // An expanded row that scrolls out of the filtered list closes itself, so a
@@ -725,18 +728,15 @@ export default function EhrCareDashboard({
                       if (Number.isNaN(target.getTime())) return null;
                       const label = formatAppointmentTimeUntil(target, now);
                       if (!label) return null;
-                      const minutesAway = (target.getTime() - now.getTime()) / 60000;
                       const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
                       const usesDate = dayKey(target) !== dayKey(now);
-                      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-                      const isPastDay = target.getTime() < startOfToday;
-                      const tone = minutesAway < 0 ? 'is-past' : minutesAway <= 30 ? 'is-soon' : '';
-                      return { label, tone, usesDate, isPastDay };
+                      return { label, usesDate };
                     })();
+                    // The time cell is a single line: the clock time itself, or
+                    // the date for a visit on another day. The countdown is still
+                    // computed — the status-pill cue reads it — but a column of
+                    // "15h 15m ago" on visits that already happened was noise.
                     const displayTime = countdown?.usesDate ? countdown.label : row.time || row.date || '—';
-                    const timeSubtext = countdown
-                      ? (countdown.usesDate ? (countdown.isPastDay ? '' : (row.time || '')) : countdown.label)
-                      : row.timeSecondary || '';
     // Status pill tone reuses the appointment pill classes.
                     //
                     // The pill is a PICKER when the page supplies options and a
@@ -848,7 +848,6 @@ export default function EhrCareDashboard({
 
                           <div className="ehr-appointment-time">
                             <strong>{displayTime}</strong>
-                            <span className={countdown?.tone || ''}>{timeSubtext}</span>
                           </div>
 
                           <div className="appointment-card-provider">

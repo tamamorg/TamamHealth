@@ -2,7 +2,7 @@
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
-import { statesAndCounties, states } from '@/data/mock';
+import { statesAndCounties, states } from '@/lib/data/south-sudan-reference';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
 

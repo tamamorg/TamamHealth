@@ -12,9 +12,14 @@ import { AppProvider } from "@/lib/context";
 // tamamhealth.org now share one voice, and the condensed cut is what carries
 // the design's headings and its letterspaced uppercase micro-labels — DM Sans
 // has no condensed face, so those labels had to fake it with tracking alone.
+// 800 is loaded because the stylesheet asks for it in ~180 places — every
+// section title, KPI and uppercase micro-label sits on `--type-weight-bold`.
+// Without the face, all of those fell back to 700 and rendered identically to
+// the 700 rung below them, which is what flattened the type: the top two steps
+// of the scale were the same pixel weight.
 const barlow = Barlow({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-barlow",
   display: "swap",
 });

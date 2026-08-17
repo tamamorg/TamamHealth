@@ -1,45 +1,45 @@
 "use client";
 
-/* Login screen — the site holds no session, so signing in is a hand-off:
-   the form carries the chosen portal and username to the real platform
-   (PLATFORM_URL), where auth and the seeded demo roster live. Role tabs
-   deep-link as /login?role=staff|patient|ministry|superadmin; arriving
-   through such a link locks the picker to that one portal, with "Change"
-   as the way back to the full choice. */
+/* Login screen — the marketing site holds no session, so signing in here is a
+   hand-off: pick the portal, optionally name the account, and continue to the
+   real platform (PLATFORM_URL) where auth, the seeded accounts and the
+   one-tap demo roster live.
+
+   There is deliberately no password field. This origin cannot verify a
+   password, and a box that swallows one would both mislead the person typing
+   and train staff to enter facility credentials on the public website.
+
+   Role tabs deep-link as /login?role=staff|patient|ministry|superadmin;
+   arriving through such a link locks the picker to that one portal, with
+   "Change" as the way back to the full choice. */
 
 import Link from "next/link";
 import { useState } from "react";
 import Corners from "@/components/Corners";
-import { PLATFORM_URL, ROLES, STAFF_USERS, type LoginRole } from "@/lib/site-data";
+import { PLATFORM_URL, ROLES, type LoginRole } from "@/lib/site-data";
 
 const INTRO: Record<LoginRole["key"], string> = {
-  staff: "Enter the username and password issued by your facility administrator.",
-  patient: "Sign in with your geocode ID or phone number to open your own records.",
-  ministry: "Sign in with your official ministry email to open the national dashboard.",
+  staff: "Continue to the platform and sign in with the username and password issued by your facility administrator.",
+  patient: "Continue to the patient portal to open your own records, prescriptions and results.",
+  ministry: "Continue to the platform and sign in with your official ministry email to open the national dashboard.",
   superadmin: "The platform administrator account — organisations, provisioning and governance across every deployment.",
 };
 
 export default function LoginClient({ initialRole, initialLocked }: { initialRole: LoginRole["key"]; initialLocked: boolean }) {
   const [role, setRole] = useState<LoginRole["key"]>(initialRole);
   const [locked, setLocked] = useState(initialLocked);
-  const [pwShown, setPwShown] = useState(false);
   const [identifier, setIdentifier] = useState("");
   const [handingOff, setHandingOff] = useState(false);
-  const [roleQuery, setRoleQuery] = useState("");
-  const [roleListOpen, setRoleListOpen] = useState(false);
   const login = ROLES.find((r) => r.key === role)!;
 
-  /* Continue on the platform: /login prefills the username from ?u= (never
-     the password), the patient portal has its own sign-in. */
+  /* Continue on the platform. The username travels as ?u= so the platform's
+     form opens prefilled; the password is only ever typed over there. */
   const continueToPlatform = () => {
     setHandingOff(true);
-    const id = identifier.trim() || (role === "superadmin" ? "superadmin" : "");
+    const id = (identifier.trim() || (role === "superadmin" ? "superadmin" : "")).slice(0, 64);
     const query = login.path === "/login" && id ? `?u=${encodeURIComponent(id)}` : "";
     window.location.assign(`${PLATFORM_URL}${login.path}${query}`);
   };
-
-  const q = roleQuery.trim().toLowerCase();
-  const roleMatches = q ? STAFF_USERS.filter((u) => `${u.name} ${u.scope}`.toLowerCase().includes(q)) : STAFF_USERS;
 
   return (
     <main className="tm-login-main" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#FFFFFF" }}>
@@ -53,8 +53,9 @@ export default function LoginClient({ initialRole, initialLocked }: { initialRol
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div>
             <h1 style={{ fontSize: 36, margin: "0 0 4px" }}>Log in</h1>
-            <p style={{ margin: 0, fontSize: 15, color: "var(--color-neutral-700)" }}>{INTRO[role]}</p>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>{INTRO[role]}</p>
           </div>
+
           {locked ? (
             <div style={{ display: "flex", alignItems: "stretch", border: "1px solid var(--color-divider)", background: "#015697" }}>
               <span style={{ flex: 1, textAlign: "center", padding: "11px 4px", fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 14.5, color: "#FFFFFF" }}>
@@ -69,7 +70,7 @@ export default function LoginClient({ initialRole, initialLocked }: { initialRol
               </button>
             </div>
           ) : (
-            <div style={{ display: "flex", border: "1px solid var(--color-divider)" }}>
+            <div className="tm-login-tabs" style={{ display: "flex", border: "1px solid var(--color-divider)" }}>
               {ROLES.map((r) => (
                 <button
                   key={r.key}
@@ -87,87 +88,35 @@ export default function LoginClient({ initialRole, initialLocked }: { initialRol
               ))}
             </div>
           )}
-          {/* The staff-role combobox is a facility concept — patients sign in
-              by geocode/phone and ministry users by official email. */}
-          {role === "staff" && (
-          <div className="field" style={{ position: "relative" }}>
-            <label htmlFor="lg-role">Role</label>
-            <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--color-divider)", background: "#FFFFFF" }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-600)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 13, flexShrink: 0 }} aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4.2-4.2"></path></svg>
+
+          {/* The patient portal carries its own sign-in, so there is nothing
+              useful to pass ahead for it. */}
+          {login.path === "/login" && (
+            <div className="field">
+              <label htmlFor="lg-id">{login.idLabel} <span style={{ textTransform: "none", letterSpacing: "normal", color: "var(--color-neutral-600)" }}>(optional)</span></label>
               <input
-                id="lg-role"
+                id="lg-id"
                 className="input"
-                value={roleQuery}
-                onChange={(e) => { setRoleQuery(e.target.value); setRoleListOpen(true); }}
-                onFocus={() => setRoleListOpen(true)}
-                placeholder="Search your role — doctor, nurse, pharmacist…"
-                style={{ border: 0, minHeight: 46, background: "transparent" }}
-                role="combobox"
-                aria-expanded={roleListOpen}
-                aria-controls="lg-role-list"
-                autoComplete="off"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") continueToPlatform(); }}
+                style={{ minHeight: 46, background: "#FFFFFF" }}
+                placeholder={login.idPlaceholder}
+                autoComplete="username"
               />
-              {roleQuery && (
-                <button type="button" onClick={() => { setRoleQuery(""); setRoleListOpen(true); }} aria-label="Clear role" style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", width: 40, height: 44, color: "var(--color-neutral-600)", fontSize: 17 }}>
-                  ×
-                </button>
-              )}
             </div>
-            {roleListOpen && (
-              <div id="lg-role-list" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 40, background: "#FFFFFF", border: "1px solid var(--color-divider)", borderTop: 0, maxHeight: 232, overflowY: "auto", boxShadow: "var(--shadow-md)" }}>
-                {roleMatches.map((u) => (
-                  <button
-                    key={u.name}
-                    type="button"
-                    onClick={() => { setRoleQuery(u.name); setRoleListOpen(false); }}
-                    className="tm-rolerow"
-                    style={{
-                      appearance: "none", border: 0, borderBottom: "1px solid var(--color-divider)",
-                      background: u.name === roleQuery ? "var(--color-accent-100)" : "#FFFFFF",
-                      cursor: "pointer", width: "100%", textAlign: "left", padding: "11px 14px",
-                      display: "flex", flexDirection: "column", gap: 2,
-                    }}
-                  >
-                    <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 15, color: "var(--color-text)" }}>{u.name}</span>
-                    <span className="fs125" style={{ color: "var(--color-neutral-600)" }}>{u.scope}</span>
-                  </button>
-                ))}
-                {q && roleMatches.length === 0 && (
-                  <span style={{ display: "block", padding: 14, fontSize: 13.5, color: "var(--color-neutral-600)" }}>
-                    No role matches that. Ask your facility administrator which role your account carries.
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
           )}
-          <div className="field">
-            <label htmlFor="lg-id">{login.idLabel}</label>
-            <input id="lg-id" className="input" value={identifier} onChange={(e) => setIdentifier(e.target.value)} style={{ minHeight: 46, background: "#FFFFFF" }} placeholder={login.idPlaceholder} />
-          </div>
-          <div className="field">
-            <label htmlFor="lg-pw">Password</label>
-            <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--color-divider)", background: "#FFFFFF" }}>
-              <input id="lg-pw" className="input" type={pwShown ? "text" : "password"} style={{ border: 0, minHeight: 46, background: "transparent" }} placeholder="••••••••" />
-              <button onClick={() => setPwShown((s) => !s)} type="button" aria-label={pwShown ? "Hide password" : "Show password"} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", width: 44, height: 44, display: "grid", placeItems: "center", color: "#015697" }}>
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"></path><circle cx="12" cy="12" r="2.6"></circle></svg>
-              </button>
-            </div>
-          </div>
-          <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14, color: "var(--color-neutral-800)" }}>
-            <input type="checkbox" style={{ width: 16, height: 16, accentColor: "#015697" }} />
-            Keep me signed in on this device
-          </label>
-          <button className="btn btn-primary blueprint" disabled={handingOff} onClick={() => { setRoleListOpen(false); continueToPlatform(); }} style={{ padding: "15px 0", fontSize: 16, color: "#0E2A4A", width: "100%", opacity: handingOff ? 0.6 : 1 }}>
+
+          <button className="btn btn-primary blueprint" disabled={handingOff} onClick={continueToPlatform} style={{ padding: "15px 0", fontSize: 16, color: "#0E2A4A", width: "100%", opacity: handingOff ? 0.6 : 1 }}>
             {handingOff ? "Opening the platform…" : login.cta}
             <Corners />
           </button>
-          {login.path === "/login" && (
-            <span style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--color-neutral-700)", borderLeft: "3px solid var(--color-accent)", paddingLeft: 12 }}>
-              You&rsquo;ll finish signing in on the platform. Demo deployments offer one-tap demo accounts there — every
-              role from the front desk to the Super Admin, no password needed.
-            </span>
-          )}
+
+          <span style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--color-neutral-700)", borderLeft: "3px solid var(--color-accent)", paddingLeft: 12 }}>
+            Your password is only ever entered on the platform itself — never on this site. Demo deployments offer
+            one-tap accounts there for every role, from the front desk to the platform administrator.
+          </span>
+
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap", paddingTop: 4 }}>
             {role !== "patient" && (
               <button type="button" onClick={() => setRole("patient")} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", padding: 0, fontFamily: "var(--font-body)", fontSize: 14.5, fontWeight: 700, color: "var(--color-accent-700)", textDecoration: "underline", textUnderlineOffset: 3 }}>
@@ -176,6 +125,7 @@ export default function LoginClient({ initialRole, initialLocked }: { initialRol
             )}
             <a href={`mailto:support.tamam@gmail.com?subject=${encodeURIComponent("Trouble signing in")}`} style={{ fontSize: 14.5, fontWeight: 700 }}>Trouble signing in?</a>
           </div>
+
           <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--color-neutral-600)", borderTop: "1px solid var(--color-divider)", paddingTop: 14 }}>
             Works offline: once signed in on a facility device, the record keeps working through power cuts and network gaps and
             syncs when connection returns.
@@ -201,7 +151,7 @@ export default function LoginClient({ initialRole, initialLocked }: { initialRol
       </div>
       <div style={{ borderTop: "1px solid var(--color-divider)", padding: "22px 32px", display: "flex", justifyContent: "center", gap: 28, fontSize: 13.5, flexWrap: "wrap" }}>
         <Link href="/terms">Terms &amp; Conditions</Link>
-        <Link href="/terms">Privacy Policy</Link>
+        <Link href="/terms#patient-data">Privacy Policy</Link>
         <Link href="/">Back to tamamhealth.org</Link>
       </div>
     </main>

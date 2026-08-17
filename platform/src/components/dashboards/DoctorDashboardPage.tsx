@@ -21,6 +21,7 @@ import { patientFullName, patientDisplayName, shortenPersonName, patientAge } fr
 import { getDefaultDashboard } from '@/lib/permissions';
 import { getNoteType } from '@/lib/clinical-notes/note-catalog';
 import SuperintendentDashboard from '@/components/dashboards/SuperintendentDashboard';
+import NurseHomeView from '@/components/dashboards/NurseHomeView';
 import { useTransferQueue } from '@/lib/hooks/usePatientTransfers';
 import { describeAssignment, isTransferOverdue } from '@/lib/services/patient-transfer-service';
 import { formatClockTime } from '@/lib/format-utils';
@@ -408,8 +409,17 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   };
 }
 
-export default function DashboardPage() {
-  const router = useRouter();
+/**
+ * The doctor / clinical officer / clinician / super-admin home view.
+ *
+ * Extracted out of `DashboardPage` (below) so its hooks stay unconditional:
+ * `DashboardPage` is now a pure role switch between this view, `NurseHomeView`
+ * and `SuperintendentDashboard`, and each view calls only the hooks its own
+ * role's worklist needs. Splitting them out is what keeps a nurse's render
+ * from ever calling `useSigningInbox`/`useTransferQueue`/etc. (or vice versa)
+ * — no hook in this file runs conditionally on the role branch anymore.
+ */
+function ClinicianHomeView() {
   const { currentUser } = useAuth();
   const { patients } = usePatients();
   // Consultations this clinician paused while waiting on lab/imaging results.
@@ -431,33 +441,10 @@ export default function DashboardPage() {
   // Community-health follow-ups due (or nearly due) — the "Follow-ups due" rail.
   const { followUpsDue } = useFollowUpsDue();
 
-  // `/dashboard` is shared. Doctors / clinical officers / clinicians get the
-  // clinical view; the medical superintendent gets its own admin view (rendered
-  // below). Its defaultDashboard IS `/dashboard`, so it must be excluded from
-  // the redirect or it would bounce to itself. Every other role is sent home.
-  useEffect(() => {
-    if (
-      currentUser &&
-      currentUser.role !== 'doctor' &&
-      currentUser.role !== 'clinical_officer' &&
-      currentUser.role !== 'medical_superintendent' &&
-      currentUser.role !== 'clinician' &&
-      // Total access: a super-admin browsing /dashboard sees the clinical
-      // view instead of being bounced back to /admin.
-      currentUser.role !== 'super_admin'
-    ) {
-      router.push(getDefaultDashboard(currentUser.role));
-    }
-  }, [currentUser, router]);
-
+  // DashboardPage only renders this view once currentUser is loaded and its
+  // role has been checked — this guard is purely for TypeScript's benefit
+  // (useAuth()'s return type is nullable) and should never actually fire.
   if (!currentUser) return null;
-  // Medical superintendent → admin-oriented hospital dashboard.
-  if (currentUser.role === 'medical_superintendent') return <SuperintendentDashboard />;
-  // Anyone who isn't a doctor / clinical officer / clinician / super-admin is mid-redirect.
-  if (
-    currentUser.role !== 'doctor' && currentUser.role !== 'clinical_officer' &&
-    currentUser.role !== 'clinician' && currentUser.role !== 'super_admin'
-  ) return null;
 
   const worklist = assembleDoctorWorklist({
     patients, triages, currentUser, appointments,
@@ -477,4 +464,59 @@ export default function DashboardPage() {
       />
     </main>
   );
+}
+
+/**
+ * `/dashboard` is one shared clinical workspace, Epic Hyperspace-style: every
+ * clinical role lands here and sees role-adapted content inside the same
+ * `EhrClinicalDashboard` shell rather than owning a separate dashboard route.
+ * This component is deliberately just a role switch with no data hooks of its
+ * own (beyond `useAuth`) — `ClinicianHomeView`, `NurseHomeView` and
+ * `SuperintendentDashboard` each call whatever hooks their own worklist needs.
+ */
+export default function DashboardPage() {
+  const router = useRouter();
+  const { currentUser } = useAuth();
+
+  // Doctors / clinical officers / clinicians / super-admin get the clinical
+  // view; nurse-family roles (nurse, midwife, triage_nurse, rooming_nurse) get
+  // a nurse-shaped worklist in the SAME shell; the medical superintendent gets
+  // its own admin view (rendered below). Every one of these roles has
+  // `/dashboard` as its own `defaultDashboard` (role-routes.ts), so all of
+  // them must be excluded from the redirect below or they'd bounce to
+  // themselves. Every other role is sent home.
+  useEffect(() => {
+    if (
+      currentUser &&
+      currentUser.role !== 'doctor' &&
+      currentUser.role !== 'clinical_officer' &&
+      currentUser.role !== 'medical_superintendent' &&
+      currentUser.role !== 'clinician' &&
+      currentUser.role !== 'nurse' &&
+      currentUser.role !== 'midwife' &&
+      currentUser.role !== 'triage_nurse' &&
+      currentUser.role !== 'rooming_nurse' &&
+      // Total access: a super-admin browsing /dashboard sees the clinical
+      // view instead of being bounced back to /admin.
+      currentUser.role !== 'super_admin'
+    ) {
+      router.push(getDefaultDashboard(currentUser.role));
+    }
+  }, [currentUser, router]);
+
+  if (!currentUser) return null;
+  // Medical superintendent → admin-oriented hospital dashboard.
+  if (currentUser.role === 'medical_superintendent') return <SuperintendentDashboard />;
+  // Nurse-family roles → nurse-shaped worklist, same clinical shell.
+  if (
+    currentUser.role === 'nurse' || currentUser.role === 'midwife' ||
+    currentUser.role === 'triage_nurse' || currentUser.role === 'rooming_nurse'
+  ) return <NurseHomeView />;
+  // Anyone who isn't a doctor / clinical officer / clinician / super-admin is mid-redirect.
+  if (
+    currentUser.role !== 'doctor' && currentUser.role !== 'clinical_officer' &&
+    currentUser.role !== 'clinician' && currentUser.role !== 'super_admin'
+  ) return null;
+
+  return <ClinicianHomeView />;
 }

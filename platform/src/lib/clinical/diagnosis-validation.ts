@@ -56,6 +56,62 @@ const BY_CODE = new Map<string, ICD11CodeEntry>(
   COMMON_ICD11_CODES.map((c) => [c.code.toUpperCase(), c]),
 );
 
+/**
+ * Free-text → notifiable-disease matching (surveillance safety net).
+ *
+ * A free-text "measles" with no ICD-11 code used to skip surveillance
+ * entirely — only coded diagnoses raised disease alerts, so the commonest way
+ * of writing a diagnosis was also the one the ministry never saw. This maps
+ * an uncoded diagnosis name onto a notifiable catalogue entry so the alert
+ * still fires (and the clinician is nudged to add the code).
+ *
+ * Matching is deliberately conservative: only *disease-name* terms count.
+ * Symptom keywords the catalogue carries for search ("fever", "rash",
+ * "cough"…) are excluded — free-text "fever" must not become a malaria case.
+ */
+const GENERIC_SYMPTOM_TERMS = new Set([
+  'fever', 'chills', 'cough', 'rash', 'jaundice', 'headache',
+  'diarrhea', 'watery diarrhea', 'bloody diarrhea', 'neck stiffness',
+  'dog bite', 'vomiting', 'weakness', 'paralysis',
+]);
+
+/** The head of a title is its disease name: "Tuberculosis, extrapulmonary" → "tuberculosis". */
+function titleHead(title: string): string {
+  return title.toLowerCase().split(/,| due to | of /)[0].trim();
+}
+
+const NOTIFIABLE_NAME_INDEX: { entry: ICD11CodeEntry; terms: string[] }[] =
+  COMMON_ICD11_CODES.filter((c) => c.notifiable).map((entry) => ({
+    entry,
+    terms: [
+      entry.title.toLowerCase().trim(),
+      titleHead(entry.title),
+      ...(entry.keywords || []).map((k) => k.toLowerCase().trim()),
+    ].filter((t) => t.length >= 2 && !GENERIC_SYMPTOM_TERMS.has(t)),
+  }));
+
+function containsWholePhrase(text: string, phrase: string): boolean {
+  const esc = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^a-z0-9])${esc}($|[^a-z0-9])`, 'i').test(text);
+}
+
+/**
+ * Match an uncoded diagnosis name against the notifiable catalogue.
+ * Preference order: exact title match, then an "unspecified" variant (the
+ * honest bucket for an uncoded entry), then first catalogue match.
+ */
+export function matchNotifiableByName(name: string): ICD11CodeEntry | undefined {
+  const text = name.toLowerCase().trim();
+  if (!text) return undefined;
+  const hits = NOTIFIABLE_NAME_INDEX.filter(({ terms }) =>
+    terms.some((t) => containsWholePhrase(text, t)));
+  if (hits.length === 0) return undefined;
+  const exact = hits.find(({ entry }) => entry.title.toLowerCase().trim() === text);
+  if (exact) return exact.entry;
+  const unspecified = hits.find(({ entry }) => /unspecified/i.test(entry.title));
+  return (unspecified || hits[0]).entry;
+}
+
 export function lookupIcd11(code: string): ICD11CodeEntry | undefined {
   return BY_CODE.get(code.trim().toUpperCase());
 }
@@ -81,6 +137,12 @@ export interface DiagnosisValidationResult {
   notifiableCodes: string[];
   /** Well-formed codes absent from COMMON_ICD11_CODES. */
   unknownCodes: string[];
+  /**
+   * Uncoded free-text diagnoses that name a notifiable disease. The caller
+   * raises disease alerts for these too — a free-text "measles" must reach
+   * surveillance even before anyone adds the code.
+   */
+  freeTextNotifiableMatches: { name: string; code: string; title: string }[];
 }
 
 /** Prefer the explicit ICD-11 field; fall back to the legacy compat field. */
@@ -111,6 +173,7 @@ export function validateDiagnosisCodes(
     causeOfDeathNotes: [],
     notifiableCodes: [],
     unknownCodes: [],
+    freeTextNotifiableMatches: [],
   };
 
   const list = diagnoses ?? [];
@@ -129,7 +192,18 @@ export function validateDiagnosisCodes(
       result.errors.push(`Diagnosis ${code} has no name — remove the row or name the condition.`);
       continue;
     }
-    if (!code) continue; // Free-text diagnosis; nothing to validate against.
+    if (!code) {
+      // Free-text diagnosis. If it names a notifiable disease, surface the
+      // match so surveillance still counts the case, and nudge for the code.
+      const match = name ? matchNotifiableByName(name) : undefined;
+      if (match) {
+        result.freeTextNotifiableMatches.push({ name, code: match.code, title: match.title });
+        result.warnings.push(
+          `"${name}" looks like ${match.title} (${match.code}), a notifiable disease — add the ICD-11 code so the case is counted precisely; it has been reported to surveillance as ${match.title}.`,
+        );
+      }
+      continue;
+    }
 
     if (!isWellFormedIcd11(code)) {
       result.errors.push(`"${code}" is not a valid ICD-11 code format.`);

@@ -770,7 +770,6 @@ export default function RoleSettingsView() {
     );
   };
 
-  const userInitials = initials(currentUser.name || spec.title);
   // Label of the panel Back returns to, resolved from the rail so it reads
   // the same as the item the user originally clicked.
   const backLabel = panelStack.length > 1
@@ -810,14 +809,6 @@ export default function RoleSettingsView() {
             </button>
           )}
           <h1>Settings</h1>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span
-            className="ehr-set-role-chip"
-            style={{ background: 'rgba(33,145,208,0.10)', color: 'var(--tb-blue-800, #012C4E)' }}
-          >
-            <i style={{ background: spec.accent }}>{userInitials}</i>
-            {spec.title}
-          </span>
           {/* The trail only shows the panel you'd return to, not the whole
               stack: it's an escape hatch, not a site map. */}
           {backLabel && (
