@@ -358,8 +358,9 @@ export default function BloodBankPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        {/* Availability by blood group — one tile per group, count of AVAILABLE units */}
-        <div className="dash-card mb-4">
+        {/* Availability by blood group — one tile per group, count of AVAILABLE units.
+            data-tour: guided-tour anchor for the lab journey's blood-bank step. */}
+        <div className="dash-card mb-4" data-tour="bb-availability">
           <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
             <h3 className="font-semibold text-sm">Availability by blood group</h3>
           </div>

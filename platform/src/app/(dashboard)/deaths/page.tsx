@@ -280,7 +280,7 @@ export default function DeathsPage() {
                   </label>
                 </EhrListFilters>
                 {canRecordVitalEvents && (
-                  <button onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ height: 38, whiteSpace: 'nowrap' }}>
+                  <button data-tour="register-death-btn" onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ height: 38, whiteSpace: 'nowrap' }}>
                     <Plus className="w-4 h-4" /> {t('deaths.registerDeath')}
                   </button>
                 )}
@@ -458,7 +458,7 @@ export default function DeathsPage() {
 
                 <hr className="section-divider" />
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('deaths.causeChainWhoFormat')}</h3>
-                <div className="p-3 rounded-lg space-y-3" style={{ background: 'rgba(229,46,66,0.05)', border: '1px solid rgba(229,46,66,0.15)' }}>
+                <div data-tour="death-cause-chain" className="p-3 rounded-lg space-y-3" style={{ background: 'rgba(229,46,66,0.05)', border: '1px solid rgba(229,46,66,0.15)' }}>
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.lineAImmediate')}</label><input type="text" value={form.immediateCause} onChange={e => setForm({ ...form, immediateCause: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} placeholder={t('deaths.lineAImmediatePlaceholder')} /></div>
                     <ICD11Select value={form.immediateICD11} onChange={v => setForm({ ...form, immediateICD11: v })} label={t('deaths.icd11LineA')} />

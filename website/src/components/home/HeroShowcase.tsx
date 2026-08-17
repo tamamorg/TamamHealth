@@ -43,7 +43,10 @@ export default function HeroShowcase() {
                 Learn more
                 <Corners />
               </Link>
-              <Link href="/products" className="btn btn-secondary" style={{ padding: "13px 26px", fontSize: 15 }}>
+              {/* Not /products — that is the catalogue. "Our Solution" is a
+                  claim about the problem this hero just stated, so it resolves
+                  to the page that answers it failure by failure. */}
+              <Link href="/platform#solution" className="btn btn-secondary" style={{ padding: "13px 26px", fontSize: 15 }}>
                 Our Solution
               </Link>
             </div>

@@ -514,6 +514,7 @@ export default function SettingsPage() {
               key={tab.key}
               onClick={() => { setActiveTab(tab.key); setSearch(''); setFilterFacilityType('all'); }}
               className={activeTab === tab.key ? 'active' : undefined}
+              data-tour={`settings-tab-${tab.key}`}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
@@ -691,7 +692,7 @@ export default function SettingsPage() {
 
         {/* ═══════════════ FACILITY SYNC TAB ═══════════════ */}
         {activeTab === 'sync' && (
-          <div className="max-w-2xl space-y-5">
+          <div className="max-w-2xl space-y-5" data-tour="settings-sync-panel">
             {/* Header card */}
             <div className="card-elevated p-5">
               <div className="flex items-start justify-between gap-4">

@@ -560,7 +560,7 @@ export default function SurveillancePage() {
           <div className="space-y-4">
 
             {/* Active Disease Alerts */}
-            <section className="gov-panel">
+            <section data-tour="surv-alerts-panel" className="gov-panel">
               <div className="gov-panel-head">
                 <h3>{t('surveillance.activeAlertsTitle')}</h3>
                 <span className="gov-meta">{totalAlerts.toLocaleString()} {totalAlerts === 1 ? 'alert' : 'alerts'}</span>

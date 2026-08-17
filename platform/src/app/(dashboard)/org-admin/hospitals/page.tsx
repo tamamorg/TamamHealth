@@ -165,7 +165,7 @@ export default function OrgHospitalsPage() {
         )}
 
         {/* Hospitals Table */}
-        <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+        <div className="dash-card overflow-hidden flex flex-col" data-tour="org-hospitals-table" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title={t('orgHospitals.headerTitle')}
             stats={[{ label: 'Facilities', value: hospitals.length, color: LIST_STAT_COLORS.muted }]}
@@ -173,6 +173,7 @@ export default function OrgHospitalsPage() {
             actions={
               <button
                 onClick={() => { setError(''); setShowCreateModal(true); }}
+                data-tour="org-hospitals-add"
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90"
                 style={{ background: brandColor, height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}
               >

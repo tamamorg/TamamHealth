@@ -15,7 +15,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Corners from "@/components/Corners";
-import { LANGUAGES, PRODUCTS, SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_HREF } from "@/lib/site-data";
+import { LANGUAGES, PRODUCTS, SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/site-data";
 
 type MenuKey = "products" | "platform" | "system" | "about";
 type UtilKey = "account" | "lang" | "search" | "drawer";
@@ -31,8 +31,11 @@ interface MenuLink {
    the row's one call to action compete with a plain link to the same page.
    The About mega menu and the footer still carry it. */
 const NAV_ITEMS: { label: string; href: string; menu: MenuKey | null }[] = [
-  { label: "Products", href: "/products", menu: "products" },
+  // Platform leads: it is the argument — one record, and what that fixes. The
+  // six products are how that argument is packaged, which only reads once the
+  // reader knows what they are packaging.
   { label: "Platform", href: "/platform", menu: "platform" },
+  { label: "Products", href: "/products", menu: "products" },
   { label: "The health system", href: "/health-system", menu: "system" },
   { label: "About", href: "/about", menu: "about" },
   { label: "News & updates", href: "/news", menu: null },
@@ -185,10 +188,12 @@ export default function SiteHeader() {
           style={{ maxWidth: 1320, margin: "0 auto", padding: "0 32px", height: utilH, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, transition: "height .18s ease" }}
         >
           <div className="tm-util-contact" style={{ marginRight: "auto", display: "flex", alignItems: "center", gap: 20 }}>
-            <a href={SUPPORT_PHONE_HREF} className="tm-utilink" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--color-neutral-700)", textDecoration: "none" }}>
+            {/* Displayed, not dialled — a <span>, so a tap on a phone cannot
+                start a call. Email is the channel that takes a click. */}
+            <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--color-neutral-700)" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
               {SUPPORT_PHONE}
-            </a>
+            </span>
             <a href={`mailto:${SUPPORT_EMAIL}`} className="tm-utilink" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--color-neutral-700)", textDecoration: "none" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16"></rect><path d="m2 6 10 7 10-7"></path></svg>
               {SUPPORT_EMAIL}

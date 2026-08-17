@@ -95,7 +95,7 @@ export default function OrgAdminAnalyticsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4" data-tour="org-analytics-stats">
         {[
           { label: t('analytics.dau'), value: usage?.dau, icon: Users, color: 'var(--accent-primary)' },
           { label: t('analytics.wau'), value: usage?.wau, icon: Activity, color: 'var(--accent-primary)' },

@@ -186,7 +186,7 @@ export default function ConflictsPage() {
           note="High-risk clinical data (allergies, referrals, discharge status) flagged for human review after a replication conflict."
         />
 
-        <div className="flex gap-1" role="tablist" aria-label="Conflict status">
+        <div className="flex gap-1" role="tablist" aria-label="Conflict status" data-tour="admin-conflicts-tabs">
           {STATUSES.map(s => (
             <button
               key={s}

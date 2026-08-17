@@ -87,7 +87,7 @@ export default function DiseaseProgramsPage() {
 
   return (
     <main className="page-container page-enter">
-      <div className="dash-card mb-3">
+      <div data-tour="gov-programs-header" className="dash-card mb-3">
         <EhrListHeader title="Disease programs" stats={[{ label: 'Scope', value: 'Programme monitoring · National' }]} />
       </div>
 

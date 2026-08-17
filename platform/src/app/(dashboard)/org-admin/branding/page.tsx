@@ -280,7 +280,7 @@ export default function OrgBrandingPage() {
             </div>
 
             {/* Color Pickers */}
-            <div className="dash-card overflow-hidden">
+            <div className="dash-card overflow-hidden" data-tour="org-branding-colors">
               <div className="flex items-center gap-2 p-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
                 <Palette className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('branding.brandColors')}</h3>

@@ -431,7 +431,7 @@ export default function DataEntryDashboard() {
         onSearchChange={setReportSearch}
         filters={[]}
         actions={[
-          { label: t('dataEntry.newCensus'), icon: Plus, onClick: () => setShowForm(true), tone: 'primary' },
+          { label: t('dataEntry.newCensus'), icon: Plus, onClick: () => setShowForm(true), tone: 'primary', tourTarget: 'data-entry-new-census' },
           { label: t('dataEntry.facilityAssessment'), icon: Building2, onClick: () => router.push('/facility-assessments') },
           { label: t('dataEntry.dataQuality'), icon: Database, onClick: () => router.push('/data-quality') },
           { label: t('dataEntry.vitalStatistics'), icon: Heart, onClick: () => router.push('/vital-statistics') },
@@ -506,7 +506,7 @@ export default function DataEntryDashboard() {
 
                 {/* 1. Patient Census */}
                 {sectionHeader(Users, t('dataEntry.patientCensus'), 'var(--accent-primary)')}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-tour="census-patient-fields">
                   {numField(t('dataEntry.inpatientsTotal'), 'inpatientsTotal', Users)}
                   {numField(t('patient.male'), 'inpatientsMale')}
                   {numField(t('patient.female'), 'inpatientsFemale')}

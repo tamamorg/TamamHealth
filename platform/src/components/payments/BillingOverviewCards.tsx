@@ -164,7 +164,7 @@ export default function BillingOverviewCards({
   }, [payments, claims]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3" data-tour="billing-overview">
 
       {/* ── 1. Cash Flow — the ring carries the weight, the amounts caption it ── */}
       <div className="dash-card overflow-hidden">

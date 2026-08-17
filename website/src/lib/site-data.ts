@@ -497,7 +497,10 @@ export interface Hero {
 export const HEROES: Hero[] = [
   {
     kicker: "The Problem",
-    title: "No power. No records. No history.",
+    /* The headline is the promise, not the diagnosis — the strip card beneath
+       it still carries the problem ("The Problem · 1,223 maternal deaths per
+       100,000 live births"), and the body below states what paper costs. */
+    title: "The end of paper-based health records.",
     body: "In South Sudan, a patient's history lives on paper — one ledger, one building, one shelf — so when it is lost or damaged, care begins again from nothing. The same break runs upward: what a facility knows about an outbreak, a stock-out or a missed vaccination rarely reaches anyone who can act on it. The data exists; what has been missing is a record built for a clinic with no power and no signal. That is what Tamam is.",
     image: "/assets/new-landing.png",
     alt: "A South Sudanese midwife examining a child with a stethoscope at a rural clinic",
@@ -977,8 +980,9 @@ export const newsBySlug = (slug: string) => NEWS.find((n) => n.slug === slug);
 /* ── Footer / shared ── */
 
 export const SUPPORT_EMAIL = "support.tamam@gmail.com";
+/* Shown in the header utility row as plain text. There is deliberately no
+   `tel:` href — the number is published for reference, not as a call button. */
 export const SUPPORT_PHONE = "+1 973 566 4336";
-export const SUPPORT_PHONE_HREF = "tel:+19735664336";
 
 export interface FooterLink {
   label: string;

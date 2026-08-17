@@ -130,7 +130,10 @@ export default function AdminFlagsPage() {
         )}
       </SadbSettingGroup>
 
-      <div className="sadb-card">
+      {/* data-tour anchor: the shared "sadb-card" class also matches the
+          "Platform gates" group above, so the tour needs an unambiguous hook
+          for this specific card. */}
+      <div className="sadb-card" data-tour="admin-flags-matrix">
         <div className="sadb-card-head" style={{ padding: '12px 16px' }}>
           <h3 className="sadb-card-title">Per-tenant feature matrix</h3>
           <div className="sadb-legend">

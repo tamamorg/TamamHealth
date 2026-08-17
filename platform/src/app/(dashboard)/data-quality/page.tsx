@@ -148,7 +148,7 @@ export default function DataQualityPage() {
         </div>
         {/* National indicators */}
         <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="card-elevated p-4">
+          <div className="card-elevated p-4" data-tour="dq-national-indicators">
             <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
               <TrendingUp className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
               {t('dataQuality.nationalIndicatorsTitle')}
@@ -209,7 +209,7 @@ export default function DataQualityPage() {
         </div>
 
         {/* Facility-level views */}
-        <div className="dash-card overflow-hidden">
+        <div className="dash-card overflow-hidden" data-tour="dq-facility-table">
           <EhrListHeader
             title="Facility data quality"
             stats={listHeaderStats}

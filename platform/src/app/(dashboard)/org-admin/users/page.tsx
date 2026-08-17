@@ -341,6 +341,7 @@ export default function OrgUsersPage() {
                 {canCreateUsers(currentUser?.role || '') && (
                   <button
                     onClick={() => { setError(''); setFormPassword(generateTempPassword()); setShowPassword(true); setShowCreateModal(true); }}
+                    data-tour="org-users-create-btn"
                     style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: brandColor, color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
                     <Plus className="w-4 h-4" /> {t('orgUsers.createUser')}
@@ -352,7 +353,7 @@ export default function OrgUsersPage() {
 
           {/* Same list anatomy as the appointments page: card-list wrapper,
               compact column head, card rows. */}
-          <div className="appointment-card-list">
+          <div className="appointment-card-list" data-tour="org-users-list">
                 {/* The column head is the table's frame, not a label for the
                     rows that happen to be loaded: it stays put when a filter
                     matches nothing, so the list never collapses into a bare

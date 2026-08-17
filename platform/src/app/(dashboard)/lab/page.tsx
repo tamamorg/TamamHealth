@@ -295,7 +295,12 @@ export default function LabPage() {
               search={{ value: quickSearch, onChange: setQuickSearch, placeholder: 'Filter table', ariaLabel: 'Filter table' }}
               actions={
                 <>
-                  <div className="relative" ref={headerFilterRef}>
+                  {/* data-tour: the guided tour spotlights this filter trigger
+                      to introduce the registry's own worklists (draws due,
+                      scheduled, send-outs, overdue review) — EhrListHeaderButton
+                      doesn't forward a data-tour prop, so it's tagged here on
+                      its existing wrapper instead of adding a new element. */}
+                  <div className="relative" ref={headerFilterRef} data-tour="lab-registry-filters">
                     <EhrListHeaderButton
                       onClick={() => setShowHeaderFilters(s => !s)}
                       active={headerFilterCount > 0}

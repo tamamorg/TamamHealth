@@ -276,6 +276,7 @@ export default function EpidemicIntelligencePage() {
           <button
             key={tab.key}
             type="button"
+            data-tour={`epi-tab-${tab.key}`}
             onClick={() => setActiveTabAndUrl(tab.key)}
             className={activeTab === tab.key ? 'is-active' : undefined}
           >
@@ -288,7 +289,7 @@ export default function EpidemicIntelligencePage() {
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Rt Tracker */}
-          <section className="gov-panel lg:col-span-2">
+          <section data-tour="epi-rt-panel" className="gov-panel lg:col-span-2">
             <PanelHead title={t('epidemic.rtTrackerTitle')} meta={t('epidemic.rtTrackerHint')} />
             {rtEstimates.length === 0 ? (
               <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.notAvailable')}</p>
@@ -359,7 +360,7 @@ export default function EpidemicIntelligencePage() {
           </section>
 
           {/* Epidemic curve chart */}
-          <section className="gov-panel">
+          <section data-tour="epi-curve-panel" className="gov-panel">
             <PanelHead
               title={t('epidemic.epidemicCurveTitle', { disease: selectedDisease || t('epidemic.allDiseases') })}
               meta={curveChartCapped ? `${t('epidemic.weeklyCaseCounts')} · top ${curveChartDiseases.length} of ${diseases.length} by volume` : t('epidemic.weeklyCaseCounts')}
@@ -425,7 +426,7 @@ export default function EpidemicIntelligencePage() {
       {/* SYNDROMIC TAB */}
       {activeTab === 'syndromic' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div data-tour="epi-syndromic-panel" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Exceeded thresholds */}
             <section className="gov-panel">
               <PanelHead title={t('epidemic.thresholdExceeded')} />
@@ -519,7 +520,7 @@ export default function EpidemicIntelligencePage() {
 
       {/* GEOGRAPHIC TAB */}
       {activeTab === 'geographic' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div data-tour="epi-geo-panel" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {geographicSpread.map(state => {
             const tone = riskScoreTone(state.riskScore);
             const fill = TONE_FILL[tone];
@@ -587,7 +588,7 @@ export default function EpidemicIntelligencePage() {
             </div>
           </div>
 
-          <section className="gov-panel">
+          <section data-tour="epi-idsr-panel" className="gov-panel">
             <PanelHead title={t('epidemic.idsrWeeklyReport')} />
             <div className="sa-table-scroll">
               <table className="sa-table" style={{ minWidth: 720 }}>

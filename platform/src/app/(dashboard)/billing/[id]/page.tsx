@@ -420,7 +420,7 @@ export default function BillDetailPage() {
 
         {/* ── Bill actions ── */}
         {canCollectPayments && (
-          <div className="bl-actions-row no-print">
+          <div className="bl-actions-row no-print" data-tour="bill-actions">
             {(bill.status === 'pending' || bill.status === 'partial') && (
               <button type="button" className="bl-btn bl-btn--outline" onClick={() => setDiscountOpen(true)} disabled={busy}>
                 Request discount

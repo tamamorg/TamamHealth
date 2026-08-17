@@ -105,7 +105,7 @@ export default function PriorityAlertsPage() {
 
   return (
     <main className="page-container page-enter">
-      <div className="dash-card overflow-hidden flex flex-col" style={{ minHeight: 0 }}>
+      <div data-tour="gov-alerts-list" className="dash-card overflow-hidden flex flex-col" style={{ minHeight: 0 }}>
         <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <div className="flex items-end justify-between gap-3 mb-1 flex-wrap">
             <div>

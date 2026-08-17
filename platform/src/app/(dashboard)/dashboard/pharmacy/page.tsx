@@ -842,8 +842,11 @@ export default function PharmacyDashboardPage() {
     headerActions.push({ label: t('pharmacy.receiveStock'), icon: Package, onClick: () => setShowReceiveStock(true), tone: 'primary' });
   }
   headerActions.push({ label: t('pharmacy.kpiControlled'), icon: ShieldCheck, onClick: () => router.push('/controlled-substances') });
-  headerActions.push({ label: t('pharmacy.stockAlerts'), icon: AlertTriangle, onClick: () => setCenterPanel(p => (p === 'stock' ? null : 'stock')), active: centerPanel === 'stock', tone: centerPanel === 'stock' ? 'primary' : 'neutral' });
-  headerActions.push({ label: 'Analytics', icon: BarChart3, onClick: () => setCenterPanel(p => (p === 'charts' ? null : 'charts')), active: centerPanel === 'charts', tone: centerPanel === 'charts' ? 'primary' : 'neutral' });
+  // tourTarget on both toggles below: the guided tour opens each panel via
+  // preClickSelector before spotlighting station-body, which otherwise isn't
+  // in the DOM until a panel is open (see journeys/pharmacy.ts).
+  headerActions.push({ label: t('pharmacy.stockAlerts'), icon: AlertTriangle, onClick: () => setCenterPanel(p => (p === 'stock' ? null : 'stock')), active: centerPanel === 'stock', tone: centerPanel === 'stock' ? 'primary' : 'neutral', tourTarget: 'pharmacy-stock-alerts-toggle' });
+  headerActions.push({ label: 'Analytics', icon: BarChart3, onClick: () => setCenterPanel(p => (p === 'charts' ? null : 'charts')), active: centerPanel === 'charts', tone: centerPanel === 'charts' ? 'primary' : 'neutral', tourTarget: 'pharmacy-analytics-toggle' });
 
   return (
     <>

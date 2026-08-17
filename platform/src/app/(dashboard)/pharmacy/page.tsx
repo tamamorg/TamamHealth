@@ -936,7 +936,7 @@ export default function PharmacyPage() {
                 </EhrListHeaderButton>
               )}
               {canDispense && (
-                <button onClick={() => setShowStockInModal(true)} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap' }}>
+                <button data-tour="pharmacy-receive-stock" onClick={() => setShowStockInModal(true)} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap' }}>
                   <Plus className="w-4 h-4" /> {t('pharmacy.receiveStock')}
                 </button>
               )}

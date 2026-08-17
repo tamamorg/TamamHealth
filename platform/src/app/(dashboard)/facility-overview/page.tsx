@@ -193,7 +193,7 @@ function FacilityOverview() {
 
         {/* ═══ KEY METRICS — operational stats + vital events & care programs,
               wrapped in one background card with quick-action style tiles ═══ */}
-        <div className="dash-card p-4">
+        <div className="dash-card p-4" data-tour="facility-overview-metrics">
           <div className="flex items-center gap-2 mb-3">
             <Activity className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Key Metrics</h3>

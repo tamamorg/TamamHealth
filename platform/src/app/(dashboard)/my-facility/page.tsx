@@ -401,6 +401,7 @@ export default function MyFacilityPage() {
                       <button
                         onClick={handleSubmitToMoH}
                         disabled={submitting || (!!submittedAt && !hasPendingChanges)}
+                        data-tour="moh-submit-gate"
                         className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
                           background: submitting ? 'var(--text-muted)' : 'linear-gradient(135deg, #2191D0, #015697)',

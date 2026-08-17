@@ -239,7 +239,7 @@ export default function PatientsPage() {
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
             {/* ── Card toolbar ── */}
-            <div className="px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-light)' }}>
+            <div className="px-4 pt-4 pb-3 flex-shrink-0" data-tour="patients-toolbar" style={{ borderBottom: '1px solid var(--border-light)' }}>
               {/* Title + patient stats (inline, right-aligned — mirrors the wards
                   "Current Admissions" header instead of separate stat cards). */}
               <div className="flex items-end justify-between gap-3 mb-3 flex-wrap">

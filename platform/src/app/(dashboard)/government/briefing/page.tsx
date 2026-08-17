@@ -99,7 +99,7 @@ export default function ExecutiveBriefingPage() {
 
   return (
     <main className="page-container page-enter">
-      <div className="dash-card mb-3">
+      <div data-tour="gov-briefing-header" className="dash-card mb-3">
         <EhrListHeader
           title="Executive briefing"
           stats={[{ label: 'As of', value: `${today} · National` }]}

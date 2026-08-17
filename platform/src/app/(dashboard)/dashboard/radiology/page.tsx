@@ -505,7 +505,10 @@ export default function RadiologyDashboard() {
           { label: APPOINTMENT_STATUS_GROUP_LABELS.finished, value: stats.completed, active: filterStatus === 'completed', onClick: () => setFilterStatus(filterStatus === 'completed' ? 'all' : 'completed') },
         ]}
         actions={[
-          { label: t('radiology.byModality'), icon: BarChart3, onClick: () => togglePanel('modality'), active: centerPanel === 'modality', tone: centerPanel === 'modality' ? 'primary' : 'neutral' },
+          // tourTarget: the guided tour opens this panel via preClickSelector
+          // before spotlighting station-body, which otherwise isn't in the DOM
+          // until a panel is open (see journeys/radiology.ts's 'panels' step).
+          { label: t('radiology.byModality'), icon: BarChart3, onClick: () => togglePanel('modality'), active: centerPanel === 'modality', tone: centerPanel === 'modality' ? 'primary' : 'neutral', tourTarget: 'radiology-modality-toggle' },
           { label: t('radiology.bodyRegions'), icon: FileText, onClick: () => togglePanel('regions'), active: centerPanel === 'regions', tone: centerPanel === 'regions' ? 'primary' : 'neutral' },
           { label: t('radiology.performance'), icon: TrendingUp, onClick: () => togglePanel('performance'), active: centerPanel === 'performance', tone: centerPanel === 'performance' ? 'primary' : 'neutral' },
         ]}

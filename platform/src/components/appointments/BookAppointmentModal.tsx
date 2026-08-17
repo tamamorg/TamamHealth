@@ -351,6 +351,10 @@ export default function BookAppointmentModal({
     <PortalModal onClose={onClose} width={stepped && step === 1 ? 1080 : 720}>
       <div
         className="modal-panel modal-panel--lg"
+        // Guided-tour anchor (front-desk journey's "book" step) — the booking
+        // dialog itself, so the tour can spotlight the real 4-step flow
+        // instead of the trigger button that opened it.
+        data-tour="book-appointment-modal"
         style={{
           width: '100%',
           // Grows with its content, then stops at the dialog's height and

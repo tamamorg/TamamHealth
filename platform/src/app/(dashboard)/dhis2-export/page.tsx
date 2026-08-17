@@ -174,7 +174,7 @@ export default function DHIS2ExportPage() {
         </div>
 
         {/* Status Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6" data-tour="dhis2-status-cards">
           {[
             dhis2Configured
               ? { label: t('dhis2.statConnection'), value: t('dhis2.statConnectionActive'), icon: Wifi, color: 'var(--color-success-text)', sub: dhis2Host || '' }
@@ -199,6 +199,7 @@ export default function DHIS2ExportPage() {
           {tabs.map(tab => (
             <button
               key={tab.id}
+              data-tour={`dhis2-tab-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
               className="flex items-center gap-2 px-4 py-3 text-sm font-bold whitespace-nowrap transition-colors"
               style={{
@@ -268,7 +269,7 @@ export default function DHIS2ExportPage() {
 
         {/* ── HMIS REPORTS TAB ── */}
         {activeTab === 'reports' && (
-          <div className="space-y-3">
+          <div className="space-y-3" data-tour="dhis2-reports-list">
             {/* Every HMIS report here is fed by the same aggregate dataset push,
                 so status/completeness derive from the REAL last sync for the
                 selected period — not per-report fabrications. */}
@@ -380,7 +381,7 @@ export default function DHIS2ExportPage() {
         {/* ── EXPORT TAB ── */}
         {activeTab === 'export' && (
           <div className="max-w-2xl">
-            <div className="card-elevated p-6 mb-5">
+            <div className="card-elevated p-6 mb-5" data-tour="dhis2-export-config">
               <h3 className="font-semibold text-sm mb-4">{t('dhis2.exportConfiguration')}</h3>
               <div className="space-y-4">
                 <div>
@@ -484,7 +485,7 @@ export default function DHIS2ExportPage() {
 
         {/* ── SYNC LOG TAB ── */}
         {activeTab === 'log' && (
-          <div className="card-elevated overflow-hidden">
+          <div className="card-elevated overflow-hidden" data-tour="dhis2-sync-log">
             {(log?.entries ?? []).map((entry, i) => (
               <div
                 key={`${entry.time}-${i}`}

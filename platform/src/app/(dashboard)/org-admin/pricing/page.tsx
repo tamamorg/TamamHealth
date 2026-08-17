@@ -124,7 +124,7 @@ export default function ServicePricingPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+        <div className="dash-card overflow-hidden flex flex-col" data-tour="org-pricing-table" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title="Service Pricing"
             actions={

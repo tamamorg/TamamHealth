@@ -331,7 +331,7 @@ export default function PatientPortalPage() {
         {paymentStep === 'select' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
             {/* Bills list */}
-            <div className="bl-card">
+            <div className="bl-card" data-tour="portal-bills">
               <div className="bl-card-head">
                 <h2 className="bl-card-title">{t('portal.yourBills')}</h2>
                 <span className="bl-underline" />

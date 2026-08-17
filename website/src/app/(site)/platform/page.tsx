@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Corners from "@/components/Corners";
-import { PLATFORM_FACTS, PLATFORM_FLOW, PLATFORM_PANELS, PLATFORM_PILLARS } from "@/lib/site-data";
+import { CHALLENGES, PLATFORM_FACTS, PLATFORM_FLOW, PLATFORM_PANELS, PLATFORM_PILLARS } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "The Platform",
   description:
-    "One offline-first patient record from the front desk to the Ministry — simple enough for the front desk, strong enough for the nation.",
+    "How TamamHealth solves it: each failure paper records create in South Sudan's facilities, and what the offline-first platform does about it — from the front desk to the Ministry.",
 };
 
 export default function PlatformPage() {
@@ -40,6 +40,72 @@ export default function PlatformPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* The answer, failure by failure. "Our Solution" on the home hero lands
+          here, so the first thing it shows is the problem it claims to solve —
+          the same eight failures the challenge cards document, each paired with
+          what the platform actually does about it. Both halves come from
+          CHALLENGES, so the fix stated here and the fix on the challenge page
+          can never drift apart. */}
+      <section id="solution" style={{ padding: "74px 32px 20px" }}>
+        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 22, borderBottom: "1px solid var(--color-divider)" }}>
+            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>Our solution</span>
+            <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>Eight ways paper fails, and what the platform does instead</h2>
+            <p style={{ margin: 0, maxWidth: 760, fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
+              Every one of these was documented inside South Sudanese facilities before a line of the platform was written. None of
+              them is solved by digitising a form — each needed a specific mechanism, and each mechanism works with the power off
+              and the network down.
+            </p>
+          </div>
+
+          {/* Two-up, and each card is one failure and its answer — nothing
+              else. The one-line restatement and the cost line both live on the
+              challenge page this card opens; repeating them here tripled the
+              height of the section for facts the reader gets on the next
+              click. The section heading already says which half is which, so
+              the cards carry no "problem"/"solution" labels either. */}
+          <div className="tm-split tm-solution-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 26 }}>
+            {CHALLENGES.map((c) => (
+              <Link
+                key={c.slug}
+                href={`/challenges/${c.slug}`}
+                className="blueprint tm-solution-card"
+                style={{
+                  position: "relative",
+                  background: "var(--color-surface)",
+                  padding: "20px 22px 18px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  gap: 10,
+                  textDecoration: "none",
+                }}
+              >
+                <Corners />
+                <h3 style={{ fontSize: 18, margin: 0, lineHeight: 1.3, color: "var(--color-text)" }}>{c.title}</h3>
+                <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>{c.fix}</p>
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: "auto", paddingTop: 6 }}>
+                  <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                    {c.products.map((acronym) => (
+                      <span
+                        key={acronym}
+                        className="fs11"
+                        style={{ border: "1px solid var(--color-divider)", padding: "2px 6px", letterSpacing: "0.06em", color: "var(--color-neutral-700)" }}
+                      >
+                        {acronym}
+                      </span>
+                    ))}
+                  </span>
+                  <span className="fs125" style={{ fontFamily: "var(--font-heading)", fontWeight: 600, color: "var(--color-accent-700)", whiteSpace: "nowrap" }}>
+                    How it works &nbsp;›
+                  </span>
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

@@ -337,6 +337,8 @@ select.input-dark option { color: #0e2a4a; background: #ffffff; }
 .tm-chalstep-lit:hover { background: #ffffff !important; }
 .tm-cost:hover { background: var(--color-accent-100) !important; }
 .tm-prodcard:hover { background: #f2f8fc !important; }
+/* The whole failure/fix card is the link, so it lifts on hover like the rest. */
+.tm-solution-card:hover { background: #e8f2f9 !important; }
 .tm-handled:hover { background: #ffffff !important; }
 .tm-guard:hover { background: var(--color-accent-100) !important; }
 .tm-lvlbtn:hover { background: var(--color-accent-100) !important; }
@@ -439,6 +441,9 @@ header > div { min-width: 0; }
   .tm-g4, .tm-g3 { grid-template-columns: 1fr !important; }
   /* Two story photos abreast are too small to read on a phone. */
   .tm-news-pair { grid-template-columns: 1fr !important; gap: 22px !important; }
+  /* One card per row on a phone; the two-up grid is already tight enough that
+     it needs nothing else. */
+  .tm-solution-grid { grid-template-columns: 1fr !important; }
   .tm-explain { grid-template-columns: 1fr !important; }
   .tm-g6 { grid-template-columns: repeat(2, 1fr) !important; }
   .tm-reality-grid { grid-template-columns: 1fr !important; }

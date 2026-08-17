@@ -434,7 +434,10 @@ export default function NutritionDashboard() {
             tone: 'primary',
           },
           { label: t('nutrition.classification'), icon: BarChart3, onClick: () => togglePanel('classification'), active: centerPanel === 'classification', tone: centerPanel === 'classification' ? 'primary' : 'neutral' },
-          { label: t('nutrition.supplies'), icon: Utensils, onClick: () => togglePanel('supplies'), active: centerPanel === 'supplies', tone: centerPanel === 'supplies' ? 'primary' : 'neutral' },
+          // tourTarget: the guided tour opens this panel via preClickSelector
+          // before spotlighting station-body, which otherwise isn't in the DOM
+          // until a panel is open (see journeys/nutrition.ts's 'supplies' step).
+          { label: t('nutrition.supplies'), icon: Utensils, onClick: () => togglePanel('supplies'), active: centerPanel === 'supplies', tone: centerPanel === 'supplies' ? 'primary' : 'neutral', tourTarget: 'nutrition-supplies-toggle' },
         ]}
         hideRowList={centerPanel !== null}
         // "Normal" already matches the default done→series1 split; every

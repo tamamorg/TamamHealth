@@ -125,7 +125,7 @@ export default function FacilityAssessmentsPage() {
         {summary && (
           <>
             {/* National averages */}
-            <div className="card-elevated p-4 mb-6">
+            <div data-tour="facility-assess-summary" className="card-elevated p-4 mb-6">
               <h3 className="font-semibold text-sm mb-4">{t('facilityAssessments.nationalAvgTitle')}</h3>
               <div className="space-y-3">
                 {[

@@ -151,7 +151,7 @@ export default function EquityPlanningPage() {
 
   return (
     <main className="page-container page-enter">
-      <div className="dash-card mb-3">
+      <div data-tour="gov-equity-header" className="dash-card mb-3">
         <EhrListHeader
           title="Equity & planning"
           stats={[

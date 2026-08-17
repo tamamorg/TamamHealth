@@ -132,7 +132,7 @@ export default function BirthsPage() {
             search={{ value: tableSearch, onChange: setTableSearch, placeholder: 'Search by child or mother name…', ariaLabel: 'Search births' }}
             actions={
               canRecordVitalEvents && (
-                <button onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ height: 38, whiteSpace: 'nowrap' }}>
+                <button data-tour="register-birth-btn" onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ height: 38, whiteSpace: 'nowrap' }}>
                   <Plus className="w-4 h-4" /> {t('births.registerBirth')}
                 </button>
               )

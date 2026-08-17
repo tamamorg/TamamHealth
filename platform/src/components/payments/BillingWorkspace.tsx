@@ -649,7 +649,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           {/* Pending verification queue — payments awaiting a finance decision.
               Rendered only when something needs review, so the page stays clean. */}
           {pendingPayments.length > 0 && (
-            <div className="bl-card">
+            <div className="bl-card" data-tour="pending-queue">
               <div className="bl-card-head">
                 <h2 className="bl-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Clock size={16} style={{ color: 'var(--color-warning-text)' }} />
@@ -715,7 +715,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               one search box; the tabs decide which rows and which filters. ── */}
           {/* A floor rather than a share of the viewport — the table always has
               room for a useful number of rows, and the page scrolls past it. */}
-          <div className="bl-card" style={{ flex: 1, minHeight: 320, display: 'flex', flexDirection: 'column' }}>
+          <div className="bl-card" data-tour="work-queue" style={{ flex: 1, minHeight: 320, display: 'flex', flexDirection: 'column' }}>
             <div className="bl-card-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
               <div>
                 <h2 className="bl-card-title">{tab === 'claims' ? t('claims.title') : 'Patient accounts'}</h2>
