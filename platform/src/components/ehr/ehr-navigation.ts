@@ -156,11 +156,18 @@ export function getPrimaryShortcutItems(items: NavItem[], role?: UserRole, maxIt
     items.filter(item => !isDashboard(item.href) && item.href !== '/messages' && duplicateRoutes?.includes(item.href)),
   );
   const messagesFallback = sortByShortcutPriority(items.filter(item => item.href === '/messages'));
-  const dashboardFallback = sortByShortcutPriority(items.filter(item => isDashboard(item.href)));
+
+  // No dashboard shortcut, ever — not even to fill an empty slot on a role
+  // with few destinations. The rail already offers it twice: the brand mark
+  // goes home, and the module menu lists it. A third route drew the dashboard
+  // glyph immediately beside the hamburger, so two adjacent buttons meant
+  // roughly the same thing and the shortcut row's job ("somewhere else, fast")
+  // stopped being legible. A short row is the honest answer for a role that
+  // genuinely has few places to be.
 
   // De-duplicate by href across tiers (defensive; nav items are already unique).
   const seen = new Set<string>();
-  const ordered = [...tier1, ...messagesFallback, ...duplicateFallbacks, ...dashboardFallback].filter(item => {
+  const ordered = [...tier1, ...messagesFallback, ...duplicateFallbacks].filter(item => {
     if (seen.has(item.href)) return false;
     seen.add(item.href);
     return true;
@@ -194,15 +201,13 @@ export function getPageHeaderNavItems(
   homeHref?: string,
   count = PAGE_HEADER_NAV_COUNT,
 ): NavItem[] {
-  const home = homeHref?.split('?')[0];
   // Ask for both tiers at once and drop the rail's share, so the header picks
   // up exactly where the rail left off with no separate ordering to keep in
-  // sync. Over-fetch by one: `getPrimaryShortcutItems` keeps the role's own
-  // dashboard as its last fallback, and filtering it here would otherwise
-  // leave the strip a button short.
-  const promoted = getPrimaryShortcutItems(items, role, RAIL_SHORTCUT_COUNT + count + 1, homeHref);
+  // sync. No over-fetch and no home filter needed: dashboard and home routes
+  // are excluded from the shortcut tiers outright, so nothing here has to
+  // compensate for one arriving last.
+  const promoted = getPrimaryShortcutItems(items, role, RAIL_SHORTCUT_COUNT + count, homeHref);
   return promoted
     .slice(RAIL_SHORTCUT_COUNT)
-    .filter(item => item.href !== home)
     .slice(0, count);
 }

@@ -1,75 +1,6 @@
 import type { Metadata } from "next";
 import Corners from "@/components/Corners";
-import { GOALS, TEAM } from "@/lib/site-data";
-
-// Photos from the Tufts New Ventures Competition, April 10, 2026 — in story order.
-const DERBY_PHOTOS = [
-  {
-    src: "/assets/derby/derby-09.jpg",
-    alt: "Toye Adebayo, Teny Makuach and Ekow Williams standing together with competition badges",
-    caption: "Toye Adebayo, Teny Makuach and Ekow Williams before the results were announced.",
-  },
-  {
-    src: "/assets/derby/derby-13.jpg",
-    alt: "Teny Makuach pitching with a microphone, the live record system on the projector behind him",
-    caption: "Teny pitching from the product itself — the live record system on screen, not a slide deck.",
-  },
-  {
-    src: "/assets/derby/derby-07.jpg",
-    alt: "Ekow Williams presenting with a microphone beside the lectern",
-    caption: "Ekow making the case in the Healthcare & Life Science track.",
-  },
-  {
-    src: "/assets/derby/derby-12.jpg",
-    alt: "A team member answering questions with a microphone during the pitch",
-    caption: "Taking the judges' questions.",
-  },
-  {
-    src: "/assets/derby/derby-08.jpg",
-    alt: "The team demoing the platform on a laptop at a standing table during the reception",
-    caption: "Demoing the record system between sessions.",
-  },
-  {
-    src: "/assets/derby/derby-10.jpg",
-    alt: "Ekow Williams in conversation at the reception",
-    caption: "Ekow talking through the pilot.",
-  },
-  {
-    src: "/assets/derby/derby-01.jpg",
-    alt: "The team called up through an applauding audience as the winner is announced",
-    caption: "The moment the winner was read out.",
-  },
-  {
-    src: "/assets/derby/derby-02.jpg",
-    alt: "The team receiving the oversized $10,000 check on stage",
-    caption: "Receiving the award on stage.",
-  },
-  {
-    src: "/assets/derby/derby-11.jpg",
-    alt: "The team holding the $10,000 check together with the competition judges",
-    caption: "The team with the judges and the $10,000 check.",
-  },
-  {
-    src: "/assets/derby/derby-04.jpg",
-    alt: "Founders laughing together while holding the check",
-    caption: "Letting it sink in.",
-  },
-  {
-    src: "/assets/derby/derby-03.jpg",
-    alt: "The team posing with the check while a guest takes a photo",
-    caption: "Photos with the check.",
-  },
-  {
-    src: "/assets/derby/derby-05.jpg",
-    alt: "Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check in front of the Derby Entrepreneurship Center banner",
-    caption: "The founding team with the award.",
-  },
-  {
-    src: "/assets/derby/derby-06.jpg",
-    alt: "The three founders standing full-length with the check in front of the Derby Entrepreneurship Center banner",
-    caption: "At the Derby Entrepreneurship Center at Tufts.",
-  },
-];
+import { DERBY_PHOTOS, GOALS, TEAM } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "About",
@@ -103,7 +34,7 @@ export default function AboutPage() {
               <div style={{ padding: "32px 28px", display: "flex", flexDirection: "column", gap: 10 }}>
                 <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7FC4EA" }}>Recognition</span>
                 <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(34px, 4vw, 48px)", lineHeight: 0.95, color: "#7FC4EA" }}>$10,000</span>
-                <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.35, color: "#FFFFFF" }}>Winner, Healthcare &amp; Life Science track — Tufts New Ventures Competition</span>
+                <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.35, color: "#FFFFFF" }}>Second place, Healthcare &amp; Life Science track — Tufts New Ventures Competition</span>
                 <p style={{ margin: "6px 0 0", fontSize: 14.5, lineHeight: 1.6, color: "rgba(255,255,255,0.76)" }}>
                   Our first venture competition — judged on a working platform, not a slide deck. The award funds the
                   first deployments: tablets, solar power and training for the pilot clinics.
@@ -125,7 +56,7 @@ export default function AboutPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7FC4EA" }}>From the competition</span>
                 <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(20px, 2.6vw, 28px)", lineHeight: 1.15, color: "#FFFFFF" }}>
-                  April 10, 2026 — the night the pilot got funded
+                  April 10, 2026 — the night the pilot got its first funding
                 </span>
               </div>
               <span className="fs115" style={{ letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
@@ -179,7 +110,7 @@ export default function AboutPage() {
                 <div className="blueprint" style={{ position: "relative", width: "100%", paddingTop: "100%", overflow: "hidden", borderBottom: `4px solid ${t.accent}` }}>
                   <Corners />
                   {/* eslint-disable-next-line @next/next/no-img-element -- square portrait, sized by CSS */}
-                  <img src={t.image} alt={t.name} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
+                  <img src={t.image} alt={t.name} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: t.focus ?? "center top" }} />
                 </div>
                 <div style={{ marginTop: "auto" }}>
                   <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 19 }}>{t.name}</div>

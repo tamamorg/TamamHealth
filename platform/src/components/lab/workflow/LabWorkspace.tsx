@@ -2,15 +2,22 @@
 
 /**
  * The chart's Lab tab: the patient's results list, and — once a row is picked
- * or deep-linked from the lab queue — the bench workflow for that order.
+ * or deep-linked from the lab queue — the workflow for that order.
  *
- * This is where lab work now happens. The queue links here rather than opening
- * a popup, so the technician works with the chart around them: the same
+ * This is where diagnostics work now happens. The queue links here rather than
+ * opening a popup, so the technician works with the chart around them: the same
  * patient header, the same allergies and problems a clinician would read.
+ *
+ * Imaging studies live in this same list, because they are the same order store
+ * (`orderKind: 'imaging'`). Picking one opens the reading-room workflow instead
+ * of the bench workflow — same six-chevron shell, different six steps, because
+ * none of the specimen steps mean anything to a radiographer.
  */
 
 import { useEffect, useState } from 'react';
 import ResultsSection from '@/components/ehr/chart/sections/ResultsSection';
+import RadiologyWorkflowPanel from '@/components/radiology/workflow/RadiologyWorkflowPanel';
+import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { ArrowLeft } from '@/components/icons/lucide';
@@ -54,6 +61,8 @@ export default function LabWorkspace({
     );
   }
 
+  const imaging = selected.orderKind === 'imaging' || isImagingStudy(selected);
+
   return (
     <div>
       <button
@@ -64,12 +73,20 @@ export default function LabWorkspace({
       >
         <ArrowLeft className="w-4 h-4" aria-hidden /> {t('labFlow.backToResults')}
       </button>
-      <LabWorkflowPanel
-        order={selected}
-        canWork={canWork}
-        seedResult={seedResult}
-        onClose={() => setSelectedId(undefined)}
-      />
+      {imaging ? (
+        <RadiologyWorkflowPanel
+          study={selected}
+          canWork={canWork}
+          onClose={() => setSelectedId(undefined)}
+        />
+      ) : (
+        <LabWorkflowPanel
+          order={selected}
+          canWork={canWork}
+          seedResult={seedResult}
+          onClose={() => setSelectedId(undefined)}
+        />
+      )}
     </div>
   );
 }

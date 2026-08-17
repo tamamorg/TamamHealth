@@ -47,14 +47,14 @@ export default function PlatformPage() {
       <section id="dashboard" style={{ padding: "74px 32px 20px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 20, paddingBottom: 18, borderBottom: "1px solid var(--color-divider)" }}>
-            <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>The facility dashboard</h2>
-            <span className="fs125" style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-accent-700)", whiteSpace: "nowrap" }}>Reception, on a real patient day</span>
+            <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>The clinical dashboard</h2>
+            <span className="fs125" style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-accent-700)", whiteSpace: "nowrap" }}>A doctor&rsquo;s workspace, on a real patient day</span>
           </div>
           <div className="tm-dash-grid" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 48, alignItems: "start", marginTop: 34 }}>
             <div className="blueprint" style={{ position: "relative" }}>
               <Corners />
               {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-              <img src="/assets/platform-receptionist.png" alt="The TamamHealth reception dashboard: today's schedule, patient flow and triage queue" style={{ width: "100%", display: "block" }} />
+              <img src="/assets/platform-doctor.png" alt="The TamamHealth clinical dashboard: a doctor's checked-in patient list with acuity, care team and visit context, alongside outstanding items and patient flow" style={{ width: "100%", display: "block" }} />
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               {PLATFORM_PANELS.map((p) => (

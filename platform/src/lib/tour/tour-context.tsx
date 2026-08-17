@@ -33,6 +33,25 @@ export function useTourContext(): TourContextValue {
   return useContext(TourContext);
 }
 
+/** A step route containing a `[param]` segment, e.g. `/patients/[id]`. */
+function isDynamicRoute(route: string): boolean {
+  return route.includes('[');
+}
+
+/**
+ * Does the browser's path satisfy a step's route? Static routes match exactly;
+ * a dynamic route matches segment-for-segment with `[param]` accepting any one
+ * non-empty segment, so `/patients/[id]` matches `/patients/pat-00042` but not
+ * `/patients` or `/patients/pat-1/labs`.
+ */
+function routeMatches(pathname: string, route: string): boolean {
+  if (!isDynamicRoute(route)) return pathname === route;
+  const a = pathname.split('/').filter(Boolean);
+  const b = route.split('/').filter(Boolean);
+  if (a.length !== b.length) return false;
+  return b.every((seg, i) => (seg.startsWith('[') && seg.endsWith(']') ? a[i].length > 0 : seg === a[i]));
+}
+
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useApp();
   const pathname = usePathname();
@@ -89,8 +108,17 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, [tour, currentUser, pathname, start]);
 
   // Follow the current step to its route.
+  //
+  // A step may name a dynamic route (`/patients/[id]`). Those cannot be
+  // navigated to — there is no id to push — so the step instead rides along
+  // once the user is already on a matching page: the previous step opens a
+  // record (usually via `preClickSelector` on the first row), and this one
+  // recognises where it landed. Without this, every detail page in the app —
+  // the chart, the note, the triage form, the MAR — was unreachable by a
+  // tour, which is most of what a clinician's day actually is.
   useEffect(() => {
     if (!active || !step) return;
+    if (isDynamicRoute(step.route)) return;
     if (pathname !== step.route) router.push(step.route);
   }, [active, step, pathname, router]);
 
@@ -99,7 +127,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   // exist in the DOM the instant the route changes.
   useEffect(() => {
     if (!active || !step) return;
-    if (pathname !== step.route) { setRect(null); return; }
+    if (!routeMatches(pathname, step.route)) { setRect(null); return; }
 
     // Narrative step with no anchor — render the card centred over the page.
     if (!step.target) { setRect(null); return; }

@@ -169,6 +169,10 @@ section[id] { scroll-margin-top: 130px; }
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.66);
 }
+/* The strip is drawn for navy bands; on a light ground the frame hairline and
+   the caption ink swap to the page's own neutrals. */
+.tm-gallery-light > figure > img { border-color: var(--color-divider); }
+.tm-gallery-light > figure > figcaption { color: var(--color-neutral-600); }
 
 .btn {
   display: inline-flex;
@@ -317,9 +321,10 @@ select.input-dark option { color: #0e2a4a; background: #ffffff; }
 
 .tm-products-band { background: linear-gradient(to right, #0e2a4a 0 50%, #eff5f9 50% 100%); }
 
-.tm-chal-rail::-webkit-scrollbar { height: 6px; }
-.tm-chal-rail::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.12); }
-.tm-chal-rail::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.42); }
+/* No scrollbar under the challenge rail — the ‹ › buttons above it are the
+   affordance, and the bar read as a stray rule across the navy band. */
+.tm-chal-rail { scrollbar-width: none; }
+.tm-chal-rail::-webkit-scrollbar { display: none; }
 .tm-flow-rail > div:last-child > div > span:last-child { display: none; }
 .tm-flow-rail::-webkit-scrollbar { height: 6px; }
 .tm-flow-rail::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.12); }
@@ -374,6 +379,10 @@ header > div { min-width: 0; }
   .tm-g4, .tm-g3 { grid-template-columns: repeat(2, 1fr) !important; }
   .tm-g6 { grid-template-columns: repeat(3, 1fr) !important; }
   .tm-split { grid-template-columns: 1fr !important; }
+  /* Stacked, the home lead story's divider moves from the copy's left edge to
+     its top, and the figure drops to a banner height above it. */
+  .tm-news-lead > div:last-of-type { border-left: 0 !important; border-top: 1px solid var(--color-divider) !important; padding: 34px 30px 38px !important; }
+  .tm-news-lead > .tm-figure { min-height: 260px !important; }
   .tm-sticky { position: static !important; top: auto !important; }
   .tm-prod-card { margin-top: 0 !important; margin-left: 0 !important; }
   .tm-prod-photo { min-height: 320px !important; }
@@ -382,6 +391,7 @@ header > div { min-width: 0; }
   .tm-prod-card { grid-template-columns: 1fr !important; }
   .tm-prod-card > div:first-of-type { min-height: 260px !important; }
   .tm-reality-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .tm-problem-breaks { grid-template-columns: 1fr !important; gap: 26px !important; }
   .tm-reality-grid > div { border-top: 1px solid var(--color-divider); }
   main section { padding-left: 28px !important; padding-right: 28px !important; }
   .tm-hero { height: auto !important; min-height: 440px; }
@@ -427,8 +437,12 @@ header > div { min-width: 0; }
 }
 @media (max-width: 639px) {
   .tm-g4, .tm-g3 { grid-template-columns: 1fr !important; }
+  /* Two story photos abreast are too small to read on a phone. */
+  .tm-news-pair { grid-template-columns: 1fr !important; gap: 22px !important; }
+  .tm-explain { grid-template-columns: 1fr !important; }
   .tm-g6 { grid-template-columns: repeat(2, 1fr) !important; }
   .tm-reality-grid { grid-template-columns: 1fr !important; }
+  .tm-problem-breaks { grid-template-columns: 1fr !important; }
   main section { padding-left: 18px !important; padding-right: 18px !important; }
   main section:not(.tm-hero):not(.tm-hero-nav) { padding-top: 42px !important; padding-bottom: 46px !important; }
   .tm-hero { min-height: 480px; padding: 0 !important; }

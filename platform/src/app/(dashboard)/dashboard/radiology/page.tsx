@@ -14,6 +14,7 @@ import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/Ehr
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { appointmentPriorityLabel, appointmentTriage } from '@/lib/clinical/triage-display';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { formatClockTime } from '@/lib/format-utils';
 
 const ACCENT = 'var(--accent-primary)';
 
@@ -218,7 +219,7 @@ export default function RadiologyDashboard() {
     return {
       // Demo studies carry a date but no instant; they still belong to a day.
       date: at ? at.slice(0, 10) : study.date,
-      time: at ? new Date(at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
+      time: at ? formatClockTime(at) : undefined,
       series: (reported ? 1 : 0) as 0 | 1,
     };
   }), [studies]);
@@ -516,8 +517,8 @@ export default function RadiologyDashboard() {
         chartItems={chartItems}
         rows={filtered.map((study): EhrCareDashboardRow => {
           const time = study.status === 'completed'
-            ? (study.completedAt ? new Date(study.completedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined)
-            : (study.orderedAt ? new Date(study.orderedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined);
+            ? (study.completedAt ? formatClockTime(study.completedAt) : undefined)
+            : (study.orderedAt ? formatClockTime(study.orderedAt) : undefined);
           return {
             id: study.id,
             title: study.patientName,

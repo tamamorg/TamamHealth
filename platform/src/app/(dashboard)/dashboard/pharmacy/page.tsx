@@ -12,7 +12,7 @@ import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
 import { checkNewPrescription, type DrugInteraction, type InteractionSeverity } from '@/lib/services/drug-interaction-service';
-import { formatMoney , formatRxSig } from '@/lib/format-utils';
+import { formatMoney , formatRxSig, formatClockTime } from '@/lib/format-utils';
 import { isActivePharmacyStage, isFinanciallyCleared, pharmacyStage, pharmacyStageGroup, pharmacyStageLabel, pharmacyStageTone } from '@/lib/pharmacy-workflow';
 import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { PrescriptionDoc, PharmacyInventoryDoc, UserDoc } from '@/lib/db-types';
@@ -52,7 +52,7 @@ function titleCaseDrug(name: string): string {
 
 function formatTime(iso?: string): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return formatClockTime(iso) || '—';
 }
 
 // Turns a minutes count into "1h 20m" / "45m" for the queue-wait stat tile.

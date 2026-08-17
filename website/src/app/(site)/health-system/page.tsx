@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import LevelsExplorer from "@/components/LevelsExplorer";
 import ChallengesBand from "@/components/ChallengesBand";
-import { ALIGN_FACTS, SYSTEM_STATS } from "@/lib/site-data";
+import { ALIGN_FACTS, SYSTEM_STATS, PROBLEM_LEAD, PROBLEM_BREAKS, PROBLEM_WHY } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "The Health System",
@@ -46,6 +46,23 @@ export default function HealthSystemPage() {
             <h2 style={{ fontSize: "clamp(25px, 3.6vw, 40px)", margin: 0 }}>The reality Tamam is built for</h2>
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>Essential Health Services Package, 2025</span>
           </div>
+
+          {/* The problem, argued — the strip's "The Problem" card lands here. */}
+          <p style={{ maxWidth: "68ch", margin: "30px 0 0", fontSize: 17, lineHeight: 1.72, color: "var(--color-neutral-900)" }}>
+            {PROBLEM_LEAD}
+          </p>
+          <div className="tm-problem-breaks" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 34, margin: "38px 0 6px" }}>
+            {PROBLEM_BREAKS.map((b) => (
+              <div key={b.where} style={{ display: "flex", flexDirection: "column", gap: 9, paddingTop: 18, borderTop: "2px solid var(--color-accent)" }}>
+                <span className="fs115" style={{ letterSpacing: "0.13em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{b.where}</span>
+                <h3 style={{ fontSize: 21, lineHeight: 1.2, margin: 0 }}>{b.what}</h3>
+                <p style={{ margin: 0, fontSize: 15, lineHeight: 1.68, color: "var(--color-neutral-800)" }}>{b.body}</p>
+              </div>
+            ))}
+          </div>
+          <p style={{ maxWidth: "68ch", margin: "26px 0 40px", fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
+            {PROBLEM_WHY}
+          </p>
           <div className="tm-reality-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, marginTop: 0 }}>
             {SYSTEM_STATS.map((s) => (
               <div key={s.value} style={{ padding: "36px 26px 34px", borderRight: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", gap: 12 }}>

@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
-import { titleCase } from '@/lib/format-utils';
+import { titleCase, formatClockTime } from '@/lib/format-utils';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -24,7 +24,7 @@ import type { StaffScheduleDoc } from '@/lib/db-types';
 function formatClockTimeOrUndefined(iso?: string): string | undefined {
   if (!iso) return undefined;
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return Number.isNaN(d.getTime()) ? undefined : formatClockTime(d) || undefined;
 }
 export default function HRDashboardPage() {
   const router = useRouter();

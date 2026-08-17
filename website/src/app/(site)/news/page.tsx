@@ -4,7 +4,7 @@ import NewsExplorer from "@/components/NewsExplorer";
 export const metadata: Metadata = {
   title: "News & updates",
   description:
-    "What TamamHealth has built and won so far — from the first six-week MVP and the Tufts New Ventures Competition to the $100,000 pilot across 10 clinics in Juba.",
+    "What TamamHealth is building and where the work has landed — starting with second place in the Healthcare & Life Science track at the Tufts New Ventures Competition.",
 };
 
 export default function NewsPage() {
@@ -16,8 +16,8 @@ export default function NewsPage() {
           <h1 style={{ fontSize: "clamp(30px, 4.6vw, 50px)", margin: 0, color: "#FFFFFF" }}>News &amp; updates</h1>
           <span style={{ width: 100, height: 3, background: "#7FC4EA" }} />
           <p style={{ margin: 0, maxWidth: 680, fontSize: 16.5, lineHeight: 1.7, color: "rgba(255,255,255,0.84)" }}>
-            What we have built, what we have won, and where the work is going — from the first six-week build to the
-            10-clinic pilot in Juba and greater South Sudan.
+            What we have built, where it has been recognised, and where the work is going — on the way to the 10-clinic
+            pilot in Juba and greater South Sudan.
           </p>
         </div>
       </section>

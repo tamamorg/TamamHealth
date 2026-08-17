@@ -78,7 +78,7 @@ export default function NewsExplorer() {
         {/* Filter rail */}
         <aside style={{ display: "flex", flexDirection: "column", gap: 22 }}>
           <h2 style={{ margin: 0, fontSize: 26, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            {filtered.length} News
+            {filtered.length === 1 ? "1 Story" : `${filtered.length} News`}
           </h2>
           <div className="blueprint" style={{ position: "relative", display: "flex", alignItems: "center", background: "#FFFFFF", padding: "2px 10px 2px 16px" }}>
             <Corners />

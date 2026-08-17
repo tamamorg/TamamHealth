@@ -608,7 +608,7 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-chart-details,
 .ehr-soap-scroll,
 .ehr-handoff-body,
-.ehr-module-menu-grid,
+.ehr-module-menu-scroll,
 .ehr-find-patient-results,
 .assign-doctor-provider-list,
 .popup-select-list,
@@ -630,7 +630,7 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-chart-details::-webkit-scrollbar,
 .ehr-soap-scroll::-webkit-scrollbar,
 .ehr-handoff-body::-webkit-scrollbar,
-.ehr-module-menu-grid::-webkit-scrollbar,
+.ehr-module-menu-scroll::-webkit-scrollbar,
 .ehr-find-patient-results::-webkit-scrollbar,
 .assign-doctor-provider-list::-webkit-scrollbar,
 .popup-select-list::-webkit-scrollbar,
@@ -653,7 +653,7 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-chart-details::-webkit-scrollbar-track,
 .ehr-soap-scroll::-webkit-scrollbar-track,
 .ehr-handoff-body::-webkit-scrollbar-track,
-.ehr-module-menu-grid::-webkit-scrollbar-track,
+.ehr-module-menu-scroll::-webkit-scrollbar-track,
 .ehr-find-patient-results::-webkit-scrollbar-track,
 .assign-doctor-provider-list::-webkit-scrollbar-track,
 .popup-select-list::-webkit-scrollbar-track,
@@ -674,7 +674,7 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-chart-details::-webkit-scrollbar-thumb,
 .ehr-soap-scroll::-webkit-scrollbar-thumb,
 .ehr-handoff-body::-webkit-scrollbar-thumb,
-.ehr-module-menu-grid::-webkit-scrollbar-thumb,
+.ehr-module-menu-scroll::-webkit-scrollbar-thumb,
 .ehr-find-patient-results::-webkit-scrollbar-thumb,
 .assign-doctor-provider-list::-webkit-scrollbar-thumb,
 .popup-select-list::-webkit-scrollbar-thumb,
@@ -735,7 +735,7 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-chart-details::-webkit-scrollbar-thumb:hover,
 .ehr-soap-scroll::-webkit-scrollbar-thumb:hover,
 .ehr-handoff-body::-webkit-scrollbar-thumb:hover,
-.ehr-module-menu-grid::-webkit-scrollbar-thumb:hover,
+.ehr-module-menu-scroll::-webkit-scrollbar-thumb:hover,
 .ehr-find-patient-results::-webkit-scrollbar-thumb:hover,
 .assign-doctor-provider-list::-webkit-scrollbar-thumb:hover,
 .popup-select-list::-webkit-scrollbar-thumb:hover,
@@ -3764,73 +3764,23 @@ html:has(.ehr-top-rail) {
    wide: the site's version owns a whole viewport on arrival, this one opens
    over work in progress, so it trades the tall scrolling column for columns
    that fit in a glance. */
+/* Hangs from the rail at the page gutter, not from the trigger, so it covers
+   the workspace's left rail (260px) instead of leaving it showing alongside.
+   The trigger still sits within the panel's span, so the squared-tab join
+   below still reads. Fixed, because the rail itself is. */
 .ehr-module-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  display: grid;
-  grid-template-columns: 196px minmax(0, 1fr);
-  width: min(660px, calc(100vw - 24px));
-  max-height: min(380px, calc(100vh - 66px));
+  position: fixed;
+  top: var(--ehr-top-rail-height);
+  left: 12px;
+  width: 284px;
+  max-height: min(560px, calc(100vh - var(--ehr-top-rail-height) - 16px));
   overflow: hidden;
   border: 1px solid var(--ehr-border);
-  border-radius: 0 12px 12px 12px;
+  border-radius: 0 0 12px 12px;
   background: var(--ehr-panel);
   color: var(--ehr-text);
   box-shadow: 0 14px 30px rgba(9, 30, 66, 0.16);
   z-index: 1250;
-}
-
-/* Left panel: the site's title block, shrunk. Role first as a small eyebrow,
-   because in here "who am I signed in as" is the thing that decides what the
-   grid beside it contains. */
-.ehr-module-menu-intro {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 16px 16px 18px;
-  border-right: 1px solid var(--ehr-border);
-  background: var(--surface-hover, #EEF3F8);
-}
-
-.ehr-module-menu-eyebrow {
-  color: var(--ehr-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.ehr-module-menu-intro h3 {
-  margin: 0;
-  font-size: 19px;
-  line-height: 1.15;
-  color: var(--ehr-text);
-}
-
-.ehr-module-menu-intro p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--ehr-muted);
-}
-
-/* Right panel: sections become columns, so a long role menu gets shorter as
-   it gets wider rather than taller. */
-.ehr-module-menu-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
-  gap: 4px 14px;
-  padding: 14px;
-  overflow-y: auto;
-}
-
-@media (max-width: 720px) {
-  .ehr-module-menu { grid-template-columns: minmax(0, 1fr); max-height: min(460px, calc(100vh - 66px)); }
-  .ehr-module-menu-intro { border-right: 0; border-bottom: 1px solid var(--ehr-border); padding: 12px 14px 13px; }
-  .ehr-module-menu-intro p { display: none; }
-  .ehr-module-menu-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* The open hamburger becomes the panel's tab: same surface, squared bottom,
@@ -3843,16 +3793,36 @@ html:has(.ehr-top-rail) {
   border-radius: 12px 12px 0 0;
 }
 
-/* Sections sit beside each other now, so they are separated by the column gap
-   rather than by a rule across the top — a border-top on a neighbouring column
-   would draw a line through the middle of the panel. */
-.ehr-module-menu section {
-  min-width: 0;
-  break-inside: avoid;
+/* Role label only — the panel hangs off the module trigger, so it does not
+   need to name itself. */
+.ehr-module-menu-head {
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid var(--ehr-border);
+  background: transparent;
+}
+
+.ehr-module-menu-head span {
+  display: block;
+  color: var(--ehr-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ehr-module-menu-scroll {
+  max-height: calc(min(560px, 100vh - var(--ehr-top-rail-height) - 16px) - 36px);
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.ehr-module-menu section + section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ehr-border);
 }
 
 .ehr-module-menu section > p {
-  margin: 6px 8px 3px;
+  margin: 7px 10px 5px;
   color: var(--ehr-muted);
   font-size: 10px;
   font-weight: 800;

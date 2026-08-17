@@ -655,13 +655,11 @@ export default function EhrCareDashboard({
           <div className="ehr-daybar">
             <div>
               <h2>{centerTitle || selectedDateLabel}</h2>
-              {/* Pass an empty string to render no subtitle at all (the nurse
-                  station design carries only the h2 + tabs on this bar). */}
-              {centerSubtitle !== '' && (
-                <p className="ehr-care-subtitle">
-                  {centerSubtitle || `${visibleRows.length} active item${visibleRows.length === 1 ? '' : 's'}`}
-                </p>
-              )}
+              {/* Only a subtitle a station actually asked for. There used to be
+                  an "N active items" fallback here, which restated the count
+                  already on every tab beside it — the clinical dashboard
+                  dropped it and the rest of the stations follow. */}
+              {centerSubtitle && <p className="ehr-care-subtitle">{centerSubtitle}</p>}
             </div>
             {/* The design puts the search over the table it filters, not in
                 the rail beside it: the field belongs to the queue, and a
@@ -752,15 +750,23 @@ export default function EhrCareDashboard({
                       if (Number.isNaN(target.getTime())) return null;
                       const label = formatAppointmentTimeUntil(target, now);
                       if (!label) return null;
+                      const minutesAway = (target.getTime() - now.getTime()) / 60000;
                       const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
                       const usesDate = dayKey(target) !== dayKey(now);
-                      return { label, usesDate };
+                      const tone = minutesAway < 0 ? 'is-past' : minutesAway <= 30 ? 'is-soon' : '';
+                      return { label, tone, usesDate };
                     })();
-                    // The time cell is a single line: the clock time itself, or
-                    // the date for a visit on another day. The countdown is still
-                    // computed — the status-pill cue reads it — but a column of
-                    // "15h 15m ago" on visits that already happened was noise.
-                    const displayTime = countdown?.usesDate ? countdown.label : row.time || row.date || '—';
+                    // The Time column reads as one column: every row that has a
+                    // clock time shows that clock time on the first line, so a
+                    // day's list is scannable straight down the minute digits.
+                    // A date only takes the first line for a row that has no
+                    // time of day at all.
+                    const displayTime = row.time || (countdown?.usesDate ? countdown.label : row.date) || '—';
+                    // Second line: how far off the visit is — "in 45m", "2h ago"
+                    // — or, for another day's visit, that day's date.
+                    const timeSubtext = countdown && countdown.label !== displayTime
+                      ? countdown.label
+                      : row.timeSecondary || '';
     // Status pill tone reuses the appointment pill classes.
                     //
                     // The pill is a PICKER when the page supplies options and a
@@ -872,6 +878,7 @@ export default function EhrCareDashboard({
 
                           <div className="ehr-appointment-time">
                             <strong>{displayTime}</strong>
+                            {timeSubtext && <span className={countdown?.tone || ''}>{timeSubtext}</span>}
                           </div>
 
                           <div className="appointment-card-provider">

@@ -25,6 +25,7 @@ import LabOrderPatientPicker from '@/components/lab/order/LabOrderPatientPicker'
 import '@/components/lab/order/lab-order.css';
 import { patientFullName } from '@/lib/patient-utils';
 import Select from '@/components/Select';
+import { formatClockTime } from '@/lib/format-utils';
 
 // Use the platform accent token so this dashboard matches the reference
 // Clinical Officer design instead of a one-off hardcoded hex.
@@ -54,7 +55,7 @@ type Screening = {
 function formatTime(iso?: string): string | undefined {
   if (!iso) return undefined;
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return Number.isNaN(d.getTime()) ? undefined : formatClockTime(d) || undefined;
 }
 
 const EMPTY_FORM = { name: '', age: '', sex: 'F', muac: '', weight: '', height: '', edema: false, isAnc: false, notes: '' };

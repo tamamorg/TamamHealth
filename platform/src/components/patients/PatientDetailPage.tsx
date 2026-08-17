@@ -82,7 +82,7 @@ import ChartVitalsBand from '@/components/ehr/chart/ChartVitalsBand';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import AllergiesSection from '@/components/ehr/chart/sections/AllergiesSection';
 import ConditionsSection from '@/components/ehr/chart/sections/ConditionsSection';
-import MedicationsSection from '@/components/ehr/chart/sections/MedicationsSection';
+import PharmacyWorkspace from '@/components/pharmacy/workflow/PharmacyWorkspace';
 import OrdersSection from '@/components/ehr/chart/sections/OrdersSection';
 import ProceduresSection from '@/components/ehr/chart/sections/ProceduresSection';
 import ProgramsSection from '@/components/ehr/chart/sections/ProgramsSection';
@@ -1754,10 +1754,13 @@ export default function PatientDetailPage() {
                   </div>
                 </div>
               )}
-              <MedicationsSection
+              {/* Medication list, and the counter workflow for one script —
+                  the same shape the Labs tab gives the bench. */}
+              <PharmacyWorkspace
                 patientId={patient._id}
                 patientName={patientFullName(patient)}
                 canPrescribe={canPrescribe}
+                canWork={canDispense}
                 onAdd={() => setShowPrescribeModal(true)}
                 noKnownMedications={patient.noKnownMedications}
                 reconciliation={patient.medReconciliation}

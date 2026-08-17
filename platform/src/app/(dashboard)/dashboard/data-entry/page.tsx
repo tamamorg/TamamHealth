@@ -7,6 +7,7 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useToast } from '@/components/Toast';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { formatClockTime } from '@/lib/format-utils';
 import {
   ClipboardCheck, Baby, Skull, Syringe, HeartPulse,
   Database, Building2, ArrowRight, CheckCircle2, AlertTriangle,
@@ -85,8 +86,7 @@ type SavedCensusReport = CensusData & { _submittedAt?: string; _submittedBy?: st
 
 function formatTime(iso?: string): string | undefined {
   if (!iso) return undefined;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return formatClockTime(iso) || undefined;
 }
 
 const emptyCensus = (date: string): CensusData => ({

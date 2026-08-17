@@ -439,17 +439,30 @@ export const careLevelLabel = (c: CareLevel) =>
   c.product === "Registry & referral" ? "Community" : c.level.replace(/ \(.*\)/, "").replace(" — Boma Health Initiative", "");
 
 export const SYSTEM_STATS = [
-  { accent: "#015697", value: "4%", label: "of facilities have a computer with internet", source: "SARA / EHSP 2025" },
+  { accent: "#015697", value: "4%", label: "of facilities have a computer with internet — which is why facility data cannot travel", source: "SARA / EHSP 2025" },
   { accent: "#015697", value: "13%", label: "have any on-site power source", source: "SARA / EHSP 2025" },
   { accent: "#015697", value: "1.42", label: "health facilities per 10,000 people — against a national target of 2", source: "EHSP 2025" },
   { accent: "#015697", value: "7.6", label: "health workers per 10,000 people — the WHO norm is 44.5", source: "EHSP 2025" },
   { accent: "#015697", value: "38.7", label: "UHC service-coverage index, out of 100", source: "EHSP 2025" },
 ];
 
-export const TEAM = [
+export interface TeamMember {
+  accent: string;
+  name: string;
+  role: string;
+  image: string;
+  /** object-position for the square portrait crop. The default, "center top",
+      suits a roughly square or landscape source; a tall portrait needs the
+      window pulled down or the crop lands on the wall above the subject. */
+  focus?: string;
+}
+
+export const TEAM: TeamMember[] = [
   { accent: "#015697", name: "Teny Makuach", role: "Founder & Developer", image: "/assets/founder-teny.jpg" },
   { accent: "#015697", name: "Ekow Williams", role: "Community & Partnerships", image: "/assets/founder-ekow.jpg" },
-  { accent: "#015697", name: "Toye Adebayo", role: "Project Manager", image: "/assets/founder-toye.jpg" },
+  // 1080×1920 — the tallest source in the set; "center top" would crop 840px
+  // of empty wall. 50% puts the head about an eighth down the square.
+  { accent: "#015697", name: "Toye Adebayo", role: "Project Manager", image: "/assets/founder-toye.jpg", focus: "center 50%" },
   { accent: "#015697", name: "Mark Dosu", role: "Software Developer", image: "/assets/Mark-Dosu.jpeg" },
   { accent: "#015697", name: "Chinonye Hycent", role: "Research Lead", image: "/assets/chinonye-hycent.jpg" },
   { accent: "#015697", name: "Isaac Kyalo", role: "Technical Lead", image: "/assets/isaac-kyalo.jpg" },
@@ -470,21 +483,31 @@ export interface Hero {
   accent: string;
   stripKicker: string;
   stripTitle: string;
-  /** Route the hero's "Learn more" resolves to. */
+  /**
+   * Where the strip claim is actually set out in full. Every one of these must
+   * land on a section that expounds THIS card's number — not merely a related
+   * page — because that is what the card promises when it is clicked.
+   */
   href: string;
 }
+/* No source line on the strip cards: the attribution belongs with the figure
+   itself, which is what "Learn more" resolves to — the reality grid on
+   /health-system carries the EHSP 2025 credit per statistic. */
 
 export const HEROES: Hero[] = [
   {
     kicker: "The Problem",
     title: "No power. No records. No history.",
-    body: "Most of South Sudan's clinics run on paper-based records that get lost, damaged, or destroyed — and when the paper goes, the patient's story goes with it. Tamam brings digital records that work offline, so care never starts from zero.",
+    body: "In South Sudan, a patient's history lives on paper — one ledger, one building, one shelf — so when it is lost or damaged, care begins again from nothing. The same break runs upward: what a facility knows about an outbreak, a stock-out or a missed vaccination rarely reaches anyone who can act on it. The data exists; what has been missing is a record built for a clinic with no power and no signal. That is what Tamam is.",
     image: "/assets/new-landing.png",
     alt: "A South Sudanese midwife examining a child with a stethoscope at a rural clinic",
     accent: "#015697",
     stripKicker: "The Problem",
-    stripTitle: "1,223 maternal deaths per 100,000 live births",
-    href: "/about#crisis",
+    /* The mission's own statement of the problem (VISION-MINDMAP.md). A single
+       health-outcome figure read as one statistic among many; the failure this
+       venture actually addresses is that the record never travels. */
+    stripTitle: "The data exists — it never makes it up the chain",
+    href: "/health-system#reality",
   },
   {
     kicker: "Ground Truth",
@@ -508,7 +531,9 @@ export const HEROES: Hero[] = [
     accent: "#015697",
     stripKicker: "National Alignment",
     stripTitle: "Built around South Sudan's own health system",
-    href: "/health-system",
+    /* The six tiers this card names are the levels section, not the top of the
+       page. */
+    href: "/health-system#levels",
   },
   {
     kicker: "The Goal",
@@ -702,6 +727,42 @@ export const PLATFORM_PILLARS = [
   { t: "Role-based and audited", b: "Accounts are issued by facility administrators against a role. Every view and change is stamped, and logging out clears the local copy from the device." },
 ];
 
+/* ── The problem, set out in full ──
+   The strip's "The Problem" card resolves here, so this is where the claim has
+   to actually be argued. Sourced from the project's own vision documents
+   (docs/VISION-MINDMAP.md, docs/EXPERT-FEEDBACK.md — a February 2026
+   conversation with a South Sudan health-system expert who has worked every
+   level from Boma to national). The statistics quoted in the reality grid
+   below come from the Ministry's EHSP 2025 and the SARA facility assessment;
+   the structural account here is field observation, stated as such. */
+
+export const PROBLEM_LEAD =
+  "A health system is only as good as what it can remember. South Sudan's runs on paper: a visit is written into a ledger that lives in one building, on one shelf. That single choice — made by circumstance, not by anyone's preference — breaks the record in two directions at once.";
+
+export const PROBLEM_BREAKS = [
+  {
+    where: "At the bedside",
+    what: "The history is gone",
+    body:
+      "A patient arrives and their past is whatever they can remember out loud. Allergies, the drug that failed last time, the result that came back abnormal — none of it is in the room. So the clinician starts from nothing: tests already done get repeated, treatment already tried gets tried again, and a warning already recorded goes unseen. In a system with 7.6 health workers per 10,000 people, that repeated work is time the next patient in the queue does not get.",
+  },
+  {
+    where: "At the supervisor's desk",
+    what: "The work is invisible",
+    body:
+      "Community health workers see patients across thousands of scattered villages and decide alone — no second opinion, no one reviewing whether the assessment was right. Their supervisor cannot see which of them are active this week, how many patients they have seen, or which children have missed a vaccine dose, because nothing they write travels any further than the notebook they write it in.",
+  },
+  {
+    where: "At the Ministry",
+    what: "The picture arrives too late",
+    body:
+      "Reports are assembled by hand at month end, copied from ledgers into forms and totalled by whoever is free that day. Numbers arrive incomplete, late, and impossible to check back against the visits that produced them. An outbreak signal, a stock-out, a run of missed immunisations — all of it is visible in the paper, weeks after the moment when acting on it would have mattered.",
+  },
+];
+
+export const PROBLEM_WHY =
+  "None of this is a failure of care. It is a failure of tooling: 4% of facilities have a computer with internet and 13% have any power source at all, so software that assumes a server, a connection, or a stable socket was never going to be used here. The data exists — it is simply trapped at the point where it is created.";
+
 /* ── National alignment page ── */
 
 export const ALIGN_FACTS = [
@@ -711,6 +772,97 @@ export const ALIGN_FACTS = [
 ];
 
 /* ── News & updates ── */
+
+export interface Photo {
+  src: string;
+  alt: string;
+  caption: string;
+}
+
+/** Photos from the Tufts New Ventures Competition, April 10, 2026 — in story
+    order. Shared by the /about award section and the news article. */
+export const DERBY_PHOTOS: Photo[] = [
+  {
+    src: "/assets/derby/derby-09.jpg",
+    alt: "Toye Adebayo, Teny Makuach and Ekow Williams standing together with competition badges",
+    caption: "Toye Adebayo, Teny Makuach and Ekow Williams before the results were announced.",
+  },
+  {
+    src: "/assets/derby/derby-13.jpg",
+    alt: "Teny Makuach pitching with a microphone, the live record system on the projector behind him",
+    caption: "Teny pitching from the product itself — the live record system on screen, not a slide deck.",
+  },
+  {
+    src: "/assets/derby/derby-07.jpg",
+    alt: "Ekow Williams presenting with a microphone beside the lectern",
+    caption: "Ekow making the case in the Healthcare & Life Science track.",
+  },
+  {
+    src: "/assets/derby/derby-12.jpg",
+    alt: "A team member answering questions with a microphone during the pitch",
+    caption: "Taking the judges' questions — five minutes of them, after a five-minute pitch.",
+  },
+  {
+    src: "/assets/derby/derby-08.jpg",
+    alt: "The team demoing the platform on a laptop at a standing table during the reception",
+    caption: "Demoing the record system between sessions.",
+  },
+  {
+    src: "/assets/derby/derby-10.jpg",
+    alt: "Ekow Williams in conversation at the reception",
+    caption: "Ekow talking through the pilot.",
+  },
+  {
+    src: "/assets/derby/derby-01.jpg",
+    alt: "The team called up through an applauding audience as the results are announced",
+    caption: "The moment the results were read out.",
+  },
+  {
+    src: "/assets/derby/derby-02.jpg",
+    alt: "The team receiving the oversized $10,000 check on stage",
+    caption: "Receiving the award on stage.",
+  },
+  {
+    src: "/assets/derby/derby-11.jpg",
+    alt: "The team holding the $10,000 check together with the competition judges",
+    caption: "The team with the judges and the $10,000 check.",
+  },
+  {
+    src: "/assets/derby/derby-04.jpg",
+    alt: "Founders laughing together while holding the check",
+    caption: "Letting it sink in.",
+  },
+  {
+    src: "/assets/derby/derby-03.jpg",
+    alt: "The team posing with the check while a guest takes a photo",
+    caption: "Photos with the check.",
+  },
+  {
+    src: "/assets/derby/derby-05.jpg",
+    alt: "Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check in front of the Derby Entrepreneurship Center banner",
+    caption: "The founding team with the award.",
+  },
+  {
+    src: "/assets/derby/derby-06.jpg",
+    alt: "The three founders standing full-length with the check in front of the Derby Entrepreneurship Center banner",
+    caption: "At the Derby Entrepreneurship Center at Tufts.",
+  },
+];
+
+/** One photo (or a side-by-side pair) set into the story after the body
+    paragraph at index `after`. */
+export interface BodyPhotos {
+  after: number;
+  photos: Photo[];
+}
+
+/** A framed aside under the story — the background a reader needs but that
+    would bury the narrative if it were written out as prose. */
+export interface NewsExplainer {
+  title: string;
+  intro: string;
+  rows: { k: string; v: string }[];
+}
 
 export interface NewsItem {
   slug: string;
@@ -727,106 +879,96 @@ export interface NewsItem {
   summary: string;
   /** Full paragraphs for the /news page. */
   body: string[];
+  /** Photos set between the body paragraphs, at most two abreast. */
+  bodyPhotos?: BodyPhotos[];
+  /** Background panel under the story. */
+  explainer?: NewsExplainer;
   link?: { label: string; href: string };
+  /** Optional scrolling photo strip under the body. The article drops any
+      frame already used as the hero or set into the body, so the strip is
+      the rest of the set rather than a second run of the same pictures. */
+  gallery?: Photo[];
+  /** Heading above the gallery strip. */
+  galleryTitle?: string;
 }
 
-/** Newest first — the home band shows the first four, /news shows all. */
+/** A frame from the competition set, by file number — so a story can pull
+    "derby-13" without hard-coding an index into DERBY_PHOTOS. Throws at build
+    time on a typo rather than rendering a hole. */
+const derby = (file: string): Photo => {
+  const p = DERBY_PHOTOS.find((x) => x.src.endsWith(`/${file}.jpg`));
+  if (!p) throw new Error(`No competition photo named ${file}`);
+  return p;
+};
+
+/** Newest first — the home band leads on the first item (and returns to its
+    four-up strip once there are several), /news lists them all. One story for
+    now; the next update is one more entry at the top of this array. */
 export const NEWS: NewsItem[] = [
   {
-    slug: "a-new-home-on-the-web",
-    tag: "Announcement",
-    date: "August 2026",
-    dateISO: "2026-08",
-    title: "A new tamamhealth.org, built the way we build the platform",
-    image: "/assets/dashboard-live.png",
-    imageAlt: "The TamamHealth facility dashboard",
-    summary:
-      "The site you are reading is new — six products, the six levels of care, and the pilot, drawn in the same design language as the platform itself.",
-    body: [
-      "We have relaunched tamamhealth.org. The new site walks through all six products — hospital, clinic, laboratory, radiology, pharmacy and the patient portal — and through the health system they are built for, level by level, from the Boma health worker to the referral hospital.",
-      "It also shows the work plainly: the deployment footprint across South Sudan, the problems paper records create, and exactly what the $100,000 pilot buys. If you want to see the platform on a real patient day, ask for a demo and we will walk you through one.",
-    ],
-    link: { label: "Request a demo", href: "/contact" },
-  },
-  {
-    slug: "pilot-campaign-live",
-    tag: "The pilot",
-    date: "August 2026",
-    dateISO: "2026-08",
-    title: "$100,000, ten clinics: the Juba pilot campaign is live",
-    image: "/assets/african-nurse.jpg",
-    imageAlt: "Health worker helping a patient access their records on a phone",
-    summary:
-      "We are raising $100,000 to launch TamamHealth in 10 clinics across Juba and greater South Sudan — devices, solar power, training and twelve months of support.",
-    body: [
-      "The pilot is designed to be measured, not asserted: ten clinics across Juba and greater South Sudan, equipped with tablets, solar charging and fingerprint readers, their teams trained on one shared patient record across registration, consultation, lab and pharmacy.",
-      "Every gift is earmarked for the pilot, from $50 that powers a clinic day to $10,000 that launches an entire facility. Clean records roll up into facility dashboards and DHIS2-ready national reports — donors see the same numbers the Ministry sees.",
-    ],
-    link: { label: "Donate to the pilot", href: "/donate" },
-  },
-  {
-    slug: "six-products-one-record",
-    tag: "Product",
-    date: "July 2026",
-    dateISO: "2026-07",
-    title: "One record, six products: the platform grows into a full suite",
-    image: "/assets/platform-receptionist.png",
-    imageAlt: "The front-desk view of the TamamHealth platform",
-    summary:
-      "What began as a single offline-first EMR is now six connected products — HMIS, CMS, LIS, RIS, PMS and the patient portal — sharing one patient record.",
-    body: [
-      "TamamHealth now covers the full facility day: hospital management for referral and county hospitals, clinic management for single-site PHCUs and private practices, laboratory and radiology systems with real order lifecycles, pharmacy with batch and expiry tracking, and a portal where patients read their own records.",
-      "Every product writes to the same offline-first record, so a lab result, a dispensed medicine or a referral is never a separate paper life — it lands back in the encounter it came from, even when the network is down.",
-    ],
-    link: { label: "View all products", href: "/products" },
-  },
-  {
-    slug: "tufts-new-ventures-win",
+    slug: "tufts-new-ventures-competition",
     tag: "Competition",
     date: "April 2026",
     dateISO: "2026-04",
-    title: "TamamHealth wins the Healthcare & Life Science track at the Tufts New Ventures Competition",
+    title: "Second place in the Healthcare & Life Science track at the Tufts New Ventures Competition",
     image: "/assets/derby/derby-05.jpg",
-    imageAlt: "The founding team holding the $10,000 check at the Derby Entrepreneurship Center at Tufts",
+    imageAlt: "Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check at the Derby Entrepreneurship Center at Tufts",
     summary:
-      "Our first venture competition, and a $10,000 award — funding tablets, solar power and training for the first pilot clinics.",
+      "Our first venture competition, and a $10,000 award — judged on a working offline-first record system rather than a slide deck, and spent on the first pilot clinics.",
     body: [
-      "TamamHealth won the Healthcare & Life Science track of the Tufts New Ventures Competition, run through the Derby Entrepreneurship Center — our first time entering a venture competition.",
-      "We pitched what we build: an offline-first record system designed from South Sudan's constraints outward — no reliable connectivity, no national IDs, facilities where 13% have any on-site power. The judges saw a working platform, not a slide deck.",
-      "The $10,000 award goes directly into the pilot: tablets, solar charging and training for the first clinics.",
+      "On April 10, 2026, at the Derby Entrepreneurship Center at Tufts, TamamHealth took second place in the Healthcare & Life Science track of the Tufts New Ventures Competition, and a $10,000 award with it. It was the first venture competition we had ever entered.",
+      "The story we told the judges does not start in a lab or a lecture hall. It starts in Kakuma refugee camp, where our founder, Teny Makuach, grew up. The failures this platform is built to fix were never an abstraction to him — they were a queue with no order to it, a clinician rebuilding a history by asking the patient to remember it, a treatment given twice because nobody could see what had already been given. He built the first version of TamamHealth out of that. Ekow Williams and Toye Adebayo joined him having watched the same system fail the same way, first-hand. None of the three of us needed the problem explained.",
+      "So we pitched from the product rather than about it. The live record system was on the screen behind us, running a full patient day with the network switched off: registration, triage, consultation, lab orders, dispensing, and the reports that go back to the Ministry. Nothing in the demo was a mock-up, and nothing in it required a connection.",
+      "The judges score eight things, and one of them is whether this is the right team to solve this problem. That was the easiest answer we had. The rest came from the constraint rather than the ideal: 4% of South Sudan's facilities have a computer with internet, 13% have any on-site power, and there are 7.6 health workers per 10,000 people against a WHO norm of 44.5. A record system that assumes connectivity is a record system that fails there, so ours does not assume it.",
+      "The $10,000 goes straight into the pilot — tablets, solar charging, fingerprint readers and training for the first of ten clinics in Juba and greater South Sudan. It is the first funded step toward the $100,000 that launches all ten.",
     ],
-    link: { label: "Meet the team", href: "/about#team" },
-  },
-  {
-    slug: "expert-validation",
-    tag: "Field research",
-    date: "February 2026",
-    dateISO: "2026-02",
-    title: "Every feature tested against the real system, with someone who has run it",
-    image: "/assets/images/community-medication-distribution.jpeg",
-    imageAlt: "A health worker recording medication in a paper register",
-    summary:
-      "In-depth consultation with a South Sudan health-system professional — with experience at every level from Boma village to Ministry — shaped the product's core decisions.",
-    body: [
-      "Before writing more code, we sat down with a South Sudan health-system expert with direct experience at every level of the system, from Boma volunteers to the Ministry of Health, and tested every assumption we had made.",
-      "The geocode household ID (because “this one is Deng, this is Deng, this is Deng”), binary choices instead of free text, unobtrusive voice capture, and real-time immunization defaulter tracking — “even if you don't do these other things, do THIS” — all came out of those conversations and went straight into the product.",
+    /* Set against the paragraph each one belongs to: the three founders beside
+       the origin story, the pitch beside what we pitched, the Q&A beside the
+       judging, the award beside what it pays for. */
+    bodyPhotos: [
+      { after: 1, photos: [derby("derby-09")] },
+      { after: 2, photos: [derby("derby-13"), derby("derby-07")] },
+      { after: 3, photos: [derby("derby-12")] },
+      { after: 4, photos: [derby("derby-02"), derby("derby-11")] },
     ],
-  },
-  {
-    slug: "mvp-in-six-weeks",
-    tag: "Milestone",
-    date: "February 2026",
-    dateISO: "2026-02",
-    title: "From first commit to a working record system in six weeks",
-    image: "/assets/Dashboard.png",
-    imageAlt: "An early build of the TamamHealth dashboard",
-    summary:
-      "Thirty-one functional modules, nine role-based dashboards and a fully offline record — built in six weeks, running in the browser on any device.",
-    body: [
-      "TamamHealth's first working build came together in six weeks of concentrated work: registration, triage, consultation, lab, pharmacy, billing and reporting — thirty-one modules across nine role-based dashboards, with automated tests behind the clinical flows.",
-      "It ran offline from day one. Every screen reads and writes a local database on the device and syncs when a connection appears — because a record system for South Sudan that assumes connectivity is a record system that fails there.",
-    ],
-    link: { label: "How the platform works", href: "/platform" },
+    explainer: {
+      title: "What the Tufts New Ventures Competition is",
+      intro:
+        "The flagship venture competition at Tufts, run by the Derby Entrepreneurship Center. It is open to the whole university rather than to business students alone, and it is judged live.",
+      rows: [
+        {
+          k: "Who can enter",
+          v: "Teams of one to five, led by a matriculated Tufts undergraduate or graduate student, a full-time postdoc, research fellow or resident, or an alum who graduated within the last five years. Faculty- and staff-led ventures qualify when at least one executive cofounder meets that bar.",
+        },
+        {
+          k: "Three tracks",
+          v: "General, for new ventures in any sector. Healthcare & Life Science, for biotech, digital health and healthcare IT. Social Impact, for ventures solving societal problems in for-profit or non-profit form, based in the US and in emerging markets. We entered the healthcare track.",
+        },
+        {
+          k: "The stage it is for",
+          v: "Early. A team must not have raised more than $250,000 in combined grants, fellowships, notes or equity by the application deadline, must be serious about building the venture full time, and cannot have already won with the same venture.",
+        },
+        {
+          k: "How it runs",
+          v: "A written application with a two-minute video pitch, screened by a panel of judges. Those chosen pitch live at the semi-finals in March and the finalists pitch again at the finals in April — five minutes each time, then five minutes of questions. Workshops, pitch practice and one-to-one coaching run alongside.",
+        },
+        {
+          k: "How it is judged",
+          v: "Eight criteria: the problem, the solution, the go-to-market strategy, financial sustainability, impact, the team, the presentation, and a wildcard for anything else that impresses the judges — traction, ambition, or cross-functional work.",
+        },
+        {
+          k: "What is on offer",
+          v: "Per track, $20,000, $10,000 and $5,000 for first, second and third, plus a Cummings Properties credit worth $25,000 in a year of free office space. Add-on awards run once a year: the $15,000 Ricci Prize for an interdisciplinary engineering team, and $2,500 each for a creative arts and a small business team. Over $250,000 across all prizes.",
+        },
+        {
+          k: "The next cycle",
+          v: "Applications open February 1, 2027 and close February 21. Semi-finals are on March 19 and the finals and celebration on April 9, 2027.",
+        },
+      ],
+    },
+    link: { label: "Meet the team behind it", href: "/about#team" },
+    galleryTitle: "April 10, 2026 — the night the pilot got its first funding",
+    gallery: DERBY_PHOTOS,
   },
 ];
 
@@ -835,8 +977,8 @@ export const newsBySlug = (slug: string) => NEWS.find((n) => n.slug === slug);
 /* ── Footer / shared ── */
 
 export const SUPPORT_EMAIL = "support.tamam@gmail.com";
-export const SUPPORT_PHONE = "+211 92 000 0000";
-export const SUPPORT_PHONE_HREF = "tel:+211920000000";
+export const SUPPORT_PHONE = "+1 973 566 4336";
+export const SUPPORT_PHONE_HREF = "tel:+19735664336";
 
 export interface FooterLink {
   label: string;

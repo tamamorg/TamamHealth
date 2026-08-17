@@ -15,6 +15,7 @@ import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { formatDateTitle, toIsoDate, parseIsoDate, addDays } from '@/components/ehr/EhrMiniCalendar';
 import { Download, Activity, TrendingUp, Table as TableIcon } from '@/components/icons/lucide';
 import { tooltipStyle, axisTick } from '@/components/ChartCard';
+import { formatClockTime } from '@/lib/format-utils';
 import {
   ResponsiveContainer, ComposedChart, LineChart, Bar, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine,
@@ -51,8 +52,7 @@ function downloadCSV(data: Record<string, unknown>[], filename: string) {
 
 function clockTime(iso?: string): string | undefined {
   if (!iso) return undefined;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return formatClockTime(iso) || undefined;
 }
 
 function countByState(

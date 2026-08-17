@@ -145,7 +145,7 @@ export default function LoginClient({ initialRole, initialLocked }: { initialRol
           <div className="blueprint" style={{ marginTop: 6, background: "#FFFFFF" }}>
             <Corners />
             {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-            <img src="/assets/platform-receptionist.png" alt="The TamamHealth reception dashboard: today's schedule, patient flow and triage queue" style={{ width: "100%", display: "block" }} />
+            <img src="/assets/platform-doctor.png" alt="The TamamHealth clinical dashboard: a doctor's checked-in patient list with acuity, care team and visit context, alongside outstanding items and patient flow" style={{ width: "100%", display: "block" }} />
           </div>
         </div>
       </div>
