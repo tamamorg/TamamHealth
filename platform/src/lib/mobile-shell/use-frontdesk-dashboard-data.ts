@@ -1,40 +1,50 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useIntakeForms } from '@/lib/hooks/useIntakeForms';
+import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useReferrals } from '@/lib/hooks/useReferrals';
-import type { PatientIntakeFormDoc } from '@/lib/db-types';
+import type { AppointmentDoc } from '@/lib/db-types';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
-import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
+import { computeClinicalLanes } from './use-clinical-dashboard-data';
+
+function todayIso(): string {
+  // Local calendar date, not UTC — see the identical helper + rationale in
+  // use-clinical-dashboard-data.ts.
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
 
 /**
  * Front-desk archetype dashboard (front_desk/central_registration_clerk/
- * clinic_clerk): lanes grouped by IntakeFormStatus — the front-desk review
- * queue for patient-submitted intake forms.
+ * clinic_clerk): today's appointment board in the shared three-lane
+ * vocabulary, which is the surface the desk actually works — the same lane
+ * split `computeClinicalLanes` gives the clinical archetype and the desktop
+ * front-desk board, so one visit files into the same lane everywhere.
  */
 export function useFrontDeskDashboardData(): MobileDashboardData {
-  const { forms, loading: formsLoading } = useIntakeForms();
+  const { appointments, loading: apptLoading } = useAppointments();
   const { referrals, loading: referralsLoading } = useReferrals();
 
-  const lanes = useMemo<MobileLane<PatientIntakeFormDoc>[]>(() => {
-    const scheduled = forms.filter((f) => f.status === 'not_submitted');
-    const inOffice = forms.filter((f) => f.status === 'pending_review');
-    const finished = forms.filter((f) => f.status === 'merged');
-    return [
-      { key: 'scheduled', label: `${scheduled.length} ${APPOINTMENT_STATUS_GROUP_LABELS.scheduled}`, tone: 'info', items: scheduled },
-      { key: 'in_office', label: `${inOffice.length} ${APPOINTMENT_STATUS_GROUP_LABELS.in_office}`, tone: 'warning', items: inOffice },
-      { key: 'finished', label: `${finished.length} ${APPOINTMENT_STATUS_GROUP_LABELS.finished}`, tone: 'success', items: finished },
-    ];
-  }, [forms]);
+  const today = todayIso();
+
+  const lanes = useMemo<MobileLane<AppointmentDoc>[]>(
+    () => computeClinicalLanes(appointments, today),
+    [appointments, today],
+  );
 
   const outstanding = useMemo<MobileOutstandingItem[]>(() => {
-    const pendingIntake = forms.filter((f) => f.status === 'pending_review').length;
+    // Public bookings land as 'requested' and stay out of the clinician's
+    // confirmed diary until someone at the desk approves them — that queue is
+    // the desk's, so it is the tile that belongs here.
+    const toConfirm = appointments.filter((a) => a.status === 'requested').length;
     const openReferrals = referrals.filter((r) => ['sent', 'received', 'seen'].includes(r.status)).length;
     return [
-      { key: 'intake', label: 'Patient intake', count: pendingIntake, href: '/patient-intake' },
+      { key: 'to_confirm', label: 'Appointments to confirm', count: toConfirm, href: '/appointments' },
       { key: 'referrals', label: 'Open referrals', count: openReferrals, href: '/referrals' },
     ];
-  }, [forms, referrals]);
+  }, [appointments, referrals]);
 
-  return { lanes, outstanding, loading: formsLoading || referralsLoading };
+  return { lanes, outstanding, loading: apptLoading || referralsLoading };
 }

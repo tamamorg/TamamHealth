@@ -7,7 +7,7 @@
  * comes from. Every source gets a distinct hue (appointments use the deep
  * accent blue so they don't read the same as referrals).
  */
-import { Bell, AlertTriangle, ArrowRightLeft, FlaskConical, Calendar, ClipboardCheck, Pill, ClipboardList, Activity } from '@/components/icons/lucide';
+import { Bell, AlertTriangle, ArrowRightLeft, FlaskConical, Calendar, Pill, ClipboardList, Activity } from '@/components/icons/lucide';
 import type { NotificationSeverity, NotificationType } from '@/lib/hooks/useNotifications';
 
 export interface NotificationMeta {
@@ -28,7 +28,6 @@ export const NOTIFICATION_META: Record<NotificationType, NotificationMeta> = {
   referral: { icon: ArrowRightLeft, color: 'var(--tb-blue-700)', bg: 'rgba(33, 145, 208, 0.12)', label: 'Referrals' },
   lab: { icon: FlaskConical, color: 'var(--category-lab)', bg: 'var(--category-lab-bg)', label: 'Lab' },
   appointment: { icon: Calendar, color: 'var(--tb-blue-800)', bg: 'rgba(1, 86, 151, 0.10)', label: 'Schedule' },
-  intake: { icon: ClipboardCheck, color: 'var(--color-success)', bg: 'rgba(5, 150, 105, 0.10)', label: 'Intake' },
   prescription: { icon: Pill, color: 'var(--color-warning)', bg: 'rgba(217, 119, 6, 0.12)', label: 'Pharmacy' },
   progress: { icon: ClipboardList, color: 'var(--accent-primary)', bg: 'var(--accent-light)', label: 'Care progress' },
   // Internal transfers share the arrows glyph with referrals but take the gold
@@ -39,7 +38,7 @@ export const NOTIFICATION_META: Record<NotificationType, NotificationMeta> = {
 
 /** Order the source filters are presented in — urgency first, admin last. */
 export const NOTIFICATION_TYPE_ORDER: NotificationType[] = [
-  'alert', 'triage', 'lab', 'transfer', 'referral', 'appointment', 'progress', 'intake', 'prescription',
+  'alert', 'triage', 'lab', 'transfer', 'referral', 'appointment', 'progress', 'prescription',
 ];
 
 export const SEVERITY_META: Record<NotificationSeverity, { label: string; color: string; bg: string }> = {

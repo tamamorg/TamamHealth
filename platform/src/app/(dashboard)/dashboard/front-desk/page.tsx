@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -15,9 +14,9 @@ import { APPOINTMENT_STATUS_TONES, APPOINTMENT_CHECKED_IN_STATUSES,
   appointmentStatusLabel, appointmentStatusGroup,
   APPOINTMENT_STATUS_GROUP_LABELS, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
-import { formatCompactDateTime, formatMoney, formatClockTime } from '@/lib/format-utils';
+import { formatCompactDateTime, formatClockTime } from '@/lib/format-utils';
 import { patientRegisteredAt, patientFullName, patientGenderAge, patientAgeLabel } from '@/lib/patient-utils';
-import { PRIORITY_META, appointmentPriorityLabel, appointmentTriage, isTriagePriority, priorityColor, priorityLabelKey, type TriagePriority } from '@/lib/clinical/triage-display';
+import { PRIORITY_META, appointmentPriorityLabel, appointmentTriage, isTriagePriority, type TriagePriority } from '@/lib/clinical/triage-display';
 import { buildQueueFromTriage, STAGE_LABELS, type QueueStage } from '@/lib/services/patient-queue-service';
 import { waitLabel } from '@/components/ehr/EhrVisitPopup';
 import AssignDoctorModal, { type AssignDoctorTarget } from '@/components/AssignDoctorModal';
@@ -28,19 +27,28 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { getRoleConfig } from '@/lib/permissions';
-import EhrCareDashboard, { useRowCollapse, type EhrCareDashboardAction, type EhrCareDashboardMetric, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
+import EhrCareDashboard, { type EhrCareDashboardAction, type EhrCareDashboardMetric, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import {
   Calendar, ClipboardCheck, ArrowRightLeft,
   UserPlus, ClipboardList, Plus,
-  MapPin, LogOut, Wallet, CheckCircle, X, Maximize2,
-  Send, Stethoscope, FileText, RotateCcw, type LucideIcon,
+  LogOut, X, Maximize2,
+  Stethoscope, FileText, RotateCcw, type LucideIcon,
 } from '@/components/icons/lucide';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
-import SendIntakeFormsModal from '@/components/intake/SendIntakeFormsModal';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import Select from '@/components/Select';
+import {
+  ROOM_OPTIONS, RESCHEDULE_SLOTS, suggestDepartment, splitDateTime,
+  appointmentMoment, formatDayMonthYear, isoDateKey, patientFacilityName,
+  type CheckoutTarget,
+} from '@/lib/front-desk-utils';
+import { RowAppointmentEditor } from '@/components/front-desk/RowAppointmentEditor';
+import { FrontDeskDetailActions, FrontDeskDetailFacts } from '@/components/front-desk/DetailPanel';
+import { StaffAssignmentControl, RoomAssignmentControl } from '@/components/front-desk/AssignmentControls';
+import CheckoutModal from '@/components/front-desk/CheckoutModal';
+import CheckInModal from '@/components/front-desk/CheckInModal';
 
 /**
  * Front-desk operations workspace.
@@ -48,117 +56,6 @@ import Select from '@/components/Select';
  * Shows the live queue, today's appointments, and registry snapshots in one
  * view so reception can move patients without jumping between screens.
  */
-
-// Exam rooms / bays a walk-in patient can be placed in to meet the provider.
-// Fallback used only when facility settings provide no rooms.
-const ROOM_OPTIONS = ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5', 'Room 6', 'Bay A', 'Bay B', 'Bay C', 'Bay D'];
-
-// Half-hour clinic slots (07:00–18:30) offered when reception reschedules.
-const RESCHEDULE_SLOTS = Array.from({ length: 24 }, (_, i) => {
-  const hour = 7 + Math.floor(i / 2);
-  return `${String(hour).padStart(2, '0')}:${i % 2 ? '30' : '00'}`;
-});
-
-const COMPLAINT_DEPARTMENT_MAP: Record<string, string> = {
-  fever: 'General Medicine', malaria: 'General Medicine', cough: 'General Medicine',
-  headache: 'General Medicine', pregnancy: 'Maternity', anc: 'Maternity',
-  antenatal: 'Maternity', injury: 'Emergency', wound: 'Emergency',
-  fracture: 'Emergency', accident: 'Emergency', child: 'Pediatrics',
-  pediatric: 'Pediatrics', infant: 'Pediatrics', eye: 'Ophthalmology',
-  vision: 'Ophthalmology', dental: 'Dental', tooth: 'Dental',
-  skin: 'Dermatology', rash: 'Dermatology',
-};
-
-function suggestDepartment(complaint: string): string {
-  const lower = complaint.toLowerCase();
-  for (const [keyword, dept] of Object.entries(COMPLAINT_DEPARTMENT_MAP)) {
-    if (lower.includes(keyword)) return dept;
-  }
-  return 'General Medicine';
-}
-
-// Split a timestamp into separate date / time pieces so the queue can show them
-// in their own columns. Date-only values (e.g. "YYYY-MM-DD") yield an empty time.
-function splitDateTime(iso?: string | null): { date: string; time: string } {
-  if (!iso) return { date: '—', time: '' };
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { date: iso, time: '' };
-  const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  const time = /T\d{2}:\d{2}/.test(iso) ? formatClockTime(d) : '';
-  return { date, time };
-}
-
-// Combine an appointment's day with its "HH:MM" slot into one real moment, so
-// the schedule row can count down to it ("in 2h 15m"). Parsed without a zone
-// suffix on purpose: appointment slots are wall-clock times at the facility,
-// which is how the rest of the client reads "today".
-function appointmentMoment(appointmentDate?: string | null, appointmentTime?: string | null): string | undefined {
-  const slot = (appointmentTime || '').trim().match(/^(\d{1,2}):(\d{2})/);
-  if (!slot) return undefined;
-  const day = isoDateKey(appointmentDate);
-  const at = new Date(`${day}T${slot[1].padStart(2, '0')}:${slot[2]}:00`);
-  return Number.isNaN(at.getTime()) ? undefined : at.toISOString();
-}
-
-function formatDayMonthYear(iso?: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function isoDateKey(value?: string | null): string {
-  if (!value) return new Date().toISOString().slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? new Date().toISOString().slice(0, 10) : date.toISOString().slice(0, 10);
-}
-
-// Final-checkout target: closing out a completed visit at the front desk.
-interface CheckoutTarget {
-  patientId: string;
-  patientName: string;
-  hospitalNumber?: string;
-  encounterId?: string;
-  /** Set when the queue entry came from an appointment. */
-  appointmentId?: string;
-  /** Set when the queue entry came from triage (walk-in). */
-  triageId?: string;
-}
-
-function patientFacilityName(patient: PatientDoc | undefined, fallback = 'Facility'): string {
-  return (patient as (PatientDoc & { registrationHospitalName?: string }) | undefined)?.registrationHospitalName || fallback;
-}
-
-/**
- * The inline appointment editor, wired to close its own row on save.
- *
- * The rows are built in a `useMemo`, where `useRowCollapse()` cannot be
- * called — so the hook lives here, in a component that renders inside the
- * expanded row and therefore sees the context. Without it these editors were
- * passed `onClose={() => undefined}`: saving showed its toast and left the
- * panel sitting open.
- */
-function RowAppointmentEditor({
-  appointment,
-  appointments,
-  patient,
-}: {
-  appointment: React.ComponentProps<typeof AppointmentEditModal>['appointment'];
-  appointments: React.ComponentProps<typeof AppointmentEditModal>['appointments'];
-  patient: React.ComponentProps<typeof AppointmentEditModal>['patient'];
-}) {
-  const collapse = useRowCollapse();
-  return (
-    <AppointmentEditModal
-      inline
-      appointment={appointment}
-      appointments={appointments}
-      patient={patient}
-      onClose={collapse}
-    />
-  );
-}
 
 export default function FrontDeskDashboardPage() {
   const router = useRouter();
@@ -212,7 +109,6 @@ export default function FrontDeskDashboardPage() {
   const [registerOpen, setRegisterOpen] = useState(false);
   // "Find availability" — the same booking dialog the doctor module opens.
   const [bookingOpen, setBookingOpen] = useState(false);
-  const [intakeOpen, setIntakeOpen] = useState(false);
   const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
 
   const [queueNowMs, setQueueNowMs] = useState(() => Date.now());
@@ -235,9 +131,8 @@ export default function FrontDeskDashboardPage() {
   const viewingToday = boardDate === today;
 
   // Deep link: ?lane= lands on a specific lane tab, ?q= prefills the queue
-  // search and ?date= opens the board on a specific day — how "merge intake →
-  // land on the patient's Scheduled row" works from /patient-intake (and any
-  // other surface that wants to point here).
+  // search and ?date= opens the board on a specific day — how any other
+  // surface points a clerk straight at one patient's row.
   //
   // ?date= matters because this board only ever shows one day and defaults to
   // today: pointing at a patient whose booking is later in the week without it
@@ -1094,9 +989,6 @@ export default function FrontDeskDashboardPage() {
   // than a second, parallel front door.
   const actions = useMemo<EhrCareDashboardAction[]>(() => ([
     { label: 'Find availability', icon: Plus, onClick: () => setBookingOpen(true), tone: 'primary' as const },
-    // The intake form wears one glyph everywhere it appears — the nav item,
-    // the top rail's patient-create button, the clinical strip, and here.
-    ...(canUseRoute('/patient-intake') ? [{ label: 'Intake Form', icon: Send, onClick: () => setIntakeOpen(true), tone: 'orange' as const }] : []),
     ...(canUseRoute('/patients') ? [{ label: t('frontDesk.registerNewPatient'), icon: UserPlus, onClick: () => setRegisterOpen(true) }] : []),
   ]), [canUseRoute, t]);
 
@@ -1631,8 +1523,6 @@ export default function FrontDeskDashboardPage() {
           />
         )}
 
-        {intakeOpen && <SendIntakeFormsModal onClose={() => setIntakeOpen(false)} />}
-
         {editAppointment && (
           <AppointmentEditModal
             appointment={editAppointment}
@@ -1785,527 +1675,5 @@ export default function FrontDeskDashboardPage() {
         )}
       </main>
     </>
-  );
-}
-
-/* ─── Row-detail panel pieces (inline expansion) ───
-   The queue row's popup used to be a Modal; it now drops open in place under
-   the row (EhrCareDashboard's shared inline-expansion shell). These three
-   pieces reproduce that popup's shape without the dialog chrome: an icon
-   action line matching the doctor worklist's ehr-visit-pop-* classes, a
-   label/value fact grid for what the row itself doesn't already show, and —
-   for triage-sourced rows — the exam-room control. */
-
-// Icon actions on the panel's first line (Open chart / Check in / Assign /
-// etc.), reusing EhrVisitPopup's classes so every role's inline panel reads
-// the same way. No tabs here — front desk has one view per row — so the
-// "tabs" row is just the flex/border-bottom line the icons sit on.
-function FrontDeskDetailActions({ actions }: {
-  actions: { icon: LucideIcon; label: string; onClick: () => void; primary?: boolean }[];
-}) {
-  return (
-    <div className="ehr-visit-pop-tabs">
-      <div className="ehr-visit-pop-actions">
-        {actions.map(action => (
-          <button
-            key={action.label}
-            type="button"
-            className={`ehr-visit-pop-icon${action.primary ? ' is-primary' : ''}`}
-            onClick={action.onClick}
-            aria-label={action.label}
-            title={action.label}
-          >
-            <action.icon className="w-4 h-4" aria-hidden />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Label/value facts unique to this row — never the name/time/status the row
-// above already shows. Empty values are dropped rather than rendered blank.
-function FrontDeskDetailFacts({ facts }: { facts: { label: string; value?: string }[] }) {
-  const visible = facts.filter((f): f is { label: string; value: string } => Boolean(f.value));
-  if (visible.length === 0) return null;
-  return (
-    <div className="ehr-row-detail__body">
-      {visible.map(f => (
-        <div className="appointment-detail-row" key={f.label}>
-          <dt>{f.label}</dt>
-          <dd>{f.value}</dd>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/**
- * Care-team assignment for a row — the doctor carrying the visit and the nurse
- * covering the patient, each the same shape as the exam-room control beside
- * them: pick from the facility's staff, press the button, done in the row.
- *
- * The doctor path runs the shared provider assignment (patient fields, the
- * consultation tracker the provider's board reads, and the triage handoff
- * stamp), which is the same path the Assign-provider modal uses. The nurse path
- * only records who is covering, which is all nursing cover means here.
- */
-function StaffAssignmentControl({
-  icon: Icon,
-  label,
-  staff,
-  currentId,
-  currentName,
-  emptyLabel,
-  onSave,
-}: {
-  icon: LucideIcon;
-  label: string;
-  staff: { _id: string; name?: string; username?: string }[];
-  currentId?: string;
-  currentName?: string;
-  emptyLabel: string;
-  onSave: (staffId: string) => Promise<void>;
-}) {
-  const [draft, setDraft] = useState(currentId || '');
-  const [saving, setSaving] = useState(false);
-  return (
-    <div className="ehr-care-rooming">
-      <Icon className="w-4 h-4" />
-      <span>{label}</span>
-      <Select value={draft} onChange={event => setDraft(event.target.value)}>
-        <option value="">{emptyLabel}</option>
-        {/* A provider assigned from elsewhere may not be in this facility's
-            staff list; keep them selectable so the control never misreports. */}
-        {currentId && !staff.some(person => person._id === currentId) && (
-          <option value={currentId}>{currentName || 'Currently assigned'}</option>
-        )}
-        {staff.map(person => (
-          <option key={person._id} value={person._id}>{person.name || person.username}</option>
-        ))}
-      </Select>
-      <button
-        type="button"
-        disabled={saving || draft === (currentId || '')}
-        onClick={async () => { setSaving(true); try { await onSave(draft); } finally { setSaving(false); } }}
-      >
-        {saving ? 'Saving...' : currentId ? 'Update' : 'Assign'}
-      </button>
-    </div>
-  );
-}
-
-// Exam-room assignment for a triage-sourced queue row. Saving state is local
-// to this component (not page-level) because it now mounts fresh each time
-// its row expands, rather than being the single target of a page-level modal.
-function RoomAssignmentControl({
-  triageId,
-  currentRoom,
-  priority,
-  roomOptions,
-  onSave,
-}: {
-  triageId: string;
-  currentRoom?: string;
-  priority: 'RED' | 'YELLOW' | 'GREEN' | 'normal';
-  roomOptions: string[];
-  onSave: (triageId: string, room: string) => Promise<void>;
-}) {
-  const { t } = useTranslation();
-  const [draft, setDraft] = useState(currentRoom || '');
-  const [saving, setSaving] = useState(false);
-  return (
-    <div className="ehr-care-rooming">
-      <MapPin className="w-4 h-4" />
-      <span>Exam room</span>
-      {/* The acuity belongs on the header line, not on a third line below the
-          button — that extra line was what knocked this control out of
-          alignment with the doctor and nurse pickers beside it. */}
-      <span style={{ color: priorityColor(priority) }}>
-        {t(priorityLabelKey(priority))}
-      </span>
-      <Select value={draft} onChange={(event) => setDraft(event.target.value)}>
-        <option value="">Unassigned</option>
-        {roomOptions.map(room => <option key={room} value={room}>{room}</option>)}
-      </Select>
-      <button
-        type="button"
-        disabled={saving}
-        onClick={async () => { setSaving(true); try { await onSave(triageId, draft); } finally { setSaving(false); } }}
-      >
-        {saving ? 'Saving...' : currentRoom ? 'Update' : 'Assign'}
-      </button>
-    </div>
-  );
-}
-
-// ── Final-checkout modal: confirm balance settled, mark the visit complete ──
-function CheckoutModal({
-  target,
-  onClose,
-  onComplete,
-  canCollectPayment,
-  onCollectPayment,
-}: {
-  target: CheckoutTarget;
-  onClose: () => void;
-  onComplete: (
-    target: CheckoutTarget,
-    override?: { reason: string; authorizedBy: string },
-    disposition?: import('@/lib/services/encounter-service').DischargeDisposition,
-  ) => Promise<void>;
-  canCollectPayment: boolean;
-  onCollectPayment: (patientId: string) => void;
-}) {
-  const [balance, setBalance] = useState<number | null>(null);
-  const [charges, setCharges] = useState<{ description: string; amount: number }[]>([]);
-  const [completing, setCompleting] = useState(false);
-  // Live checkout-gate evaluation (KAN-96): unmet critical conditions render
-  // here with a route to resolve each, and block the button until either
-  // resolved or explicitly overridden with a reason.
-  const [gate, setGate] = useState<import('@/lib/services/checkout-gate-service').CheckoutGateEvaluation | null>(null);
-  const [overrideReason, setOverrideReason] = useState('');
-  // An override needs a named authorizer, not just a reason — "reason +
-  // authorization, logged" is the documented gate rule (Principle 2.12).
-  const [overrideAuthorizedBy, setOverrideAuthorizedBy] = useState('');
-  const [disposition, setDisposition] = useState<import('@/lib/services/encounter-service').DischargeDisposition>('discharged');
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { getPatientBalance } = await import('@/lib/services/ledger-service');
-        const b = await getPatientBalance(target.patientId);
-        if (!cancelled) setBalance(b);
-      } catch {
-        if (!cancelled) setBalance(0);
-      }
-      // Itemized fee ticket for this visit so the desk sees what was billed.
-      try {
-        const { getEncounter, getOpenEncounterForPatient } = await import('@/lib/services/encounter-service');
-        const enc = target.encounterId
-          ? await getEncounter(target.encounterId)
-          : await getOpenEncounterForPatient(target.patientId);
-        if (enc) {
-          const { getChargesByEncounter } = await import('@/lib/services/payment-service');
-          const ch = await getChargesByEncounter(enc._id);
-          if (!cancelled) setCharges(ch.map(c => ({ description: c.description, amount: c.billedAmount })));
-        }
-        // The same evaluation the discharge handler runs, shown up front so
-        // the desk can resolve conditions before pressing the button.
-        const { evaluateCheckoutGate } = await import('@/lib/services/checkout-gate-service');
-        const evaluation = await evaluateCheckoutGate(target.patientId, (enc ?? undefined) as never);
-        if (!cancelled) setGate(evaluation);
-      } catch { /* non-fatal — balance still shows */ }
-    })();
-    return () => { cancelled = true; };
-  }, [target.encounterId, target.patientId]);
-
-  const owes = (balance ?? 0) > 0;
-
-  return (
-    <Modal onClose={onClose} width={440}>
-      <div className="modal-content card-elevated" style={{ width: '100%' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <div className="flex items-center gap-2">
-            <LogOut className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-            <div>
-              <h2 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>Final checkout</h2>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {target.patientName}{target.hospitalNumber ? ` · ${target.hospitalNumber}` : ''}
-              </p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 rounded-lg transition-colors hover:bg-black/5" aria-label="Close">
-            <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-4 space-y-3">
-          {charges.length > 0 && (
-            <div className="rounded-xl p-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Visit charges</p>
-              <ul className="space-y-1">
-                {charges.map((c, i) => (
-                  <li key={i} className="flex justify-between text-[12px]">
-                    <span style={{ color: 'var(--text-primary)' }}>{c.description}</span>
-                    <span className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatMoney(c.amount)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {balance === null ? (
-            <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Checking balance…</p>
-          ) : owes ? (
-            <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-danger-text)' }}>Outstanding balance</span>
-                <Wallet className="w-4 h-4" style={{ color: 'var(--color-danger-text)' }} />
-              </div>
-              <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: 'var(--color-danger-text)' }}>{formatMoney(balance)}</p>
-              {canCollectPayment ? (
-                <button
-                  onClick={() => onCollectPayment(target.patientId)}
-                  className="mt-2.5 w-full text-[12px] font-semibold py-2 rounded-lg text-white transition-opacity hover:opacity-90 flex items-center justify-center gap-1.5"
-                  style={{ background: 'var(--color-danger)' }}
-                >
-                  <Wallet className="w-4 h-4" />Collect payment
-                </button>
-              ) : (
-                <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
-                  Send this patient to cashier or billing to collect payment.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-light)' }}>
-              <CheckCircle className="w-5 h-5" style={{ color: 'var(--color-success)' }} />
-              <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Balance settled</p>
-                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>No outstanding charges on this account.</p>
-              </div>
-            </div>
-          )}
-
-          {gate && gate.blocking.length > 0 && (
-            <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-warning-text)' }}>
-                Checkout blocked — unresolved items
-              </p>
-              <ul className="space-y-1.5">
-                {gate.blocking.map(condition => (
-                  <li key={condition.key} className="text-[12px]" style={{ color: 'var(--text-primary)' }}>
-                    <span className="font-semibold">{condition.label}</span>
-                    {condition.detail && <span style={{ color: 'var(--text-secondary)' }}> — {condition.detail}</span>}
-                    {condition.resolveHref && (
-                      <Link href={condition.resolveHref} className="ml-1.5 font-semibold underline" style={{ color: 'var(--accent-primary)' }}>
-                        Resolve
-                      </Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <input
-                type="text"
-                value={overrideReason}
-                onChange={e => setOverrideReason(e.target.value)}
-                placeholder="Override reason (required to check out anyway)"
-                className="mt-2.5 w-full rounded-lg px-3 py-2 text-[12px]"
-                style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-primary)' }}
-              />
-              <input
-                type="text"
-                value={overrideAuthorizedBy}
-                onChange={e => setOverrideAuthorizedBy(e.target.value)}
-                placeholder="Authorized by (name of the approving clinician/manager)"
-                className="mt-2 w-full rounded-lg px-3 py-2 text-[12px]"
-                style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-primary)' }}
-              />
-            </div>
-          )}
-
-          {/* Discharge disposition — before this, every checkout reported as a
-              routine discharge; referral hand-offs and walk-outs were
-              unrepresentable in the record. */}
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-              Disposition
-            </span>
-            <select
-              value={disposition}
-              onChange={e => setDisposition(e.target.value as typeof disposition)}
-              className="mt-1 w-full rounded-lg px-3 py-2 text-[12px]"
-              style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-primary)' }}
-            >
-              <option value="discharged">Routine discharge</option>
-              <option value="discharged_with_referral">Discharged with referral</option>
-              <option value="dismissed_without_formal_checkout">Patient left without formal checkout</option>
-            </select>
-          </label>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }}>
-            Cancel
-          </button>
-          {(() => {
-            const blocked = !!gate && gate.blocking.length > 0;
-            const canSubmit = !completing
-              && (!blocked || (overrideReason.trim().length > 0 && overrideAuthorizedBy.trim().length > 0));
-            return (
-              <button
-                onClick={async () => {
-                  setCompleting(true);
-                  await onComplete(
-                    target,
-                    blocked ? { reason: overrideReason.trim(), authorizedBy: overrideAuthorizedBy.trim() } : undefined,
-                    disposition,
-                  );
-                  setCompleting(false);
-                }}
-                disabled={!canSubmit}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                style={{ background: blocked ? 'var(--color-warning)' : 'var(--color-success)' }}
-              >
-                <CheckCircle className="w-4 h-4" />
-                {completing ? 'Closing…' : blocked ? 'Override & check out' : 'Complete checkout'}
-              </button>
-            );
-          })()}
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-// ── Appointment check-in modal: confirm the patient has arrived; on check-in
-//    they're added to the live patient queue. ──
-function CheckInModal({
-  appt,
-  onClose,
-  onCheckIn,
-  onUndoCheckIn,
-  onViewPatient,
-}: {
-  appt: AppointmentDoc;
-  onClose: () => void;
-  onCheckIn: (appt: AppointmentDoc, attendanceType: 'new' | 'repeat') => Promise<void>;
-  onUndoCheckIn: (appt: AppointmentDoc) => Promise<void>;
-  onViewPatient: (patientId: string) => void;
-}) {
-  const { t } = useTranslation();
-  const [checking, setChecking] = useState(false);
-  const [reversing, setReversing] = useState(false);
-  const alreadyIn = appt.status === 'checked_in' || appt.status === 'in_progress' || appt.status === 'completed';
-  // Only a plain check-in (not yet in consult / completed) can be cleanly
-  // reversed back to scheduled without stepping over later workflow state.
-  const canReverseCheckIn = appt.status === 'checked_in';
-
-  // Visit type (new vs re-attendance) — auto-derived from the patient's
-  // history when the modal opens; the clerk can override before confirming.
-  const [attendanceType, setAttendanceType] = useState<'new' | 'repeat'>('new');
-  const attendanceTouchedRef = useRef(false);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { deriveAttendanceType } = await import('@/lib/services/check-in-service');
-        const derived = await deriveAttendanceType(appt.patientId);
-        if (!cancelled && !attendanceTouchedRef.current) setAttendanceType(derived);
-      } catch {
-        if (!cancelled && !attendanceTouchedRef.current) setAttendanceType('new');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [appt.patientId]);
-
-  return (
-    <Modal onClose={onClose} width={440}>
-      <div className="modal-content card-elevated" style={{ width: '100%' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-            <div>
-              <h2 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>{t('frontDesk.checkInTitle')}</h2>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{appt.patientName}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 rounded-lg transition-colors hover:bg-black/5" aria-label="Close">
-            <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-          </button>
-        </div>
-
-        {/* Body — appointment detail */}
-        <div className="p-4 space-y-2.5">
-          <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-            <DetailRow icon={<Calendar className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />} label={t('frontDesk.colTime')} value={formatClockTime(appt.appointmentTime)} />
-            <DetailRow icon={<ClipboardList className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />} label={t('frontDesk.colComplaint')} value={appt.reason || '—'} />
-            <DetailRow icon={<MapPin className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />} label={t('frontDesk.department')} value={appt.department || '—'} />
-          </div>
-          {!alreadyIn && (
-            <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                {t('frontDesk.visitType')}
-              </label>
-              <div className="flex gap-2">
-                {([['new', t('frontDesk.newVisit')], ['repeat', t('frontDesk.reAttendance')]] as const).map(([key, lbl]) => {
-                  const on = attendanceType === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => { attendanceTouchedRef.current = true; setAttendanceType(key); }}
-                      className="flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all"
-                      style={on
-                        ? { background: 'var(--accent-light)', color: 'var(--accent-primary)', border: '1px solid var(--accent-primary)' }
-                        : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
-                    >
-                      {lbl}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {alreadyIn && (
-            <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-light)' }}>
-              <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-success)' }} />
-              <p className="text-[12px]" style={{ color: 'var(--text-primary)' }}>{t('frontDesk.alreadyInQueue')}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2 p-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-          <button onClick={() => onViewPatient(appt.patientId)} className="rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--accent-primary)' }}>
-            {t('frontDesk.viewProfile')}
-          </button>
-          <div className="flex items-center gap-2">
-            <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }}>
-              {t('action.cancel')}
-            </button>
-            {/* Reverse a mistaken check-in — sends the appointment back to
-                scheduled and drops it from the live queue. */}
-            {canReverseCheckIn && (
-              <button
-                onClick={async () => { setReversing(true); try { await onUndoCheckIn(appt); } finally { setReversing(false); } }}
-                disabled={reversing}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5 disabled:opacity-50"
-                style={{ color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
-              >
-                <ArrowRightLeft className="w-4 h-4" />
-                {reversing ? '…' : t('action.undo')}
-              </button>
-            )}
-            {!alreadyIn && (
-              <button
-                onClick={async () => { setChecking(true); try { await onCheckIn(appt, attendanceType); } finally { setChecking(false); } }}
-                disabled={checking}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                style={{ background: 'var(--color-success)' }}
-              >
-                <CheckCircle className="w-4 h-4" />
-                {checking ? t('frontDesk.checkingIn') : t('frontDesk.checkIn')}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="flex-shrink-0">{icon}</span>
-      <span className="text-[11px] font-semibold uppercase tracking-wide flex-shrink-0" style={{ color: 'var(--text-muted)', minWidth: 78 }}>{label}</span>
-      <span className="text-[12px] truncate" style={{ color: 'var(--text-primary)' }}>{value}</span>
-    </div>
   );
 }

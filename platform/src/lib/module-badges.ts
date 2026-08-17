@@ -17,7 +17,6 @@ export const MODULE_BADGE_SOURCES: Readonly<Record<string, readonly Notification
   '/referrals': ['referral', 'transfer'],
   '/lab': ['lab'],
   '/pharmacy': ['prescription'],
-  '/patient-intake': ['intake'],
   '/appointments': ['appointment'],
   '/surveillance': ['alert'],
   // Patients waiting to be picked up — the triage queue and the shared

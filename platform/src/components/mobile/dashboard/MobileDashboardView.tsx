@@ -9,7 +9,7 @@ import { useLabDashboardData } from '@/lib/mobile-shell/use-lab-dashboard-data';
 import { usePharmacyDashboardData } from '@/lib/mobile-shell/use-pharmacy-dashboard-data';
 import { useFrontDeskDashboardData } from '@/lib/mobile-shell/use-frontdesk-dashboard-data';
 import type { MobileDashboardArchetype, MobileLane, MobileDashboardData } from '@/lib/mobile-shell/dashboard-strategy';
-import type { AppointmentDoc, LabResultDoc, PrescriptionDoc, PatientIntakeFormDoc } from '@/lib/db-types';
+import type { AppointmentDoc, LabResultDoc, PrescriptionDoc } from '@/lib/db-types';
 import MobileLaneBoard from './MobileLaneBoard';
 import MobileOutstandingList from './MobileOutstandingList';
 
@@ -108,11 +108,14 @@ function PharmacyDashboard() {
 }
 
 function FrontDeskDashboard() {
+  const shell = useMobileShellState();
   const data = useFrontDeskDashboardData();
   return (
     <GenericArchetypeDashboard
       data={data}
-      renderItem={(f: PatientIntakeFormDoc) => <SimpleRowCard title={f.patientName} subtitle="Intake form" status={f.status} />}
+      renderItem={(appt: AppointmentDoc) => (
+        <AppointmentCard appt={appt} onOpen={() => shell.openChart(appt.patientId)} />
+      )}
     />
   );
 }

@@ -216,7 +216,7 @@
      2. Deep blue (--tb-blue-800 / --accent-hover) — hover/pressed states
         and links; a darker step of the same blue, not a separate hue.
      3. Orange  (--accent-orange) — a third, clearly distinct action color
-        (e.g. Send intake) so it doesn't read as "another blue button."
+        so a secondary CTA doesn't read as "another blue button."
      4. Purple  (--accent-purple) — a fourth distinct action/category color
         (e.g. Refer).
      Clinical safety colors (danger/warning/success — triage, allergy
@@ -4408,7 +4408,7 @@ html:has(.ehr-top-rail) {
   padding-top: 0;
 }
 
-/* Greeting-row icons (New appointments, Dispense, Print, Send intake) — 16px
+/* Greeting-row icons (New appointments, Dispense, Print) — 16px
    strokes inside the pills, per the design. */
 .ehr-clinical-dashboard-header .ehr-segmented button svg,
 .ehr-clinical-dashboard-header .ehr-schedule-actions button svg {
@@ -4511,9 +4511,8 @@ html:has(.ehr-top-rail) {
   background: var(--tb-blue-800, #012C4E);
 }
 
-/* The intake action wears the palette's third color (--accent-orange was
-   documented for exactly this — "e.g. Send intake") so it stops reading as
-   another blue button next to the booking CTA. */
+/* A secondary action wears the palette's third color (--accent-orange) so it
+   stops reading as another blue button next to the booking CTA. */
 .ehr-schedule-actions button.orange,
 .ehr-clinical-strip button.orange {
   padding: 0 16px;
@@ -13203,10 +13202,6 @@ span:has(> svg:only-child) {
     content: "Find";
   }
 
-  .ehr-clinical-dashboard-header .ehr-schedule-actions > button:nth-of-type(3)::after {
-    content: "Intake";
-  }
-
   .ehr-segmented button {
     white-space: nowrap;
   }
@@ -17160,8 +17155,30 @@ textarea.ehr-handoff-input {
   color: #C24135;
 }
 
+/* Past due, everywhere a time is listed — the station shells
+   (EhrCareDashboard: front desk, pharmacy, lab, radiology, nutrition, HR,
+   facility management) and the clinical worklist both write a bare `is-past`
+   on this sub-line. It had no rule at all, so "20m ago" rendered in the same
+   muted grey as an ordinary caption and a slot that had already slipped read
+   exactly like one that had not.
+   The clock time above it turns with the sub-line: the row is late, not the
+   half of it that happens to carry the word "ago". */
+.ehr-appointment-time span.is-past {
+  color: #C24135;
+  font-weight: 700;
+}
+
+.ehr-appointment-time:has(span.is-past) strong {
+  color: #C24135;
+}
+
 .ehr-queue-wait small.is-past {
-  color: var(--ehr-muted);
+  color: #C24135;
+  font-weight: 700;
+}
+
+.ehr-queue-wait:has(small.is-past) strong {
+  color: #C24135;
 }
 
 .ehr-queue-wait-over {
@@ -25257,100 +25274,6 @@ table.patient-data-table.patient-data-table {
 /* Left blank. Shown, not hidden — "not recorded" is worth seeing before the
    record is committed. */
 .omrs-reg-reviewgroup dl > div.is-empty dd { color: var(--text-muted); opacity: 0.7; }
-
-/* ═══════════════════════════════════════════════════════════════════════
-   Public patient intake form (/intake/[token])
-
-   No app shell: the person here is a patient on their own phone, not a
-   member of staff. One centred card, large touch targets, and nothing that
-   implies a logged-in session. Standalone rules rather than the form styles
-   above, which assume the dashboard's grid and uppercase label treatment.
-   ═══════════════════════════════════════════════════════════════════════ */
-
-.pintake {
-  min-height: 100vh;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 24px 16px 48px;
-  background: var(--bg-secondary, #F6F8FA);
-}
-
-.pintake-card {
-  width: 100%;
-  max-width: 460px;
-  background: var(--bg-card-solid, #FFFFFF);
-  border: 1px solid var(--border-light, #E3EBF2);
-  border-radius: 14px;
-  padding: 24px;
-  margin-top: 24px;
-}
-
-.pintake-card h1 {
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-strong);
-}
-
-.pintake-card > p {
-  margin: 0 0 20px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-secondary, var(--text-primary));
-}
-
-.pintake-form { display: flex; flex-direction: column; gap: 16px; }
-
-/* Sentence case and full size — the global `label` rule uppercases and shrinks
-   every label for the dense dashboard, which is wrong on a patient's phone. */
-.pintake-form label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--text-strong);
-}
-
-/* 16px minimum: anything smaller makes iOS Safari zoom on focus. */
-.pintake-form input {
-  width: 100%;
-  padding: 12px 14px;
-  font-size: 16px;
-  font-family: var(--font-platform);
-  border: 1px solid var(--border-medium, #D9E4EE);
-  border-radius: 10px;
-  background: var(--bg-card-solid, #FFFFFF);
-  color: var(--text-primary);
-}
-
-.pintake-form input:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px var(--accent-light);
-}
-
-.pintake-form button {
-  margin-top: 4px;
-  padding: 13px 16px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--accent-primary);
-  color: #fff;
-  font-family: var(--font-platform);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.pintake-form button:disabled { opacity: 0.55; cursor: not-allowed; }
-
-.pintake-error {
-  margin: 0;
-  font-size: 13px;
-  color: var(--color-danger, #dc2626);
-}
 
 /* ── Side-card header rule ────────────────────────────────────────────────
    Every right-rail card (Reception / Clinic today / Today's triage, Patient

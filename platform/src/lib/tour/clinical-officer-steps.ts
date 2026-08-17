@@ -52,14 +52,6 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     placement: 'left',
   },
   {
-    id: 'dash-intake',
-    route: '/dashboard',
-    target: '.ehr-schedule-actions button.primary',
-    title: 'Send a patient to intake',
-    body: 'Route a walk-in to Patient Intake to capture vitals and history before you see them.',
-    placement: 'bottom',
-  },
-  {
     id: 'top-search',
     route: '/dashboard',
     target: '.ehr-top-search',

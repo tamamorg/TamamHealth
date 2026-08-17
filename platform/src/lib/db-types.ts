@@ -263,52 +263,6 @@ export interface ReferralDoc extends BaseDoc, Omit<Referral, 'id'> {
   orgId?: string;
 }
 
-/** Status of a patient-submitted intake form as it moves through the
- *  front-desk review queue: a request is sent to the patient, they either
- *  submit it (pending_review) or don't (not_submitted), and staff review a
- *  submitted form and merge its data into the patient's chart (merged). */
-export type IntakeFormStatus = 'pending_review' | 'not_submitted' | 'merged' | 'rejected';
-
-export interface IntakeFormField {
-  label: string;
-  value: string;
-}
-
-export interface PatientIntakeFormDoc extends BaseDoc {
-  type: 'patient_intake_form';
-  /** Matched patient record, once one exists (may be unset if the patient
-   *  hasn't been registered yet and this form is their first contact). */
-  patientId?: string;
-  patientName: string;
-  hospitalNumber?: string;
-  providerId?: string;
-  providerName?: string;
-  status: IntakeFormStatus;
-  /** When the intake request/link was sent to the patient. */
-  requestedAt: string;
-  /** When the patient submitted the form. Unset while status is not_submitted. */
-  receivedAt?: string;
-  /**
-   * Secret in the link sent to the patient. Looks the form up at
-   * `/intake/<accessToken>`; on its own it grants nothing — the patient still
-   * confirms their surname and date of birth against the chart before any
-   * field is returned (see /api/intake/[token]).
-   *
-   * Long and random rather than derived from `_id`: the document id appears in
-   * sync traffic and staff URLs, and must not be guessable from them.
-   */
-  accessToken?: string;
-  /** How the link was delivered, for the desk's own record. */
-  sentVia?: ('sms' | 'whatsapp' | 'email')[];
-  mergedAt?: string;
-  mergedBy?: string;
-  /** Submitted form answers, shown to staff during review. Free-form
-   *  label/value pairs so the form can evolve without a schema migration. */
-  fields: IntakeFormField[];
-  hospitalId?: string;
-  orgId?: string;
-}
-
 export interface LabResultDoc extends BaseDoc {
   type: 'lab_result';
   patientId: string;
@@ -2211,8 +2165,8 @@ export interface AppointmentDoc extends BaseDoc {
    * Contact details for a booker with no chart yet.
    *
    * Public traffic never creates a `PatientDoc` — an unmatched booking parks
-   * its identity here and in the linked intake form until someone at the desk
-   * links it to an existing patient or registers a new one. Cleared on merge.
+   * its identity here until someone at the desk links it to an existing
+   * patient or registers a new one. Cleared on merge.
    */
   requester?: {
     firstName: string;
@@ -2240,8 +2194,6 @@ export interface AppointmentDoc extends BaseDoc {
   /** Short public reference shown on the confirmation screen (e.g. TMH-8F3K2).
    *  Also the key for the unauthenticated status/cancel links. */
   bookingReference?: string;
-  /** The intake form carrying this booking's answers, pending desk review. */
-  intakeFormId?: string;
 }
 
 // ===== Telehealth Services (Private Sector) =====

@@ -75,10 +75,6 @@
  *   - tamamhealth_patient_reminders   Queued patient reminders. Facility-
  *                                     operational, not a national analytics
  *                                     target.
- *   - tamamhealth_intake_forms        Patient-submitted intake forms awaiting
- *                                     staff review/merge into the chart.
- *                                     Facility-operational workflow state, not
- *                                     a national analytics target.
  *   - tamamhealth_procedures          Bedside/theatre procedures performed on
  *                                     a patient. Facility-operational clinical
  *                                     detail (like patient_notes/phone_notes);

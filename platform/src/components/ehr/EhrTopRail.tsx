@@ -11,8 +11,8 @@ import {
   MessageSquare,
   Plus,
   Search,
-  Send,
   Settings,
+  UserPlus,
   Users,
   X,
 } from '@/components/icons/lucide';
@@ -110,12 +110,20 @@ export default function EhrTopRail() {
     () => getPrimaryShortcutItems(navItems, currentUser?.role, 4, homeHref),
     [navItems, currentUser?.role, homeHref],
   );
-  // Every module the role holds, the four header shortcuts included. They used
-  // to be subtracted from here so each destination had exactly one visible
-  // home, but that made the menu an incomplete map: the four most-used
-  // destinations were the four you could not find in the list of everywhere
-  // you can go. A shortcut is a faster route to a place, not a different one.
-  const navGroups = useMemo(() => groupNavItemsBySection(navItems), [navItems]);
+  const headerShortcutHrefs = useMemo(
+    () => new Set(headerShortcutItems.map(item => item.href)),
+    [headerShortcutItems],
+  );
+  // The menu drops what the rail already shows. These four sit in the row
+  // immediately to the right of the trigger on every page, so listing them
+  // again inside the panel it opens made the list longer without making
+  // anywhere new reachable — and the dashboard header below now carries the
+  // next five (getPageHeaderNavItems), so the shortest path to most
+  // destinations is already on screen before the menu is opened.
+  const navGroups = useMemo(
+    () => groupNavItemsBySection(navItems.filter(item => !headerShortcutHrefs.has(item.href))),
+    [headerShortcutHrefs, navItems],
+  );
 
 
   const navLabel = (item: NavItem): string => {
@@ -139,7 +147,6 @@ export default function EhrTopRail() {
       '/telehealth': 'nav.telehealth',
       '/government': 'nav.government',
       '/facility-settings': 'nav.facilitySettings',
-      '/patient-intake': 'nav.patientIntake',
       '/payments': 'nav.payments',
       '/payments/claims': 'nav.claims',
       '/wards': 'nav.wards',
@@ -197,7 +204,7 @@ export default function EhrTopRail() {
   const userInitials = currentUser?.name ? initials(currentUser.name) : 'TH';
 
   const isRouteActive = (href: string) => pathname === href || (href !== '/' && pathname?.startsWith(href + '/'));
-  const primaryCreateHref = ['/patient-intake', '/consultation', '/patients/new'].find(href => isHrefAllowed(href, allowedRoutes));
+  const primaryCreateHref = ['/consultation', '/patients/new'].find(href => isHrefAllowed(href, allowedRoutes));
   const mobileTabs = [
     { href: homeHref, label: 'Dashboard', icon: LayoutDashboard },
     ...(canSearchPatients ? [{ href: '/patients', label: 'Patients', icon: Users }] : []),
@@ -352,11 +359,10 @@ export default function EhrTopRail() {
             title={t('frontDesk.registerNewPatient')}
             data-track="patient.create"
           >
-            {/* The intake form's kite, not a person-plus: starting a patient
-                here is the same act as the intake module's, so the header
-                wears the one glyph the intake form carries everywhere — nav
-                item, front-desk strip, clinical strip, intake page. */}
-            <Send className="w-4 h-4" />
+            {/* The same person-plus the front-desk strip's "Register new
+                patient" button wears, so the one act carries one glyph
+                wherever it is offered. */}
+            <UserPlus className="w-4 h-4" />
           </button>
         )}
         <QuickActions notificationCount={unreadCount} />

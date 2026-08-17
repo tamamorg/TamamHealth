@@ -85,8 +85,6 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   '/org-admin/branding': { verb: 'Brand your workspace', desc: 'Add your logo and colours so the app feels like yours.', est: 2 },
   '/org-admin/settings': { verb: 'Configure org settings', desc: 'Set defaults, security, and preferences for your org.', est: 2 },
   '/org-admin/pricing': { verb: 'Set your service pricing', desc: 'Add and edit the fee schedule for consultations, labs, pharmacy, and procedures.', est: 2 },
-  // Front desk / clinical intake
-  '/patient-intake': { verb: 'Review patient intake forms', desc: 'Check submitted intake forms and merge the details straight into the patient chart.', est: 2 },
   '/alerts': { verb: 'Review clinical alerts', desc: 'See critical lab, immunization, and outbreak alerts in one feed and jump straight to the record.', est: 2 },
   // Pharmacy / lab
   '/blood-bank': { verb: 'Manage the blood bank', desc: 'Track blood units by group and status, and log newly donated units before they expire.', est: 2 },

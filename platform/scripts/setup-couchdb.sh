@@ -83,7 +83,6 @@ DATABASES=(
   tamamhealth_hospitals
   tamamhealth_immunizations
   tamamhealth_insurance_policies
-  tamamhealth_intake_forms
   tamamhealth_invoices
   tamamhealth_lab_results
   tamamhealth_leave_requests

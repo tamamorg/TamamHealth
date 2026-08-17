@@ -60,7 +60,7 @@ describe('RBAC: super_admin has total page access', () => {
       // The nurse station used to be a distinct dashboard listed here
       // ('/dashboard/nurse'); it was merged into the shared clinical
       // workspace, so there's no separate nurse station route left to test.
-      '/triage', '/rooming', '/patient-intake', '/wards/handoff',
+      '/triage', '/rooming', '/wards/handoff',
       '/dashboard/front-desk', '/dashboard/lab', '/dashboard/pharmacy',
       '/consultation', '/payments/claims', '/settings/manage',
     ];

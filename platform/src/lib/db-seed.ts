@@ -11,7 +11,7 @@ import {
   handoffsDB,
   assetsDB, leaveRequestsDB, payrollEntriesDB,
   problemsDB, telehealthDB, patientNotesDB, orderSetsDB,
-  phoneNotesDB, assessmentsDB, intakeFormsDB, bloodBankDB, patientDocumentsDB,
+  phoneNotesDB, assessmentsDB, bloodBankDB, patientDocumentsDB,
   bookingPoliciesDB, visitReasonsDB, providerProfilesDB,
   isSeeded, markSeeded, resetAllDatabases, getDB,
   isSeedInProgress, markSeedStarted
@@ -25,7 +25,7 @@ import type {
   DiseaseAlertDoc, LabResultDoc, PrescriptionDoc, MedicalRecordDoc, MessageDoc,
   BirthRegistrationDoc, DeathRegistrationDoc, FacilityAssessmentDoc,
   ImmunizationDoc, ANCVisitDoc, FollowUpDoc, OrganizationDoc,
-  PatientNoteDoc, OrderSetDoc, PhoneNoteDoc, AssessmentDoc, PatientIntakeFormDoc
+  PatientNoteDoc, OrderSetDoc, PhoneNoteDoc, AssessmentDoc
 } from './db-types';
 import type { AllergyEntry, DirectiveEntry, CareAlertEntry } from '@/data/mock';
 import type {
@@ -1932,7 +1932,10 @@ async function clearSeededClinicalDataOnce(): Promise<void> {
     'tamamhealth_invoices', 'tamamhealth_ledger', 'tamamhealth_wards',
     'tamamhealth_staff_schedules', 'tamamhealth_blood_bank', 'tamamhealth_problems',
     'tamamhealth_encounters', 'tamamhealth_patient_documents', 'tamamhealth_patient_reminders',
-    'tamamhealth_intake_forms', 'tamamhealth_program_enrollments', 'tamamhealth_procedures',
+    // Retired with the intake-forms feature; listed so this one-time clear
+    // also removes the orphaned database.
+    'tamamhealth_intake_forms',
+    'tamamhealth_program_enrollments', 'tamamhealth_procedures',
     'tamamhealth_handoffs', 'tamamhealth_patient_transfers', 'tamamhealth_nutrition_screenings',
     'tamamhealth_nutrition_supplies', 'tamamhealth_availability', 'tamamhealth_announcements',
     'tamamhealth_emergency_plans', 'tamamhealth_assets', 'tamamhealth_leave_requests',
@@ -2644,76 +2647,6 @@ async function seedDatabaseExclusive(): Promise<void> {
   ];
   for (const r of coReferrals) {
     await safePut(rDB, r as unknown as Record<string, unknown>);
-  }
-
-  // Seed patient intake forms (all public org) — the front-desk review queue
-  // for forms patients submitted (or didn't) ahead of a visit.
-  const intakeDB = intakeFormsDB();
-  const intakeForms: PatientIntakeFormDoc[] = [
-    {
-      _id: 'intake-demo-01', type: 'patient_intake_form',
-      patientId: 'pat-00057', patientName: 'Achol Mayen Garang', hospitalNumber: 'JTH-000057',
-      providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga',
-      status: 'pending_review',
-      requestedAt: daysAgo(3), receivedAt: daysAgo(2),
-      fields: [
-        { label: 'Date of birth', value: '2002-03-15' },
-        { label: 'Phone', value: '+211912555057' },
-        { label: 'Address', value: 'Juba, Central Equatoria' },
-        { label: 'Emergency contact', value: 'Mayen Garang (father) — +211912555099' },
-        { label: 'Known allergies', value: 'Penicillin' },
-        { label: 'Reason for visit', value: 'Follow-up on ongoing treatment' },
-      ],
-      hospitalId: 'hosp-001', orgId: PUBLIC_ORG_ID,
-      createdAt: daysAgo(3), updatedAt: daysAgo(2),
-    },
-    {
-      _id: 'intake-demo-02', type: 'patient_intake_form',
-      patientId: 'pat-00058', patientName: 'Nyakuoth Koang Jal', hospitalNumber: 'BSH-000003',
-      providerId: 'user-nurse.wau', providerName: 'Nurse Grace Achai Lual',
-      status: 'pending_review',
-      requestedAt: daysAgo(6), receivedAt: daysAgo(5),
-      fields: [
-        { label: 'Date of birth', value: '1996-01-20' },
-        { label: 'Phone', value: '+211912555058' },
-        { label: 'Address', value: 'Rubkona, Unity' },
-        { label: 'Emergency contact', value: 'Nyandeng Jal (sister) — +211912555098' },
-        { label: 'Known allergies', value: 'None reported' },
-        { label: 'Reason for visit', value: 'Antenatal check-up' },
-      ],
-      hospitalId: 'hosp-004', orgId: PUBLIC_ORG_ID,
-      createdAt: daysAgo(6), updatedAt: daysAgo(5),
-    },
-    {
-      _id: 'intake-demo-03', type: 'patient_intake_form',
-      patientId: 'pat-00059', patientName: 'Abuk Deng Mading', hospitalNumber: 'WSH-000002',
-      providerId: 'user-co.deng', providerName: 'CO Deng Mabior Kuol',
-      status: 'not_submitted',
-      requestedAt: daysAgo(10),
-      fields: [
-        { label: 'Date of birth', value: '1994-06-10' },
-        { label: 'Phone', value: '+211912555059' },
-      ],
-      hospitalId: 'hosp-002', orgId: PUBLIC_ORG_ID,
-      createdAt: daysAgo(10), updatedAt: daysAgo(10),
-    },
-    {
-      _id: 'intake-demo-04', type: 'patient_intake_form',
-      patientId: 'pat-00060', patientName: 'Nyandit Dut Malual', hospitalNumber: 'MTH-000002',
-      providerId: 'user-dr.wau', providerName: 'Dr. Mary Akuol Deng',
-      status: 'merged',
-      requestedAt: daysAgo(21), receivedAt: daysAgo(20), mergedAt: daysAgo(19), mergedBy: 'Grace Poni Lukudu',
-      fields: [
-        { label: 'Date of birth', value: '2000-08-05' },
-        { label: 'Phone', value: '+211912555060' },
-        { label: 'Address', value: 'Malakal, Upper Nile' },
-      ],
-      hospitalId: 'hosp-003', orgId: PUBLIC_ORG_ID,
-      createdAt: daysAgo(21), updatedAt: daysAgo(19),
-    },
-  ];
-  for (const doc of intakeForms) {
-    await safePut(intakeDB, doc as unknown as Record<string, unknown>);
   }
 
   // Seed disease alerts (all public org). Spread reportDates across the last

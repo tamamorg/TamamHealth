@@ -36,7 +36,7 @@ import PatientTimeline from '@/components/PatientTimeline';
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
-import { states as SOUTH_SUDAN_STATES, statesAndCounties } from '@/data/mock';
+import { states as SOUTH_SUDAN_STATES, statesAndCounties } from '@/lib/data/south-sudan-reference';
 import { formatDateTime, formatDate, formatClockTime, formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { isScreeningOverdue } from '@/lib/services/screening-service';
 import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
@@ -2622,7 +2622,6 @@ function PatientDemographicsView({
         <section className="tebra-demo-panel">
           <div className="tebra-demo-columns">
             <DemoField label="Portal Status" value="Not invited" />
-            <DemoField label="Patient Intake" value="Not sent" />
             <DemoField label="Reminder Channel" value={patient.whatsapp ? 'SMS / WhatsApp' : 'SMS'} />
           </div>
         </section>

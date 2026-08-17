@@ -260,11 +260,8 @@ export const savedPaymentMethodsDB = () => getDB('tamamhealth_saved_payment_meth
 export const paymentPlansDB = () => getDB('tamamhealth_payment_plans');
 export const invoicesDB = () => getDB('tamamhealth_invoices');
 export const ledgerDB = () => getDB('tamamhealth_ledger');
-// Patient-submitted intake forms awaiting front-desk review and merge into
-// the matching patient's chart.
-export const intakeFormsDB = () => getDB('tamamhealth_intake_forms');
 
-// ── Online booking & self-intake (see db-types-booking.ts) ──
+// ── Online booking (see db-types-booking.ts) ──
 // Patient-facing service menu ("Reason for visit"), per org/facility.
 export const visitReasonsDB = () => getDB('tamamhealth_visit_reasons');
 // Per-facility rules every booking surface obeys (lead time, buffers, consent
@@ -391,7 +388,11 @@ export const patientTransfersDB = () => getDB('tamamhealth_patient_transfers');
 // Bumped to 72: every admitted patient now has the arrival triage that sent
 // them to a bed (triage-3b, triage-m5, triage-m6). Three inpatients had none
 // at all, so their worklist rows showed no vitals beside beds that did.
-export const SEED_VERSION = 72;
+// Bumped to 73: the patient intake-forms feature is gone (staff queue, public
+// token form, API and DB). The four seeded intake docs and the
+// tamamhealth_intake_forms database go with it; the bump purges the orphaned
+// local DB from browsers seeded while the feature existed.
+export const SEED_VERSION = 73;
 
 export async function isSeeded(): Promise<boolean> {
   try {
@@ -487,7 +488,11 @@ export async function resetAllDatabases(): Promise<void> {
     'tamamhealth_leave_requests', 'tamamhealth_payroll_entries', 'tamamhealth_patient_feedback',
     'tamamhealth_clinical_favorites', 'tamamhealth_consultation_templates',
     'tamamhealth_clinician_tasks', 'tamamhealth_patient_documents',
-    'tamamhealth_patient_reminders', 'tamamhealth_intake_forms',
+    'tamamhealth_patient_reminders',
+    // Retired with the patient intake-forms feature (v73). Kept in the reset
+    // list only so the bump purges the orphaned local database from browsers
+    // that were seeded while the feature existed.
+    'tamamhealth_intake_forms',
     'tamamhealth_nutrition_screenings', 'tamamhealth_nutrition_supplies',
     'tamamhealth_patient_transfers',
     // NOTE: 'tamamhealth_controlled_substance_log' is deliberately NOT reset

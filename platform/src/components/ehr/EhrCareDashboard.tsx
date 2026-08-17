@@ -13,6 +13,9 @@ import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import { initials, stateTint } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, titleCase } from '@/lib/format-utils';
 import { useAppointments } from '@/lib/hooks/useAppointments';
+import { useAuth } from '@/lib/context';
+import { getRoleConfig } from '@/lib/permissions';
+import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/ehr-navigation';
 import {
   APPOINTMENT_STATUS_TONES, APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_GROUPS,
   APPOINTMENT_STATUS_DESCRIPTIONS, appointmentStatusGroup, appointmentStatusLabel,
@@ -330,6 +333,19 @@ export default function EhrCareDashboard({
   children?: ReactNode;
 }) {
   const router = useRouter();
+  const { currentUser } = useAuth();
+
+  // Navigations promoted into this station's header, the same rung the
+  // clinical dashboard promotes (see getPageHeaderNavItems). Every station
+  // renders through this shell, so pharmacy, lab, radiology, nutrition, HR,
+  // state, facility management and the front desk all gain the same row —
+  // and the module menu drops what the rail already shows.
+  const quickNavItems = useMemo(() => {
+    const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
+    if (!roleConfig) return [];
+    const navItems = uniqueAllowedNavItems(roleConfig.navItems || [], roleConfig.allowedRoutes || []);
+    return getPageHeaderNavItems(navItems, currentUser?.role, roleConfig.defaultDashboard || '/dashboard');
+  }, [currentUser]);
 
   // ── One status reading for every station ────────────────────────────────
   // Lab, pharmacy, radiology, nutrition and reception all render their rows
@@ -570,6 +586,14 @@ export default function EhrCareDashboard({
               header and was exiled to the left rail. Rendered first so it sits
               alongside Print rather than after it. */}
           {headerExtra}
+          {quickNavItems.map(item => {
+            const ItemIcon = item.icon;
+            return (
+              <button key={item.href} type="button" aria-label={item.label} onClick={() => router.push(item.href)}>
+                <ItemIcon className="w-4 h-4" />{item.label}
+              </button>
+            );
+          })}
           {headerActions.map(action => (
             <button key={action.label} type="button" className={action.tone === 'orange' ? 'orange' : action.tone === 'primary' || action.active ? 'primary' : ''} data-tour={action.tourTarget} onClick={action.onClick}>
               <action.icon className="w-4 h-4" />{action.label}

@@ -43,10 +43,10 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
               placeholder={t('patientNew.whatsappPlaceholder')} />
           )}
         </RegistrationField>
-        {/* The patient's OWN address, used for things sent to them — the
-            intake-form request first. Optional: most patients here are
-            reachable by phone only, so the send dialog has to handle its
-            absence rather than assume it. */}
+        {/* The patient's OWN address, used for things sent to them — booking
+            confirmations and receipts. Optional: most patients here are
+            reachable by phone only, so every surface that sends has to handle
+            its absence rather than assume it. */}
         <RegistrationField name="email" label={t('patientNew.email')} error={errors.email}>
           {field => (
             <input {...field} type="email" inputMode="email" autoComplete="email" value={form.email}

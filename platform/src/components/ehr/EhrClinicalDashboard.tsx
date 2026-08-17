@@ -57,7 +57,7 @@ import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useAuth } from '@/lib/context';
 import { getRoleConfig } from '@/lib/permissions';
 import { isPathAllowed } from '@/lib/role-routes';
-import { uniqueAllowedNavItems, getPrimaryShortcutItems } from '@/components/ehr/ehr-navigation';
+import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/ehr-navigation';
 import { buildQueueFromTriage, STAGE_LABELS, type QueueEntry } from '@/lib/services/patient-queue-service';
 import type { TriageDoc } from '@/lib/db-types';
 import { encountersDB, labResultsDB } from '@/lib/db';
@@ -365,6 +365,9 @@ export interface RowQueueColumns {
   waitSubtext: string;
   statusSubtext: string;
   overTarget: boolean;
+  /** The booked slot has already passed and the patient is not in the queue —
+   *  the row is running late, which the Time column shows in red. */
+  isPast: boolean;
   inService: boolean;
 }
 
@@ -421,6 +424,15 @@ export function computeRowQueueColumns(
           ? 'Routine'
           : row.patient?.assignmentNote || PRIORITY_META[row.triagePriority].label,
     overTarget: Boolean(entry?.flaggedForReassessment),
+    // A booked slot that has come and gone with the patient still not in the
+    // queue. Rows that ARE in the queue are excluded deliberately: their time
+    // is when they arrived, so "past" would be true of every one of them and
+    // the colour would stop meaning anything. Lateness for those is
+    // `overTarget`, which the wait clock already tracks.
+    isPast: Boolean(
+      !entry && appointmentAt && relativeNow && !Number.isNaN(appointmentAt.getTime())
+        && appointmentAt.getTime() < relativeNow.getTime(),
+    ),
     inService,
   };
 }
@@ -811,7 +823,7 @@ export default function EhrClinicalDashboard({
   const isNurseFamily = currentUser?.role === 'nurse' || currentUser?.role === 'midwife'
     || currentUser?.role === 'triage_nurse' || currentUser?.role === 'rooming_nurse';
 
-  // Quick links in the header strip, where the Intake Form button used to sit.
+  // Quick links in the header strip.
   // Deliberately the destinations the top rail does NOT already carry: the rail
   // keeps four shortcuts, so repeating them here would spend the widest row on
   // the page on buttons that already exist two centimetres above it. These are
@@ -820,16 +832,8 @@ export default function EhrClinicalDashboard({
   const quickNavItems = useMemo(() => {
     const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
     if (!roleConfig) return [];
-    const allowed = roleConfig.allowedRoutes || [];
-    const home = roleConfig.defaultDashboard || '/dashboard';
-    const navItems = uniqueAllowedNavItems(roleConfig.navItems || [], allowed);
-    const onRail = new Set(
-      getPrimaryShortcutItems(navItems, currentUser?.role, 4, home).map(item => item.href),
-    );
-    return navItems
-      // `home` is this very page — a button back to where you already are.
-      .filter(item => !onRail.has(item.href) && item.href !== home)
-      .slice(0, 3);
+    const navItems = uniqueAllowedNavItems(roleConfig.navItems || [], roleConfig.allowedRoutes || []);
+    return getPageHeaderNavItems(navItems, currentUser?.role, roleConfig.defaultDashboard || '/dashboard');
   }, [currentUser]);
   // "Create clinical note" on a visit card — the appointment already carries
   // the patient, provider, date and telehealth mode the note header needs.
@@ -1852,7 +1856,7 @@ export default function EhrClinicalDashboard({
                         >
                           <strong style={columns.overTarget ? { color: 'var(--color-danger-text)' } : undefined}>{columns.waitText}</strong>
                           {columns.waitSubtext && (
-                            <span className={columns.overTarget ? 'is-soon' : ''}>
+                            <span className={columns.overTarget ? 'is-soon' : columns.isPast ? 'is-past' : ''}>
                               {columns.waitSubtext}
                             </span>
                           )}

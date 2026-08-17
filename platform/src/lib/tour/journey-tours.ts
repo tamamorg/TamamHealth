@@ -352,13 +352,6 @@ const FRONT_DESK_STEPS: TourStep[] = [
     body: 'List or full calendar. The lifecycle runs requested → scheduled → confirmed → checked-in → in progress → completed, with conflict checks against provider availability. Walk-in creates an already-checked-in appointment.',
   },
   {
-    id: 'intake-forms',
-    route: '/patient-intake',
-    target: '',
-    title: 'Patient intake forms',
-    body: 'Send form packets to a patient by SMS; returned submissions land in Pending Review, where you merge approved fields into the chart side by side.',
-  },
-  {
     id: 'referrals',
     route: '/referrals',
     target: '',

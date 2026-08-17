@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useApp } from '../context';
 import { makeCoalescer } from './live-reload';
-import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, intakeFormsDB, consultationProgressDB, patientTransfersDB, triageDB } from '../db';
+import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB } from '../db';
 import { isForViewer } from '../notification-scope';
 import {
   NOTIFICATION_READS_EVENT,
@@ -11,7 +11,7 @@ import {
   markNotificationsRead,
 } from '../notification-reads';
 
-export type NotificationType = 'alert' | 'triage' | 'referral' | 'lab' | 'appointment' | 'intake' | 'prescription' | 'progress' | 'transfer';
+export type NotificationType = 'alert' | 'triage' | 'referral' | 'lab' | 'appointment' | 'prescription' | 'progress' | 'transfer';
 /** How hard the item pushes: an outbreak or a breached critical result is not
  *  the same class of thing as "a prescription is waiting". Drives the filter
  *  tabs and row treatment on /notifications. */
@@ -39,7 +39,6 @@ export type NotificationItem = {
  *   - triaged patients still waiting to be seen (acuity drives severity)
  *   - lab results (critical + newly ready to review)
  *   - appointments awaiting approval + patients checked in and waiting
- *   - patient intake forms awaiting review
  *   - prescriptions awaiting dispensing
  * Messaging is intentionally excluded — chat has its own unread indicator.
  * Loads per scope; the panel can call reload(), and referral/appointment
@@ -359,15 +358,6 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       }
     } catch { /* offline */ }
 
-    // Patient intake forms awaiting review.
-    try {
-      const { getAllIntakeForms } = await import('../services/intake-form-service');
-      const forms = await getAllIntakeForms(scope);
-      for (const f of forms.filter(x => x.status === 'pending_review').slice(0, perSourceLimit)) {
-        out.push({ id: `intake-${f._id}`, type: 'intake', severity: 'info', title: `Intake form · ${f.patientName}`, subtitle: `${f.fields?.length ? `${f.fields.length} fields` : 'Submitted'} · ready to review`, time: f.receivedAt || f.requestedAt || f.createdAt, href: '/patient-intake' });
-      }
-    } catch { /* offline */ }
-
     // Shared consultation progress. Only actionable items are raised here:
     // work assigned to the signed-in user, unassigned urgent work, blocked
     // tasks, and patients waiting for the next team member.
@@ -447,16 +437,13 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     const apptChanges = appointmentsDB().changes({ since: 'now', live: true, include_docs: false })
       .on('change', () => reload.trigger())
       .on('error', () => { /* swallow — offline */ });
-    // Labs / prescriptions / intake also produce notifications — without
-    // these feeds a new critical result never chimes (or badges) until the
-    // page is reopened.
+    // Labs and prescriptions also produce notifications — without these
+    // feeds a new critical result never chimes (or badges) until the page
+    // is reopened.
     const labChanges = labResultsDB().changes({ since: 'now', live: true, include_docs: false })
       .on('change', () => reload.trigger())
       .on('error', () => { /* swallow — offline */ });
     const rxChanges = prescriptionsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow — offline */ });
-    const intakeChanges = intakeFormsDB().changes({ since: 'now', live: true, include_docs: false })
       .on('change', () => reload.trigger())
       .on('error', () => { /* swallow — offline */ });
     const transferChanges = patientTransfersDB().changes({ since: 'now', live: true, include_docs: false })
@@ -476,7 +463,6 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       try { apptChanges.cancel(); } catch { /* noop */ }
       try { labChanges.cancel(); } catch { /* noop */ }
       try { rxChanges.cancel(); } catch { /* noop */ }
-      try { intakeChanges.cancel(); } catch { /* noop */ }
       try { progressChanges.cancel(); } catch { /* noop */ }
       try { transferChanges.cancel(); } catch { /* noop */ }
       try { triageChanges.cancel(); } catch { /* noop */ }
