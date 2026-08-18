@@ -60,6 +60,53 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
+      # The droplet's website.service re-pulls on start, but a RUNNING
+      # container keeps its old image — `Restart=always` only fires when the
+      # process exits. So a push alone does not update a healthy droplet; the
+      # unit has to be restarted. Opt-in, matching deploy-production's SSH gate.
+      #
+      # Checked before the build rather than after it: a key the droplet will
+      # not accept is a five-second answer, and finding out only once the image
+      # is already published leaves the registry a generation ahead of the
+      # running site.
+      - name: Check whether website SSH is configured
+        id: gate
+        env:
+          H: ${{ secrets.WEBSITE_SSH_HOST }}
+          U: ${{ secrets.WEBSITE_SSH_USER }}
+          K: ${{ secrets.WEBSITE_SSH_KEY }}
+        run: |
+          if [ "${{ github.event.inputs.restart }}" != "ssh" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ -n "$H" ] && [ -n "$U" ] && [ -n "$K" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Website droplet will not be restarted::No WEBSITE_SSH_* secrets are set, so the image will publish but the running container will keep serving the old one. Restart it with: ssh <user>@<host> 'systemctl restart website'"
+          fi
+
+      - name: Set up SSH agent
+        if: steps.gate.outputs.ready == 'true'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.WEBSITE_SSH_KEY }}
+
+      # Fail with the fix, not with "Permission denied (publickey)". The
+      # deploy key is set in this environment, but it only works once its
+      # public half is in the droplet's authorized_keys — and that needs the
+      # DO console, because there is no API to add a key to a running droplet.
+      - name: Check the deploy key is authorised on the droplet
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+        run: |
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          if ! ssh -o BatchMode=yes -o ConnectTimeout=15 "$USER@$HOST" 'true' 2>/dev/null; then
+            echo "::error title=Deploy key not authorised::$USER@$HOST rejected the deploy key, so nothing was built. Add the public half of WEBSITE_SSH_KEY to ~/.ssh/authorized_keys on the droplet (DigitalOcean → Droplets → tamamhealth-website → Console), or re-run this workflow with restart=reboot, which needs no key."
+            exit 1
+          fi
+
       # The registry is DigitalOcean's `starter` tier: 500 MB total, which one
       # Next.js image very nearly fills. Without pruning, the second or third
       # deploy dies with `denied: quota exceeded` AFTER a full build — so free
@@ -183,48 +230,6 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.image }}:latest
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}
-
-      # The droplet's website.service re-pulls on start, but a RUNNING
-      # container keeps its old image — `Restart=always` only fires when the
-      # process exits. So a push alone does not update a healthy droplet; the
-      # unit has to be restarted. Opt-in, matching deploy-production's SSH gate.
-      - name: Check whether website SSH is configured
-        id: gate
-        env:
-          H: ${{ secrets.WEBSITE_SSH_HOST }}
-          U: ${{ secrets.WEBSITE_SSH_USER }}
-          K: ${{ secrets.WEBSITE_SSH_KEY }}
-        run: |
-          if [ "${{ github.event.inputs.restart }}" != "ssh" ]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          elif [ -n "$H" ] && [ -n "$U" ] && [ -n "$K" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Website droplet not restarted::Image ${{ steps.meta.outputs.sha }} is published to DOCR, but no WEBSITE_SSH_* secrets are set, so the running container still serves the old image. Restart it with: ssh <user>@<host> 'systemctl restart website'"
-          fi
-
-      - name: Set up SSH agent
-        if: steps.gate.outputs.ready == 'true'
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.WEBSITE_SSH_KEY }}
-
-      # Fail with the fix, not with "Permission denied (publickey)". The
-      # deploy key is set in this environment, but it only works once its
-      # public half is in the droplet's authorized_keys — and that needs the
-      # DO console, because there is no API to add a key to a running droplet.
-      - name: Check the deploy key is authorised on the droplet
-        if: steps.gate.outputs.ready == 'true'
-        env:
-          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
-          USER: ${{ secrets.WEBSITE_SSH_USER }}
-        run: |
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          if ! ssh -o BatchMode=yes -o ConnectTimeout=15 "$USER@$HOST" 'true' 2>/dev/null; then
-            echo "::error title=Deploy key not authorised::The image is published, but $USER@$HOST rejected the deploy key, so the droplet still serves the old one. Add the public half of WEBSITE_SSH_KEY to ~/.ssh/authorized_keys on the droplet (DigitalOcean → Droplets → tamamhealth-website → Console), or re-run this workflow with restart=reboot, which needs no key."
-            exit 1
-          fi
 
       - name: Restart website.service
         if: steps.gate.outputs.ready == 'true'
