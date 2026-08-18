@@ -13,19 +13,26 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useToast } from '@/components/Toast';
 import type { OrganizationDoc } from '@/lib/db-types';
-import { Plus, X, Edit3, Ban } from '@/components/icons/lucide';
+import { Plus, X, Edit3, Ban, RefreshCw, Eye, EyeOff, ShieldCheck } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
+import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
 import {
   SadbPage, SadbCard, SadbChip, SadbSearch, SadbGridList, SadbGridRow,
   SadbSettingRow, SadbToggle, SadbConfirmModal, statusChip,
 } from '@/components/admin/sadb-ui';
+import { generateTempPassword } from '@/lib/temp-password';
+import {
+  emptyOrgAdminForm, validateOrgAdminForm, buildOrgAdminUserPayload,
+  ORG_ADMIN_MIN_PASSWORD_LENGTH, type OrgAdminFormData,
+} from '@/lib/org-admin-provisioning';
 
 type FeatureFlagKey =
   | 'epidemicIntelligence' | 'mchAnalytics' | 'dhis2Export'
@@ -66,6 +73,7 @@ function onboardedLabel(iso?: string): string | null {
 
 export default function AdminOrganizationsPage() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { organizations, loading, create, update, deactivate, getStats } = useOrganizations();
@@ -80,6 +88,18 @@ export default function AdminOrganizationsPage() {
   const [orgStats, setOrgStats] = useState<Record<string, { userCount: number; hospitalCount: number }>>({});
   const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
   const [deactivating, setDeactivating] = useState(false);
+
+  // "Create an administrator for this organization" — create-only (never
+  // shown while editingId is set). Defaults ON: the whole point is to
+  // collapse "create org" + "go create its admin at /admin/users" into one
+  // step, so the shortcut should be the default, not an opt-in extra click.
+  const [createAdmin, setCreateAdmin] = useState(true);
+  const [adminForm, setAdminForm] = useState<OrgAdminFormData>(emptyOrgAdminForm);
+  const [showAdminPassword, setShowAdminPassword] = useState(true);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  // Credential hand-off for the admin account just created — same one-time
+  // panel as /admin/users, shown only after both writes succeed.
+  const [handoff, setHandoff] = useState<{ username: string; password: string } | null>(null);
 
   // Per-org user + facility counts for the grid. Run all getStats() calls
   // concurrently so the overall wait is the slowest single call, not the sum.
@@ -119,6 +139,10 @@ export default function AdminOrganizationsPage() {
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setCreateAdmin(true);
+    setAdminForm({ ...emptyOrgAdminForm, password: generateTempPassword() });
+    setShowAdminPassword(true);
+    setAdminError(null);
     setShowForm(true);
   };
 
@@ -149,6 +173,22 @@ export default function AdminOrganizationsPage() {
 
   const handleSubmit = async () => {
     if (!form.name || !form.slug || !form.contactEmail) return;
+
+    // Create-only, and only when the toggle is on. Validate BEFORE the
+    // organization write starts — a bad admin field (empty username, short
+    // password) must never leave an org behind with no admin attempt at all.
+    const wantsAdmin = !editingId && createAdmin;
+    if (wantsAdmin) {
+      const errorCode = validateOrgAdminForm(adminForm);
+      if (errorCode) {
+        setAdminError(errorCode === 'password-too-short'
+          ? t('orgAdmin.adminPasswordTooShortError', { min: ORG_ADMIN_MIN_PASSWORD_LENGTH })
+          : t('orgAdmin.adminRequiredError'));
+        return;
+      }
+    }
+
+    setAdminError(null);
     setFormLoading(true);
     try {
       const orgData = {
@@ -175,14 +215,53 @@ export default function AdminOrganizationsPage() {
         },
       };
 
+      // Edit path — completely unchanged from before this feature.
       if (editingId) {
         await update(editingId, orgData, currentUser?._id, currentUser?.username);
         showToast(`Organization "${form.name}" updated.`, 'success');
-      } else {
-        await create(orgData as Omit<OrganizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, currentUser?._id, currentUser?.username);
-        showToast(`Organization "${form.name}" created.`, 'success');
+        setShowForm(false);
+        return;
       }
-      setShowForm(false);
+
+      const newOrg = await create(orgData as Omit<OrganizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, currentUser?._id, currentUser?.username);
+
+      if (!wantsAdmin) {
+        showToast(`Organization "${form.name}" created.`, 'success');
+        setShowForm(false);
+        return;
+      }
+
+      // The organization now exists. From here, a failure is a PARTIAL
+      // failure — never roll the org back (out of scope, and CouchDB tenant
+      // provisioning already ran), and never let the admin believe nothing
+      // happened.
+      try {
+        const { createUser } = await import('@/lib/services/user-service');
+        const created = await createUser(
+          buildOrgAdminUserPayload(adminForm, newOrg._id),
+          currentUser?._id,
+          currentUser?.username
+        );
+        showToast(`Organization "${form.name}" created.`, 'success');
+        setShowForm(false);
+        // Hand the credentials to the admin exactly once — mirrors the
+        // /admin/users "Add user" flow. mustChangePassword was set server-side
+        // by createUser()'s POST /api/users path, not here.
+        setHandoff({ username: created.username, password: adminForm.password });
+      } catch (adminErr) {
+        setShowForm(false);
+        showToast(
+          t('orgAdmin.adminCreationPartialError', {
+            name: form.name,
+            reason: adminErr instanceof Error ? adminErr.message : 'Unknown error',
+          }),
+          'error',
+          {
+            durationMs: 15000,
+            action: { label: t('orgAdmin.goToUsers'), onClick: () => router.push('/admin/users') },
+          }
+        );
+      }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to save organization.', 'error');
     } finally {
@@ -417,6 +496,69 @@ export default function AdminOrganizationsPage() {
                 </div>
               </div>
 
+              {/* Administrator — create-only. Never rendered while editing an
+                  existing organization, so the edit path is unaffected. */}
+              {!editingId && (
+                <div>
+                  <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionAdministrator')}</h4>
+                  <div style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
+                    <SadbSettingRow label={t('orgAdmin.createAdminToggleLabel')} sub={t('orgAdmin.createAdminToggleSub')}>
+                      <SadbToggle checked={createAdmin} onChange={setCreateAdmin} label={t('orgAdmin.createAdminToggleLabel')} />
+                    </SadbSettingRow>
+                  </div>
+
+                  {createAdmin && (
+                    <div className="grid grid-cols-2 gap-3" style={{ marginTop: 12 }}>
+                      <div>
+                        <label style={labelStyle}>{t('orgAdmin.labelAdminName')}</label>
+                        <input type="text" value={adminForm.name} onChange={e => setAdminForm(p => ({ ...p, name: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{t('orgAdmin.labelAdminUsername')}</label>
+                        <input type="text" value={adminForm.username} onChange={e => setAdminForm(p => ({ ...p, username: e.target.value }))} style={inputStyle} autoComplete="off" />
+                      </div>
+                      <div className="col-span-2">
+                        <label style={labelStyle}>{t('orgAdmin.labelAdminEmail')}</label>
+                        <input type="email" value={adminForm.email} onChange={e => setAdminForm(p => ({ ...p, email: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div className="col-span-2">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label style={{ ...labelStyle, marginBottom: 0 }}>{t('orgAdmin.labelAdminPassword')}</label>
+                          <button
+                            type="button"
+                            onClick={() => { setAdminForm(p => ({ ...p, password: generateTempPassword() })); setShowAdminPassword(true); }}
+                            className="flex items-center gap-1 text-xs font-semibold"
+                            style={{ color: 'var(--accent-text)' }}
+                          >
+                            <RefreshCw className="w-3 h-3" /> {t('orgAdmin.generatePassword')}
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type={showAdminPassword ? 'text' : 'password'}
+                            value={adminForm.password}
+                            onChange={e => setAdminForm(p => ({ ...p, password: e.target.value }))}
+                            style={{ ...inputStyle, paddingInlineEnd: 40, fontFamily: showAdminPassword ? 'var(--font-mono, monospace)' : undefined }}
+                            autoComplete="new-password"
+                          />
+                          <button type="button" onClick={() => setShowAdminPassword(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2">
+                            {showAdminPassword
+                              ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                              : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+                          </button>
+                        </div>
+                        <p className="mt-1.5 text-[11px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                          <ShieldCheck className="w-3 h-3" /> {t('orgAdmin.adminPasswordHint')}
+                        </p>
+                      </div>
+                      {adminError && (
+                        <p className="col-span-2 text-xs" style={{ color: 'var(--color-danger-text)' }}>{adminError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="sadb-modal-actions" style={{ marginTop: 0, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>
                   {t('action.cancel')}
@@ -438,6 +580,19 @@ export default function AdminOrganizationsPage() {
           onCancel={() => setDeactivateTarget(null)}
           onConfirm={confirmDeactivate}
           busy={deactivating}
+        />
+      )}
+
+      {/* Credential hand-off for the administrator just created — same
+          one-time panel as /admin/users. Only ever set after createUser()
+          has actually succeeded (see handleSubmit). */}
+      {handoff && (
+        <CredentialHandoffModal
+          title={t('orgAdmin.handoffTitle')}
+          description={t('orgAdmin.handoffDescription')}
+          username={handoff.username}
+          password={handoff.password}
+          onClose={() => setHandoff(null)}
         />
       )}
     </SadbPage>

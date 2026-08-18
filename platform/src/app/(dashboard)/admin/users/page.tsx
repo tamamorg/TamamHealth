@@ -10,9 +10,10 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import type { UserDoc, UserRole } from '@/lib/db-types';
 import {
   UserX, UserCheck, UserPlus, Shield,
-  KeyRound, Copy, Check, RefreshCw, ShieldCheck, Eye, EyeOff,
+  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff,
 } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
 import { generateTempPassword } from '@/lib/temp-password';
 import { avatarTint } from '@/lib/patient-utils';
 import Select from '@/components/Select';
@@ -90,7 +91,6 @@ export default function AdminUsersPage() {
   // Credential hand-off — shown exactly once after a create or reset so the
   // admin can copy the temporary password before it is unrecoverable.
   const [handoff, setHandoff] = useState<{ username: string; password: string; kind: 'created' | 'reset' } | null>(null);
-  const [copied, setCopied] = useState(false);
   // Reset-password modal
   const [resetUser, setResetUser] = useState<UserDoc | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
@@ -534,53 +534,13 @@ export default function AdminUsersPage() {
 
       {/* Credential hand-off — shown once after a create or reset */}
       {handoff && (
-        <Modal onClose={() => { setHandoff(null); setCopied(false); }} width={420} labelledBy="handoff-title">
-          <div className="sadb-modal">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ color: 'var(--color-success-text)' }}>
-                <Check className="w-5 h-5" />
-              </div>
-              <div className="sadb-modal-copy" style={{ marginBottom: 0 }}>
-                <h2 id="handoff-title" className="sadb-modal-title">
-                  {handoff.kind === 'created' ? 'User created' : 'Password reset'}
-                </h2>
-                <p className="sadb-modal-sub">
-                  Share these credentials securely. The user must change the password at first login.
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-lg p-3 space-y-2" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', margin: '14px 0' }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Username</span>
-                <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{handoff.username}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Temporary password</span>
-                <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{handoff.password}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(`Username: ${handoff.username}\nTemporary password: ${handoff.password}`);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                } catch { /* clipboard unavailable — user can read the values above */ }
-              }}
-              className="btn btn-secondary btn-sm w-full justify-center mb-2"
-            >
-              {copied ? <><Check className="w-4 h-4" /> Copied</> : <><Copy className="w-4 h-4" /> Copy credentials</>}
-            </button>
-            <button
-              onClick={() => { setHandoff(null); setCopied(false); }}
-              className="btn btn-primary btn-sm w-full justify-center"
-            >
-              Done
-            </button>
-          </div>
-        </Modal>
+        <CredentialHandoffModal
+          title={handoff.kind === 'created' ? t('adminUsers.handoffCreatedTitle') : t('adminUsers.handoffResetTitle')}
+          description={t('adminUsers.handoffDescription')}
+          username={handoff.username}
+          password={handoff.password}
+          onClose={() => setHandoff(null)}
+        />
       )}
 
       {/* Reset Password Modal — danger treatment: resetting credentials ends
