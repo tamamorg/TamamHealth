@@ -88,3 +88,28 @@ VERIFY=$(compose exec -T platform node -e '
     }).catch(error => { console.error(error.message); process.exit(1); });
 ')
 echo "verification=$VERIFY"
+
+LOGIN_VERIFY=$(compose exec -T platform node -e '
+  fetch("http://127.0.0.1:3000/api/auth/login", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "origin": "http://127.0.0.1:3000"
+    },
+    body: JSON.stringify({
+      username: "superadmin",
+      password: process.env.SUPERADMIN_INITIAL_PASSWORD
+    })
+  }).then(async response => {
+    const body = await response.json().catch(() => ({}));
+    const result = {
+      status: response.status,
+      ok: response.ok,
+      role: body.user?.role,
+      mustChangePassword: body.user?.mustChangePassword
+    };
+    console.log(JSON.stringify(result));
+    if (!response.ok || result.role !== "super_admin") process.exitCode = 1;
+  }).catch(error => { console.error(error.message); process.exit(1); });
+')
+echo "login=$LOGIN_VERIFY"
