@@ -40,7 +40,7 @@ export default async function TermsPage() {
             ))}
             <div style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 22, display: "flex", gap: 20, flexWrap: "wrap" }}>
               <Link href="/contact" style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, textDecoration: "none" }}>{t("Contact us  ›")}</Link>
-              <a href={platformHref("staff")} style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, textDecoration: "none" }}>{t("Log in to the platform  ›")}</a>
+              <a href={platformHref("staff")} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, textDecoration: "none" }}>{t("Log in to the platform  ›")}</a>
             </div>
           </div>
         </div>

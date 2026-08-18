@@ -58,7 +58,7 @@ export default async function SiteFooter() {
           {/* Privacy lives as a clause inside the terms, so it deep-links to
               that clause rather than dropping the reader at the page top. */}
           <HashLink href="/terms#patient-data" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Privacy Policy")}</HashLink>
-          <a href={platformHref("staff")} style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Platform login")}</a>
+          <a href={platformHref("staff")} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Platform login")}</a>
         </div>
       </div>
     </footer>

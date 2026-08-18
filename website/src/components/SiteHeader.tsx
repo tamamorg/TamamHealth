@@ -191,11 +191,16 @@ export default function SiteHeader() {
               <div className="blueprint" style={{ position: "absolute", right: 0, top: 40, width: 262, background: "#FFFFFF", boxShadow: "var(--shadow-md)", padding: "18px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
                 <Corners />
                 <span className="fs11" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>{t("Log in to the portal")}</span>
+                {/* These point at the platform on another origin (see
+                    platformHref), so they open in a new tab: someone reading
+                    the site keeps their place instead of losing it to a
+                    sign-in form. A plain anchor rather than next/link — there
+                    is no client-side route to prefetch across origins. */}
                 {PORTAL_LINKS.map((p) => (
-                  <Link key={p.label} href={p.href} style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 2 }}>
+                  <a key={p.label} href={p.href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 2 }}>
                     <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 17, color: "#0E2A4A" }}>{p.label} &nbsp;›</span>
                     <span className="fs125" style={{ color: "var(--color-neutral-600)" }}>{p.note}</span>
-                  </Link>
+                  </a>
                 ))}
                 <span className="fs12" style={{ lineHeight: 1.5, color: "var(--color-neutral-600)", borderTop: "1px solid var(--color-divider)", paddingTop: 10 }}>
                   {t("Accounts are issued by your facility administrator.")}

@@ -47,7 +47,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     patient portal opens the patient side, every clinical
                     product the staff side. Bare /login sent all six to the
                     staff picker, patients included. */}
-                <a href={platformHref(p.slug === "pps" ? "patient" : "staff")} className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, whiteSpace: "nowrap", flexShrink: 0, background: "transparent", borderColor: "rgba(255,255,255,0.5)", color: "#FFFFFF" }}>
+                <a href={platformHref(p.slug === "pps" ? "patient" : "staff")} target="_blank" rel="noopener noreferrer" className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, whiteSpace: "nowrap", flexShrink: 0, background: "transparent", borderColor: "rgba(255,255,255,0.5)", color: "#FFFFFF" }}>
                   {p.slug === "pps" ? t("Patient log in") : t("Staff log in")}
                   <Corners light />
                 </a>
