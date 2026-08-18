@@ -192,6 +192,7 @@ export const platformConfigDB = () => getDB('tamamhealth_platform_config');
 export const appointmentsDB = () => getDB('tamamhealth_appointments');
 export const availabilityDB = () => getDB('tamamhealth_availability');
 export const announcementsDB = () => getDB('tamamhealth_announcements');
+export const accountRequestsDB = () => getDB('tamamhealth_account_requests');
 export const telehealthDB = () => getDB('tamamhealth_telehealth');
 export const pharmacyInventoryDB = () => getDB('tamamhealth_pharmacy_inventory');
 export const triageDB = () => getDB('tamamhealth_triage');
@@ -483,7 +484,7 @@ export async function resetAllDatabases(): Promise<void> {
     'tamamhealth_handoffs', 'tamamhealth_order_sets', 'tamamhealth_phone_notes', 'tamamhealth_assessments',
     // Operational DBs that were created + synced but previously missed here,
     // leaving stale data behind on reset/re-seed.
-    'tamamhealth_availability', 'tamamhealth_announcements',
+    'tamamhealth_availability', 'tamamhealth_announcements', 'tamamhealth_account_requests',
     'tamamhealth_emergency_plans', 'tamamhealth_assets',
     'tamamhealth_leave_requests', 'tamamhealth_payroll_entries', 'tamamhealth_patient_feedback',
     'tamamhealth_clinical_favorites', 'tamamhealth_consultation_templates',

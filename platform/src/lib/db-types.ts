@@ -2074,6 +2074,48 @@ export interface AnnouncementDoc extends BaseDoc {
   payam?: string;
 }
 
+// ===== Account requests =====
+/**
+ * Someone asking to be given an account, from the public request form.
+ *
+ * This is a *claim*, never an identity: every field is typed by an
+ * unauthenticated stranger and is shown to the approver as such. Nothing here
+ * grants access — approval calls the same `createUser` an admin uses by hand,
+ * with the same role guards, so a request cannot mint an account the approver
+ * could not have created themselves.
+ */
+export interface AccountRequestDoc extends BaseDoc {
+  type: 'account_request';
+  fullName: string;
+  email: string;
+  phone?: string;
+  requestedRole: UserRole;
+  /** The organisation and facility the requester says they belong to. */
+  orgId?: string;
+  orgName?: string;
+  hospitalId?: string;
+  hospitalName?: string;
+  /** Why they need access — free text, shown to the approver. */
+  note?: string;
+  /**
+   * Who is allowed to decide this, derived on the server from the requested
+   * role and organisation. Never accepted from the client: it is the whole
+   * authorization decision, and a requester who could set it would choose
+   * their own approver.
+   */
+  approverTier: 'super_admin' | 'org_admin';
+  status: AccountRequestStatus;
+  decidedBy?: string;
+  decidedByName?: string;
+  decidedAt?: string;
+  /** Reason shown on rejection, or a note recorded on approval. */
+  decisionNote?: string;
+  /** Username minted when approved, so the request records what it produced. */
+  createdUsername?: string;
+}
+
+export type AccountRequestStatus = 'pending' | 'approved' | 'rejected';
+
 // ===== Blood Bank Management =====
 export interface BloodBankDoc extends BaseDoc {
   type: 'blood_bank';
