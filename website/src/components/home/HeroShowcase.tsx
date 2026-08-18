@@ -13,7 +13,7 @@ import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { emphasise } from "@/components/emphasise";
 
 export default function HeroShowcase() {
-  const { content } = useLanguage();
+  const { t, content } = useLanguage();
   const HEROES = content(HEROES_EN);
   const [hero, setHero] = useState(0);
   const h = HEROES[hero];
@@ -48,7 +48,7 @@ export default function HeroShowcase() {
             <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>{emphasise(h.body)}</p>
             <div className="tm-hero-btns" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
               <Link href={h.href} className="btn btn-primary blueprint" style={{ padding: "13px 26px", fontSize: 15, color: "#0E2A4A" }}>
-                Learn more
+                {t("Learn more")}
                 <Corners />
               </Link>
               {/* Not /products — that is the catalogue. "Our Solution" is a
@@ -58,7 +58,7 @@ export default function HeroShowcase() {
                   states what the answer is before the eight failures argue it,
                   and deep-linking past it dropped the reader mid-argument. */}
               <Link href="/platform" className="btn btn-secondary" style={{ padding: "13px 26px", fontSize: 15 }}>
-                Our Solution
+                {t("Our Solution")}
               </Link>
             </div>
           </div>

@@ -90,6 +90,8 @@ const OPAQUE_KEYS = new Set([
   'WEB3FORMS_ACCESS_KEY',
   // SVG path geometry on the challenge icons.
   'd', 'd2', 'd3',
+  // `menu` names which mega-menu a nav item opens — a lookup into MENU_DATA.
+  'menu',
 ]);
 
 export function translateDeep<T>(value: T, dict: Dictionary): T {

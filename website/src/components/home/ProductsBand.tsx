@@ -12,7 +12,7 @@ import { PRODUCTS as PRODUCTS_EN } from "@/lib/site-data";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export default function ProductsBand() {
-  const { content } = useLanguage();
+  const { t, content } = useLanguage();
   const PRODUCTS = content(PRODUCTS_EN);
   const [prod, setProd] = useState(0);
   const p = PRODUCTS[prod];
@@ -23,13 +23,13 @@ export default function ProductsBand() {
       <div className="tm-inset" style={{ position: "relative", maxWidth: 1320, margin: "0 auto", padding: "0 32px 34px" }}>
         <div className="tm-prod-grid" style={{ display: "grid", gridTemplateColumns: "425px 1fr", alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column", padding: "41px 0 0" }}>
-            <h2 style={{ fontSize: "clamp(26px, 2.6vw, 34px)", margin: 0, color: "#FFFFFF", letterSpacing: "-0.01em" }}>Products</h2>
+            <h2 style={{ fontSize: "clamp(26px, 2.6vw, 34px)", margin: 0, color: "#FFFFFF", letterSpacing: "-0.01em" }}>{t("Products")}</h2>
             {/* Desktop product picker. Hidden under 760px, where HeroNav below
                 takes over the same job in a form that fits the width. */}
             <div className="tm-prod-tabs" style={{ display: "flex", flexDirection: "column", marginTop: 87 }}>
-              {PRODUCTS.map((t, i) => (
+              {PRODUCTS.map((product, i) => (
                 <button
-                  key={t.slug}
+                  key={product.slug}
                   onClick={() => setProd(i)}
                   className="tm-tab"
                   style={{
@@ -40,7 +40,7 @@ export default function ProductsBand() {
                     color: i === prod ? "#FFFFFF" : "rgba(255,255,255,0.55)",
                   }}
                 >
-                  {t.title}
+                  {product.title}
                 </button>
               ))}
             </div>
@@ -48,8 +48,8 @@ export default function ProductsBand() {
 
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div className="tm-desk-steppers" style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "41px 0 0" }}>
-              <button onClick={() => step(-1)} aria-label="Previous product" style={{ appearance: "none", cursor: "pointer", width: 38, height: 38, border: 0, background: "#BBD9EC", color: "#FFFFFF", fontSize: 16, display: "grid", placeItems: "center" }}>‹</button>
-              <button onClick={() => step(1)} aria-label="Next product" style={{ appearance: "none", cursor: "pointer", width: 38, height: 38, border: 0, background: "#015697", color: "#FFFFFF", fontSize: 16, display: "grid", placeItems: "center" }}>›</button>
+              <button onClick={() => step(-1)} aria-label={t("Previous product")} style={{ appearance: "none", cursor: "pointer", width: 38, height: 38, border: 0, background: "#BBD9EC", color: "#FFFFFF", fontSize: 16, display: "grid", placeItems: "center" }}>‹</button>
+              <button onClick={() => step(1)} aria-label={t("Next product")} style={{ appearance: "none", cursor: "pointer", width: 38, height: 38, border: 0, background: "#015697", color: "#FFFFFF", fontSize: 16, display: "grid", placeItems: "center" }}>›</button>
             </div>
           </div>
         </div>
@@ -64,13 +64,13 @@ export default function ProductsBand() {
             <h3 style={{ fontSize: "clamp(24px, 2.6vw, 32px)", margin: "0 0 18px" }}>{p.title}</h3>
             <p style={{ margin: "0 0 26px", fontSize: 16, lineHeight: 1.62, color: "var(--color-neutral-800)" }}>{p.description}</p>
             <Link href={`/products/${p.slug}`} style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 17, color: p.accent, textDecoration: "none" }}>
-              Learn more &nbsp;›
+              {t("Learn more  ›")}
             </Link>
           </div>
         </div>
 
         <HeroNav
-          items={PRODUCTS.map((t) => ({ key: t.slug, label: t.acronym }))}
+          items={PRODUCTS.map((product) => ({ key: product.slug, label: product.acronym }))}
           active={prod}
           onPick={setProd}
           onPrev={() => step(-1)}

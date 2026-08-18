@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Corners from "@/components/Corners";
+import { emphasise } from "@/components/emphasise";
 import { DERBY_PHOTOS as DERBY_PHOTOS_EN, GOALS as GOALS_EN, TEAM as TEAM_EN } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 
@@ -81,9 +82,7 @@ export default async function AboutPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0 }}>{t("Our goal is to prove it works, then bring it to every clinic that needs it")}</h2>
             <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
-              {t("We’re raising")} <strong>$100,000</strong>{" "}to launch TamamHealth in 10 clinics across Juba and greater South Sudan — proof
-              that offline-first digital records can work in the hardest conditions, and a foundation built to scale across
-              sub-Saharan Africa.
+              {emphasise(t("We’re raising **$100,000** to launch TamamHealth in 10 clinics across Juba and greater South Sudan — proof that offline-first digital records can work in the hardest conditions, and a foundation built to scale across sub-Saharan Africa."))}
             </p>
           </div>
           <div>

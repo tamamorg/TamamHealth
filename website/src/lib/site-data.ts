@@ -1121,3 +1121,105 @@ export const FOOTER_COLS: { accent: string; title: string; links: FooterLink[] }
    Web3Forms is designed for browser-side submission; the key is public by
    design (it only routes mail to the account that owns it). */
 export const WEB3FORMS_ACCESS_KEY = "e45ff797-cfa3-459e-80db-cda054dd35ea";
+
+/* ── Site header navigation ──
+   These lived in SiteHeader.tsx until the site gained a second language. They
+   are copy, and copy belongs where the translation extractor looks — a nav
+   label hidden in a component was the one class of string it could not see. */
+
+export type MenuKey = "products" | "platform" | "system" | "about";
+
+export interface MenuLink {
+  label: string;
+  note: string;
+  href: string;
+}
+
+/* Six links. Contact is deliberately not among them: the amber "Get in touch"
+   button beside this list is the route to /contact, and listing it twice made
+   the row's one call to action compete with a plain link to the same page.
+   The About mega menu and the footer still carry it. */
+export const NAV_ITEMS: { label: string; href: string; menu: MenuKey | null }[] = [
+  // Platform leads: it is the argument — one record, and what that fixes. The
+  // six products are how that argument is packaged, which only reads once the
+  // reader knows what they are packaging.
+  { label: "Platform", href: "/platform", menu: "platform" },
+  { label: "Products", href: "/products", menu: "products" },
+  { label: "The health system", href: "/health-system", menu: "system" },
+  { label: "About", href: "/about", menu: "about" },
+  { label: "News & updates", href: "/news", menu: null },
+  { label: "Donate", href: "/donate", menu: null },
+];
+
+export const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: string; allHref: string; links: MenuLink[] }> = {
+  products: {
+    title: "Products",
+    blurb: "Six products for every tier of care — hospital, clinic, laboratory, radiology, pharmacy, and the patient's own portal.",
+    allLabel: "View all products",
+    allHref: "/products",
+    links: PRODUCTS.map((p) => ({ label: p.title, note: p.tagline, href: `/products/${p.slug}` })),
+  },
+  system: {
+    title: "The health system",
+    blurb: "Six levels of care from the Boma health worker to the teaching hospital — and how Tamam fits the Ministry's own structure rather than replacing it.",
+    allLabel: "National alignment",
+    allHref: "/health-system",
+    links: [
+      { label: "Six levels of care", note: "Community, PHCU, PHCC, county, state, referral", href: "/health-system#levels" },
+      { label: "National alignment", note: "Shaped around the 2025 EHSP", href: "/health-system" },
+      { label: "Deployment footprint", note: "Pilot and planned sites across South Sudan", href: "/#footprint" },
+      { label: "DHIS2 reporting", note: "Records that roll up into national reports", href: "/platform#how-it-works" },
+      { label: "The reality we build for", note: "4% have internet, 13% have power", href: "/health-system#reality" },
+      { label: "The Ministry's own diagnosis", note: "Parallel, disconnected systems", href: "/health-system#diagnosis" },
+    ],
+  },
+  platform: {
+    title: "The platform",
+    blurb: "One offline-first record behind every product — simple enough for the front desk, strong enough for the nation.",
+    /* The panel's headline link stays inside the section it heads, like the
+       other three menus. The two portal links below already carry log-in. */
+    allLabel: "The platform",
+    allHref: "/platform",
+    links: [
+      { label: "How it works", note: "A patient day, end to end", href: "/platform#how-it-works" },
+      { label: "Offline-first by design", note: "Power cuts, network gaps, role-based access", href: "/platform#offline" },
+      { label: "Where care breaks down", note: "The paper problem the platform replaces", href: "/health-system#challenges" },
+      { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: platformHref("staff") },
+      { label: "Patient portal", note: "Records, prescriptions and results", href: platformHref("patient") },
+      { label: "Get in touch", note: "See it on a real patient day", href: "/contact" },
+    ],
+  },
+  about: {
+    title: "About Tamam",
+    blurb: "Why Tamam exists, what the data says, and the team building it — founded at Tufts University, starting in South Sudan, built for sub-Saharan Africa.",
+    allLabel: "About Tamam",
+    allHref: "/about",
+    links: [
+      { label: "The Problem", note: "Care delivered under impossible conditions", href: "/about#crisis" },
+      { label: "The Goal", note: "$100K pilot across 10 clinics", href: "/about#goal" },
+      { label: "The Team", note: "Built by people who've lived this", href: "/about#team" },
+      { label: "Contact", note: "Get involved", href: "/contact" },
+    ],
+  },
+};
+
+// Straight to the platform, not through this origin's /login redirect — see
+// platformHref. These are the links a reader clicks expecting to arrive at a
+// sign-in form, so they should cost one navigation, not two.
+export const PORTAL_LINKS = [
+  { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: platformHref("staff") },
+  { label: "Patient portal", note: "Your records, prescriptions and results", href: platformHref("patient") },
+  { label: "Ministry dashboard", note: "National reporting and DHIS2 export", href: platformHref("ministry") },
+  { label: "Platform admin", note: "Organisations, provisioning and governance", href: platformHref("superadmin") },
+];
+
+export const SEARCH_SUGGESTIONS = [
+  { label: "Offline-first records", href: "/platform#offline" },
+  { label: "HMIS for hospitals", href: "/products/hmis" },
+  { label: "DHIS2 reporting", href: "/platform#how-it-works" },
+  { label: "Pilot clinics", href: "/#footprint" },
+  { label: "News & updates", href: "/news" },
+  { label: "Donate", href: "/donate" },
+  { label: "Get in touch", href: "/contact" },
+];
+

@@ -10,7 +10,7 @@ import { CARE_LEVELS as CARE_LEVELS_EN, careLevelLabel } from "@/lib/site-data";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export default function LevelsExplorer() {
-  const { content } = useLanguage();
+  const { t, content } = useLanguage();
   const CARE_LEVELS = content(CARE_LEVELS_EN);
   const [level, setLevel] = useState(0);
   const lv = CARE_LEVELS[level];
@@ -20,15 +20,14 @@ export default function LevelsExplorer() {
     <div style={{ display: "flex", flexDirection: "column", gap: 30 }}>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 28, flexWrap: "wrap" }}>
         <div style={{ maxWidth: 640 }}>
-          <h2 style={{ fontSize: "clamp(25px, 3.6vw, 40px)", margin: "0 0 10px" }}>The six levels of care</h2>
+          <h2 style={{ fontSize: "clamp(25px, 3.6vw, 40px)", margin: "0 0 10px" }}>{t("The six levels of care")}</h2>
           <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-            From the community health worker to the national referral hospital. Tamam covers every tier, so a patient&rsquo;s record
-            follows them up and down the referral chain.
+            {t("From the community health worker to the national referral hospital. Tamam covers every tier, so a patient’s record follows them up and down the referral chain.")}
           </p>
         </div>
         <div className="tm-desk-steppers" style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-secondary btn-icon" onClick={() => step(-1)} aria-label="Previous level">‹</button>
-          <button className="btn btn-secondary btn-icon" onClick={() => step(1)} aria-label="Next level">›</button>
+          <button className="btn btn-secondary btn-icon" onClick={() => step(-1)} aria-label={t("Previous level")}>‹</button>
+          <button className="btn btn-secondary btn-icon" onClick={() => step(1)} aria-label={t("Next level")}>›</button>
         </div>
       </div>
       <HeroNav

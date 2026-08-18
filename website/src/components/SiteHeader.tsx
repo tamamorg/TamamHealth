@@ -15,109 +15,23 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Corners from "@/components/Corners";
-import { PRODUCTS, SUPPORT_EMAIL, SUPPORT_PHONE, platformHref } from "@/lib/site-data";
+import {
+  MENU_DATA as MENU_DATA_EN,
+  NAV_ITEMS as NAV_ITEMS_EN,
+  PORTAL_LINKS as PORTAL_LINKS_EN,
+  SEARCH_SUGGESTIONS as SEARCH_SUGGESTIONS_EN,
+  SUPPORT_EMAIL,
+  SUPPORT_PHONE,
+} from "@/lib/site-data";
+import type { MenuKey } from "@/lib/site-data";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
 import { searchSite, type SearchHit } from "@/lib/site-search";
 import HashLink from "@/components/HashLink";
 import { hashTargetOnPage, scrollToHash } from "@/lib/hash-nav";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
-type MenuKey = "products" | "platform" | "system" | "about";
 type UtilKey = "account" | "lang" | "search" | "drawer";
 
-interface MenuLink {
-  label: string;
-  note: string;
-  href: string;
-}
-
-/* Six links. Contact is deliberately not among them: the amber "Get in touch"
-   button beside this list is the route to /contact, and listing it twice made
-   the row's one call to action compete with a plain link to the same page.
-   The About mega menu and the footer still carry it. */
-const NAV_ITEMS: { label: string; href: string; menu: MenuKey | null }[] = [
-  // Platform leads: it is the argument — one record, and what that fixes. The
-  // six products are how that argument is packaged, which only reads once the
-  // reader knows what they are packaging.
-  { label: "Platform", href: "/platform", menu: "platform" },
-  { label: "Products", href: "/products", menu: "products" },
-  { label: "The health system", href: "/health-system", menu: "system" },
-  { label: "About", href: "/about", menu: "about" },
-  { label: "News & updates", href: "/news", menu: null },
-  { label: "Donate", href: "/donate", menu: null },
-];
-
-const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: string; allHref: string; links: MenuLink[] }> = {
-  products: {
-    title: "Products",
-    blurb: "Six products for every tier of care — hospital, clinic, laboratory, radiology, pharmacy, and the patient's own portal.",
-    allLabel: "View all products",
-    allHref: "/products",
-    links: PRODUCTS.map((p) => ({ label: p.title, note: p.tagline, href: `/products/${p.slug}` })),
-  },
-  system: {
-    title: "The health system",
-    blurb: "Six levels of care from the Boma health worker to the teaching hospital — and how Tamam fits the Ministry's own structure rather than replacing it.",
-    allLabel: "National alignment",
-    allHref: "/health-system",
-    links: [
-      { label: "Six levels of care", note: "Community, PHCU, PHCC, county, state, referral", href: "/health-system#levels" },
-      { label: "National alignment", note: "Shaped around the 2025 EHSP", href: "/health-system" },
-      { label: "Deployment footprint", note: "Pilot and planned sites across South Sudan", href: "/#footprint" },
-      { label: "DHIS2 reporting", note: "Records that roll up into national reports", href: "/platform#how-it-works" },
-      { label: "The reality we build for", note: "4% have internet, 13% have power", href: "/health-system#reality" },
-      { label: "The Ministry's own diagnosis", note: "Parallel, disconnected systems", href: "/health-system#diagnosis" },
-    ],
-  },
-  platform: {
-    title: "The platform",
-    blurb: "One offline-first record behind every product — simple enough for the front desk, strong enough for the nation.",
-    /* The panel's headline link stays inside the section it heads, like the
-       other three menus. The two portal links below already carry log-in. */
-    allLabel: "The platform",
-    allHref: "/platform",
-    links: [
-      { label: "How it works", note: "A patient day, end to end", href: "/platform#how-it-works" },
-      { label: "Offline-first by design", note: "Power cuts, network gaps, role-based access", href: "/platform#offline" },
-      { label: "Where care breaks down", note: "The paper problem the platform replaces", href: "/health-system#challenges" },
-      { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: platformHref("staff") },
-      { label: "Patient portal", note: "Records, prescriptions and results", href: platformHref("patient") },
-      { label: "Get in touch", note: "See it on a real patient day", href: "/contact" },
-    ],
-  },
-  about: {
-    title: "About Tamam",
-    blurb: "Why Tamam exists, what the data says, and the team building it — founded at Tufts University, starting in South Sudan, built for sub-Saharan Africa.",
-    allLabel: "About Tamam",
-    allHref: "/about",
-    links: [
-      { label: "The Problem", note: "Care delivered under impossible conditions", href: "/about#crisis" },
-      { label: "The Goal", note: "$100K pilot across 10 clinics", href: "/about#goal" },
-      { label: "The Team", note: "Built by people who've lived this", href: "/about#team" },
-      { label: "Contact", note: "Get involved", href: "/contact" },
-    ],
-  },
-};
-
-// Straight to the platform, not through this origin's /login redirect — see
-// platformHref. These are the links a reader clicks expecting to arrive at a
-// sign-in form, so they should cost one navigation, not two.
-const PORTAL_LINKS = [
-  { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: platformHref("staff") },
-  { label: "Patient portal", note: "Your records, prescriptions and results", href: platformHref("patient") },
-  { label: "Ministry dashboard", note: "National reporting and DHIS2 export", href: platformHref("ministry") },
-  { label: "Platform admin", note: "Organisations, provisioning and governance", href: platformHref("superadmin") },
-];
-
-const SEARCH_SUGGESTIONS = [
-  { label: "Offline-first records", href: "/platform#offline" },
-  { label: "HMIS for hospitals", href: "/products/hmis" },
-  { label: "DHIS2 reporting", href: "/platform#how-it-works" },
-  { label: "Pilot clinics", href: "/#footprint" },
-  { label: "News & updates", href: "/news" },
-  { label: "Donate", href: "/donate" },
-  { label: "Get in touch", href: "/contact" },
-];
 
 export default function SiteHeader() {
   const pathname = usePathname();
@@ -125,7 +39,14 @@ export default function SiteHeader() {
   const [condensed, setCondensed] = useState(false);
   const [menu, setMenu] = useState<MenuKey | null>(null);
   const [util, setUtil] = useState<UtilKey | null>(null);
-  const { locale, setLocale, t } = useLanguage();
+  const { locale, setLocale, t, content } = useLanguage();
+  // The header's own copy — nav labels, mega-menu blurbs, the portal list and
+  // the search suggestions — lives in site-data so one extractor sees every
+  // translatable string on the site. Translated here, per request language.
+  const NAV_ITEMS = content(NAV_ITEMS_EN);
+  const MENU_DATA = content(MENU_DATA_EN);
+  const PORTAL_LINKS = content(PORTAL_LINKS_EN);
+  const SEARCH_SUGGESTIONS = content(SEARCH_SUGGESTIONS_EN);
   const searchRef = useRef<HTMLInputElement>(null);
   // Search panel: what has been typed, and which result the keyboard is on.
   const [query, setQuery] = useState("");
@@ -151,7 +72,9 @@ export default function SiteHeader() {
      /news/[slug] sit under their own nav item, and /challenges/[slug] under
      "The health system" — that page carries the challenge rail. */
   const activeHref = useMemo(() => {
-    const item = NAV_ITEMS.find(
+    // Matched against the English source: this compares hrefs, which are never
+    // translated, so it must not re-run every time the language changes.
+    const item = NAV_ITEMS_EN.find(
       (n) => pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href + "/")) ||
         (n.href === "/health-system" && pathname.startsWith("/challenges")),
     );
@@ -249,11 +172,14 @@ export default function SiteHeader() {
                 start a call. Email is the channel that takes a click. */}
             <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--color-neutral-700)" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-              {SUPPORT_PHONE}
+              {/* Forced LTR. A phone number is a left-to-right run of digits and
+                  punctuation; under dir=rtl the bidi algorithm reorders the
+                  leading "+1" to the end and the number renders backwards. */}
+              <bdi dir="ltr">{SUPPORT_PHONE}</bdi>
             </span>
             <a href={`mailto:${SUPPORT_EMAIL}`} className="tm-utilink" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--color-neutral-700)", textDecoration: "none" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16"></rect><path d="m2 6 10 7 10-7"></path></svg>
-              {SUPPORT_EMAIL}
+              <bdi dir="ltr">{SUPPORT_EMAIL}</bdi>
             </a>
           </div>
 
