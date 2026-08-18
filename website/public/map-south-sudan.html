@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>South Sudan — deployment footprint</title>
+<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+<style>
+  html,body{margin:0;height:100%;background:transparent;font-family:"Barlow",system-ui,sans-serif}
+  #wrap{position:relative;width:100%;height:100%}
+  svg{width:100%;height:100%;display:block;overflow:visible}
+  .outline{fill:#DDF2FB;stroke:#015697;stroke-width:1.1}
+  .neighbour{fill:none;stroke:rgba(1,86,151,0.18);stroke-width:0.8}
+  .mk{cursor:pointer}
+  .mk rect{fill:#2191D0;stroke:#015697;stroke-width:0.8;transition:fill .15s,transform .15s}
+  .mk:hover rect,.mk.on rect{fill:#015697}
+  .mk text{font-size:9.5px;fill:#0E2A4A;letter-spacing:.02em;pointer-events:none}
+  .mk.on text{font-weight:700}
+  .mk.pilot rect{fill:#015697;stroke:#015697}
+  .mk.pilot:hover rect,.mk.pilot.on rect{fill:#2191D0}
+</style>
+</head>
+<body>
+<div id="wrap"><svg id="map" role="img" aria-label="Map of South Sudan showing pilot and planned facility sites"></svg></div>
+<script>
+const SITES = [
+  { name:"Juba",      state:"Central Equatoria",        tier:"Referral / teaching tier", note:"Pilot launch site — 10-clinic pilot begins in Juba and greater South Sudan.", lat:4.85,  lon:31.58, pilot:true },
+  { name:"Kajo-keji", state:"Central Equatoria",        tier:"PHCU / community tier",    note:"Geocode household pilot — patient IDs in the form BOMA-KJ-HH1001.",           lat:3.88,  lon:31.65, pilot:true },
+  { name:"Torit",     state:"Eastern Equatoria",        tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:4.41,  lon:32.57 },
+  { name:"Yambio",    state:"Western Equatoria",        tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:4.57,  lon:28.40 },
+  { name:"Bor",       state:"Jonglei",                  tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:6.21,  lon:31.56 },
+  { name:"Rumbek",    state:"Lakes",                    tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:6.80,  lon:29.68 },
+  { name:"Wau",       state:"Western Bahr el Ghazal",   tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:7.70,  lon:27.99 },
+  { name:"Kuajok",    state:"Warrap",                   tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:8.32,  lon:27.98 },
+  { name:"Aweil",     state:"Northern Bahr el Ghazal",  tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:8.77,  lon:27.40 },
+  { name:"Bentiu",    state:"Unity",                    tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:9.26,  lon:29.80 },
+  { name:"Malakal",   state:"Upper Nile",               tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:9.53,  lon:31.66 }
+];
+const svg = d3.select("#map");
+let W = 0, H = 0, active = 0;
+
+function send(i){
+  const s = SITES[i];
+  parent.postMessage({ type:"site", index:i, name:s.name, state:s.state, tier:s.tier, note:s.note, pilot:!!s.pilot }, "*");
+}
+
+function select(i){
+  active = i;
+  d3.selectAll(".mk").classed("on", (d, j) => j === i);
+  send(i);
+}
+window.addEventListener("message", e => {
+  if (e.data && e.data.type === "select" && typeof e.data.index === "number") select(e.data.index);
+});
+
+d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json").then(topo => {
+  const all = topojson.feature(topo, topo.objects.countries).features;
+  const ss = all.find(f => /S\.? ?Sudan|South Sudan/i.test(f.properties.name));
+  const near = all.filter(f => f !== ss && ["Sudan","Ethiopia","Kenya","Uganda","Dem. Rep. Congo","Central African Rep."].includes(f.properties.name));
+  draw(ss, near);
+  window.addEventListener("resize", () => draw(ss, near));
+});
+
+function draw(ss, near){
+  const el = document.getElementById("wrap");
+  W = el.clientWidth; H = el.clientHeight;
+  svg.attr("viewBox", `0 0 ${W} ${H}`).selectAll("*").remove();
+  const proj = d3.geoMercator().fitExtent([[W*0.10,H*0.07],[W*0.90,H*0.93]], ss);
+  const path = d3.geoPath(proj);
+  svg.append("g").selectAll("path").data(near).join("path").attr("class","neighbour").attr("d",path);
+  svg.append("path").attr("class","outline").attr("d",path(ss));
+  const g = svg.append("g");
+  SITES.forEach((s,i) => {
+    const p = proj([s.lon, s.lat]);
+    const sz = s.pilot ? 11 : 7;
+    const mk = g.append("g")
+      .attr("class","mk" + (s.pilot?" pilot":"") + (i===active?" on":""))
+      .attr("transform",`translate(${p[0]},${p[1]})`)
+      .attr("tabindex",0).attr("role","button").attr("aria-label",s.name)
+      .on("click", () => { active = i; g.selectAll(".mk").classed("on",(d,j)=>j===i); send(i); })
+      .on("mouseenter", () => send(i))
+      .on("focus", () => send(i));
+    mk.append("rect").attr("x",-sz/2).attr("y",-sz/2).attr("width",sz).attr("height",sz);
+    mk.append("text").attr("x", s.name==="Malakal"||s.name==="Bentiu"||s.name==="Bor"||s.name==="Torit" ? sz : -sz)
+      .attr("y",3.5).attr("text-anchor", s.name==="Malakal"||s.name==="Bentiu"||s.name==="Bor"||s.name==="Torit" ? "start":"end")
+      .text(s.name);
+  });
+  send(active);
+}
+</script>
+</body>
+</html>

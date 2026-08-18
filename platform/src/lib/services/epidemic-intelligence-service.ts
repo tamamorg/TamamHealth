@@ -1,5 +1,5 @@
-import { diseaseAlertsDB } from '../db';
-import type { DiseaseAlertDoc } from '../db-types';
+import { diseaseAlertsDB, hospitalsDB } from '../db';
+import type { DiseaseAlertDoc, HospitalDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
@@ -286,7 +286,7 @@ function generateSyndromicAlerts(alerts: DiseaseAlertDoc[]): SyndromicAlert[] {
   return syndromes.sort((a, b) => (b.exceeded ? 1 : 0) - (a.exceeded ? 1 : 0) || b.percentChange - a.percentChange);
 }
 
-function generateIDSRReport(alerts: DiseaseAlertDoc[]): IDSRWeeklyReport {
+function generateIDSRReport(alerts: DiseaseAlertDoc[], totalFacilities: number): IDSRWeeklyReport {
   const now = new Date();
   const reportingWeek = getISOWeek(now);
   const diseaseGroups = new Map<string, { cases: number; deaths: number; states: Set<string> }>();
@@ -314,15 +314,15 @@ function generateIDSRReport(alerts: DiseaseAlertDoc[]): IDSRWeeklyReport {
     states: Array.from(data.states),
   })).sort((a, b) => b.cases - a.cases);
 
-  // `totalFacilitiesReporting` and `completeness` should reflect actual
-  // surveillance reporting submissions for the week. Until that aggregator
-  // exists we derive them from the alert payload itself: the number of
-  // unique facilities that reported any alert this week, and the fraction
-  // of the country's facilities that submitted at all. Defaults to 0 so the
-  // government / IDSR view never shows a fabricated reporting rate.
+  // Facilities that reported anything THIS WEEK (the disease table above is
+  // cumulative; reporting activity is a weekly measure), over the registered
+  // facility roster as the denominator. When the roster count is unknown the
+  // rate stays 0 rather than fabricating a reporting rate.
+  const weekStart = jubaWeekStart(now);
   const reportingFacilities = new Set(
     alerts
-      .map(a => (a as DiseaseAlertDoc & { hospitalId?: string; facilityId?: string }))
+      .filter(a => a.reportDate && jubaWeekStart(a.reportDate) === weekStart)
+      .map(a => (a as DiseaseAlertDoc & { facilityId?: string }))
       .map(a => a.hospitalId || a.facilityId || '')
       .filter(Boolean)
   );
@@ -332,10 +332,9 @@ function generateIDSRReport(alerts: DiseaseAlertDoc[]): IDSRWeeklyReport {
     reportingWeek,
     totalFacilitiesReporting,
     diseases,
-    // We do not know the denominator (total facilities expected to report)
-    // here, so leave completeness at 0. The IDSR page should fetch it from
-    // the facility-assessment service once that path is wired up.
-    completeness: 0,
+    completeness: totalFacilities > 0
+      ? Math.round((totalFacilitiesReporting / totalFacilities) * 100)
+      : 0,
   };
 }
 
@@ -450,10 +449,19 @@ export async function getEpidemicIntelligence(scope?: DataScope): Promise<Epidem
   // and per-facility users see only their own scope.
   if (scope) alerts = filterByScope(alerts, scope);
 
+  // Facility roster (same scope as the alerts) — the IDSR completeness
+  // denominator: how many facilities *should* be reporting each week.
+  let totalFacilities = 0;
+  try {
+    let hospitals = await findByType<HospitalDoc>(hospitalsDB(), 'hospital');
+    if (scope) hospitals = filterByScope(hospitals, scope);
+    totalFacilities = hospitals.length;
+  } catch { /* roster unavailable — completeness honestly reads 0 */ }
+
   const curves = buildEpidemicCurves(alerts);
   const rtEstimates = estimateRt(curves);
   const syndromicAlerts = generateSyndromicAlerts(alerts);
-  const idsrReport = generateIDSRReport(alerts);
+  const idsrReport = generateIDSRReport(alerts, totalFacilities);
   const geographicSpread = analyzeGeographicSpread(alerts);
   const ewarsAlerts = generateEWARSAlerts(alerts);
 
@@ -462,8 +470,12 @@ export async function getEpidemicIntelligence(scope?: DataScope): Promise<Epidem
   const emergencyStates = new Set(
     alerts.filter(a => a.alertLevel === 'emergency').map(a => a.state)
   );
-  const thisWeekCases = alerts.reduce((s, a) => s + a.cases, 0);
-  const thisWeekDeaths = alerts.reduce((s, a) => s + a.deaths, 0);
+  // "This week" means this week — the totals sum only alerts reported in the
+  // current Juba reporting week, not the whole alert history.
+  const currentWeekStart = jubaWeekStart(new Date());
+  const thisWeekAlerts = alerts.filter(a => a.reportDate && jubaWeekStart(a.reportDate) === currentWeekStart);
+  const thisWeekCases = thisWeekAlerts.reduce((s, a) => s + a.cases, 0);
+  const thisWeekDeaths = thisWeekAlerts.reduce((s, a) => s + a.deaths, 0);
   // `rtEstimates` is sorted with known Rt values first (nulls last), so the
   // first entry with a non-null `rt` is the genuine highest reproduction
   // number. If every disease has insufficient data, `highestRt` is honestly

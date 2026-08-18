@@ -36,7 +36,7 @@ import PatientTimeline from '@/components/PatientTimeline';
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
-import { states as SOUTH_SUDAN_STATES, statesAndCounties } from '@/data/mock';
+import { states as SOUTH_SUDAN_STATES, statesAndCounties } from '@/lib/data/south-sudan-reference';
 import { formatDateTime, formatDate, formatClockTime, formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { isScreeningOverdue } from '@/lib/services/screening-service';
 import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
@@ -82,7 +82,7 @@ import ChartVitalsBand from '@/components/ehr/chart/ChartVitalsBand';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import AllergiesSection from '@/components/ehr/chart/sections/AllergiesSection';
 import ConditionsSection from '@/components/ehr/chart/sections/ConditionsSection';
-import MedicationsSection from '@/components/ehr/chart/sections/MedicationsSection';
+import PharmacyWorkspace from '@/components/pharmacy/workflow/PharmacyWorkspace';
 import OrdersSection from '@/components/ehr/chart/sections/OrdersSection';
 import ProceduresSection from '@/components/ehr/chart/sections/ProceduresSection';
 import ProgramsSection from '@/components/ehr/chart/sections/ProgramsSection';
@@ -1371,7 +1371,7 @@ export default function PatientDetailPage() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Clinician name &amp; title</label>
+                  <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Clinician name &amp; title</label>
                   <input
                     autoFocus
                     value={printSignature}
@@ -1754,10 +1754,13 @@ export default function PatientDetailPage() {
                   </div>
                 </div>
               )}
-              <MedicationsSection
+              {/* Medication list, and the counter workflow for one script —
+                  the same shape the Labs tab gives the bench. */}
+              <PharmacyWorkspace
                 patientId={patient._id}
                 patientName={patientFullName(patient)}
                 canPrescribe={canPrescribe}
+                canWork={canDispense}
                 onAdd={() => setShowPrescribeModal(true)}
                 noKnownMedications={patient.noKnownMedications}
                 reconciliation={patient.medReconciliation}
@@ -1884,7 +1887,7 @@ export default function PatientDetailPage() {
                   </div>
                   <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Referrals</span>
                 </div>
-                <button onClick={() => router.push(`/referrals?patient=${encodeURIComponent(patient._id)}`)} className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--tamamhealth-blue)' }}>
+                <button onClick={() => router.push(`/referrals?patient=${encodeURIComponent(patient._id)}`)} className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--tamamhealth-blue)' }}>
                   All referrals <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1910,7 +1913,7 @@ export default function PatientDetailPage() {
                             {ref.status === 'sent' ? 'Sent' : ref.status === 'received' ? 'Received' : ref.status === 'seen' ? 'Being Seen' : ref.status === 'completed' ? 'Completed' : 'Cancelled'}
                           </span>
                           {tp && (
-                            <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
+                            <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
                               <Package className="w-3 h-3" /> Data Package
                             </span>
                           )}
@@ -1922,12 +1925,12 @@ export default function PatientDetailPage() {
                       <div className="flex items-center gap-2 text-sm mb-2">
                         <span style={{ color: 'var(--text-secondary)' }}>{ref.fromHospital}</span>
                         <span style={{ color: 'var(--text-muted)' }}>→</span>
-                        <span className="font-medium">{ref.toHospital}</span>
+                        <span className="font-semibold">{ref.toHospital}</span>
                         <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-subtle)' }}>{ref.department}</span>
                       </div>
                       {canViewClinical ? (
                         <>
-                          <p className="text-sm mb-1"><span className="font-medium">Reason:</span> {ref.reason}</p>
+                          <p className="text-sm mb-1"><span className="font-semibold">Reason:</span> {ref.reason}</p>
                           {ref.notes && (
                             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Notes: {ref.notes}</p>
                           )}
@@ -2622,7 +2625,6 @@ function PatientDemographicsView({
         <section className="tebra-demo-panel">
           <div className="tebra-demo-columns">
             <DemoField label="Portal Status" value="Not invited" />
-            <DemoField label="Patient Intake" value="Not sent" />
             <DemoField label="Reminder Channel" value={patient.whatsapp ? 'SMS / WhatsApp' : 'SMS'} />
           </div>
         </section>

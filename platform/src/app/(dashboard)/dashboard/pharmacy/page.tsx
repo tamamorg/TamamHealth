@@ -12,8 +12,9 @@ import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
 import { checkNewPrescription, type DrugInteraction, type InteractionSeverity } from '@/lib/services/drug-interaction-service';
-import { formatMoney , formatRxSig } from '@/lib/format-utils';
+import { formatMoney , formatRxSig, formatClockTime } from '@/lib/format-utils';
 import { isActivePharmacyStage, isFinanciallyCleared, pharmacyStage, pharmacyStageGroup, pharmacyStageLabel, pharmacyStageTone } from '@/lib/pharmacy-workflow';
+import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { PrescriptionDoc, PharmacyInventoryDoc, UserDoc } from '@/lib/db-types';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import EhrCareDashboard, {
@@ -51,7 +52,7 @@ function titleCaseDrug(name: string): string {
 
 function formatTime(iso?: string): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return formatClockTime(iso) || '—';
 }
 
 // Turns a minutes count into "1h 20m" / "45m" for the queue-wait stat tile.
@@ -64,7 +65,7 @@ function formatMinutes(totalMinutes: number): string {
 
 // Chart marks (not UI status pills, which keep using the --color-* tokens
 // elsewhere in this file) use the fixed brand chart palette.
-const CHART_BLUE = '#2a78d6';
+const CHART_BLUE = 'var(--chart-1)';
 const CHART_GREEN = 'var(--color-success)';
 const CHART_RED = 'var(--color-danger)';
 const CHART_AMBER = 'var(--color-warning)';
@@ -176,7 +177,7 @@ function DispenseModal({
         )}
 
         <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2 rounded-lg text-sm font-medium transition-all" style={{
+          <button onClick={onCancel} className="flex-1 py-2 rounded-lg text-sm font-bold transition-all" style={{
             background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)',
           }}>{t('action.cancel')}</button>
           <button
@@ -260,7 +261,7 @@ function ReceiveStockModal({ items, onConfirm, onClose, saving }: {
         </div>
 
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-medium transition-all" style={{
+          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-bold transition-all" style={{
             background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)',
           }}>{t('action.cancel')}</button>
           <button
@@ -301,8 +302,8 @@ export default function PharmacyDashboardPage() {
   const [showReceiveStock, setShowReceiveStock] = useState(false);
   const [receivingStock, setReceivingStock] = useState(false);
   // Prescription queue lane filter — the shared three-lane vocabulary every
-  // role dashboard shows: Scheduled = ordered/awaiting pickup by the workflow,
-  // In Office = actively being worked (review → cleared/held), Finished =
+  // role dashboard shows: Upcoming = ordered/awaiting pickup by the workflow,
+  // Checked In = actively being worked (review → cleared/held), Completed =
   // dispensed/counseled/complete.
   const [queueFilter, setQueueFilter] = useState<'scheduled' | 'in_office' | 'finished'>('scheduled');
   // Which stat panel (header toggles) occupies the center instead of the Rx
@@ -841,8 +842,11 @@ export default function PharmacyDashboardPage() {
     headerActions.push({ label: t('pharmacy.receiveStock'), icon: Package, onClick: () => setShowReceiveStock(true), tone: 'primary' });
   }
   headerActions.push({ label: t('pharmacy.kpiControlled'), icon: ShieldCheck, onClick: () => router.push('/controlled-substances') });
-  headerActions.push({ label: t('pharmacy.stockAlerts'), icon: AlertTriangle, onClick: () => setCenterPanel(p => (p === 'stock' ? null : 'stock')), active: centerPanel === 'stock', tone: centerPanel === 'stock' ? 'primary' : 'neutral' });
-  headerActions.push({ label: 'Analytics', icon: BarChart3, onClick: () => setCenterPanel(p => (p === 'charts' ? null : 'charts')), active: centerPanel === 'charts', tone: centerPanel === 'charts' ? 'primary' : 'neutral' });
+  // tourTarget on both toggles below: the guided tour opens each panel via
+  // preClickSelector before spotlighting station-body, which otherwise isn't
+  // in the DOM until a panel is open (see journeys/pharmacy.ts).
+  headerActions.push({ label: t('pharmacy.stockAlerts'), icon: AlertTriangle, onClick: () => setCenterPanel(p => (p === 'stock' ? null : 'stock')), active: centerPanel === 'stock', tone: centerPanel === 'stock' ? 'primary' : 'neutral', tourTarget: 'pharmacy-stock-alerts-toggle' });
+  headerActions.push({ label: 'Analytics', icon: BarChart3, onClick: () => setCenterPanel(p => (p === 'charts' ? null : 'charts')), active: centerPanel === 'charts', tone: centerPanel === 'charts' ? 'primary' : 'neutral', tourTarget: 'pharmacy-analytics-toggle' });
 
   return (
     <>
@@ -857,9 +861,9 @@ export default function PharmacyDashboardPage() {
           // undispensed belongs in today's queue, not off the end of it.
           filterRowsByDate={false}
           tabs={[
-            { key: 'scheduled', label: 'Scheduled', count: scheduledLaneCount },
-            { key: 'in_office', label: 'In Office', count: inOfficeLaneCount },
-            { key: 'finished', label: 'Finished', count: dispensedCount },
+            { key: 'scheduled', label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, count: scheduledLaneCount },
+            { key: 'in_office', label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, count: inOfficeLaneCount },
+            { key: 'finished', label: APPOINTMENT_STATUS_GROUP_LABELS.finished, count: dispensedCount },
           ]}
           activeTab={queueFilter}
           onTabChange={(k) => setQueueFilter(k as typeof queueFilter)}

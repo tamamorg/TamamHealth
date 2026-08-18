@@ -13,14 +13,19 @@ import {
   getVisibleAnnouncements, createAnnouncement, canPostAnnouncements,
 } from '@/lib/services/announcement-service';
 import type { UserDoc, AuditLogDoc, AnnouncementDoc, AnnouncementPriority } from '@/lib/db-types';
-import { SaPage, SaCard, SaStatusDot, SaPill, SaTable, formatWhen } from '@/components/admin/sa-ui';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import {
+  SadbPage, SadbShell, useSadbTab, SadbPanelHeader, SadbCard, SadbChip, SadbKvRow,
+  SadbQueueRow, SadbSearch, SadbSettingGroup, statusChip, type ChipTone,
+} from '@/components/admin/sadb-ui';
+import { SaTable, formatWhen } from '@/components/admin/sa-ui';
 import { Send, Building2, Users, ShieldCheck, Megaphone, ClipboardList } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 
 const SUPPORT_ACTION_RE = /support|impersonat|emergency|break/i;
 
-type SectionId = 'tenants' | 'users' | 'access' | 'announcements' | 'tickets';
+function priorityChipTone(p: AnnouncementPriority): ChipTone {
+  return p === 'urgent' ? 'red' : p === 'important' ? 'yellow' : 'neutral';
+}
 
 export default function AdminSupportPage() {
   const { currentUser } = useAuth();
@@ -44,10 +49,11 @@ export default function AdminSupportPage() {
   const [annOrgId, setAnnOrgId] = useState('');
   const [annPosting, setAnnPosting] = useState(false);
 
-  // Section switching is in-page state only — the URL never changes — since
-  // this page bundles five genuinely separate support topics (tenant lookup,
-  // user lookup, access policy, announcements, tickets) rather than one list.
-  const [activeSection, setActiveSection] = useState<SectionId>('tenants');
+  // Section switching is URL-backed (?tab=) via useSadbTab, so every one of
+  // the five support topics (tenant lookup, user lookup, access policy,
+  // announcements, tickets) is deep-linkable, replacing the old page-local
+  // saside rail.
+  const [activeSection, setActiveSection] = useSadbTab('tenants');
 
   useEffect(() => {
     getAllUsers().then(setUsers).catch(() => setUsers([])).finally(() => setUsersLoading(false));
@@ -142,46 +148,36 @@ export default function AdminSupportPage() {
     }
   };
 
-  const priorityTone = (p: AnnouncementPriority) => p === 'urgent' ? 'danger' as const : p === 'important' ? 'warn' as const : 'muted' as const;
-
-  const sections: { id: SectionId; label: string; icon: typeof Building2; count: number }[] = [
-    { id: 'tenants', label: 'Tenant lookup', icon: Building2, count: organizations.length },
-    { id: 'users', label: 'User lookup', icon: Users, count: users.length },
-    { id: 'access', label: 'Support access', icon: ShieldCheck, count: supportEvents.length },
-    { id: 'announcements', label: 'Announcements', icon: Megaphone, count: announcements.length },
-    { id: 'tickets', label: 'Ticket queue', icon: ClipboardList, count: 0 },
-  ];
+  const railGroups = [{
+    title: 'Support Operations',
+    items: [
+      { id: 'tenants', label: 'Tenant lookup', icon: Building2, count: organizations.length },
+      { id: 'users', label: 'User lookup', icon: Users, count: users.length },
+      { id: 'access', label: 'Support access', icon: ShieldCheck, count: supportEvents.length },
+      { id: 'announcements', label: 'Announcements', icon: Megaphone, count: announcements.length },
+      { id: 'tickets', label: 'Ticket queue', icon: ClipboardList, count: 0 },
+    ],
+  }];
 
   return (
-    <SaPage>
-      <div className="saside-shell">
-        <nav className="saside-nav" aria-label="Support operations sections">
-          <span className="saside-nav-title">Support Operations</span>
-          {sections.map(s => {
-            const Icon = s.icon;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                className={`saside-nav-item${activeSection === s.id ? ' is-active' : ''}`}
-                onClick={() => setActiveSection(s.id)}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{s.label}</span>
-                <b>{s.count}</b>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="saside-content">
-          {activeSection === 'tenants' && (
-            <SaCard>
-              <EhrListHeader
-                title="Tenant lookup & diagnostics"
-                stats={[{ label: 'Showing', value: `${filteredOrgs.length} of ${organizations.length}`, color: LIST_STAT_COLORS.muted }]}
-                search={{ value: orgQuery, onChange: setOrgQuery, placeholder: 'Search organizations by name, slug, or contact email', ariaLabel: 'Search organizations' }}
-              />
+    <SadbPage>
+      <SadbShell groups={railGroups} active={activeSection} onSelect={setActiveSection}>
+        {activeSection === 'tenants' && (
+          <>
+            <SadbPanelHeader
+              title="Tenant lookup & diagnostics"
+              note="Search organizations by name, slug, or contact email for account and billing diagnostics."
+              tag={`${filteredOrgs.length} of ${organizations.length}`}
+            />
+            <SadbCard>
+              <div className="sadb-search-row">
+                <SadbSearch
+                  value={orgQuery}
+                  onChange={setOrgQuery}
+                  placeholder="Search organizations by name, slug, or contact email"
+                  ariaLabel="Search organizations"
+                />
+              </div>
               <SaTable
                 columns={['Organization', 'Status', 'Plan', 'Users', 'Facilities', 'Last activity', '']}
                 empty={orgsLoading ? 'Loading organizations…' : 'No organizations match this search.'}
@@ -196,11 +192,7 @@ export default function AdminSupportPage() {
                         <strong>{org.name}</strong>
                         <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }}>{org.contactEmail}</div>
                       </td>
-                      <td>
-                        <SaPill tone={org.subscriptionStatus === 'active' ? 'ok' : org.subscriptionStatus === 'trial' ? 'info' : 'danger'}>
-                          {org.subscriptionStatus}
-                        </SaPill>
-                      </td>
+                      <td><SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip></td>
                       <td>{org.subscriptionPlan}</td>
                       <td className="sa-num">{usersLoading ? '…' : userCount}</td>
                       <td className="sa-num">{hospitalsLoading ? '…' : facilityCount}</td>
@@ -212,16 +204,26 @@ export default function AdminSupportPage() {
                   );
                 })}
               </SaTable>
-            </SaCard>
-          )}
+            </SadbCard>
+          </>
+        )}
 
-          {activeSection === 'users' && (
-            <SaCard>
-              <EhrListHeader
-                title="User lookup"
-                stats={[{ label: 'Showing', value: `up to 50 of ${users.length}`, color: LIST_STAT_COLORS.muted }]}
-                search={{ value: userQuery, onChange: setUserQuery, placeholder: 'Search users by name, username, or phone', ariaLabel: 'Search users' }}
-              />
+        {activeSection === 'users' && (
+          <>
+            <SadbPanelHeader
+              title="User lookup"
+              note="Search users by name, username, or phone."
+              tag={`up to 50 of ${users.length}`}
+            />
+            <SadbCard>
+              <div className="sadb-search-row">
+                <SadbSearch
+                  value={userQuery}
+                  onChange={setUserQuery}
+                  placeholder="Search users by name, username, or phone"
+                  ariaLabel="Search users"
+                />
+              </div>
               <SaTable
                 columns={['User', 'Role', 'Organization', 'Facility', 'Status']}
                 empty={usersLoading ? 'Loading users…' : 'No users match this search.'}
@@ -236,43 +238,44 @@ export default function AdminSupportPage() {
                     <td>{u.role.replace(/_/g, ' ')}</td>
                     <td>{u.orgId ? (orgById[u.orgId]?.name || u.orgId) : '—'}</td>
                     <td>{u.hospitalName || '—'}</td>
-                    <td><SaPill tone={u.isActive ? 'ok' : 'muted'}>{u.isActive ? 'Active' : 'Inactive'}</SaPill></td>
+                    <td><SadbChip tone={u.isActive ? 'green' : 'neutral'}>{u.isActive ? 'Active' : 'Inactive'}</SadbChip></td>
                   </tr>
                 ))}
               </SaTable>
-            </SaCard>
-          )}
+            </SadbCard>
+          </>
+        )}
 
-          {activeSection === 'access' && (
-            <SaCard title="Support access & impersonation">
+        {activeSection === 'access' && (
+          <>
+            <SadbPanelHeader
+              title="Support access & impersonation"
+              note="Platform policies governing support session access, plus the audit trail of support-access events."
+            />
+            <SadbCard title="Access policy">
               {!policies ? (
-                <p className="sa-empty">Loading policy configuration…</p>
+                <p className="sadb-empty">Loading policy configuration…</p>
               ) : (
-                <div className="sa-kv">
-                  <div className="sa-kv-row">
-                    <span>Support access requires ticket</span>
-                    <SaStatusDot tone={policies.supportAccessRequiresTicket ? 'ok' : 'warn'} label={policies.supportAccessRequiresTicket ? 'Required' : 'Not required'} />
-                  </div>
-                  <div className="sa-kv-row">
-                    <span>Impersonation</span>
-                    <SaStatusDot
-                      tone={policies.impersonationEnabled ? 'warn' : 'muted'}
-                      label={policies.impersonationEnabled ? `Enabled · max ${policies.impersonationMaxMinutes}m` : 'Disabled'}
-                    />
-                  </div>
-                  <div className="sa-kv-row">
-                    <span>Emergency access</span>
-                    <SaStatusDot
-                      tone={policies.emergencyAccessEnabled ? 'warn' : 'muted'}
-                      label={policies.emergencyAccessEnabled ? `Enabled · review within ${policies.emergencyAccessReviewHours}h` : 'Disabled'}
-                    />
-                  </div>
-                </div>
+                <>
+                  <SadbKvRow
+                    label="Support access requires ticket"
+                    chip={policies.supportAccessRequiresTicket ? 'Required' : 'Not required'}
+                    chipTone={policies.supportAccessRequiresTicket ? 'green' : 'yellow'}
+                  />
+                  <SadbKvRow
+                    label="Impersonation"
+                    chip={policies.impersonationEnabled ? `Enabled · max ${policies.impersonationMaxMinutes}m` : 'Disabled'}
+                    chipTone={policies.impersonationEnabled ? 'yellow' : 'neutral'}
+                  />
+                  <SadbKvRow
+                    label="Emergency access"
+                    chip={policies.emergencyAccessEnabled ? `Enabled · review within ${policies.emergencyAccessReviewHours}h` : 'Disabled'}
+                    chipTone={policies.emergencyAccessEnabled ? 'yellow' : 'neutral'}
+                  />
+                </>
               )}
-
-              <div style={{ margin: '4px 0 8px', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                Support session audit trail
-              </div>
+            </SadbCard>
+            <SadbCard title="Support session audit trail">
               <SaTable
                 columns={['When', 'User', 'Action', 'Result']}
                 empty="No support-access events recorded."
@@ -283,184 +286,111 @@ export default function AdminSupportPage() {
                     <td>{formatWhen(log.createdAt)}</td>
                     <td>{log.username || '—'}</td>
                     <td>{log.action}</td>
-                    <td><SaPill tone={log.success ? 'ok' : 'danger'}>{log.success ? 'Success' : 'Failed'}</SaPill></td>
+                    <td><SadbChip tone={log.success ? 'green' : 'red'}>{log.success ? 'Success' : 'Failed'}</SadbChip></td>
                   </tr>
                 ))}
               </SaTable>
-            </SaCard>
-          )}
+            </SadbCard>
+          </>
+        )}
 
-          {activeSection === 'announcements' && (
-            <SaCard title="Announcements">
+        {activeSection === 'announcements' && (
+          <>
+            <SadbPanelHeader
+              title="Announcements"
+              note="Messages broadcast to tenant staff, newest first."
+              tag={announcementsLoading ? undefined : `${announcements.length} visible`}
+            />
+            <SadbCard>
               {announcementsLoading ? (
-                <p className="sa-empty">Loading announcements…</p>
+                <p className="sadb-empty">Loading announcements…</p>
               ) : announcements.length === 0 ? (
-                <p className="sa-empty">No announcements are currently visible.</p>
+                <p className="sadb-empty">No announcements are currently visible.</p>
               ) : (
-                <div className="sa-kv" style={{ marginBottom: 4 }}>
-                  {announcements.slice(0, 10).map(a => (
-                    <div key={a._id} className="sa-kv-row" style={{ alignItems: 'flex-start' }}>
-                      <span>
-                        <strong style={{ display: 'block', color: 'var(--text-primary)', fontWeight: 700 }}>{a.title}</strong>
-                        <span style={{ display: 'block', marginTop: 2, color: 'var(--text-muted)', fontWeight: 600, fontFamily: 'inherit' }}>
-                          {a.audience} · {formatWhen(a.createdAt)}
-                        </span>
-                      </span>
-                      <SaPill tone={priorityTone(a.priority)}>{a.priority}</SaPill>
-                    </div>
-                  ))}
-                </div>
+                announcements.slice(0, 10).map(a => (
+                  <SadbQueueRow
+                    key={a._id}
+                    chip={a.priority}
+                    chipTone={priorityChipTone(a.priority)}
+                    title={a.title}
+                    sub={`${a.audience} · ${formatWhen(a.createdAt)}`}
+                  />
+                ))
               )}
+            </SadbCard>
 
-              {currentUser && canPostAnnouncements(currentUser.role) && (
-                <div style={{ paddingBlock: 12, borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <input
-                    type="text"
-                    placeholder="Announcement title"
-                    value={annTitle}
-                    onChange={e => setAnnTitle(e.target.value)}
-                    style={{ height: 32, padding: '0 10px', border: '1px solid var(--ehr-border)', borderRadius: 8, fontSize: 12.5 }}
-                  />
-                  <textarea
-                    placeholder="Message"
-                    value={annBody}
-                    onChange={e => setAnnBody(e.target.value)}
-                    rows={2}
-                    style={{ padding: '8px 10px', border: '1px solid var(--ehr-border)', borderRadius: 8, fontSize: 12.5, resize: 'vertical', fontFamily: 'inherit' }}
-                  />
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <Select
-                      value={annOrgId}
-                      onChange={e => setAnnOrgId(e.target.value)}
-                      style={{ height: 32, padding: '0 8px', border: '1px solid var(--ehr-border)', borderRadius: 8, fontSize: 12, fontWeight: 700, background: '#fff' }}
-                    >
-                      {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
-                    </Select>
-                    <Select
-                      value={annPriority}
-                      onChange={e => setAnnPriority(e.target.value as AnnouncementPriority)}
-                      style={{ height: 32, padding: '0 8px', border: '1px solid var(--ehr-border)', borderRadius: 8, fontSize: 12, fontWeight: 700, background: '#fff' }}
-                    >
-                      <option value="normal">Normal</option>
-                      <option value="important">Important</option>
-                      <option value="urgent">Urgent</option>
-                    </Select>
+            {currentUser && canPostAnnouncements(currentUser.role) && (
+              <SadbSettingGroup title="Post an announcement" meta="Organization audience">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Title</span>
+                    <input
+                      type="text"
+                      className="sadb-modal-input"
+                      placeholder="Announcement title"
+                      value={annTitle}
+                      onChange={e => setAnnTitle(e.target.value)}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Message</span>
+                    <textarea
+                      className="sadb-modal-input"
+                      placeholder="Message"
+                      rows={3}
+                      value={annBody}
+                      onChange={e => setAnnBody(e.target.value)}
+                    />
+                  </label>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 200px' }}>
+                      <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Organization</span>
+                      <Select
+                        className="sadb-modal-input"
+                        value={annOrgId}
+                        onChange={e => setAnnOrgId(e.target.value)}
+                      >
+                        {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
+                      </Select>
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 160px' }}>
+                      <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Priority</span>
+                      <Select
+                        className="sadb-modal-input"
+                        value={annPriority}
+                        onChange={e => setAnnPriority(e.target.value as AnnouncementPriority)}
+                      >
+                        <option value="normal">Normal</option>
+                        <option value="important">Important</option>
+                        <option value="urgent">Urgent</option>
+                      </Select>
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                       type="button"
-                      className="sa-btn primary"
+                      className="btn btn-primary btn-sm"
                       onClick={handlePostAnnouncement}
                       disabled={annPosting || !annTitle.trim() || !annBody.trim() || !annOrgId}
-                      style={{ marginLeft: 'auto' }}
                     >
                       <Send className="w-3.5 h-3.5" /> {annPosting ? 'Posting…' : 'Post announcement'}
                     </button>
                   </div>
                 </div>
-              )}
-            </SaCard>
-          )}
+              </SadbSettingGroup>
+            )}
+          </>
+        )}
 
-          {activeSection === 'tickets' && (
-            <SaCard title="Ticket queue">
-              <p className="sa-empty">No ticket store is configured — support tickets are tracked in your external helpdesk.</p>
-            </SaCard>
-          )}
-        </div>
-      </div>
-
-      <style jsx>{`
-        .saside-shell {
-          display: flex;
-          flex: 1;
-          min-height: 0;
-          gap: 14px;
-        }
-        .saside-nav {
-          display: flex;
-          flex-direction: column;
-          flex: 0 0 220px;
-          min-width: 0;
-          gap: 2px;
-          padding: 8px;
-          border: 1px solid var(--ehr-border);
-          border-radius: 12px;
-          background: #fff;
-          overflow-y: auto;
-          align-self: flex-start;
-        }
-        .saside-nav-title {
-          padding: 6px 10px 4px;
-          color: var(--text-muted);
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-        }
-        .saside-nav-item {
-          display: flex;
-          align-items: center;
-          gap: 9px;
-          padding: 9px 10px;
-          border: none;
-          border-radius: 8px;
-          background: transparent;
-          color: var(--text-secondary);
-          font-size: 12.5px;
-          font-weight: 700;
-          text-align: left;
-          cursor: pointer;
-        }
-        .saside-nav-item:hover {
-          background: var(--overlay-subtle, rgba(0, 0, 0, 0.04));
-        }
-        .saside-nav-item.is-active {
-          background: var(--accent-primary);
-          color: #fff;
-        }
-        .saside-nav-item span {
-          flex: 1;
-          min-width: 0;
-        }
-        .saside-nav-item b {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-width: 20px;
-          height: 18px;
-          padding: 0 6px;
-          border-radius: 999px;
-          background: rgba(0, 0, 0, 0.08);
-          font-size: 10px;
-          font-weight: 800;
-        }
-        .saside-nav-item.is-active b {
-          background: rgba(255, 255, 255, 0.22);
-        }
-        .saside-content {
-          display: flex;
-          flex-direction: column;
-          flex: 1;
-          min-width: 0;
-          gap: 14px;
-        }
-        @media (max-width: 860px) {
-          .saside-shell {
-            flex-direction: column;
-          }
-          .saside-nav {
-            flex-direction: row;
-            flex: 0 0 auto;
-            overflow-x: auto;
-          }
-          .saside-nav-title {
-            display: none;
-          }
-          .saside-nav-item {
-            flex: 0 0 auto;
-            white-space: nowrap;
-          }
-        }
-      `}</style>
-    </SaPage>
+        {activeSection === 'tickets' && (
+          <>
+            <SadbPanelHeader title="Ticket queue" note="Support tickets, if a helpdesk integration is connected." />
+            <SadbCard>
+              <p className="sadb-empty">No ticket store is configured — support tickets are tracked in your external helpdesk.</p>
+            </SadbCard>
+          </>
+        )}
+      </SadbShell>
+    </SadbPage>
   );
 }

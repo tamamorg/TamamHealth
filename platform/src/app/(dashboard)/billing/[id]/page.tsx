@@ -318,7 +318,7 @@ export default function BillDetailPage() {
     win.document.write(`<!doctype html><html><head><title>${bill.invoiceNumber}</title><style>
       body { font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #102634; margin: 32px; font-size: 13px; }
       h1 { font-size: 18px; margin: 0; } h2 { font-size: 13px; margin: 24px 0 8px; }
-      .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #007d79; padding-bottom: 12px; }
+      .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--chart-4); padding-bottom: 12px; }
       .muted { color: #667; } table { width: 100%; border-collapse: collapse; margin-top: 6px; }
       th { text-align: left; background: #eef2f5; padding: 6px 8px; font-size: 11px; text-transform: uppercase; }
       td { padding: 6px 8px; border-bottom: 1px solid #e5ebf0; } .r { text-align: right; }
@@ -420,7 +420,7 @@ export default function BillDetailPage() {
 
         {/* ── Bill actions ── */}
         {canCollectPayments && (
-          <div className="bl-actions-row no-print">
+          <div className="bl-actions-row no-print" data-tour="bill-actions">
             {(bill.status === 'pending' || bill.status === 'partial') && (
               <button type="button" className="bl-btn bl-btn--outline" onClick={() => setDiscountOpen(true)} disabled={busy}>
                 Request discount

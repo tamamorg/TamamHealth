@@ -30,7 +30,7 @@ import {
   getPerformanceColor,
   METRIC_LABELS, type PerformanceMetricKey,
 } from '@/lib/performance-colors';
-import { states, statesAndCounties } from '@/data/mock';
+import { states, statesAndCounties } from '@/lib/data/south-sudan-reference';
 
 // ───────────────────────────── helpers ─────────────────────────────
 const TYPE_LABEL_KEYS: Record<string, string> = {
@@ -561,7 +561,7 @@ function FacilityProfile({ hospital, onClose, canManage }: {
           <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
             {[
               { label: t('hospitals.bedsIcu'), value: hospital.icuBeds, color: 'var(--color-danger-text)' },
-              { label: t('hospitals.bedsMaternity'), value: hospital.maternityBeds, color: '#EC4899' },
+              { label: t('hospitals.bedsMaternity'), value: hospital.maternityBeds, color: 'var(--chart-2)' },
               { label: t('hospitals.bedsPediatric'), value: hospital.pediatricBeds, color: 'var(--accent-primary)' },
               { label: t('hospitals.bedsGeneral'), value: Math.max(0, hospital.totalBeds - hospital.icuBeds - hospital.maternityBeds - hospital.pediatricBeds), color: 'var(--text-muted)' },
             ].map(b => (
@@ -587,7 +587,7 @@ function FacilityProfile({ hospital, onClose, canManage }: {
             {[
               { label: t('hospitals.staffDoctors'), value: hospital.doctors, color: 'var(--accent-primary)' },
               { label: t('hospitals.staffClinicalOfficers'), value: hospital.clinicalOfficers, color: '#A78BFA' },
-              { label: t('hospitals.staffNurses'), value: hospital.nurses, color: '#EC4899' },
+              { label: t('hospitals.staffNurses'), value: hospital.nurses, color: 'var(--chart-2)' },
               { label: t('hospitals.staffLabTech'), value: hospital.labTechnicians, color: 'var(--color-warning-text)' },
               { label: t('hospitals.staffPharmacists'), value: hospital.pharmacists, color: 'var(--color-success-text)' },
             ].map(s => (

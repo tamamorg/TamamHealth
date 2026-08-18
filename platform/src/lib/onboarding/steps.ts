@@ -45,7 +45,11 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   '/patients': { verb: 'Register your first patient', desc: 'Add a patient and open their record to see their history, vitals, and visits.', est: 2 },
   '/telehealth': { verb: 'Start a telehealth visit', desc: 'Launch a secure video consultation and document it against the patient’s record.', est: 2 },
   '/consultation': { verb: 'Document a consultation', desc: 'Write a SOAP note, record a diagnosis, and order labs or prescriptions.', est: 3 },
-  '/wards': { verb: 'Manage your wards', desc: 'Admit, transfer, and discharge patients and track bed availability.', est: 2 },
+  // Shared by clinicians and nurse-family roles alike — for nurses this is
+  // also where the "ward" and "MAR" checklist items point, since the
+  // standalone nurse station retired and the bedside medication record is
+  // reached per admission from here (via the dashboard's Medications due card).
+  '/wards': { verb: 'Manage the ward board', desc: 'Admit, transfer, and discharge patients, track bed availability, and open a patient’s bedside medication record (MAR).', est: 2 },
   '/referrals': { verb: 'Create a referral', desc: 'Refer a patient to another facility and track the referral chain.', est: 2 },
   '/messages': { verb: 'Send a secure message', desc: 'Message colleagues about a patient without leaving the platform.', est: 1 },
   '/appointments': { verb: 'Book an appointment', desc: 'Schedule a visit and see the day’s calendar at a glance.', est: 2 },
@@ -81,19 +85,18 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   '/org-admin/branding': { verb: 'Brand your workspace', desc: 'Add your logo and colours so the app feels like yours.', est: 2 },
   '/org-admin/settings': { verb: 'Configure org settings', desc: 'Set defaults, security, and preferences for your org.', est: 2 },
   '/org-admin/pricing': { verb: 'Set your service pricing', desc: 'Add and edit the fee schedule for consultations, labs, pharmacy, and procedures.', est: 2 },
-  // Front desk / clinical intake
-  '/patient-intake': { verb: 'Review patient intake forms', desc: 'Check submitted intake forms and merge the details straight into the patient chart.', est: 2 },
   '/alerts': { verb: 'Review clinical alerts', desc: 'See critical lab, immunization, and outbreak alerts in one feed and jump straight to the record.', est: 2 },
   // Pharmacy / lab
   '/blood-bank': { verb: 'Manage the blood bank', desc: 'Track blood units by group and status, and log newly donated units before they expire.', est: 2 },
   '/controlled-substances': { verb: 'Log a controlled substance', desc: 'Record intake, dispensing, or waste of scheduled medications with witness sign-off.', est: 2 },
   // Facility / emergency
   '/emergency-preparedness': { verb: 'Manage emergency plans', desc: 'Create and activate response plans for outbreaks, disasters, and mass-casualty events.', est: 2 },
-  // Nurse station tabs
-  '/dashboard/nurse/ward': { verb: 'Review the ward roster', desc: 'See admitted patients, record vitals, and assign a doctor from one list.', est: 2 },
-  '/dashboard/nurse/mar': { verb: 'Administer medications', desc: 'Work through due and overdue doses and record what was given, held, or refused.', est: 2 },
-  '/dashboard/nurse/triage': { verb: 'Triage a patient', desc: 'Record ABCC and vitals to get an auto-calculated priority — RED, YELLOW, or GREEN.', est: 2 },
-  '/dashboard/nurse/handoff': { verb: 'Hand off your shift', desc: 'Write SBAR notes on critical patients and sign a handoff report for the next nurse.', est: 2 },
+  // Nurse-family tools. The standalone nurse station is retired — nurses now
+  // share the clinical workspace at /dashboard (the "ward" and "MAR"
+  // checklist items now fold into the shared '/wards' entry above; "triage"
+  // folds into the home-dashboard step every role already gets), so the only
+  // route left needing its own curated card is the shift handoff page.
+  '/wards/handoff': { verb: 'Hand off your shift', desc: 'Write SBAR notes on critical patients and sign a handoff report for the next nurse.', est: 2 },
 };
 
 /** Routes that the basics section already covers, so we don't repeat them. */

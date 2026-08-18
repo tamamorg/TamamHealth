@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from '@/components/icons/lucide';
+import { Calendar, ChevronLeft, ChevronRight } from '@/components/icons/lucide';
 
 export function toIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -72,6 +72,18 @@ export default function EhrMiniCalendar({
 
   return (
     <div className="ehr-mini-calendar">
+      {/* The design anchors every rail calendar with a full-width "Go to
+          today" — one press home from any month the rail has wandered to. */}
+      <button
+        type="button"
+        className="ehr-mini-calendar-goto"
+        onClick={() => {
+          onDateSelect(today);
+          onMonthChange(startOfMonth(parseIsoDate(today)));
+        }}
+      >
+        <Calendar className="w-4 h-4" /> Go to today
+      </button>
       <div className="ehr-mini-calendar-title">
         <button type="button" onClick={() => onMonthChange(addMonths(month, -1))} aria-label="Previous month">
           <ChevronLeft className="w-4 h-4" />

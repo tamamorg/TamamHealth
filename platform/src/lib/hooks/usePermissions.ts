@@ -63,7 +63,10 @@ export function usePermissions() {
   // Appointments — route visibility is broad, but workflow actions are split
   // by duty: reception schedules/checks in, clinicians advance visits, HMIS
   // and management can export operational lists.
-  const canBookAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
+  // Triage/rooming nurses book too: since the nurse station merged into the
+  // shared clinical dashboard, "Find availability" is their path for sending a
+  // routine walk-in to a clinic slot instead of holding them in the queue.
+  const canBookAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
   const canConfirmAppointments = isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isOrgAdmin || isSuperAdmin;
   const canManageAppointmentSchedule = canConfirmAppointments;
   const canCheckInAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;

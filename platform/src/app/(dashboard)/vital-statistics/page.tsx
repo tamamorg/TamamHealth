@@ -26,14 +26,14 @@ export default function VitalStatisticsPage() {
     <>
       <main className="page-container page-enter">
         <div className="dash-card mb-4" style={{ padding: '16px 20px' }}>
-          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', color: 'var(--text-primary)' }}>
+          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 800, fontSize: 24, lineHeight: '100%', color: 'var(--text-primary)' }}>
             {t('vitalStats.topBarTitle')}
           </span>
         </div>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <aside style={{ width: 224, flexShrink: 0 }}>
-            <nav className="ehr-set-nav" aria-label="Vital statistics sections">
+            <nav className="ehr-set-nav" aria-label="Vital statistics sections" data-tour="vs-section-nav">
               {sections.map(item => {
                 const Icon = item.icon;
                 return (

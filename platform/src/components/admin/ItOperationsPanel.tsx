@@ -302,10 +302,11 @@ export default function ItOperationsPanel({ embedded = false }: {
       <style>{`
         .it-group-label {
           margin: 0;
-          color: var(--text-muted);
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 0.06em;
+          color: #5B6B7E;
+          font-family: var(--font-condensed);
+          font-size: 10.5px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
         }
         .it-job-row {
@@ -313,21 +314,21 @@ export default function ItOperationsPanel({ embedded = false }: {
           align-items: center;
           gap: 12px;
           padding: 11px 2px;
-          border-bottom: 1px solid var(--border-light);
+          border-bottom: 1px solid #EDF2F7;
         }
         .it-job-row:last-child { border-bottom: 0; }
         .it-job-text { min-width: 0; flex: 1; }
         .it-job-text strong {
           display: block;
-          color: var(--text-primary);
-          font-size: 13px;
-          font-weight: 700;
+          color: #0E2A4A;
+          font-size: 13.5px;
+          font-weight: 600;
         }
         .it-job-text span {
           display: block;
           margin-top: 1px;
-          color: var(--text-muted);
-          font-size: 11.5px;
+          color: #5B6B7E;
+          font-size: 12px;
         }
         .it-tile {
           display: flex;
@@ -348,7 +349,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           align-items: center;
           gap: 12px;
           padding: 9px 0;
-          border-bottom: 1px solid var(--border-light);
+          border-bottom: 1px solid #EDF2F7;
         }
         .it-store-row:last-child { border-bottom: 0; }
         .it-store-label { color: var(--text-secondary); font-size: 13px; font-weight: 600; }
@@ -366,7 +367,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           justify-content: space-between;
           gap: 12px;
           min-height: 42px;
-          border-bottom: 1px solid var(--border-light);
+          border-bottom: 1px solid #EDF2F7;
           font-size: 13px;
         }
         .it-kv-row:last-child { border-bottom: 0; }
@@ -374,13 +375,19 @@ export default function ItOperationsPanel({ embedded = false }: {
         .it-pill {
           display: inline-flex;
           align-items: center;
-          min-height: 26px;
-          padding: 4px 10px;
+          gap: 6px;
+          min-height: 22px;
+          padding: 0 9px;
+          border: 1px solid #52ADDE;
           border-radius: 999px;
-          background: var(--accent-light);
-          color: var(--accent-primary);
-          font-size: 11px;
-          font-weight: 800;
+          background: #EFF8FD;
+          color: #013D6B;
+          font-family: var(--font-condensed);
+          font-size: 10.5px;
+          font-weight: 600;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          line-height: 1;
         }
       `}</style>
     </div>

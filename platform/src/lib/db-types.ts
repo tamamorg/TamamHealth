@@ -263,52 +263,6 @@ export interface ReferralDoc extends BaseDoc, Omit<Referral, 'id'> {
   orgId?: string;
 }
 
-/** Status of a patient-submitted intake form as it moves through the
- *  front-desk review queue: a request is sent to the patient, they either
- *  submit it (pending_review) or don't (not_submitted), and staff review a
- *  submitted form and merge its data into the patient's chart (merged). */
-export type IntakeFormStatus = 'pending_review' | 'not_submitted' | 'merged' | 'rejected';
-
-export interface IntakeFormField {
-  label: string;
-  value: string;
-}
-
-export interface PatientIntakeFormDoc extends BaseDoc {
-  type: 'patient_intake_form';
-  /** Matched patient record, once one exists (may be unset if the patient
-   *  hasn't been registered yet and this form is their first contact). */
-  patientId?: string;
-  patientName: string;
-  hospitalNumber?: string;
-  providerId?: string;
-  providerName?: string;
-  status: IntakeFormStatus;
-  /** When the intake request/link was sent to the patient. */
-  requestedAt: string;
-  /** When the patient submitted the form. Unset while status is not_submitted. */
-  receivedAt?: string;
-  /**
-   * Secret in the link sent to the patient. Looks the form up at
-   * `/intake/<accessToken>`; on its own it grants nothing — the patient still
-   * confirms their surname and date of birth against the chart before any
-   * field is returned (see /api/intake/[token]).
-   *
-   * Long and random rather than derived from `_id`: the document id appears in
-   * sync traffic and staff URLs, and must not be guessable from them.
-   */
-  accessToken?: string;
-  /** How the link was delivered, for the desk's own record. */
-  sentVia?: ('sms' | 'whatsapp' | 'email')[];
-  mergedAt?: string;
-  mergedBy?: string;
-  /** Submitted form answers, shown to staff during review. Free-form
-   *  label/value pairs so the form can evolve without a schema migration. */
-  fields: IntakeFormField[];
-  hospitalId?: string;
-  orgId?: string;
-}
-
 export interface LabResultDoc extends BaseDoc {
   type: 'lab_result';
   patientId: string;
@@ -334,6 +288,55 @@ export interface LabResultDoc extends BaseDoc {
    * tests, and without it every CT scan renders as "Lab order".
    */
   orderKind?: 'lab' | 'imaging';
+
+  // ── Imaging study detail (orderKind: 'imaging') ───────────────────────────
+  // Studies run the same lifecycle as lab orders — they are the same order
+  // store — but none of the specimen columns mean anything to a radiographer.
+  // These carry what the reading room actually records, so a scan never has to
+  // be filed as if it were a blood draw. All optional: lab orders never set
+  // them, and imaging orders placed before this simply have none.
+
+  /** X-Ray, Ultrasound, CT Scan, MRI, Fluoroscopy, Mammography … */
+  modality?: string;
+  /** Anatomy requested — "Chest", "Right knee", "Abdomen & pelvis". */
+  bodyRegion?: string;
+  /** Which side, where the region is paired. Left unset for midline studies. */
+  laterality?: 'left' | 'right' | 'bilateral';
+  contrast?: 'none' | 'oral' | 'iv' | 'both';
+  /** Modality slot the study is booked into. */
+  studyScheduledAt?: string;
+  studyScheduledBy?: string;
+  /**
+   * Pre-scan screening. Radiation and contrast both have contraindications
+   * that are only answerable before the patient is on the table, so the
+   * answers are stamped on the order rather than asked again in the room.
+   */
+  safetyChecks?: {
+    pregnancyStatus?: 'not_applicable' | 'excluded' | 'possible' | 'confirmed';
+    contrastAllergy?: boolean;
+    implantsOrDevices?: boolean;
+    renalRisk?: boolean;
+    consentGiven?: boolean;
+    note?: string;
+    checkedBy?: string;
+    checkedAt?: string;
+  };
+  /** Acquisition — the study as actually performed. */
+  acquiredAt?: string;
+  acquiredBy?: string;
+  /** Projections/sequences run, where they differ from what was requested. */
+  technique?: string;
+  imageCount?: number;
+  /** PatientDocument ids for the films filed against this study. */
+  studyDocumentIds?: string[];
+  /** The report. `impression` is the answer to the clinical question; the
+   *  coarse `result` field mirrors it so existing result readers still work. */
+  findings?: string;
+  impression?: string;
+  reportedAt?: string;
+  reportedBy?: string;
+  /** Why a study had to be repeated (motion, positioning, patient unable). */
+  repeatReason?: string;
   orderedAt: string;
   completedAt: string;
   hospitalId?: string;
@@ -434,6 +437,14 @@ export interface DiseaseAlertDoc extends BaseDoc, Omit<DiseaseAlert, 'id'> {
   type: 'disease_alert';
   orgId?: string;
   reportedBy?: string;
+  /** Facility that reported the case. Feeds IDSR facilities-reporting counts. */
+  hospitalId?: string;
+  /** Patient the case belongs to — set on alerts auto-raised from a consultation; manual reports have none. */
+  patientId?: string;
+  /** ICD-11 code of the notifiable diagnosis behind this alert. */
+  icd11Code?: string;
+  /** MedicalRecordDoc the alert was raised from. (record, icd11Code) is the dedupe key that keeps re-saves from double-counting a case. */
+  sourceRecordId?: string;
 }
 
 /**
@@ -522,6 +533,17 @@ export interface PrescriptionDoc extends BaseDoc {
    *  anticonvulsant); 'definitive' = started after diagnosis. */
   urgency?: 'immediate' | 'definitive';
   dispensedAt?: string;
+  /**
+   * Counselling, recorded at the `counseled` stage of the dispensing
+   * lifecycle. Without these the stage was reachable but left no trace, so
+   * "was this patient told how to take it?" had no answer on the record —
+   * the same gap the lab had at the tail of its own lifecycle.
+   */
+  counselledAt?: string;
+  counselledBy?: string;
+  /** Which counselling points were covered, by key (see COUNSELLING_POINTS). */
+  counselledPoints?: string[];
+  counsellingNote?: string;
   hospitalId?: string;
   hospitalName?: string;
   orgId?: string;
@@ -2203,8 +2225,8 @@ export interface AppointmentDoc extends BaseDoc {
    * Contact details for a booker with no chart yet.
    *
    * Public traffic never creates a `PatientDoc` — an unmatched booking parks
-   * its identity here and in the linked intake form until someone at the desk
-   * links it to an existing patient or registers a new one. Cleared on merge.
+   * its identity here until someone at the desk links it to an existing
+   * patient or registers a new one. Cleared on merge.
    */
   requester?: {
     firstName: string;
@@ -2232,8 +2254,6 @@ export interface AppointmentDoc extends BaseDoc {
   /** Short public reference shown on the confirmation screen (e.g. TMH-8F3K2).
    *  Also the key for the unauthenticated status/cancel links. */
   bookingReference?: string;
-  /** The intake form carrying this booking's answers, pending desk review. */
-  intakeFormId?: string;
 }
 
 // ===== Telehealth Services (Private Sector) =====

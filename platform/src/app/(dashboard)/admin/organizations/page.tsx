@@ -1,18 +1,35 @@
 'use client';
 
+/**
+ * Super-admin → Organizations (tenant registry), restyled to the sadb-*
+ * design language (docs/SUPER-ADMIN-DESIGN-PLAN.md § /admin/organizations).
+ * The list now mirrors the dashboard's tenant health matrix anatomy
+ * (SadbGridList: name+sub, plan, facilities, users, status chip) so the two
+ * screens finally rhyme; the bespoke full-screen create/edit form moved into
+ * the shared Modal with sadb-modal chrome, feature flags are SadbToggle
+ * rows, and every write (create/update/deactivate) now gets toast feedback
+ * instead of console.error-only. window.confirm() on deactivate is gone in
+ * favor of SadbConfirmModal.
+ */
+
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
+import { useToast } from '@/components/Toast';
 import type { OrganizationDoc } from '@/lib/db-types';
-import {
-  Plus, X, Edit3, Ban,
-  ToggleLeft, ToggleRight
-} from '@/components/icons/lucide';
+import { Plus, X, Edit3, Ban } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
+import Modal from '@/components/Modal';
 import Select from '@/components/Select';
+import {
+  SadbPage, SadbCard, SadbChip, SadbSearch, SadbGridList, SadbGridRow,
+  SadbSettingRow, SadbToggle, SadbConfirmModal, statusChip,
+} from '@/components/admin/sadb-ui';
+
+type FeatureFlagKey =
+  | 'epidemicIntelligence' | 'mchAnalytics' | 'dhis2Export'
+  | 'aiClinicalSupport' | 'communityHealth' | 'facilityAssessments';
 
 type OrgFormData = {
   name: string;
@@ -27,13 +44,7 @@ type OrgFormData = {
   subscriptionStatus: 'trial' | 'active' | 'suspended' | 'cancelled';
   maxUsers: number;
   maxHospitals: number;
-  epidemicIntelligence: boolean;
-  mchAnalytics: boolean;
-  dhis2Export: boolean;
-  aiClinicalSupport: boolean;
-  communityHealth: boolean;
-  facilityAssessments: boolean;
-};
+} & Record<FeatureFlagKey, boolean>;
 
 const emptyForm: OrgFormData = {
   name: '', slug: '', orgType: 'public', contactEmail: '', country: 'South Sudan',
@@ -44,57 +55,66 @@ const emptyForm: OrgFormData = {
   aiClinicalSupport: true, communityHealth: true, facilityAssessments: true,
 };
 
+/** Grid: Organization (wide) · Plan · Facilities · Users · Status · row actions (narrow). */
+const GRID_TEMPLATE = 'minmax(200px,1.7fr) minmax(88px,0.8fr) minmax(104px,0.9fr) minmax(104px,0.9fr) minmax(88px,0.8fr) 48px';
+
+function onboardedLabel(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+}
+
 export default function AdminOrganizationsPage() {
   const { t } = useTranslation();
-  const router = useRouter();
-  const { currentUser, globalSearch, setGlobalSearch } = useApp();
+  const { currentUser } = useAuth();
+  const { showToast } = useToast();
   const { organizations, loading, create, update, deactivate, getStats } = useOrganizations();
 
-  // Text search comes from the shared global search state, surfaced via this
-  // page's own list header search box (the TopBar strip is gone).
-  const search = globalSearch;
+  // Local to this page now — the previous binding to the app-wide global
+  // search leaked whatever was typed here into every other screen's search.
+  const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<OrgFormData>(emptyForm);
   const [formLoading, setFormLoading] = useState(false);
-  const [orgUserCounts, setOrgUserCounts] = useState<Record<string, number>>({});
+  const [orgStats, setOrgStats] = useState<Record<string, { userCount: number; hospitalCount: number }>>({});
+  const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
 
-  // Access control
+  // Per-org user + facility counts for the grid. Run all getStats() calls
+  // concurrently so the overall wait is the slowest single call, not the sum.
   useEffect(() => {
-    if (currentUser && currentUser.role !== 'super_admin') {
-      router.push('/dashboard');
-    }
-  }, [currentUser, router]);
-
-  // Load user counts per org. Run all getStats() calls concurrently so the
-  // overall wait is the slowest single call, not the sum of every call.
-  useEffect(() => {
-    const loadCounts = async () => {
+    let cancelled = false;
+    const loadStats = async () => {
       const entries = await Promise.all(
-        organizations.map(async (org): Promise<[string, number]> => {
+        organizations.map(async (org): Promise<[string, { userCount: number; hospitalCount: number }]> => {
           try {
             const stats = await getStats(org._id);
-            return [org._id, stats.userCount];
+            return [org._id, { userCount: stats.userCount, hospitalCount: stats.hospitalCount }];
           } catch {
-            return [org._id, 0];
+            return [org._id, { userCount: 0, hospitalCount: 0 }];
           }
         })
       );
-      const counts: Record<string, number> = {};
-      for (const [id, count] of entries) counts[id] = count;
-      setOrgUserCounts(counts);
+      if (cancelled) return;
+      const next: Record<string, { userCount: number; hospitalCount: number }> = {};
+      for (const [id, s] of entries) next[id] = s;
+      setOrgStats(next);
     };
-    if (organizations.length > 0) loadCounts();
+    if (organizations.length > 0) loadStats();
+    return () => { cancelled = true; };
   }, [organizations, getStats]);
 
   const filteredOrgs = useMemo(() => {
-    return organizations.filter(o => {
-      const q = search.toLowerCase();
-      return !q || o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q) || o.contactEmail.toLowerCase().includes(q);
-    });
+    const q = search.trim().toLowerCase();
+    return organizations.filter(o =>
+      !q || o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q) || o.contactEmail.toLowerCase().includes(q)
+    );
   }, [organizations, search]);
 
-  if (!currentUser || currentUser.role !== 'super_admin') return null;
+  const activeOrgs = organizations.filter(o => o.isActive && o.subscriptionStatus !== 'suspended' && o.subscriptionStatus !== 'cancelled');
+  const trialOrgs = organizations.filter(o => o.subscriptionStatus === 'trial');
+  const suspendedOrgs = organizations.filter(o => o.subscriptionStatus === 'suspended' || o.subscriptionStatus === 'cancelled' || !o.isActive);
 
   const openCreate = () => {
     setEditingId(null);
@@ -156,28 +176,45 @@ export default function AdminOrganizationsPage() {
       };
 
       if (editingId) {
-        await update(editingId, orgData, currentUser._id, currentUser.username);
+        await update(editingId, orgData, currentUser?._id, currentUser?.username);
+        showToast(`Organization "${form.name}" updated.`, 'success');
       } else {
-        await create(orgData as Omit<OrganizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, currentUser._id, currentUser.username);
+        await create(orgData as Omit<OrganizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, currentUser?._id, currentUser?.username);
+        showToast(`Organization "${form.name}" created.`, 'success');
       }
       setShowForm(false);
     } catch (err) {
-      console.error(err);
+      showToast(err instanceof Error ? err.message : 'Failed to save organization.', 'error');
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDeactivate = async (org: OrganizationDoc) => {
-    if (!confirm(t('orgAdmin.confirmDeactivate', { name: org.name }))) return;
+  const confirmDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
     try {
-      await deactivate(org._id, currentUser._id, currentUser.username);
+      await deactivate(deactivateTarget._id, currentUser?._id, currentUser?.username);
+      showToast(`Organization "${deactivateTarget.name}" deactivated.`, 'success');
+      setDeactivateTarget(null);
     } catch (err) {
-      console.error(err);
+      showToast(err instanceof Error ? err.message : 'Failed to deactivate organization.', 'error');
+    } finally {
+      setDeactivating(false);
     }
   };
 
-  // Styles
+  const FEATURE_FLAGS: { key: FeatureFlagKey; label: string; sub: string }[] = [
+    { key: 'epidemicIntelligence', label: t('orgAdmin.featureEpidemicIntelligence'), sub: t('orgSettings.flagEpidemicIntelligenceDesc') },
+    { key: 'mchAnalytics', label: t('orgAdmin.featureMchAnalytics'), sub: t('orgSettings.flagMchAnalyticsDesc') },
+    { key: 'dhis2Export', label: t('orgAdmin.featureDhis2Export'), sub: t('orgSettings.flagDhis2ExportDesc') },
+    { key: 'aiClinicalSupport', label: t('orgAdmin.featureAiClinicalSupport'), sub: t('orgSettings.flagAiClinicalSupportDesc') },
+    { key: 'communityHealth', label: t('orgAdmin.featureCommunityHealth'), sub: t('orgSettings.flagCommunityHealthDesc') },
+    { key: 'facilityAssessments', label: t('orgAdmin.featureFacilityAssessments'), sub: t('orgSettings.flagFacilityAssessmentsDesc') },
+  ];
+
+  // Styles for the raw form fields (basic info / subscription / branding) —
+  // there's no shared "field" kit yet, so these stay hand-rolled, tokens only.
   const inputStyle: React.CSSProperties = {
     background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)',
     borderRadius: '4px', padding: '10px 14px', color: 'var(--text-primary)',
@@ -192,130 +229,92 @@ export default function AdminOrganizationsPage() {
     fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)',
     textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', display: 'block',
   };
+  const sectionTitleStyle: React.CSSProperties = { marginBottom: 10 };
 
   return (
-    <>
-      <main className="page-container page-enter admin-detail-page" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-
-        {/* Table */}
-        <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
-          <EhrListHeader
-            title={t('orgAdmin.title')}
-            search={{ value: search, onChange: setGlobalSearch, placeholder: t('orgAdmin.searchPlaceholder') }}
-            actions={
-              <button onClick={openCreate} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap' }}>
-                <Plus className="w-4 h-4" /> {t('orgAdmin.newOrganization')}
-              </button>
-            }
-          />
-          <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1, minHeight: 0 }}>
-            <table className="w-full" style={{ minWidth: 840 }}>
-              <thead>
-                <tr>
-                  {[
-                    { key: 'name', label: t('orgAdmin.colName') },
-                    { key: 'slug', label: t('orgAdmin.colSlug') },
-                    { key: 'type', label: t('orgAdmin.colType') },
-                    { key: 'plan', label: t('orgAdmin.colPlan') },
-                    { key: 'status', label: t('orgAdmin.colStatus') },
-                    { key: 'users', label: t('orgAdmin.colUsers') },
-                    { key: 'actions', label: t('orgAdmin.colActions') },
-                  ].map(h => (
-                    <th key={h.key} className="text-left px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>
-                      {h.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('orgAdmin.loading')}</td></tr>
-                ) : filteredOrgs.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('orgAdmin.empty')}</td></tr>
-                ) : filteredOrgs.map(org => (
-                  <tr key={org._id} style={{ borderBottom: '1px solid var(--border-light)' }} className="transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: org.primaryColor }}>
-                          {org.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium" style={{ color: org.isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}>{org.name}</p>
-                          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{org.contactEmail}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <code className="text-xs px-2 py-1 rounded" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)' }}>{org.slug}</code>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-1 rounded-full" style={{
-                        background: org.orgType === 'public' ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)',
-                        color: org.orgType === 'public' ? 'var(--color-success-text)' : 'var(--color-danger-text)',
-                      }}>{org.orgType}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{
-                        background: org.subscriptionPlan === 'enterprise' ? 'rgba(124,58,237,0.12)' : org.subscriptionPlan === 'professional' ? 'rgba(33, 145, 208, 0.12)' : 'rgba(107,114,128,0.12)',
-                        color: org.subscriptionPlan === 'enterprise' ? 'var(--accent-primary)' : org.subscriptionPlan === 'professional' ? 'var(--accent-primary)' : '#6B7280',
-                      }}>{org.subscriptionPlan}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="flex items-center gap-1.5 text-xs font-semibold">
-                        <span className="w-2 h-2 rounded-full" style={{
-                          background: org.subscriptionStatus === 'active' ? 'var(--color-success)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning)' : 'var(--color-danger)',
-                        }} />
-                        <span style={{
-                          color: org.subscriptionStatus === 'active' ? 'var(--color-success-text)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
-                        }}>{org.subscriptionStatus}</span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {orgUserCounts[org._id] ?? '...'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center">
-                        <RowActionsMenu
-                          actions={[
-                            { key: 'edit', label: t('action.edit'), icon: <Edit3 className="w-4 h-4" />, onClick: () => openEdit(org) },
-                            ...(org.isActive ? [{ key: 'deactivate', label: t('orgAdmin.deactivate'), tone: 'danger' as const, icon: <Ban className="w-4 h-4" />, onClick: () => handleDeactivate(org) }] : []),
-                          ]}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <SadbPage>
+      <SadbCard
+        title={t('orgAdmin.title')}
+        action={
+          <div className="sadb-legend">
+            <span><i style={{ background: 'var(--text-muted)' }} />{t('orgAdmin.title')} ({organizations.length})</span>
+            <span><i style={{ background: 'var(--color-success-800)' }} />{t('orgAdmin.statusActive')} ({activeOrgs.length})</span>
+            <span><i style={{ background: 'var(--color-warning-600)' }} />{t('orgAdmin.statusTrial')} ({trialOrgs.length})</span>
+            <span><i style={{ background: 'var(--color-danger-500)' }} />{t('orgAdmin.statusSuspended')} ({suspendedOrgs.length})</span>
           </div>
+        }
+      >
+        <div className="sadb-search-row">
+          <SadbSearch value={search} onChange={setSearch} placeholder={t('orgAdmin.searchPlaceholder')} />
+          <button type="button" className="btn btn-primary btn-sm flex-shrink-0" onClick={openCreate}>
+            <Plus className="w-4 h-4" /> {t('orgAdmin.newOrganization')}
+          </button>
         </div>
-      </main>
+
+        <SadbGridList
+          template={GRID_TEMPLATE}
+          minWidth={820}
+          head={['Organization', 'Plan', 'Facilities', 'Users', 'Status', '']}
+          empty={loading ? t('orgAdmin.loading') : t('orgAdmin.empty')}
+        >
+          {filteredOrgs.map(org => {
+            const stats = orgStats[org._id];
+            const onboarded = onboardedLabel(org.createdAt);
+            const orgKind = org.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
+            return (
+              <SadbGridRow key={org._id} template={GRID_TEMPLATE}>
+                <span className="min-w-0">
+                  <span className="sadb-tenant-name truncate" style={{ color: org.isActive ? undefined : 'var(--text-muted)' }}>
+                    {org.name}
+                  </span>
+                  <span className="sadb-tenant-sub truncate">
+                    {orgKind}{onboarded ? ` · onboarded ${onboarded}` : ''}
+                  </span>
+                </span>
+                <span className="capitalize">{org.subscriptionPlan}</span>
+                <span className="sadb-tenant-num">{stats ? `${stats.hospitalCount} / ${org.maxHospitals}` : '…'}</span>
+                <span className="sadb-tenant-num">{stats ? `${stats.userCount} / ${org.maxUsers}` : '…'}</span>
+                <span>
+                  <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip>
+                </span>
+                <span className="flex items-center justify-center">
+                  <RowActionsMenu
+                    actions={[
+                      { key: 'edit', label: t('action.edit'), icon: <Edit3 className="w-4 h-4" />, onClick: () => openEdit(org) },
+                      ...(org.isActive ? [{ key: 'deactivate', label: t('orgAdmin.deactivate'), tone: 'danger' as const, icon: <Ban className="w-4 h-4" />, onClick: () => setDeactivateTarget(org) }] : []),
+                    ]}
+                  />
+                </span>
+              </SadbGridRow>
+            );
+          })}
+        </SadbGridList>
+      </SadbCard>
 
       {/* Create/Edit Modal */}
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-          zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
-        }} onClick={() => setShowForm(false)}>
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border-light)',
-            borderRadius: '6px', width: '100%', maxWidth: '680px', maxHeight: '90vh',
-            overflow: 'auto', padding: '28px',
-          }} onClick={e => e.stopPropagation()}>
-
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+        <Modal onClose={() => setShowForm(false)} width={640} labelledBy="org-form-title">
+          {/* The shared Modal's dialog box sets a max-height but overflow:
+              visible — fine for its short editor/confirm variants, but this
+              form is taller than the viewport on most screens. Without its
+              own scroll container here, content past that max-height paints
+              outside the white card, on the dark backdrop. min-height: 0 is
+              required alongside overflow-y for a flex child to actually
+              shrink to (and then scroll within) its flex parent's height. */}
+          <div className="sadb-modal" style={{ minHeight: 0, overflowY: 'auto' }}>
+            <div className="flex items-start justify-between gap-3 sadb-modal-copy">
+              <h2 id="org-form-title" className="sadb-modal-title">
                 {editingId ? t('orgAdmin.editOrganization') : t('orgAdmin.createOrganization')}
-              </h3>
-              <button onClick={() => setShowForm(false)} className="p-1 rounded-lg" style={{ color: 'var(--text-muted)' }}>
-                <X className="w-5 h-5" />
+              </h2>
+              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} aria-label="Close">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-5">
               {/* Basic Info */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionBasicInfo')}</h4>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionBasicInfo')}</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label style={labelStyle}>{t('orgAdmin.labelName')}</label>
@@ -350,7 +349,7 @@ export default function AdminOrganizationsPage() {
 
               {/* Subscription */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionSubscription')}</h4>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionSubscription')}</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label style={labelStyle}>{t('orgAdmin.labelPlan')}</label>
@@ -382,13 +381,13 @@ export default function AdminOrganizationsPage() {
 
               {/* Branding */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionBranding')}</h4>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionBranding')}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
+                  {([
                     { key: 'primaryColor' as const, label: t('orgAdmin.colorPrimary') },
                     { key: 'secondaryColor' as const, label: t('orgAdmin.colorSecondary') },
                     { key: 'accentColor' as const, label: t('orgAdmin.colorAccent') },
-                  ].map(c => (
+                  ]).map(c => (
                     <div key={c.key}>
                       <label style={labelStyle}>{c.label}</label>
                       <div className="flex items-center gap-2">
@@ -404,43 +403,43 @@ export default function AdminOrganizationsPage() {
 
               {/* Feature Flags */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionFeatureFlags')}</h4>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  {[
-                    { key: 'epidemicIntelligence' as const, label: t('orgAdmin.featureEpidemicIntelligence') },
-                    { key: 'mchAnalytics' as const, label: t('orgAdmin.featureMchAnalytics') },
-                    { key: 'dhis2Export' as const, label: t('orgAdmin.featureDhis2Export') },
-                    { key: 'aiClinicalSupport' as const, label: t('orgAdmin.featureAiClinicalSupport') },
-                    { key: 'communityHealth' as const, label: t('orgAdmin.featureCommunityHealth') },
-                    { key: 'facilityAssessments' as const, label: t('orgAdmin.featureFacilityAssessments') },
-                  ].map(ff => (
-                    <label key={ff.key} className="flex items-center gap-3 cursor-pointer text-sm" style={{ color: 'var(--text-primary)' }}>
-                      <button type="button" onClick={() => setForm(p => ({ ...p, [ff.key]: !p[ff.key] }))}
-                        className="flex-shrink-0">
-                        {form[ff.key] ? (
-                          <ToggleRight className="w-8 h-8" style={{ color: 'var(--color-danger)' }} />
-                        ) : (
-                          <ToggleLeft className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
-                        )}
-                      </button>
-                      {ff.label}
-                    </label>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionFeatureFlags')}</h4>
+                <div style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
+                  {FEATURE_FLAGS.map(ff => (
+                    <SadbSettingRow key={ff.key} label={ff.label} sub={ff.sub}>
+                      <SadbToggle
+                        checked={form[ff.key]}
+                        onChange={next => setForm(p => ({ ...p, [ff.key]: next }))}
+                        label={ff.label}
+                      />
+                    </SadbSettingRow>
                   ))}
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-                <button onClick={() => setShowForm(false)} className="px-5 py-2.5 rounded-xl text-sm font-medium" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}>
+              <div className="sadb-modal-actions" style={{ marginTop: 0, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>
                   {t('action.cancel')}
                 </button>
-                <button onClick={handleSubmit} disabled={formLoading} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--color-danger)', opacity: formLoading ? 0.6 : 1 }}>
+                <button type="button" className="btn btn-primary btn-sm" onClick={handleSubmit} disabled={formLoading}>
                   {formLoading ? t('orgAdmin.saving') : editingId ? t('orgAdmin.updateOrganization') : t('orgAdmin.createOrganization')}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
-    </>
+
+      {deactivateTarget && (
+        <SadbConfirmModal
+          title={t('orgAdmin.deactivate')}
+          body={t('orgAdmin.confirmDeactivate', { name: deactivateTarget.name })}
+          confirmLabel={t('orgAdmin.deactivate')}
+          onCancel={() => setDeactivateTarget(null)}
+          onConfirm={confirmDeactivate}
+          busy={deactivating}
+        />
+      )}
+    </SadbPage>
   );
 }

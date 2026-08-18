@@ -86,7 +86,7 @@ export default function RowActionsMenu({ actions, ariaLabel = 'Actions' }: { act
               type="button"
               disabled={a.disabled}
               onClick={(e) => { e.stopPropagation(); setOpen(false); a.onClick(); }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] font-medium text-left transition-colors hover:bg-[rgba(33,145,208,0.12)] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] font-bold text-left transition-colors hover:bg-[rgba(33,145,208,0.12)] disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: toneColor(a.tone) }}
             >
               {a.icon}

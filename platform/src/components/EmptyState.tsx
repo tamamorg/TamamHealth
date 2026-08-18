@@ -32,10 +32,10 @@ export default function EmptyState({ icon: Icon = Inbox, title, message, action 
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{
         background: 'transparent',
       }}>
-        <Icon className="w-6 h-6" style={{ color: 'var(--text-muted, #64748b)' }} />
+        <Icon className="w-6 h-6" style={{ color: 'var(--text-muted, #5B6B7E)' }} />
       </div>
-      <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary, #0F172A)' }}>{title}</h3>
-      <p className="text-xs max-w-xs" style={{ color: 'var(--text-muted, #64748b)' }}>{message}</p>
+      <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary, #0E2A4A)' }}>{title}</h3>
+      <p className="text-xs max-w-xs" style={{ color: 'var(--text-muted, #5B6B7E)' }}>{message}</p>
       {action && (
         <button
           onClick={action.onClick}

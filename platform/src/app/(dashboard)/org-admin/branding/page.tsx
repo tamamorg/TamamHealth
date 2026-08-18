@@ -157,7 +157,7 @@ export default function OrgBrandingPage() {
               <div className="flex items-center gap-2" style={{ marginLeft: 'auto' }}>
                 <button
                   onClick={handleReset}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
                   style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -166,7 +166,7 @@ export default function OrgBrandingPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                   style={{ background: brandColor }}
                 >
                   {saving ? (
@@ -197,7 +197,7 @@ export default function OrgBrandingPage() {
           <div className="space-y-5">
             {/* Organization Name */}
             <div className="dash-card p-4">
-              <label className="block text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                 {t('branding.orgName')}
               </label>
               <input
@@ -211,7 +211,7 @@ export default function OrgBrandingPage() {
 
             {/* Bank Transfer Details */}
             <div className="dash-card p-4">
-              <label className="block text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                 {t('branding.bankDetails')}
               </label>
               <textarea
@@ -229,7 +229,7 @@ export default function OrgBrandingPage() {
 
             {/* Logo */}
             <div className="dash-card p-4">
-              <label className="block text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                 {t('branding.logo')}
               </label>
               <div className="flex items-center gap-4">
@@ -260,7 +260,7 @@ export default function OrgBrandingPage() {
                 )}
                 <div>
                   <label
-                    className="cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+                    className="cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all"
                     style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
                   >
                     <Upload className="w-3.5 h-3.5" />
@@ -280,7 +280,7 @@ export default function OrgBrandingPage() {
             </div>
 
             {/* Color Pickers */}
-            <div className="dash-card overflow-hidden">
+            <div className="dash-card overflow-hidden" data-tour="org-branding-colors">
               <div className="flex items-center gap-2 p-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
                 <Palette className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('branding.brandColors')}</h3>
@@ -288,7 +288,7 @@ export default function OrgBrandingPage() {
               <div className="p-4 space-y-4">
                 {/* Primary */}
                 <div>
-                  <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                     {t('branding.primaryColor')}
                   </label>
                   <div className="flex items-center gap-3">
@@ -312,7 +312,7 @@ export default function OrgBrandingPage() {
 
                 {/* Secondary */}
                 <div>
-                  <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                     {t('branding.secondaryColor')}
                   </label>
                   <div className="flex items-center gap-3">
@@ -336,7 +336,7 @@ export default function OrgBrandingPage() {
 
                 {/* Accent */}
                 <div>
-                  <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                     {t('branding.accentColor')}
                   </label>
                   <div className="flex items-center gap-3">

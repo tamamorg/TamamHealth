@@ -97,14 +97,14 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 <tr key={p._id}>
                   <td style={{ fontWeight: 600 }}>
                     {p.name}
-                    {p.code ? <span style={{ color: 'var(--ehr-muted, #8395A8)', fontWeight: 400 }}> · {p.code}</span> : null}
-                    {p.bodySite ? <div style={{ color: 'var(--ehr-muted, #8395A8)', fontWeight: 400, fontSize: 12 }}>{p.bodySite}</div> : null}
+                    {p.code ? <span style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400 }}> · {p.code}</span> : null}
+                    {p.bodySite ? <div style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400, fontSize: 12 }}>{p.bodySite}</div> : null}
                   </td>
                   <td>{formatDate(p.date)}</td>
                   <td>{p.performedByName || '—'}</td>
                   <td>
                     {p.outcome || '—'}
-                    {p.notes ? <div style={{ color: 'var(--ehr-muted, #8395A8)', fontSize: 12 }}>{p.notes}</div> : null}
+                    {p.notes ? <div style={{ color: 'var(--ehr-muted, #597386)', fontSize: 12 }}>{p.notes}</div> : null}
                   </td>
                 </tr>
               ))}
@@ -121,7 +121,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
               <button className="p-1 rounded" onClick={() => !submitting && resetForm()} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Procedure</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Procedure</label>
               <input
                 type="text"
                 value={name}
@@ -134,7 +134,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Code (optional)</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Code (optional)</label>
                 <input
                   type="text"
                   value={code}
@@ -144,7 +144,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Date</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Date</label>
                 <input
                   type="date"
                   value={date}
@@ -156,7 +156,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Body site (optional)</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Body site (optional)</label>
                 <input
                   type="text"
                   value={bodySite}
@@ -167,7 +167,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Outcome (optional)</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Outcome (optional)</label>
                 <input
                   type="text"
                   value={outcome}
@@ -179,7 +179,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Notes (optional)</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Notes (optional)</label>
               <textarea
                 rows={2}
                 value={notes}

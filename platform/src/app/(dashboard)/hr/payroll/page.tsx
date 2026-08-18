@@ -91,7 +91,7 @@ export default function HrPayrollPage() {
 
   return (
     <HrPageShell>
-      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-payroll-list">
         <EhrListHeader
           title="Payroll register"
           stats={summary ? [

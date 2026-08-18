@@ -147,7 +147,7 @@ export default function KeyboardShortcuts() {
                 {shortcut.keys.map((key, j) => (
                   <span key={j}>
                     <kbd
-                      className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-mono font-medium"
+                      className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-mono font-bold"
                       style={{
                         background: 'var(--overlay-subtle)',
                         border: '1px solid var(--border-medium)',
@@ -168,7 +168,7 @@ export default function KeyboardShortcuts() {
                     {shortcut.altKeys.map((key, j) => (
                       <span key={j}>
                         <kbd
-                          className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-mono font-medium"
+                          className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-mono font-bold"
                           style={{
                             background: 'var(--overlay-subtle)',
                             border: '1px solid var(--border-medium)',

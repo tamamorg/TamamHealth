@@ -8,9 +8,10 @@ import {
   paymentsDB, insurancePoliciesDB, chargesDB, claimsDB,
   paymentPlansDB, ledgerDB, billingDB, feeScheduleDB,
   appointmentsDB, wardDB, pharmacyInventoryDB, triageDB, availabilityDB, encountersDB,
+  handoffsDB,
   assetsDB, leaveRequestsDB, payrollEntriesDB,
   problemsDB, telehealthDB, patientNotesDB, orderSetsDB,
-  phoneNotesDB, assessmentsDB, intakeFormsDB, bloodBankDB, patientDocumentsDB,
+  phoneNotesDB, assessmentsDB, bloodBankDB, patientDocumentsDB,
   bookingPoliciesDB, visitReasonsDB, providerProfilesDB,
   isSeeded, markSeeded, resetAllDatabases, getDB,
   isSeedInProgress, markSeedStarted
@@ -24,7 +25,7 @@ import type {
   DiseaseAlertDoc, LabResultDoc, PrescriptionDoc, MedicalRecordDoc, MessageDoc,
   BirthRegistrationDoc, DeathRegistrationDoc, FacilityAssessmentDoc,
   ImmunizationDoc, ANCVisitDoc, FollowUpDoc, OrganizationDoc,
-  PatientNoteDoc, OrderSetDoc, PhoneNoteDoc, AssessmentDoc, PatientIntakeFormDoc
+  PatientNoteDoc, OrderSetDoc, PhoneNoteDoc, AssessmentDoc
 } from './db-types';
 import type { AllergyEntry, DirectiveEntry, CareAlertEntry } from '@/data/mock';
 import type {
@@ -34,7 +35,7 @@ import type {
 import type { BillingDoc, ChargeCategory } from './db-types-billing';
 import type {
   AppointmentDoc, TriageDoc, PharmacyInventoryDoc, ProblemDoc,
-  TelehealthSessionDoc
+  TelehealthSessionDoc, ShiftHandoffDoc, EncounterDoc
 } from './db-types';
 import type { WardDoc, BedDoc, AdmissionDoc } from './db-types-ward';
 import type { AssetDoc } from './db-types-asset';
@@ -160,6 +161,7 @@ const defaultUsers: SeedUserProfile[] = [
   { username: 'pharma.wau', name: 'Pharmacist John Bol Garang', role: 'pharmacist', hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'desk.wau', name: 'Tabitha Nyandeng Kuol', role: 'front_desk', hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'nurse.stella', name: 'Nurse Stella Keji Lemi', role: 'nurse', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', orgId: PUBLIC_ORG_ID },
+  { username: 'dr.ochalla', name: 'Dr. Peter Ochalla Diu', role: 'doctor', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'lab.gatluak', name: 'Lab Tech Gatluak Puok', role: 'lab_tech', hospitalId: 'hosp-004', hospitalName: 'Bentiu State Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'pharma.rose', name: 'Pharmacist Rose Gbudue', role: 'pharmacist', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'desk.amira', name: 'Amira Juma Hassan', role: 'front_desk', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
@@ -993,6 +995,10 @@ const seedWards: Omit<WardDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'ward-mercy-1', type: 'ward', name: 'General Ward', wardType: 'general_male', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', facilityLevel: 'state', floor: 'Ground', totalBeds: 16, occupiedBeds: 3, availableBeds: 13, nurseInCharge: 'user-nurse.mercy', nurseInChargeName: 'Nurse Josephine Poni Wani', isActive: true, orgId: PRIVATE_ORG_ID, createdAt: daysAgo(60), updatedAt: daysAgo(0) },
   { _id: 'ward-mercy-2', type: 'ward', name: 'Maternity Ward', wardType: 'maternity', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', facilityLevel: 'state', floor: 'First', totalBeds: 10, occupiedBeds: 1, availableBeds: 9, nurseInCharge: 'user-nurse.mercy', nurseInChargeName: 'Nurse Josephine Poni Wani', isActive: true, orgId: PRIVATE_ORG_ID, createdAt: daysAgo(60), updatedAt: daysAgo(0) },
   { _id: 'ward-mercy-3', type: 'ward', name: 'Paediatric Ward', wardType: 'paediatric', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', facilityLevel: 'state', floor: 'First', totalBeds: 8, occupiedBeds: 1, availableBeds: 7, nurseInCharge: 'user-nurse.mercy', nurseInChargeName: 'Nurse Josephine Poni Wani', isActive: true, orgId: PRIVATE_ORG_ID, createdAt: daysAgo(60), updatedAt: daysAgo(0) },
+  // Malakal Teaching Hospital (hosp-003, public org) — nurse.stella and
+  // midwife.nyakong previously had zero clinical activity here: no wards, no
+  // beds, no admissions, so the merged nurse dashboard rendered empty.
+  { _id: 'ward-m1', type: 'ward', name: 'General Ward', wardType: 'general_male', facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', facilityLevel: 'state', floor: 'Ground', totalBeds: 4, occupiedBeds: 3, availableBeds: 1, nurseInCharge: 'user-nurse.stella', nurseInChargeName: 'Nurse Stella Keji Lemi', isActive: true, orgId: PUBLIC_ORG_ID, createdAt: daysAgo(90), updatedAt: daysAgo(0) },
 ];
 
 const seedBeds: Omit<BedDoc, '_rev' | 'createdBy'>[] = [
@@ -1014,6 +1020,11 @@ const seedBeds: Omit<BedDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'bed-mercy-6', type: 'bed', bedNumber: 'MM-B02', wardId: 'ward-mercy-2', wardName: 'Maternity Ward', facilityId: 'hosp-mercy-001', status: 'available', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(60), updatedAt: daysAgo(0) },
   { _id: 'bed-mercy-7', type: 'bed', bedNumber: 'MP-B01', wardId: 'ward-mercy-3', wardName: 'Paediatric Ward', facilityId: 'hosp-mercy-001', status: 'occupied', currentPatientId: 'pat-mercy-005', currentPatientName: 'Josephine Aciek Manyang', currentAdmissionId: 'admission-mercy-4', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(60), updatedAt: daysAgo(0) },
   { _id: 'bed-mercy-8', type: 'bed', bedNumber: 'MP-B02', wardId: 'ward-mercy-3', wardName: 'Paediatric Ward', facilityId: 'hosp-mercy-001', status: 'available', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(60), updatedAt: daysAgo(0) },
+  // Malakal Teaching Hospital (hosp-003, public org)
+  { _id: 'bed-m1', type: 'bed', bedNumber: 'M1-B01', wardId: 'ward-m1', wardName: 'General Ward', facilityId: 'hosp-003', status: 'occupied', currentPatientId: 'pat-00202', currentPatientName: 'Both Chuol', currentAdmissionId: 'admission-m1', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(90), updatedAt: daysAgo(1) },
+  { _id: 'bed-m2', type: 'bed', bedNumber: 'M1-B02', wardId: 'ward-m1', wardName: 'General Ward', facilityId: 'hosp-003', status: 'occupied', currentPatientId: 'pat-00204', currentPatientName: 'Chuol Jal', currentAdmissionId: 'admission-m2', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(90), updatedAt: daysAgo(2) },
+  { _id: 'bed-m3', type: 'bed', bedNumber: 'M1-B03', wardId: 'ward-m1', wardName: 'General Ward', facilityId: 'hosp-003', status: 'occupied', currentPatientId: 'pat-00206', currentPatientName: 'Riek Wal', currentAdmissionId: 'admission-m3', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(90), updatedAt: daysAgo(1) },
+  { _id: 'bed-m4', type: 'bed', bedNumber: 'M1-B04', wardId: 'ward-m1', wardName: 'General Ward', facilityId: 'hosp-003', status: 'available', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(90), updatedAt: daysAgo(0) },
 ];
 
 const seedAdmissions: Omit<AdmissionDoc, '_rev' | 'createdBy'>[] = [
@@ -1034,6 +1045,11 @@ const seedAdmissions: Omit<AdmissionDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'admission-mercy-3', type: 'admission', patientId: 'pat-mercy-003', patientName: 'Grace Nyibol Kur', hospitalNumber: 'MGH-000003', admissionDate: daysAgo(0), admittingDiagnosis: 'Labour at term', icd11Code: 'JB40', severity: 'moderate', admittedBy: 'user-dr.mercy', admittedByName: 'Dr. Grace Lado', wardId: 'ward-mercy-2', wardName: 'Maternity Ward', bedId: 'bed-mercy-5', bedNumber: 'MM-B01', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', facilityLevel: 'state', attendingPhysician: 'user-dr.mercy', attendingPhysicianName: 'Dr. Grace Lado', nurseAssigned: 'user-nurse.mercy', nurseAssignedName: 'Nurse Josephine Poni Wani', isolationRequired: false, status: 'admitted', followUpRequired: false, state: 'Central Equatoria', county: 'Juba', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) },
   { _id: 'admission-mercy-4', type: 'admission', patientId: 'pat-mercy-005', patientName: 'Josephine Aciek Manyang', hospitalNumber: 'MGH-000005', admissionDate: daysAgo(1), admittingDiagnosis: 'Severe malaria', icd11Code: '1A40', severity: 'severe', admittedBy: 'user-dr.mercy', admittedByName: 'Dr. Grace Lado', wardId: 'ward-mercy-3', wardName: 'Paediatric Ward', bedId: 'bed-mercy-7', bedNumber: 'MP-B01', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', facilityLevel: 'state', attendingPhysician: 'user-dr.mercy', attendingPhysicianName: 'Dr. Grace Lado', nurseAssigned: 'user-nurse.mercy', nurseAssignedName: 'Nurse Josephine Poni Wani', isolationRequired: false, status: 'admitted', followUpRequired: false, state: 'Central Equatoria', county: 'Juba', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(0) },
   { _id: 'admission-mercy-5', type: 'admission', patientId: 'pat-mercy-007', patientName: 'Margaret Nyanut Riek', hospitalNumber: 'MGH-000007', admissionDate: daysAgo(3), admittingDiagnosis: 'Severe anaemia (sickle cell crisis)', icd11Code: '3A51', severity: 'critical', admittedBy: 'user-dr.mercy', admittedByName: 'Dr. Grace Lado', wardId: 'ward-mercy-1', wardName: 'General Ward', bedId: 'bed-mercy-3', bedNumber: 'MG1-B03', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', facilityLevel: 'state', attendingPhysician: 'user-dr.mercy', attendingPhysicianName: 'Dr. Grace Lado', nurseAssigned: 'user-nurse.mercy', nurseAssignedName: 'Nurse Josephine Poni Wani', isolationRequired: false, status: 'admitted', followUpRequired: false, state: 'Central Equatoria', county: 'Juba', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(3), updatedAt: daysAgo(0) },
+  // Malakal Teaching Hospital (hosp-003, public org) — active admissions on
+  // nurse.stella's own ward roster, attended by the facility's new doctor.
+  { _id: 'admission-m1', type: 'admission', patientId: 'pat-00202', patientName: 'Both Chuol', hospitalNumber: 'MTH-000012', admissionDate: daysAgo(1), admittingDiagnosis: 'Hypertensive urgency', icd11Code: 'BA02', severity: 'moderate', admittedBy: 'user-dr.ochalla', admittedByName: 'Dr. Peter Ochalla Diu', wardId: 'ward-m1', wardName: 'General Ward', bedId: 'bed-m1', bedNumber: 'M1-B01', facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', facilityLevel: 'state', attendingPhysician: 'user-dr.ochalla', attendingPhysicianName: 'Dr. Peter Ochalla Diu', nurseAssigned: 'user-nurse.stella', nurseAssignedName: 'Nurse Stella Keji Lemi', isolationRequired: false, status: 'admitted', followUpRequired: false, state: 'Upper Nile', county: 'Malakal', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(0) },
+  { _id: 'admission-m2', type: 'admission', patientId: 'pat-00204', patientName: 'Chuol Jal', hospitalNumber: 'MTH-000014', admissionDate: daysAgo(2), admittingDiagnosis: 'Severe malaria', icd11Code: '1A40', severity: 'severe', admittedBy: 'user-dr.ochalla', admittedByName: 'Dr. Peter Ochalla Diu', wardId: 'ward-m1', wardName: 'General Ward', bedId: 'bed-m2', bedNumber: 'M1-B02', facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', facilityLevel: 'state', attendingPhysician: 'user-dr.ochalla', attendingPhysicianName: 'Dr. Peter Ochalla Diu', nurseAssigned: 'user-nurse.stella', nurseAssignedName: 'Nurse Stella Keji Lemi', isolationRequired: false, status: 'admitted', followUpRequired: false, state: 'Upper Nile', county: 'Malakal', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(0) },
+  { _id: 'admission-m3', type: 'admission', patientId: 'pat-00206', patientName: 'Riek Wal', hospitalNumber: 'MTH-000016', admissionDate: daysAgo(1), admittingDiagnosis: 'Cerebrovascular accident (stroke)', icd11Code: 'BA01', severity: 'critical', admittedBy: 'user-dr.ochalla', admittedByName: 'Dr. Peter Ochalla Diu', wardId: 'ward-m1', wardName: 'General Ward', bedId: 'bed-m3', bedNumber: 'M1-B03', facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', facilityLevel: 'state', attendingPhysician: 'user-dr.ochalla', attendingPhysicianName: 'Dr. Peter Ochalla Diu', nurseAssigned: 'user-nurse.stella', nurseAssignedName: 'Nurse Stella Keji Lemi', isolationRequired: false, status: 'admitted', followUpRequired: false, state: 'Upper Nile', county: 'Malakal', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(0) },
 ];
 
 /**
@@ -1052,7 +1068,22 @@ const seedAdmissions: Omit<AdmissionDoc, '_rev' | 'createdBy'>[] = [
  * Two of the facility's doctors are still left without any window, so the
  * Doctors panel keeps a realistic Available/Unavailable mix.
  */
-const seedAvailability: Record<string, unknown>[] = [
+interface AvailabilitySeedRow {
+  providerId: string;
+  providerName: string;
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
+  modality: string;
+  /** Defaults to hosp-001 / Juba Teaching Hospital when absent — every entry
+   *  originally hardcoded that facility below the `.map()`. Carrying it per-row
+   *  instead lets a non-Juba provider (e.g. Malakal) get their own clinic
+   *  hours without touching the Juba rows' output at all. */
+  facilityId?: string;
+  facilityName?: string;
+}
+
+const availabilityRows: AvailabilitySeedRow[] = [
   {
     providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga',
     // Mon/Wed/Fri mornings, general outpatient clinic.
@@ -1073,13 +1104,24 @@ const seedAvailability: Record<string, unknown>[] = [
     // Mon–Sat, the long day the clinical officer actually covers.
     daysOfWeek: [1, 2, 3, 4, 5, 6], startTime: '09:00', endTime: '16:00', modality: 'both',
   },
-].map((p, i) => ({
+  // Malakal Teaching Hospital (hosp-003) — without this, the facility had no
+  // provider clinic hours at all, so nurse.stella's "Find availability"
+  // booking wizard had no slots to offer for any Malakal clinician.
+  {
+    providerId: 'user-dr.ochalla', providerName: 'Dr. Peter Ochalla Diu',
+    facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital',
+    // Mon–Fri mornings-into-afternoon, general outpatient + ward rounds.
+    daysOfWeek: [1, 2, 3, 4, 5], startTime: '08:00', endTime: '15:00', modality: 'in_person',
+  },
+];
+
+const seedAvailability: Record<string, unknown>[] = availabilityRows.map((p, i) => ({
   _id: `availability-demo-${i + 1}`,
   type: 'availability',
   providerId: p.providerId,
   providerName: p.providerName,
-  facilityId: 'hosp-001',
-  facilityName: 'Juba Teaching Hospital',
+  facilityId: p.facilityId ?? 'hosp-001',
+  facilityName: p.facilityName ?? 'Juba Teaching Hospital',
   // Series starts a fortnight back so the pattern is already established, and
   // runs a year out so a fresh demo is never staring at an empty calendar.
   date: dateAgo(14),
@@ -1326,6 +1368,19 @@ const seedTriage: Omit<TriageDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'triage-m2', type: 'triage', patientId: 'pat-00201', patientName: 'Nyakuoth Gatluak', hospitalNumber: 'MTH-000011', airway: 'clear', breathing: 'normal', circulation: 'normal', consciousness: 'alert', priority: 'YELLOW', temperature: '37.9', pulse: '100', respiratoryRate: '20', systolic: '110', diastolic: '70', oxygenSaturation: '95', chiefComplaint: 'Abdominal pain in pregnancy', triagedBy: 'user-nurse.stella', triagedByName: 'Nurse Stella Keji Lemi', triagedAt: daysAgo(0), facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', status: 'pending', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) },
   { _id: 'triage-m3', type: 'triage', patientId: 'pat-00202', patientName: 'Both Chuol', hospitalNumber: 'MTH-000012', airway: 'clear', breathing: 'normal', circulation: 'normal', consciousness: 'alert', priority: 'GREEN', temperature: '37.0', pulse: '78', respiratoryRate: '16', systolic: '122', diastolic: '78', oxygenSaturation: '99', chiefComplaint: 'Wound dressing follow-up', triagedBy: 'user-nurse.stella', triagedByName: 'Nurse Stella Keji Lemi', triagedAt: daysAgo(1), facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', status: 'seen', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
   { _id: 'triage-m4', type: 'triage', patientId: 'pat-00203', patientName: 'Nyandeng Reath', hospitalNumber: 'MTH-000013', airway: 'clear', breathing: 'distressed', circulation: 'impaired', consciousness: 'alert', priority: 'YELLOW', temperature: '38.7', pulse: '112', respiratoryRate: '24', systolic: '100', diastolic: '64', oxygenSaturation: '91', chiefComplaint: 'Severe anaemia, fatigue', triagedBy: 'user-nurse.stella', triagedByName: 'Nurse Stella Keji Lemi', triagedAt: daysAgo(0), facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', status: 'pending', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) },
+
+  // Arrival triage for patients who were admitted from it. Every inpatient
+  // reached a bed through the front door, so each admission needs the ETAT
+  // that sent them there — without these, a ward row shows no vitals at all
+  // while the bed beside it shows a full set, purely because one patient's
+  // assessment was seeded and the other's was not.
+  //
+  // Dated to the admission (assessment precedes the bed) and stamped
+  // `status: 'admitted'`, which is both true and what keeps a settled
+  // inpatient out of the live waiting queue however recent the record is.
+  { _id: 'triage-3b', type: 'triage', patientId: 'pat-00062', patientName: 'Nyandeng Chol Wol', hospitalNumber: 'JTH-000062', airway: 'clear', breathing: 'normal', circulation: 'normal', consciousness: 'alert', priority: 'YELLOW', temperature: '37.1', pulse: '96', respiratoryRate: '20', systolic: '118', diastolic: '74', oxygenSaturation: '98', chiefComplaint: 'Regular contractions since morning, term pregnancy', triagedBy: 'user-midwife.nyakong', triagedByName: 'Midwife Nyakong Gatkuoth', triagedAt: daysAgo(1), facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', status: 'admitted', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+  { _id: 'triage-m5', type: 'triage', patientId: 'pat-00204', patientName: 'Chuol Jal', hospitalNumber: 'MTH-000014', airway: 'clear', breathing: 'distressed', circulation: 'impaired', consciousness: 'alert', priority: 'RED', temperature: '39.6', pulse: '124', respiratoryRate: '28', systolic: '96', diastolic: '60', oxygenSaturation: '92', chiefComplaint: 'High fever, vomiting, unable to stand', triagedBy: 'user-nurse.stella', triagedByName: 'Nurse Stella Keji Lemi', triagedAt: daysAgo(2), facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', status: 'admitted', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(2) },
+  { _id: 'triage-m6', type: 'triage', patientId: 'pat-00206', patientName: 'Riek Wal', hospitalNumber: 'MTH-000016', airway: 'clear', breathing: 'normal', circulation: 'impaired', consciousness: 'verbal', priority: 'RED', temperature: '36.8', pulse: '58', respiratoryRate: '14', systolic: '186', diastolic: '104', oxygenSaturation: '94', chiefComplaint: 'Sudden weakness on one side, slurred speech', triagedBy: 'user-nurse.stella', triagedByName: 'Nurse Stella Keji Lemi', triagedAt: daysAgo(1), facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', status: 'admitted', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
 ];
 
 // ═══ Overflow rows — enough same-day entries to scroll ════════════
@@ -1877,7 +1932,10 @@ async function clearSeededClinicalDataOnce(): Promise<void> {
     'tamamhealth_invoices', 'tamamhealth_ledger', 'tamamhealth_wards',
     'tamamhealth_staff_schedules', 'tamamhealth_blood_bank', 'tamamhealth_problems',
     'tamamhealth_encounters', 'tamamhealth_patient_documents', 'tamamhealth_patient_reminders',
-    'tamamhealth_intake_forms', 'tamamhealth_program_enrollments', 'tamamhealth_procedures',
+    // Retired with the intake-forms feature; listed so this one-time clear
+    // also removes the orphaned database.
+    'tamamhealth_intake_forms',
+    'tamamhealth_program_enrollments', 'tamamhealth_procedures',
     'tamamhealth_handoffs', 'tamamhealth_patient_transfers', 'tamamhealth_nutrition_screenings',
     'tamamhealth_nutrition_supplies', 'tamamhealth_availability', 'tamamhealth_announcements',
     'tamamhealth_emergency_plans', 'tamamhealth_assets', 'tamamhealth_leave_requests',
@@ -2591,76 +2649,6 @@ async function seedDatabaseExclusive(): Promise<void> {
     await safePut(rDB, r as unknown as Record<string, unknown>);
   }
 
-  // Seed patient intake forms (all public org) — the front-desk review queue
-  // for forms patients submitted (or didn't) ahead of a visit.
-  const intakeDB = intakeFormsDB();
-  const intakeForms: PatientIntakeFormDoc[] = [
-    {
-      _id: 'intake-demo-01', type: 'patient_intake_form',
-      patientId: 'pat-00057', patientName: 'Achol Mayen Garang', hospitalNumber: 'JTH-000057',
-      providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga',
-      status: 'pending_review',
-      requestedAt: daysAgo(3), receivedAt: daysAgo(2),
-      fields: [
-        { label: 'Date of birth', value: '2002-03-15' },
-        { label: 'Phone', value: '+211912555057' },
-        { label: 'Address', value: 'Juba, Central Equatoria' },
-        { label: 'Emergency contact', value: 'Mayen Garang (father) — +211912555099' },
-        { label: 'Known allergies', value: 'Penicillin' },
-        { label: 'Reason for visit', value: 'Follow-up on ongoing treatment' },
-      ],
-      hospitalId: 'hosp-001', orgId: PUBLIC_ORG_ID,
-      createdAt: daysAgo(3), updatedAt: daysAgo(2),
-    },
-    {
-      _id: 'intake-demo-02', type: 'patient_intake_form',
-      patientId: 'pat-00058', patientName: 'Nyakuoth Koang Jal', hospitalNumber: 'BSH-000003',
-      providerId: 'user-nurse.wau', providerName: 'Nurse Grace Achai Lual',
-      status: 'pending_review',
-      requestedAt: daysAgo(6), receivedAt: daysAgo(5),
-      fields: [
-        { label: 'Date of birth', value: '1996-01-20' },
-        { label: 'Phone', value: '+211912555058' },
-        { label: 'Address', value: 'Rubkona, Unity' },
-        { label: 'Emergency contact', value: 'Nyandeng Jal (sister) — +211912555098' },
-        { label: 'Known allergies', value: 'None reported' },
-        { label: 'Reason for visit', value: 'Antenatal check-up' },
-      ],
-      hospitalId: 'hosp-004', orgId: PUBLIC_ORG_ID,
-      createdAt: daysAgo(6), updatedAt: daysAgo(5),
-    },
-    {
-      _id: 'intake-demo-03', type: 'patient_intake_form',
-      patientId: 'pat-00059', patientName: 'Abuk Deng Mading', hospitalNumber: 'WSH-000002',
-      providerId: 'user-co.deng', providerName: 'CO Deng Mabior Kuol',
-      status: 'not_submitted',
-      requestedAt: daysAgo(10),
-      fields: [
-        { label: 'Date of birth', value: '1994-06-10' },
-        { label: 'Phone', value: '+211912555059' },
-      ],
-      hospitalId: 'hosp-002', orgId: PUBLIC_ORG_ID,
-      createdAt: daysAgo(10), updatedAt: daysAgo(10),
-    },
-    {
-      _id: 'intake-demo-04', type: 'patient_intake_form',
-      patientId: 'pat-00060', patientName: 'Nyandit Dut Malual', hospitalNumber: 'MTH-000002',
-      providerId: 'user-dr.wau', providerName: 'Dr. Mary Akuol Deng',
-      status: 'merged',
-      requestedAt: daysAgo(21), receivedAt: daysAgo(20), mergedAt: daysAgo(19), mergedBy: 'Grace Poni Lukudu',
-      fields: [
-        { label: 'Date of birth', value: '2000-08-05' },
-        { label: 'Phone', value: '+211912555060' },
-        { label: 'Address', value: 'Malakal, Upper Nile' },
-      ],
-      hospitalId: 'hosp-003', orgId: PUBLIC_ORG_ID,
-      createdAt: daysAgo(21), updatedAt: daysAgo(19),
-    },
-  ];
-  for (const doc of intakeForms) {
-    await safePut(intakeDB, doc as unknown as Record<string, unknown>);
-  }
-
   // Seed disease alerts (all public org). Spread reportDates across the last
   // ~8 weeks so the surveillance weekly-trend line buckets into multiple ISO
   // weeks instead of collapsing to a single point. Each base alert is
@@ -2756,6 +2744,25 @@ async function seedDatabaseExclusive(): Promise<void> {
   ];
   for (const rx of mercyRx) {
     await safePut(rxDB, { ...rx, orgId: PRIVATE_ORG_ID } as unknown as Record<string, unknown>);
+  }
+
+  // Malakal Teaching Hospital (hosp-003, public org) prescriptions — prescriber
+  // dr.ochalla, one scheduled medication per admitted patient uses a q8h/q12h
+  // frequency (always includes a 00:00 dose for "today"), so at least one dose
+  // is reliably due/overdue on the merged nurse dashboard's "Medications due"
+  // rail and the bedside MAR grid regardless of what time of day this is
+  // viewed. `admissionId` ties each order to its ward admission for the MAR.
+  const malakalRx: Omit<PrescriptionDoc, '_rev' | 'createdBy'>[] = [
+    { _id: 'rx-m1', type: 'prescription', patientId: 'pat-00202', patientName: 'Both Chuol', medication: 'Nifedipine (immediate release) 10mg', dose: '10mg', route: 'Oral', frequency: 'q8h', duration: '3 days', prescribedBy: 'Dr. Peter Ochalla Diu', status: 'pending', indication: 'BA02 · Hypertensive urgency', admissionId: 'admission-m1', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+    { _id: 'rx-m1b', type: 'prescription', patientId: 'pat-00202', patientName: 'Both Chuol', medication: 'Paracetamol 500mg', dose: '1g', route: 'Oral', frequency: 'QDS PRN', duration: '3 days', prescribedBy: 'Dr. Peter Ochalla Diu', status: 'pending', admissionId: 'admission-m1', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+    { _id: 'rx-m2', type: 'prescription', patientId: 'pat-00204', patientName: 'Chuol Jal', medication: 'Artesunate (IV)', dose: '2.4 mg/kg', route: 'IV', frequency: 'q12h', duration: '3 days', prescribedBy: 'Dr. Peter Ochalla Diu', status: 'pending', indication: '1A40 · Severe malaria', admissionId: 'admission-m2', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', createdAt: daysAgo(2), updatedAt: daysAgo(2) },
+    { _id: 'rx-m2b', type: 'prescription', patientId: 'pat-00204', patientName: 'Chuol Jal', medication: 'Paracetamol 500mg', dose: '1g', route: 'Oral', frequency: 'QDS PRN', duration: '3 days', prescribedBy: 'Dr. Peter Ochalla Diu', status: 'pending', admissionId: 'admission-m2', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', createdAt: daysAgo(2), updatedAt: daysAgo(2) },
+    { _id: 'rx-m3', type: 'prescription', patientId: 'pat-00206', patientName: 'Riek Wal', medication: 'Paracetamol (IV) 1g', dose: '1g', route: 'IV', frequency: 'q8h', duration: '3 days', prescribedBy: 'Dr. Peter Ochalla Diu', status: 'pending', indication: 'BA01 · Cerebrovascular accident (stroke)', admissionId: 'admission-m3', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+    // Clopidogrel, not aspirin: pat-00206's chart carries an Aspirin allergy.
+    { _id: 'rx-m3b', type: 'prescription', patientId: 'pat-00206', patientName: 'Riek Wal', medication: 'Clopidogrel 75mg', dose: '75mg', route: 'Oral', frequency: 'OD', duration: '90 days', prescribedBy: 'Dr. Peter Ochalla Diu', status: 'pending', indication: 'Secondary stroke prevention', admissionId: 'admission-m3', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+  ];
+  for (const rx of malakalRx) {
+    await safePut(rxDB, { ...rx, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
   }
 
   // ── Generated clinical activity for the extended roster (pat-00087+) ────────
@@ -4073,6 +4080,103 @@ async function seedDatabaseExclusive(): Promise<void> {
   const trDB = triageDB();
   for (const t of seedTriage) {
     await safePut(trDB, t as unknown as Record<string, unknown>);
+  }
+
+  // Malakal Teaching Hospital (hosp-003) — a signed night-shift handoff
+  // authored by midwife.nyakong (not nurse.stella), so stella's "Handoffs to
+  // acknowledge" rail has a real record waiting for her when she opens the
+  // dashboard for the day shift.
+  const hoDB = handoffsDB();
+  const malakalHandoff: Omit<ShiftHandoffDoc, '_rev'> = {
+    _id: 'handoff-m1',
+    type: 'shift_handoff',
+    facilityId: 'hosp-003',
+    facilityName: 'Malakal Teaching Hospital',
+    orgId: PUBLIC_ORG_ID,
+    shiftDate: dateAgo(0),
+    shift: 'night',
+    outgoingNurseId: 'user-midwife.nyakong',
+    outgoingNurseName: 'Midwife Nyakong Gatkuoth',
+    incomingNurseName: 'Nurse Stella Keji Lemi',
+    incomingNurseId: 'user-nurse.stella',
+    notes: 'Quiet night on the ward. Three inpatients, all stable overnight. '
+      + 'Bed M1-B04 remains open. Please chase the malaria smear repeat for M1-B02.',
+    patients: [
+      {
+        patientId: 'pat-00202', patientName: 'Both Chuol', hospitalNumber: 'MTH-000012',
+        priority: 'YELLOW',
+        situation: 'Admitted for hypertensive urgency, BP trending down on nifedipine.',
+        background: '42-year-old male, known hypertension, penicillin allergy.',
+        assessment: 'Stable overnight, no acute distress, BP improving.',
+        recommendation: 'Continue BP checks q4h; reassess nifedipine response on rounds.',
+        tasks: ['Recheck BP at 08:00', 'Give scheduled nifedipine per MAR'],
+      },
+      {
+        patientId: 'pat-00204', patientName: 'Chuol Jal', hospitalNumber: 'MTH-000014',
+        priority: 'RED',
+        situation: 'IV artesunate running for severe malaria; remained febrile overnight.',
+        background: '23-year-old male, no known drug allergies.',
+        assessment: 'Febrile and tachycardic, responding to IV fluids and antimalarial.',
+        recommendation: 'Continue IV artesunate per schedule; repeat malaria smear this morning.',
+        tasks: ['Give scheduled artesunate dose per MAR', 'Repeat temperature q2h', 'Chase repeat malaria smear'],
+      },
+      {
+        patientId: 'pat-00206', patientName: 'Riek Wal', hospitalNumber: 'MTH-000016',
+        priority: 'RED',
+        situation: 'Acute stroke with right-sided weakness, admitted yesterday.',
+        background: '65-year-old male, hypertension, osteoarthritis, aspirin allergy — on clopidogrel instead.',
+        assessment: 'Neuro observations stable overnight, GCS 15, weakness unchanged.',
+        recommendation: 'Continue neuro obs q4h; physiotherapy referral still pending.',
+        tasks: ['Neuro observations q4h', 'Give scheduled IV paracetamol per MAR'],
+      },
+    ],
+    metrics: { totalPatients: 3, critical: 1, overdueMar: 0, dueMar: 2 },
+    signedAt: daysAgo(0.3),
+    status: 'signed',
+    createdAt: daysAgo(0.3),
+    updatedAt: daysAgo(0.3),
+  };
+  await safePut(hoDB, malakalHandoff as unknown as Record<string, unknown>);
+
+  // Malakal Teaching Hospital (hosp-003) — rooming-station worklist. The
+  // rooming queue is derived from `clinical_encounter` documents (not a
+  // dedicated doc type), so nurse.stella's "Rooming queue" rail needs real
+  // encounters sitting in one of the ROOMING_WORKLIST_STATUSES. Both patients
+  // already have today's completed triage assessments (triage-m1, triage-m4);
+  // these encounters represent them further along the same visit.
+  const encDB2 = encountersDB();
+  const malakalEncounters: Omit<EncounterDoc, '_rev'>[] = [
+    {
+      _id: 'enc-m1', type: 'clinical_encounter',
+      patientId: 'pat-00200', patientName: 'Gatwech Puok', hospitalNumber: 'MTH-000010',
+      clinicianId: '', clinicianName: '',
+      hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital',
+      status: 'routed_to_clinic', stageKey: 'clinic_intake_rooming',
+      snapshot: {}, labOrderIds: [],
+      triageId: 'triage-m1',
+      attendanceType: 'new', arrivalChannel: 'walk_in',
+      destinationClinic: 'Emergency',
+      startedAt: minutesAgo(40),
+      orgId: PUBLIC_ORG_ID,
+      createdAt: minutesAgo(40), updatedAt: minutesAgo(40),
+    },
+    {
+      _id: 'enc-m2', type: 'clinical_encounter',
+      patientId: 'pat-00203', patientName: 'Nyandeng Reath', hospitalNumber: 'MTH-000013',
+      clinicianId: '', clinicianName: '',
+      hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital',
+      status: 'in_rooming', stageKey: 'clinic_intake_rooming',
+      snapshot: {}, labOrderIds: [],
+      triageId: 'triage-m4',
+      attendanceType: 'repeat', arrivalChannel: 'walk_in',
+      destinationClinic: 'Outpatient', roomNumber: 'Room 2',
+      startedAt: minutesAgo(20),
+      orgId: PUBLIC_ORG_ID,
+      createdAt: minutesAgo(20), updatedAt: minutesAgo(20),
+    },
+  ];
+  for (const enc of malakalEncounters) {
+    await safePut(encDB2, enc as unknown as Record<string, unknown>);
   }
 
   // Seed assets

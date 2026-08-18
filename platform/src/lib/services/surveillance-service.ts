@@ -18,6 +18,17 @@ export async function getActiveAlerts(): Promise<DiseaseAlertDoc[]> {
   return all.filter(a => a.alertLevel === 'emergency' || a.alertLevel === 'warning');
 }
 
+/**
+ * Alerts auto-raised from one medical record. (sourceRecordId, icd11Code) is
+ * the dedupe key the record-save path checks so a re-saved or amended
+ * consultation never double-counts a case.
+ */
+export async function getAlertsBySourceRecord(recordId: string): Promise<DiseaseAlertDoc[]> {
+  const db = diseaseAlertsDB();
+  const all = await findByType<DiseaseAlertDoc>(db, 'disease_alert');
+  return all.filter(a => a.sourceRecordId === recordId);
+}
+
 export async function updateAlert(id: string, data: Partial<DiseaseAlertDoc>): Promise<DiseaseAlertDoc | null> {
   const db = diseaseAlertsDB();
   try {

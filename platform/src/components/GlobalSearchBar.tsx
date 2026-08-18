@@ -159,7 +159,7 @@ export default function GlobalSearchBar({ title, titleIcon, actions, searchTrail
                     style={{ borderBottom: '1px solid var(--border-light)' }}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                         {patientFullName(p)}
                       </p>
                       <p className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>

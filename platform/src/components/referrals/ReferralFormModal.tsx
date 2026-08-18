@@ -140,7 +140,7 @@ export default function ReferralFormModal({ onClose, onSent }: { onClose: () => 
             {selectedPatient ? (
               <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
                 <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                  {t('referrals.selectedPrefix')} <span className="font-medium">{selectedPatient.firstName} {selectedPatient.surname}</span>
+                  {t('referrals.selectedPrefix')} <span className="font-semibold">{selectedPatient.firstName} {selectedPatient.surname}</span>
                   <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>({selectedPatient.hospitalNumber})</span>
                 </span>
                 <button
@@ -172,7 +172,7 @@ export default function ReferralFormModal({ onClose, onSent }: { onClose: () => 
                         className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-white/5 transition-colors"
                         style={{ borderBottom: '1px solid var(--border-light)' }}
                       >
-                        <span className="text-sm font-medium truncate">{p.firstName} {p.surname}</span>
+                        <span className="text-sm font-semibold truncate">{p.firstName} {p.surname}</span>
                         <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{p.hospitalNumber}</span>
                       </button>
                     ))}

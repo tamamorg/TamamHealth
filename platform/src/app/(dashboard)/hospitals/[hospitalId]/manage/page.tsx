@@ -1046,7 +1046,7 @@ function PerformanceTab({ scope, hospitalId }: { scope: DataScope | undefined; h
     { label: t('hospitals.kpiDischargesToday'),   value: kpis.dischargesToday,              icon: CheckCircle, tint: 'var(--color-success)' },
     { label: t('hospitals.kpiTransfersToday'),    value: kpis.transfersToday,               icon: ArrowLeft,   tint: 'var(--accent-primary)' },
     { label: t('hospitals.kpiAvgLabTat'),         value: kpis.labTatHours || '—',           icon: FlaskConical, tint: 'var(--color-warning)' },
-    { label: t('hospitals.kpiRxDispensedToday'),  value: kpis.prescriptionsDispensedToday,  icon: Pill,        tint: '#EC4899' },
+    { label: t('hospitals.kpiRxDispensedToday'),  value: kpis.prescriptionsDispensedToday,  icon: Pill,        tint: 'var(--chart-2)' },
     { label: t('hospitals.kpiImmunizationsToday'), value: kpis.immunizationsToday,          icon: Syringe,     tint: 'var(--accent-primary)' },
   ];
 
@@ -1237,7 +1237,7 @@ function SettingsTab({ hospital, canWrite, onSaved }: {
       {/* Save */}
       <div className="lg:col-span-2 flex items-center justify-end gap-3">
         {err && (
-          <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
+          <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
             <AlertTriangle className="w-3.5 h-3.5" /> {err}
           </span>
         )}
@@ -1258,7 +1258,7 @@ function SettingsTab({ hospital, canWrite, onSaved }: {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+      <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{label}</label>
       {children}
     </div>
   );

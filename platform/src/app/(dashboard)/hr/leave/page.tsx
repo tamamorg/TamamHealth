@@ -88,7 +88,7 @@ export default function HrLeavePage() {
 
   return (
     <HrPageShell>
-      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-leave-list">
         <EhrListHeader
           title="Leave requests"
           stats={[

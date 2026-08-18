@@ -1,13 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, ArrowRightLeft, Check, Clock, FileText, LogOut, X } from '@/components/icons/lucide';
+import { AlertTriangle, ArrowRight, ArrowRightLeft, Check, Clock, FileText, HeartPulse, LogOut, X } from '@/components/icons/lucide';
 import CreateNoteButton, { defaultNoteTypeFor } from '@/components/clinical-notes/CreateNoteButton';
 import Modal from '@/components/Modal';
 import { useMedicalRecords } from '@/lib/hooks/useMedicalRecords';
 import { STAGE_LABELS, type QueueEntry, type QueueStage } from '@/lib/services/patient-queue-service';
-import { formatClockTime } from '@/lib/format-utils';
-import { initials, stateTint } from '@/lib/patient-utils';
+import { formatClockTime, formatCompactDateTime } from '@/lib/format-utils';
+import { initials, stateTint, shortenPersonName } from '@/lib/patient-utils';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import type { AppointmentDoc, TriageDoc } from '@/lib/db-types';
 
@@ -63,6 +63,7 @@ export default function EhrVisitPopup({
   wait,
   appointment,
   triage,
+  lastTriage,
   entry,
   onClose,
   onCall,
@@ -70,6 +71,7 @@ export default function EhrVisitPopup({
   onAcknowledge,
   onMove,
   onOpenChart,
+  onStartTriage,
   onEscalate,
   onLwbs,
   onCreateNote,
@@ -84,7 +86,15 @@ export default function EhrVisitPopup({
   acuity: 'RED' | 'YELLOW' | 'GREEN';
   wait: string;
   appointment: AppointmentDoc | null;
+  /** The patient's ACTIVE triage (inside the queue's 24h window), or null. */
   triage: TriageDoc | null;
+  /**
+   * The patient's most recent triage at any age. Vitals fall back to this so
+   * an inpatient triaged on admission shows the last readings anyone actually
+   * took, instead of "none recorded" once the queue window has passed them by.
+   * Only ever read for display, and always stamped with its own date.
+   */
+  lastTriage?: TriageDoc | null;
   entry: QueueEntry | null;
   onClose: () => void;
   /** Take the patient now — records the handoff and opens the consultation. */
@@ -96,6 +106,12 @@ export default function EhrVisitPopup({
   /** Opens the Move dialog (only offered while a queue entry exists). */
   onMove?: () => void;
   onOpenChart?: () => void;
+  /**
+   * Open the ETAT triage assessment for this patient. The station that used
+   * to own this verb is gone — the shared worklist is now where a triage
+   * nurse meets an untriaged arrival, so the verb has to live here.
+   */
+  onStartTriage?: () => void;
   /**
    * Clinical dispositions — offered only while the visit is still waiting
    * (active triage with an encounter). The parent owns the confirm + writes.
@@ -131,7 +147,13 @@ export default function EhrVisitPopup({
   const todaysNote = consultations.find(record => (record.consultedAt || record.visitDate).startsWith(todayIso));
   const previousNote = consultations.find(record => !(record.consultedAt || record.visitDate).startsWith(todayIso));
 
-  const vitals = triage ? triageVitals(triage) : [];
+  // Vitals come from the active triage when there is one, and otherwise from
+  // the last ETAT on record — an admitted patient's arrival assessment is
+  // still the most recent set of readings taken. `vitalsAreCurrent` keeps the
+  // two cases visually distinct so an old reading is never read as today's.
+  const vitalsTriage = triage ?? lastTriage ?? null;
+  const vitalsAreCurrent = Boolean(triage);
+  const vitals = vitalsTriage ? triageVitals(vitalsTriage) : [];
 
   const body = (
       <div className={inline ? 'ehr-visit-pop ehr-visit-pop--inline' : 'modal-content card-elevated ehr-visit-pop'}>
@@ -144,7 +166,7 @@ export default function EhrVisitPopup({
               {initials(name)}
             </span>
             <div className="ehr-visit-pop-head-text">
-              <h3 id="ehr-visit-pop-title">{name}</h3>
+              <h3 id="ehr-visit-pop-title">{shortenPersonName(name)}</h3>
               {detail && <p className="ehr-visit-pop-detail">{detail}</p>}
             </div>
             {/* The header carries only what reception triages on at a glance —
@@ -179,6 +201,11 @@ export default function EhrVisitPopup({
             {onOpenChart && (
               <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onOpenChart} title="Open chart">
                 <FileText className="w-4 h-4" aria-hidden /> Open chart
+              </button>
+            )}
+            {onStartTriage && (
+              <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onStartTriage} title="Open the ETAT triage assessment">
+                <HeartPulse className="w-4 h-4" aria-hidden /> {triage ? 'Review triage' : 'Start triage'}
               </button>
             )}
             {onMove && entry && (
@@ -242,7 +269,11 @@ export default function EhrVisitPopup({
                     ? `Scheduled today · ${formatClockTime(appointment.appointmentTime)}`
                     : triage
                       ? `Arrived · triaged ${formatClockTime(triage.triagedAt.slice(11, 16))}`
-                      : 'Not yet arrived'}
+                      /* Dated, and never "Arrived": the reading is real but it
+                         belongs to an earlier day, not to today's visit. */
+                      : lastTriage
+                        ? `Last triaged ${formatCompactDateTime(lastTriage.triagedAt)}`
+                        : 'Not yet arrived'}
                 </p>
               </div>
             </div>
@@ -281,7 +312,10 @@ export default function EhrVisitPopup({
             )}
 
             <div className="ehr-visit-pop-row">
-              <span className="ehr-visit-pop-label">Vitals</span>
+              {/* "Last vitals" only when there are older readings to show —
+                  over an empty state it would promise a history that isn't
+                  there (a walk-in still awaiting their first assessment). */}
+              <span className="ehr-visit-pop-label">{vitalsTriage && !vitalsAreCurrent ? 'Last vitals' : 'Vitals'}</span>
               <div>
                 {vitals.length === 0 ? (
                   <p>No triage vitals recorded yet.</p>
@@ -301,7 +335,13 @@ export default function EhrVisitPopup({
                         </div>
                       ))}
                     </div>
-                    {triage && <p className="ehr-visit-pop-stamp">{formatClockTime(triage.triagedAt.slice(11, 16))} · {triage.triagedByName}</p>}
+                    {vitalsTriage && (
+                      <p className="ehr-visit-pop-stamp">
+                        {vitalsAreCurrent
+                          ? formatClockTime(vitalsTriage.triagedAt.slice(11, 16))
+                          : formatCompactDateTime(vitalsTriage.triagedAt)} · {vitalsTriage.triagedByName}
+                      </p>
+                    )}
                   </>
                 )}
               </div>
@@ -384,7 +424,7 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove }: {
     <Modal onClose={onClose} width={520} labelledBy="ehr-queue-move-title">
       <div className="modal-content card-elevated ehr-queue-move">
         <div className="ehr-queue-move-head">
-          <h3 id="ehr-queue-move-title">Move {entry.patientName}</h3>
+          <h3 id="ehr-queue-move-title">Move {shortenPersonName(entry.patientName)}</h3>
           <button type="button" aria-label="Close" onClick={onClose}><X className="w-4 h-4" /></button>
         </div>
 

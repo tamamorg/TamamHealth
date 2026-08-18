@@ -25,7 +25,7 @@ const VIEWS: { key: View; label: string }[] = [
 ];
 
 const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000',
+  fontFamily: 'var(--font-condensed)', fontWeight: 800, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
 };
 
 function Th({ children, onClick, active, dir }: { children?: React.ReactNode; onClick?: () => void; active?: boolean; dir?: 'asc' | 'desc' }) {
@@ -151,7 +151,7 @@ export default function EquityPlanningPage() {
 
   return (
     <main className="page-container page-enter">
-      <div className="dash-card mb-3">
+      <div data-tour="gov-equity-header" className="dash-card mb-3">
         <EhrListHeader
           title="Equity & planning"
           stats={[
@@ -187,7 +187,7 @@ export default function EquityPlanningPage() {
                     {sortedRows.map(r => (
                       <tr key={r.state} style={{ borderBottom: '1px solid var(--border-light)' }}>
                         <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{r.state}</td>
-                        <td className="px-4 py-2.5"><MiniBar value={r.facilities} max={maxFacilities} color="#2a78d6" /></td>
+                        <td className="px-4 py-2.5"><MiniBar value={r.facilities} max={maxFacilities} color="var(--chart-1)" /></td>
                         <td className="px-4 py-2.5"><MiniBar value={r.activeCases} max={maxCases} color="var(--color-danger-text)" /></td>
                         <td className="px-4 py-2.5"><MiniBar value={r.immRecords} max={maxImm} color="var(--color-success-text)" /></td>
                         <td className="px-4 py-2.5"><MiniBar value={r.ancVisits} max={maxAnc} color="var(--color-warning-text)" /></td>
@@ -232,9 +232,9 @@ export default function EquityPlanningPage() {
                       }} />
                       <ReferenceLine x={medianCases} stroke="var(--border-light)" strokeDasharray="4 4" />
                       <ReferenceLine y={medianCompleteness} stroke="var(--border-light)" strokeDasharray="4 4" />
-                      <Scatter data={scatterRows} fill="#2a78d6">
+                      <Scatter data={scatterRows} fill="var(--chart-1)">
                         {scatterRows.map((r, i) => (
-                          <Cell key={i} fill={r.activeCases > medianCases && (r.avgCompleteness as number) < medianCompleteness ? 'var(--color-warning)' : '#2a78d6'} />
+                          <Cell key={i} fill={r.activeCases > medianCases && (r.avgCompleteness as number) < medianCompleteness ? 'var(--color-warning)' : 'var(--chart-1)'} />
                         ))}
                       </Scatter>
                     </ScatterChart>
@@ -286,7 +286,7 @@ export default function EquityPlanningPage() {
                         <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.ratePer100Cases === null ? '—' : r.ratePer100Cases}</td>
                         <td className="px-4 py-2.5">
                           {r.accessGap && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md whitespace-nowrap" style={{ background: 'rgba(237,161,0,0.14)', color: '#a06700', border: '1px solid rgba(237,161,0,0.4)' }}>
+                            <span className="gov-chip gap-1" style={{ background: 'rgba(237,161,0,0.14)', color: '#a06700', border: '1px solid rgba(237,161,0,0.4)' }}>
                               <AlertTriangle className="w-3 h-3" /> Access gap
                             </span>
                           )}

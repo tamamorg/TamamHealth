@@ -3,7 +3,7 @@ import { logProvider } from './log-provider';
 
 /**
  * Outbound email, addressed to whoever the caller names — in practice the
- * PATIENT (an intake-form request, a receipt), not the platform team.
+ * PATIENT (a booking confirmation, a receipt), not the platform team.
  *
  * Provider is chosen by `EMAIL_PROVIDER`, the same contract
  * `/api/receipts/email` documents:

@@ -1,5 +1,5 @@
 /**
- * Online booking & patient self-intake types.
+ * Online booking types.
  *
  * These back the patient-facing booking surfaces (practice page, provider
  * profile, embeddable widget) and the staff-side configuration that decides

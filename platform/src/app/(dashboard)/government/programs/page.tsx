@@ -9,7 +9,7 @@ import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { Syringe, HeartPulse, ArrowUpRight, Info } from '@/components/icons/lucide';
 
 const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000',
+  fontFamily: 'var(--font-condensed)', fontWeight: 800, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
 };
 
 function StatTile({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
@@ -87,7 +87,7 @@ export default function DiseaseProgramsPage() {
 
   return (
     <main className="page-container page-enter">
-      <div className="dash-card mb-3">
+      <div data-tour="gov-programs-header" className="dash-card mb-3">
         <EhrListHeader title="Disease programs" stats={[{ label: 'Scope', value: 'Programme monitoring · National' }]} />
       </div>
 
@@ -95,11 +95,11 @@ export default function DiseaseProgramsPage() {
         <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading programme data…</div>
       ) : (
         <>
-          <ProgramCard icon={Syringe} iconColor="#2a78d6" title="Immunization (EPI)" period="All records · National"
+          <ProgramCard icon={Syringe} iconColor="var(--chart-1)" title="Immunization (EPI)" period="All records · National"
             links={[{ label: 'Open immunizations', href: '/immunizations' }]}>
             {immStats ? (
               <div className="grid grid-cols-3 gap-2">
-                <StatTile label="Coverage" value={`${immStats.coverageRate}%`} color="#2a78d6" />
+                <StatTile label="Coverage" value={`${immStats.coverageRate}%`} color="var(--chart-1)" />
                 <StatTile label="Fully immunized" value={immStats.fullyImmunized.toLocaleString()} sub={`of ${immStats.totalChildren.toLocaleString()} children`} />
                 <StatTile label="Overdue / missed" value={(immStats.overdue + immStats.missed).toLocaleString()} color="var(--color-warning-text)" />
               </div>

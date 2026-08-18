@@ -118,13 +118,20 @@ export function appointmentStatusOptionsForRole(role?: UserRole): AppointmentSta
  * Fine-grained statuses wear their canonical rung's label. `confirmed` reads
  * as plain Scheduled too — the confirmation fact stays in the status history
  * and the tooltip, not on the pill.
+ *
+ * `arrived` is the one exception, and deliberately so: it canonicalises to
+ * `checked_in` for the LADDER, but it files in the Upcoming lane, because the
+ * desk has not opened the visit yet (see `appointmentStatusGroup` and
+ * APPOINTMENT_PENDING_STATUSES). Labelling it "Checked In" put a pill reading
+ * "Checked In" inside the "Upcoming" tab and told reception their work was
+ * done while it was still theirs to do. It says what it is instead.
  */
 export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
   requested: 'Requested',
   scheduled: 'Scheduled',
   reminder_sent: 'Scheduled',
   confirmed: 'Scheduled',
-  arrived: 'Checked In',
+  arrived: 'Arrived',
   checked_in: 'Checked In',
   triaged: 'In Progress',
   in_progress: 'In Progress',
@@ -183,11 +190,16 @@ export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, { color: strin
   // what lets a tenant's brand blue reach the booked rungs.
   requested:     { color: 'var(--semantic-request)', bg: 'var(--semantic-request-bg)' },
   scheduled:     { color: 'var(--accent-primary)', bg: 'var(--color-info-bg)' },
-  reminder_sent: { color: 'var(--semantic-it)', bg: 'var(--semantic-it-bg)' },
-  confirmed:     { color: 'var(--color-info-text)', bg: 'var(--color-info-bg)' },
+  // A pill that reads the same word must look the same: reminder_sent and
+  // confirmed both display "Scheduled", so they take Scheduled's colours.
+  // Three shades behind one word made the ladder look like it had rungs the
+  // vocabulary no longer names.
+  reminder_sent: { color: 'var(--accent-primary)', bg: 'var(--color-info-bg)' },
+  confirmed:     { color: 'var(--accent-primary)', bg: 'var(--color-info-bg)' },
   arrived:       { color: 'var(--color-warning-text)', bg: 'var(--color-warning-bg)' },
   checked_in:    { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
-  triaged:       { color: 'var(--semantic-it)', bg: 'var(--semantic-it-bg)' },
+  // triaged displays as "In Progress" — same word, same colour.
+  triaged:       { color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
   in_progress:   { color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
   completed:     { color: 'var(--color-success-text)', bg: 'var(--color-success-bg)' },
   no_show:       { color: 'var(--text-muted)', bg: 'var(--semantic-inactive-bg)' },
@@ -199,11 +211,12 @@ export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, { color: strin
 export const APPOINTMENT_STATUS_TONES: Record<AppointmentStatus, 'scheduled' | 'ready' | 'active' | 'done' | 'warning' | 'danger'> = {
   requested: 'scheduled',
   scheduled: 'scheduled',
+  // Tones follow the label for the same reason the colours do.
   reminder_sent: 'scheduled',
-  confirmed: 'ready',
+  confirmed: 'scheduled',
   arrived: 'warning',
   checked_in: 'warning',
-  triaged: 'ready',
+  triaged: 'active',
   in_progress: 'active',
   completed: 'done',
   no_show: 'danger',
@@ -242,18 +255,22 @@ export const APPOINTMENT_PENDING_STATUSES: AppointmentStatus[] = ['scheduled', '
 
 /**
  * The three-lane view every role dashboard files its queue into — the same
- * lanes the mobile shell shows: Scheduled (booked, patient not yet with us),
- * In Office (visit open at the facility), Finished (the slot is closed —
+ * lanes the mobile shell shows: Upcoming (booked, patient not yet with us),
+ * Checked In (visit open at the facility), Completed (the slot is closed —
  * checked out, cancelled, no-show or rescheduled, nothing further today).
+ *
+ * The keys stay `scheduled`/`in_office`/`finished` — they are persisted in
+ * filter state and compared against stored statuses; only the display copy
+ * moved, and it lives here so every dashboard's tab strip reads the same.
  */
 export type AppointmentStatusGroup = 'scheduled' | 'in_office' | 'finished';
 
 export const APPOINTMENT_STATUS_GROUPS: AppointmentStatusGroup[] = ['scheduled', 'in_office', 'finished'];
 
 export const APPOINTMENT_STATUS_GROUP_LABELS: Record<AppointmentStatusGroup, string> = {
-  scheduled: 'Scheduled',
-  in_office: 'In Office',
-  finished: 'Finished',
+  scheduled: 'Upcoming',
+  in_office: 'Checked In',
+  finished: 'Completed',
 };
 
 export function appointmentStatusGroup(status: AppointmentStatus): AppointmentStatusGroup {
@@ -263,6 +280,35 @@ export function appointmentStatusGroup(status: AppointmentStatus): AppointmentSt
   // in the waiting room but the desk has not opened the visit yet, so they
   // still belong to the expected lane, matching APPOINTMENT_PENDING_STATUSES.
   return 'scheduled';
+}
+
+/**
+ * Does a stored status belong under `filter`, the value of a status dropdown?
+ *
+ * A folded status answers to its canonical rung ONLY where it actually wears
+ * that rung's label — picking "Scheduled" rightly returns the `confirmed` and
+ * `reminder_sent` rows, because all three read "Scheduled" on screen. `arrived`
+ * is the exception: it reads "Arrived" and files in the Upcoming lane, so
+ * picking "Checked In" must not return it. Without this the same visit answered
+ * to "Checked In" on the appointments list while sitting under "Upcoming" on
+ * every dashboard.
+ */
+export function appointmentMatchesStatusFilter(status: AppointmentStatus, filter: string): boolean {
+  if (filter === 'all') return true;
+  if (status === filter) return true;
+  const rung = canonicalAppointmentStatus(status);
+  if (rung !== filter) return false;
+  return APPOINTMENT_STATUS_LABELS[status] === APPOINTMENT_STATUS_LABELS[rung];
+}
+
+/**
+ * The dropdown value a status counts towards — the same bucket
+ * {@link appointmentMatchesStatusFilter} would put it in, so a chip's count
+ * always equals the number of rows selecting that chip returns.
+ */
+export function appointmentStatusFilterKey(status: AppointmentStatus): AppointmentStatus {
+  const rung = canonicalAppointmentStatus(status);
+  return APPOINTMENT_STATUS_LABELS[status] === APPOINTMENT_STATUS_LABELS[rung] ? rung : status;
 }
 
 export function appointmentStatusLabel(status: AppointmentStatus): string {

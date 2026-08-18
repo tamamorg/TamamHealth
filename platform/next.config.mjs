@@ -45,7 +45,7 @@ const nextConfig = {
   experimental: {
     // Tree-shake heavy barrel imports so pages only pull the components they
     // use — cuts dev compile time and production bundle size.
-    optimizePackageImports: ['recharts', 'date-fns', 'react-big-calendar', '@heroicons/react'],
+    optimizePackageImports: ['recharts', 'date-fns', 'react-big-calendar', 'lucide-react'],
   },
   webpack: (config, { isServer }) => {
     // Filter managed paths that don't contain a package.json to avoid noisy

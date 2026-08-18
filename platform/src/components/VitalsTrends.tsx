@@ -348,7 +348,7 @@ function MetricCard({ metric }: { metric: MetricSummary }) {
       {status === 'danger' && <span className="data-tile__alarm-pulse" aria-hidden="true" />}
       <div className="flex items-start justify-between mb-2">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
             {title}
           </p>
           <div className="flex items-baseline gap-2 mt-0.5">
@@ -371,7 +371,7 @@ function MetricCard({ metric }: { metric: MetricSummary }) {
             {changeLabel ?? t('vitalsTrends.baseline')}
           </span>
           {message && (
-            <span className="text-[10px] font-medium" style={{ color: statusColor }}>
+            <span className="text-[10px] font-semibold" style={{ color: statusColor }}>
               {message}
             </span>
           )}

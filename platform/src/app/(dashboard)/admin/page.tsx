@@ -1,57 +1,54 @@
 'use client';
 
 /**
- * Super-admin Platform Dashboard — the command center, drawn in the shared
- * dashboard language used by the organization-admin dashboard: greeting
- * header, `dash-card` rows, a ChartCard trend, and an EhrListHeader list.
+ * Super-admin Platform Dashboard — the command center, drawn per the
+ * "Super Admin Dashboard.dc.html" design (sadb-* namespace in globals.css):
+ * greeting + Command Center eyebrow, a clickable KPI tile row, readiness
+ * donut with the two signals that move it, business snapshot, the activity
+ * trend with line/area/bar pills, the tenant health matrix as a grid list,
+ * and the risk / watchlist / sync cards.
  *
- * It still answers "is the platform healthy today?" in one screen: readiness
- * meter, platform totals, activity trend, tenant health matrix, risk queue,
- * security watchlist, sync/interop, business snapshot, quick commands. Every
+ * It still answers "is the platform healthy today?" in one screen. Every
  * number comes from real local stores (PouchDB docs, audit log, sync events,
- * conflicts API) — nothing simulated.
+ * conflicts API) — nothing simulated; the design's demo deltas are replaced
+ * by ones we can actually compute (quarter onboarding from createdAt, the
+ * platform/tenant user split, today's peak encounter hour).
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/lib/context';
 import { apiFetch } from '@/lib/api-fetch';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import ChartCard, { tooltipStyle, axisTick } from '@/components/ChartCard';
+import { tooltipStyle, axisTick } from '@/components/ChartCard';
 import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Legend,
-  Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Area, Bar, CartesianGrid, ComposedChart, Legend, Line,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
-import {
-  Activity, Building2, ChevronRight, HeartPulse, Server, Users,
-} from '@/components/icons/lucide';
-import type { AuditLogDoc, EncounterDoc, UserDoc } from '@/lib/db-types';
-
-/* Shared chart palette (dataviz-validated, same hues as the other dashboards). */
-const CHART_BLUE = '#2a78d6';
-const CHART_RED = 'var(--color-danger)';
-const GREEN = 'var(--color-success)';
-const AMBER = 'var(--color-warning)';
+import { ChevronRight, Search } from '@/components/icons/lucide';
+import type { AuditLogDoc, EncounterDoc, OrganizationDoc, UserDoc } from '@/lib/db-types';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
 
-/* Tinted-surface tokens: the "Received / Pending" tile treatment from the
-   org-admin Cash Flow card, generalised to the four platform tones. */
-const TONE_STYLE: Record<Tone, { fill: string; text: string; tint: string; border: string }> = {
-  ok: { fill: GREEN, text: 'var(--color-success-text)', tint: 'rgba(25,158,112,0.10)', border: 'rgba(25,158,112,0.28)' },
-  warn: { fill: AMBER, text: 'var(--color-warning-text)', tint: 'rgba(237,161,0,0.12)', border: 'rgba(237,161,0,0.35)' },
-  danger: { fill: CHART_RED, text: 'var(--color-danger-text)', tint: 'rgba(227,73,72,0.10)', border: 'rgba(227,73,72,0.30)' },
-  muted: { fill: 'var(--text-muted)', text: 'var(--text-secondary)', tint: 'var(--overlay-subtle)', border: 'var(--border-light)' },
+/* Design chip/signal tones, keyed by the platform's four signal tones. */
+const TONE_CHIP: Record<Tone, string> = {
+  ok: 'sadb-chip--green', warn: 'sadb-chip--yellow', danger: 'sadb-chip--red', muted: 'sadb-chip--neutral',
+};
+const TONE_SIGNAL: Record<Tone, string> = {
+  ok: 'sadb-signal--green', warn: 'sadb-signal--yellow', danger: 'sadb-signal--red', muted: '',
+};
+/* Readiness arc stroke — fill rung of each tone (the design's #15795C green). */
+const TONE_STROKE: Record<Tone, string> = {
+  ok: 'var(--color-success-800)', warn: 'var(--color-warning-600)',
+  danger: 'var(--color-danger-500)', muted: 'var(--text-muted)',
 };
 
-const SEVERITY_PILL: Record<SaSeverity, Tone> = {
+const SEVERITY_TONE: Record<SaSeverity, Tone> = {
   critical: 'danger', high: 'danger', medium: 'warn', low: 'muted',
 };
 
@@ -73,6 +70,12 @@ function dailySeries(dates: string[], days: number): Array<{ day: string; count:
   });
 }
 
+function onboardedLabel(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+}
+
 interface RiskRow {
   severity: SaSeverity;
   title: string;
@@ -81,63 +84,30 @@ interface RiskRow {
   href: string;
 }
 
-/* ── Small presentational pieces (org-dashboard card anatomy) ───────── */
-
 function CardHead({ title, meta, action }: { title: string; meta?: string; action?: ReactNode }) {
   return (
-    <div className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap flex-shrink-0" style={{ borderBottom: '1px solid var(--border-light)' }}>
-      <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-      <div className="flex items-center gap-3">
-        {meta && <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{meta}</span>}
-        {action}
-      </div>
+    <div className="sadb-card-head">
+      <h3 className="sadb-card-title">{title}</h3>
+      {(meta || action) && (
+        <div className="flex items-center gap-3">
+          {meta && <span className="sadb-card-meta">{meta}</span>}
+          {action}
+        </div>
+      )}
     </div>
   );
 }
 
-function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
-  const t = TONE_STYLE[tone];
-  return (
-    <span
-      className="inline-flex items-center rounded-full text-[11px] font-bold px-2 py-0.5 capitalize whitespace-nowrap"
-      style={{ background: t.tint, border: `1px solid ${t.border}`, color: t.text }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function KvRow({ label, children, last }: { label: string; children: ReactNode; last?: boolean }) {
-  return (
-    <div
-      className="flex items-center justify-between gap-3 px-5 py-2.5 text-[13px]"
-      style={last ? undefined : { borderBottom: '1px solid var(--border-light)' }}
-    >
-      <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-      <span className="font-bold tabular-nums text-right" style={{ color: 'var(--text-primary)' }}>{children}</span>
-    </div>
-  );
-}
-
-/** Row in the risk / watchlist queues — same anatomy as the org-admin lists. */
-function QueueRow({ tone, tag, title, detail, when, onClick }: {
-  tone: Tone; tag: string; title: string; detail: string; when?: string; onClick: () => void;
+function KvRow({ label, value, valueClass, chip, chipClass }: {
+  label: string; value?: ReactNode; valueClass?: string; chip?: string; chipClass?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full flex items-center gap-2.5 px-5 py-2.5 text-left hover:bg-[var(--overlay-subtle)]"
-      style={{ borderBottom: '1px solid var(--border-light)' }}
-    >
-      <Pill tone={tone}>{tag}</Pill>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-bold truncate" style={{ color: 'var(--text-primary)' }}>{title}</span>
-        <span className="block text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>{detail}</span>
-      </span>
-      {when && <time className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{formatWhen(when)}</time>}
-      <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-    </button>
+    <div className="sadb-kv">
+      <span>{label}</span>
+      {chip
+        ? <span className={`sadb-chip ${chipClass ?? 'sadb-chip--neutral'}`}>{chip}</span>
+        : <span className={`sadb-kv-value ${valueClass ?? ''}`}>{value}</span>}
+    </div>
   );
 }
 
@@ -149,7 +119,7 @@ export default function AdminDashboardPage() {
   const { config } = usePlatformConfig();
 
   const [users, setUsers] = useState<UserDoc[]>([]);
-  const [patientAgg, setPatientAgg] = useState({ total: 0, byOrg: new Map<string, number>() });
+  const [patientAgg, setPatientAgg] = useState({ total: 0, newThisWeek: 0, byOrg: new Map<string, number>() });
   const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogDoc[]>([]);
   const [syncStats, setSyncStats] = useState({ total: 0, pending: 0, synced: 0, failed: 0, oldestPending: undefined as string | undefined });
@@ -157,6 +127,7 @@ export default function AdminDashboardPage() {
   const [dhis2, setDhis2] = useState<{ configured: boolean; host: string; lastPush?: string }>({ configured: false, host: 'Not configured' });
   const [loading, setLoading] = useState(true);
   const [tenantSearch, setTenantSearch] = useState('');
+  const [chartMode, setChartMode] = useState<'line' | 'area' | 'bar'>('area');
 
   // Defense in depth on top of the Edge proxy check (SaPage used to own this).
   useEffect(() => {
@@ -181,10 +152,13 @@ export default function AdminDashboardPage() {
         if (cancelled) return;
         setUsers(allUsers);
         const byOrg = new Map<string, number>();
+        const weekAgo = Date.now() - 7 * 86400000;
+        let newThisWeek = 0;
         for (const p of allPatients) {
           if (p.orgId) byOrg.set(p.orgId, (byOrg.get(p.orgId) || 0) + 1);
+          if (p.createdAt && new Date(p.createdAt).getTime() >= weekAgo) newThisWeek++;
         }
-        setPatientAgg({ total: allPatients.length, byOrg });
+        setPatientAgg({ total: allPatients.length, newThisWeek, byOrg });
         setEncounters(allEncounters);
         setAuditLogs(logs);
         setSyncStats({ total: sync.total, pending: sync.pending, synced: sync.synced, failed: sync.failed, oldestPending: sync.oldestPending });
@@ -243,6 +217,20 @@ export default function AdminDashboardPage() {
     [encounters, todayKey],
   );
 
+  /* Busiest hour of today, for the Encounters KPI delta line. */
+  const encounterPeak = useMemo(() => {
+    const byHour = new Map<number, number>();
+    for (const e of encounters) {
+      const iso = e.createdAt || e.startedAt || '';
+      if (!iso || dayKey(iso) !== todayKey) continue;
+      const h = new Date(iso).getHours();
+      byHour.set(h, (byHour.get(h) || 0) + 1);
+    }
+    let hour = -1, perHour = 0;
+    for (const [h, n] of byHour) if (n > perHour) { perHour = n; hour = h; }
+    return hour >= 0 ? { hour, perHour } : null;
+  }, [encounters, todayKey]);
+
   const syncRate = syncStats.total > 0 ? Math.round((syncStats.synced / syncStats.total) * 100) : 100;
   const syncTone: Tone = syncStats.failed > 0 ? 'danger' : syncStats.pending > 0 ? 'warn' : 'ok';
 
@@ -252,7 +240,6 @@ export default function AdminDashboardPage() {
   // about something never measured.
   const rpoHours = config?.superAdminPolicies?.backupRpoHours ?? 24;
   const backupStatus = useBackupStatus(rpoHours);
-  const backupAgeHours = backupStatus?.ageHours ?? null;
   const backupOverdue = backupStatus?.state === 'overdue';
   const backupUnknown = backupStatus?.state === 'unknown';
 
@@ -330,11 +317,9 @@ export default function AdminDashboardPage() {
           users: users.filter(u => u.orgId === org._id).length,
           facilities: orgFacilities.length,
           offline: orgFacilities.filter(h => h.syncStatus === 'offline').length,
-          patients: patientAgg.byOrg.get(org._id) || 0,
-          lastActivity: auditLogs.find(l => l.orgId === org._id)?.createdAt,
         };
       });
-  }, [organizations, users, hospitals, auditLogs, patientAgg, tenantSearch]);
+  }, [organizations, users, hospitals, tenantSearch]);
 
   /* 14-day activity trend (encounters vs audit failures). */
   const trend = useMemo(() => {
@@ -347,12 +332,23 @@ export default function AdminDashboardPage() {
     }));
   }, [encounters, auditLogs]);
 
-  /* Business snapshot. */
+  /* Failures ride a hidden second axis (the design draws them ×100) so one
+     failed login is visible next to a thousand encounters; the tooltip still
+     reports the raw counts. */
+  const failAxisMax = useMemo(
+    () => Math.ceil(Math.max(4, ...trend.map(t => t.failures)) * 1.4),
+    [trend],
+  );
+
+  /* KPI deltas we can actually compute. */
+  const now = new Date();
+  const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).getTime();
+  const newOrgsQuarter = organizations.filter(o => o.createdAt && new Date(o.createdAt).getTime() >= quarterStart).length;
+  const newFacilitiesQuarter = hospitals.filter(h => h.createdAt && new Date(h.createdAt).getTime() >= quarterStart).length;
+  const offlineFacilities = hospitals.filter(h => h.syncStatus === 'offline').length;
+  const platformUsers = users.filter(u => !u.orgId).length;
+
   const licensedSeats = organizations.reduce((sum, o) => sum + (o.maxUsers || 0), 0);
-  const planCounts = ['enterprise', 'professional', 'basic'].map(plan => ({
-    plan,
-    count: organizations.filter(o => o.subscriptionPlan === plan).length,
-  })).filter(p => p.count > 0);
 
   const statusTone = (s: string): Tone =>
     s === 'active' ? 'ok' : s === 'trial' ? 'warn' : s === 'suspended' || s === 'cancelled' ? 'danger' : 'muted';
@@ -361,26 +357,68 @@ export default function AdminDashboardPage() {
     ? 'danger'
     : riskQueue.length ? 'warn' : 'ok';
 
-  // Readiness meter: filled arc in the tone colour, track a light step of the
-  // same hue so the state reads across the whole ring.
-  const readinessArc = [
-    { name: 'Ready', value: readiness, color: TONE_STYLE[readinessTone].fill },
-    { name: 'Gap', value: Math.max(0, 100 - readiness), color: TONE_STYLE[readinessTone].tint },
+  /* Per-tenant sync: share of the tenant's facilities currently online —
+     the honest per-tenant proxy while sync stats are only tracked globally. */
+  const tenantSync = (row: { org: OrganizationDoc; facilities: number; offline: number }): { label: string; color: string } => {
+    if (statusTone(row.org.subscriptionStatus) === 'danger' || row.facilities === 0) {
+      return { label: '—', color: 'var(--text-muted)' };
+    }
+    const pct = Math.round(((row.facilities - row.offline) / row.facilities) * 100);
+    return { label: `${pct}%`, color: pct < 95 ? 'var(--color-warning-700)' : 'var(--color-success-800)' };
+  };
+
+  const kpis: Array<{ label: string; value: string; delta: string; deltaClass?: string; href?: string }> = [
+    {
+      label: 'Organizations',
+      value: String(organizations.length),
+      delta: newOrgsQuarter > 0 ? `+${newOrgsQuarter} this quarter` : `${activeOrgs.length} active · ${trialOrgs.length} trial`,
+      deltaClass: newOrgsQuarter > 0 ? 'is-up' : undefined,
+      href: '/admin/organizations',
+    },
+    {
+      label: 'Facilities',
+      value: String(hospitals.length),
+      delta: offlineFacilities > 0 ? `${offlineFacilities} offline` : newFacilitiesQuarter > 0 ? `+${newFacilitiesQuarter} this quarter` : `across ${organizations.length} organizations`,
+      deltaClass: offlineFacilities > 0 ? 'is-warn' : newFacilitiesQuarter > 0 ? 'is-up' : undefined,
+      href: '/admin/organizations',
+    },
+    {
+      label: 'Users',
+      value: loading ? '…' : users.length.toLocaleString(),
+      delta: `${platformUsers} platform · ${users.length - platformUsers} tenant`,
+      href: '/admin/users',
+    },
+    {
+      label: 'Patients',
+      value: loading ? '…' : patientAgg.total.toLocaleString(),
+      delta: patientAgg.newThisWeek > 0 ? `+${patientAgg.newThisWeek} this week` : 'Tenant-scoped registry',
+      deltaClass: patientAgg.newThisWeek > 0 ? 'is-up' : undefined,
+      // No platform-level patient registry to open — the registry is tenant-scoped.
+    },
+    {
+      label: 'Encounters today',
+      value: loading ? '…' : encountersToday.toLocaleString(),
+      delta: encounterPeak ? `peak ${String(encounterPeak.hour).padStart(2, '0')}:00 · ${encounterPeak.perHour}/h` : 'None recorded yet',
+      href: '/admin/analytics',
+    },
   ];
 
-  const stat = (icon: ReactNode, label: ReactNode, value: number | string) => (
-    <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
-      <div className="icon-box-sm">{icon}</div>
-      <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>{label}</span>
-      <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{value}</span>
-    </div>
-  );
+  const CIRC = 2 * Math.PI * 38;
+  const todayLong = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const legendProps = {
+    iconType: 'circle' as const,
+    iconSize: 8,
+    wrapperStyle: { fontSize: 11, paddingTop: 4 },
+    formatter: (value: ReactNode) => <span style={{ color: 'var(--text-secondary)' }}>{value}</span>,
+  };
 
   if (!currentUser || currentUser.role !== 'super_admin') return null;
 
   return (
-    <main className="page-container page-enter">
+    <main className="page-container page-enter sadb-scope">
       <DashboardGreetingHeader
+        subtitle={`Command Center · All tenants · ${todayLong}`}
         actions={(
           <>
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/audit')}>Audit logs</button>
@@ -389,307 +427,240 @@ export default function AdminDashboardPage() {
         )}
       />
 
-      {/* The page scrolls as a whole (four card rows overflow the viewport), so
-          rows size to their content rather than competing for leftover height. */}
-      <div className="flex flex-col gap-3">
+      <div className="sadb-page">
 
-        {/* ═══ ROW 1 — Readiness · Platform totals · Activity trend ═══ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* ═══ KPI tile row ═══ */}
+        <div className="sadb-kpi-row">
+          {kpis.map(k => {
+            const body = (
+              <>
+                <p className="sadb-kpi-label">{k.label}</p>
+                <p className="sadb-kpi-value">{k.value}</p>
+                <p className={`sadb-kpi-delta ${k.deltaClass ?? ''}`}>{k.delta}</p>
+              </>
+            );
+            return k.href
+              ? <button key={k.label} type="button" className="sadb-kpi" onClick={() => router.push(k.href!)}>{body}</button>
+              : <div key={k.label} className="sadb-kpi">{body}</div>;
+          })}
+        </div>
 
-          {/* Platform readiness — meter + the two signals that move it */}
-          <div className="dash-card overflow-hidden">
-            <CardHead title="Platform Readiness" meta={readinessTone === 'ok' ? 'Steady' : readinessTone === 'warn' ? 'Watch list active' : 'Attention required'} />
-            <div className="flex items-center gap-4 p-4">
-              <div className="relative flex-shrink-0" style={{ width: 128, height: 128 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={readinessArc} dataKey="value" innerRadius={44} outerRadius={60} startAngle={90} endAngle={-270} stroke="none" isAnimationActive={false}>
-                      {readinessArc.map(d => <Cell key={d.name} fill={d.color} />)}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-2xl font-bold leading-none" style={{ color: 'var(--text-primary)' }}>{loading ? '…' : readiness}</span>
-                  <span className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Readiness</span>
-                </div>
-              </div>
-              <div className="flex-1 space-y-2 min-w-0">
-                <div className="rounded-xl p-2.5" style={{ background: TONE_STYLE[openRiskTone].tint, border: `1px solid ${TONE_STYLE[openRiskTone].border}` }}>
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Open risks</p>
-                  <p className="text-base font-bold" style={{ color: TONE_STYLE[openRiskTone].text }}>
-                    {riskQueue.length} open <span className="text-[11px] font-semibold">· {failedAudits.length} audit failures 7d</span>
-                  </p>
-                </div>
-                <div className="rounded-xl p-2.5" style={{ background: TONE_STYLE[syncTone].tint, border: `1px solid ${TONE_STYLE[syncTone].border}` }}>
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Sync health</p>
-                  <p className="text-base font-bold" style={{ color: TONE_STYLE[syncTone].text }}>
-                    {syncRate}% <span className="text-[11px] font-semibold">· {syncStats.pending} pending · {syncStats.failed} failed</span>
-                  </p>
+        {/* ═══ ROW 2 — Readiness · Business snapshot · Activity trend ═══ */}
+        <div className="sadb-row-2">
+
+          {/* Platform readiness — donut + the two signals that move it */}
+          <div className="sadb-card">
+            <div className="sadb-card-head">
+              <h3 className="sadb-card-title">Platform readiness</h3>
+              <span className={`sadb-chip ${TONE_CHIP[readinessTone]}`}>
+                {readinessTone === 'ok' ? 'Steady' : 'Attention required'}
+              </span>
+            </div>
+            <div className="sadb-readiness-body">
+              <svg width={92} height={92} viewBox="0 0 92 92" className="flex-shrink-0" role="img" aria-label={`Platform readiness ${readiness}%`}>
+                <circle cx={46} cy={46} r={38} fill="none" stroke="var(--ehr-row-rule, #EDF2F7)" strokeWidth={9} />
+                <circle
+                  cx={46} cy={46} r={38} fill="none"
+                  stroke={TONE_STROKE[readinessTone]} strokeWidth={9} strokeLinecap="round"
+                  strokeDasharray={`${((readiness / 100) * CIRC).toFixed(1)} ${CIRC.toFixed(2)}`}
+                  transform="rotate(-90 46 46)"
+                />
+                <text x={46} y={44} textAnchor="middle" fontFamily="var(--font-condensed)" fontSize={21} fontWeight={700} fill="var(--text-primary)">
+                  {loading ? '…' : `${readiness}%`}
+                </text>
+                <text x={46} y={59} textAnchor="middle" fontSize={8.5} letterSpacing={1} fill="var(--text-muted)">READINESS</text>
+              </svg>
+              <div className="sadb-readiness-signals">
+                <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => router.push('/admin/risk')}>
+                  <b>{riskQueue.length ? `${riskQueue.length} open risk${riskQueue.length === 1 ? '' : 's'}` : 'No open risks'}</b>
+                  <span>{failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days</span>
+                </button>
+                <div className={`sadb-signal ${TONE_SIGNAL[syncTone]}`}>
+                  <b>Sync health {syncRate}%</b>
+                  <span>{syncStats.pending} pending · {syncStats.failed} failed · {syncStats.total.toLocaleString()} events</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Platform totals — the stat list, matching the org dashboard */}
-          <div className="dash-card overflow-hidden">
-            <div className="p-5 flex flex-col justify-center h-full">
-              {stat(<Building2 className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />, <>Total <b>Organizations</b></>, organizations.length)}
-              {stat(<Server className="w-4 h-4" style={{ color: GREEN }} />, <>Total <b>Facilities</b></>, hospitals.length)}
-              {stat(<Users className="w-4 h-4" style={{ color: '#7847EB' }} />, <>Total <b>Users</b></>, users.length.toLocaleString())}
-              {stat(<HeartPulse className="w-4 h-4" style={{ color: '#FB923C' }} />, <>Total <b>Patients</b></>, patientAgg.total.toLocaleString())}
-              <div className="flex items-center gap-3 pt-2.5">
-                <div className="icon-box-sm"><Activity className="w-4 h-4" style={{ color: CHART_BLUE }} /></div>
-                <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>Encounters <b>Today</b></span>
-                <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{loading ? '…' : encountersToday}</span>
-              </div>
-            </div>
+          {/* Business snapshot */}
+          <div className="sadb-card">
+            <CardHead
+              title="Business snapshot"
+              action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/billing')}>Billing ›</button>}
+            />
+            <KvRow label="Active subscriptions" value={organizations.filter(o => o.subscriptionStatus === 'active').length} />
+            <KvRow label="Trials" value={trialOrgs.length} />
+            <KvRow label="Suspended / cancelled" value={suspendedOrgs.length} valueClass={suspendedOrgs.length > 0 ? 'is-warn' : undefined} />
+            <KvRow label="Seats in use" value={loading ? '…' : `${users.length} / ${licensedSeats}`} />
           </div>
 
           {/* Platform activity — encounters vs audit failures, last 14 days */}
-          <ChartCard
-            title="Platform Activity"
-            subtitle="Encounters vs audit failures · 14 days"
-            defaultType="area"
-            periods={[]}
-          >
-            {({ chartType }) => {
-              const series = [
-                { key: 'encounters', name: 'Encounters', color: CHART_BLUE },
-                { key: 'failures', name: 'Audit failures', color: CHART_RED },
-              ];
-              const legendProps = {
-                iconType: 'circle' as const,
-                iconSize: 8,
-                wrapperStyle: { fontSize: 11, paddingTop: 4 },
-                formatter: (value: ReactNode) => <span style={{ color: 'var(--text-secondary)' }}>{value}</span>,
-              };
-              const axes = (
-                <>
+          <div className="sadb-card" style={{ minWidth: 0 }}>
+            <div className="sadb-card-head">
+              <div className="flex items-baseline gap-2 min-w-0">
+                <h3 className="sadb-card-title">Platform activity</h3>
+                <span className="sadb-card-meta whitespace-nowrap">Encounters vs audit failures · 14 days</span>
+              </div>
+              <div className="flex gap-1">
+                {(['line', 'area', 'bar'] as const).map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    className={`sadb-pill${chartMode === m ? ' is-active' : ''}`}
+                    aria-pressed={chartMode === m}
+                    onClick={() => setChartMode(m)}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="px-3 pt-3 pb-1">
+              <ResponsiveContainer width="100%" height={196}>
+                <ComposedChart data={trend} margin={{ top: 5, right: 5, left: -6, bottom: 0 }} barCategoryGap="28%">
                   <CartesianGrid stroke="var(--border-light)" vertical={false} />
                   <XAxis dataKey="day" tickLine={false} axisLine={false} tick={axisTick} interval="preserveStartEnd" />
-                  <YAxis tickLine={false} axisLine={false} tick={axisTick} width={28} allowDecimals={false} />
+                  <YAxis
+                    tickLine={false} axisLine={false} tick={axisTick} width={34} allowDecimals={false}
+                    tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(v))}
+                  />
+                  <YAxis yAxisId="failures" hide domain={[0, failAxisMax]} />
                   <Tooltip {...tooltipStyle} />
                   <Legend {...legendProps} />
-                </>
-              );
-              if (chartType === 'bar') {
-                return (
-                  <ResponsiveContainer width="100%" height={208}>
-                    <BarChart data={trend} margin={{ top: 5, right: 5, left: -10, bottom: 0 }} barCategoryGap="28%">
-                      {axes}
-                      {series.map(s => (
-                        <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} maxBarSize={18} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                      ))}
-                    </BarChart>
-                  </ResponsiveContainer>
-                );
-              }
-              if (chartType === 'line') {
-                return (
-                  <ResponsiveContainer width="100%" height={208}>
-                    <LineChart data={trend} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-                      {axes}
-                      {series.map(s => (
-                        <Line key={s.key} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} strokeWidth={2} dot={false} isAnimationActive={false} />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
-                );
-              }
-              return (
-                <ResponsiveContainer width="100%" height={208}>
-                  <AreaChart data={trend} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-                    {axes}
-                    {series.map(s => (
-                      <Area key={s.key} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} fill={s.color} fillOpacity={0.12} strokeWidth={2} isAnimationActive={false} />
-                    ))}
-                  </AreaChart>
-                </ResponsiveContainer>
-              );
-            }}
-          </ChartCard>
-        </div>
-
-        {/* ═══ ROW 2 — Tenant health matrix ═══ */}
-        <div className="dash-card overflow-hidden flex flex-col">
-          <EhrListHeader
-            title="Tenant Health Matrix"
-            stats={[
-              { label: 'Organizations', value: organizations.length, color: LIST_STAT_COLORS.muted },
-              { label: 'Active', value: activeOrgs.length, color: LIST_STAT_COLORS.green },
-              { label: 'Trial', value: trialOrgs.length, color: LIST_STAT_COLORS.amber },
-              { label: 'Suspended', value: suspendedOrgs.length, color: LIST_STAT_COLORS.blue },
-            ]}
-            search={{ value: tenantSearch, onChange: setTenantSearch, placeholder: 'Search tenants by name, plan, or status…' }}
-            actions={(
-              <button type="button" className="btn btn-secondary btn-sm flex-shrink-0" onClick={() => router.push('/admin/organizations')}>
-                Manage tenants
-              </button>
-            )}
-          />
-          <div className="show-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 360 }}>
-            {tenantMatrix.length === 0 ? (
-              <p className="text-[13px] p-8 text-center" style={{ color: 'var(--text-muted)' }}>
-                {organizations.length === 0 ? 'No organizations yet.' : 'No tenants match this search.'}
-              </p>
-            ) : (
-              <table className="w-full" style={{ minWidth: 720 }}>
-                <thead>
-                  <tr>
-                    {['Organization', 'Status', 'Plan', 'Users', 'Facilities', 'Patients', 'Last activity'].map(h => (
-                      <th key={h} className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tenantMatrix.map(row => (
-                    <tr
-                      key={row.org._id}
-                      onClick={() => router.push('/admin/organizations')}
-                      className="cursor-pointer hover:bg-[var(--overlay-subtle)]"
-                      style={{ borderBottom: '1px solid var(--border-light)' }}
-                    >
-                      <td className="px-4 py-3 text-[13px] font-bold" style={{ color: 'var(--text-primary)' }}>{row.org.name}</td>
-                      <td className="px-4 py-3"><Pill tone={statusTone(row.org.subscriptionStatus)}>{row.org.subscriptionStatus}</Pill></td>
-                      <td className="px-4 py-3 text-[12px] capitalize" style={{ color: 'var(--text-secondary)' }}>{row.org.subscriptionPlan}</td>
-                      <td className="px-4 py-3 text-[12px] tabular-nums" style={{ color: 'var(--text-secondary)' }}>{row.users} / {row.org.maxUsers}</td>
-                      <td className="px-4 py-3 text-[12px] tabular-nums" style={{ color: 'var(--text-secondary)' }}>
-                        <span className="inline-flex items-center gap-1.5">
-                          {row.facilities} / {row.org.maxHospitals}
-                          {row.offline > 0 && <Pill tone="warn">{row.offline} offline</Pill>}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[12px] tabular-nums" style={{ color: 'var(--text-secondary)' }}>{row.patients.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-[12px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{formatWhen(row.lastActivity)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  {chartMode === 'bar' ? (
+                    <Bar dataKey="encounters" name="Encounters" fill="var(--accent-primary)" fillOpacity={0.55} maxBarSize={26} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                  ) : chartMode === 'area' ? (
+                    <Area type="monotone" dataKey="encounters" name="Encounters" stroke="var(--accent-primary)" strokeWidth={2} fill="var(--accent-primary)" fillOpacity={0.14} isAnimationActive={false} />
+                  ) : (
+                    <Line type="monotone" dataKey="encounters" name="Encounters" stroke="var(--accent-primary)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  )}
+                  <Line yAxisId="failures" type="monotone" dataKey="failures" name="Audit failures" stroke="var(--color-danger-500)" strokeWidth={1.8} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
-        {/* ═══ ROW 3 — Risk queue · Security watchlist ═══ */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div className="dash-card overflow-hidden flex flex-col">
-            <CardHead
-              title="Risk & Incident Queue"
-              meta={`${riskQueue.length} open`}
-              action={(
-                <button type="button" className="text-[12px] font-medium inline-flex items-center gap-0.5" style={{ color: 'var(--accent-primary)' }} onClick={() => router.push('/admin/risk')}>
-                  All <ChevronRight className="w-3 h-3" />
-                </button>
-              )}
-            />
+        {/* ═══ Tenant health matrix ═══ */}
+        <div className="sadb-card">
+          <div className="sadb-card-head" style={{ padding: '12px 16px' }}>
+            <h3 className="sadb-card-title">Tenant health matrix</h3>
+            <div className="sadb-legend">
+              <span><i style={{ background: 'var(--text-muted)' }} />Organizations ({organizations.length})</span>
+              <span><i style={{ background: 'var(--color-success-800)' }} />Active ({activeOrgs.length})</span>
+              <span><i style={{ background: 'var(--color-warning-600)' }} />Trial ({trialOrgs.length})</span>
+              <span><i style={{ background: 'var(--color-danger-500)' }} />Suspended ({suspendedOrgs.length})</span>
+            </div>
+          </div>
+          <div className="sadb-search-row">
+            <label className="sadb-search">
+              <Search className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+              <input
+                value={tenantSearch}
+                onChange={e => setTenantSearch(e.target.value)}
+                placeholder="Search tenants by name, plan, or status…"
+                aria-label="Search tenants"
+              />
+            </label>
+            <button type="button" className="btn btn-secondary btn-sm flex-shrink-0" onClick={() => router.push('/admin/organizations')}>
+              Manage tenants
+            </button>
+          </div>
+          <div className="sadb-tenant-scroll show-scrollbar">
+            <div>
+              {/* The column-header row stays rendered even when the list is empty. */}
+              <div className="sadb-tenant-grid sadb-tenant-grid--head">
+                <span>Organization</span><span>Plan</span><span>Facilities</span><span>Users</span><span>Sync</span>
+                <span style={{ textAlign: 'right' }}>Status</span>
+              </div>
+              {tenantMatrix.map(row => {
+                const sync = tenantSync(row);
+                const onboarded = onboardedLabel(row.org.createdAt);
+                const orgKind = row.org.orgType === 'public' ? 'Public' : 'Private';
+                return (
+                  <button
+                    key={row.org._id}
+                    type="button"
+                    className="sadb-tenant-grid sadb-tenant-row"
+                    onClick={() => router.push('/admin/organizations')}
+                  >
+                    <span className="min-w-0">
+                      <span className="sadb-tenant-name truncate">{row.org.name}</span>
+                      <span className="sadb-tenant-sub truncate">
+                        {orgKind}{onboarded ? ` · onboarded ${onboarded}` : row.org.country ? ` · ${row.org.country}` : ''}
+                      </span>
+                    </span>
+                    <span className="capitalize">{row.org.subscriptionPlan}</span>
+                    <span className="sadb-tenant-num">{row.facilities} / {row.org.maxHospitals}</span>
+                    <span className="sadb-tenant-num">{row.users} / {row.org.maxUsers}</span>
+                    <span style={{ color: sync.color }}>{sync.label}</span>
+                    <span style={{ textAlign: 'right' }}>
+                      <span className={`sadb-chip ${TONE_CHIP[statusTone(row.org.subscriptionStatus)]}`}>{row.org.subscriptionStatus}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {tenantMatrix.length === 0 && (
+            <p className="sadb-empty">
+              {organizations.length === 0 ? 'No organizations yet.' : `No tenants match "${tenantSearch}".`}
+            </p>
+          )}
+        </div>
+
+        {/* ═══ ROW 3 — Risk queue · Security watchlist · Sync & interop ═══ */}
+        <div className="sadb-row-3">
+
+          <div className="sadb-card">
+            <CardHead title="Risk & incident queue" meta={`${riskQueue.length} open`} />
             {riskQueue.length === 0 ? (
-              <p className="text-[13px] p-8 text-center" style={{ color: 'var(--text-muted)' }}>No open risk signals — platform steady.</p>
+              <p className="sadb-empty">No open risk signals — platform steady.</p>
             ) : riskQueue.map((row, i) => (
-              <QueueRow
-                key={`${row.title}-${i}`}
-                tone={SEVERITY_PILL[row.severity]}
-                tag={row.severity}
-                title={row.title}
-                detail={row.detail}
-                when={row.when}
-                onClick={() => router.push(row.href)}
-              />
+              <button key={`${row.title}-${i}`} type="button" className="sadb-queue-row" onClick={() => router.push(row.href)}>
+                <span className={`sadb-chip ${TONE_CHIP[SEVERITY_TONE[row.severity]]}`}>{row.severity}</span>
+                <span className="sadb-queue-copy">
+                  <span className="sadb-queue-title">{row.title}</span>
+                  <span className="sadb-queue-sub">{row.detail}</span>
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+              </button>
             ))}
           </div>
 
-          <div className="dash-card overflow-hidden flex flex-col">
-            <CardHead
-              title="Security Watchlist"
-              meta="High-risk actions · 7d"
-              action={(
-                <button type="button" className="text-[12px] font-medium inline-flex items-center gap-0.5" style={{ color: 'var(--accent-primary)' }} onClick={() => router.push('/admin/audit')}>
-                  Audit <ChevronRight className="w-3 h-3" />
-                </button>
-              )}
-            />
+          <div className="sadb-card">
+            <CardHead title="Security watchlist" meta="High-risk actions · 7d" />
             {highRiskAudits.length === 0 ? (
-              <p className="text-[13px] p-8 text-center" style={{ color: 'var(--text-muted)' }}>No high-risk actions recorded this week.</p>
+              <p className="sadb-empty">No high-risk actions recorded this week.</p>
             ) : highRiskAudits.map(log => (
-              <QueueRow
-                key={log._id}
-                tone={log.success ? 'warn' : 'danger'}
-                tag={log.success ? 'action' : 'failed'}
-                title={log.action}
-                detail={`${log.username || 'system'} · ${log.details}`}
-                when={log.createdAt}
-                onClick={() => router.push('/admin/audit')}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* ═══ ROW 4 — Sync & interop · Business snapshot · Quick commands ═══ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div className="dash-card overflow-hidden">
-            <CardHead
-              title="Sync & Interoperability"
-              action={(
-                <button type="button" className="text-[12px] font-medium inline-flex items-center gap-0.5" style={{ color: 'var(--accent-primary)' }} onClick={() => router.push('/admin/sync')}>
-                  Open <ChevronRight className="w-3 h-3" />
-                </button>
-              )}
-            />
-            <KvRow label="Replication">
-              <Pill tone={syncTone}>{syncStats.failed > 0 ? 'Failing' : syncStats.pending > 0 ? 'Backlog' : 'Healthy'}</Pill>
-            </KvRow>
-            <KvRow label="Pending events">{syncStats.pending}</KvRow>
-            <KvRow label="Failed events">{syncStats.failed}</KvRow>
-            <KvRow label="Oldest pending">{formatWhen(syncStats.oldestPending)}</KvRow>
-            <KvRow label="DHIS2 endpoint">
-              <Pill tone={dhis2.configured ? 'ok' : 'muted'}>{dhis2.host}</Pill>
-            </KvRow>
-            <KvRow label="Last DHIS2 push">{formatWhen(dhis2.lastPush)}</KvRow>
-            <KvRow label="Data conflicts" last>{conflictCount}</KvRow>
-          </div>
-
-          <div className="dash-card overflow-hidden">
-            <CardHead
-              title="Business Snapshot"
-              action={(
-                <button type="button" className="text-[12px] font-medium inline-flex items-center gap-0.5" style={{ color: 'var(--accent-primary)' }} onClick={() => router.push('/admin/billing')}>
-                  Billing <ChevronRight className="w-3 h-3" />
-                </button>
-              )}
-            />
-            <KvRow label="Active subscriptions">{organizations.filter(o => o.subscriptionStatus === 'active').length}</KvRow>
-            <KvRow label="Trials">{trialOrgs.length}</KvRow>
-            <KvRow label="Suspended / cancelled">{suspendedOrgs.length}</KvRow>
-            <KvRow label="Seats in use" last={planCounts.length === 0}>{users.length} / {licensedSeats}</KvRow>
-            {planCounts.map((p, i) => (
-              <KvRow key={p.plan} label={`${p.plan.charAt(0).toUpperCase()}${p.plan.slice(1)} plan`} last={i === planCounts.length - 1}>
-                {p.count}
-              </KvRow>
+              <button key={log._id} type="button" className="sadb-queue-row" onClick={() => router.push('/admin/audit')}>
+                <span className="sadb-queue-copy">
+                  <span className="sadb-queue-title">{log.action}</span>
+                  <span className="sadb-queue-sub">{log.username || 'system'} · {log.details}</span>
+                </span>
+                <time className="sadb-queue-when">{formatWhen(log.createdAt)}</time>
+              </button>
             ))}
           </div>
 
-          <div className="dash-card overflow-hidden">
-            <CardHead title="Quick Commands" />
-            <nav className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5" aria-label="Quick command navigation">
-              {[
-                { href: '/admin/risk', title: 'Risk Center', desc: 'Incidents & reviews' },
-                { href: '/admin/audit', title: 'Audit Logs', desc: 'Evidence & export' },
-                { href: '/admin/organizations', title: 'Organizations', desc: 'Tenant registry' },
-                { href: '/admin/users', title: 'Users & Access', desc: 'Roles & accounts' },
-                { href: '/admin/system', title: 'System Health', desc: 'Database stores' },
-                { href: '/admin/security', title: 'Security', desc: 'Policies & posture' },
-              ].map(cmd => (
-                <Link
-                  key={cmd.href}
-                  href={cmd.href}
-                  className="rounded-xl px-3 py-2.5 no-underline hover:border-[var(--accent-primary)]"
-                  style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}
-                >
-                  <span className="block text-[12.5px] font-extrabold" style={{ color: 'var(--accent-hover)' }}>{cmd.title}</span>
-                  <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>{cmd.desc}</span>
-                </Link>
-              ))}
-            </nav>
+          <div className="sadb-card">
+            <CardHead
+              title="Sync & interoperability"
+              action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/sync')}>Open ›</button>}
+            />
+            <KvRow
+              label="Replication"
+              chip={syncStats.failed > 0 ? 'Failing' : syncStats.pending > 0 ? 'Backlog' : 'Healthy'}
+              chipClass={TONE_CHIP[syncTone]}
+            />
+            <KvRow label="Pending events" value={syncStats.pending} />
+            <KvRow label="Failed events" value={syncStats.failed} valueClass={syncStats.failed > 0 ? 'is-warn' : undefined} />
+            <KvRow
+              label="Last DHIS2 push"
+              chip={dhis2.configured ? (dhis2.lastPush ? formatWhen(dhis2.lastPush) : 'Never') : 'Not configured'}
+              chipClass={dhis2.configured && dhis2.lastPush ? 'sadb-chip--green' : 'sadb-chip--neutral'}
+            />
           </div>
         </div>
       </div>

@@ -22,7 +22,7 @@
   width: 100%;
   min-height: calc(100svh - var(--ehr-top-rail-height, 0px));
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
   /* Do not make the chart shell a scroll container. The page container owns
      vertical scrolling so the patient header can remain sticky while chart
@@ -52,11 +52,11 @@
   width: 234px;
   align-self: stretch;
   background: var(--ehr-panel, #fff);
-  border-right: 1px solid var(--ehr-border, #D8E3EC);
+  border-right: 1px solid var(--ehr-border, #DDEAF3);
 }
 
 .omrs-rail-card {
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 10px;
   background: var(--ehr-panel, #fff);
   overflow: hidden;
@@ -80,8 +80,8 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--ehr-muted, #597386);
-  border-bottom: 1px solid var(--ehr-border, #D8E3EC);
+  color: var(--ehr-muted, #8395A8);
+  border-bottom: 1px solid var(--ehr-border, #DDEAF3);
 }
 
 .omrs-rail-cardbody {
@@ -210,8 +210,8 @@
   position: sticky;
   top: 0;
   z-index: 15;
-  background: var(--ehr-page-bg, #F8FBFD);
-  border-bottom: 1px solid var(--ehr-border, #D8E3EC);
+  background: var(--ehr-page-bg, #FFFFFF);
+  border-bottom: 1px solid var(--ehr-border, #DDEAF3);
   box-shadow: 0 2px 8px rgba(19, 44, 68, 0.06);
 }
 
@@ -363,7 +363,7 @@
 /* An alarming event (critical result, high-risk triage) keeps a danger edge —
    at one line per row the badge alone is easy to scan past. */
 .tamam-activity-tr.is-alarm td:first-child {
-  box-shadow: inset 2px 0 0 var(--color-danger, #E52E42);
+  box-shadow: inset 2px 0 0 var(--color-danger, #DC2626);
 }
 
 .tamam-activity-detail > td {
@@ -513,9 +513,9 @@
   gap: 6px;
   max-width: 100%;
   padding: 3px 9px 3px 7px;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 5px;
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
   font-family: inherit;
   font-size: 12px;
   color: var(--ehr-text-body, #39536B);
@@ -551,7 +551,7 @@
 
 .omrs-allergy-banner--alert .omrs-allergy-label,
 .omrs-allergy-banner--alert svg {
-  color: var(--color-danger, #C22B2B);
+  color: var(--color-danger, #DC2626);
 }
 
 .omrs-allergy-banner--alert .omrs-allergy-value {
@@ -586,9 +586,9 @@
   align-items: center;
   gap: 6px;
   padding: 3px 9px 3px 7px;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 5px;
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
   font-family: inherit;
   font-size: 12px;
   color: var(--ehr-text-body, #39536B);
@@ -616,7 +616,7 @@
 
 .omrs-header-balance--due svg,
 .omrs-header-balance--due .omrs-allergy-label {
-  color: var(--color-danger, #C22B2B);
+  color: var(--color-danger, #DC2626);
 }
 
 /* The contact line. Its labels are muted to match the age/DOB/ID line directly
@@ -673,7 +673,7 @@
   font-weight: 600;
   padding: 6px 11px;
   border-radius: 6px;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   background: var(--ehr-panel, #fff);
   color: var(--ehr-text-body, #39536B);
   cursor: pointer;
@@ -698,7 +698,7 @@
   right: 0;
   width: 200px;
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(16, 38, 52, 0.14);
   z-index: 30;
@@ -817,7 +817,7 @@
 }
 
 .omrs-vitals-cell {
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
   border: 1px solid var(--ehr-border-soft, #E7EEF5);
   border-radius: 7px;
   padding: 8px 10px;
@@ -859,7 +859,7 @@
 
 .omrs-section {
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -926,8 +926,8 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--ehr-text-body, #39536B);
-  background: var(--ehr-page-bg, #F8FBFD);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  background: var(--ehr-page-bg, #FFFFFF);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   padding: 5px 9px;
   cursor: pointer;
@@ -943,7 +943,7 @@
 
 .omrs-section-toggle {
   display: inline-flex;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -994,7 +994,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 5px;
   background: var(--ehr-panel, #fff);
   color: var(--ehr-text-body, #39536B);
@@ -1033,7 +1033,7 @@
   color: var(--ehr-muted, #8395A8);
   background: transparent;
   padding: 6px 16px 10px;
-  border-bottom: 1px solid var(--ehr-border, #D8E3EC);
+  border-bottom: 1px solid var(--ehr-border, #DDEAF3);
   white-space: nowrap;
 }
 
@@ -1076,7 +1076,7 @@
 }
 
 .omrs-root .omrs-table.omrs-table--zebra tbody tr:nth-child(even) td {
-  background: var(--ehr-page-bg, #F8FBFD);
+  background: var(--ehr-page-bg, #FFFFFF);
 }
 
 /* ── Empty state ── */
@@ -1238,7 +1238,7 @@
 .omrs-panel-textarea,
 .omrs-panel-search {
   width: 100%;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   padding: 7px 9px;
   font-size: 12.5px;
@@ -1351,7 +1351,7 @@
   flex: 0 0 56px;
   width: 56px;
   background: var(--ehr-panel, #fff);
-  border-left: 1px solid var(--ehr-border, #D8E3EC);
+  border-left: 1px solid var(--ehr-border, #DDEAF3);
   position: sticky;
   top: 0;
   align-self: flex-start;
@@ -1370,7 +1370,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   background: var(--ehr-panel, #fff);
   color: var(--ehr-muted, #8395A8);
   cursor: pointer;
@@ -1424,8 +1424,8 @@
   justify-content: space-between;
   gap: 10px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--ehr-border, #D8E3EC);
-  background: var(--ehr-page-bg, #F8FBFD);
+  border-bottom: 1px solid var(--ehr-border, #DDEAF3);
+  background: var(--ehr-page-bg, #FFFFFF);
 }
 
 .omrs-drawer-title {
@@ -1500,7 +1500,7 @@
 
 .omrs-drawer-footer {
   padding: 12px 16px;
-  background: var(--ehr-mission-bg, #10195A);
+  background: var(--ehr-mission-bg, #144972);
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1808,7 +1808,7 @@
 .omrs-attestation {
   margin: 0 0 10px;
   padding: 9px 12px;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-left: 3px solid var(--ehr-success-text, #0E7155);
   border-radius: 6px;
   background: var(--ehr-panel, #fff);
@@ -1841,7 +1841,7 @@
   gap: 10px;
   flex-wrap: wrap;
   padding: 9px 14px;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
   background: var(--ehr-panel, #fff);
   color: var(--ehr-muted, #8395A8);
@@ -1850,7 +1850,7 @@
 .sbar-allergies.is-alert {
   border-color: rgba(196, 69, 54, 0.28);
   background: rgba(196, 69, 54, 0.05);
-  color: var(--tamamhealth-red, #C44536);
+  color: var(--tamamhealth-red, #DC2626);
 }
 
 .sbar-allergies-label {
@@ -1917,7 +1917,7 @@
   color: var(--ehr-muted, #8395A8);
 }
 
-.sbar-subhead[data-tone='danger'] { color: var(--tamamhealth-red, #C44536); }
+.sbar-subhead[data-tone='danger'] { color: var(--tamamhealth-red, #DC2626); }
 .sbar-subhead svg { width: 13px; height: 13px; }
 
 /* ── Problem chips ── */
@@ -1925,7 +1925,7 @@
 
 .sbar-chips li {
   padding: 3px 9px;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 5px;
   background: var(--ehr-soft, #E9F0F5);
   font-size: 12px;
@@ -1961,7 +1961,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px 10px;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 7px;
   background: var(--ehr-soft, #E9F0F5);
 }

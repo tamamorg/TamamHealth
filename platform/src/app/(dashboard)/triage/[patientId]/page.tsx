@@ -36,20 +36,14 @@ export default function PatientTriagePage() {
   const patientId = String(params?.patientId || '');
   const { patients, loading } = usePatients();
 
-  // Where "back" goes depends on who is here: the nurse's triage station is
-  // not in a doctor's route table, so a doctor following the chart's
-  // "Triage/ETAT" form landed on RoleGuard's Access Restricted screen.
-  const nurseStation = '/dashboard/nurse';
-  const backTarget = currentUser && getRoleConfig(currentUser.role)?.allowedRoutes?.some(
-    route => nurseStation === route || nurseStation.startsWith(`${route}/`),
-  )
-    ? '/dashboard/nurse?station=ward'
-      : currentUser
-        ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
-        : '/dashboard';
-  const stationDateLabel = useMemo(() => (
-    new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date())
-  ), []);
+  // Nurses and doctors both go back to their own role's default dashboard —
+  // the standalone nurse station was merged into the shared clinical
+  // workspace, so there's no separate station route left to special-case
+  // (both currently resolve to '/dashboard', but this stays role-driven so
+  // it keeps working if a role's default ever diverges again).
+  const backTarget = currentUser
+    ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
+    : '/dashboard';
 
   const scopedPatient = useMemo(
     () => patients.find(p => p._id === patientId) || null,
@@ -103,7 +97,7 @@ export default function PatientTriagePage() {
         className="patient-registration-back no-print"
       >
         <ArrowLeft className="w-4 h-4" style={{ stroke: 'currentColor' }} />
-        {backTarget.startsWith('/dashboard/nurse') ? stationDateLabel : 'Back to dashboard'}
+        Back to dashboard
       </button>
 
       <div className="triage-patient-workspace">

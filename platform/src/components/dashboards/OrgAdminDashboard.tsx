@@ -158,7 +158,7 @@ export default function OrgAdminDashboard() {
   // ─── Derived, org-wide counts ───
   const today = toIsoDate(new Date());
   // Admission/discharge/payment timestamps are stored as new Date().toISOString()
-  // (UTC instants) — sliced consistently the same way elsewhere (NurseDashboard).
+  // (UTC instants) — sliced consistently the same way other dashboards do.
   const todayUtc = new Date().toISOString().slice(0, 10);
 
   const todaysVisits = useMemo(
@@ -267,7 +267,7 @@ export default function OrgAdminDashboard() {
       value: activeAdmissions.length.toLocaleString(),
       sub: `${admissionsToday} admitted · ${dischargesToday} discharged today`,
       icon: BedDouble,
-      color: '#8B5CF6',
+      color: 'var(--chart-3)',
       trend: censusSeries,
       trendCaption: 'Inpatient census, last 14 days',
     },

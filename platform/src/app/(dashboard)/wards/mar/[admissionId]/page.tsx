@@ -355,7 +355,7 @@ export default function MARPage() {
                   }}>
                     {t('mar.isolationRequired')}
                   </div>
-                  <div className="text-sm font-medium mt-0.5">
+                  <div className="text-sm font-semibold mt-0.5">
                     {admission.isolationReason || t('mar.ppeBeforeEntry')}
                   </div>
                 </div>
@@ -378,7 +378,7 @@ export default function MARPage() {
             </p>
           </div>
         ) : (
-          <div className="card-elevated overflow-hidden">
+          <div className="card-elevated overflow-hidden" data-tour="mar-grid">
             <div className="overflow-x-auto">
               <table className="w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 760 }}>
                 <thead>

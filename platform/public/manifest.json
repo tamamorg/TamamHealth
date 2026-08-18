@@ -1,18 +1,25 @@
 {
-  "name": "TamamHealth — Digital Health Records",
+  "name": "TamamHealth \u2014 Digital Health Records",
   "short_name": "TamamHealth",
   "description": "Offline-first health records system. Secure, scalable EMR for hospitals and community health workers across Africa.",
   "start_url": "/",
   "id": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "background_color": "#eff6ff",
   "theme_color": "#2191D0",
   "orientation": "any",
   "lang": "en",
   "dir": "auto",
-  "categories": ["medical", "health", "productivity"],
+  "categories": [
+    "medical",
+    "health",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.svg",
@@ -27,7 +34,7 @@
       "purpose": "any"
     },
     {
-      "src": "/assets/tamamhealth-icon.svg",
+      "src": "/assets/tamam-favicon.svg",
       "sizes": "64x64",
       "type": "image/svg+xml",
       "purpose": "any"

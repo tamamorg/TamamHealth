@@ -34,10 +34,10 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 const CASH_RECEIVED = '#0ca30c';
 const CASH_PENDING = 'var(--color-warning)';
 const CASH_PENDING_TEXT = 'var(--color-warning)'; // legible amber for text on a light card
-const CHART_BLUE = '#2a78d6';
-const CHART_TEAL = '#007d79';
+const CHART_BLUE = 'var(--chart-1)';
+const CHART_TEAL = 'var(--chart-4)';
 const RED = 'var(--color-danger)';
-const PURPLE = '#7847EB';
+const PURPLE = 'var(--chart-3)';
 
 /** Bills that no longer represent money owed — excluded from "pending". */
 const CLOSED_BILL_STATUSES = new Set(['waived', 'cancelled']);
@@ -164,7 +164,7 @@ export default function BillingOverviewCards({
   }, [payments, claims]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3" data-tour="billing-overview">
 
       {/* ── 1. Cash Flow — the ring carries the weight, the amounts caption it ── */}
       <div className="dash-card overflow-hidden">

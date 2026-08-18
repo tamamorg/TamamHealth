@@ -17,7 +17,7 @@ import {
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import { useTasks } from '@/lib/hooks/useTasks';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { patientFullName } from '@/lib/patient-utils';
+import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import type { ClinicianTaskDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 
@@ -338,7 +338,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                           </button>
                         </div>
                       )}
-                      {task.patientName && <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>re: {task.patientName}</div>}
+                      {task.patientName && <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>re: {shortenPersonName(task.patientName)}</div>}
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         {(!d || d.overdue || d.text === 'Today') && (
                           <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: d?.overdue ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>

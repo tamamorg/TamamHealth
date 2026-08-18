@@ -53,7 +53,6 @@ function input(over: Partial<FacilityOverviewInput> = {}): FacilityOverviewInput
     availableProviderIds: new Set<string>(),
     usersHref: '/org-admin/users',
     availableBeds: 0,
-    billing: null,
     ...over,
   };
 }
@@ -178,17 +177,5 @@ describe('pending leave queue', () => {
     expect(buildFacilityOverview(input({ leave, search: 'grace' })).pendingLeaveRows).toHaveLength(1);
     expect(buildFacilityOverview(input({ leave, search: 'pharmacist' })).pendingLeaveRows).toHaveLength(1);
     expect(buildFacilityOverview(input({ leave, search: 'zzz' })).pendingLeaveRows).toHaveLength(0);
-  });
-});
-
-describe('cash flow', () => {
-  test('total invoice is received plus outstanding', () => {
-    const out = buildFacilityOverview(input({ billing: { totalRevenue: 25000, totalOutstanding: 148000 } }));
-    expect(out.cashFlow).toEqual({ received: 25000, pending: 148000, totalInvoice: 173000 });
-  });
-
-  test('missing billing degrades to zeroes rather than NaN', () => {
-    expect(buildFacilityOverview(input({ billing: null })).cashFlow)
-      .toEqual({ received: 0, pending: 0, totalInvoice: 0 });
   });
 });

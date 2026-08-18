@@ -83,13 +83,15 @@ export default function NoteSectionCard({
   const actions = actionsForSection(sectionId);
 
   const actionButtons = !readOnly && onAction && actions.length > 0
-    ? actions.map((action) => {
+    ? actions.map((action, index) => {
         const Icon = ACTION_ICONS[action.id];
         return (
           <button
             key={action.id}
             type="button"
-            className="cn-tool"
+            // The section's lead action carries the tinted emphasis, per the
+            // design — Review meds, Include problems, Prescribe, ….
+            className={`cn-tool${index === 0 ? ' cn-tool-primary' : ''}`}
             onClick={() => onAction(action.id)}
             title={action.description}
           >
@@ -99,7 +101,15 @@ export default function NoteSectionCard({
       })
     : null;
 
-  // Derived sections render the snapshot rather than an editable body.
+  // Derived sections render the snapshot rather than an editable body. The
+  // snapshot is line-per-entry text; each line becomes a row on a soft
+  // hairline so the list reads like the design's medication/allergy rows.
+  const snapshotRows = content?.snapshot
+    ? content.snapshot.split('\n').filter(line => line.trim()).map((line, i) => (
+        <div key={i} className="cn-derived-row">{line}</div>
+      ))
+    : null;
+
   if (def.kind === 'derived') {
     return (
       <section
@@ -138,11 +148,11 @@ export default function NoteSectionCard({
               if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDerived(sectionId); }
             }}
           >
-            {content?.snapshot || `No ${def.label.toLowerCase()} recorded for this patient.`}
+            {snapshotRows || `No ${def.label.toLowerCase()} recorded for this patient.`}
           </div>
         ) : (
           <div className={`cn-derived${content?.snapshot ? '' : ' cn-derived-empty'}`}>
-            {content?.snapshot || `No ${def.label.toLowerCase()} recorded for this patient.`}
+            {snapshotRows || `No ${def.label.toLowerCase()} recorded for this patient.`}
           </div>
         )}
       </section>

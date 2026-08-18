@@ -153,7 +153,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4 31.4" strokeLinecap="round" style={{ color: 'var(--accent-primary)' }} />
             </svg>
-            <span className="text-xs font-medium" style={{ color: 'var(--accent-primary)' }}>{t('scribe.extractingData')}</span>
+            <span className="text-xs font-semibold" style={{ color: 'var(--accent-primary)' }}>{t('scribe.extractingData')}</span>
           </div>
         )}
 
@@ -248,7 +248,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
                     ? t('scribe.emptyStartHint')
                     : t('scribe.emptyUnsupportedHint')}
                 </p>
-                <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
+                <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
                   {t('scribe.localProcessingNote')}
                 </p>
               </div>
@@ -293,7 +293,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
                   return val ? (
                     <div key={key} className="p-2 rounded-lg" style={{ background: 'rgba(92,184,168,0.08)', border: '1px solid rgba(92,184,168,0.15)' }}>
                       <p className="text-[9px] uppercase tracking-wider font-bold" style={{ color: 'var(--text-muted)' }}>{label}</p>
-                      <p className="text-sm font-bold" style={{ color: 'var(--accent-primary)' }}>{val} <span className="text-[10px] font-normal">{unit}</span></p>
+                      <p className="text-sm font-bold" style={{ color: 'var(--accent-primary)' }}>{val} <span className="text-[10px] font-semibold">{unit}</span></p>
                     </div>
                   ) : null;
                 })}
@@ -301,7 +301,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             </FieldSection>
 
             <FieldSection
-              icon={Stethoscope} label={t('scribe.sectionExamFindings')} color="#A855F7"
+              icon={Stethoscope} label={t('scribe.sectionExamFindings')} color="var(--chart-3)"
               expanded={expandedSections.has('exam')}
               onToggle={() => toggleSection('exam')}
               empty={scribe.extraction.examFindings.length === 0}
@@ -334,7 +334,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
                         {dx.icd10Hint}
                       </span>
                     )}
-                    <span className="text-xs font-medium flex-1" style={{ color: 'var(--text-primary)' }}>{dx.name}</span>
+                    <span className="text-xs font-semibold flex-1" style={{ color: 'var(--text-primary)' }}>{dx.name}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{
                       background: dx.certainty === 'confirmed' ? 'rgba(33, 145, 208, 0.12)' : 'rgba(252,211,77,0.12)',
                       color: dx.certainty === 'confirmed' ? 'var(--accent-primary)' : 'var(--color-warning-text)',
@@ -345,7 +345,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             </FieldSection>
 
             <FieldSection
-              icon={Pill} label={t('scribe.sectionMedications')} color="#EC4899"
+              icon={Pill} label={t('scribe.sectionMedications')} color="var(--chart-2)"
               expanded={expandedSections.has('medications')}
               onToggle={() => toggleSection('medications')}
               empty={scribe.extraction.medications.length === 0}
@@ -390,7 +390,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             >
               <div className="flex flex-wrap gap-1.5">
                 {scribe.extraction.labOrders.map((lab, i) => (
-                  <span key={i} className="text-xs px-2 py-1 rounded-lg font-medium" style={{
+                  <span key={i} className="text-xs px-2 py-1 rounded-lg font-semibold" style={{
                     background: 'rgba(6,182,212,0.10)', color: 'var(--accent-primary)', border: '1px solid rgba(6,182,212,0.2)',
                   }}>
                     {lab}
@@ -415,7 +415,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
             </FieldSection>
 
             <FieldSection
-              icon={Calendar} label={t('scribe.sectionFollowUp')} color="#8B5CF6"
+              icon={Calendar} label={t('scribe.sectionFollowUp')} color="var(--chart-3)"
               expanded={expandedSections.has('followup')}
               onToggle={() => toggleSection('followup')}
               empty={!scribe.extraction.followUp}

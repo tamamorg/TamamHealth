@@ -192,17 +192,17 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               <button className="p-1 rounded" disabled={busy} onClick={() => setAdding(false)} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-type" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Type</label>
+              <label htmlFor="dir-type" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Type</label>
               <Select id="dir-type" value={addForm.type} onChange={e => setAddForm({ ...addForm, type: e.target.value as DirectiveType })}>
                 {TYPE_OPTIONS.map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-desc" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Detail</label>
+              <label htmlFor="dir-desc" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Detail</label>
               <input id="dir-desc" autoFocus value={addForm.description} onChange={e => setAddForm({ ...addForm, description: e.target.value })} placeholder="e.g. General consent to treat" className={fieldCls} style={fieldStyle} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-start" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Effective from</label>
+              <label htmlFor="dir-start" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Effective from</label>
               <input id="dir-start" type="date" value={addForm.startDate} onChange={e => setAddForm({ ...addForm, startDate: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
@@ -231,13 +231,13 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               <button className="p-1 rounded" disabled={busy} onClick={() => setEditing(null)} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-etype" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Type</label>
+              <label htmlFor="dir-etype" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Type</label>
               <Select id="dir-etype" value={editForm.type} onChange={e => setEditForm({ ...editForm, type: e.target.value as DirectiveType })}>
                 {TYPE_OPTIONS.map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-edesc" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Detail</label>
+              <label htmlFor="dir-edesc" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Detail</label>
               <input id="dir-edesc" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
@@ -273,18 +273,18 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               <strong>{typeLabel(signing.type)}</strong> — {signing.description}
             </p>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-signedby" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Who is signing</label>
+              <label htmlFor="dir-signedby" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Who is signing</label>
               <Select id="dir-signedby" value={signForm.signedBy} onChange={e => setSignForm({ ...signForm, signedBy: e.target.value as DirectiveSignatory })}>
                 {SIGNATORY_OPTIONS.map(s => <option key={s} value={s}>{SIGNATORY_LABELS[s]}</option>)}
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-signame" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Name as signed</label>
+              <label htmlFor="dir-signame" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Name as signed</label>
               <input id="dir-signame" autoFocus value={signForm.name} onChange={e => setSignForm({ ...signForm, name: e.target.value })} placeholder="Full name" className={fieldCls} style={fieldStyle} />
             </div>
             {signForm.signedBy !== 'patient' && (
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="dir-rel" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Relationship to the patient</label>
+                <label htmlFor="dir-rel" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Relationship to the patient</label>
                 <input id="dir-rel" value={signForm.relationship} onChange={e => setSignForm({ ...signForm, relationship: e.target.value })} placeholder="e.g. mother, legal guardian" className={fieldCls} style={fieldStyle} />
               </div>
             )}
@@ -328,7 +328,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               is never deleted.
             </p>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-reason" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Reason (required)</label>
+              <label htmlFor="dir-reason" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reason (required)</label>
               <input id="dir-reason" autoFocus value={revokeReason} onChange={e => setRevokeReason(e.target.value)} className={fieldCls} style={fieldStyle} />
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">

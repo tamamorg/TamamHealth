@@ -42,6 +42,7 @@ import type { PaymentDoc, ClaimDoc, PaymentPlanDoc, PaymentMethodType } from '@/
 import type { BillingDoc } from '@/lib/db-types-billing';
 import type { EncounterDoc } from '@/lib/db-types';
 import { formatMoney } from '@/lib/format-utils';
+import { shortenPersonName } from '@/lib/patient-utils';
 import '@/components/billing/billing.css';
 
 // Encounter statuses that represent a clinically-finished visit — used to spot
@@ -648,7 +649,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           {/* Pending verification queue — payments awaiting a finance decision.
               Rendered only when something needs review, so the page stays clean. */}
           {pendingPayments.length > 0 && (
-            <div className="bl-card">
+            <div className="bl-card" data-tour="pending-queue">
               <div className="bl-card-head">
                 <h2 className="bl-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Clock size={16} style={{ color: 'var(--color-warning-text)' }} />
@@ -673,7 +674,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                   <tbody>
                     {pendingPayments.map(p => (
                       <tr key={p._id}>
-                        <td style={{ fontWeight: 600 }}>{p.patientName}</td>
+                        <td style={{ fontWeight: 600 }}>{shortenPersonName(p.patientName)}</td>
                         <td className="bl-muted" style={{ fontFamily: 'monospace' }}>{p.reference}</td>
                         <td>{getMethodConfig(p.method).label}</td>
                         <td className="bl-muted" style={{ whiteSpace: 'nowrap' }}>
@@ -714,7 +715,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               one search box; the tabs decide which rows and which filters. ── */}
           {/* A floor rather than a share of the viewport — the table always has
               room for a useful number of rows, and the page scrolls past it. */}
-          <div className="bl-card" style={{ flex: 1, minHeight: 320, display: 'flex', flexDirection: 'column' }}>
+          <div className="bl-card" data-tour="work-queue" style={{ flex: 1, minHeight: 320, display: 'flex', flexDirection: 'column' }}>
             <div className="bl-card-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
               <div>
                 <h2 className="bl-card-title">{tab === 'claims' ? t('claims.title') : 'Patient accounts'}</h2>
@@ -799,7 +800,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                           key={line.patientId}
                           onClick={() => setSelectedPatientId(line.patientId)}
                           tabIndex={0}
-                          aria-label={`Open account for ${line.patientName}`}
+                          aria-label={`Open account for ${shortenPersonName(line.patientName)}`}
                           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPatientId(line.patientId); } }}
                         >
                           <td>
@@ -810,10 +811,10 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                                 className="bl-link"
                                 style={{ fontWeight: 600 }}
                               >
-                                {line.patientName}
+                                {shortenPersonName(line.patientName)}
                               </button>
                             ) : (
-                              <span style={{ fontWeight: 600 }}>{line.patientName}</span>
+                              <span style={{ fontWeight: 600 }}>{shortenPersonName(line.patientName)}</span>
                             )}
                           </td>
                           <td>
@@ -880,7 +881,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
             <div className="bl-fee-list" style={{ maxHeight: 'none', overflow: 'visible' }}>
               <div className="bl-fee-row">
                 <div className="min-w-0">
-                  <div className="bl-fee-name">{reverseFor.payment.patientName}</div>
+                  <div className="bl-fee-name">{shortenPersonName(reverseFor.payment.patientName)}</div>
                   <div className="bl-fee-cat">
                     {getMethodConfig(reverseFor.payment.method).label}
                     {reverseFor.payment.reference && <span style={{ fontFamily: 'monospace' }}> · {reverseFor.payment.reference}</span>}
@@ -960,7 +961,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                           style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
                         >
                           <div className="min-w-0">
-                            <div className="bl-fee-name">{line.patientName}</div>
+                            <div className="bl-fee-name">{shortenPersonName(line.patientName)}</div>
                             {line.hospitalNumber && <div className="bl-fee-cat" style={{ fontFamily: 'monospace' }}>{line.hospitalNumber}</div>}
                           </div>
                           <span className="bl-num" style={{ fontWeight: 700, color: 'var(--color-danger-text)' }}>{formatMoney(line.outstanding)}</span>
@@ -1118,7 +1119,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
               style={{ fontSize: 16 }}
               title={t('payments.openPatientRecord')}
             >
-              <span id="billing-detail-name">{line.patientName}</span>
+              <span id="billing-detail-name">{shortenPersonName(line.patientName)}</span>
             </button>
             {line.hospitalNumber && (
               <div className="bl-id-tag" style={{ marginTop: 4, display: 'inline-block' }}>{line.hospitalNumber}</div>
@@ -1378,7 +1379,7 @@ function Section({ title, icon, count, children }: { title: string; icon: React.
           </div>
           <h3 className="text-sm font-semibold" style={{ color: 'var(--ehr-text-title, #132C44)' }}>{title}</h3>
         </div>
-        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--ehr-muted, #8395A8)' }}>{count}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--ehr-muted, #597386)' }}>{count}</span>
       </div>
       {children}
     </div>
@@ -1387,6 +1388,6 @@ function Section({ title, icon, count, children }: { title: string; icon: React.
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[12px] py-3 px-2" style={{ color: 'var(--ehr-muted, #8395A8)' }}>{children}</div>
+    <div className="text-[12px] py-3 px-2" style={{ color: 'var(--ehr-muted, #597386)' }}>{children}</div>
   );
 }

@@ -358,8 +358,9 @@ export default function BloodBankPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        {/* Availability by blood group — one tile per group, count of AVAILABLE units */}
-        <div className="dash-card mb-4">
+        {/* Availability by blood group — one tile per group, count of AVAILABLE units.
+            data-tour: guided-tour anchor for the lab journey's blood-bank step. */}
+        <div className="dash-card mb-4" data-tour="bb-availability">
           <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
             <h3 className="font-semibold text-sm">Availability by blood group</h3>
           </div>
@@ -470,7 +471,7 @@ export default function BloodBankPage() {
                       <td className="text-sm">{COMPONENT_LABEL[u.component] || u.component}</td>
                       <td className="text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>{u.volume}</td>
                       <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(u.collectionDate)}</td>
-                      <td className="text-xs font-medium" style={{ color: expiryColor }}>
+                      <td className="text-xs font-semibold" style={{ color: expiryColor }}>
                         {formatDate(u.expiryDate)}
                         {expired ? ' · expired' : expiringSoon ? ` · ${days}d left` : ''}
                       </td>
@@ -626,7 +627,7 @@ export default function BloodBankPage() {
                               style={{ borderBottom: '1px solid var(--border-light)' }}
                             >
                               <PatientAvatar patient={p} size={26} />
-                              <span className="flex-1 text-[13px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{patientFullName(p)}</span>
+                              <span className="flex-1 text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{patientFullName(p)}</span>
                               <span className="text-[11px] font-mono flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{p.hospitalNumber}</span>
                             </button>
                           ))}

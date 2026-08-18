@@ -98,7 +98,7 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
         }}
       >
         <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: dragOver ? 'var(--tamamhealth-blue)' : 'var(--text-muted)' }} />
-        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
           {t('fileUpload.dropPrompt')}
         </p>
         <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -152,7 +152,7 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{att.name}</p>
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{att.name}</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {formatSize(att.sizeBytes)} &middot; {att.mimeType}
                 </p>
@@ -195,7 +195,7 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
               <div className="flex items-center gap-2">
                 {isImage(previewAttachment.mimeType) ? <ImageIcon className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} /> : <FileText className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />}
-                <span className="text-sm font-medium">{previewAttachment.name}</span>
+                <span className="text-sm font-semibold">{previewAttachment.name}</span>
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatSize(previewAttachment.sizeBytes)}</span>
               </div>
               <button onClick={() => setPreviewAttachment(null)} className="p-1 rounded" style={{ background: 'var(--overlay-subtle)' }}>

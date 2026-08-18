@@ -94,7 +94,7 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
                   <ScanLine className="w-8 h-8" style={{ color: 'var(--tamamhealth-blue)' }} />
                 )}
               </div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {phase === 'scanning' ? t('fingerprint.identifyScanning') : t('fingerprint.identifyPrompt')}
               </p>
               <button onClick={handleScan} disabled={phase === 'scanning'} className="btn btn-primary" style={{ opacity: phase === 'scanning' ? 0.6 : 1 }}>

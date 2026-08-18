@@ -82,13 +82,13 @@ export default function AddAllergyModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Classification</label>
+            <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Classification</label>
             <Select value={classification} onChange={e => setClassification(e.target.value as AllergyEntry['classification'])} className="p-2.5 rounded-md text-[12px]" style={inputStyle}>
               {CLASSIFICATIONS.map(c => <option key={c} value={c}>{c}</option>)}
             </Select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Criticality</label>
+            <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Criticality</label>
             <Select value={criticality} onChange={e => setCriticality(e.target.value as NonNullable<AllergyEntry['criticality']>)} className="p-2.5 rounded-md text-[12px]" style={inputStyle}>
               {CRITICALITIES.map(c => <option key={c} value={c}>{c}</option>)}
             </Select>

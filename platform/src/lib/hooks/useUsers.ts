@@ -3,14 +3,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { UserDoc, UserRole } from '../db-types';
 import { useDataScope } from './useDataScope';
+import { canReadStaffDirectory } from '../staff-directory-access';
 
 export function useUsers() {
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scope = useDataScope();
+  // The app shell mounts this hook for every signed-in role (MessagingDock),
+  // but only some roles may read the directory. Without this check a front-desk
+  // or cashier session fetched a guaranteed 403 from every consumer and again
+  // on every tab focus, filling the console with "Forbidden" and the server log
+  // with denied requests. `/api/users` still enforces the rule; this only stops
+  // asking a question whose answer is already known.
+  const mayRead = canReadStaffDirectory(scope?.role);
 
   const loadUsers = useCallback(async () => {
+    if (!mayRead) {
+      setUsers([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     try {
       const { getAllUsers } = await import('../services/user-service');
       const data = await getAllUsers(scope);
@@ -22,7 +36,7 @@ export function useUsers() {
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, [scope, mayRead]);
 
   useEffect(() => {
     loadUsers();

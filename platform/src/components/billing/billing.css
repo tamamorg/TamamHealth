@@ -33,7 +33,7 @@
   align-items: center;
   gap: 14px;
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
   padding: 14px 20px;
 }
@@ -79,7 +79,7 @@
   font-weight: 600;
   color: var(--ehr-text-title, #132C44);
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   padding: 6px 10px;
   cursor: pointer;
@@ -89,7 +89,7 @@
 
 .bl-card {
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -154,7 +154,7 @@
   font-size: 13px;
   color: var(--ehr-text, #102634);
   appearance: none;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
   cursor: pointer;
 }
@@ -171,7 +171,7 @@
 .bl-toolbar-select:hover:not(:disabled):not(:focus) { border-color: var(--bl-teal); }
 .bl-toolbar-select:disabled {
   color: var(--ehr-muted, #8395A8);
-  background-color: var(--ehr-page-bg, #F8FBFD);
+  background-color: var(--ehr-page-bg, #FFFFFF);
   cursor: not-allowed;
 }
 
@@ -233,7 +233,7 @@
   text-align: center;
   color: var(--ehr-text, #102634);
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 4px;
 }
 .bl-draft-remove {
@@ -255,7 +255,7 @@
   flex-wrap: wrap;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid var(--ehr-border, #D8E3EC);
+  border-top: 1px solid var(--ehr-border, #DDEAF3);
 }
 .bl-draft-totals {
   margin: 0;
@@ -314,8 +314,8 @@
   gap: 10px;
   margin: 0 18px 0;
   padding: 0 12px;
-  background: var(--ehr-page-bg, #F8FBFD);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  background: var(--ehr-page-bg, #FFFFFF);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   color: var(--ehr-muted, #8395A8);
 }
@@ -429,7 +429,7 @@
 .bl-table--rows-open tbody tr { cursor: pointer; }
 
 .bl-link {
-  color: var(--accent-primary, #2191D0);
+  color: var(--accent-primary, #144972);
   font-weight: 600;
   text-decoration: none;
   background: none;
@@ -460,7 +460,7 @@
 .bl-chip--paid     { background: var(--color-success-bg);  color: var(--color-success-text); }
 .bl-chip--waived   { background: var(--ehr-soft, #E9F0F5); color: var(--ehr-text-body, #39536B); }
 .bl-chip--cancelled{ background: var(--ehr-soft, #E9F0F5); color: var(--ehr-muted, #8395A8); text-decoration: line-through; }
-.bl-chip--visit    { background: var(--accent-primary, #2191D0); color: #fff; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.bl-chip--visit    { background: var(--accent-primary, #144972); color: #fff; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .bl-chip--ontime   { background: var(--ehr-soft, #E9F0F5); color: var(--ehr-text-body, #39536B); text-transform: none; letter-spacing: 0; font-size: 11px; }
 
 /* ── Pagination footer ───────────────────────────────────────────── */
@@ -472,7 +472,7 @@
   flex-wrap: wrap;
   gap: 10px 18px;
   padding: 8px 18px;
-  border-top: 1px solid var(--ehr-border, #D8E3EC);
+  border-top: 1px solid var(--ehr-border, #DDEAF3);
   font-size: 12px;
   color: var(--ehr-text-body, #39536B);
 }
@@ -481,7 +481,7 @@
   font: inherit;
   color: var(--ehr-text-title, #132C44);
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 5px;
   padding: 4px 6px;
   cursor: pointer;
@@ -495,7 +495,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 5px;
   background: var(--ehr-panel, #fff);
   color: var(--ehr-text-body, #39536B);
@@ -511,7 +511,7 @@
   align-items: flex-start;
   gap: 14px;
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
   padding: 14px 20px;
 }
@@ -540,7 +540,7 @@
   margin: 0;
 }
 .bl-gender { font-size: 15px; font-weight: 700; color: var(--ehr-muted, #8395A8); }
-.bl-gender.male { color: var(--accent-primary, #2191D0); }
+.bl-gender.male { color: var(--accent-primary, #144972); }
 .bl-gender.female { color: #C2408A; }
 .bl-banner-meta {
   margin-top: 4px;
@@ -591,13 +591,13 @@
 .bl-btn--primary:hover:not(:disabled) { background: var(--bl-teal-dark); }
 .bl-btn--outline { background: var(--ehr-panel, #fff); color: var(--bl-teal); border-color: var(--bl-teal); }
 .bl-btn--outline:hover:not(:disabled) { background: var(--bl-teal-soft); }
-.bl-btn--link { background: none; color: var(--accent-primary, #2191D0); padding: 10px 4px; }
+.bl-btn--link { background: none; color: var(--accent-primary, #144972); padding: 10px 4px; }
 .bl-btn--link:hover:not(:disabled) { text-decoration: underline; }
 .bl-btn--danger-link { background: none; color: var(--color-danger, #DC2626); padding: 10px 4px; }
 .bl-btn--danger-link:hover:not(:disabled) { text-decoration: underline; }
 .bl-btn--dark { background: #393939; color: #fff; }
 .bl-btn--dark:hover:not(:disabled) { background: #262626; }
-.bl-btn--ghost { background: var(--ehr-panel, #fff); color: var(--ehr-text-body, #39536B); border-color: var(--ehr-border, #D8E3EC); }
+.bl-btn--ghost { background: var(--ehr-panel, #fff); color: var(--ehr-text-body, #39536B); border-color: var(--ehr-border, #DDEAF3); }
 .bl-btn--ghost:hover:not(:disabled) { background: var(--ehr-hover, #FAFCFE); }
 
 /* ── Summary strip ───────────────────────────────────────────────── */
@@ -644,7 +644,7 @@
   right: 0;
   width: 180px;
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(16, 38, 52, 0.14);
   z-index: 30;
@@ -682,7 +682,7 @@
    width, its account totals already living in the summary strip above. */
 .bl-pay-single { padding: 16px 18px 18px; min-width: 0; }
 .bl-pay-aside {
-  border-left: 1px solid var(--ehr-border, #D8E3EC);
+  border-left: 1px solid var(--ehr-border, #DDEAF3);
   padding: 18px 20px;
   display: flex;
   flex-direction: column;
@@ -690,14 +690,14 @@
 }
 @media (max-width: 860px) {
   .bl-pay-layout { grid-template-columns: 1fr; }
-  .bl-pay-aside { border-left: none; border-top: 1px solid var(--ehr-border, #D8E3EC); }
+  .bl-pay-aside { border-left: none; border-top: 1px solid var(--ehr-border, #DDEAF3); }
 }
 
 .bl-totals { display: flex; flex-direction: column; gap: 9px; font-size: 13px; }
 .bl-totals-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .bl-totals-row dt { color: var(--ehr-text-body, #39536B); font-weight: 600; }
 .bl-totals-row dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--ehr-text-title, #132C44); }
-.bl-totals-rule { border: none; border-top: 1px solid var(--ehr-border, #D8E3EC); margin: 4px 0; }
+.bl-totals-rule { border: none; border-top: 1px solid var(--ehr-border, #DDEAF3); margin: 4px 0; }
 .bl-totals-row--due dt, .bl-totals-row--due dd { font-weight: 700; font-size: 14px; }
 
 /* ── Empty state ─────────────────────────────────────────────────── */
@@ -734,7 +734,7 @@
   font-size: 13px;
   color: var(--ehr-text, #102634);
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
   padding: 9px 10px;
   outline: none;
@@ -756,7 +756,7 @@
 .bl-fee-list {
   max-height: 240px;
   overflow-y: auto;
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 6px;
 }
 .bl-fee-row {
@@ -821,7 +821,7 @@
   gap: 12px 28px;
   padding: 16px 20px;
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
 }
 
@@ -855,7 +855,7 @@
    without assuming a table follows. */
 .bl-section {
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #D8E3EC);
+  border: 1px solid var(--ehr-border, #DDEAF3);
   border-radius: 8px;
   padding: 16px 20px;
 }

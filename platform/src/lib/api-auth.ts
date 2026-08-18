@@ -126,7 +126,7 @@ export function forbidden(message = 'Forbidden') {
  * but they were never added to the hand-maintained `UserRole[]` allow-lists on
  * API routes. The measured result was that five of the six matched **zero** of
  * the 40 role-guarded routes: a `triage_nurse` could sign in, land on
- * `/dashboard/nurse`, and then be refused by `/api/triage` itself.
+ * `/dashboard`, and then be refused by `/api/triage` itself.
  *
  * Each mapping is the FIRST non-self entry of that station's `mapsToUserRoles`
  * in `lib/clinical-flow/roles.ts` — i.e. taken from the declared migration

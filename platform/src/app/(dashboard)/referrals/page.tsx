@@ -314,7 +314,7 @@ export default function ReferralsPage() {
                     <FileText className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-danger)' }} />
                   )}
                   <div className="min-w-0">
-                    <p className="text-xs font-medium truncate">{att.name}</p>
+                    <p className="text-xs font-semibold truncate">{att.name}</p>
                     <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{formatFileSize(att.sizeBytes)}</p>
                   </div>
                 </button>
@@ -345,15 +345,15 @@ export default function ReferralsPage() {
               { l: t('patient.bloodType'), v: demo.bloodType },
             ].map(item => (
               <div key={item.l}>
-                <p className="text-[10px] font-medium uppercase" style={{ color: 'var(--text-muted)' }}>{item.l}</p>
-                <p className="text-sm font-medium">{item.v}</p>
+                <p className="text-[10px] font-semibold uppercase" style={{ color: 'var(--text-muted)' }}>{item.l}</p>
+                <p className="text-sm font-semibold">{item.v}</p>
               </div>
             ))}
           </div>
           {demo.allergies?.length > 0 && demo.allergies[0] !== 'None known' && (
             <div className="mt-3 flex items-center gap-2">
               <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-danger-text)' }} />
-              <span className="text-xs font-medium" style={{ color: 'var(--color-danger-text)' }}>
+              <span className="text-xs font-bold" style={{ color: 'var(--color-danger-text)' }}>
                 {t('referrals.allergiesLabel', { list: demo.allergies.join(', ') })}
               </span>
             </div>
@@ -361,7 +361,7 @@ export default function ReferralsPage() {
           {demo.chronicConditions?.length > 0 && demo.chronicConditions[0] !== 'None' && (
             <div className="mt-1 flex items-center gap-2">
               <Activity className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />
-              <span className="text-xs font-medium" style={{ color: 'var(--color-warning-text)' }}>
+              <span className="text-xs font-bold" style={{ color: 'var(--color-warning-text)' }}>
                 {t('referrals.chronicLabel', { list: demo.chronicConditions.join(', ') })}
               </span>
             </div>
@@ -400,14 +400,14 @@ export default function ReferralsPage() {
                         <Badge tone={rec.visitType === 'emergency' ? 'danger' : rec.visitType === 'inpatient' ? 'warning' : 'neutral'}>
                           {rec.visitType}
                         </Badge>
-                        <span className="text-sm font-medium">{rec.department}</span>
+                        <span className="text-sm font-semibold">{rec.department}</span>
                       </div>
                       {isExpanded ? <ChevronUp className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} /> : <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />}
                     </button>
                     {isExpanded && (
                       <div className="px-3 pb-3 space-y-2">
-                        <p className="text-xs"><span className="font-medium">{t('referrals.complaintLabel')}</span> {rec.chiefComplaint}</p>
-                        <p className="text-xs"><span className="font-medium">{t('referrals.providerLabel')}</span> {rec.providerName} ({rec.providerRole}) {t('referrals.atFacility')} {rec.hospitalName}</p>
+                        <p className="text-xs"><span className="font-semibold">{t('referrals.complaintLabel')}</span> {rec.chiefComplaint}</p>
+                        <p className="text-xs"><span className="font-semibold">{t('referrals.providerLabel')}</span> {rec.providerName} ({rec.providerRole}) {t('referrals.atFacility')} {rec.hospitalName}</p>
                         {rec.diagnoses.length > 0 && (
                           <div>
                             <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: 'var(--text-muted)' }}>{t('referrals.diagnoses')}</p>
@@ -439,7 +439,7 @@ export default function ReferralsPage() {
                           </div>
                         )}
                         {rec.treatmentPlan && (
-                          <p className="text-xs"><span className="font-medium">{t('referrals.planLabel')}</span> {rec.treatmentPlan}</p>
+                          <p className="text-xs"><span className="font-semibold">{t('referrals.planLabel')}</span> {rec.treatmentPlan}</p>
                         )}
                       </div>
                     )}
@@ -465,17 +465,17 @@ export default function ReferralsPage() {
               <table className="w-full text-xs" style={{ minWidth: 600 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <th className="text-left py-1.5 pr-3 font-medium" style={{ color: 'var(--text-muted)' }}>{t('lab.testName')}</th>
-                    <th className="text-left py-1.5 pr-3 font-medium" style={{ color: 'var(--text-muted)' }}>{t('lab.result')}</th>
-                    <th className="text-left py-1.5 pr-3 font-medium" style={{ color: 'var(--text-muted)' }}>{t('lab.reference')}</th>
-                    <th className="text-left py-1.5 pr-3 font-medium" style={{ color: 'var(--text-muted)' }}>{t('referrals.date')}</th>
-                    <th className="text-left py-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>{t('lab.status')}</th>
+                    <th className="text-left py-1.5 pr-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.testName')}</th>
+                    <th className="text-left py-1.5 pr-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.result')}</th>
+                    <th className="text-left py-1.5 pr-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.reference')}</th>
+                    <th className="text-left py-1.5 pr-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('referrals.date')}</th>
+                    <th className="text-left py-1.5 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pkg.labResults.map((lab, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td className="py-1.5 pr-3 font-medium">{lab.testName}</td>
+                      <td className="py-1.5 pr-3 font-semibold">{lab.testName}</td>
                       <td className="py-1.5 pr-3" style={{ color: lab.abnormal ? (lab.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: lab.abnormal ? 600 : 400 }}>
                         {lab.result} {lab.unit}
                       </td>
@@ -518,7 +518,7 @@ export default function ReferralsPage() {
                   ) : (
                     <FileText className="w-8 h-8" style={{ color: 'var(--color-danger)' }} />
                   )}
-                  <p className="text-[10px] font-medium truncate w-full">{att.name}</p>
+                  <p className="text-[10px] font-semibold truncate w-full">{att.name}</p>
                   <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{formatFileSize(att.sizeBytes)}</p>
                 </button>
               ))}
@@ -534,10 +534,10 @@ export default function ReferralsPage() {
             <Package className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
           </div>
           <span style={{ color: 'var(--text-muted)' }}>
-            {t('referrals.packagedByPrefix')} <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pkg.packagedBy}</span> {t('referrals.packagedOnAt', { date: new Date(pkg.packagedAt).toLocaleDateString(), time: new Date(pkg.packagedAt).toLocaleTimeString() })}
+            {t('referrals.packagedByPrefix')} <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{pkg.packagedBy}</span> {t('referrals.packagedOnAt', { date: new Date(pkg.packagedAt).toLocaleDateString(), time: new Date(pkg.packagedAt).toLocaleTimeString() })}
           </span>
           <span style={{ color: 'var(--text-muted)' }}>
-            {t('referrals.totalSize')} <span className="font-medium">{formatFileSize(pkg.packageSizeBytes)}</span>
+            {t('referrals.totalSize')} <span className="font-semibold">{formatFileSize(pkg.packageSizeBytes)}</span>
           </span>
           <span style={{ color: 'var(--text-muted)' }}>
             {t('referrals.packageCounts', { records: pkg.medicalRecords.length, labs: pkg.labResults.length, files: pkg.attachments.length })}
@@ -570,7 +570,7 @@ export default function ReferralsPage() {
                   aria-label="Filter referrals by direction"
                   /* 8px radius, not a 999px pill — matches the square icon
                      buttons beside it and the appointments toolbar. */
-                  style={{ width: 'auto', height: 38, padding: '0 14px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, flexShrink: 0 }}
+                  style={{ width: 'auto', height: 38, padding: '0 14px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}
                 >
                   <option value="incoming">{`Incoming referrals${newIncomingCount > 0 ? ` (${newIncomingCount} new)` : ''}`}</option>
                   <option value="outgoing">Outgoing referrals</option>
@@ -693,7 +693,7 @@ export default function ReferralsPage() {
                           showAvatar
                           size={40}
                           secondaryText={hospitalNoFor(ref.patientId)}
-                          nameClassName="font-medium text-sm"
+                          nameClassName="font-semibold text-sm"
                         />
                         {hasPatientChart && (
                           <ExternalLink className="w-3 h-3 ml-1 opacity-50" aria-hidden="true" />
@@ -724,7 +724,7 @@ export default function ReferralsPage() {
                           {getStatusLabel(ref.status)}
                         </Badge>
                         {tp && (
-                          <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-medium ml-1" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
+                          <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-semibold ml-1" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
                             <Package className="w-3 h-3" /> {t('referrals.dataPackage')}
                           </span>
                         )}
@@ -977,7 +977,7 @@ export default function ReferralsPage() {
               <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
                 <div className="flex items-center gap-2">
                   {isImage(previewAttachment.mimeType) ? <ImageIcon className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} /> : <FileText className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />}
-                  <span className="text-sm font-medium">{previewAttachment.name}</span>
+                  <span className="text-sm font-semibold">{previewAttachment.name}</span>
                   <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatFileSize(previewAttachment.sizeBytes)}</span>
                 </div>
                 <button onClick={() => setPreviewAttachment(null)} className="p-1 rounded" style={{ background: 'var(--overlay-subtle)' }}>

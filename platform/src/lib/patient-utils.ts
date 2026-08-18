@@ -31,6 +31,55 @@ export function patientFullName(p: Pick<Patient, 'firstName' | 'surname'> & { mi
   return `${p.firstName} ${p.middleName || ''} ${p.surname}`.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * The name a list shows: first and surname only.
+ *
+ * Every patient in the Clinical/Reception design is two words — "Nyakuoth
+ * Deng", "Grace Poni" — while the record holds three ("Nyanut Gatwech Chuol").
+ * On a queue row or a dashboard table the middle name buys nothing and costs
+ * the column: it is what pushed names into ellipsis and made two columns of
+ * the same width look ragged.
+ *
+ * This is a DISPLAY rule, not a data one. Anywhere the full legal name is the
+ * point — the chart header, registration review, a printed bill or superbill,
+ * anything a person signs or files — keeps `patientFullName`.
+ */
+export function patientDisplayName(p: Pick<Patient, 'firstName' | 'surname'> & { middleName?: string }): string {
+  return `${p.firstName || ''} ${p.surname || ''}`.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * The same rule for a name that arrives already flattened — appointments,
+ * bills and claims store `patientName` as a string, so there are no parts left
+ * to pick from. Two words or fewer are returned untouched; three or more keep
+ * the first and the last, which is the pattern the design shows.
+ */
+export function shortenPersonName(name?: string | null): string {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 3) return parts.join(' ');
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
+/**
+ * A staff name for display: first and last name only, keeping a leading
+ * title — "Dr. James Wani Igga" → "Dr. James Igga", "Nurse Stella Keji Lemi"
+ * → "Nurse Stella Lemi". Same two-name rule the patient rows follow, per the
+ * design. Names of one or two words (including sentinels like "Doctor
+ * unassigned") pass through untouched, so this is safe to wrap around any
+ * provider cell. Display rule only, like [[patientDisplayName]].
+ */
+export function abbreviateProviderName(name?: string | null): string {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 3) return parts.join(' ');
+  const norm = (w: string) => w.replace(/[.,]/g, '').toLowerCase();
+  if (NAME_TITLE_TOKENS.has(norm(parts[0]))) {
+    // Title + first + last needs four words to be shortening anything.
+    if (parts.length < 4) return parts.join(' ');
+    return `${parts[0]} ${parts[1]} ${parts[parts.length - 1]}`;
+  }
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
 /** Two-letter initials for avatars (first name + surname), upper-cased. */
 export function patientInitials(p: { firstName?: string; surname?: string }): string {
   return `${(p.firstName || '?')[0]}${(p.surname || '?')[0]}`.toUpperCase();

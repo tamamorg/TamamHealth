@@ -238,9 +238,4 @@ export function todayIso(): string {
 }
 
 /** "Dr. Achol Mayen Deng" → "AM". Titles are dropped, not initialised. */
-export function monogram(name: string): string {
-  const words = name
-    .replace(/^(Dr\.?|CO|Prof\.?|Mr\.?|Mrs\.?|Ms\.?)\s+/i, '')
-    .trim().split(/\s+/).filter(Boolean);
-  return words.slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?';
-}
+export { initials as monogram } from '@/lib/patient-utils';

@@ -58,10 +58,14 @@ interface MedicationsSectionProps {
   /** When set (e.g. deep-linked from elsewhere in the chart), the row with
    *  this prescription `_id` is paged-to, scrolled into view and highlighted. */
   focusId?: string;
+  /** Set by PharmacyWorkspace: makes rows pickable, opening the counter
+   *  workflow for that prescription. Unset elsewhere, so the list stays a
+   *  plain read for screens that only display medicines. */
+  onSelect?: (prescriptionId: string) => void;
 }
 
 export default function MedicationsSection({
-  patientId, patientName, canPrescribe, onAdd, noKnownMedications, reconciliation, reconciledAt, currentUser, focusId,
+  patientId, patientName, canPrescribe, onAdd, noKnownMedications, reconciliation, reconciledAt, currentUser, focusId, onSelect,
 }: MedicationsSectionProps) {
   const { prescriptions } = usePrescriptions(patientId);
   const { showToast } = useToast();
@@ -200,13 +204,24 @@ export default function MedicationsSection({
               <tr
                 key={rx._id}
                 id={`rx-row-${rx._id}`}
-                style={rx._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
+                // Picking a row opens the counter workflow for that script,
+                // the same way a result row opens the bench workflow. The
+                // actions menu stops the click so its own items still work.
+                onClick={onSelect ? () => onSelect(rx._id) : undefined}
+                style={{
+                  cursor: onSelect ? 'pointer' : undefined,
+                  ...(rx._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : {}),
+                }}
               >
                 <td style={{ fontWeight: 600 }}>{rx.medication}</td>
                 <td>{formatRxSig(rx)}</td>
                 <td><span className={STATUS_BADGE[rx.status] || 'omrs-panel-badge omrs-panel-badge--active'}>{RX_STATUS_LABEL[rx.status] || rx.status}</span></td>
                 <td>{formatDate(rx.createdAt)}</td>
-                {canPrescribe && <td><RowActionsMenu ariaLabel={`Actions for ${rx.medication}`} actions={rowActions(rx)} /></td>}
+                {canPrescribe && (
+                  <td onClick={e => e.stopPropagation()}>
+                    <RowActionsMenu ariaLabel={`Actions for ${rx.medication}`} actions={rowActions(rx)} />
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

@@ -10,6 +10,7 @@ import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/Ehr
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import Modal from '@/components/Modal';
+import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { LabResultDoc } from '@/lib/db-types';
 import {
   Microscope,
@@ -18,6 +19,7 @@ import {
 } from '@/components/icons/lucide';
 import PatientName from '@/components/PatientName';
 import Select from '@/components/Select';
+import { formatClockTime } from '@/lib/format-utils';
 
 const ACCENT = 'var(--accent-primary)';
 
@@ -198,8 +200,8 @@ export default function LabDashboardPage() {
   const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date()), []);
   // Work-queue status filter (shell tabs) + inline search bound to the shell's
   // left rail. The tabs use the shared three-lane vocabulary every role
-  // dashboard shows: Scheduled = ordered/pending, In Office = on the bench
-  // (in progress), Finished = resulted.
+  // dashboard shows: Upcoming = ordered/pending, Checked In = on the bench
+  // (in progress), Completed = resulted.
   const [queueFilter, setQueueFilter] = useState<'scheduled' | 'in_office' | 'finished'>('scheduled');
   const [queueSearch, setQueueSearch] = useState('');
 
@@ -225,7 +227,7 @@ export default function LabDashboardPage() {
     const at = (resulted && order.completedAt) || order.orderedAt || order.completedAt;
     return {
       date: at ? localDatePart(at) : undefined,
-      time: at ? new Date(at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
+      time: at ? formatClockTime(at) : undefined,
       series: (resulted ? 1 : 0) as 0 | 1,
     };
   }), [results]);
@@ -272,10 +274,10 @@ export default function LabDashboardPage() {
     [finishedMatches],
   );
 
-  // The active tab's own "Showing N of M" affordance: undefined (no cap in
-  // effect) falls through to the shell's default "N active items" subtitle.
-  // Nothing is ever hidden silently — when the cap trims a lane, the center
-  // panel says so.
+  // The active tab's own "Showing N of M" affordance: undefined when no cap is
+  // in effect, which now leaves the bar with no subtitle at all. Nothing is
+  // ever hidden silently — when the cap trims a lane, the center panel says
+  // so, and that is the only thing this line is for.
   const activeTabMatchTotal =
     queueFilter === 'finished' ? finishedMatches.length :
     queueFilter === 'in_office' ? inOfficeMatches.length :
@@ -385,9 +387,9 @@ export default function LabDashboardPage() {
           greetingName={currentUser?.name}
           dateLabel={dateLabel}
           tabs={[
-            { key: 'scheduled', label: 'Scheduled', count: Math.min(scheduledMatches.length, LAB_QUEUE_ROW_CAP) },
-            { key: 'in_office', label: 'In Office', count: Math.min(inOfficeMatches.length, LAB_QUEUE_ROW_CAP) },
-            { key: 'finished', label: 'Finished', count: Math.min(finishedMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'scheduled', label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, count: Math.min(scheduledMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'in_office', label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, count: Math.min(inOfficeMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'finished', label: APPOINTMENT_STATUS_GROUP_LABELS.finished, count: Math.min(finishedMatches.length, LAB_QUEUE_ROW_CAP) },
           ]}
           activeTab={queueFilter}
           onTabChange={(k) => setQueueFilter(k as typeof queueFilter)}
@@ -398,9 +400,8 @@ export default function LabDashboardPage() {
           // the bench across days — the calendar's selected day must not hide
           // it while the tab counts (which are not date-scoped) still show it.
           filterRowsByDate={false}
-          // Undefined falls through to the shell's default "N active items";
-          // set only when LAB_QUEUE_ROW_CAP actually trimmed this lane, so a
-          // bigger backlog is never silently invisible.
+          // Set only when LAB_QUEUE_ROW_CAP actually trimmed this lane, so a
+          // bigger backlog is never silently invisible; otherwise no subtitle.
           centerSubtitle={centerSubtitle}
           filters={[]}
           actions={[
@@ -417,7 +418,7 @@ export default function LabDashboardPage() {
           chartItems={chartItems}
           rows={queueFilter === 'finished' ? visibleCompletedDiseaseRows.map((row): EhrCareDashboardRow => {
             const lab = row.lab;
-            const time = lab.completedAt ? new Date(lab.completedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined;
+            const time = lab.completedAt ? formatClockTime(lab.completedAt) : undefined;
             return {
               id: row.id,
               photoUrl: patientForLab(lab.patientId, lab.patientName)?.photoUrl,
@@ -452,8 +453,8 @@ export default function LabDashboardPage() {
             };
           }) : visibleQueue.map((order): EhrCareDashboardRow => {
             const time = order.status === 'completed'
-              ? (order.completedAt ? new Date(order.completedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined)
-              : (order.orderedAt ? new Date(order.orderedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined);
+              ? (order.completedAt ? formatClockTime(order.completedAt) : undefined)
+              : (order.orderedAt ? formatClockTime(order.orderedAt) : undefined);
             return {
               id: order._id,
               photoUrl: patientForLab(order.patientId, order.patientName)?.photoUrl,

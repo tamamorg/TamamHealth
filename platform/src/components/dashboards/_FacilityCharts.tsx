@@ -52,17 +52,31 @@ export function CashFlowDonut({ data }: { data: CashSlice[] }) {
 
 export interface WeeklyPoint {
   day: string;
-  appointments: number;
-  newPatients: number;
-  /** Only present when a caller charts cancellations — `series` decides what
-   *  is actually drawn, so a point may legitimately omit it. */
+  /** `series` decides what is actually drawn, so a point legitimately carries
+   *  only the measures its caller charts. */
+  newPatients?: number;
+  appointments?: number;
+  /** Money billed that day, split by what has been collected. */
+  received?: number;
+  pending?: number;
   canceled?: number;
+}
+
+export interface WeeklySeries {
+  key: string;
+  name: string;
+  color: string;
+  /** Tick formatter for the value axis (e.g. compact money). The first series
+   *  that sets one wins — every series shares the axis. */
+  axisFormat?: (value: number) => string;
+  /** Tooltip formatter for this series; falls back to `axisFormat`. */
+  tooltipFormat?: (value: number) => string;
 }
 
 export interface WeeklyActivityChartProps {
   data: WeeklyPoint[];
   chartType: string;
-  series: Array<{ key: string; name: string; color: string }>;
+  series: WeeklySeries[];
 }
 
 /** Weekly patient activity — area / line / stacked-bar, driven by ChartCard. */
@@ -70,6 +84,14 @@ export function WeeklyActivityChart({ data, chartType, series }: WeeklyActivityC
   // `nowrap` keeps the series on one line: the chart lives in a narrow rail,
   // where recharts' default wrapping stacks two short labels vertically.
   const legendProps = { wrapperStyle: { fontSize: 11, whiteSpace: 'nowrap' as const }, iconType: 'circle' as const };
+
+  // Looked up per series, not per chart: each series states its own unit, so a
+  // money series reads "SSP 12,400" while a plain count stays bare.
+  const tooltipFormatter = (value: number | undefined, name: string | undefined): string => {
+    const s = series.find(x => x.name === name);
+    const fmt = s?.tooltipFormat || s?.axisFormat;
+    return fmt ? fmt(value ?? 0) : String(value ?? 0);
+  };
 
   if (chartType === 'area') {
     return (
@@ -106,15 +128,18 @@ export function WeeklyActivityChart({ data, chartType, series }: WeeklyActivityC
     );
   }
 
-  // Default: one stacked column per day — total activity at a glance,
-  // composition by segment. Grouped bars read poorly at these single-digit counts.
+  // Default: one stacked column per day — the day's total at a glance,
+  // composition by segment. Grouped bars read poorly at these narrow widths.
+  const axisFormat = series.find(s => s.axisFormat)?.axisFormat;
   return (
     <ResponsiveContainer width="100%" height={208}>
-      <BarChart data={data} barCategoryGap="32%">
+      <BarChart data={data} barCategoryGap="32%" margin={axisFormat ? { top: 5, right: 5, left: -2, bottom: 0 } : undefined}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
         <XAxis dataKey="day" tickLine={false} axisLine={false} tick={axisTick} />
-        <YAxis tickLine={false} axisLine={false} tick={axisTick} width={28} allowDecimals={false} />
-        <Tooltip cursor={{ fill: 'var(--overlay-subtle)' }} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+        {/* A money axis needs both a wider tick column and compact ticks —
+            "SSP 1,250,000" spelled out would eat the plot area. */}
+        <YAxis tickLine={false} axisLine={false} tick={axisTick} width={axisFormat ? 40 : 28} allowDecimals={false} tickFormatter={axisFormat} />
+        <Tooltip cursor={{ fill: 'var(--overlay-subtle)' }} contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={tooltipFormatter} />
         <Legend {...legendProps} />
         {series.map((s, i) => (
           <Bar

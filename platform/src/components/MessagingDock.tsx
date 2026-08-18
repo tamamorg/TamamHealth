@@ -440,7 +440,7 @@ export default function MessagingDock() {
                       className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left hover:bg-[var(--overlay-subtle)]"
                     >
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: AVAILABILITY_COLORS[key] }} />
-                      <span className="text-[12px]" style={{ color: availability === key ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: availability === key ? 600 : 400 }}>{label}</span>
+                      <span className="text-[12px]" style={{ color: availability === key ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: availability === key ? 700 : 600 }}>{label}</span>
                     </button>
                   ))}
                 </div>
@@ -548,7 +548,7 @@ export default function MessagingDock() {
                                   <a
                                     href={`data:${att.mimeType};base64,${att.base64Data}`}
                                     download={att.name}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold"
                                     style={{ background: mine ? 'rgba(255,255,255,0.15)' : 'var(--overlay-subtle)', color: mine ? '#fff' : 'var(--text-secondary)' }}
                                   >
                                     <Paperclip className="w-3 h-3 flex-shrink-0" />
@@ -584,7 +584,7 @@ export default function MessagingDock() {
                   </p>
                 </div>
                 <div className="flex gap-2 mt-2 justify-end">
-                  <button onClick={() => setPhiWarning(false)} className="text-[11px] px-2.5 py-1 rounded-lg font-medium" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}>Cancel</button>
+                  <button onClick={() => setPhiWarning(false)} className="text-[11px] px-2.5 py-1 rounded-lg font-semibold" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}>Cancel</button>
                   <button
                     onClick={async () => {
                       const body = draft.trim();
@@ -605,7 +605,7 @@ export default function MessagingDock() {
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-1.5 px-2.5 pt-2">
                 {attachments.map((att, i) => (
-                  <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+                  <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
                     <Paperclip className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                     <span className="truncate max-w-[80px]" style={{ color: 'var(--text-secondary)' }}>{att.name}</span>
                     <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))} className="flex-shrink-0" style={{ color: 'var(--color-danger-text)' }}><X className="w-3 h-3" /></button>

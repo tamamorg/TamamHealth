@@ -172,7 +172,7 @@ export default function WardsPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+        <div className="card-elevated overflow-hidden flex flex-col" data-tour="ward-admissions" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title={t('ward.currentAdmissions')}
             stats={[
@@ -263,7 +263,7 @@ export default function WardsPage() {
                     {/* Patient */}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <PatientName patientId={a.patientId} name={a.patientName} nameClassName="!font-normal text-[12.5px]" />
+                        <PatientName patientId={a.patientId} name={a.patientName} nameClassName="text-[12.5px]" />
                         <button
                           type="button"
                           className="inline-flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--overlay-subtle)] flex-shrink-0"

@@ -177,7 +177,7 @@ function ProblemRow({
         <button
           onClick={startEdit}
           aria-label={t('action.edit')}
-          className="text-xs font-medium inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition"
+          className="text-xs font-bold inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition"
           style={{ color: 'var(--text-muted)' }}
         >
           <Edit3 size={14} /> {t('action.edit')}
@@ -195,7 +195,7 @@ function ProblemRow({
       {onReactivate && (
         <button
           onClick={() => onReactivate(problem._id)}
-          className="text-xs font-medium hover:underline"
+          className="text-xs font-bold hover:underline"
           style={{ color: 'var(--text-muted)' }}
         >
           {t('problemList.reactivate')}
@@ -479,7 +479,7 @@ export default function ProblemList({ patientId, patientName }: ProblemListProps
             <div className="icon-box-lg mx-auto">
               <Activity className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
             </div>
-            <p className="text-sm font-medium mt-2" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-sm font-semibold mt-2" style={{ color: 'var(--text-secondary)' }}>
               {t('problemList.emptyTitle')}
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>

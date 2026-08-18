@@ -125,7 +125,7 @@ export default function FacilityAssessmentsPage() {
         {summary && (
           <>
             {/* National averages */}
-            <div className="card-elevated p-4 mb-6">
+            <div data-tour="facility-assess-summary" className="card-elevated p-4 mb-6">
               <h3 className="font-semibold text-sm mb-4">{t('facilityAssessments.nationalAvgTitle')}</h3>
               <div className="space-y-3">
                 {[
@@ -199,7 +199,7 @@ export default function FacilityAssessmentsPage() {
             <tbody>
               {(assessments || []).map(a => (
                 <tr key={a._id} className="cursor-pointer hover:bg-[var(--table-row-hover)]" onClick={() => setExpandedAssessment(expandedAssessment === a._id ? null : a._id)}>
-                  <td className="font-medium text-sm" style={{ color: 'var(--accent-primary)' }}>{a.facilityName.replace(' Hospital', '').replace(' Teaching', '')}</td>
+                  <td className="font-semibold text-sm" style={{ color: 'var(--accent-primary)' }}>{a.facilityName.replace(' Hospital', '').replace(' Teaching', '')}</td>
                   <td className="text-xs">{a.state}</td>
                   <td><span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: scoreBg(a.overallScore), color: scoreColor(a.overallScore) }}>{a.overallScore}%</span></td>
                   <td className="text-xs" style={{ color: scoreColor(a.generalEquipmentScore) }}>{a.generalEquipmentScore}%</td>
@@ -301,7 +301,7 @@ export default function FacilityAssessmentsPage() {
                   ['powerReliabilityScore', t('facilityAssessments.fieldPowerReliability')],
                 ] as const).map(([key, label]) => (
                   <div key={key}>
-                    <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+                    <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
                     <input type="number" min={0} max={100} value={form[key]} onChange={e => setForm({ ...form, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} />
                   </div>
                 ))}
@@ -315,7 +315,7 @@ export default function FacilityAssessmentsPage() {
                   ['dataQualityScore', t('facilityAssessments.fieldDataQuality')],
                 ] as const).map(([key, label]) => (
                   <div key={key}>
-                    <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+                    <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
                     <input type="number" min={0} max={100} value={form[key]} onChange={e => setForm({ ...form, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} />
                   </div>
                 ))}
@@ -341,17 +341,17 @@ export default function FacilityAssessmentsPage() {
 
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
-                  <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffCount')}</label>
+                  <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffCount')}</label>
                   <input type="number" min={0} value={form.hisStaffCount} onChange={e => setForm({ ...form, hisStaffCount: Math.max(0, parseInt(e.target.value) || 0) })} />
                 </div>
                 <div>
-                  <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffTrained')}</label>
+                  <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffTrained')}</label>
                   <input type="number" min={0} value={form.hisStaffTrained} onChange={e => setForm({ ...form, hisStaffTrained: Math.max(0, parseInt(e.target.value) || 0) })} />
                 </div>
               </div>
 
               <div className="mb-4">
-                <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.recommendations')}</label>
+                <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.recommendations')}</label>
                 <textarea rows={3} value={form.recommendations} onChange={e => setForm({ ...form, recommendations: e.target.value })} placeholder={t('facilityAssessments.recommendationsPlaceholder')} />
               </div>
 

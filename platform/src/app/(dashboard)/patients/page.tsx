@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { comparePatients, patientFullName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
+import { patientFullName, patientDisplayName, shortenPersonName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { ScanLine, Hash, X, ArrowRight, Download } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useApp } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
-import { states } from '@/data/mock';
+import { states } from '@/lib/data/south-sudan-reference';
 import dynamic from 'next/dynamic';
 // Lazy-loaded: html5-qrcode is heavy and only needed when the scanner opens,
 // so it stays out of the patients-route bundle until used.
@@ -122,43 +122,51 @@ export default function PatientsPage() {
   // Clinical predicates — also drive the quick-filter tab counts that replaced
   // the old summary KPI cards.
   const MS30 = 30 * 24 * 60 * 60 * 1000;
-  const isRecentlyVisited = (p: typeof patients[number]) =>
-    !!p.lastConsultedAt && (Date.now() - new Date(p.lastConsultedAt).getTime()) < MS30;
-  const hasChronic = (p: typeof patients[number]) =>
-    !!(p.chronicConditions?.length && p.chronicConditions[0] !== 'None');
-  const hasAllergies = (p: typeof patients[number]) =>
-    !!(p.allergies?.length && p.allergies[0] !== 'None known');
 
-  const filtered = patients.filter(p => {
-    const fullName = `${p.firstName} ${p.middleName || ''} ${p.surname}`.toLowerCase();
-    // Platform-wide and inline search bars both narrow the registry.
-    if (globalSearch && !(fullName.includes(globalSearch.toLowerCase()) || (p.hospitalNumber || '').toLowerCase().includes(globalSearch.toLowerCase()) || (p.phone || '').includes(globalSearch))) return false;
-    if (localSearch) {
-      const ls = localSearch.toLowerCase();
-      if (!(fullName.includes(ls) || (p.hospitalNumber || '').toLowerCase().includes(ls) || (p.phone || '').includes(ls))) return false;
-    }
-    const f = filters;
-    if (f.olderThan) {
-      const age = patientAge(p);
-      if (age == null || age < Number(f.olderThan)) return false;
-    }
-    if (f.gender && p.gender !== f.gender) return false;
-    if (f.state && p.state !== f.state) return false;
-    if (f.registeredFrom || f.registeredTo) {
-      const reg = p.registeredAt || p.registrationDate;
-      if (!reg) return false;
-      const d = new Date(reg).getTime();
-      if (f.registeredFrom && d < new Date(f.registeredFrom).getTime()) return false;
-      if (f.registeredTo && d > new Date(`${f.registeredTo}T23:59:59`).getTime()) return false;
-    }
-    if (f.allergies && !hasAllergies(p)) return false;
-    if (f.chronic && !hasChronic(p)) return false;
-    if (f.recent && !isRecentlyVisited(p)) return false;
-    if (f.assignedMe && p.assignedDoctor !== currentUser?._id) return false;
-    if (f.unassigned && p.assignedDoctor) return false;
-    if (f.outstanding && isBilling && !((balanceByPatient.get(p._id) || 0) > 0)) return false;
-    return true;
-  }).sort(comparePatients('recent'));
+  // Memoized so a keystroke in either search box (or any other unrelated
+  // re-render) doesn't re-run a full filter pass over the whole registry;
+  // `sorted` below is the single place that sorts the result. The clinical
+  // predicates live inside the callback (rather than as component-scope
+  // consts) purely so they don't count as unstable deps that would defeat
+  // the memoization — they're only ever used here.
+  const filtered = useMemo(() => {
+    const isRecentlyVisited = (p: typeof patients[number]) =>
+      !!p.lastConsultedAt && (Date.now() - new Date(p.lastConsultedAt).getTime()) < MS30;
+    const hasChronic = (p: typeof patients[number]) =>
+      !!(p.chronicConditions?.length && p.chronicConditions[0] !== 'None');
+    const hasAllergies = (p: typeof patients[number]) =>
+      !!(p.allergies?.length && p.allergies[0] !== 'None known');
+    return patients.filter(p => {
+      const fullName = `${p.firstName} ${p.middleName || ''} ${p.surname}`.toLowerCase();
+      // Platform-wide and inline search bars both narrow the registry.
+      if (globalSearch && !(fullName.includes(globalSearch.toLowerCase()) || (p.hospitalNumber || '').toLowerCase().includes(globalSearch.toLowerCase()) || (p.phone || '').includes(globalSearch))) return false;
+      if (localSearch) {
+        const ls = localSearch.toLowerCase();
+        if (!(fullName.includes(ls) || (p.hospitalNumber || '').toLowerCase().includes(ls) || (p.phone || '').includes(ls))) return false;
+      }
+      const f = filters;
+      if (f.olderThan) {
+        const age = patientAge(p);
+        if (age == null || age < Number(f.olderThan)) return false;
+      }
+      if (f.gender && p.gender !== f.gender) return false;
+      if (f.state && p.state !== f.state) return false;
+      if (f.registeredFrom || f.registeredTo) {
+        const reg = p.registeredAt || p.registrationDate;
+        if (!reg) return false;
+        const d = new Date(reg).getTime();
+        if (f.registeredFrom && d < new Date(f.registeredFrom).getTime()) return false;
+        if (f.registeredTo && d > new Date(`${f.registeredTo}T23:59:59`).getTime()) return false;
+      }
+      if (f.allergies && !hasAllergies(p)) return false;
+      if (f.chronic && !hasChronic(p)) return false;
+      if (f.recent && !isRecentlyVisited(p)) return false;
+      if (f.assignedMe && p.assignedDoctor !== currentUser?._id) return false;
+      if (f.unassigned && p.assignedDoctor) return false;
+      if (f.outstanding && isBilling && !((balanceByPatient.get(p._id) || 0) > 0)) return false;
+      return true;
+    });
+  }, [patients, filters, globalSearch, localSearch, currentUser?._id, isBilling, balanceByPatient, MS30]);
 
   // Reset the visible window whenever the filters change — otherwise narrowing
   // would leave a stale "Load more" count.
@@ -231,11 +239,11 @@ export default function PatientsPage() {
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
             {/* ── Card toolbar ── */}
-            <div className="px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-light)' }}>
+            <div className="px-4 pt-4 pb-3 flex-shrink-0" data-tour="patients-toolbar" style={{ borderBottom: '1px solid var(--border-light)' }}>
               {/* Title + patient stats (inline, right-aligned — mirrors the wards
                   "Current Admissions" header instead of separate stat cards). */}
               <div className="flex items-end justify-between gap-3 mb-3 flex-wrap">
-                <span style={{ fontFamily: "var(--font-platform)", fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000' }}>
+                <span style={{ fontFamily: "var(--font-platform)", fontWeight: 800, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000' }}>
                   All patients
                 </span>
                 <div className="flex items-center gap-3 flex-wrap justify-end pb-0.5">
@@ -378,7 +386,7 @@ export default function PatientsPage() {
                       <div className="ehr-appointment-identity">
                         <PatientAvatar patient={patient} size={40} />
                         <div className="ehr-appointment-main appointment-card-patient">
-                          <Link href={`/patients/${patient._id}`} onClick={e => e.stopPropagation()}>{patientFullName(patient)}</Link>
+                          <Link href={`/patients/${patient._id}`} onClick={e => e.stopPropagation()}>{patientDisplayName(patient)}</Link>
                           <p>{patient.hospitalNumber || 'No hospital number'} · {patientAgeLabel(patient)} · {patient.gender || 'Not recorded'}</p>
                         </div>
                       </div>

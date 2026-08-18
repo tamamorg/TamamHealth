@@ -180,13 +180,13 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-vaccine" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Vaccine</label>
+                <label htmlFor="imm-vaccine" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Vaccine</label>
                 <Select id="imm-vaccine" value={vaccine} onChange={e => setVaccine(e.target.value)}>
                   {VACCINE_NAMES.map(v => <option key={v} value={v}>{v}</option>)}
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-dose" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Dose number</label>
+                <label htmlFor="imm-dose" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Dose number</label>
                 <input
                   id="imm-dose"
                   type="number"
@@ -202,7 +202,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 {/* Capped at today: a dose cannot have been given in the future. */}
-                <label htmlFor="imm-given" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Date given</label>
+                <label htmlFor="imm-given" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Date given</label>
                 <input
                   id="imm-given"
                   type="date"
@@ -214,7 +214,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-next" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Next dose due (optional)</label>
+                <label htmlFor="imm-next" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Next dose due (optional)</label>
                 <input
                   id="imm-next"
                   type="date"
@@ -229,13 +229,13 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-site" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Site</label>
+                <label htmlFor="imm-site" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Site</label>
                 <Select id="imm-site" value={site} onChange={e => setSite(e.target.value as ImmunizationDoc['site'])}>
                   {SITES.map(s => <option key={s} value={s}>{s}</option>)}
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-batch" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Batch number</label>
+                <label htmlFor="imm-batch" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Batch number</label>
                 <input
                   id="imm-batch"
                   type="text"

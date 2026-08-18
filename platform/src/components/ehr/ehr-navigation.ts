@@ -3,20 +3,21 @@ import type { UserRole } from '@/lib/db-types';
 
 // Routes dropped from a role's top-rail quick-shortcut row because that
 // role's own default dashboard body already has a dedicated, same-intent
-// button for the same route (e.g. Nurse's action strip already has a
-// "Patients" button, so the header doesn't need one too). Only routes with
-// a *verified* body-level duplicate are listed here — a route missing from
-// a role's list still shows in the header as normal.
+// button for the same route (e.g. the front-desk board's quick-action row
+// already has a "Register new patient" button, so the header doesn't need
+// one too). Only routes with a *verified* body-level duplicate are listed
+// here — a route missing from a role's list still shows in the header as
+// normal.
+//
+// Clinician- and nurse-family roles (doctor, clinical_officer, clinician,
+// nurse, midwife, triage_nurse, rooming_nurse) have no entries: the routes
+// they once listed were verified against dashboard bodies that no longer
+// exist, so those shortcuts went back to showing in the header like any
+// other role until something in the shared clinical shell verifiably
+// duplicates them again.
 const HEADER_SHORTCUT_DUPLICATE_ROUTES: Partial<Record<UserRole, string[]>> = {
-  doctor: ['/patient-intake'],
-  clinical_officer: ['/patient-intake'],
-  clinician: ['/patient-intake'],
   medical_superintendent: ['/payments'],
-  nurse: ['/patients', '/wards', '/appointments', '/patient-intake', '/lab', '/immunizations', '/anc'],
-  midwife: ['/patients', '/appointments', '/wards', '/anc', '/immunizations', '/referrals'],
-  triage_nurse: ['/patients', '/wards', '/appointments', '/patient-intake', '/lab', '/immunizations', '/anc'],
-  rooming_nurse: ['/patients', '/wards', '/appointments', '/patient-intake', '/lab', '/immunizations', '/anc'],
-  front_desk: ['/patient-intake', '/patients', '/referrals', '/appointments'],
+  front_desk: ['/patients', '/referrals', '/appointments'],
   central_registration_clerk: ['/patients', '/appointments', '/referrals'],
   clinic_clerk: ['/patients', '/appointments'],
   lab_tech: ['/lab'],
@@ -36,7 +37,6 @@ const PRIMARY_SHORTCUT_PRIORITY = [
   '/payments/claims',
   '/consultation',
   '/patients',
-  '/patient-intake',
   '/appointments',
   '/lab',
   '/reports',
@@ -156,15 +156,58 @@ export function getPrimaryShortcutItems(items: NavItem[], role?: UserRole, maxIt
     items.filter(item => !isDashboard(item.href) && item.href !== '/messages' && duplicateRoutes?.includes(item.href)),
   );
   const messagesFallback = sortByShortcutPriority(items.filter(item => item.href === '/messages'));
-  const dashboardFallback = sortByShortcutPriority(items.filter(item => isDashboard(item.href)));
+
+  // No dashboard shortcut, ever — not even to fill an empty slot on a role
+  // with few destinations. The rail already offers it twice: the brand mark
+  // goes home, and the module menu lists it. A third route drew the dashboard
+  // glyph immediately beside the hamburger, so two adjacent buttons meant
+  // roughly the same thing and the shortcut row's job ("somewhere else, fast")
+  // stopped being legible. A short row is the honest answer for a role that
+  // genuinely has few places to be.
 
   // De-duplicate by href across tiers (defensive; nav items are already unique).
   const seen = new Set<string>();
-  const ordered = [...tier1, ...messagesFallback, ...duplicateFallbacks, ...dashboardFallback].filter(item => {
+  const ordered = [...tier1, ...messagesFallback, ...duplicateFallbacks].filter(item => {
     if (seen.has(item.href)) return false;
     seen.add(item.href);
     return true;
   });
 
   return ordered.slice(0, maxItems);
+}
+
+/** How many destinations the top rail keeps as always-visible shortcuts. */
+export const RAIL_SHORTCUT_COUNT = 4;
+
+/** How many more the dashboard header strip carries, below the rail's four. */
+export const PAGE_HEADER_NAV_COUNT = 5;
+
+/**
+ * The navigations a dashboard promotes into its own header strip: the next
+ * rung down the same priority order the rail uses, so the two rows read as one
+ * continuous list rather than two competing opinions about what matters.
+ *
+ * Both dashboard shells call this — the clinical worklist and the station
+ * shell behind front desk, pharmacy, lab, radiology, nutrition, HR, state and
+ * facility management — so every module's header offers the same depth of
+ * navigation and the module menu is correspondingly shorter.
+ *
+ * The role's own dashboard is never included: it is the page the strip is
+ * being rendered on.
+ */
+export function getPageHeaderNavItems(
+  items: NavItem[],
+  role?: UserRole,
+  homeHref?: string,
+  count = PAGE_HEADER_NAV_COUNT,
+): NavItem[] {
+  // Ask for both tiers at once and drop the rail's share, so the header picks
+  // up exactly where the rail left off with no separate ordering to keep in
+  // sync. No over-fetch and no home filter needed: dashboard and home routes
+  // are excluded from the shortcut tiers outright, so nothing here has to
+  // compensate for one arriving last.
+  const promoted = getPrimaryShortcutItems(items, role, RAIL_SHORTCUT_COUNT + count, homeHref);
+  return promoted
+    .slice(RAIL_SHORTCUT_COUNT)
+    .slice(0, count);
 }

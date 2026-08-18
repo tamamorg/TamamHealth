@@ -9,7 +9,6 @@ import {
 import {
   LayoutDashboard,
   Users,
-  Send,
   Pill,
   BarChart3,
   Building2,
@@ -127,8 +126,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // Total access: direct entry into every role's workspace so the platform
       // super-admin can support/QA any station without typing URLs. Route
       // access is already granted by the super_admin wildcard in isPathAllowed.
-      { href: '/dashboard', label: 'Clinical', icon: Stethoscope, section: 'WORKSPACES' },
-      { href: '/dashboard/nurse', label: 'Nursing', icon: HeartPulse, section: 'WORKSPACES' },
+      // Nursing no longer has its own workspace entry: the nurse station was
+      // merged into the shared clinical workspace above (/dashboard is
+      // role-adapted for nursing when a nurse-family user is signed in).
       { href: '/dashboard/front-desk', label: 'Front Desk', icon: MessageSquare, section: 'WORKSPACES' },
       { href: '/dashboard/lab', label: 'Laboratory', icon: Microscope, section: 'WORKSPACES' },
       { href: '/dashboard/pharmacy', label: 'Pharmacy', icon: Pill, section: 'WORKSPACES' },
@@ -138,7 +138,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/dashboard/nutrition', label: 'Nutrition', icon: LayoutDashboard, section: 'WORKSPACES' },
       { href: '/dashboard/state', label: 'County', icon: LayoutDashboard, section: 'WORKSPACES' },
       { href: '/government', label: 'Government', icon: Building2, section: 'WORKSPACES' },
-      { href: '/facility-management', label: 'Facility Ops', icon: HospitalIcon, section: 'WORKSPACES' },
+      // Facility Ops (/facility-management) removed from the super-admin nav
+      // 2026-08-15: it renders the facility-admin dashboard language inside
+      // the governance console. The route stays in allowedRoutes for deep
+      // links; facility operators keep it as their own dashboard.
       // PEOPLE & HR — the whole workforce area in one section (see org_admin).
       { href: '/admin/users', label: 'User Accounts', icon: KeyRound, section: 'PEOPLE & HR' },
       { href: '/hr/leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
@@ -210,7 +213,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
-      { href: '/patient-intake', label: 'Patient Intake', icon: Send, section: 'CLINICAL' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL', badgeKey: 'referrals' },
       { href: '/alerts', label: 'Alerts', icon: Siren, section: 'CLINICAL' },
       { href: '/lab', label: 'Lab Results', icon: Microscope, section: 'SERVICES' },
@@ -238,7 +240,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
-      { href: '/patient-intake', label: 'Patient Intake', icon: Send, section: 'CLINICAL' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL', badgeKey: 'referrals' },
       { href: '/alerts', label: 'Alerts', icon: Siren, section: 'CLINICAL' },
       { href: '/lab', label: 'Lab Results', icon: Microscope, section: 'SERVICES' },
@@ -260,11 +261,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     defaultDashboard: ROLE_ROUTE_TABLE.nurse.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.nurse.allowed],
     navItems: [
-      { href: '/dashboard/nurse', label: 'Nurse Station', icon: LayoutDashboard, section: 'CLINICAL' },
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'CLINICAL' },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
+      { href: '/wards/handoff', label: 'Shift Handoff', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
-      { href: '/patient-intake', label: 'Patient Intake', icon: Send, section: 'CLINICAL' },
       { href: '/messages', label: 'Messages', icon: MessageSquare, section: 'CLINICAL' },
       { href: '/immunizations', label: 'Immunizations', icon: Syringe, section: 'CARE PROGRAMS' },
       { href: '/anc', label: 'Antenatal Care', icon: HeartPulse, section: 'CARE PROGRAMS' },
@@ -283,11 +284,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     defaultDashboard: ROLE_ROUTE_TABLE.midwife.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.midwife.allowed],
     navItems: [
-      { href: '/dashboard/nurse', label: 'Midwife Station', icon: LayoutDashboard, section: 'MATERNITY' },
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'MATERNITY' },
       { href: '/patients', label: 'Mothers & Babies', icon: Users, section: 'MATERNITY' },
       { href: '/anc', label: 'Antenatal Care', icon: HeartPulse, section: 'MATERNITY' },
       { href: '/births', label: 'Deliveries', icon: Baby, section: 'MATERNITY' },
       { href: '/wards', label: 'Maternity Ward', icon: BedDouble, section: 'MATERNITY' },
+      { href: '/wards/handoff', label: 'Shift Handoff', icon: ClipboardList, section: 'MATERNITY' },
       { href: '/immunizations', label: 'Newborn Immunizations', icon: Syringe, section: 'CARE' },
       { href: '/deaths', label: 'Maternal/Perinatal Deaths', icon: UserX, section: 'CARE' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CARE' },
@@ -340,7 +342,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/dashboard/front-desk', label: 'Reception', icon: LayoutDashboard, section: 'RECEPTION' },
       // No Check-In module: a patient is checked in from their appointment
       // row, so Appointments is the single front door for starting a visit.
-      { href: '/patient-intake', label: 'Patient Intake', icon: Send, section: 'RECEPTION' },
       { href: '/patients', label: 'Patient Registry', icon: Users, section: 'RECEPTION' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'RECEPTION' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'RECEPTION' },
@@ -481,7 +482,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
-      { href: '/patient-intake', label: 'Patient Intake', icon: Send, section: 'CLINICAL' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
       { href: '/lab', label: 'Laboratory', icon: Microscope, section: 'SERVICES' },
@@ -647,11 +647,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     defaultDashboard: ROLE_ROUTE_TABLE.triage_nurse.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.triage_nurse.allowed],
     navItems: [
-      { href: '/dashboard/nurse', label: 'Nurse Station', icon: LayoutDashboard, section: 'CLINICAL' },
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'CLINICAL' },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
+      { href: '/wards/handoff', label: 'Shift Handoff', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
-      { href: '/patient-intake', label: 'Patient Intake', icon: Send, section: 'CLINICAL' },
       { href: '/messages', label: 'Messages', icon: MessageSquare, section: 'CLINICAL' },
       { href: '/immunizations', label: 'Immunizations', icon: Syringe, section: 'CARE PROGRAMS' },
       { href: '/anc', label: 'Antenatal Care', icon: HeartPulse, section: 'CARE PROGRAMS' },
@@ -667,11 +667,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     defaultDashboard: ROLE_ROUTE_TABLE.rooming_nurse.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.rooming_nurse.allowed],
     navItems: [
-      { href: '/dashboard/nurse', label: 'Nurse Station', icon: LayoutDashboard, section: 'CLINICAL' },
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'CLINICAL' },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINIC' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINIC' },
+      { href: '/wards/handoff', label: 'Shift Handoff', icon: ArrowRightLeft, section: 'CLINIC' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINIC' },
-      { href: '/patient-intake', label: 'Patient Intake', icon: Send, section: 'CLINIC' },
       { href: '/immunizations', label: 'Immunizations', icon: Syringe, section: 'CARE' },
       { href: '/anc', label: 'Antenatal Care', icon: HeartPulse, section: 'CARE' },
       { href: '/births', label: 'Births', icon: Baby, section: 'VITAL EVENTS' },
@@ -693,7 +693,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
-      { href: '/patient-intake', label: 'Patient Intake', icon: Send, section: 'CLINICAL' },
       { href: '/lab', label: 'Laboratory', icon: Microscope, section: 'SERVICES' },
       { href: '/pharmacy', label: 'Pharmacy', icon: Pill, section: 'SERVICES' },
       { href: '/blood-bank', label: 'Blood Bank', icon: Droplets, section: 'SERVICES' },

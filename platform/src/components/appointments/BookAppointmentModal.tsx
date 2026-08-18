@@ -351,6 +351,10 @@ export default function BookAppointmentModal({
     <PortalModal onClose={onClose} width={stepped && step === 1 ? 1080 : 720}>
       <div
         className="modal-panel modal-panel--lg"
+        // Guided-tour anchor (front-desk journey's "book" step) — the booking
+        // dialog itself, so the tour can spotlight the real 4-step flow
+        // instead of the trigger button that opened it.
+        data-tour="book-appointment-modal"
         style={{
           width: '100%',
           // Grows with its content, then stops at the dialog's height and
@@ -466,12 +470,24 @@ export default function BookAppointmentModal({
                     </div>
                   </div>
 
-                  {/* In-person / Virtual */}
-                  <ModalityToggle
-                    value={modality}
-                    onChange={next => { setModality(next); setTime(''); }}
-                    disabled={visitReason.modality !== 'both'}
-                  />
+                  {/* In-person / Virtual. A reason that supports only one way of
+                      being seen locks the control — an immunization cannot be
+                      given over video — but it says so rather than reading as a
+                      dead toggle. */}
+                  <div style={{ display: 'grid', gap: 5 }}>
+                    <ModalityToggle
+                      value={modality}
+                      onChange={next => { setModality(next); setTime(''); }}
+                      disabled={visitReason.modality !== 'both'}
+                    />
+                    {visitReason.modality !== 'both' && (
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+                        {visitReason.modality === 'telehealth'
+                          ? `${visitReason.name} is offered as a virtual visit only.`
+                          : `${visitReason.name} has to be seen in person.`}
+                      </p>
+                    )}
+                  </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                     <div>

@@ -157,7 +157,7 @@ export default function BillingHomePage() {
                       <tr key={bill._id}>
                         <td style={{ whiteSpace: 'nowrap' }}>{formatBillDate(bill.createdAt)}</td>
                         <td>
-                          <Link href={`/billing/${bill._id}`} className="bl-link">{bill.invoiceNumber}</Link>
+                          <Link href={`/billing/${bill._id}`} className="bl-link" data-tour="bill-open">{bill.invoiceNumber}</Link>
                         </td>
                         <td className="bl-num">{bill.hospitalNumber || '—'}</td>
                         <td>{bill.patientName}</td>

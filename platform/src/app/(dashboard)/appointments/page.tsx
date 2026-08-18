@@ -9,7 +9,7 @@ import BookAppointmentModal from '@/components/appointments/BookAppointmentModal
 import {
   APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS, APPOINTMENT_STATUS_I18N_KEYS,
   APPOINTMENT_CLOSED_STATUSES, APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_FLOW,
-  APPOINTMENT_STATUS_EXITS, canonicalAppointmentStatus,
+  APPOINTMENT_STATUS_EXITS, canonicalAppointmentStatus, appointmentMatchesStatusFilter, appointmentStatusFilterKey,
 } from '@/lib/appointment-status';
 import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
 import Link from 'next/link';
@@ -362,7 +362,7 @@ export default function AppointmentsPage() {
     if (filterStatus === 'pending_approval') {
       list = list.filter(a => a.status === 'scheduled' && a.appointmentDate >= today);
     } else if (listStatus !== 'all') {
-      list = list.filter(a => canonicalAppointmentStatus(a.status) === listStatus);
+      list = list.filter(a => appointmentMatchesStatusFilter(a.status, listStatus));
     }
     const q = `${listSearch} ${globalSearch}`.toLowerCase().trim();
     if (q) list = list.filter(a =>
@@ -401,10 +401,12 @@ export default function AppointmentsPage() {
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: statusBaseList.length };
-    // Counted on the merged rung, so the tab strip shows one "Scheduled" chip
-    // covering scheduled + reminder_sent + confirmed, not three lookalikes.
+    // Counted into the same bucket the filter selects, so a chip's count is
+    // exactly the number of rows picking it returns: one "Scheduled" chip
+    // covering scheduled + reminder_sent + confirmed, and `arrived` counted
+    // under its own chip rather than swelling "Checked In".
     for (const a of statusBaseList) {
-      const k = canonicalAppointmentStatus(a.status);
+      const k = appointmentStatusFilterKey(a.status);
       counts[k] = (counts[k] || 0) + 1;
     }
     return counts;
@@ -638,7 +640,7 @@ export default function AppointmentsPage() {
       // Canonical match: filtering by "Scheduled" also catches reminder_sent
       // and confirmed rows, "Checked In" catches arrived, "In Progress"
       // catches triaged — the merged vocabulary users actually see.
-      .filter(a => listStatus === 'all' || canonicalAppointmentStatus(a.status) === listStatus)
+      .filter(a => appointmentMatchesStatusFilter(a.status, listStatus))
       .filter(a => {
         if (!q) return true;
         const identifier = patientById.get(a.patientId)?.hospitalNumber || '';
@@ -768,7 +770,7 @@ export default function AppointmentsPage() {
                         <option value="all">All statuses</option>
                         {/* The merged vocabulary only — one "Scheduled", not
                             three; matching above is canonical to compensate. */}
-                        {(['requested', ...APPOINTMENT_STATUS_FLOW, ...APPOINTMENT_STATUS_EXITS] as AppointmentStatus[]).map(k => (
+                        {(['requested', 'scheduled', 'arrived', 'checked_in', 'in_progress', 'completed', ...APPOINTMENT_STATUS_EXITS] as AppointmentStatus[]).map(k => (
                           <option key={k} value={k}>{t(statusLabelKey[k])}</option>
                         ))}
                       </Select>
@@ -1149,11 +1151,11 @@ export default function AppointmentsPage() {
                                 className="hover:underline"
                                 title={t('appointments.viewPatientRecord')}
                               >
-                                <PatientName name={apt.patientName} nameClassName="text-[13px] font-normal" />
+                                <PatientName name={apt.patientName} nameClassName="text-[13px]" />
                                 <ExternalLink size={10} style={{ opacity: 0.55 }} />
                               </Link>
                             ) : (
-                              <PatientName name={apt.patientName} nameClassName="text-[13px] font-normal" />
+                              <PatientName name={apt.patientName} nameClassName="text-[13px]" />
                             )}
                             {isWI && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: 'rgba(124,58,237,0.08)', color: 'var(--accent-primary)' }}>{t('appointments.walkInBadge')}</span>}
                           </div>

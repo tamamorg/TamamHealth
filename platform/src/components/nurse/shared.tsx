@@ -13,9 +13,11 @@ import { priorityOrder } from '@/lib/clinical/triage-display';
 import type { MedicationAdministration, PrescriptionDoc } from '@/lib/db-types';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
 
-// Re-export the shared vital-flagging helper so existing importers
-// (e.g. WardWorkflow) keep `import { getVitalFlags } from './shared'` working
-// while the single source of truth lives in '@/lib/clinical/vitals'.
+// Re-export the shared vital-flagging helper so a `./shared` importer keeps
+// working — the single source of truth lives in '@/lib/clinical/vitals'.
+// Current nurse components (RoomingWorkflow, NurseVitalsModal) import
+// `getVitalFlags` straight from '@/lib/clinical/vitals' instead; kept here
+// for anything scoped to this workflow directory that wants the shorter path.
 export { getVitalFlags } from '@/lib/clinical/vitals';
 
 // ============================================================

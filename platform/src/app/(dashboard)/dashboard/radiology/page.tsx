@@ -6,6 +6,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { addPatientDocument } from '@/lib/services/patient-document-service';
+import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import {
   Upload, CheckCircle2, FileText, BarChart3, TrendingUp, Play, RotateCcw,
 } from '@/components/icons/lucide';
@@ -13,6 +14,7 @@ import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/Ehr
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { appointmentPriorityLabel, appointmentTriage } from '@/lib/clinical/triage-display';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { formatClockTime } from '@/lib/format-utils';
 
 const ACCENT = 'var(--accent-primary)';
 
@@ -217,7 +219,7 @@ export default function RadiologyDashboard() {
     return {
       // Demo studies carry a date but no instant; they still belong to a day.
       date: at ? at.slice(0, 10) : study.date,
-      time: at ? new Date(at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
+      time: at ? formatClockTime(at) : undefined,
       series: (reported ? 1 : 0) as 0 | 1,
     };
   }), [studies]);
@@ -480,12 +482,12 @@ export default function RadiologyDashboard() {
         dateLabel={dateLabel}
         // The shared three-lane tabs every role dashboard shows, keyed by the
         // study's own status values so the worklist filter needs no mapping:
-        // Scheduled = ordered/pending, In Office = being imaged, Finished =
+        // Upcoming = ordered/pending, Checked In = being imaged, Completed =
         // reported. The stat tiles below keep an All escape hatch.
         tabs={[
-          { key: 'pending', label: 'Scheduled', count: stats.pending },
-          { key: 'in_progress', label: 'In Office', count: stats.inProgress },
-          { key: 'completed', label: 'Finished', count: stats.completed },
+          { key: 'pending', label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, count: stats.pending },
+          { key: 'in_progress', label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, count: stats.inProgress },
+          { key: 'completed', label: APPOINTMENT_STATUS_GROUP_LABELS.finished, count: stats.completed },
         ]}
         activeTab={filterStatus}
         onTabChange={setFilterStatus}
@@ -498,12 +500,15 @@ export default function RadiologyDashboard() {
         filterRowsByDate={false}
         filters={[
           { label: t('radiology.filter_all'), value: stats.total, active: filterStatus === 'all', onClick: () => setFilterStatus('all') },
-          { label: 'Scheduled', value: stats.pending, active: filterStatus === 'pending', onClick: () => setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending') },
-          { label: 'In Office', value: stats.inProgress, active: filterStatus === 'in_progress', onClick: () => setFilterStatus(filterStatus === 'in_progress' ? 'all' : 'in_progress') },
-          { label: 'Finished', value: stats.completed, active: filterStatus === 'completed', onClick: () => setFilterStatus(filterStatus === 'completed' ? 'all' : 'completed') },
+          { label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, value: stats.pending, active: filterStatus === 'pending', onClick: () => setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending') },
+          { label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, value: stats.inProgress, active: filterStatus === 'in_progress', onClick: () => setFilterStatus(filterStatus === 'in_progress' ? 'all' : 'in_progress') },
+          { label: APPOINTMENT_STATUS_GROUP_LABELS.finished, value: stats.completed, active: filterStatus === 'completed', onClick: () => setFilterStatus(filterStatus === 'completed' ? 'all' : 'completed') },
         ]}
         actions={[
-          { label: t('radiology.byModality'), icon: BarChart3, onClick: () => togglePanel('modality'), active: centerPanel === 'modality', tone: centerPanel === 'modality' ? 'primary' : 'neutral' },
+          // tourTarget: the guided tour opens this panel via preClickSelector
+          // before spotlighting station-body, which otherwise isn't in the DOM
+          // until a panel is open (see journeys/radiology.ts's 'panels' step).
+          { label: t('radiology.byModality'), icon: BarChart3, onClick: () => togglePanel('modality'), active: centerPanel === 'modality', tone: centerPanel === 'modality' ? 'primary' : 'neutral', tourTarget: 'radiology-modality-toggle' },
           { label: t('radiology.bodyRegions'), icon: FileText, onClick: () => togglePanel('regions'), active: centerPanel === 'regions', tone: centerPanel === 'regions' ? 'primary' : 'neutral' },
           { label: t('radiology.performance'), icon: TrendingUp, onClick: () => togglePanel('performance'), active: centerPanel === 'performance', tone: centerPanel === 'performance' ? 'primary' : 'neutral' },
         ]}
@@ -515,8 +520,8 @@ export default function RadiologyDashboard() {
         chartItems={chartItems}
         rows={filtered.map((study): EhrCareDashboardRow => {
           const time = study.status === 'completed'
-            ? (study.completedAt ? new Date(study.completedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined)
-            : (study.orderedAt ? new Date(study.orderedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined);
+            ? (study.completedAt ? formatClockTime(study.completedAt) : undefined)
+            : (study.orderedAt ? formatClockTime(study.orderedAt) : undefined);
           return {
             id: study.id,
             title: study.patientName,
