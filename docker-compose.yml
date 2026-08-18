@@ -43,6 +43,29 @@ services:
     build:
       context: ./platform
       dockerfile: Dockerfile
+      # NEXT_PUBLIC_* is inlined into the CLIENT bundle at BUILD time, and
+      # platform/Dockerfile passes each one explicitly on the `npm run build`
+      # line — so an arg omitted here is not merely defaulted, it OVERRIDES
+      # whatever platform/.env.production says. Left unset, the image shipped
+      # with `NEXT_PUBLIC_SYNC_ENABLED=""` and an empty CouchDB URL, which makes
+      # `isSyncEnabled()` false in every browser: records stayed in the tab that
+      # typed them and never reached CouchDB, no matter what the runtime
+      # `environment:` below claimed.
+      args:
+        # Demo mode stays OPT-IN and defaults to real mode — see the Dockerfile.
+        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+        # This compose file ships CouchDB in the same stack, so sync is on by
+        # default here; a deployment that wants a local-only node sets it false.
+        NEXT_PUBLIC_SYNC_ENABLED: ${NEXT_PUBLIC_SYNC_ENABLED:-true}
+        # The URL the BROWSER dials, not the compose-internal one below: it has
+        # to be reachable from outside the network, so it defaults to the port
+        # this file publishes.
+        NEXT_PUBLIC_COUCHDB_URL: ${NEXT_PUBLIC_COUCHDB_URL:-http://localhost:${COUCHDB_PORT:-5984}}
+        NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED: ${NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED:-false}
+        NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: ${NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED:-false}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}
+        NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE: ${NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE:-false}
+        NEXT_PUBLIC_BUILD_ID: ${NEXT_PUBLIC_BUILD_ID:-}
     # Legacy env_file path — kept as the default so deploys without a
     # DOPPLER_TOKEN keep working unchanged. Doppler-mode (below) overrides
     # individual keys at runtime; the file still seeds non-secret defaults

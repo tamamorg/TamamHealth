@@ -27,6 +27,7 @@ const { DATABASE_SYNC_CONFIGS } = syncConfigModule;
 const { ORG_SCOPED_VALIDATE_FN } = writePermissionsModule;
 const {
   databasePolicy,
+  resolveMemberRoles,
   ORG_SCOPE_DESIGN_DOC_ID,
   SERVER_ONLY_DESIGN_DOC_ID,
 } = databasePolicyModule;
@@ -146,10 +147,10 @@ export async function installReadOnly(baseUrl, authHeader, dbName) {
  * `org:<orgId>` roles) can replicate them. Without this, CouchDB 3.x's
  * admins-only default blocks every browser pull/push with 403.
  *
- * With no explicit org IDs, membership stays empty (admin-only). Production
- * must never silently grant access to demo organization roles. Tenant
- * databases do not consult this list — their single owning organization is
- * read from the database name.
+ * With no explicit org IDs this script GRANTS nothing — production must never
+ * silently hand access to demo organization roles. It does not REVOKE either;
+ * see `resolveMemberRoles`. Tenant databases do not consult this list — their
+ * single owning organization is read from the database name.
  */
 function memberOrgIds() {
   return (process.env.COUCHDB_MEMBER_ORG_IDS || '')
@@ -158,13 +159,46 @@ function memberOrgIds() {
     .filter(Boolean);
 }
 
-export async function applySecurity(baseUrl, authHeader, dbName, roles) {
+/**
+ * Whether an omitted `COUCHDB_MEMBER_ORG_IDS` should CLEAR the member roles a
+ * shared aggregate already carries. Off by default: this script is documented
+ * as idempotent and is run as a routine deployment step, so forgetting one
+ * environment variable must not cut every organization off from replication.
+ * Set COUCHDB_REVOKE_UNLISTED_MEMBERS=true to actually lock the aggregates
+ * down (the intended state once tenant databases are live).
+ */
+function revokeUnlistedMembers() {
+  return process.env.COUCHDB_REVOKE_UNLISTED_MEMBERS === 'true';
+}
+
+/** Current `_security` for a database, or null when it has none / is unreadable. */
+export async function readSecurity(baseUrl, authHeader, dbName) {
+  try {
+    const res = await fetch(`${baseUrl}/${dbName}/_security`, {
+      headers: { Authorization: authHeader, Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    // Unreadable is treated as "no current state": the policy's answer is then
+    // written as-is, which is what this script did before it read at all.
+    return null;
+  }
+}
+
+export async function applySecurity(baseUrl, authHeader, dbName, roles, existing) {
   const res = await fetch(`${baseUrl}/${dbName}/_security`, {
     method: 'PUT',
     headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      // `role:super_admin` is a DATABASE ADMIN, not a member: a platform
+      // super-admin deliberately carries no `org:` role, so membership alone
+      // would leave them unable to replicate anything at all.
       admins: { names: [], roles: ['role:super_admin'] },
-      members: { names: [], roles },
+      // Named members are an operator's manual grant to a single account; this
+      // script has no opinion on them, so it carries them through rather than
+      // dropping them on every run.
+      members: { names: existing?.members?.names ?? [], roles },
     }),
   });
   if (res.status === 200 || res.status === 201) return { ok: true };
@@ -197,6 +231,7 @@ async function main() {
     tenantDatabasesEnabled: process.env.COUCHDB_TENANT_DATABASES_ENABLED === 'true',
     memberOrgIds: memberOrgIds(),
   };
+  const revokeUnlisted = revokeUnlistedMembers();
   console.log(
     `[install-validate-doc-updates] target=${baseUrl.replace(/\/\/[^@]*@/, '//***@')} ` +
     `databases=${allDbs.length} tenantMode=${options.tenantDatabasesEnabled}`,
@@ -207,6 +242,7 @@ async function main() {
   let okCount = 0;
   let secOk = 0;
   let tenantCount = 0;
+  let preservedCount = 0;
 
   for (const db of allDbs) {
     const policy = databasePolicy(db, options);
@@ -234,7 +270,20 @@ async function main() {
     }
 
     try {
-      const result = await applySecurity(baseUrl, authHeader, db, policy.memberRoles);
+      // Read before write: the member list is only fully known once the
+      // database's current state is in hand (see resolveMemberRoles).
+      const current = await readSecurity(baseUrl, authHeader, db);
+      const currentRoles = current?.members?.roles ?? [];
+      const { roles, preserved } = resolveMemberRoles(policy, currentRoles, { revokeUnlisted });
+      if (preserved) {
+        preservedCount++;
+        console.log(
+          `[keep] ${db} members ${JSON.stringify(roles)} — COUCHDB_MEMBER_ORG_IDS is unset, ` +
+          'so nothing was granted and nothing revoked ' +
+          '(set COUCHDB_REVOKE_UNLISTED_MEMBERS=true to clear them)',
+        );
+      }
+      const result = await applySecurity(baseUrl, authHeader, db, roles, current);
       if (result.ok) {
         secOk++;
       } else {
@@ -250,6 +299,7 @@ async function main() {
   console.log(
     `[install-validate-doc-updates] validators ok=${okCount} error=${errCount} · ` +
     `_security ok=${secOk} error=${secErr} · tenant databases=${tenantCount} · ` +
+    `members preserved=${preservedCount} · ` +
     `aggregate members=[${options.tenantDatabasesEnabled ? '' : options.memberOrgIds.join(', ')}]`,
   );
 
