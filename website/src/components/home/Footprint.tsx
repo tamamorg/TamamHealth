@@ -66,10 +66,10 @@ export default function Footprint() {
               the selected site. */}
           <div className="blueprint tm-site-card" style={{ background: "var(--color-surface)", padding: "34px 32px 30px", zIndex: 2 }}>
             <Corners />
-            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)" }}>{site.tier}</span>
-            <h3 style={{ fontSize: 30, margin: "8px 0 4px" }}>{site.name}</h3>
-            <span style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>{site.state}</span>
-            <p style={{ margin: "16px 0 20px", fontSize: 15, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>{site.note}</p>
+            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)" }}>{t(site.tier)}</span>
+            <h3 style={{ fontSize: 30, margin: "8px 0 4px" }}>{t(site.name)}</h3>
+            <span style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>{t(site.state)}</span>
+            <p style={{ margin: "16px 0 20px", fontSize: 15, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>{t(site.note)}</p>
             <div className="tm-desk-steppers" style={{ display: "flex", gap: 8 }}>
               <button className="btn btn-secondary btn-icon" onClick={() => select(site.index - 1)} aria-label={t("Previous site")}>‹</button>
               <button className="btn btn-secondary btn-icon" onClick={() => select(site.index + 1)} aria-label={t("Next site")}>›</button>
@@ -94,7 +94,7 @@ export default function Footprint() {
           center={
             <span style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "0 14px", fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-neutral-700)" }}>
               {site.index + 1} / {SITE_COUNT}
-              <span style={{ color: "var(--color-text)", fontWeight: 600, letterSpacing: "0.02em", textTransform: "none" }}>{site.name}</span>
+              <span style={{ color: "var(--color-text)", fontWeight: 600, letterSpacing: "0.02em", textTransform: "none" }}>{t(site.name)}</span>
             </span>
           }
         />

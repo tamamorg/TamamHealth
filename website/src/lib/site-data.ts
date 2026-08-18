@@ -1223,3 +1223,28 @@ export const SEARCH_SUGGESTIONS = [
   { label: "Get in touch", href: "/contact" },
 ];
 
+
+/* ── Deployment-map vocabulary ──
+   The footprint card renders whatever the map iframe (public/map-south-sudan.html)
+   posts up to it, so those strings are looked up dynamically — `t(site.tier)` —
+   and the translation extractor cannot see them at the call site. Listing them
+   here is what keeps them translated: the extractor walks this array, so a new
+   site added to the map shows up as a missing translation instead of silently
+   rendering English inside an otherwise Arabic card.
+
+   Keep in step with the `sites` array in public/map-south-sudan.html. */
+export const FOOTPRINT_MAP_VOCABULARY = [
+  // Site names
+  "Aweil", "Bentiu", "Bor", "Juba", "Kajo-keji", "Kuajok", "Malakal", "Rumbek",
+  "Torit", "Wau", "Yambio",
+  // States
+  "Central Equatoria", "Eastern Equatoria", "Jonglei", "Lakes",
+  "Northern Bahr el Ghazal", "Unity", "Upper Nile", "Warrap",
+  "Western Bahr el Ghazal", "Western Equatoria",
+  // Tiers
+  "PHCU / community tier", "Referral / teaching tier", "State hospital tier",
+  // Notes
+  "Geocode household pilot — patient IDs in the form BOMA-KJ-HH1001.",
+  "Pilot launch site — 10-clinic pilot begins in Juba and greater South Sudan.",
+  "Secondary and specialised care — HMIS.",
+];
