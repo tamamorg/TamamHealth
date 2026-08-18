@@ -190,17 +190,50 @@ jobs:
           docker push "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}"
           docker push "${{ steps.meta.outputs.image }}:latest"
 
+      # What the droplet has to work with. Printed before the transfer rather
+      # than after a failure, because a box short of memory or disk drops SSH
+      # connections during key exchange and the reset says nothing about why.
+      - name: Report droplet health
+        if: steps.gate.outputs.ready == 'true'
+        continue-on-error: true
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+        run: |
+          ssh "$USER@$HOST" 'bash -s' <<'REMOTE'
+            uptime
+            free -m | head -2
+            df -h / | tail -1
+            echo "images: $(docker images -q | wc -l), containers: $(docker ps -q | wc -l)"
+            echo "sshd rejections in the last hour:"
+            journalctl -u ssh --since '1 hour ago' --no-pager 2>/dev/null \
+              | grep -icE 'error|maximum|refus|drop' || echo 0
+          REMOTE
+
       # `docker load` reads a gzipped stream directly, so this is one hop with
       # no intermediate file on either end and no credentials on the droplet.
+      #
+      # Retried: this droplet resets connections during key exchange under a
+      # burst, and a deploy opens several in a row. A reset costs the whole
+      # transfer, so it is worth paying for it again rather than failing a
+      # release on it.
       - name: Copy the image to the droplet
         if: steps.gate.outputs.ready == 'true'
         env:
           HOST: ${{ secrets.WEBSITE_SSH_HOST }}
           USER: ${{ secrets.WEBSITE_SSH_USER }}
         run: |
-          docker save "${{ steps.meta.outputs.local_tag }}" \
-            | gzip -1 \
-            | ssh "$USER@$HOST" 'docker load'
+          for attempt in 1 2 3 4; do
+            if docker save "${{ steps.meta.outputs.local_tag }}" \
+                 | gzip -1 \
+                 | ssh "$USER@$HOST" 'docker load'; then
+              exit 0
+            fi
+            echo "transfer attempt $attempt failed; retrying"
+            sleep $((attempt * 20))
+          done
+          echo "::error title=Image transfer failed::Could not stream the image to the droplet in four attempts."
+          exit 1
 
       # The unit shipped pulling from DigitalOcean's registry. Point it at the
       # tag delivered above and drop the pull, which would now fail on every
