@@ -1,0 +1,43 @@
+name: recover-production-superadmin
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type RESET to rotate the production superadmin back to its server bootstrap password.'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recover-production-superadmin
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Require explicit confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = RESET
+
+      - uses: actions/checkout@v4
+
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Reset and verify production superadmin
+        env:
+          HOST: ${{ secrets.PROD_SSH_HOST }}
+          USER: ${{ secrets.PROD_SSH_USER }}
+          APP_DIR: ${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}
+        run: |
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          scp scripts/recover-production-superadmin.sh "$USER@$HOST:/tmp/recover-production-superadmin.sh"
+          ssh "$USER@$HOST" \
+            "chmod 700 /tmp/recover-production-superadmin.sh && GH_OWNER=tamamorg IMAGE_TAG=production /tmp/recover-production-superadmin.sh '$APP_DIR'; status=\$?; rm -f /tmp/recover-production-superadmin.sh; exit \$status"
