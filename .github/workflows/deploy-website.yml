@@ -19,6 +19,15 @@ on:
         description: 'Git SHA to build and publish. Blank = current main HEAD.'
         required: false
         type: string
+      restart:
+        description: 'How to make the droplet pick up the new image. "ssh" needs WEBSITE_SSH_* secrets. "reboot" uses the DO API instead (~40s downtime) and needs no extra secrets. "none" publishes only.'
+        required: true
+        type: choice
+        default: ssh
+        options:
+          - ssh
+          - reboot
+          - none
 
 permissions:
   contents: read
@@ -87,7 +96,9 @@ jobs:
           U: ${{ secrets.WEBSITE_SSH_USER }}
           K: ${{ secrets.WEBSITE_SSH_KEY }}
         run: |
-          if [ -n "$H" ] && [ -n "$U" ] && [ -n "$K" ]; then
+          if [ "${{ github.event.inputs.restart }}" != "ssh" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ -n "$H" ] && [ -n "$U" ] && [ -n "$K" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
@@ -109,10 +120,30 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           ssh "$USER@$HOST" "systemctl restart website && sleep 5 && systemctl is-active website"
 
-      - name: Verify the live site
-        if: steps.gate.outputs.ready == 'true'
+      # No SSH on this droplet today, and adding a key needs console access. The
+      # DO token that already publishes the image can also reboot the box, and
+      # website.service pulls on boot — so a reboot delivers the image without
+      # any new secret. It costs ~40s of downtime, which is why it is an
+      # explicit choice rather than the default.
+      - name: Reboot the website droplet
+        if: ${{ github.event.inputs.restart == 'reboot' }}
+        env:
+          DROPLET: tamamhealth-website
         run: |
-          for i in $(seq 1 12); do
+          ID=$(doctl compute droplet list --format ID,Name --no-header \
+                | awk -v n="$DROPLET" '$2==n {print $1}' | head -1)
+          if [ -z "$ID" ]; then
+            echo "::error title=Droplet not found::No droplet named $DROPLET in this account."
+            exit 1
+          fi
+          echo "Rebooting $DROPLET (id=$ID)"
+          doctl compute droplet-action reboot "$ID" --wait
+          echo "Reboot complete; website.service pulls the image on boot."
+
+      - name: Verify the live site
+        if: ${{ steps.gate.outputs.ready == 'true' || github.event.inputs.restart == 'reboot' }}
+        run: |
+          for i in $(seq 1 24); do
             code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 https://tamamhealth.org/health-system || true)
             [ "$code" = "200" ] && echo "live: /health-system 200" && exit 0
             sleep 10

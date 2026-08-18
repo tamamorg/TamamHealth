@@ -55,6 +55,29 @@ Add three **A** records (delete GoDaddy's parked `@` record first):
 
 Verify: `dig +short app.tamamhealth.org` returns the IP.
 
+## What ships where
+
+Three droplets, three delivery paths. They are NOT one pipeline — knowing which
+is which is the difference between a deploy that lands and one that silently
+changes nothing:
+
+| Droplet | Serves | Ships via | Registry |
+|---|---|---|---|
+| `tamamhealth-production` | `app.tamamhealth.org` — the platform | `deploy-production` (promotes a staging-tested image) | GHCR |
+| `tamamhealth-data` | `couch.tamamhealth.org` | `docker-compose.data.yml` on the box | — |
+| `tamamhealth-website` | `tamamhealth.org` — the marketing site | **`deploy-website`** | **DigitalOcean registry** |
+
+The website is the odd one out: its droplet pulls from
+`registry.digitalocean.com/tamamhealth/website:latest`, while everything else
+uses GHCR. Until Aug 2026 no workflow published there at all, so the public site
+could only be updated by hand and drifted a generation behind `main`.
+`deploy-website` closes that — see `infra/digitalocean-website/README.md`,
+which also carries a standing warning about that droplet's Terraform state.
+
+Merging to `main` does **not** release anything: staging deploys automatically,
+production and the website are both manual, gated on the `production`
+environment.
+
 ## 5. Deploy (same as the playbook)
 SSH in and run the standard flow:
 ```bash
