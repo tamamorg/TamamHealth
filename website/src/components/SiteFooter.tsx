@@ -1,5 +1,12 @@
 /* ═══ Site chrome: footer ═══
-   Server component — the ≤520px accordions are native <details>{t(", no JS. The columns render CLOSED, and CSS forces their content visible above 520px (see .tm-foot-col::details-content in globals.css). That inversion is what makes one markup serve both: a phone gets collapsed accordions it can tap open, a desktop gets plain lists. Adding `open` here instead would expand them everywhere — including the phones the accordion exists for — because the initial state of")} <details> cannot be set per breakpoint. */
+   Server component — the ≤520px accordions are native <details>, no JS.
+
+   The columns render CLOSED, and CSS forces their content visible above
+   520px (see .tm-foot-col::details-content in globals.css). That inversion is
+   what makes one markup serve both: a phone gets collapsed accordions it can
+   tap open, a desktop gets plain lists. Adding `open` here instead would
+   expand them everywhere — including the phones the accordion exists for —
+   because the initial state of <details> cannot be set per breakpoint. */
 
 import Link from "next/link";
 import { FOOTER_COLS as FOOTER_COLS_EN, platformHref } from "@/lib/site-data";
