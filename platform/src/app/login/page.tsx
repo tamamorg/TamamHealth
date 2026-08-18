@@ -354,7 +354,11 @@ export default function LoginPage() {
 
           <div className="lg-links">
             <a href="/patient-portal">Patient portal</a>
-            <a href={`mailto:support.tamam@gmail.com?subject=${encodeURIComponent('Trouble signing in')}`}>Trouble signing in?</a>
+            {/* A mailto asked someone with no account to compose an email to
+                an address that cannot verify them, and the reply was a human
+                copying a password into a message. This goes to a form whose
+                answer is an account, routed to whoever is allowed to grant it. */}
+            <a href="/request-account">Request account</a>
           </div>
 
           <span className="lg-note">

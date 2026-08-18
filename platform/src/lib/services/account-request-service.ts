@@ -26,40 +26,14 @@ import { accountRequestsDB } from '../db';
 import type { AccountRequestDoc, AccountRequestStatus, UserRole } from '../db-types';
 import type { DataScope } from './data-scope';
 import { findByType } from './db-query';
+import {
+  PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES, isRequestableRole, approverTierFor,
+} from '../account-request-roles';
 import { v4 as uuidv4 } from 'uuid';
 
-/**
- * Roles that bypass org scoping, so only a platform operator may grant them.
- * Kept identical to `PRIVILEGED_ASSIGNABLE_ROLES` in `/api/users` — a role
- * that is privileged to assign is privileged to approve.
- */
-export const PLATFORM_APPROVAL_ROLES: UserRole[] = [
-  'super_admin', 'government', 'county_health_director',
-];
-
-/** Roles the public form may ask for. */
-export const REQUESTABLE_ROLES: UserRole[] = [
-  'org_admin', 'doctor', 'clinical_officer', 'nurse', 'midwife', 'lab_tech',
-  'pharmacist', 'front_desk', 'cashier', 'data_entry_clerk',
-  'medical_superintendent', 'hrio', 'nutritionist', 'radiologist',
-  'hospital_manager', 'medical_biller', 'government', 'county_health_director',
-];
-
-/**
- * `super_admin` is deliberately absent from REQUESTABLE_ROLES: the platform
- * operator account is created by the deployment bootstrap, not asked for
- * through a public form. Allowing it would put "make me the platform owner"
- * in front of an approver as a routine-looking row.
- */
-export function isRequestableRole(role: string): role is UserRole {
-  return (REQUESTABLE_ROLES as string[]).includes(role);
-}
-
-export function approverTierFor(role: UserRole, orgId?: string): 'super_admin' | 'org_admin' {
-  if (PLATFORM_APPROVAL_ROLES.includes(role)) return 'super_admin';
-  if (!orgId) return 'super_admin';
-  return 'org_admin';
-}
+// Re-exported so server callers have one import for the whole feature; the
+// definitions live in a DB-free module the public form can also import.
+export { PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES, isRequestableRole, approverTierFor };
 
 export interface NewAccountRequest {
   fullName: string;

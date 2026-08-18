@@ -3,6 +3,7 @@ import { createToken } from '@/lib/auth-token';
 import { mintCsrfToken } from '@/lib/csrf';
 import { applySessionCookies } from '@/lib/session';
 import { getClientIp } from '@/lib/request-utils';
+import { logApiError } from '@/lib/api-auth';
 import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
 
 const USER_LOCK_THRESHOLD = 5;       // failed tries before user lock
@@ -55,10 +56,26 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    // Server-safe user authentication (no PouchDB — uses static user registry)
-    const { authenticateUser } = await import('@/lib/server-users');
+    // Server-safe user authentication (no PouchDB — reads the shared users DB)
+    const { authenticateUser, UsersDbUnavailableError } = await import('@/lib/server-users');
 
-    const user = await authenticateUser(sanitizedUsername, password);
+    let user;
+    try {
+      user = await authenticateUser(sanitizedUsername, password);
+    } catch (err) {
+      // A database that cannot be reached is not a wrong password, and saying
+      // so sends the operator to check the wrong thing. This is the one login
+      // failure that is the system's fault, so it says so — without revealing
+      // whether the account exists, which is still unknown at this point.
+      if (err instanceof UsersDbUnavailableError) {
+        logApiError('POST /api/auth/login', err);
+        return NextResponse.json(
+          { error: 'Sign-in is temporarily unavailable. The user database could not be reached.' },
+          { status: 503 },
+        );
+      }
+      throw err;
+    }
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });

@@ -17,6 +17,7 @@ import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import { generateTempPassword } from '@/lib/temp-password';
 import { canCreateUsers } from '@/lib/people-nav';
+import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 
 const MIN_PASSWORD_LENGTH = 8;
 import type { UserDoc, HospitalDoc, UserRole } from '@/lib/db-types';
@@ -301,6 +302,12 @@ export default function OrgUsersPage() {
             {error}
           </div>
         )}
+
+        {/* Approving a request IS creating a user, so it sits with the roster
+            rather than on a screen of its own that nobody thinks to open. */}
+        <div className="dash-card" style={{ flexShrink: 0, padding: '16px 20px', marginBottom: 16 }}>
+          <AccountRequestQueue viewerRole="org_admin" />
+        </div>
 
         <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader

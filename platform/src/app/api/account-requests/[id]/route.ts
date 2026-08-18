@@ -9,7 +9,6 @@
  * trail; it is never a second, weaker way to make a user.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'node:crypto';
 import {
   getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
 } from '@/lib/api-auth';
@@ -20,23 +19,14 @@ import {
   getAccountRequest, canDecide, recordDecision, suggestUsername,
   PLATFORM_APPROVAL_ROLES,
 } from '@/lib/services/account-request-service';
+// The same generator every admin-provisioned credential uses, so an approved
+// request produces a password with the shape staff already expect — and one
+// that can be read aloud in a clinic with no email.
+import { generateTempPassword } from '@/lib/temp-password';
 
 export const runtime = 'nodejs';
 
 const APPROVER_ROLES: UserRole[] = ['super_admin', 'org_admin'];
-
-/**
- * 20 characters from an unambiguous alphabet, so an approver can read the
- * password aloud or copy it into a message without 0/O or 1/l confusion. It
- * is shown once and is temporary — `createUser` sets `mustChangePassword`.
- */
-function temporaryPassword(length = 20): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-  const bytes = crypto.randomBytes(length);
-  let out = '';
-  for (let i = 0; i < length; i++) out += alphabet[bytes[i] % alphabet.length];
-  return out;
-}
 
 async function postHandler(
   request: NextRequest,
@@ -101,7 +91,7 @@ async function postHandler(
     const requested = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
     const username = requested || suggestUsername(doc.fullName, name => taken.has(name));
 
-    const password = temporaryPassword();
+    const password = generateTempPassword();
     let created;
     try {
       created = await createUser(

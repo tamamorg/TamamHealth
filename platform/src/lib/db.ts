@@ -461,10 +461,15 @@ export async function markSeeded(): Promise<void> {
 // Reset all databases (useful for debugging).
 // Browser-only: destroying a remote CouchDB database from a server process
 // would take out data for every clinic on the cluster.
-export async function resetAllDatabases(): Promise<void> {
-  if (!IS_BROWSER) return;
-  const PouchDB = loadPouchDB();
-  const dbNames = [
+/**
+ * Every PouchDB database this app opens in the browser, by name.
+ *
+ * Two callers depend on it: `resetAllDatabases()` (seed-version bumps) and
+ * the security wipe in `lib/security/local-wipe.ts`, which also discovers
+ * databases at runtime so a name missing from this list still gets cleared
+ * off a device. Keep it in sync when a new database is introduced.
+ */
+export const LOCAL_DATABASE_NAMES: readonly string[] = [
     'tamamhealth_users', 'tamamhealth_patients', 'tamamhealth_hospitals',
     'tamamhealth_medical_records', 'tamamhealth_referrals', 'tamamhealth_lab_results',
     'tamamhealth_disease_alerts', 'tamamhealth_prescriptions', 'tamamhealth_audit_log', 'tamamhealth_usage_events', 'tamamhealth_messages', 'tamamhealth_conversations', 'tamamhealth_patient_notes',
@@ -500,7 +505,12 @@ export async function resetAllDatabases(): Promise<void> {
     // here — it is an append-only regulatory audit trail and resetAllDatabases()
     // runs on production seed-version bumps (see seedProduction).
     'tamamhealth_meta'
-  ];
+];
+
+export async function resetAllDatabases(): Promise<void> {
+  if (!IS_BROWSER) return;
+  const PouchDB = loadPouchDB();
+  const dbNames = LOCAL_DATABASE_NAMES;
   for (const name of dbNames) {
     try {
       // Prefer the cached instance — destroying a NEW PouchDB while the cached

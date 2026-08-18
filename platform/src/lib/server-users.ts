@@ -42,6 +42,23 @@ export interface ServerUser {
  * user, wrong password, inactive, or DB unreachable) so the caller can fall
  * back to a constant-time dummy hash.
  */
+/**
+ * Thrown when the users database could not be consulted at all.
+ *
+ * "No such user" and "the database is unreachable" are the same outcome for
+ * the caller — nobody is signed in — but they are not the same problem, and
+ * collapsing them is how a broken deployment spends an afternoon looking like
+ * a forgotten password. Every login on a healthy system that simply has no
+ * such account still returns null; only an infrastructure fault raises this.
+ */
+export class UsersDbUnavailableError extends Error {
+  constructor(cause?: unknown) {
+    super('The user database could not be reached');
+    this.name = 'UsersDbUnavailableError';
+    this.cause = cause;
+  }
+}
+
 async function authenticateFromUsersDb(
   username: string,
   password: string,
@@ -66,9 +83,15 @@ async function authenticateFromUsersDb(
       mustChangePassword: doc.mustChangePassword,
       passwordUpdatedAt: doc.passwordUpdatedAt,
     };
-  } catch {
-    // 404 (no such user) or DB unreachable — treat as an auth miss.
-    return null;
+  } catch (err) {
+    // A 404 is a real answer: there is no such account. Anything else — the
+    // database missing, CouchDB refusing the connection, a network fault — is
+    // an infrastructure failure wearing the same clothes, and reporting it as
+    // "invalid credentials" tells an operator to go and check a password when
+    // they should be checking a server.
+    const status = (err as { status?: number; name?: string })?.status;
+    if (status === 404) return null;
+    throw new UsersDbUnavailableError(err);
   }
 }
 
@@ -187,56 +210,29 @@ export async function authenticateUser(
   username: string,
   password: string,
 ): Promise<ServerUser | null> {
-  const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+  // The shared users database is the only authority on who may sign in.
+  //
+  // There used to be a demo branch here that accepted the seeded roster's
+  // generated passwords whenever `NEXT_PUBLIC_DEMO_MODE` was not exactly the
+  // string 'false'. That flag is read from the process environment at runtime,
+  // the container never promoted the build argument to an `ENV`, and the check
+  // fails OPEN — so a production server with the variable simply unset would
+  // have accepted three dozen demo credentials. A deployment should not be one
+  // missing environment variable away from a public login.
+  //
+  // Accounts are now created exactly one way: by an administrator, or by
+  // approving an account request, which calls the same `createUser`.
+  const user = await authenticateFromUsersDb(username, password);
+  if (user) return user;
 
-  // Production users—including the bootstrap admin—are authoritative only in
-  // the shared users database. Falling back to ADMIN_INITIAL_PASSWORD after a
-  // password change would leave the old bootstrap password usable forever.
-  if (!isDemo) {
-    const productionUser = await authenticateFromUsersDb(username, password);
-    if (productionUser) return productionUser;
-    // First-login bootstrap for the platform operator accounts, so a fresh
-    // production deploy is reachable. Narrow and create-if-absent — see
-    // bootstrapUserLogin.
-    const bootstrapped = await bootstrapUserLogin(username, password);
-    if (bootstrapped) return bootstrapped;
-    await bcrypt.hash(password, 12);
-    return null;
-  }
+  // First-login provisioning for the platform operator accounts, so a fresh
+  // deployment is reachable at all. Narrow and create-if-absent — see
+  // bootstrapUserLogin.
+  const bootstrapped = await bootstrapUserLogin(username, password);
+  if (bootstrapped) return bootstrapped;
 
-  // 1) Seeded demo accounts — verified against the generated credentials file.
-  //    Checked first so demo logins keep working even when CouchDB is offline.
-  const profile = profileByUsername.get(username);
-  if (profile) {
-    const credentials = await getOrCreateSeedCredentials();
-    const expected = credentials.passwords[username];
-    if (expected) {
-      const hash = await getHash(username, expected);
-      if (await bcrypt.compare(password, hash)) {
-        return {
-          _id: `user-${profile.username}`,
-          username: profile.username,
-          passwordHash: hash,
-          name: profile.name,
-          role: profile.role,
-          hospitalId: profile.hospitalId,
-          hospitalName: profile.hospitalName,
-          orgId: profile.orgId,
-          isActive: true,
-        };
-      }
-    }
-    // Demo username exists but the seed password didn't match. The account may
-    // have been re-created/reset into the users DB (which shadows the seed), so
-    // fall through to the DB lookup before giving up.
-  }
-
-  // 2) Admin-created (and reset) users live in the shared users database.
-  const fromDb = await authenticateFromUsersDb(username, password);
-  if (fromDb) return fromDb;
-
-  // 3) No match anywhere — constant-time dummy hash so a non-existent user
-  //    takes roughly as long as a valid one (anti username-enumeration).
+  // No match — constant-time dummy hash so a non-existent user takes roughly
+  // as long as a valid one (anti username-enumeration).
   await bcrypt.hash(password, 12);
   return null;
 }

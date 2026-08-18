@@ -18,6 +18,7 @@ import { avatarTint } from '@/lib/patient-utils';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
 import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbChip, SadbConfirmModal } from '@/components/admin/sadb-ui';
+import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 
 // Column template for the user list header + rows:
 // User · Role · Organization · Facility · Status · Actions
@@ -270,6 +271,15 @@ export default function AdminUsersPage() {
       <div className="sadb-kpi-row">
         {kpis.map(k => <SadbKpiTile key={k.label} label={k.label} value={k.value} />)}
       </div>
+
+      {/* ═══ Account requests ═══ */}
+      {/* Above the roster, not on a page of its own: approving a request IS
+          creating a user, so it belongs where users are managed. A separate
+          screen would be one nobody thinks to open, and a request that nobody
+          opens is a person who never gets access. */}
+      <SadbCard title="Requests">
+        <AccountRequestQueue viewerRole="super_admin" />
+      </SadbCard>
 
       {/* ═══ Roster ═══ */}
       <SadbCard title={t('adminUsers.title')} meta={`${filteredUsers.length} of ${users.length}`}>
