@@ -213,10 +213,14 @@ export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'alerts-feed',
     route: '/alerts',
-    target: '[data-tour="alerts-feed"]',
+    // The feed spans nearly the full width AND height of the page, and
+    // TourCard's cardPosition only clamps one axis per placement (top/bottom
+    // clamp X, left/right clamp Y) — every direction pushed the card
+    // partly off-screen against a target this large. A centred narrative
+    // card is the only placement that's always fully on screen here.
+    target: '',
     title: 'What needs attention today',
     body: 'Outbreak warnings, critical lab results awaiting sign-off, and overdue immunizations — newest first, so nothing urgent gets buried.',
-    placement: 'top',
   },
 
   {

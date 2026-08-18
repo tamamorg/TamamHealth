@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Corners from "@/components/Corners";
+import { emphasise } from "@/components/emphasise";
 import { CHALLENGES, PLATFORM_FACTS, PLATFORM_FLOW, PLATFORM_PANELS, PLATFORM_PILLARS } from "@/lib/site-data";
 
 export const metadata: Metadata = {
@@ -45,7 +46,7 @@ export default function PlatformPage() {
       </section>
 
       {/* The answer, failure by failure. "Our Solution" on the home hero lands
-          here, so the first thing it shows is the problem it claims to solve —
+          at the top of this page and reads down into this section —
           the same eight failures the challenge cards document, each paired with
           what the platform actually does about it. Both halves come from
           CHALLENGES, so the fix stated here and the fix on the challenge page
@@ -87,7 +88,7 @@ export default function PlatformPage() {
               >
                 <Corners />
                 <h3 style={{ fontSize: 18, margin: 0, lineHeight: 1.3, color: "var(--color-text)" }}>{c.title}</h3>
-                <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>{c.fix}</p>
+                <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>{emphasise(c.fix)}</p>
                 <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: "auto", paddingTop: 6 }}>
                   <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                     {c.products.map((acronym) => (

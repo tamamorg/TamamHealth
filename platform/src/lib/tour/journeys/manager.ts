@@ -35,16 +35,21 @@ export const MANAGER_STEPS: TourStep[] = [
   {
     id: 'hospitals',
     route: '/hospitals',
-    target: '.data-table',
-    placement: 'top',
+    // Not anchored: the network list runs to dozens of rows, so centering it
+    // scrolls deep into the table and the card can end up off-screen. A
+    // narrative card is the stable choice for a list this long.
+    target: '',
     title: 'Facility network',
     body: 'Every facility in your network, with occupancy, staffing, and performance metrics side by side. Open one for its full profile — coverage, services offered, and its performance trend.',
   },
   {
     id: 'facility-settings',
     route: '/facility-settings',
-    target: '.fs-settings-stack',
-    placement: 'top',
+    // Not anchored: the settings form (`.fs-settings-stack`) runs many
+    // screen-heights tall, so scrolling it into view keeps shifting the
+    // card's position while the smooth-scroll settles — a moving target for
+    // a click. A narrative card is the stable choice here.
+    target: '',
     title: 'Facility settings',
     body: 'Payment methods offered, tax rate, exam rooms, and feature flags like fingerprint identification.',
   },
@@ -98,7 +103,7 @@ export const MANAGER_STEPS: TourStep[] = [
   {
     id: 'equipment',
     route: '/equipment',
-    target: '.data-table',
+    target: '[data-tour="equipment-list"]',
     placement: 'top',
     title: 'Assets & equipment',
     body: 'Register assets with service intervals, log services and repairs, and watch the “service due soon” 30-day lookahead.',

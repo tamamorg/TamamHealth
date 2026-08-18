@@ -268,7 +268,7 @@ export default function AlertsPage() {
         />
 
         {/* Alerts feed */}
-        <div data-tour="alerts-feed" style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: 16 }}>
+        <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: 16 }}>
           {visibleAlerts.length === 0 ? (
             <EmptyState
               icon={CheckCircle2}

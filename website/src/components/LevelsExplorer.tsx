@@ -47,7 +47,7 @@ export default function LevelsExplorer() {
               className="tm-lvlbtn"
               style={{
                 appearance: "none", border: 0,
-                background: i === level ? "var(--color-accent-100)" : "transparent",
+                background: i === level ? "#FFFFFF" : "transparent",
                 cursor: "pointer", textAlign: "left",
                 fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, letterSpacing: "0.02em",
                 padding: "14px 18px",
@@ -73,10 +73,6 @@ export default function LevelsExplorer() {
           </div>
         </div>
       </div>
-      <p style={{ margin: 0, padding: "20px 26px", background: "var(--color-surface)", border: "1px solid var(--color-divider)", fontSize: 15, lineHeight: 1.65 }}>
-        Every level writes to the <strong>same patient record</strong>{" "}and rolls up into DHIS2-ready national reports — with
-        laboratory, imaging, pharmacy, and the patient portal plugging in across the hospital and diagnostic tiers.
-      </p>
     </div>
   );
 }

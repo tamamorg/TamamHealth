@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { emphasise } from "@/components/emphasise";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Corners from "@/components/Corners";
@@ -67,7 +68,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
             <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>What replaces it, step by step</h2>
             <span className="fs125" style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-accent-700)", whiteSpace: "nowrap" }}>On the platform</span>
           </div>
-          <p style={{ margin: "20px 0 0", maxWidth: 780, fontSize: 16, lineHeight: 1.7, color: "var(--color-text)" }}>{c.fix}</p>
+          <p style={{ margin: "20px 0 0", maxWidth: 780, fontSize: 16, lineHeight: 1.7, color: "var(--color-text)" }}>{emphasise(c.fix)}</p>
           <div style={{ display: "flex", flexDirection: "column", marginTop: 14 }}>
             {c.steps.map((s, k) => (
               <div key={s.t} className="tm-steprow" style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: 28, padding: "26px 0", borderBottom: "1px solid var(--color-divider)", alignItems: "start" }}>

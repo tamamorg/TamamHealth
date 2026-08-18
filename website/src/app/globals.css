@@ -392,11 +392,30 @@ header > div { min-width: 0; }
   .tm-prod-grid { grid-template-columns: 1fr !important; }
   .tm-prod-card { grid-template-columns: 1fr !important; }
   .tm-prod-card > div:first-of-type { min-height: 260px !important; }
-  .tm-reality-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .tm-problem-breaks { grid-template-columns: 1fr !important; gap: 26px !important; }
-  .tm-reality-grid > div { border-top: 1px solid var(--color-divider); }
+  /* Stacked, the closing figures move under the argument rather than beside
+     it, and the divider between them turns with them. */
+  .tm-problem-close { grid-template-columns: 1fr !important; }
+  .tm-problem-figs { flex-direction: row !important; border-left: 0 !important; border-top: 1px solid var(--color-divider); }
+  .tm-problem-figs > div + div { border-top: 0 !important; border-left: 1px solid var(--color-divider); }
+  /* One column wide, the banner is the full measure of the panel — a taller
+     crop keeps it off the subjects' chins — and the plate no longer has three
+     numerals to line up with, so it drops its floor. */
+  .tm-break-fig { height: 232px !important; }
+  .tm-problem-plate { min-height: 0 !important; }
   main section { padding-left: 28px !important; padding-right: 28px !important; }
-  .tm-hero { height: auto !important; min-height: 440px; }
+  /* Below 1100 the hero stops being a fixed-height band, and with the
+     photograph absolutely filling that box the picture took its height from
+     whichever slide was showing — a long body grew the image, a short one
+     shrank it, so navigating the carousel resized the photograph. Stack the
+     two instead: the image keeps one height on every slide, and the card
+     below it takes whatever height its own text needs. The ≤760 block further
+     down tightens the same layout for phones. */
+  .tm-hero { height: auto !important; min-height: 0 !important; overflow: visible !important; background: transparent !important; }
+  .tm-hero-img { position: relative !important; inset: auto !important; height: 360px; }
+  .tm-hero-scrim { height: 360px; bottom: auto !important; }
+  .tm-hero-wrap { height: auto !important; padding: 0 28px !important; margin-top: -72px !important; margin-bottom: 0 !important; }
+  .tm-hero-card { width: 100% !important; background: #ffffff !important; }
   .tm-map iframe { height: 460px !important; margin-left: 0 !important; }
   /* touch targets: nothing tappable under 44px once the pointer is a finger */
   main button, header button, footer button { min-height: 44px; min-width: 44px; }
@@ -446,8 +465,12 @@ header > div { min-width: 0; }
   .tm-solution-grid { grid-template-columns: 1fr !important; }
   .tm-explain { grid-template-columns: 1fr !important; }
   .tm-g6 { grid-template-columns: repeat(2, 1fr) !important; }
-  .tm-reality-grid { grid-template-columns: 1fr !important; }
   .tm-problem-breaks { grid-template-columns: 1fr !important; }
+  .tm-problem-figs { flex-direction: column !important; }
+  .tm-problem-figs > div + div { border-left: 0 !important; border-top: 1px solid var(--color-divider) !important; }
+  /* One column wide, the break banner is the full page width — a taller crop
+     keeps it from reading as a letterbox strip. */
+  .tm-break-fig { height: 196px !important; }
   main section { padding-left: 18px !important; padding-right: 18px !important; }
   main section:not(.tm-hero):not(.tm-hero-nav) { padding-top: 42px !important; padding-bottom: 46px !important; }
   .tm-hero { min-height: 480px; padding: 0 !important; }
@@ -471,7 +494,6 @@ header > div { min-width: 0; }
   .tm-steprow > summary { grid-template-columns: 34px 1fr auto !important; gap: 10px !important; }
   .tm-steprow > p { padding-left: 44px !important; }
   .tm-pad-lg { padding: 22px 18px !important; }
-  .tm-rule-sm { width: 100% !important; max-width: 100% !important; }
 }
 
 /* footer grid (audited layer — last in source, wins over the rules above) */
@@ -593,7 +615,7 @@ header > div { min-width: 0; }
   .tm-sticky { position: static !important; }
   .tm-hero-nav, .tm-burger, .tm-desk-steppers, form [type="submit"] { display: none !important; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  .tm-g3, .tm-g4, .tm-g6, .tm-split, .tm-footer-grid, .tm-prod-grid, .tm-reality-grid,
+  .tm-g3, .tm-g4, .tm-g6, .tm-split, .tm-footer-grid, .tm-prod-grid, .tm-problem-close,
   .tm-origin, .tm-about-card, .tm-nat-hero, .tm-contact-hero, .tm-contact-body,
   .tm-donate-hero, .tm-login-grid, .tm-dash-grid, .tm-platform-split { grid-template-columns: 1fr !important; gap: 22px !important; }
   .tm-login-main { min-height: 0 !important; }

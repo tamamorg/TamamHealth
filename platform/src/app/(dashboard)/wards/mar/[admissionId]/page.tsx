@@ -378,7 +378,7 @@ export default function MARPage() {
             </p>
           </div>
         ) : (
-          <div className="card-elevated overflow-hidden">
+          <div className="card-elevated overflow-hidden" data-tour="mar-grid">
             <div className="overflow-x-auto">
               <table className="w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 760 }}>
                 <thead>

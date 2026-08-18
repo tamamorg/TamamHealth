@@ -39,11 +39,14 @@ export const RECORDS_STEPS: TourStep[] = [
     // modal open, and the following step navigates to /births, unmounting
     // this page (and the modal with it). An earlier position would leave the
     // modal's fixed overlay covering the next same-route step's target.
+    // Targets the modal's sticky header rather than the (long, scrollable)
+    // form body: the header holds its position regardless of scroll, so it's
+    // never mismeasured mid-scroll the way a deep-in-the-form target would be.
     id: 'census-form',
     route: '/dashboard/data-entry',
     preClickSelector: '[data-tour="data-entry-new-census"]',
-    target: '[data-tour="census-patient-fields"]',
-    placement: 'right',
+    target: '[data-tour="census-form-header"]',
+    placement: 'bottom',
     title: 'The daily tally',
     body: 'OPD visits, admissions, maternity, newborns, deaths, discharges, referrals in and out — filed once here, it feeds bed occupancy, staffing, and the Monthly HMIS 105 return.',
   },

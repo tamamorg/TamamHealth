@@ -1,27 +1,26 @@
 import type { Metadata } from "next";
 import LevelsExplorer from "@/components/LevelsExplorer";
 import ChallengesBand from "@/components/ChallengesBand";
-import { ALIGN_FACTS, SYSTEM_STATS, PROBLEM_LEAD, PROBLEM_BREAKS, PROBLEM_WHY } from "@/lib/site-data";
+import { ALIGN_FACTS, TOOLING_STATS, PROBLEM_LEAD, PROBLEM_BREAKS, PROBLEM_WHY_TITLE, PROBLEM_WHY } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "The Health System",
   description:
-    "Built around South Sudan's own health system — the 2025 Essential Health Services Package's six levels of care, on one offline-first record.",
+    "South Sudan's healthcare system — the 2025 Essential Health Services Package's six levels of care, on one offline-first record.",
 };
 
 export default function HealthSystemPage() {
   return (
     <main>
-      <section style={{ padding: "70px 32px 56px" }}>
+      <section style={{ padding: "70px 32px 46px" }}>
         <div className="tm-nat-hero" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.15fr 1fr", gap: 64, alignItems: "end" }}>
           <div>
-            <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px" }}>Built around South Sudan&rsquo;s own health system</h1>
+            <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px" }}>South Sudan&rsquo;s healthcare system</h1>
             <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
               The Ministry of Health&rsquo;s <strong>2025 Essential Health Services Package</strong>{" "}organises the country&rsquo;s care into six
               levels — and names fragmented, paper-bound data as one of its biggest gaps. Tamam is shaped to fit that system, not
               replace it — and the same six-tier structure runs through most sub-Saharan health systems, so what fits here travels.
             </p>
-            <span className="tm-rule-sm" style={{ display: "block", width: 300, maxWidth: "60vw", height: 3, background: "var(--color-accent)", marginTop: 26 }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {ALIGN_FACTS.map((f) => (
@@ -34,7 +33,7 @@ export default function HealthSystemPage() {
         </div>
       </section>
 
-      <section id="levels" style={{ padding: "0 32px 88px" }}>
+      <section id="levels" style={{ padding: "44px 32px 78px", background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <LevelsExplorer />
         </div>
@@ -47,30 +46,61 @@ export default function HealthSystemPage() {
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>Essential Health Services Package, 2025</span>
           </div>
 
-          {/* The problem, argued — the strip's "The Problem" card lands here. */}
-          <p style={{ maxWidth: "68ch", margin: "30px 0 0", fontSize: 17, lineHeight: 1.72, color: "var(--color-neutral-900)" }}>
+          {/* The problem, argued — the strip's "The Problem" card lands here.
+              Every figure sits inside the break it evidences rather than in a
+              statistics strip of its own, so the numbers are read as part of
+              the argument and not as decoration under it. */}
+          <p style={{ maxWidth: "70ch", margin: "32px 0 0", fontSize: 18, lineHeight: 1.72, color: "var(--color-neutral-900)" }}>
             {PROBLEM_LEAD}
           </p>
-          <div className="tm-problem-breaks" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 34, margin: "38px 0 6px" }}>
+          <div className="tm-problem-breaks" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, margin: "40px 0 0" }}>
             {PROBLEM_BREAKS.map((b) => (
-              <div key={b.where} style={{ display: "flex", flexDirection: "column", gap: 9, paddingTop: 18, borderTop: "2px solid var(--color-accent)" }}>
-                <span className="fs115" style={{ letterSpacing: "0.13em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{b.where}</span>
-                <h3 style={{ fontSize: 21, lineHeight: 1.2, margin: 0 }}>{b.what}</h3>
-                <p style={{ margin: 0, fontSize: 15, lineHeight: 1.68, color: "var(--color-neutral-800)" }}>{b.body}</p>
-              </div>
+              <article key={b.where} className="blueprint" style={{ background: "#FFFFFF", display: "flex", flexDirection: "column" }}>
+                {/* The place the break happens labels the photograph, so the
+                    panel opens on the scene, then the figure, then the claim. */}
+                <div className="tm-figure tm-break-fig" style={{ position: "relative", height: 172, borderBottom: "3px solid var(--color-accent)" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- panel figure, sized by CSS */}
+                  <img src={b.image} alt={b.imageAlt} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: b.focus }} />
+                  <span className="fs115" style={{ position: "absolute", left: 0, bottom: 0, background: "var(--color-accent-300)", color: "#0E2A4A", padding: "7px 12px 6px", letterSpacing: "0.13em", textTransform: "uppercase", fontWeight: 700 }}>{b.where}</span>
+                </div>
+                {/* Recessed data plate. The fixed minimum keeps the three
+                    numerals — and the headings under them — on one line
+                    across the row however the unit and note wrap. */}
+                <div className="tm-problem-plate" style={{ background: "var(--color-surface)", padding: "18px 22px 16px", minHeight: 118, display: "flex", flexDirection: "column", gap: 7 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 11, flexWrap: "wrap" }}>
+                    <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(34px, 3.4vw, 44px)", lineHeight: 0.92, color: "var(--color-accent-700)" }}>{b.stat.value}</span>
+                    <span style={{ fontSize: 14.5, lineHeight: 1.4, fontWeight: 500 }}>{b.stat.unit}</span>
+                  </div>
+                  <span style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--color-neutral-700)" }}>{b.stat.note}</span>
+                  <span className="fs115" style={{ marginTop: "auto", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>{b.stat.source}</span>
+                </div>
+                <div style={{ padding: "20px 22px 24px", display: "flex", flexDirection: "column", gap: 9 }}>
+                  <h3 style={{ fontSize: 22, lineHeight: 1.18, margin: 0 }}>{b.what}</h3>
+                  <p style={{ margin: 0, fontSize: 15, lineHeight: 1.68, color: "var(--color-neutral-800)" }}>{b.body}</p>
+                </div>
+              </article>
             ))}
           </div>
-          <p style={{ maxWidth: "68ch", margin: "26px 0 40px", fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
-            {PROBLEM_WHY}
-          </p>
-          <div className="tm-reality-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, marginTop: 0 }}>
-            {SYSTEM_STATS.map((s) => (
-              <div key={s.value} style={{ padding: "36px 26px 34px", borderRight: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", gap: 12 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(38px, 5vw, 62px)", lineHeight: 0.95, color: s.accent }}>{s.value}</span>
-                <span style={{ fontSize: 15, lineHeight: 1.5 }}>{s.label}</span>
-                <span className="fs115" style={{ letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-neutral-600)", marginTop: "auto" }}>{s.source}</span>
-              </div>
-            ))}
+
+          {/* The conclusion the three breaks add up to, with the two
+              infrastructure figures that make offline-first a requirement
+              standing beside it rather than in a row of their own. */}
+          <div className="blueprint tm-problem-close" style={{ background: "#FFFFFF", borderTop: "2px solid var(--color-accent)", marginTop: 24, display: "grid", gridTemplateColumns: "1.55fr 1fr" }}>
+            <div style={{ padding: "30px 30px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <h3 style={{ fontSize: "clamp(21px, 2.2vw, 27px)", lineHeight: 1.24, margin: 0, maxWidth: "26ch" }}>{PROBLEM_WHY_TITLE}</h3>
+              <p style={{ margin: 0, maxWidth: "60ch", fontSize: 16, lineHeight: 1.72, color: "var(--color-neutral-800)" }}>{PROBLEM_WHY}</p>
+            </div>
+            <div className="tm-problem-figs" style={{ borderLeft: "1px solid var(--color-divider)", display: "flex", flexDirection: "column" }}>
+              {TOOLING_STATS.map((s, i) => (
+                <div key={s.value} style={{ flex: 1, padding: "24px 26px", display: "flex", alignItems: "baseline", gap: 14, borderTop: i === 0 ? "none" : "1px solid var(--color-divider)" }}>
+                  <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(34px, 3.4vw, 44px)", lineHeight: 0.92, color: "var(--color-accent-700)", minWidth: 72 }}>{s.value}</span>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <span style={{ fontSize: 14.5, lineHeight: 1.45 }}>{s.label}</span>
+                    <span className="fs115" style={{ letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>{s.source}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

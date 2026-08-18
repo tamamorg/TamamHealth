@@ -80,8 +80,10 @@ export const SUPERINTENDENT_STEPS: TourStep[] = [
   {
     id: 'hospitals-oversight',
     route: '/hospitals',
-    target: '.data-table',
-    placement: 'top',
+    // Not anchored: the network list runs to dozens of rows, so centering it
+    // scrolls deep into the table and the card can end up off-screen. A
+    // narrative card is the stable choice for a list this long.
+    target: '',
     title: 'Hospital network',
     body: 'Every facility you oversee, with occupancy, staffing, and performance metrics side by side. Open one, then Manage, for its full profile — staff, wards, equipment, inventory, schedules, and performance in one dashboard.',
   },

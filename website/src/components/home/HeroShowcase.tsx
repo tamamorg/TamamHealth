@@ -9,6 +9,7 @@ import { useState } from "react";
 import Corners from "@/components/Corners";
 import HeroNav from "@/components/HeroNav";
 import { HEROES } from "@/lib/site-data";
+import { emphasise } from "@/components/emphasise";
 
 export default function HeroShowcase() {
   const [hero, setHero] = useState(0);
@@ -27,17 +28,21 @@ export default function HeroShowcase() {
   return (
     <>
       {/* Hero */}
-      <section className="tm-hero" style={{ position: "relative", height: "clamp(455px, calc(100vh - 340px), 740px)", overflow: "hidden", background: "var(--color-accent-900)" }}>
+      {/* Fixed height, so the photograph is the same size on every slide — the
+          card is what changes with its text, not the picture. The 500px floor
+          is set by the longest slide: at 455px the problem card's body ran past
+          the bottom of the band on a short laptop screen and was clipped. */}
+      <section className="tm-hero" style={{ position: "relative", height: "clamp(500px, calc(100vh - 340px), 740px)", overflow: "hidden", background: "var(--color-accent-900)" }}>
         <div className="tm-hero-img tm-figure" style={{ position: "absolute", inset: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element -- full-bleed hero, sized by CSS */}
-          <img src={h.image} alt={h.alt} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 35%" }} />
+          <img src={h.image} alt={h.alt} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: h.focus ?? "center 35%" }} />
         </div>
         <div className="tm-hero-scrim" style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(1,86,151,0.42) 0%, rgba(1,86,151,0.06) 62%, rgba(1,86,151,0.22) 100%)" }} />
         <div className="tm-hero-wrap" style={{ position: "relative", maxWidth: 1320, margin: "0 auto", padding: "0 32px", height: "100%", display: "flex", alignItems: "center" }}>
           <div className="blueprint tm-hero-card" style={{ width: "min(608px, 100%)", background: "rgba(255,255,255,0.92)", padding: "36px 44px 38px", display: "flex", flexDirection: "column", gap: 16 }}>
             <Corners />
             <h1 style={{ fontSize: "clamp(29px, 4.6vw, 46px)", lineHeight: 1.08, margin: 0, letterSpacing: "-0.02em" }}>{h.title}</h1>
-            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>{h.body}</p>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>{emphasise(h.body)}</p>
             <div className="tm-hero-btns" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
               <Link href={h.href} className="btn btn-primary blueprint" style={{ padding: "13px 26px", fontSize: 15, color: "#0E2A4A" }}>
                 Learn more
@@ -45,8 +50,11 @@ export default function HeroShowcase() {
               </Link>
               {/* Not /products — that is the catalogue. "Our Solution" is a
                   claim about the problem this hero just stated, so it resolves
-                  to the page that answers it failure by failure. */}
-              <Link href="/platform#solution" className="btn btn-secondary" style={{ padding: "13px 26px", fontSize: 15 }}>
+                  to the page that answers it failure by failure. It lands at
+                  the TOP of that page, not on #solution: the platform hero
+                  states what the answer is before the eight failures argue it,
+                  and deep-linking past it dropped the reader mid-argument. */}
+              <Link href="/platform" className="btn btn-secondary" style={{ padding: "13px 26px", fontSize: 15 }}>
                 Our Solution
               </Link>
             </div>

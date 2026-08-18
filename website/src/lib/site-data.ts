@@ -28,8 +28,8 @@ export const PRODUCTS: Product[] = [
     description:
       "A connected facility platform for OPD, IPD, ward management, laboratory, imaging, pharmacy, billing, HR, and reporting, all tied to the same patient record.",
     modules: ["Patient Registry", "Outpatient & Inpatient", "Ward & Bed Management", "Laboratory", "Imaging", "Pharmacy", "Billing & Payments", "Reporting & BI", "DHIS2 Sync"],
-    image: "/assets/doctor-nurse-consultation.jpg",
-    imageAlt: "Hospital clinicians coordinating patient care",
+    image: "/assets/doctor-at-workstation.jpg",
+    imageAlt: "A doctor at a workstation, reading a patient's record on screen",
   },
   {
     slug: "cms",
@@ -88,8 +88,8 @@ export const PRODUCTS: Product[] = [
     description:
       "Patients see their own records, prescriptions, lab results, and visit history — on a phone, by SMS, or at a kiosk — and share feedback that flows back to the facility.",
     modules: ["My Records", "Prescriptions & Results", "Visit History", "Appointment Reminders", "Feedback & Follow-up"],
-    image: "/assets/african-nurse.jpg",
-    imageAlt: "Health worker helping a patient access their records on a phone",
+    image: "/assets/clinician-with-tablet.jpg",
+    imageAlt: "A patient reading their own health record on a tablet",
   },
 ];
 
@@ -270,7 +270,7 @@ export const CHALLENGES: Challenge[] = [
     d2: "M9 14h6",
     body: "Paper files live where they were written. If the folder is at another facility, in a locked office, or lost to flooding, the clinician in front of the patient has nothing to read. Staff search shelves while a queue builds outside the door.",
     cost: "Time spent looking for a file is time taken from the patient in front of you.",
-    fix: "One patient record, held on the device and replicated when a connection appears — searchable by name, hospital number, geocode, QR card or fingerprint.",
+    fix: "**One patient record**, held on the device and **replicated when a connection appears** — searchable by name, hospital number, geocode, QR card or fingerprint.",
     products: ["HMIS", "CMS", "PPS"],
     steps: [
       { t: "Register once, keep the identity", b: "The front desk registers the patient once. The record carries a hospital number, a geocode down to the boma, and optionally a QR card or fingerprint, so the same person is found again without a folder." },
@@ -289,7 +289,7 @@ export const CHALLENGES: Challenge[] = [
     d2: "M3 4v5h5",
     body: "Without the last visit in hand, the clinician takes the story again: what was diagnosed, what was prescribed, whether it worked. The patient answers from memory, and the memory of an unwell person under pressure is an unreliable clinical record.",
     cost: "Consultations run long and start incomplete — the second visit knows less than the first.",
-    fix: "The chart opens with vitals, diagnoses, prescriptions, results and the plan from every previous visit already there.",
+    fix: "The chart opens with vitals, diagnoses, prescriptions, results and the plan from **every previous visit already there**.",
     products: ["HMIS", "CMS", "PPS"],
     steps: [
       { t: "Open the chart, not a blank page", b: "Starting a consultation loads the patient's timeline: previous diagnoses, medicines, results, vitals and the plan left by the last clinician." },
@@ -301,14 +301,14 @@ export const CHALLENGES: Challenge[] = [
   {
     slug: "queues-with-no-order-of-urgency",
     title: "Queues with no order of urgency",
-    image: "/assets/images/pediatric-ward-interior.jpeg",
-    imageAlt: "A crowded ward with patients waiting",
+    image: "/assets/medical-unit-male-ward.jpg",
+    imageAlt: "Patients waiting on a crowded hospital ward",
     short: "People are seen in the order they arrived, not the order their condition demands.",
     d: "M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z",
     d2: "M12 7v5l4 2",
     body: "A paper queue cannot rank itself. A child in respiratory distress waits behind a routine review because the register has no way to say which is which, and no one at the desk can see the whole room at once.",
     cost: "The sickest patients wait the longest, and nobody finds out until it is late.",
-    fix: "Check-in assigns acuity, triage derives RED / YELLOW / GREEN from ETAT vitals, and the live queue sorts itself by urgency.",
+    fix: "Check-in assigns acuity, triage derives **RED / YELLOW / GREEN** from ETAT vitals, and the **live queue sorts itself by urgency**.",
     products: ["HMIS", "CMS"],
     steps: [
       { t: "Check in against the record", b: "Arrival is logged on the patient's record, so the room is a list rather than a crowd with no order." },
@@ -327,7 +327,7 @@ export const CHALLENGES: Challenge[] = [
     d2: "M8.5 8.5l7 7",
     body: "Tests are re-ordered because no one can see yesterday's result. Medicines are re-prescribed because no one can see what was dispensed. Interactions and allergies stay invisible until they present as harm.",
     cost: "Scarce drugs and reagents are spent twice, and avoidable reactions get through.",
-    fix: "Prescribing runs interaction, allergy and duplicate checks against the patient's active medicines, and dispensing writes back to the same record.",
+    fix: "Prescribing runs **interaction, allergy and duplicate checks** against the patient's active medicines, and dispensing writes back to the same record.",
     products: ["HMIS", "CMS", "PMS"],
     steps: [
       { t: "Prescribe from the active medicine list", b: "The prescriber sees what the patient is already taking, when it was dispensed and by whom." },
@@ -346,7 +346,7 @@ export const CHALLENGES: Challenge[] = [
     d2: "M9 3h6",
     body: "The bench produces a number, writes it on a slip, and hopes it finds the person who ordered it. Critical values travel at the speed of whoever is carrying them, and a slip that goes missing is a result that was never taken.",
     cost: "Abnormal and critical findings sit unread while the patient goes home.",
-    fix: "Results release straight into the chart, critical values require two-eyes confirmation and message the ordering clinician, and unreviewed results breach a visible SLA.",
+    fix: "Results release straight into the chart, critical values require **two-eyes confirmation** and message the ordering clinician, and unreviewed results **breach a visible SLA**.",
     products: ["LIS", "HMIS", "RIS"],
     steps: [
       { t: "Order electronically", b: "The clinician orders from within the encounter; the lab receives it as a worklist item tied to that patient and that visit." },
@@ -358,14 +358,14 @@ export const CHALLENGES: Challenge[] = [
   {
     slug: "stock-counted-after-it-has-run-out",
     title: "Stock counted after it has run out",
-    image: "/assets/images/community-medication-distribution.jpeg",
-    imageAlt: "Medication being recorded in a paper register",
+    image: "/assets/ward-supplies-distribution.jpg",
+    imageAlt: "Supplies being handed out on a ward round, counted by hand from the trolley",
     short: "The shelf is the only inventory system, and it reports late.",
     d: "M20 7.5 12 3 4 7.5v9L12 21l8-4.5z",
     d2: "M4 7.5 12 12v9",
     body: "Medicines are counted by eye during a busy shift, expiry dates are checked when someone remembers, and a stock-out is discovered at the counter with a prescription already in hand. Reorder decisions rest on guesswork.",
     cost: "Patients are turned away from drugs the facility owned but let expire.",
-    fix: "Live stock status, batch and expiry tracking with first-expiry-first-out, reorder alerts and a printable purchase order — plus an append-only two-signature register for controlled medicines.",
+    fix: "**Live stock status**, batch and expiry tracking with **first-expiry-first-out**, reorder alerts and a printable purchase order — plus an append-only two-signature register for controlled medicines.",
     products: ["PMS", "HMIS"],
     steps: [
       { t: "Receive stock into batches", b: "Deliveries are entered by batch number and expiry date, so the shelf has a ledger behind it." },
@@ -384,7 +384,7 @@ export const CHALLENGES: Challenge[] = [
     d2: "M13 6l6 6-6 6",
     body: "A referral note names a destination but rarely carries the clinical picture. The receiving team starts the workup again, and the referring team never learns what happened to the patient they sent.",
     cost: "Care restarts at every level, and the loop back to the referring clinician is never closed.",
-    fix: "Referral bundles a transfer package of the record; accepting it opens an intake encounter with handover notes, and completion sends a structured outcome back.",
+    fix: "Referral bundles **a transfer package of the record**; accepting it opens an intake encounter with handover notes, and completion **sends a structured outcome back**.",
     products: ["HMIS", "CMS"],
     steps: [
       { t: "Refer with the record attached", b: "The referral bundles a transfer package: history, vitals, results, medicines and the reason for referral." },
@@ -396,14 +396,14 @@ export const CHALLENGES: Challenge[] = [
   {
     slug: "reports-assembled-by-hand-at-month-end",
     title: "Reports assembled by hand at month end",
-    image: "/assets/african-nurse.jpg",
-    imageAlt: "A nurse completing facility paperwork",
+    image: "/assets/outreach-blood-pressure.jpg",
+    imageAlt: "A health worker writing a blood-pressure reading onto a paper form at an outreach clinic",
     short: "National figures are transcribed from tally sheets weeks after the fact.",
     d: "M4 20V10m5 10V4m5 16v-7m5 7V7",
     d2: "",
     body: "Facility staff spend days copying registers into monthly summaries. Numbers arrive late, incomplete, and impossible to check against the visits that produced them — which is precisely the gap the Ministry names in its own review of the system.",
     cost: "Planning and outbreak response run on data that is already out of date.",
-    fix: "Every visit tallies as it happens, data-quality scoring runs before export, and DHIS2-ready reports — Monthly HMIS 105, Weekly Epi, Immunization Coverage — are generated, not retyped.",
+    fix: "**Every visit tallies as it happens**, data-quality scoring runs **before** export, and DHIS2-ready reports — Monthly HMIS 105, Weekly Epi, Immunization Coverage — are generated, not retyped.",
     products: ["HMIS", "CMS"],
     steps: [
       { t: "Tally at the point of care", b: "Each visit contributes to the indicators as it is recorded. There is no separate counting exercise." },
@@ -426,10 +426,10 @@ export interface CareLevel {
 }
 
 export const CARE_LEVELS: CareLevel[] = [
-  { tone: "#015697", level: "Community — Boma Health Initiative", role: "Promotion, screening & referral", product: "Registry & referral", image: "/assets/images/community-medication-distribution.jpeg", alt: "A health worker recording medication in a paper register" },
+  { tone: "#015697", level: "Community — Boma Health Initiative", role: "Promotion, screening & referral", product: "Registry & referral", image: "/assets/community-malaria-test.jpg", alt: "A community health worker running a malaria rapid test on a small child held by their mother, at a village outreach" },
   { tone: "#015697", level: "Primary Health Care Unit (PHCU)", role: "First formal point of care", product: "CMS", image: "/assets/community-health-worker.jpg", alt: "Community health worker at a primary care clinic" },
-  { tone: "#015697", level: "Primary Health Care Centre (PHCC)", role: "Expanded primary & maternity care", product: "CMS", image: "/assets/african-nurse.jpg", alt: "Health worker helping a patient on a phone" },
-  { tone: "#015697", level: "County Hospital", role: "First referral & inpatient care", product: "HMIS", image: "/assets/images/pediatric-ward-interior.jpeg", alt: "A crowded pediatric ward" },
+  { tone: "#015697", level: "Primary Health Care Centre (PHCC)", role: "Expanded primary & maternity care", product: "CMS", image: "/assets/medical-unit-female-ward.jpg", alt: "The women's side of a health centre's medical unit" },
+  { tone: "#015697", level: "County Hospital", role: "First referral & inpatient care", product: "HMIS", image: "/assets/inpatient-ward-beds.jpg", alt: "Mothers and babies on numbered beds under mosquito nets in a hospital inpatient ward" },
   { tone: "#015697", level: "State Hospital", role: "Secondary & specialised care", product: "HMIS", image: "/assets/doctor-nurse-consultation.jpg", alt: "Hospital clinicians coordinating patient care" },
   { tone: "#015697", level: "Referral / Tertiary Hospital", role: "Tertiary & teaching care", product: "HMIS", image: "/assets/doctor-tablet-review.jpg", alt: "Clinician reviewing records on a tablet" },
 ];
@@ -438,12 +438,13 @@ export const CARE_LEVELS: CareLevel[] = [
 export const careLevelLabel = (c: CareLevel) =>
   c.product === "Registry & referral" ? "Community" : c.level.replace(/ \(.*\)/, "").replace(" — Boma Health Initiative", "");
 
-export const SYSTEM_STATS = [
-  { accent: "#015697", value: "4%", label: "of facilities have a computer with internet — which is why facility data cannot travel", source: "SARA / EHSP 2025" },
-  { accent: "#015697", value: "13%", label: "have any on-site power source", source: "SARA / EHSP 2025" },
-  { accent: "#015697", value: "1.42", label: "health facilities per 10,000 people — against a national target of 2", source: "EHSP 2025" },
-  { accent: "#015697", value: "7.6", label: "health workers per 10,000 people — the WHO norm is 44.5", source: "EHSP 2025" },
-  { accent: "#015697", value: "38.7", label: "UHC service-coverage index, out of 100", source: "EHSP 2025" },
+/* The two infrastructure figures that carry the closing argument on the
+   health-system page: they are the reason offline-first is a requirement and
+   not a feature. The other EHSP/SARA numbers are attached to the part of the
+   problem they evidence, in PROBLEM_BREAKS below. */
+export const TOOLING_STATS = [
+  { value: "4%", label: "of facilities have a computer with internet", source: "SARA / EHSP 2025" },
+  { value: "13%", label: "have any on-site power source", source: "SARA / EHSP 2025" },
 ];
 
 export interface TeamMember {
@@ -489,6 +490,13 @@ export interface Hero {
    * page — because that is what the card promises when it is clicked.
    */
   href: string;
+  /**
+   * object-position for the full-bleed crop, when "center 35%" cuts this
+   * particular photograph badly. The hero band is far wider than any of the
+   * source images, so the crop is decided vertically and one setting cannot
+   * suit every composition.
+   */
+  focus?: string;
 }
 /* No source line on the strip cards: the attribution belongs with the figure
    itself, which is what "Learn more" resolves to — the reality grid on
@@ -497,13 +505,20 @@ export interface Hero {
 export const HEROES: Hero[] = [
   {
     kicker: "The Problem",
-    /* The headline is the promise, not the diagnosis — the strip card beneath
-       it still carries the problem ("The Problem · 1,223 maternal deaths per
-       100,000 live births"), and the body below states what paper costs. */
-    title: "The end of paper-based health records.",
-    body: "In South Sudan, a patient's history lives on paper — one ledger, one building, one shelf — so when it is lost or damaged, care begins again from nothing. The same break runs upward: what a facility knows about an outbreak, a stock-out or a missed vaccination rarely reaches anyone who can act on it. The data exists; what has been missing is a record built for a clinic with no power and no signal. That is what Tamam is.",
-    image: "/assets/new-landing.png",
-    alt: "A South Sudanese midwife examining a child with a stethoscope at a rural clinic",
+    /* The headline is the promise; the strip card and the body below it carry
+       the diagnosis. No terminal full stop — none of the four hero titles
+       takes one. */
+    title: "Transforming fragmented records into connected care",
+    body: "In South Sudan, a patient's history lives on paper — **one ledger, one building, one shelf** — so when it is lost or damaged, care begins again from nothing. The same break runs upward: what a facility knows about an outbreak, a stock-out or a missed vaccination rarely reaches anyone who can act on it. **The data exists**; what has been missing is a record built for a clinic with no power and no signal. That is what Tamam is.",
+    /* The paper record itself, in the hands of the two people the platform is
+       for. The left third of the frame is bare wall, which is exactly where
+       the hero card sits — the clinicians and the file stay in view beside it. */
+    image: "/assets/doctor-nurse-consultation.jpg",
+    alt: "A doctor and a nurse reading a patient's paper file together, in front of a wall of paper folders",
+    /* Both clinicians stand high in this frame: the default 35% cuts the top
+       of the doctor's head on a 900px-tall screen. 27% keeps both heads whole
+       and still carries the folder rack and the green file. */
+    focus: "center 27%",
     accent: "#015697",
     stripKicker: "The Problem",
     /* The mission's own statement of the problem (VISION-MINDMAP.md). A single
@@ -515,7 +530,7 @@ export const HEROES: Hero[] = [
   {
     kicker: "Ground Truth",
     title: "The daily reality inside South Sudan's facilities",
-    body: "Documented across South Sudanese facilities, from the wards to the waiting line — the same failures repeat on both sides of the consultation desk: lost histories, duplicate treatment, and very slow clinical flow.",
+    body: "Documented across South Sudanese facilities, from the wards to the waiting line — the same failures repeat on both sides of the consultation desk: **lost histories, duplicate treatment, and very slow clinical flow**.",
     image: "/assets/images/pediatric-ward-interior.jpeg",
     alt: "A crowded pediatric ward",
     accent: "#015697",
@@ -527,13 +542,17 @@ export const HEROES: Hero[] = [
   },
   {
     kicker: "National Alignment",
-    title: "Built around South Sudan's own health system",
-    body: "The Ministry of Health's 2025 Essential Health Services Package organises the country's care into six levels — and names fragmented, paper-bound data as one of its biggest gaps. Tamam is shaped to fit that system, not replace it — and the same six-tier structure runs through most sub-Saharan health systems, so what fits here travels.",
-    image: "/assets/doctor-nurse-consultation.jpg",
-    alt: "Hospital clinicians coordinating patient care",
+    title: "South Sudan's healthcare system",
+    body: "The Ministry of Health's **2025 Essential Health Services Package** organises the country's care into **six levels** — and names fragmented, paper-bound data as one of its biggest gaps. Tamam is shaped to fit that system, not replace it — and the same six-tier structure runs through most sub-Saharan health systems, so what fits here travels.",
+    /* Takes the frame the problem card gave up. The carousel shows four
+       photographs; two of them being the same one made it read as a stall
+       rather than a change of subject. A rural clinic also sits at the tier
+       this card is about — the primary level the EHSP builds up from. */
+    image: "/assets/new-landing.png",
+    alt: "A South Sudanese midwife examining a child with a stethoscope at a rural clinic",
     accent: "#015697",
     stripKicker: "National Alignment",
-    stripTitle: "Built around South Sudan's own health system",
+    stripTitle: "South Sudan's healthcare system",
     /* The six tiers this card names are the levels section, not the top of the
        page. */
     href: "/health-system#levels",
@@ -541,7 +560,7 @@ export const HEROES: Hero[] = [
   {
     kicker: "The Goal",
     title: "Our goal is to prove it works, then bring it to every clinic that needs it",
-    body: "We're raising $100,000 to launch TamamHealth in 10 clinics across Juba and greater South Sudan — proof that offline-first digital records can work in the hardest conditions, and the model we take across sub-Saharan Africa.",
+    body: "We're raising **$100,000** to launch TamamHealth in **10 clinics** across Juba and greater South Sudan — proof that offline-first digital records can work in the hardest conditions, and the model we take across sub-Saharan Africa.",
     image: "/assets/community-health-worker.jpg",
     alt: "Community health worker at a primary care clinic",
     accent: "#015697",
@@ -735,36 +754,79 @@ export const PLATFORM_PILLARS = [
    to actually be argued. Sourced from the project's own vision documents
    (docs/VISION-MINDMAP.md, docs/EXPERT-FEEDBACK.md — a February 2026
    conversation with a South Sudan health-system expert who has worked every
-   level from Boma to national). The statistics quoted in the reality grid
-   below come from the Ministry's EHSP 2025 and the SARA facility assessment;
-   the structural account here is field observation, stated as such. */
+   level from Boma to national). Each break carries the one EHSP 2025 / SARA
+   figure that evidences it, rather than a detached statistics strip; the
+   structural account around the numbers is field observation, stated as such. */
 
 export const PROBLEM_LEAD =
-  "A health system is only as good as what it can remember. South Sudan's runs on paper: a visit is written into a ledger that lives in one building, on one shelf. That single choice — made by circumstance, not by anyone's preference — breaks the record in two directions at once.";
+  "A health system is only as good as what it can remember. South Sudan's runs on paper: a visit is written into a ledger that lives in one building, on one shelf. That single choice — made by circumstance, not by anyone's preference — breaks the record in three places at once.";
 
-export const PROBLEM_BREAKS = [
+export interface ProblemBreak {
+  where: string;
+  what: string;
+  body: string;
+  image: string;
+  imageAlt: string;
+  /** object-position for the banner crop — these three sources put their
+      subject well above centre, and the default would cut the heads. */
+  focus: string;
+  /** The figure this break rests on. `note` says what the number means for
+      the argument beside it, so the statistic reads as evidence and not decor. */
+  stat: { value: string; unit: string; note: string; source: string };
+}
+
+export const PROBLEM_BREAKS: ProblemBreak[] = [
   {
     where: "At the bedside",
     what: "The history is gone",
     body:
-      "A patient arrives and their past is whatever they can remember out loud. Allergies, the drug that failed last time, the result that came back abnormal — none of it is in the room. So the clinician starts from nothing: tests already done get repeated, treatment already tried gets tried again, and a warning already recorded goes unseen. In a system with 7.6 health workers per 10,000 people, that repeated work is time the next patient in the queue does not get.",
+      "A patient arrives and their past is whatever they can remember out loud. Allergies, the drug that failed last time, the result that came back abnormal — none of it is in the room. So the clinician starts from nothing: tests already done get repeated, treatment already tried gets tried again, and a warning already recorded goes unseen. Where clinicians are this thin on the ground, every repeated test is time the next patient in the queue does not get.",
+    image: "/assets/images/reviewing-health-records.jpeg",
+    imageAlt: "Two health workers reading through wide paper registers, page by page, with more ledgers stacked on the floor behind them",
+    focus: "center 26%",
+    stat: {
+      value: "7.6",
+      unit: "health workers per 10,000 people",
+      note: "the WHO norm is 44.5",
+      source: "EHSP 2025",
+    },
   },
   {
     where: "At the supervisor's desk",
     what: "The work is invisible",
     body:
-      "Community health workers see patients across thousands of scattered villages and decide alone — no second opinion, no one reviewing whether the assessment was right. Their supervisor cannot see which of them are active this week, how many patients they have seen, or which children have missed a vaccine dose, because nothing they write travels any further than the notebook they write it in.",
+      "Community health workers see patients across thousands of scattered villages and decide alone — no second opinion, no one reviewing whether the assessment was right. Their supervisor cannot see which of them are active this week, how many patients they have seen, or which children have missed a vaccine dose, because nothing they write travels any further than the notebook they write it in. At this density, most care happens nowhere near a desk that could review it.",
+    image: "/assets/outreach-blood-pressure.jpg",
+    imageAlt: "A health worker in a surveillance-and-response vest writing on a paper form at a village outreach table, having just taken a woman's blood pressure",
+    focus: "center 30%",
+    stat: {
+      value: "1.42",
+      unit: "health facilities per 10,000 people",
+      note: "the national target is 2",
+      source: "EHSP 2025",
+    },
   },
   {
     where: "At the Ministry",
     what: "The picture arrives too late",
     body:
       "Reports are assembled by hand at month end, copied from ledgers into forms and totalled by whoever is free that day. Numbers arrive incomplete, late, and impossible to check back against the visits that produced them. An outbreak signal, a stock-out, a run of missed immunisations — all of it is visible in the paper, weeks after the moment when acting on it would have mattered.",
+    image: "/assets/facility-banner.jpg",
+    imageAlt: "Patients on camp beds under a canvas outbreak-treatment tent, the kind of surge a month-end report announces after the fact",
+    focus: "center 55%",
+    stat: {
+      value: "38.7",
+      unit: "UHC service-coverage index, out of 100",
+      note: "planned each year from returns nobody can check",
+      source: "EHSP 2025",
+    },
   },
 ];
 
+export const PROBLEM_WHY_TITLE = "None of this is a failure of care. It is a failure of tooling.";
+
 export const PROBLEM_WHY =
-  "None of this is a failure of care. It is a failure of tooling: 4% of facilities have a computer with internet and 13% have any power source at all, so software that assumes a server, a connection, or a stable socket was never going to be used here. The data exists — it is simply trapped at the point where it is created.";
+  "Software that assumes a server, a live connection or a stable socket was never going to be used here — so the record keeps being written in the one place it cannot travel from. The data exists. It is simply trapped at the point where it is created.";
 
 /* ── National alignment page ── */
 

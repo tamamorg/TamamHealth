@@ -135,7 +135,7 @@ export default function AssetsPage() {
             chips — the same row every other module list uses — rather than a
             KPI strip above the card, which cost a band of vertical space and
             was the only place in the app still framing counts as cards. */}
-        <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+        <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="equipment-list">
           <EhrListHeader
             title={t('equipment.topBarTitle')}
             stats={summary ? [

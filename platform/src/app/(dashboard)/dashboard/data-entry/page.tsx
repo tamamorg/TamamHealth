@@ -486,7 +486,7 @@ export default function DataEntryDashboard() {
             <div className="w-full max-w-2xl rounded-lg" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-xl)' }}>
 
               {/* Form header */}
-              <div className="sticky top-0 z-10 flex items-center justify-between p-4 rounded-t-lg" style={{ background: 'var(--bg-card-solid)', borderBottom: '1px solid var(--border-medium)' }}>
+              <div data-tour="census-form-header" className="sticky top-0 z-10 flex items-center justify-between p-4 rounded-t-lg" style={{ background: 'var(--bg-card-solid)', borderBottom: '1px solid var(--border-medium)' }}>
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-5 h-5" style={{ color: ACCENT }} />
                   <div>
@@ -506,7 +506,7 @@ export default function DataEntryDashboard() {
 
                 {/* 1. Patient Census */}
                 {sectionHeader(Users, t('dataEntry.patientCensus'), 'var(--accent-primary)')}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-tour="census-patient-fields">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {numField(t('dataEntry.inpatientsTotal'), 'inpatientsTotal', Users)}
                   {numField(t('patient.male'), 'inpatientsMale')}
                   {numField(t('patient.female'), 'inpatientsFemale')}
