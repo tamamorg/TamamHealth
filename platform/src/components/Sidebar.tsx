@@ -78,7 +78,11 @@ export default function Sidebar() {
 
   const badges = useSidebarBadges();
   const role = currentUser?.role;
-  const canChangeLang = role === 'super_admin' || role === 'org_admin' || role === 'government' || role === 'medical_superintendent';
+  // Anyone can pick the language they read the app in — a nurse who reads Juba
+  // Arabic should not have to ask an administrator to be able to use the ward
+  // screen. What stays privileged is writing that choice to the organization,
+  // which changes the default for every other user at the facility.
+  const canSetOrgLocale = role === 'super_admin' || role === 'org_admin' || role === 'government' || role === 'medical_superintendent';
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
   const navItems = useMemo(() => uniqueNavItems(roleConfig?.navItems || []), [roleConfig?.navItems]);
   const groups = groupBySection(navItems);
@@ -316,9 +320,8 @@ export default function Sidebar() {
           )}
         </button>
 
-        {/* Language picker — only for org admin / hospital heads */}
-        {canChangeLang && (
-          <div className="relative">
+        {/* Language picker — available to every signed-in user */}
+        <div className="relative">
             <button
               onClick={() => setShowLangPicker(!showLangPicker)}
               title={collapsed ? `Language: ${currentLocaleConfig?.nativeName || 'English'}` : undefined}
@@ -351,8 +354,10 @@ export default function Sidebar() {
                     key={loc.code}
                     onClick={async () => {
                       await setLocale(loc.code);
-                      // Persist to organization so all facility users get this language
-                      if (currentUser?.orgId) {
+                      // Administrators additionally set the facility default, so
+                      // new users there start in this language. Everyone else's
+                      // choice stays local to their own device.
+                      if (canSetOrgLocale && currentUser?.orgId) {
                         try {
                           const { updateOrganization } = await import('@/lib/services/organization-service');
                           await updateOrganization(currentUser.orgId, { locale: loc.code });
@@ -373,8 +378,7 @@ export default function Sidebar() {
                 ))}
               </div>
             )}
-          </div>
-        )}
+        </div>
 
         {roleConfig?.allowedRoutes?.includes('/settings') && (
           <Link

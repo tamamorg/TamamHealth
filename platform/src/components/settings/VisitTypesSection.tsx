@@ -186,7 +186,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                   {reason.name}
                   {reason.modality === 'telehealth' && (
-                    <Video className="w-3 h-3" style={{ display: 'inline', marginLeft: 6, verticalAlign: '-1px' }} />
+                    <Video className="w-3 h-3" style={{ display: 'inline', marginInlineStart: 6, verticalAlign: '-1px' }} />
                   )}
                 </div>
                 {reason.description && (

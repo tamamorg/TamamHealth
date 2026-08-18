@@ -422,7 +422,7 @@ export default function BookAppointmentModal({
             display: 'flex', flexDirection: 'column', gap: 14,
             flex: 1, minHeight: 0, overflowY: 'auto',
             // Room for the scrollbar so it never sits on top of a slot chip.
-            paddingRight: 2,
+            paddingInlineEnd: 2,
           }}
         >
           {/* ═══ Step 1 — the visit: what it is, and who it needs ═══ */}

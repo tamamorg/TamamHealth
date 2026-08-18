@@ -189,7 +189,7 @@ export default function EmergencyPreparednessPage() {
           <EhrListHeader
             title="Emergency Preparedness"
             actions={
-              <button onClick={openForm} className="btn btn-primary" data-tour="emergency-new-plan" style={{ marginLeft: 'auto', height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <button onClick={openForm} className="btn btn-primary" data-tour="emergency-new-plan" style={{ marginInlineStart: 'auto', height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}>
                 <Plus className="w-4 h-4" /> New plan
               </button>
             }

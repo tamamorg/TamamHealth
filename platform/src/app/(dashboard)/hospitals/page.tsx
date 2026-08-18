@@ -520,7 +520,7 @@ function FacilityProfile({ hospital, onClose, canManage }: {
                   <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--overlay-subtle)', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(100, barWidth)}%`, height: '100%', borderRadius: 3, background: getPerformanceColor(norm), transition: 'width 0.3s' }} />
                   </div>
-                  <span className="stat-value" style={{ fontSize: 12, fontWeight: 700, color: getPerformanceColor(norm), minWidth: 40, textAlign: 'right' }}>
+                  <span className="stat-value" style={{ fontSize: 12, fontWeight: 700, color: getPerformanceColor(norm), minWidth: 40, textAlign: 'end' }}>
                     {formatMetricValue(key, val)}
                   </span>
                 </div>

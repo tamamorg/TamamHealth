@@ -958,7 +958,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                           type="button"
                           onClick={() => { setPayingLine(line); setCollectPickerOpen(false); }}
                           className="bl-fee-row"
-                          style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
+                          style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', textAlign: 'start' }}
                         >
                           <div className="min-w-0">
                             <div className="bl-fee-name">{shortenPersonName(line.patientName)}</div>
@@ -1148,7 +1148,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                 {owing ? formatMoney(line.outstanding) : t('billing.paidInFull')}
               </span>
             </div>
-            <div className="bl-muted" style={{ fontSize: 11, textAlign: 'right' }}>
+            <div className="bl-muted" style={{ fontSize: 11, textAlign: 'end' }}>
               <div>{t('payments.charged')}: <span style={{ color: 'var(--ehr-text, #102634)', fontFamily: 'monospace' }}>{formatMoney(line.totalCharged)}</span></div>
               <div>{t('payments.collected')}: <span style={{ color: 'var(--color-success-text)', fontFamily: 'monospace' }}>{formatMoney(line.totalCollected)}</span></div>
             </div>
@@ -1196,7 +1196,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                     <div className="bl-fee-name">{b.invoiceNumber || b._id.slice(-8)}</div>
                     <div className="bl-fee-cat">{(b.encounterDate || b.createdAt).slice(0, 10)} · {b.facilityName}</div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ textAlign: 'end' }}>
                     <div className="bl-num" style={{ fontWeight: 600, color: 'var(--ehr-text, #102634)' }}>{formatMoney(b.totalAmount)}</div>
                     <div style={{ fontSize: 10.5, color: b.balanceDue > 0 ? 'var(--color-danger-text)' : 'var(--color-success-text)' }}>
                       {b.balanceDue > 0 ? t('payments.amountDue', { amount: formatMoney(b.balanceDue) }) : t('payments.paid')}

@@ -29,7 +29,7 @@ import {
 
 /** Money columns right-align, so their head labels do too. */
 const MONEY_HEAD = { justifySelf: 'end' } as const;
-const MONEY_CELL = { textAlign: 'right' } as const;
+const MONEY_CELL = { textAlign: 'end' } as const;
 
 /** What share of gross the deductions take. Gross can legitimately be zero on
  *  a scaffolded entry, so guard the divide rather than printing NaN%. */

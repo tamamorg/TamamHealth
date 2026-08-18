@@ -236,7 +236,7 @@ export default function ConflictsPage() {
                       <b className="sadb-setting-label">Losing revisions</b>
                       <span className="sadb-setting-sub">
                         {c.losingRevs.map(r => (
-                          <span key={r} style={{ fontFamily: 'var(--font-platform-mono)', marginRight: 8 }}>{r}</span>
+                          <span key={r} style={{ fontFamily: 'var(--font-platform-mono)', marginInlineEnd: 8 }}>{r}</span>
                         ))}
                       </span>
                     </div>

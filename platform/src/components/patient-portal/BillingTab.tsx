@@ -306,7 +306,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
               </p>
             </div>
           )}
-          <div className="pp-row-detail-box" style={{ textAlign: 'left', marginBottom: 16 }}>
+          <div className="pp-row-detail-box" style={{ textAlign: 'start', marginBottom: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
               <div><p className="pp-field-label">{t('patientPortal.reference')}</p><p className="pp-field-value" style={{ fontFamily: 'var(--font-platform-mono)', fontWeight: 600 }}>{refNum}</p></div>
               <div><p className="pp-field-label">{t('portal.amount')}</p><p className="pp-field-value" style={{ fontWeight: 600 }}>{formatMoney(paidAmount)}</p></div>
@@ -405,7 +405,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
                   borderRadius: 8, border: on ? '1px solid var(--accent-primary)' : '1px solid #E3EBF2',
                   boxShadow: on ? 'inset 0 0 0 1px var(--accent-primary)' : 'none',
                   background: on ? '#EFF8FD' : '#FFFFFF',
-                  cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-platform)',
+                  cursor: 'pointer', textAlign: 'start', fontFamily: 'var(--font-platform)',
                 }}>
                   <span style={{ width: 34, height: 34, borderRadius: 8, background: `color-mix(in srgb, ${m.color} 12%, transparent)`, display: 'grid', placeItems: 'center', flexShrink: 0, color: m.color }}>
                     <m.icon size={16} />

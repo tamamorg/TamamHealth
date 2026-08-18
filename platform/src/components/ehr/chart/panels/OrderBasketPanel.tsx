@@ -125,7 +125,7 @@ export default function OrderBasketPanel({
         {/* Orders persist the moment they're added via the Prescribe/OrderLab
             modals — there is no separate signing step in the data model, so a
             "Sign and close" affordance here would be a no-op lie. */}
-        <span className="omrs-panel-row-sub" style={{ marginRight: 'auto', alignSelf: 'center' }}>
+        <span className="omrs-panel-row-sub" style={{ marginInlineEnd: 'auto', alignSelf: 'center' }}>
           Orders are saved as soon as they&rsquo;re added.
         </span>
         <button type="button" className="omrs-btn-primary" onClick={onClose}>Done</button>

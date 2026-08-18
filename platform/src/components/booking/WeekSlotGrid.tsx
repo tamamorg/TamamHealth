@@ -100,7 +100,7 @@ export default function WeekSlotGrid({
           padding: '0 0 8px',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingInlineEnd: 4 }}>
           <NavButton
             direction="back"
             disabled={!canGoBack || loading}

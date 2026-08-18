@@ -270,7 +270,7 @@ function EntryKv({ label, value, mono }: { label: string; value?: string | numbe
           fontWeight: 600,
           fontSize: 13,
           overflowWrap: 'anywhere',
-          textAlign: 'right',
+          textAlign: 'end',
           fontFamily: mono ? 'var(--font-mono, ui-monospace, monospace)' : undefined,
         }}>
           {value}

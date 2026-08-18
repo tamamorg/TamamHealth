@@ -655,7 +655,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                           type="button"
                           className="bl-fee-row"
                           onClick={() => setNewClaim(f => ({ ...f, patientId: p._id }))}
-                          style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
+                          style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'start', font: 'inherit' }}
                         >
                           <div className="bl-fee-name">{patientFullName(p)}</div>
                           <span className="bl-fee-cat">{p.hospitalNumber || ''}</span>

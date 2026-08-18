@@ -193,7 +193,7 @@ export default function HospitalManagePage() {
           <EhrListHeader
             title={t('hospitals.manageTitle', { name: hospital.name })}
             actions={
-              <Link href="/hospitals" className="btn btn-secondary btn-sm" style={{ gap: 4, marginLeft: 'auto' }}>
+              <Link href="/hospitals" className="btn btn-secondary btn-sm" style={{ gap: 4, marginInlineStart: 'auto' }}>
                 <ArrowLeft style={{ width: 13, height: 13 }} /> {t('hospitals.hospitalNetwork')}
               </Link>
             }
@@ -404,7 +404,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', fontSize: 12 }}>
       <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span style={{ fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', maxWidth: '60%' }}>{value}</span>
+      <span style={{ fontWeight: 600, color: 'var(--text-primary)', textAlign: 'end', maxWidth: '60%' }}>{value}</span>
     </div>
   );
 }
@@ -720,7 +720,7 @@ function EquipmentTab({ scope, hospitalId }: { scope: DataScope | undefined; hos
           <option value="decommissioned">{t('hospitals.equipDecommissioned')}</option>
           <option value="lost_or_stolen">{t('hospitals.equipLostStolen')}</option>
         </Select>
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+        <span style={{ marginInlineStart: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
           {t('hospitals.countOf', { shown: filtered.length, total: assets.length })}
         </span>
       </div>
@@ -888,7 +888,7 @@ function SchedulesTab({ hospitalId }: { hospitalId: string }) {
             padding: '4px 10px', fontSize: 12,
           }}
         />
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+        <span style={{ marginInlineStart: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
           {t('hospitals.shiftsCount', { count: schedules.length })}
         </span>
       </div>

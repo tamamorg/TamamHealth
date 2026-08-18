@@ -835,7 +835,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                             <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-condensed)', fontSize: 17, fontWeight: 600, color: lab.abnormal ? '#8B2E24' : '#0E2A4A' }}>{lab.result}</p>
                           </div>
                           {lab.referenceRange && (
-                            <div style={{ textAlign: 'right' }}>
+                            <div style={{ textAlign: 'end' }}>
                               <p className="pp-field-label" style={{ margin: 0 }}>{t('patientPortal.reference')}</p>
                               <p className="pp-field-value">{lab.referenceRange} {lab.unit}</p>
                             </div>

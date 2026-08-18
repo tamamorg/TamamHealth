@@ -64,7 +64,7 @@ export default function LabRequisition({
             Printed: {formatDateTime(receipt.placedAt)}
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div style={{ textAlign: 'end' }}>
           {draft.priority !== 'routine' && <div className="labord-req-stat" style={{ marginBottom: 6 }}>{priorityLabel}</div>}
           <Barcode value={accession} />
           <div className="labord-req-meta" style={{ fontFamily: 'var(--font-mono, monospace)', marginTop: 2 }}>{accession}</div>

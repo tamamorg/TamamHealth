@@ -33,7 +33,8 @@ import { writeFile } from 'node:fs/promises';
 
 async function loadChromium() {
   try {
-    return (await import('playwright')).chromium;
+    const mod = await import('playwright');
+    return mod.chromium ?? mod.default?.chromium;
   } catch {
     const root = process.env.PLAYWRIGHT_ROOT;
     if (!root) {
@@ -41,7 +42,9 @@ async function loadChromium() {
         'playwright is not installed here. Install it in a scratch directory and\n' +
         'set PLAYWRIGHT_ROOT to it — see the header of this file.');
     }
-    return (await import(pathToFileURL(join(root, 'index.js')).href)).chromium;
+    // playwright is CommonJS; `import()` of it may only expose a default.
+    const mod = await import(pathToFileURL(join(root, 'index.js')).href);
+    return mod.chromium ?? mod.default?.chromium;
   }
 }
 

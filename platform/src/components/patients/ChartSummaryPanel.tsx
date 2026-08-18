@@ -29,7 +29,7 @@ export default function ChartSummaryPanel({
   const [viewingProblem, setViewingProblem] = useState<ProblemDoc | null>(null);
   const [viewingMed, setViewingMed] = useState<PrescriptionDoc | null>(null);
 
-  const colDivider: React.CSSProperties = { borderRight: '1px solid var(--border-light)' };
+  const colDivider: React.CSSProperties = { borderInlineEnd: '1px solid var(--border-light)' };
   const sectionHeader: React.CSSProperties = {
     background: 'var(--overlay-subtle)',
     borderBottom: '1px solid var(--border-light)',

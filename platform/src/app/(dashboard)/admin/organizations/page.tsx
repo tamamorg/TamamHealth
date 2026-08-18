@@ -221,7 +221,7 @@ export default function AdminOrganizationsPage() {
     fontSize: '14px', width: '100%', outline: 'none',
   };
   const selectStyle: React.CSSProperties = {
-    ...inputStyle, appearance: 'none' as const, paddingRight: '36px',
+    ...inputStyle, appearance: 'none' as const, paddingInlineEnd: '36px',
     backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238A9E9A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
   };

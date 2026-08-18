@@ -172,7 +172,7 @@ export default function CheckoutPage() {
               ? 'If prompted on your phone, approve the mobile-money request to complete the transaction.'
               : 'The facility will confirm receipt shortly.'}
           </p>
-          <div style={{ padding: 16, borderRadius: 10, background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', textAlign: 'left', marginBottom: 16 }}>
+          <div style={{ padding: 16, borderRadius: 10, background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', textAlign: 'start', marginBottom: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reference</p>
@@ -244,7 +244,7 @@ export default function CheckoutPage() {
               display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px',
               borderRadius: 10, border: method === m.key ? `2px solid ${m.color}` : '1px solid var(--border-medium)',
               background: method === m.key ? `${m.color}08` : 'var(--bg-card-solid)',
-              cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+              cursor: 'pointer', textAlign: 'start', transition: 'all 0.15s',
             }}>
               <div style={{ width: 40, height: 40, borderRadius: 10, background: `${m.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <m.icon size={20} style={{ color: m.color }} />

@@ -1033,7 +1033,7 @@ export default function AppointmentsPage() {
               size="md"
               nav={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginRight: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginInlineEnd: 4 }}>
                     {idx + 1} / {sorted.length}
                   </span>
                   <button

@@ -175,7 +175,7 @@ function CalToolbar({ label, onNavigate, onView, view }: ToolbarProps<CalEvent, 
       {/* Period label */}
       <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>{label}</h3>
       {/* View switcher */}
-      <div style={{ marginLeft: 'auto', display: 'flex', height: 32, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--glass-border)', background: 'var(--bg-card-solid)' }}>
+      <div style={{ marginInlineStart: 'auto', display: 'flex', height: 32, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--glass-border)', background: 'var(--bg-card-solid)' }}>
         {CAL_VIEWS.map((v, i) => (
           <button
             key={v}
@@ -183,7 +183,7 @@ function CalToolbar({ label, onNavigate, onView, view }: ToolbarProps<CalEvent, 
             onClick={() => onView(v as View)}
             style={{
               display: 'flex', alignItems: 'center', padding: '0 14px',
-              borderLeft: i === 0 ? 'none' : '1px solid var(--glass-border)',
+              borderInlineStart: i === 0 ? 'none' : '1px solid var(--glass-border)',
               cursor: 'pointer', fontSize: 12, fontWeight: 600,
               textTransform: 'capitalize',
               fontFamily: "var(--font-platform)",

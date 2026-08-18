@@ -76,8 +76,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable} ${jetBrainsMono.variable} ${ibmPlexSans.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en" dir="ltr" className={`${barlow.variable} ${barlowCondensed.variable} ${jetBrainsMono.variable} ${ibmPlexSans.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
+        {/* Direction, before first paint. useTranslation sets dir/lang once it
+            has loaded the locale chunk, but that is an effect — it runs after
+            React hydrates, so an Arabic user would watch the whole app render
+            left-to-right and then flip. This reads the same localStorage key
+            synchronously in <head> and stamps the attributes on <html> before
+            any pixel is drawn. Kept inline and dependency-free for that reason;
+            it must not wait for a bundle. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var l=localStorage.getItem('tamamhealth-locale')||'en';var d=l==='apd'?'rtl':'ltr';document.documentElement.lang=l;document.documentElement.dir=d;}catch(e){}})();`,
+          }}
+        />
         {/* The same mark and blue the marketing site serves, from a file
             named for its job rather than a style-guide export number. The tab
             icon deliberately does NOT follow the platform accent — it has to

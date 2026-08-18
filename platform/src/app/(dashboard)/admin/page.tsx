@@ -572,7 +572,7 @@ export default function AdminDashboardPage() {
               {/* The column-header row stays rendered even when the list is empty. */}
               <div className="sadb-tenant-grid sadb-tenant-grid--head">
                 <span>Organization</span><span>Plan</span><span>Facilities</span><span>Users</span><span>Sync</span>
-                <span style={{ textAlign: 'right' }}>Status</span>
+                <span style={{ textAlign: 'end' }}>Status</span>
               </div>
               {tenantMatrix.map(row => {
                 const sync = tenantSync(row);
@@ -595,7 +595,7 @@ export default function AdminDashboardPage() {
                     <span className="sadb-tenant-num">{row.facilities} / {row.org.maxHospitals}</span>
                     <span className="sadb-tenant-num">{row.users} / {row.org.maxUsers}</span>
                     <span style={{ color: sync.color }}>{sync.label}</span>
-                    <span style={{ textAlign: 'right' }}>
+                    <span style={{ textAlign: 'end' }}>
                       <span className={`sadb-chip ${TONE_CHIP[statusTone(row.org.subscriptionStatus)]}`}>{row.org.subscriptionStatus}</span>
                     </span>
                   </button>

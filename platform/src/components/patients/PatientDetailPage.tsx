@@ -1241,11 +1241,11 @@ export default function PatientDetailPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
                           <thead>
                             <tr style={{ background: '#f0f6fb' }}>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Test</th>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Result</th>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Unit</th>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Reference</th>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Date</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Test</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Result</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Unit</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Reference</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Date</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1805,7 +1805,7 @@ export default function PatientDetailPage() {
                   <VitalsTrends records={recordsWithTriageVitals} />
                 </div>
               ) : (
-                <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+                <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto', paddingInlineEnd: 4 }}>
                 <table className="omrs-table" style={{ minWidth: 1140 }}>
                   <thead>
                     <tr>
@@ -1897,7 +1897,7 @@ export default function PatientDetailPage() {
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('referral.none')}</p>
                 </div>
               ) : (
-                <div className="space-y-3" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+                <div className="space-y-3" style={{ maxHeight: '60vh', overflowY: 'auto', paddingInlineEnd: 4 }}>
                 {patientReferrals.map(ref => {
                   const tp = ref.transferPackage as { medicalRecords?: unknown[]; labResults?: unknown[]; attachments?: unknown[]; packageSizeBytes?: number } | undefined;
                   const refAtts = ref.referralAttachments as unknown[] | undefined;

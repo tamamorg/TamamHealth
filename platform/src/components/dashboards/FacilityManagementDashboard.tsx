@@ -719,7 +719,7 @@ export default function FacilityManagementDashboard() {
     return (
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 320, color: 'var(--text-muted)' }}>
-          <Activity size={44} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+          <Activity size={44} style={{ marginInlineEnd: 8, animation: 'spin 1s linear infinite' }} />
           <span>Loading facility data…</span>
         </div>
       </main>

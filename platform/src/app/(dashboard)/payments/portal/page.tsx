@@ -499,7 +499,7 @@ export default function PatientPortalPage() {
                   <div className="bl-muted" style={{ fontSize: 11.5, marginBottom: 4 }}>{selectedBill.id}</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ehr-text-title, #132C44)' }}>{selectedBill.description}</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ textAlign: 'end' }}>
                   <span className="bl-stat-label">{t('portal.amountToPay')}</span>
                   <span className="bl-stat-value" style={{ fontSize: 20 }}>{formatMoney(Number(paymentAmount))}</span>
                 </div>
@@ -538,7 +538,7 @@ export default function PatientPortalPage() {
                       padding: '14px 18px',
                       borderColor: isSelected ? m.color : undefined,
                       borderWidth: isSelected ? 2 : 1,
-                      cursor: 'pointer', textAlign: 'left', width: '100%',
+                      cursor: 'pointer', textAlign: 'start', width: '100%',
                     }}
                   >
                     {/* Icon wrapped in a span — see the globals.css note above. */}
@@ -698,7 +698,7 @@ export default function PatientPortalPage() {
 
               <dl className="bl-totals" style={{
                 background: 'var(--ehr-page-bg, #FFFFFF)', borderRadius: 6, padding: '14px 18px',
-                marginBottom: 22, border: '1px solid var(--ehr-border, #DDEAF3)', textAlign: 'left',
+                marginBottom: 22, border: '1px solid var(--ehr-border, #DDEAF3)', textAlign: 'start',
               }}>
                 <div className="bl-totals-row"><dt>{t('lab.reference')}</dt><dd style={{ fontFamily: 'var(--font-platform-mono)' }}>{selectedBill?.id}</dd></div>
                 <div className="bl-totals-row"><dt>{t('portal.amount')}</dt><dd>{formatMoney(Number(paymentAmount))}</dd></div>
