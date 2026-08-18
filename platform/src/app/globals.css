@@ -186,10 +186,15 @@
   /* Ground and cards are both the header's blue, at different strengths:
      10% of the accent on white for the ground, 4% for a card. Same hue, two
      shades, so the card lifts without introducing a second colour. */
-  /* White ground everywhere, per the design (--color-bg: #FFFFFF): cards
-     separate by hairline + shadow, not by a tinted page behind them. The old
-     10%-brand wash made every page read slightly dull. */
-  --bg-app:        #FFFFFF;
+  /* The page ground is a faint accent wash so a white card reads as a panel
+     sitting ON something, rather than as an unbounded area fenced off by a
+     hairline. Two earlier attempts are worth not repeating: a 10% brand wash
+     here read dull, and a 4% mix on the CARDS (see --bg-card below) read as a
+     grey film over every panel. The distinction belongs on the ground, and it
+     has to stay faint — 4% of the accent in white is a cool near-white that
+     separates from a pure-white card without tinting the page. Derived from
+     --accent-primary rather than a fixed hex so it tracks the brand. */
+  --bg-app:        color-mix(in srgb, var(--accent-primary) 4%, var(--color-white));
   --bg-primary:    #FFFFFF;
   --bg-secondary:  color-mix(in srgb, var(--accent-primary) 6%, transparent);
   /* Cards are a shade of blue, not white: on the #F2F8FC ground a white card
@@ -197,11 +202,13 @@
      rather than a panel. brand-100 sits a step lighter than the ground, which
      is what makes it lift; inputs stay pure white so a field still reads as
      the writable thing on the card. */
-  /* Cards are pure white on the white page ground — panels are delineated by
-     their hairline borders, not by a tinted fill. (Was a 4% accent mix; that
-     read as a grey wash over every panel once the page ground went white.) */
-  --bg-card:       #FFFFFF;
-  --bg-card-solid: #FFFFFF;
+  /* Cards stay pure white — deliberately. They are the lifted surface, and the
+     separation now comes from the faint ground behind them (--bg-app) plus the
+     existing hairline and shadow. Do NOT tint the cards to increase contrast:
+     that was tried as a 4% accent mix and read as a grey film over every panel.
+     Tint the ground instead. */
+  --bg-card:       var(--color-white);
+  --bg-card-solid: var(--color-white);
   --bg-card-hover: var(--color-cream-75);
   --bg-input:      var(--color-white);
   --bg-sidebar:    var(--color-white);
@@ -454,7 +461,7 @@
   --map-tooltip-sub: var(--color-slate-500);
   --map-dot-stroke: var(--color-cream-25);
 
-  --ehr-page-bg: #FFFFFF;
+  --ehr-page-bg: var(--bg-app);
   --ehr-panel: var(--bg-card-solid);
   --ehr-border: #DDEAF3;
   --ehr-border-soft: #E7EEF5;
@@ -2473,7 +2480,7 @@ thead th {
   --ehr-rail: var(--color-brand-gradient);
   --ehr-rail-2: var(--color-brand-700);
   --ehr-rail-muted: rgba(255, 255, 255, 0.68);
-  --ehr-page-bg: #FFFFFF;
+  --ehr-page-bg: var(--bg-app);
   --ehr-panel: var(--bg-card-solid);
   --ehr-panel-soft: rgba(25, 136, 202, 0.075);
   --ehr-table-head: rgba(25, 136, 202, 0.11);
@@ -8984,7 +8991,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 /* ============ Patient chart: blue clinical record theme ============ */
 
 .ehr-chart-page {
-  --ehr-page-bg: #FFFFFF;
+  --ehr-page-bg: var(--bg-app);
   --ehr-panel: var(--bg-card-solid);
   --ehr-panel-soft: #F1F8FE;
   --ehr-table-head: #EAF4FC;

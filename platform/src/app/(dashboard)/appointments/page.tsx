@@ -13,6 +13,8 @@ import {
 } from '@/lib/appointment-status';
 import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { getDefaultDashboard } from '@/lib/role-routes';
 import AvailabilityModal from '@/components/AvailabilityModal';
 import {
   Calendar, Plus, CheckCircle2, User,
@@ -186,6 +188,7 @@ export default function AppointmentsPage() {
   // calendar's dialog, where there is no row to unfold beneath.
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
+  const router = useRouter();
   const [showWalkIn, setShowWalkIn] = useState(false);
   const [showAvailability, setShowAvailability] = useState(false);
   const [showDayPopup, setShowDayPopup] = useState(false);
@@ -316,6 +319,13 @@ export default function AppointmentsPage() {
   // Lives here rather than beside the other deep links because it writes the
   // walk-in form state declared just above. Waits for `patients` to load.
   const walkInParamRef = useRef(false);
+  /**
+   * True while the open walk-in dialog is the tail of "Register & check in".
+   * That journey ends when the patient is checked in, not on the booking grid,
+   * so it returns to the dashboard — whereas a clerk who opened the same dialog
+   * from this page is working through a list and stays where they are.
+   */
+  const walkInFromRegistrationRef = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined' || walkInParamRef.current) return;
     const params = new URLSearchParams(window.location.search);
@@ -326,6 +336,7 @@ export default function AppointmentsPage() {
     if (canBookAppointments) {
       setWiPatient(walkInId);
       setShowWalkIn(true);
+      walkInFromRegistrationRef.current = true;
     }
     params.delete('walkIn');
     const qs = params.toString();
@@ -469,6 +480,16 @@ export default function AppointmentsPage() {
     });
   };
 
+  /**
+   * Dismissing the dialog also drops the "came from registration" hand-off:
+   * the clerk chose not to check this patient in, so the next walk-in they
+   * open from this page must not inherit a redirect they never triggered.
+   */
+  const closeWalkIn = () => {
+    walkInFromRegistrationRef.current = false;
+    setShowWalkIn(false);
+  };
+
   const handleWalkIn = async () => {
     if (!wiPatient || !wiReason) { showToast(t('appointments.toastFillRequiredShort'), 'error'); return; }
     const patient = patients.find(p => p._id === wiPatient);
@@ -520,6 +541,14 @@ export default function AppointmentsPage() {
       }
       showToast(t('appointments.toastWalkInRegistered'), 'success'); setShowWalkIn(false);
       setWiPatient(''); setWiReason(''); setWiNotes(''); setWiDepartment('Outpatient'); setWiPriority('routine');
+      // Registration handed off here to finish the check-in; with the patient
+      // now in the queue that errand is done, so hand the user back to their
+      // own dashboard rather than leaving them on the booking grid they never
+      // asked for. Per-role, because /dashboard is not everyone's home.
+      if (walkInFromRegistrationRef.current) {
+        walkInFromRegistrationRef.current = false;
+        router.push(getDefaultDashboard(currentUser?.role || ''));
+      }
     } catch (err) { showToast(err instanceof Error ? err.message : t('appointments.toastFailed'), 'error'); }
     finally { setSubmitting(false); }
   };
@@ -991,7 +1020,7 @@ export default function AppointmentsPage() {
 
         {/* Walk-In */}
         {showWalkIn && canBookAppointments && (
-          <Modal onClose={() => setShowWalkIn(false)} title={t('appointments.registerWalkIn')} icon={<UserPlus size={34} style={{ color: 'var(--accent-primary)' }} />}>
+          <Modal onClose={closeWalkIn} title={t('appointments.registerWalkIn')} icon={<UserPlus size={34} style={{ color: 'var(--accent-primary)' }} />}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               {t('appointments.walkInIntro')}
             </p>
@@ -1009,7 +1038,7 @@ export default function AppointmentsPage() {
               </div>
               <div><label>{t('appointments.labelReasonForVisit')}</label><textarea value={wiReason} onChange={e => setWiReason(e.target.value)} rows={2} placeholder={t('appointments.reasonForVisitPlaceholder')} /></div>
               <div><label>{t('appointments.labelNotes')}</label><textarea value={wiNotes} onChange={e => setWiNotes(e.target.value)} rows={2} placeholder={t('appointments.walkInNotesPlaceholder')} /></div>
-              <ModalActions onCancel={() => setShowWalkIn(false)} onConfirm={handleWalkIn} confirmLabel={submitting ? t('appointments.registering') : t('appointments.registerWalkIn')} cancelLabel={t('action.cancel')} confirmColor="var(--accent-primary)" disabled={submitting} />
+              <ModalActions onCancel={closeWalkIn} onConfirm={handleWalkIn} confirmLabel={submitting ? t('appointments.registering') : t('appointments.registerWalkIn')} cancelLabel={t('action.cancel')} confirmColor="var(--accent-primary)" disabled={submitting} />
             </div>
           </Modal>
         )}

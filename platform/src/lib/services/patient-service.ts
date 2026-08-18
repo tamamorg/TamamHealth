@@ -467,8 +467,29 @@ export async function createPatient(rawData: Omit<PatientDoc, '_id' | '_rev' | '
   const db = patientsDB();
   const now = new Date().toISOString();
   const id = `pat-${uuidv4().slice(0, 8)}`;
-  const hospitalNumber = data.hospitalNumber || await generateHospitalNumber(data.registrationHospital);
+  // Resolved BEFORE the hospital number so a patient that cannot be saved does
+  // not burn an MRN on the way to being refused.
   const orgId = data.orgId || await inferOrgIdFromHospital(data.registrationHospital);
+  // A patient with no organisation is not a saved patient, however cleanly the
+  // local write succeeds:
+  //   • CouchDB's tenant validator refuses every document without an orgId
+  //     ('orgId is required on this database'), so the record is written to the
+  //     device's replica, pushed, rejected, and never seen again — under a
+  //     "Registered" toast.
+  //   • `filterByScope` matches on orgId for every role except super_admin and
+  //     government, so even on that one device the front desk, the clinician
+  //     and the pharmacy cannot see the person who was just registered.
+  // It happened whenever the registering user carried no facility of their own
+  // (a platform super_admin, an org_admin between postings): registrationHospital
+  // came through empty, the org could not be inferred from it, and nothing
+  // checked. Refuse it here, keyed to the field the form asks for.
+  if (!orgId) {
+    throw new ValidationError({
+      registrationHospital:
+        'Select the facility this patient is being registered at — a patient cannot be saved without one.',
+    });
+  }
+  const hospitalNumber = data.hospitalNumber || await generateHospitalNumber(data.registrationHospital);
   const countryId = data.countryId || await inferCountryIdFromHospital(data.registrationHospital);
   const geocodeId = data.geocodeId
     || await assignGeocodeId(data as unknown as Record<string, unknown>);

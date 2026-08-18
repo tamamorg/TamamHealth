@@ -6,6 +6,7 @@ import { ArrowLeft } from '@/components/icons/lucide';
 import { type CapturedFingerprint } from '@/components/FingerprintCapture';
 import PhotoCaptureModal from '@/components/patients/PhotoCaptureModal';
 import { usePatients } from '@/lib/hooks/usePatients';
+import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -57,6 +58,20 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
   // nutrition, radiology) would only land on Access Restricted, so they don't
   // get the button.
   const canCheckIn = isPathAllowed(currentUser?.role || '', '/appointments');
+  /**
+   * A user with no facility of their own — a platform super_admin, an org_admin
+   * between postings — has to say which facility they are registering at. The
+   * facility is what resolves the patient's organisation, and a patient with no
+   * organisation is not saved: the server's tenant validator refuses the
+   * document, and `filterByScope` hides it from every colleague who would go
+   * looking for it. It used to be taken as `hospitalId || ''` and never asked.
+   */
+  const facilityRequired = !currentUser?.hospitalId;
+  const { hospitals } = useHospitals();
+  const facilities = useMemo(
+    () => hospitals.map(h => ({ id: h._id, name: h.name })).sort((a, b) => a.name.localeCompare(b.name)),
+    [hospitals],
+  );
 
   const [form, setForm] = useState({ ...EMPTY_REGISTRATION_FORM });
   const [additionalNok, setAdditionalNok] = useState<AdditionalNok[]>([]);
@@ -126,7 +141,10 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
   // without, or it promises a section is finished and the submit bounces off
   // it. Sections with nothing required report a total of 0 and read as
   // optional rather than as permanently unfinished.
-  const sectionProgress = useMemo(() => sectionRequirementProgress(form), [form]);
+  const sectionProgress = useMemo(
+    () => sectionRequirementProgress(form, { facilityRequired }),
+    [form, facilityRequired],
+  );
   const requiredDone = sectionProgress.reduce((sum, s) => sum + s.done, 0);
   const requiredTotal = sectionProgress.reduce((sum, s) => sum + s.total, 0);
 
@@ -170,12 +188,20 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
     additionalNok,
     fingerprintCount: fingerprints.length,
     geocodeId,
-  }, t), [sectionLabels, form, additionalNok, fingerprints, geocodeId, t]);
+    // Named, not the raw id — the read-back is what the clerk confirms, and
+    // "hosp-004" is not a facility anyone recognises.
+    registrationFacilityName: facilityRequired
+      ? facilities.find(f => f.id === form.registrationFacility)?.name
+      : undefined,
+  }, t), [sectionLabels, form, additionalNok, fingerprints, geocodeId, facilityRequired, facilities, t]);
 
   /** The errors one section is carrying, keyed by form field. */
   const validateSection = (section: number): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (section === DEMOGRAPHICS_SECTION) {
+      if (facilityRequired && !form.registrationFacility) {
+        errs.registrationFacility = t('patientNew.errRegistrationFacilityRequired');
+      }
       if (!form.firstName.trim()) errs.firstName = t('patientNew.errFirstNameRequired');
       if (!form.surname.trim()) errs.surname = t('patientNew.errSurnameRequired');
       if (!form.gender) errs.gender = t('patientNew.errGenderRequired');
@@ -294,7 +320,7 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
         additionalNok,
         geocodeId,
         photoUrl: patientPhotoUrl,
-        hospitalId: currentUser?.hospitalId || '',
+        hospitalId: currentUser?.hospitalId || form.registrationFacility,
         registeredBy: currentUser?.name || currentUser?.username || '',
         nowIso: new Date().toISOString(),
       }));
@@ -348,7 +374,16 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
       console.error('Failed to register patient:', err);
       if (err instanceof Error && 'fields' in err) {
         const validationErr = err as Error & { fields: Record<string, string> };
-        setErrors(validationErr.fields);
+        // The service keys its errors by the field on the patient DOCUMENT.
+        // Every one of those matches a form field except the registering
+        // facility, which the document calls `registrationHospital` — left
+        // unmapped, its message would render against no field and the scroll
+        // to the offending input would find nothing.
+        const { registrationHospital, ...rest } = validationErr.fields;
+        setErrors({
+          ...rest,
+          ...(registrationHospital ? { registrationFacility: registrationHospital } : {}),
+        });
         showToast(t('patientNew.toastValidationFailed', { errors: Object.values(validationErr.fields).join(', ') }), 'error');
       } else {
         showToast(t('patientNew.toastRegisterFailed'), 'error');
@@ -441,7 +476,8 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
               {!reviewMode && (
                 <>
                   {renderSection(DEMOGRAPHICS_SECTION, 'demographics', (
-                    <DemographicsSection {...sectionProps} />
+                    <DemographicsSection {...sectionProps}
+                      facilities={facilities} facilityRequired={facilityRequired} />
                   ))}
                   {/* Biometrics sits directly under Demographics: the photo and
                       prints are taken while the patient is still being
