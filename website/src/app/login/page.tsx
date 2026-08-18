@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { PLATFORM_URL, ROLES, type LoginRole } from "@/lib/site-data";
+import { platformHref, type LoginRole } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "Log in",
@@ -36,6 +36,5 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const key: LoginRole["key"] = (ROLE_KEYS as readonly string[]).includes(role ?? "")
     ? (role as LoginRole["key"])
     : "staff";
-  const path = ROLES.find(r => r.key === key)?.path ?? "/login";
-  redirect(`${PLATFORM_URL}${path}`);
+  redirect(platformHref(key));
 }

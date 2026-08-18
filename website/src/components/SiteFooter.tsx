@@ -9,7 +9,7 @@
    because the initial state of <details> cannot be set per breakpoint. */
 
 import Link from "next/link";
-import { FOOTER_COLS } from "@/lib/site-data";
+import { FOOTER_COLS, platformHref } from "@/lib/site-data";
 
 export default function SiteFooter() {
   return (
@@ -53,7 +53,7 @@ export default function SiteFooter() {
           {/* Privacy lives as a clause inside the terms, so it deep-links to
               that clause rather than dropping the reader at the page top. */}
           <Link href="/terms#patient-data" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Privacy Policy</Link>
-          <Link href="/login" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Platform login</Link>
+          <a href={platformHref("staff")} style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Platform login</a>
         </div>
       </div>
     </footer>

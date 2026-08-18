@@ -15,7 +15,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Corners from "@/components/Corners";
-import { LANGUAGES, PRODUCTS, SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/site-data";
+import { LANGUAGES, PRODUCTS, SUPPORT_EMAIL, SUPPORT_PHONE, platformHref } from "@/lib/site-data";
 
 type MenuKey = "products" | "platform" | "system" | "about";
 type UtilKey = "account" | "lang" | "search" | "drawer";
@@ -75,8 +75,8 @@ const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: strin
       { label: "How it works", note: "A patient day, end to end", href: "/platform#how-it-works" },
       { label: "Offline-first by design", note: "Power cuts, network gaps, role-based access", href: "/platform#offline" },
       { label: "Where care breaks down", note: "The paper problem the platform replaces", href: "/health-system#challenges" },
-      { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: "/login?role=staff" },
-      { label: "Patient portal", note: "Records, prescriptions and results", href: "/login?role=patient" },
+      { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: platformHref("staff") },
+      { label: "Patient portal", note: "Records, prescriptions and results", href: platformHref("patient") },
       { label: "Get in touch", note: "See it on a real patient day", href: "/contact" },
     ],
   },
@@ -94,11 +94,14 @@ const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: strin
   },
 };
 
+// Straight to the platform, not through this origin's /login redirect — see
+// platformHref. These are the links a reader clicks expecting to arrive at a
+// sign-in form, so they should cost one navigation, not two.
 const PORTAL_LINKS = [
-  { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: "/login?role=staff" },
-  { label: "Patient portal", note: "Your records, prescriptions and results", href: "/login?role=patient" },
-  { label: "Ministry dashboard", note: "National reporting and DHIS2 export", href: "/login?role=ministry" },
-  { label: "Platform admin", note: "Organisations, provisioning and governance", href: "/login?role=superadmin" },
+  { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: platformHref("staff") },
+  { label: "Patient portal", note: "Your records, prescriptions and results", href: platformHref("patient") },
+  { label: "Ministry dashboard", note: "National reporting and DHIS2 export", href: platformHref("ministry") },
+  { label: "Platform admin", note: "Organisations, provisioning and governance", href: platformHref("superadmin") },
 ];
 
 const SEARCH_SUGGESTIONS = [

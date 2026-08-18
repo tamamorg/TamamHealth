@@ -672,6 +672,21 @@ export const ROLES: LoginRole[] = [
   },
 ];
 
+/**
+ * The platform URL a portal link should open directly.
+ *
+ * Links on this site point at this rather than at `/login`, because `/login`
+ * is a redirect: an internal <Link> to it makes the browser fetch this origin
+ * first, wait to be told to leave, and only then load the platform. That shows
+ * up as a stall and a flash on every click — a hop the reader pays for and
+ * nothing needs. `/login` stays for bookmarks, printed material and anything
+ * already pointing there.
+ */
+export function platformHref(role: LoginRole["key"] = "staff"): string {
+  const path = ROLES.find(r => r.key === role)?.path ?? "/login";
+  return `${PLATFORM_URL}${path}`;
+}
+
 export const LEGAL = [
   { id: "covers", title: "What these terms cover", paras: [
     "These Terms & Conditions govern use of the TamamHealth platform — the hospital, clinic, laboratory, radiology, pharmacy and patient portal products — together with this website and any related services. By creating an account, signing in, or using the platform on a facility device, you agree to them.",

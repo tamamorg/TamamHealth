@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Corners from "@/components/Corners";
-import { PRODUCTS, PRODUCT_DETAIL, productBySlug } from "@/lib/site-data";
+import { PRODUCTS, PRODUCT_DETAIL, productBySlug, platformHref } from "@/lib/site-data";
 
 export function generateStaticParams() {
   return PRODUCTS.map((p) => ({ slug: p.slug }));
@@ -43,10 +43,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     patient portal opens the patient side, every clinical
                     product the staff side. Bare /login sent all six to the
                     staff picker, patients included. */}
-                <Link href={p.slug === "pps" ? "/login?role=patient" : "/login?role=staff"} className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, whiteSpace: "nowrap", flexShrink: 0, background: "transparent", borderColor: "rgba(255,255,255,0.5)", color: "#FFFFFF" }}>
+                <a href={platformHref(p.slug === "pps" ? "patient" : "staff")} className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, whiteSpace: "nowrap", flexShrink: 0, background: "transparent", borderColor: "rgba(255,255,255,0.5)", color: "#FFFFFF" }}>
                   {p.slug === "pps" ? "Patient log in" : "Staff log in"}
                   <Corners light />
-                </Link>
+                </a>
               </div>
             </div>
             <div className="blueprint tm-figure" style={{ position: "relative", height: 320, borderColor: "rgba(255,255,255,0.28)" }}>

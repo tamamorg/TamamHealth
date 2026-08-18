@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LEGAL } from "@/lib/site-data";
+import { LEGAL, platformHref } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions",
@@ -37,7 +37,7 @@ export default function TermsPage() {
             ))}
             <div style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 22, display: "flex", gap: 20, flexWrap: "wrap" }}>
               <Link href="/contact" style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, textDecoration: "none" }}>Contact us &nbsp;›</Link>
-              <Link href="/login" style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, textDecoration: "none" }}>Log in to the platform &nbsp;›</Link>
+              <a href={platformHref("staff")} style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, textDecoration: "none" }}>Log in to the platform &nbsp;›</a>
             </div>
           </div>
         </div>
