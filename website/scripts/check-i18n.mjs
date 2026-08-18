@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const SRC = 'src';
-const OPAQUE = new Set(['slug','href','src','image','accent','color','dateISO','id','key','icon','value','code','email','phone','url','name_en','focus','lifecycle','idPlaceholder','WEB3FORMS_ACCESS_KEY','d','d2','d3','menu']);
+const OPAQUE = new Set(['slug','href','src','image','accent','color','dateISO','id','key','icon','code','email','phone','url','name_en','focus','idPlaceholder','WEB3FORMS_ACCESS_KEY','d','d2','d3','menu']);
 
 // lib/i18n is the machinery, not the copy — and scanning it would match the
 // `t("…")` written in its own doc comments.
@@ -32,7 +32,7 @@ const files = [];
 const keys = new Set();
 for (const file of files) {
   const src = readFileSync(file, 'utf8');
-  for (const m of src.matchAll(/\bt\("((?:[^"\\]|\\.)*)"\)/g)) {
+  for (const m of src.matchAll(/\bt\("((?:[^"\\]|\\.)*)"\s*[,)]/g)) {
     keys.add(m[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\').trim());
   }
 }

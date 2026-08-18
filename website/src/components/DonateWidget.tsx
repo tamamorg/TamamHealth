@@ -16,7 +16,11 @@ export default function DonateWidget() {
   const [freq, setFreq] = useState<"one-time" | "monthly">("one-time");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const activeTier = DONATION_TIERS[tier];
-  const summary = `${activeTier.amount}${freq === "monthly" ? " a month" : " once"}`;
+  // One template per case rather than a suffix glued on: Arabic does not put
+  // "a month" after the amount, and a concatenated fragment cannot move.
+  const summary = freq === "monthly"
+    ? t("{{amount}} a month", { amount: activeTier.amount })
+    : t("{{amount}} once", { amount: activeTier.amount });
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -101,7 +105,7 @@ export default function DonateWidget() {
                 color: freq === f ? "#FFFFFF" : "var(--color-neutral-800)",
               }}
             >
-              {f === "one-time" ? "One-time" : "Monthly"}
+              {f === "one-time" ? t("One-time") : t("Monthly")}
             </button>
           ))}
         </div>
@@ -122,7 +126,7 @@ export default function DonateWidget() {
           <input id="dn-clinic" name="clinic" className="input" placeholder={t("Facility or state")} style={{ background: "#FFFFFF" }} />
         </div>
         <button type="submit" disabled={state === "sending" || state === "sent"} className="btn btn-primary blueprint" style={{ padding: "14px 0", fontSize: 15.5, color: "#0E2A4A", width: "100%" }}>
-          {state === "sent" ? "Message sent ✓" : state === "sending" ? "Sending…" : "Send message"}
+          {state === "sent" ? t("Message sent ✓") : state === "sending" ? t("Sending…") : t("Send message")}
           <Corners />
         </button>
         {state === "error" && (

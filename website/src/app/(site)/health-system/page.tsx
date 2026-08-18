@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import LevelsExplorer from "@/components/LevelsExplorer";
+import { emphasise } from "@/components/emphasise";
 import ChallengesBand from "@/components/ChallengesBand";
 import { ALIGN_FACTS as ALIGN_FACTS_EN, TOOLING_STATS as TOOLING_STATS_EN, PROBLEM_LEAD as PROBLEM_LEAD_EN, PROBLEM_BREAKS as PROBLEM_BREAKS_EN, PROBLEM_WHY_TITLE as PROBLEM_WHY_TITLE_EN, PROBLEM_WHY as PROBLEM_WHY_EN } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
@@ -25,9 +26,7 @@ export default async function HealthSystemPage() {
           <div>
             <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px" }}>{t("South Sudan’s healthcare system")}</h1>
             <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
-              {t("The Ministry of Health’s")} <strong>{t("2025 Essential Health Services Package")}</strong>{" "}organises the country&rsquo;s care into six
-              levels — and names fragmented, paper-bound data as one of its biggest gaps. Tamam is shaped to fit that system, not
-              replace it — and the same six-tier structure runs through most sub-Saharan health systems, so what fits here travels.
+              {emphasise(t("The Ministry of Health’s **2025 Essential Health Services Package** organises the country’s care into six levels — and names fragmented, paper-bound data as one of its biggest gaps. Tamam is shaped to fit that system, not replace it — and the same six-tier structure runs through most sub-Saharan health systems, so what fits here travels."))}
             </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>

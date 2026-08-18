@@ -5,7 +5,7 @@
 # file layered on top.
 #
 # On a droplet (set in ./.env or export before compose):
-#   GH_OWNER=makuachteny
+#   GH_OWNER=tamamorg          # must match the org CI publishes under
 #   IMAGE_TAG=staging          # staging droplet
 #   IMAGE_TAG=production       # production droplet
 #

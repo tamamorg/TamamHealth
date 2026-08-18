@@ -59,16 +59,28 @@ export const isLocale = (value: unknown): value is Locale =>
 
 export type Dictionary = Record<string, string>;
 
+export type Vars = Record<string, string | number>;
+
+/** Replace {{name}} placeholders. */
+function interpolate(template: string, vars: Vars): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(vars[key] ?? `{{${key}}}`));
+}
+
 /**
  * Translate one string. Whitespace either side is preserved, so copy that pads
  * a value for layout ("  Juba ") still matches its trimmed dictionary entry.
+ *
+ * `vars` fills {{placeholders}}. Sentences that embed a value must be written
+ * as one template rather than concatenated around it — Arabic puts the number
+ * in a different place in the sentence than English does, and a fragment glued
+ * on at the call site cannot move.
  */
-export function translate(text: string, dict: Dictionary): string {
+export function translate(text: string, dict: Dictionary, vars?: Vars): string {
   const trimmed = text.trim();
   if (!trimmed) return text;
   const hit = dict[trimmed];
-  if (hit === undefined) return text;
-  return text.replace(trimmed, hit);
+  const resolved = hit === undefined ? text : text.replace(trimmed, hit);
+  return vars ? interpolate(resolved, vars) : resolved;
 }
 
 /**
@@ -80,12 +92,14 @@ export function translate(text: string, dict: Dictionary): string {
  */
 const OPAQUE_KEYS = new Set([
   'slug', 'href', 'src', 'image', 'accent', 'color', 'dateISO', 'id', 'key',
-  'icon', 'value', 'code', 'email', 'phone', 'url', 'name_en',
-  // `focus` is a CSS object-position ("center 27%"); `lifecycle` is the set of
-  // machine stage names the platform stores; `idPlaceholder` is a sample login
-  // id. Translating any of them would reframe an image, rename a stored state,
-  // or tell a user to type Arabic into a username field.
-  'focus', 'lifecycle', 'idPlaceholder',
+  'icon', 'code', 'email', 'phone', 'url', 'name_en',
+  // `focus` is a CSS object-position ("center 27%"); `idPlaceholder` is a sample
+  // login id. Translating either would reframe an image or tell a reader to type
+  // Arabic into a username field. (`lifecycle` is deliberately NOT here: on this
+  // site those stage names are display copy on a product page, not stored state.)
+  'focus', 'idPlaceholder',
+  // `value` is NOT here: on the stat tiles it is the headline copy
+  // ("1 record", "Offline-first"), not a machine value.
   // The Web3Forms submission key — a credential, not copy.
   'WEB3FORMS_ACCESS_KEY',
   // SVG path geometry on the challenge icons.

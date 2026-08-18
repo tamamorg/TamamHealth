@@ -136,7 +136,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
                 )}
               </div>
               <span className="fs115" style={{ letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-neutral-600)", whiteSpace: "nowrap" }}>
-                {strip.length} more photos — scroll
+                {t("{{count}} more photos — scroll", { count: strip.length })}
               </span>
             </div>
             <div className="tm-gallery tm-gallery-light" tabIndex={0} role="group" aria-label={`More photos: ${n.title}`}>

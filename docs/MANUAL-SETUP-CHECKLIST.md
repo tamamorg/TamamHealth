@@ -8,9 +8,10 @@ platform is deployable.
 
 ## Already handled for you (no action needed)
 
-- ✅ Env **templates** for all three files (`.env.example`,
-  `platform/.env.production.example`, `website/.env.production.example`) — every
-  required key, documented.
+- ✅ Env **templates** for the platform and compose files (`.env.example`,
+  `platform/.env.production.example`) — every required key, documented.
+  `website/.env.production.example` does **not** exist yet — see the note in
+  step 1 below.
 - ✅ **Secret generation** — `scripts/gen-secrets.sh` fills every random secret
   (JWT, CouchDB/Postgres passwords, admin bootstrap, HMAC webhook) so you never
   invent a key.
@@ -29,8 +30,15 @@ platform is deployable.
 
 ### 1. Generate your secrets — 1 command
 ```bash
-./scripts/gen-secrets.sh        # writes the 3 gitignored env files, secrets filled
+./scripts/gen-secrets.sh        # writes .env and platform/.env.production, secrets filled
+touch website/.env.production   # no .example template exists for this one (see below)
 ```
+`gen-secrets.sh` only writes 2 of the 3 gitignored env files: there's no
+`website/.env.production.example` template in the repo, so it silently skips
+`website/.env.production` — but `deploy.sh` still refuses to run without that
+file present. The website container reads no secrets from it today, so an
+empty file is enough.
+
 Then store a copy of those secrets in a password manager and **escrow the LUKS
 disk key** somewhere safe off the server. (Only you should hold these.)
 
@@ -45,6 +53,11 @@ In `platform/.env.production`:
 - [ ] `NEXT_PUBLIC_APP_URL=https://app.<your-domain>`
 - [ ] `NEXT_PUBLIC_SYNC_ENABLED=true`
 - [ ] `NEXT_PUBLIC_ORG_NAME` / `NEXT_PUBLIC_ORG_EMAIL` / `NEXT_PUBLIC_ORG_COUNTRY`
+- [ ] `SUPERADMIN_INITIAL_PASSWORD` — the real bootstrap-login credential
+      (16+ chars, not the demo default `Superadmin!`). Not in
+      `platform/.env.production.example`; `gen-secrets.sh` doesn't generate
+      it either. The platform refuses to boot without it whenever sync is
+      enabled, demo mode or not.
 
 ### 4. Third-party provider keys — only the ones you actually use
 Sign up and paste the key; leave the rest blank (they're optional):
@@ -61,7 +74,10 @@ sudo bash deploy.sh                    # or: docker compose build && docker comp
 Build first (`NEXT_PUBLIC_*` are baked at build time), confirm TLS on all 3 domains.
 
 ### 6. First login & facility setup (in the app, by you)
-- [ ] Log in with the admin bootstrap credentials, **rotate the password immediately**.
+- [ ] Log in as `superadmin` with the `SUPERADMIN_INITIAL_PASSWORD` you set in
+      step 3, **rotate the password immediately**. (There are no more demo
+      role chips on the login page and no `/api/demo-credentials` — this is
+      the actual bootstrap path.)
 - [ ] Create the first hospital + a facility administrator.
 - [ ] That admin creates real users by role (see `docs/RBAC-MATRIX.md`).
 

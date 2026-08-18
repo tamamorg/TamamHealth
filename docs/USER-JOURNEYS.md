@@ -1,13 +1,13 @@
 # TamamHealth — Complete User Journeys
 
 **How every user moves through the platform, module by module, step by step.**
-Generated from the codebase on 2026-07-14 (branch `web-v2`). Route paths are under `platform/src/app/`; page routes in `(dashboard)/` unless noted. Sibling docs: `RBAC-MATRIX.md`, `CLINICAL-WORKFLOW-SPEC-2026-06.md`, `ARCHITECTURE.md`.
+Generated from the codebase on 2026-07-14, revised 2026-08-18 against `main`. Route paths are under `platform/src/app/`; page routes in `(dashboard)/` unless noted. Sibling docs: `RBAC-MATRIX.md`, `CLINICAL-WORKFLOW-SPEC-2026-06.md`, `ARCHITECTURE.md`.
 
 ---
 
 ## 0. How the platform works (one paragraph)
 
-TamamHealth is an offline-first hospital information system. Every screen reads and writes a local PouchDB in the browser (seeded on first load), optionally syncing to CouchDB when online — so registration, triage, consultation, dispensing, and billing all work with no network. Access is role-based: each of the 26 roles has a route allow-list and a default landing dashboard (`src/lib/role-routes.ts`, enforced by `RoleGuard` and Edge middleware). Every mutation writes an audit entry and a sync event. Clinical work is modeled as a document chain: **TriageDoc → EncounterDoc → LabResultDoc / PrescriptionDoc → MedicalRecordDoc → BillingDoc/PaymentDoc**, with explicit status state machines (`src/lib/clinical-flow/order-lifecycles.ts`, `encounter-journey.ts`).
+TamamHealth is an offline-first hospital information system. Every screen reads and writes a local PouchDB in the browser (seeded on first load), optionally syncing to CouchDB when online — so registration, triage, consultation, dispensing, and billing all work with no network. Access is role-based: each of the 25 roles has a route allow-list and a default landing dashboard (`src/lib/role-routes.ts`, enforced by `RoleGuard` and the Edge proxy — `src/proxy.ts`, Next.js 16's middleware layer). Every mutation writes an audit entry and a sync event. Clinical work is modeled as a document chain: **TriageDoc → EncounterDoc → LabResultDoc / PrescriptionDoc → MedicalRecordDoc → BillingDoc/PaymentDoc**, with explicit status state machines (`src/lib/clinical-flow/order-lifecycles.ts`, `encounter-journey.ts`).
 
 ---
 
@@ -41,8 +41,8 @@ TamamHealth is an offline-first hospital information system. Every screen reads 
 |---|---|---|
 | Doctor / Clinician / Clinical Officer | `/dashboard` | Full clinical: consult, orders, wards, referrals, telehealth, vital events |
 | Medical Superintendent | `/dashboard` | Clinical + facility oversight, payments, HR, equipment, checkout |
-| Nurse / Triage Nurse / Rooming Nurse | `/dashboard/nurse` | Triage, ward board, MAR, handoff, ANC, immunizations |
-| Midwife | `/dashboard/nurse` | Nurse scope focused on ANC, births, deaths |
+| Nurse / Triage Nurse / Rooming Nurse | `/dashboard` | Triage, ward board, MAR, handoff, ANC, immunizations — same shared workspace as doctors, role-adapted |
+| Midwife | `/dashboard` | Nurse scope focused on ANC, births, deaths |
 | Lab Technician | `/dashboard/lab` | Lab bench, blood bank |
 | Pharmacist | `/dashboard/pharmacy` | Dispensing queue, inventory, controlled substances |
 | Radiologist | `/dashboard/radiology` | Imaging worklist, reporting |
@@ -53,7 +53,6 @@ TamamHealth is an offline-first hospital information system. Every screen reads 
 | Medical Biller | `/payments` | Collections + insurance/NGO claims |
 | HRIO / Records-HMIS Officer / Data Entry Clerk | `/dashboard/data-entry` | Census data entry, births/deaths, data quality, DHIS2, reports |
 | Hospital Manager | `/facility-management` | Facility ops, HR, equipment, finance oversight |
-| Facility Administrator | `/facility-overview` | Facility admin: settings, users, payments, programs |
 | Org Admin | `/facility-management` | Multi-facility org: hospitals, users, branding, pricing |
 | County Health Director | `/dashboard/state` | Sub-national aggregate oversight (no patient-level access) |
 | Government (MoH) | `/government` | National oversight, surveillance, DHIS2 |
@@ -100,15 +99,16 @@ Searchable, filterable table (gender, state, registration date, allergies, chron
 | 5. Payment Coverage | out-of-pocket / program / exemption / NGO (+ conditional detail fields) |
 | 6. Review | Summary incl. photo; submit as **Register Patient** or **Register & Check In** |
 
-Each step validates before advancing. Submission creates the patient doc (hospital number auto-assigned, shown in a toast), then best-effort enrolls fingerprints. **Register & Check In** jumps straight to `/check-in?patientId=…`. The same form is embedded in the front-desk dashboard's Register dialog.
+Each step validates before advancing. Submission creates the patient doc (hospital number auto-assigned, shown in a toast), then best-effort enrolls fingerprints. **Register & Check In** creates a walk-in appointment and routes to `/appointments?walkIn=<id>`. The same form is embedded in the front-desk dashboard's Register dialog.
 
-### 4.3 Check in an arrival (`/check-in`)
+### 4.3 Check in an arrival — `CheckInModal`, from the front-desk queue or `/appointments`
 
-1. Find the patient (typeahead, or pre-selected from registration/chart).
-2. Record arrival: mode (walk-in/ambulance/referral/police), symptom duration, chief complaint, known allergies.
-3. Pick acuity: **Routine / Priority / Emergency** (maps to GREEN/YELLOW/RED).
-4. Optional quick vitals (temp, pulse, RR, SpO₂, BP, weight) — the nurse does the full ETAT at triage.
-5. Submit → creates a **`pending` triage entry** (the queue token) and flips any same-day appointment to `checked_in` → back to the front-desk dashboard.
+There is no standalone check-in page or wizard — the old `/check-in` module is retired. Checking a patient in is an action on their appointment:
+
+1. Open **Check In** on an appointment row (front-desk dashboard or `/appointments`) → `CheckInModal` shows the appointment's time, reason, and department.
+2. Confirm **visit type**: New visit or Re-attendance (auto-derived from whether the patient has any prior medical record or closed encounter; staff can override).
+3. **Check In** → records the arrival as a `pending` triage-queue entry, opens the visit's arrival encounter, and flips the appointment to `checked_in`. A walk-in with no matching appointment gets one created for it at this moment. Undo is available (reverses a plain check-in back to scheduled) as long as the visit hasn't progressed past arrival.
+4. Full ETAT assessment and acuity (RED/YELLOW/GREEN) happen next, at triage (§5.1) — check-in itself no longer captures vitals or acuity.
 
 ### 4.4 Front-desk dashboard (`/dashboard/front-desk`) — the command center
 
@@ -125,11 +125,7 @@ Per-row actions:
 
 List or full calendar (month/week/day). Lifecycle: `requested → scheduled → confirmed → checked_in → in_progress → completed` (+ `cancelled`, `no_show`); accidental transitions are reversible. Creating an appointment checks **provider slot conflicts** and supports type (general, follow-up, ANC, immunization, lab, telehealth, surgical, dental, mental health…), priority, department, and recurrence. **Walk-in** creates an already-`checked_in` appointment. Providers publish bookable windows via the **Availability** modal. Deep link `?new=1&patientId=` pre-fills the form from a chart.
 
-### 4.6 Patient intake forms (`/patient-intake`)
-
-Front desk (or a provider) **sends form packets** to a patient by SMS (Basic Info, Demographics, Emergency Contact, Financial, GAD-7, PHQ-9, PCL-5). Returned submissions land in **Pending Review**; staff open a side-by-side comparison and **merge** approved fields (DOB, phone, address, language, tribe, blood type…) into the chart, or reject.
-
-### 4.7 Referrals (`/referrals`)
+### 4.6 Referrals (`/referrals`)
 
 **Outgoing:** from a chart or consultation, staff create a referral (destination facility, department, urgency routine/urgent/emergency, reason, attachments) — the service bundles a **transfer package** of the patient's records. Status: `sent → received → seen → completed` (or `cancelled`).
 **Incoming:** expanding a new referral marks it `received`. **Accept** re-homes the patient to the receiving facility, drops an idempotent **intake encounter** into the receiver's EHR (visit type `referral`, with handover notes), and marks it `seen`. **Decline** requires a reason. **Complete with outcome** sends a structured disposition + summary back to the referring facility.
@@ -138,28 +134,40 @@ Front desk (or a provider) **sends form packets** to a patient by SMS (Basic Inf
 
 ## 5. Nursing
 
-All nurse stations are tabs of `/dashboard/nurse` (Ward / MAR / Triage / Handoff) and standalone routes.
+The standalone nurse station (`/dashboard/nurse/*`) is retired. Nurse-family roles
+(nurse, midwife, triage nurse, rooming nurse) land on the same shared `/dashboard`
+as doctors — `DashboardPage` role-switches to `NurseHomeView`, which renders the
+same `EhrClinicalDashboard` shell as the clinician view, just assembled from
+nursing worklists (triage, wards, rooming, MAR, handoffs) instead of a clinician's.
+Ward, triage, MAR, and handoff each keep one real underlying route; the nurse's
+`/dashboard` is a worklist of outstanding items that deep-link into them.
 
-### 5.1 Triage (`/dashboard/nurse/triage`)
+### 5.1 Triage — inline on `/dashboard`, assessed at `/triage/[patientId]`
 
-1. Pick the patient (walk-ins arrive as `pending` from check-in; deep link `?patient=`).
-2. Record chief complaint, **ETAT ABCC** (Airway/Breathing/Circulation/Consciousness-AVPU), full vitals (incl. GCS, MUAC, glucose), and context (arrival mode, duration, referral source, allergies).
-3. **Priority auto-derives**: any obstructed airway / absent breathing / absent circulation / unresponsive → **RED**; distressed/impaired → **YELLOW**; else **GREEN**.
-4. Save → triage record updated (edits reuse the same document for audit stability).
-5. From "Recent Triages", disposition rows: `pending → seen | admitted | referred | discharged`.
+There's no triage queue *page*; the queue is the "triage" section of the nurse's
+`/dashboard` worklist (walk-ins arrive as `pending` from check-in). Opening a row
+goes to `/triage/[patientId]`:
 
-### 5.2 Ward board (`/dashboard/nurse/ward`)
+1. Record chief complaint, **ETAT ABCC** (Airway/Breathing/Circulation/Consciousness-AVPU), full vitals (incl. GCS, MUAC, glucose), and context (arrival mode, duration, referral source, allergies).
+2. **Priority auto-derives**: any obstructed airway / absent breathing / absent circulation / unresponsive → **RED**; distressed/impaired → **YELLOW**; else **GREEN**.
+3. Save → triage record updated (edits reuse the same document for audit stability).
+4. Disposition: `pending → seen | admitted | referred | discharged`.
+
+Rooming works the same way — no list page, just `/rooming/[patientId]` deep-linked
+from the worklist.
+
+### 5.2 Ward board (`/wards`)
 
 Acuity-sorted patient roster. Row actions: **Vitals** (quick entry — persists a real medical record with vital signs and fluid balance, visible on chart trends), **Triage** (re-triage deep link), **Assign doctor**.
 
 ### 5.3 Medication administration — MAR
 
-- **Rounds list** (`/dashboard/nurse/mar`): every scheduled dose across patients as rows with **overdue / due / upcoming / given** status (overdue = >1 h past). Quick "Given", or a detail modal (actual dose, route, witness, notes); **Undo** voids an administration (append-only).
+- **Rounds list**: every scheduled dose across patients, as an "Open MAR" outstanding-items table on the nurse's `/dashboard` — **overdue / due / upcoming / given** status (overdue = >1 h past), each row deep-linking to its admission's bedside grid.
 - **Bedside time-grid** (`/wards/mar/[admissionId]`): one admission's meds × dose times; each cell records **GIVEN / MISSED / REFUSED / HELD** (non-given requires a reason; controlled drugs require a witness). Allergy + isolation banners; printable.
 
-### 5.4 Shift handoff (`/dashboard/nurse/handoff`)
+### 5.4 Shift handoff (`/wards/handoff`)
 
-Auto-detects the shift (day/evening/night), lists critical (RED) patients with a per-patient **SBAR** editor plus task list, and shows shift KPIs (census, critical count, overdue/due MAR). **Sign off** creates a signed handoff document; the oncoming nurse **acknowledges** it. One handoff per shift; printable.
+Auto-detects the shift (day/evening/night), lists critical (RED) patients with a per-patient **SBAR** editor plus task list, and shows shift KPIs (census, critical count, overdue/due MAR). **Sign off** creates a signed handoff document; the oncoming nurse **acknowledges** it (an unacknowledged handoff surfaces as an outstanding item on the nurse's `/dashboard`). One handoff per shift; printable.
 
 ---
 
@@ -167,7 +175,7 @@ Auto-detects the shift (day/evening/night), lists critical (RED) patients with a
 
 ### 6.1 Clinician dashboard (`/dashboard`)
 
-Worklist of **assigned patients** (with today's triage acuity) plus queues that demand action: **Documents to sign** (co-sign inbox), Phone notes, Open referrals, Patient intake reviews, **Awaiting labs** (paused visits, resume link), and today's telehealth visits. A calendar view is one click away.
+Worklist of **assigned patients** (with today's triage acuity) plus queues that demand action: **Transfers to accept**, **Documents to sign** (co-sign inbox), Phone notes, Open referrals, **Awaiting labs** (paused visits, resume link), Follow-ups due, and today's telehealth visits. A calendar view is one click away.
 
 ### 6.2 Consultation (`/consultation`) — the 6-step visit wizard
 

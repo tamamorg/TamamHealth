@@ -2,9 +2,16 @@
 
 DigitalOcean-specific notes layered on top of the generic runbook
 (`docs/STEP-BY-STEP-PLAYBOOK.md` / `docs/DEPLOYMENT-AND-ROLLOUT.md`). Use a
-**Droplet** (a normal Ubuntu VM) — NOT App Platform, because the stack is a
-docker-compose bundle with stateful CouchDB + a Caddy reverse proxy, which App
-Platform doesn't host well.
+**Droplet** (a normal Ubuntu VM) — NOT App Platform, because this page's stack
+is a single docker-compose bundle with stateful CouchDB + a Caddy reverse
+proxy on one box, which App Platform doesn't host well.
+
+> **This is the self-hosted, single-box path.** The application layer has a
+> second, current production path — DigitalOcean **App Platform** with CouchDB
+> split onto its own data Droplet behind a private-VPC gateway — cut over
+> 2026-08-12. See [`DEPLOY-PRODUCTION.md`](DEPLOY-PRODUCTION.md) before
+> standing up a new production host; use this page for the data Droplet piece
+> either way, or for a fully self-hosted deployment (e.g. `docs/DEPLOY-SOUTH-SUDAN.md`).
 
 ---
 
@@ -99,6 +106,7 @@ apt-get update -y && apt-get install -y git
 git clone https://github.com/<you>/tamamhealth.git /opt/tamamhealth
 cd /opt/tamamhealth
 ./scripts/gen-secrets.sh
+touch website/.env.production   # no .example template ships for this one — see note below
 sed -i 's/REPLACE-DOMAIN/tamamhealth.org/g' platform/.env.production website/.env.production
 sed -i 's#^NEXT_PUBLIC_COUCHDB_URL=.*#NEXT_PUBLIC_COUCHDB_URL=https://couch.tamamhealth.org#' platform/.env.production
 
@@ -113,10 +121,28 @@ sed -i "s#^PHI_ENCRYPTION_KEY=.*#PHI_ENCRYPTION_KEY=$(openssl rand -base64 32)#"
 # Public demo only — seeds fictional patients, and exempts the boot guard
 # above. Skip both lines for any deployment that will hold real patient data.
 sed -i 's#^NEXT_PUBLIC_DEMO_MODE=.*#NEXT_PUBLIC_DEMO_MODE=true#' platform/.env.production   # demo
+
+# Bootstrap login for the seeded `superadmin` account. Not in the .example
+# template, and required — demo or not — because the template ships with
+# NEXT_PUBLIC_SYNC_ENABLED=true; lib/config-validation.ts refuses to boot
+# without a real value here (16+ chars, not the demo default "Superadmin!").
+grep -q '^SUPERADMIN_INITIAL_PASSWORD=' platform/.env.production \
+  || echo "SUPERADMIN_INITIAL_PASSWORD=$(openssl rand -base64 24 | tr -d '\n/+=')" >> platform/.env.production
+
 ./scripts/preflight.sh
 sudo bash deploy.sh
 ```
 Caddy auto-issues TLS for the three domains. Verify at https://app.tamamhealth.org.
+
+> **`website/.env.production` has no `.example` template.** `gen-secrets.sh`
+> only fills `.env` and `platform/.env.production` — it silently skips
+> `website/.env.production` because `website/.env.production.example` doesn't
+> exist in the repo. `deploy.sh` still hard-requires the file to be present
+> before it will run (it dies with "Missing .../website/.env.production"
+> otherwise). The website container reads no secrets from it today (its
+> `docker-compose.yml` service has no `env_file:` entry), so an **empty**
+> file is enough — `touch website/.env.production` before `deploy.sh`, as
+> shown above.
 
 > **`NEXT_PUBLIC_DEMO_MODE` is only half a runtime setting.** It is inlined
 > into the client bundle at *build* time, so on the `deploy.sh` path above
@@ -153,7 +179,7 @@ Then re-run `sudo bash deploy.sh`. (Or just use a 4 GB droplet.)
 Only if you accept DO as the host (residency caveat above):
 - Attach a **Block Storage Volume**, LUKS-encrypt it, mount at
   `/opt/tamamhealth-data`, and point Docker's data-root there (so PHI lands on
-  the encrypted volume) — see `docs/DEPLOYMENT-AND-ROLLOUT.md` §B3/B5.
+  the encrypted volume) — see `docs/STEP-BY-STEP-PLAYBOOK.md` Steps B3/B5.
 - Enable **DO weekly Droplet backups** AND ship the nightly CouchDB dump offsite
   (encrypted) — DO Spaces in the same region works as the offsite target.
 - Set `NEXT_PUBLIC_DEMO_MODE=false` (clean slate).
@@ -166,4 +192,6 @@ Only if you accept DO as the host (residency caveat above):
 - **Cloud Firewall** = network allowlist (22/80/443).
 - **Block Storage Volume** = the encrypted data disk for production PHI.
 - **Spaces** = S3-compatible object storage for offsite encrypted backups.
-- **App Platform** = not used (doesn't fit the docker-compose + CouchDB stack).
+- **App Platform** = not used *on this page's path* (the single-box docker-compose
+  + CouchDB stack doesn't fit it) — but it IS the current production host for
+  the platform app alone, split from CouchDB; see `DEPLOY-PRODUCTION.md`.

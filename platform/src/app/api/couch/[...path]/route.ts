@@ -3,9 +3,11 @@ import { getAuthPayload, unauthorized, forbidden, logApiError } from '@/lib/api-
 import { ensureCouchGatewayUser } from '@/lib/sync/couch-auth';
 import {
   gatewayRequestAllowed,
+  isCouchDocumentWrite,
   resolveGatewayDatabase,
   validateGatewayWriteBody,
 } from '@/lib/sync/sync-gateway';
+import { logAuditSafe } from '@/lib/services/audit-service';
 
 export const dynamic = 'force-dynamic';
 const MAX_PROXY_BODY_BYTES = 25 * 1024 * 1024;
@@ -23,6 +25,20 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
       return NextResponse.json({ error: 'Database path is required' }, { status: 400 });
     }
     const database = path[0];
+    const pathAfterDatabase = path.slice(1);
+    // Distinguish an actual document write (a real state change worth an
+    // audit row) from the replication protocol traffic that dominates this
+    // endpoint's volume: read-shaped POSTs (_all_docs, _bulk_get, _changes,
+    // _find, _revs_diff), _local checkpoint PUTs, and the fsync-style
+    // `_ensure_full_commit` ping every push batch ends with — none of those
+    // change a document, so none is a "mutation" for audit purposes even
+    // though `isCouchDocumentWrite` (correctly, for its own authorization
+    // purpose) treats `_ensure_full_commit` as a write. Reused below, once
+    // the request is known to be well-formed and in-scope, to decide
+    // whether to write an audit entry.
+    const isMutatingWrite =
+      isCouchDocumentWrite(request.method, pathAfterDatabase) &&
+      (pathAfterDatabase[0] || '') !== '_ensure_full_commit';
     const config = resolveGatewayDatabase(database, auth.orgId);
     if (!config) return forbidden('This database is outside your organization.');
     if (!gatewayRequestAllowed(config, request.method, path.slice(1))) {
@@ -78,6 +94,32 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
       redirect: 'manual',
       signal: AbortSignal.timeout(30_000),
     });
+
+    // One audit row per proxied WRITE call — not per proxied request. This
+    // route also carries every pull-poll (~15s, across ~76 databases) and
+    // every live push replication round-trip; logging all of that would bury
+    // real writes in routine sync chatter. `isMutatingWrite` already screened
+    // out reads and `_local` checkpoints, so anything reaching here is a
+    // genuine attempt to change a document. A `_bulk_docs` batch — the normal
+    // shape of a push — still gets exactly one row, not one per document
+    // inside it, matching how the rest of the app logs bulk operations
+    // (see `logPhiSearch`). Only identifiers are recorded, never document
+    // bodies, so PHI never lands in the audit trail through this path.
+    if (isMutatingWrite) {
+      void logAuditSafe(
+        'sync.gateway.write',
+        auth.sub,
+        auth.username,
+        JSON.stringify({
+          method: request.method,
+          database,
+          endpoint: pathAfterDatabase[0] || '',
+          status: response.status,
+          orgId: auth.orgId,
+        }),
+        response.status < 400,
+      );
+    }
 
     const responseHeaders = new Headers();
     for (const name of ['cache-control', 'content-encoding', 'content-length', 'content-range', 'content-type', 'etag']) {

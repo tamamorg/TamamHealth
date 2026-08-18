@@ -191,8 +191,10 @@ schedule`. Do not rely on humans to remember.
    doppler secrets set NEW_KEY=value --project tamamhealth --config prd
    ```
 
-3. If it's required at boot, add it to the `CRITICAL_SECRETS` list in
-   `platform/src/lib/secrets.ts` so the boot check enforces it.
+3. If it's required at boot under Doppler, add it to the `ALWAYS_REQUIRED` (or
+   `CONDITIONALLY_REQUIRED`, if it only matters when another feature is
+   enabled) list in `platform/src/lib/secrets.ts` so `assertDopplerEnv()`
+   enforces it.
 
 ---
 

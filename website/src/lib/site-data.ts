@@ -1248,3 +1248,34 @@ export const FOOTPRINT_MAP_VOCABULARY = [
   "Pilot launch site — 10-clinic pilot begins in Juba and greater South Sudan.",
   "Secondary and specialised care — HMIS.",
 ];
+
+/* ── Contact form copy ──
+   Moved out of ContactForm.tsx / contact/page.tsx for the same reason the nav
+   was: these render through `t(value)`, so the string never appears literally
+   at the call site and the extractor cannot find it there. Here it can. */
+
+export const CONTACT_SUBJECTS = ["What is this about?", "Book a demo", "Deploy Tamam in a facility", "Fund the pilot", "Partner or integrate", "Something else"];
+
+/** The Ministry's six tiers, plus the answer for everyone who isn't a facility. */
+export const CONTACT_LEVELS = [
+  "Level of care",
+  "Community — Boma Health Initiative",
+  "Primary Health Care Unit",
+  "Primary Health Care Centre",
+  "County or State Hospital",
+  "Referral / Tertiary Hospital",
+  "Not a facility",
+];
+
+export const CONTACT_PLACES = ["Where you are", "Juba", "Elsewhere in South Sudan", "Elsewhere in sub-Saharan Africa", "Outside Africa"];
+
+
+/** What a demo actually gets you — the reason to fill the form in. */
+export const CONTACT_POINTS = [
+  "See the system running on a real facility day, offline",
+  "Get a deployment plan sized to your level of care",
+  "Talk to the people who built it, not a sales desk",
+  "Understand what it takes to run without reliable power or connectivity",
+  "Find out what a pilot costs, and what the first month involves",
+];
+

@@ -74,7 +74,10 @@ export default function NewsExplorer() {
                 onChange={() => toggle(selected, set, value)}
                 style={{ width: 16, height: 16, accentColor: "#015697", flexShrink: 0 }}
               />
-              <span style={{ flex: 1 }}>{value}</span>
+              {/* The checkbox value stays English — it is the filter's identity,
+                  and the checked set has to survive a language switch — but the
+                  reader sees it translated. */}
+              <span style={{ flex: 1 }}>{t(value)}</span>
               <span className="fs12" style={{ color: "var(--color-neutral-600)" }}>{n}</span>
             </label>
           ))}
@@ -89,7 +92,7 @@ export default function NewsExplorer() {
         {/* Filter rail */}
         <aside style={{ display: "flex", flexDirection: "column", gap: 22 }}>
           <h2 style={{ margin: 0, fontSize: 26, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            {filtered.length === 1 ? "1 Story" : `${filtered.length} News`}
+            {filtered.length === 1 ? t("1 Story") : t("{{count}} News", { count: filtered.length })}
           </h2>
           <div className="blueprint" style={{ position: "relative", display: "flex", alignItems: "center", background: "#FFFFFF", padding: "2px 10px 2px 16px" }}>
             <Corners />
@@ -106,8 +109,8 @@ export default function NewsExplorer() {
           </div>
           <div>
             <span style={{ display: "block", fontSize: 15, color: "var(--color-neutral-700)", paddingBottom: 6 }}>{t("Filter by:")}</span>
-            {group("type", "News type", TYPE_OPTIONS, types, setTypes)}
-            {group("year", "Year", YEAR_OPTIONS, years, setYears)}
+            {group("type", t("News type"), TYPE_OPTIONS, types, setTypes)}
+            {group("year", t("Year"), YEAR_OPTIONS, years, setYears)}
           </div>
           {hasFilters && (
             <button

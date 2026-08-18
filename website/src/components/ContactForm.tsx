@@ -14,22 +14,8 @@ import Link from "next/link";
 import { useState } from "react";
 import Corners from "@/components/Corners";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { CONTACT_LEVELS as LEVELS, CONTACT_PLACES as PLACES, CONTACT_SUBJECTS as SUBJECTS } from "@/lib/site-data";
 import { WEB3FORMS_ACCESS_KEY } from "@/lib/site-data";
-
-const SUBJECTS = ["What is this about?", "Book a demo", "Deploy Tamam in a facility", "Fund the pilot", "Partner or integrate", "Something else"];
-
-/** The Ministry's six tiers, plus the answer for everyone who isn't a facility. */
-const LEVELS = [
-  "Level of care",
-  "Community — Boma Health Initiative",
-  "Primary Health Care Unit",
-  "Primary Health Care Centre",
-  "County or State Hospital",
-  "Referral / Tertiary Hospital",
-  "Not a facility",
-];
-
-const PLACES = ["Where you are", "Juba", "Elsewhere in South Sudan", "Elsewhere in sub-Saharan Africa", "Outside Africa"];
 
 const field: React.CSSProperties = {
   width: "100%",
@@ -99,11 +85,11 @@ export default function ContactForm() {
     }
   };
 
-  const stepTitle = step === 2 ? "Almost there" : "Tell us who you are";
+  const stepTitle = step === 2 ? t("Almost there") : t("Tell us who you are");
   const stepLead =
     step === 2
-      ? "A little context on your setting, and we'll come back with something specific rather than generic."
-      : "Four details so we know who we're answering, and how to reach you.";
+      ? t("A little context on your setting, and we'll come back with something specific rather than generic.")
+      : t("Four details so we know who we're answering, and how to reach you.");
 
   return (
     <form
@@ -116,7 +102,7 @@ export default function ContactForm() {
       <p style={{ margin: "6px 0 0", fontSize: 15.5, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>{stepLead}</p>
 
       <span style={{ marginTop: 18, fontSize: 11.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>
-        Step {step}/2
+        {t("Step {{step}} of 2", { step })}
       </span>
       <div style={{ height: 5, background: "var(--color-neutral-300)", marginTop: 8 }}>
         <span style={{ display: "block", height: "100%", width: step === 2 ? "100%" : "50%", background: "#0e2a4a", transition: "width .2s ease" }} />
@@ -152,13 +138,13 @@ export default function ContactForm() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 26 }}>
           <select name="topic" aria-label={t("What is this about?")} className="tm-cfield" style={field} defaultValue={SUBJECTS[0]}>
-            {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
+            {SUBJECTS.map((s) => <option key={s} value={s}>{t(s)}</option>)}
           </select>
           <select name="level" aria-label={t("Level of care")} className="tm-cfield" style={field} defaultValue={LEVELS[0]}>
-            {LEVELS.map((l) => <option key={l}>{l}</option>)}
+            {LEVELS.map((l) => <option key={l} value={l}>{t(l)}</option>)}
           </select>
           <select name="place" aria-label={t("Where you are")} className="tm-cfield" style={field} defaultValue={PLACES[0]}>
-            {PLACES.map((p) => <option key={p}>{p}</option>)}
+            {PLACES.map((p) => <option key={p} value={p}>{t(p)}</option>)}
           </select>
           <textarea
             name="message" aria-label={t("Message")} rows={4} className="tm-cfield"
@@ -166,7 +152,7 @@ export default function ContactForm() {
             style={{ ...field, resize: "vertical" }}
           />
           <p style={{ margin: "4px 0 0", fontSize: 13, lineHeight: 1.55, color: "var(--color-neutral-700)" }}>
-            By submitting, you agree that TamamHealth may contact you about this enquiry, as described in our{" "}
+            {t("By submitting, you agree that TamamHealth may contact you about this enquiry, as described in our")}{" "}
             <Link href="/terms" style={{ color: "var(--color-accent-700)" }}>{t("Terms & Privacy")}</Link>.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "62px 1fr", gap: 12, marginTop: 6 }}>
