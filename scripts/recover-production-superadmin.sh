@@ -2,6 +2,7 @@
 set -eu
 
 APP_DIR=${1:-/opt/tamamhealth}
+PUBLIC_BASE_URL=${2:-https://app.tamamhealth.org}
 cd "$APP_DIR"
 
 compose() {
@@ -113,3 +114,30 @@ LOGIN_VERIFY=$(compose exec -T platform node -e '
   }).catch(error => { console.error(error.message); process.exit(1); });
 ')
 echo "login=$LOGIN_VERIFY"
+
+PUBLIC_LOGIN_VERIFY=$(compose exec -T -e PUBLIC_BASE_URL="$PUBLIC_BASE_URL" platform node -e '
+  const endpoint = `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}/api/auth/login`;
+  fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "origin": process.env.PUBLIC_BASE_URL
+    },
+    body: JSON.stringify({
+      username: "superadmin",
+      password: process.env.SUPERADMIN_INITIAL_PASSWORD
+    })
+  }).then(async response => {
+    const body = await response.json().catch(() => ({}));
+    const result = {
+      status: response.status,
+      ok: response.ok,
+      role: body.user?.role,
+      mustChangePassword: body.user?.mustChangePassword,
+      error: body.error
+    };
+    console.log(JSON.stringify(result));
+    if (!response.ok || result.role !== "super_admin") process.exitCode = 1;
+  }).catch(error => { console.error(error.message); process.exit(1); });
+')
+echo "publicLogin=$PUBLIC_LOGIN_VERIFY"
