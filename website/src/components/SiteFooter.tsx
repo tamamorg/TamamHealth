@@ -11,6 +11,9 @@
 import Link from "next/link";
 import { FOOTER_COLS as FOOTER_COLS_EN, platformHref } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
+// The columns carry section links (/platform#how-it-works, /health-system#levels);
+// HashLink is next/link plus the same-page case the router treats as a no-op.
+import HashLink from "@/components/HashLink";
 
 export default async function SiteFooter() {
   const { t, content } = await getTranslator();
@@ -35,9 +38,9 @@ export default async function SiteFooter() {
                     {l.label}
                   </a>
                 ) : (
-                  <Link key={l.label} href={l.href} style={{ fontSize: 13.5, color: "var(--color-neutral-800)", textDecoration: "none" }}>
+                  <HashLink key={l.label} href={l.href} style={{ fontSize: 13.5, color: "var(--color-neutral-800)", textDecoration: "none" }}>
                     {l.label}
-                  </Link>
+                  </HashLink>
                 ),
               )}
             </div>
@@ -54,7 +57,7 @@ export default async function SiteFooter() {
           <Link href="/terms" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Terms & Conditions")}</Link>
           {/* Privacy lives as a clause inside the terms, so it deep-links to
               that clause rather than dropping the reader at the page top. */}
-          <Link href="/terms#patient-data" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Privacy Policy")}</Link>
+          <HashLink href="/terms#patient-data" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Privacy Policy")}</HashLink>
           <a href={platformHref("staff")} style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Platform login")}</a>
         </div>
       </div>

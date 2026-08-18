@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const SRC = 'src';
-const OPAQUE = new Set(['slug','href','src','image','accent','color','dateISO','id','key','icon','value','code','email','phone','url','name_en','focus','lifecycle','idPlaceholder']);
+const OPAQUE = new Set(['slug','href','src','image','accent','color','dateISO','id','key','icon','value','code','email','phone','url','name_en','focus','lifecycle','idPlaceholder','WEB3FORMS_ACCESS_KEY','d','d2','d3']);
 
 const files = [];
 (function walk(dir) {

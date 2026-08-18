@@ -17,6 +17,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Corners from "@/components/Corners";
 import { PRODUCTS, SUPPORT_EMAIL, SUPPORT_PHONE, platformHref } from "@/lib/site-data";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
+import { searchSite, type SearchHit } from "@/lib/site-search";
+import HashLink from "@/components/HashLink";
+import { hashTargetOnPage, scrollToHash } from "@/lib/hash-nav";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type MenuKey = "products" | "platform" | "system" | "about";
@@ -124,6 +127,9 @@ export default function SiteHeader() {
   const [util, setUtil] = useState<UtilKey | null>(null);
   const { locale, setLocale, t } = useLanguage();
   const searchRef = useRef<HTMLInputElement>(null);
+  // Search panel: what has been typed, and which result the keyboard is on.
+  const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
 
   useEffect(() => {
     const onScroll = () => setCondensed(window.scrollY > 70);
@@ -160,6 +166,48 @@ export default function SiteHeader() {
   useEffect(() => {
     if (util === "search") searchRef.current?.focus();
   }, [util]);
+
+  // Closing the panel empties it — reopening it should offer the suggestions
+  // again, not last week's half-typed word. Keyed render state rather than an
+  // effect, the same shape the panel reset above uses.
+  const [searchFor, setSearchFor] = useState(util);
+  if (searchFor !== util) {
+    setSearchFor(util);
+    if (util !== "search") { setQuery(""); setCursor(0); }
+  }
+
+  /* Results for what is typed, in the language being read. Empty until the
+     query means something (see searchSite), which is what keeps the
+     suggestions on screen while the field is still empty. */
+  const hits = useMemo(() => searchSite(query, t), [query, t]);
+  // Clamp rather than reset on every keystroke: the cursor is only ever asked
+  // for a row that exists.
+  const active = hits.length ? Math.min(cursor, hits.length - 1) : 0;
+
+  /** Opens a result — or scrolls to it, when it is a section of this page.
+      Going through the router there would be a no-op (see lib/hash-nav), which
+      is what made a second click on the same result do nothing. */
+  const goTo = (href: string, external = false) => {
+    setUtil(null);
+    setQuery("");
+    setCursor(0);
+    if (external) { window.location.assign(href); return; }
+    const hash = hashTargetOnPage(href, pathname);
+    if (hash && scrollToHash(hash)) return;
+    router.push(href);
+  };
+
+  const openHit = (hit: SearchHit) => goTo(hit.href, hit.external);
+
+  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setCursor((c) => Math.min(c + 1, hits.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
+    else if (e.key === "Escape") {
+      // First Escape clears a query, a second closes the panel — the same
+      // two-step every search field in the platform uses.
+      if (query) { setQuery(""); setCursor(0); } else setUtil(null);
+    }
+  };
 
   const m = menu ? MENU_DATA[menu] : null;
   const utilH = condensed ? 30 : 38;
@@ -315,16 +363,18 @@ export default function SiteHeader() {
               <div style={{ background: "var(--color-surface)", padding: "40px 36px 44px", display: "flex", flexDirection: "column", gap: 14 }}>
                 <h3 style={{ fontSize: 30, margin: 0 }}>{m.title}</h3>
                 <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>{m.blurb}</p>
-                <Link href={m.allHref} style={{ marginTop: "auto", fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, color: "var(--color-accent-700)", textDecoration: "none" }}>
+                <HashLink href={m.allHref} style={{ marginTop: "auto", fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, color: "var(--color-accent-700)", textDecoration: "none" }}>
                   {m.allLabel} &nbsp;›
-                </Link>
+                </HashLink>
               </div>
               <div className="tm-g3" style={{ padding: "40px 0 44px 56px", gap: "26px 32px", alignContent: "start" }}>
                 {m.links.map((link) => (
-                  <Link key={link.label} href={link.href} style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 3 }}>
+                  // HashLink, not Link: several of these point at a section of
+                  // a page the reader may already be on (/platform#how-it-works).
+                  <HashLink key={link.label} href={link.href} style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 3 }}>
                     <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 19, color: "var(--color-text)" }}>{link.label} &nbsp;›</span>
                     <span style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>{link.note}</span>
-                  </Link>
+                  </HashLink>
                 ))}
               </div>
             </div>
@@ -354,30 +404,97 @@ export default function SiteHeader() {
           <div style={{ borderTop: "1px solid var(--color-divider)", background: "var(--color-surface)", padding: "56px 32px 60px", boxShadow: "var(--shadow-md)" }}>
             <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
               <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0, textAlign: "center" }}>{t("What can we help you with?")}</h2>
-              <div className="blueprint" style={{ width: "100%", display: "flex", alignItems: "center", background: "#FFFFFF", borderWidth: 2, borderColor: "#2191D0", padding: "4px 12px 4px 18px" }}>
+              {/* A form, so Enter submits the way it does in every other search
+                  field on the web — and so the magnifier is a submit button
+                  rather than decoration. Enter opens whichever result the
+                  keyboard is on, which is the first one until it is moved. */}
+              <form
+                onSubmit={(e) => { e.preventDefault(); if (hits[active]) openHit(hits[active]); }}
+                className="blueprint"
+                style={{ width: "100%", display: "flex", alignItems: "center", background: "#FFFFFF", borderWidth: 2, borderColor: "#2191D0", padding: "4px 12px 4px 18px" }}
+              >
                 <Corners />
                 <input
                   ref={searchRef}
+                  value={query}
+                  onChange={(e) => { setQuery(e.target.value); setCursor(0); }}
+                  onKeyDown={onSearchKeyDown}
                   placeholder={t("Search")}
                   aria-label={t("Search the site")}
+                  role="combobox"
+                  aria-expanded={hits.length > 0}
+                  aria-controls="tm-search-results"
+                  aria-activedescendant={hits.length ? `tm-search-opt-${active}` : undefined}
+                  aria-autocomplete="list"
+                  autoComplete="off"
                   style={{ flex: 1, border: 0, outline: "none", background: "none", fontFamily: "var(--font-body)", fontSize: 17, color: "#0E2A4A", padding: "12px 0" }}
                 />
-                <button aria-label={t("Run search")} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", width: 40, height: 40, display: "grid", placeItems: "center", color: "#015697" }}>
+                <button type="submit" aria-label={t("Run search")} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", width: 40, height: 40, display: "grid", placeItems: "center", color: "#015697" }}>
                   <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>
                 </button>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-                {SEARCH_SUGGESTIONS.map((q) => (
-                  <button
-                    key={q.label}
-                    onClick={() => { setUtil(null); router.push(q.href); }}
-                    className="tag tag-accent fs125"
-                    style={{ appearance: "none", border: 0, cursor: "pointer", fontFamily: "var(--font-body)", padding: "7px 14px" }}
-                  >
-                    {q.label}
-                  </button>
-                ))}
-              </div>
+              </form>
+
+              {/* Results while typing; the suggestions below take over again
+                  when the field is empty. */}
+              {hits.length > 0 && (
+                <ul
+                  id="tm-search-results"
+                  role="listbox"
+                  aria-label={t("Search results")}
+                  className="blueprint"
+                  style={{ width: "100%", listStyle: "none", margin: 0, padding: 0, background: "#FFFFFF" }}
+                >
+                  {hits.map((hit, i) => (
+                    <li key={hit.href} id={`tm-search-opt-${i}`} role="option" aria-selected={i === active}>
+                      <button
+                        type="button"
+                        onMouseEnter={() => setCursor(i)}
+                        onClick={() => openHit(hit)}
+                        style={{
+                          appearance: "none", border: 0, cursor: "pointer", width: "100%", textAlign: "left",
+                          font: "inherit", color: "inherit", display: "flex", alignItems: "baseline", gap: 16,
+                          padding: "13px 18px", background: i === active ? "rgba(1,86,151,0.09)" : "#FFFFFF",
+                          borderTop: i === 0 ? "0" : "1px solid var(--color-divider)",
+                        }}
+                      >
+                        <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, flex: 1 }}>
+                          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 18, lineHeight: 1.25 }}>{t(hit.title)}</span>
+                          <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "var(--color-neutral-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {t(hit.summary)}
+                          </span>
+                        </span>
+                        <span className="fs12" style={{ flex: "none", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-accent-700)" }}>
+                          {t(hit.kind)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Typed something the site does not answer. Say so, and say what
+                  would work — a dead end with no next move is what makes a
+                  search box feel broken. */}
+              {hits.length === 0 && query.trim().length >= 2 && (
+                <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: "var(--color-neutral-700)", textAlign: "center" }}>
+                  {t("Nothing on the site matches that. Try a product name (HMIS, pharmacy), a place, or what you are trying to do — reporting, referrals, donate.")}
+                </p>
+              )}
+
+              {!query.trim() && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+                  {SEARCH_SUGGESTIONS.map((q) => (
+                    <button
+                      key={q.label}
+                      onClick={() => goTo(q.href)}
+                      className="tag tag-accent fs125"
+                      style={{ appearance: "none", border: 0, cursor: "pointer", fontFamily: "var(--font-body)", padding: "7px 14px" }}
+                    >
+                      {t(q.label)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

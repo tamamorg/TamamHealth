@@ -23,7 +23,7 @@ const fromCode = keys.size;
 
 // 2. every translatable string reachable from site-data, using the same
 //    opaque-key rules as translateDeep
-const OPAQUE = new Set(['slug','href','src','image','accent','color','dateISO','id','key','icon','value','code','email','phone','url','name_en','focus','lifecycle','idPlaceholder']);
+const OPAQUE = new Set(['slug','href','src','image','accent','color','dateISO','id','key','icon','value','code','email','phone','url','name_en','focus','lifecycle','idPlaceholder','WEB3FORMS_ACCESS_KEY','d','d2','d3']);
 function walkData(v, key) {
   if (typeof v === 'string') {
     if (OPAQUE.has(key)) return;

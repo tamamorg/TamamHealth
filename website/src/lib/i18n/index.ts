@@ -86,6 +86,10 @@ const OPAQUE_KEYS = new Set([
   // id. Translating any of them would reframe an image, rename a stored state,
   // or tell a user to type Arabic into a username field.
   'focus', 'lifecycle', 'idPlaceholder',
+  // The Web3Forms submission key — a credential, not copy.
+  'WEB3FORMS_ACCESS_KEY',
+  // SVG path geometry on the challenge icons.
+  'd', 'd2', 'd3',
 ]);
 
 export function translateDeep<T>(value: T, dict: Dictionary): T {
