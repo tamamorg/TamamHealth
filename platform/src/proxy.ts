@@ -38,6 +38,10 @@ const CSRF_EXEMPT_API_PATHS = new Set<string>([
   '/api/auth/logout',
   '/api/auth/me',
   '/api/demo-credentials',
+  // Public account request. Exempt for the same reason as login: the caller
+  // has no session, so there is none to ride. The route grants nothing and
+  // is rate-limited by IP.
+  '/api/account-requests',
 ]);
 
 /**
@@ -186,6 +190,21 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Public account request — POST only. Someone who needs an account has no
+  // session yet, so the submission must reach the route; GET is the approver's
+  // queue and stays behind the session gate below. Scoping this by method
+  // rather than by path is the difference between a public form and a public
+  // list of everyone who has asked for access.
+  if (pathname === '/api/account-requests' && request.method.toUpperCase() === 'POST') {
+    return NextResponse.next();
+  }
+
+  // The organisation list the request form chooses from. Names only — see the
+  // route for what it withholds and why.
+  if (pathname === '/api/account-requests/options') {
+    return NextResponse.next();
+  }
+
   // Seed-credentials route — public read so the unauthenticated browser-side
   // PouchDB seed and the demo-accounts dropdown on /login can fetch the
   // freshly generated demo passwords. The route itself self-gates: in
@@ -281,7 +300,8 @@ export async function proxy(request: NextRequest) {
     pathname === '/public-stats' ||
     pathname === '/patient-portal' ||
     pathname === '/terms' ||
-    pathname === '/privacy'
+    pathname === '/privacy' ||
+    pathname === '/request-account'
   ) {
     return NextResponse.next();
   }
