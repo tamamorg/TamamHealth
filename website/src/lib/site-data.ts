@@ -618,8 +618,14 @@ export const STAFF_USERS = [
 /* The real platform deployment this site hands sign-ins over to. The site
    itself holds no session — auth, seeded demo accounts and the one-tap
    roster (front desk through Super Admin) all live on the platform.
-   Locally: set NEXT_PUBLIC_PLATFORM_URL=http://localhost:3000 in .env.local. */
-export const PLATFORM_URL = process.env.NEXT_PUBLIC_PLATFORM_URL ?? "https://tamamhealth-v6.vercel.app";
+   Locally: set NEXT_PUBLIC_PLATFORM_URL=http://localhost:3000 in .env.local.
+
+   The fallback is PRODUCTION, not the demo. Every login entry point on this
+   site now redirects through this value, so a default pointing at the v6 demo
+   would have sent staff who clicked "Staff log in" to a seeded sandbox and
+   let them try facility credentials against it. An unset variable should fail
+   safe toward the real deployment. */
+export const PLATFORM_URL = process.env.NEXT_PUBLIC_PLATFORM_URL ?? "https://app.tamamhealth.org";
 
 export interface LoginRole {
   key: "staff" | "patient" | "ministry" | "superadmin";
