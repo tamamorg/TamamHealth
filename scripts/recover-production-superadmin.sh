@@ -35,30 +35,36 @@ PASSWORD_HASH=$(compose exec -T platform node -e '
 ')
 NOW=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 if [ "$STATUS" = 404 ]; then
-  jq -n --arg hash "$PASSWORD_HASH" --arg now "$NOW" '{
-    _id: "user-superadmin",
-    type: "user",
-    username: "superadmin",
-    passwordHash: $hash,
-    name: "TamamHealth Platform Admin",
-    role: "super_admin",
-    isActive: true,
-    mustChangePassword: true,
-    passwordUpdatedAt: $now,
-    createdAt: $now,
-    updatedAt: $now
-  }' > "$TMP_UPDATED"
+  compose exec -T -e RECOVERY_HASH="$PASSWORD_HASH" -e RECOVERY_NOW="$NOW" platform node -e '
+    const doc = {
+      _id: "user-superadmin",
+      type: "user",
+      username: "superadmin",
+      passwordHash: process.env.RECOVERY_HASH,
+      name: "TamamHealth Platform Admin",
+      role: "super_admin",
+      isActive: true,
+      mustChangePassword: true,
+      passwordUpdatedAt: process.env.RECOVERY_NOW,
+      createdAt: process.env.RECOVERY_NOW,
+      updatedAt: process.env.RECOVERY_NOW
+    };
+    process.stdout.write(JSON.stringify(doc));
+  ' > "$TMP_UPDATED"
   curl -fsS -u "$COUCHDB_USER:$COUCHDB_PASSWORD" \
     -H 'Content-Type: application/json' -X PUT --data-binary @"$TMP_UPDATED" "$DOC_URL" >/dev/null
   echo 'missing superadmin record created'
 elif [ "$STATUS" = 200 ]; then
-  jq --arg hash "$PASSWORD_HASH" --arg now "$NOW" '
-    .passwordHash = $hash
-    | .isActive = true
-    | .mustChangePassword = true
-    | .passwordUpdatedAt = $now
-    | .updatedAt = $now
-  ' "$TMP_DOC" > "$TMP_UPDATED"
+  compose exec -T -e RECOVERY_HASH="$PASSWORD_HASH" -e RECOVERY_NOW="$NOW" platform node -e '
+    const fs = require("fs");
+    const doc = JSON.parse(fs.readFileSync(0, "utf8"));
+    doc.passwordHash = process.env.RECOVERY_HASH;
+    doc.isActive = true;
+    doc.mustChangePassword = true;
+    doc.passwordUpdatedAt = process.env.RECOVERY_NOW;
+    doc.updatedAt = process.env.RECOVERY_NOW;
+    process.stdout.write(JSON.stringify(doc));
+  ' < "$TMP_DOC" > "$TMP_UPDATED"
   curl -fsS -u "$COUCHDB_USER:$COUCHDB_PASSWORD" \
     -H 'Content-Type: application/json' -X PUT --data-binary @"$TMP_UPDATED" "$DOC_URL" >/dev/null
   echo 'existing superadmin record reset'
