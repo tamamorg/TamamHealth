@@ -43,6 +43,9 @@ import {
   createAccountRequest, listAccountRequests, canDecide, recordDecision,
   approverTierFor, suggestUsername, isRequestableRole,
 } from '@/lib/services/account-request-service';
+import {
+  accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility,
+} from '@/lib/account-request-roles';
 import type { DataScope } from '@/lib/services/data-scope';
 
 const orgAdmin = (orgId?: string): DataScope => ({ role: 'org_admin', orgId });
@@ -51,6 +54,20 @@ const superAdmin: DataScope = { role: 'super_admin' };
 beforeEach(() => store.clear());
 
 describe('who must approve a request', () => {
+  it('requires a real facility for facility-bound roles only', () => {
+    expect(accountRequestRoleNeedsFacility('nurse')).toBe(true);
+    expect(accountRequestRoleNeedsFacility('doctor')).toBe(true);
+    expect(accountRequestRoleNeedsFacility('org_admin')).toBe(false);
+    expect(accountRequestRoleNeedsFacility('government')).toBe(false);
+    expect(accountRequestRoleNeedsFacility('not-a-role')).toBe(false);
+  });
+
+  it('rejects missing and cross-organisation facilities', () => {
+    expect(accountRequestFacilityMatchesOrg({ orgId: 'org-a' }, 'org-a')).toBe(true);
+    expect(accountRequestFacilityMatchesOrg({ orgId: 'org-b' }, 'org-a')).toBe(false);
+    expect(accountRequestFacilityMatchesOrg({ orgId: 'org-a' }, undefined)).toBe(false);
+    expect(accountRequestFacilityMatchesOrg(null, 'org-a')).toBe(false);
+  });
   it('sends platform and national roles to the platform operator', () => {
     // These bypass org scoping in filterByScope, so an org admin granting one
     // would be handing out access to every other tenant's data.
@@ -156,6 +173,16 @@ describe('deciding', () => {
 });
 
 describe('the submitted claim', () => {
+  it('keeps the selected facility id and name together for approval', async () => {
+    const doc = await createAccountRequest({
+      fullName: 'A B', email: 'a@b.co', requestedRole: 'nurse', orgId: 'org-a',
+      hospitalId: 'hosp-a', hospitalName: 'Facility A',
+    });
+    expect(doc).toMatchObject({
+      orgId: 'org-a', hospitalId: 'hosp-a', hospitalName: 'Facility A',
+    });
+  });
+
   it('will not accept a role that is not on the list', async () => {
     await expect(createAccountRequest({
       fullName: 'X', email: 'x@example.org', requestedRole: 'super_admin' as never,

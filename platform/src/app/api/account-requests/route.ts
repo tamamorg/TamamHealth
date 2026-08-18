@@ -5,9 +5,9 @@
  *
  * The POST is deliberately the only unauthenticated write in the app besides
  * login, so it is written to be boring: it stores a claim, grants nothing, and
- * answers identically whatever it was given. It must never become an oracle —
- * "that organisation exists", "that email already has an account" — so it
- * returns the same body for a good request, an unknown org and a duplicate.
+ * never reports whether the email already has an account. Organisation and
+ * facility ids are different: the public form already lists them, so this
+ * route validates their relationship before storing the request.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -20,6 +20,9 @@ import { getClientIp } from '@/lib/request-utils';
 import {
   createAccountRequest, listAccountRequests, isRequestableRole,
 } from '@/lib/services/account-request-service';
+import {
+  accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility,
+} from '@/lib/account-request-roles';
 
 export const runtime = 'nodejs';
 
@@ -37,7 +40,7 @@ const SUBMIT_WINDOW_MS = 60 * 60 * 1000;
 /** Same answer for every outcome — see the note at the top of this file. */
 const ACCEPTED = {
   ok: true,
-  message: 'Request received. An administrator will review it and email you if it is approved.',
+  message: 'Request received. An administrator will review it and contact you if it is approved.',
 };
 
 export async function POST(request: NextRequest) {
@@ -67,16 +70,41 @@ export async function POST(request: NextRequest) {
     }
 
     const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
+    const orgId = str(body.orgId)?.trim();
+    let orgName = str(body.orgName)?.trim();
+    const hospitalId = str(body.hospitalId)?.trim();
+    let hospitalName = str(body.hospitalName)?.trim();
+
+    if (accountRequestRoleNeedsFacility(role)) {
+      if (!orgId || !hospitalId) {
+        return NextResponse.json({ error: 'Choose your organisation and facility' }, { status: 400 });
+      }
+      const [{ getOrganizationById }, { getHospitalById }] = await Promise.all([
+        import('@/lib/services/organization-service'),
+        import('@/lib/services/hospital-service'),
+      ]);
+      const [org, hospital] = await Promise.all([
+        getOrganizationById(orgId),
+        getHospitalById(hospitalId),
+      ]);
+      if (!org || org.isActive === false || !accountRequestFacilityMatchesOrg(hospital, orgId)) {
+        return NextResponse.json({ error: 'Choose a valid facility for that organisation' }, { status: 400 });
+      }
+      // Persist canonical names; never trust public clients to bind an id to
+      // a different display name.
+      orgName = org.name;
+      hospitalName = hospital.name;
+    }
     try {
       await createAccountRequest({
         fullName: str(body.fullName) ?? '',
         email: str(body.email) ?? '',
         phone: str(body.phone),
         requestedRole: role,
-        orgId: str(body.orgId),
-        orgName: str(body.orgName),
-        hospitalId: str(body.hospitalId),
-        hospitalName: str(body.hospitalName),
+        orgId,
+        orgName,
+        hospitalId,
+        hospitalName,
         note: str(body.note),
       });
     } catch (err) {

@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       getSurgeAlerts, getEmergencyDashboard,
     } = await import('@/lib/services/emergency-preparedness-service');
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
     const active = url.searchParams.get('active');
@@ -35,23 +36,22 @@ export async function GET(request: NextRequest) {
     const alerts = url.searchParams.get('alerts');
     const facilityId = url.searchParams.get('facilityId') || undefined;
     if (id) {
-      const plan = await getPlanById(id);
+      const plan = await getPlanById(id, scope);
       if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
       return NextResponse.json({ plan });
     }
     if (dashboard) {
-      const data = await getEmergencyDashboard(facilityId);
+      const data = await getEmergencyDashboard(facilityId, scope);
       return NextResponse.json(data);
     }
     if (alerts) {
-      const surgeAlerts = await getSurgeAlerts(facilityId);
+      const surgeAlerts = await getSurgeAlerts(facilityId, scope);
       return NextResponse.json({ alerts: surgeAlerts, total: surgeAlerts.length });
     }
     if (active) {
-      const plans = await getActivePlans(facilityId);
+      const plans = await getActivePlans(facilityId, scope);
       return NextResponse.json({ plans, total: plans.length });
     }
-    const scope = buildScopeFromAuth(auth);
     const plans = await getAllPlans(scope);
     return NextResponse.json({ plans, total: plans.length });
   } catch (err) {
@@ -115,19 +115,21 @@ async function patchHandler(request: NextRequest) {
     const {
       updatePlan, activatePlan, deactivatePlan, closePlan,
     } = await import('@/lib/services/emergency-preparedness-service');
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     let result;
     switch (action) {
       case 'activate': {
         let body: Record<string, unknown> = {};
         try { body = await request.json(); } catch { /* no body needed */ }
-        result = await activatePlan(id, auth.name || auth.sub, body.severity as Parameters<typeof activatePlan>[2]);
+        result = await activatePlan(id, auth.name || auth.sub, body.severity as Parameters<typeof activatePlan>[2], scope);
         break;
       }
       case 'deactivate':
-        result = await deactivatePlan(id, auth.name || auth.sub);
+        result = await deactivatePlan(id, auth.name || auth.sub, scope);
         break;
       case 'close':
-        result = await closePlan(id);
+        result = await closePlan(id, scope);
         break;
       default: {
         let body: Record<string, unknown>;
@@ -138,7 +140,7 @@ async function patchHandler(request: NextRequest) {
         }
         const { sanitizePayload } = await import('@/lib/validation');
         body = sanitizePayload(body);
-        result = await updatePlan(id, body);
+        result = await updatePlan(id, body, scope);
       }
     }
     if (!result) return NextResponse.json({ error: 'Plan not found or action failed' }, { status: 404 });
@@ -160,7 +162,8 @@ async function deleteHandler(request: NextRequest) {
     const id = url.searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id parameter' }, { status: 400 });
     const { deletePlan } = await import('@/lib/services/emergency-preparedness-service');
-    const deleted = await deletePlan(id);
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const deleted = await deletePlan(id, buildScopeFromAuth(auth));
     if (!deleted) return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (err) {

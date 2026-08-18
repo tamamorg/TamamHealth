@@ -17,10 +17,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Corners, loginStyles } from '@/components/login/login-chrome';
 import { getRoleConfig } from '@/lib/permissions';
-import { REQUESTABLE_ROLES } from '@/lib/account-request-roles';
+import { REQUESTABLE_ROLES, accountRequestRoleNeedsFacility } from '@/lib/account-request-roles';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface Org { id: string; name: string }
+interface Facility { id: string; name: string; orgId: string }
 
 const ROLE_OPTIONS = REQUESTABLE_ROLES
   .map(value => ({ value, label: getRoleConfig(value).label }))
@@ -29,12 +30,13 @@ const ROLE_OPTIONS = REQUESTABLE_ROLES
 export default function RequestAccountPage() {
   const { t } = useTranslation();
   const [orgs, setOrgs] = useState<Org[]>([]);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [requestedRole, setRequestedRole] = useState('');
   const [orgId, setOrgId] = useState('');
-  const [hospitalName, setHospitalName] = useState('');
+  const [hospitalId, setHospitalId] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
@@ -44,10 +46,15 @@ export default function RequestAccountPage() {
     let cancelled = false;
     fetch('/api/account-requests/options')
       .then(r => (r.ok ? r.json() : { organizations: [] }))
-      .then(body => { if (!cancelled) setOrgs(body.organizations ?? []); })
-      // A failed lookup must not block the form: the request still routes,
-      // it just goes to the platform operator instead of an organisation's
-      // own administrator.
+      .then(body => {
+        if (!cancelled) {
+          setOrgs(body.organizations ?? []);
+          setFacilities(body.facilities ?? []);
+        }
+      })
+      // Keep the page usable after a lookup failure. Organisation-wide roles
+      // can still be routed centrally; facility-bound roles will clearly
+      // require the options service before submission.
       .catch(() => { if (!cancelled) setOrgs([]); });
     return () => { cancelled = true; };
   }, []);
@@ -64,7 +71,8 @@ export default function RequestAccountPage() {
           fullName, email, phone, requestedRole, note,
           orgId: orgId || undefined,
           orgName: orgs.find(o => o.id === orgId)?.name,
-          hospitalName: hospitalName || undefined,
+          hospitalId: hospitalId || undefined,
+          hospitalName: facilities.find(f => f.id === hospitalId)?.name,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -95,8 +103,8 @@ export default function RequestAccountPage() {
             <>
               <h1 className="lg-h1">Request sent</h1>
               <p className="lg-lede">
-                An administrator will review it. If it is approved you will be emailed a username and a
-                one-time password to change when you first sign in.
+                An administrator will review it. If it is approved, they will contact you and securely
+                give you a username and one-time password to change when you first sign in.
               </p>
               <div className="lg-links">
                 <Link href="/login">Back to sign in</Link>
@@ -143,18 +151,25 @@ export default function RequestAccountPage() {
                     operator. Left blank, it still arrives — just centrally. */}
                 <div className="lg-field">
                   <label htmlFor="ra-org">Organisation</label>
-                  <select id="ra-org" className="lg-input" value={orgId} onChange={e => setOrgId(e.target.value)}>
+                  <select id="ra-org" className="lg-input" value={orgId} required={accountRequestRoleNeedsFacility(requestedRole)}
+                    onChange={e => { setOrgId(e.target.value); setHospitalId(''); }}>
                     <option value="">Not listed / not sure</option>
                     {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                   </select>
                 </div>
 
-                <div className="lg-field">
-                  <label htmlFor="ra-facility">Facility you work at <span className="lg-hint">(optional)</span></label>
-                  <input id="ra-facility" className="lg-input" value={hospitalName}
-                    placeholder="e.g. Wau Teaching Hospital"
-                    onChange={e => setHospitalName(e.target.value)} />
-                </div>
+                {accountRequestRoleNeedsFacility(requestedRole) && (
+                  <div className="lg-field">
+                    <label htmlFor="ra-facility">Facility you work at</label>
+                    <select id="ra-facility" className="lg-input" value={hospitalId} required
+                      disabled={!orgId} onChange={e => setHospitalId(e.target.value)}>
+                      <option value="" disabled>{orgId ? 'Choose your facility…' : 'Choose an organisation first'}</option>
+                      {facilities.filter(f => f.orgId === orgId).map(f => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="lg-field">
                   <label htmlFor="ra-note">Anything the administrator should know <span className="lg-hint">(optional)</span></label>

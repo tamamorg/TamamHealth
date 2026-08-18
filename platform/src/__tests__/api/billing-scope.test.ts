@@ -76,6 +76,13 @@ afterEach(async () => {
 });
 
 describe('/api/billing record_payment / waive scope guard', () => {
+  test('getBillById hides a bill outside the caller tenant', async () => {
+    const bill = await seedBill('org-b', 'hosp-b1');
+    const scope = { role: 'cashier' as const, orgId: 'org-a', hospitalId: 'hosp-a1' };
+    expect(await getBillById(bill._id, scope)).toBeNull();
+    expect((await getBillById(bill._id, { ...scope, orgId: 'org-b', hospitalId: 'hosp-b1' }))?._id).toBe(bill._id);
+  });
+
   test('a cashier cannot record a payment against another org bill', async () => {
     const bill = await seedBill('org-b', 'hosp-b1');
     mockGetAuth.mockResolvedValue(cashierIn('org-a', 'hosp-a1'));

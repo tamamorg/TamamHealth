@@ -68,6 +68,8 @@ async function postHandler(request: NextRequest) {
     }
     const { sanitizePayload } = await import('@/lib/validation');
     body = sanitizePayload(body);
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     // Update existing follow-up
     if (body.action === 'update' && body.followUpId) {
       const { updateFollowUp } = await import('@/lib/services/follow-up-service');
@@ -76,7 +78,7 @@ async function postHandler(request: NextRequest) {
       if (body.outcome) updates.outcome = body.outcome;
       if (body.completedDate) updates.completedDate = body.completedDate;
       if (body.notes) updates.notes = body.notes;
-      const result = await updateFollowUp(body.followUpId as string, updates as Parameters<typeof updateFollowUp>[1]);
+      const result = await updateFollowUp(body.followUpId as string, updates as Parameters<typeof updateFollowUp>[1], scope);
       if (!result) return NextResponse.json({ error: 'Follow-up not found' }, { status: 404 });
       return NextResponse.json({ followUp: result });
     }

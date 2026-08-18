@@ -4,25 +4,13 @@ import { createPatientToken } from '@/lib/patient-portal-auth';
 import { demoFallbackEnabled, logDemoFallback, findDemoPatientByUsername } from '@/lib/patient-portal-demo';
 import { verifyPassword } from '@/lib/auth';
 import { otpEnabled, issueOtp } from '@/lib/patient-portal-otp';
+import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
 
-// Rate limit: 10 attempts / 15 min / IP + 10 attempts / 15 min / account.
-// Operational note: this API is process-local and best-effort. Multi-replica
-// deployments should front it with an edge/shared rate limiter.
-const rateLimit: Record<string, { count: number; windowStart: number }> = {};
-const accountAttempts: Record<string, { count: number; windowStart: number }> = {};
+// Shared rate limit: 10 attempts / 15 min / IP + 10 attempts / 15 min /
+// account. Production config requires the Upstash backend, so attempts cannot
+// be multiplied across replicas or forgotten on a cold start.
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 const RATE_MAX = 10;
-
-function isRateLimited(key: string, bucket: Record<string, { count: number; windowStart: number }>): boolean {
-  const now = Date.now();
-  const entry = bucket[key];
-  if (!entry || now - entry.windowStart > RATE_WINDOW_MS) {
-    bucket[key] = { count: 1, windowStart: now };
-    return false;
-  }
-  entry.count++;
-  return entry.count > RATE_MAX;
-}
 
 // Lazy per-process index creation — Mango createIndex is idempotent server-side
 // but each call still costs a round-trip, so we cache the attempt.
@@ -47,7 +35,9 @@ async function ensureIndex(db: any, fields: string[], key: keyof typeof indexSta
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
-  if (isRateLimited(ip, rateLimit)) {
+  const ipRateKey = `portal-login:ip:${ip}`;
+  const ipVerdict = await rateLimit({ key: ipRateKey, limit: RATE_MAX, windowMs: RATE_WINDOW_MS });
+  if (!ipVerdict.allowed) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
 
@@ -59,15 +49,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const username = (body.username || '').trim();
+  const username = (body.username || '').trim().toLowerCase();
   const password = body.password || '';
 
   if (!username || !password) {
     return NextResponse.json({ error: 'Username and password are required.' }, { status: 400 });
   }
 
-  // Per-account backoff (same process-local bucket described above).
-  if (isRateLimited(username.toLowerCase(), accountAttempts)) {
+  const accountRateKey = `portal-login:account:${username}`;
+  const accountVerdict = await rateLimit({ key: accountRateKey, limit: RATE_MAX, windowMs: RATE_WINDOW_MS });
+  if (!accountVerdict.allowed) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
 
@@ -112,6 +103,11 @@ export async function POST(req: NextRequest) {
     if (!found || !passwordOk) {
       return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 });
     }
+
+    // A successful password proof clears both failed-attempt streaks. OTP has
+    // its own shared IP/challenge limits, so retaining password failures here
+    // would only lock out a legitimate patient who has reached factor two.
+    await Promise.all([resetRateLimit(ipRateKey), resetRateLimit(accountRateKey)]);
 
     // Second factor (KAN-76). When OTP is enabled we stop here and prove
     // possession of the registered phone before issuing any session token —

@@ -5,7 +5,7 @@
  * Tapping it triggers an immediate sync when online.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated,
 } from 'react-native';
@@ -15,7 +15,7 @@ import { colors, fontSize, spacing } from '../lib/theme';
 
 export default function SyncStatusBar() {
   const { state, pendingCount, lastSyncTime, syncNow, isOnline } = useSync();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [pulseAnim] = useState(() => new Animated.Value(1));
 
   // Pulse animation during active sync
   useEffect(() => {

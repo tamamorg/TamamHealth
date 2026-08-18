@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       getAllUnits, getAvailableUnits, getBloodInventorySummary, getExpiringUnits, getCompatibleGroups,
     } = await import('@/lib/services/blood-bank-service');
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     const url = new URL(request.url);
     const summary = url.searchParams.get('summary');
     const expiring = url.searchParams.get('expiring');
@@ -39,19 +40,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ patientBloodGroup: compatible, compatibleDonorGroups: groups });
     }
     if (summary) {
-      const data = await getBloodInventorySummary(facilityId);
+      const data = await getBloodInventorySummary(facilityId, scope);
       return NextResponse.json(data);
     }
     if (expiring) {
       const days = parseInt(url.searchParams.get('days') || '7', 10);
-      const units = await getExpiringUnits(days, facilityId);
+      const units = await getExpiringUnits(days, facilityId, scope);
       return NextResponse.json({ units, total: units.length });
     }
     if (available) {
-      const units = await getAvailableUnits(bloodGroup, facilityId);
+      const units = await getAvailableUnits(bloodGroup, facilityId, scope);
       return NextResponse.json({ units, total: units.length });
     }
-    const scope = buildScopeFromAuth(auth);
     const units = await getAllUnits(scope);
     return NextResponse.json({ units, total: units.length });
   } catch (err) {
@@ -123,26 +123,28 @@ async function patchHandler(request: NextRequest) {
     const {
       updateUnit, reserveUnit, crossmatchUnit, recordTransfusion, discardUnit,
     } = await import('@/lib/services/blood-bank-service');
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     let result;
     switch (action) {
       case 'reserve':
         if (!body.patientId) return NextResponse.json({ error: 'Missing patientId' }, { status: 400 });
-        result = await reserveUnit(id, body.patientId as string);
+        result = await reserveUnit(id, body.patientId as string, scope);
         break;
       case 'crossmatch':
         if (!body.result) return NextResponse.json({ error: 'Missing crossmatch result' }, { status: 400 });
-        result = await crossmatchUnit(id, body.result as 'compatible' | 'incompatible' | 'pending');
+        result = await crossmatchUnit(id, body.result as 'compatible' | 'incompatible' | 'pending', scope);
         break;
       case 'transfuse':
         if (!body.patientId) return NextResponse.json({ error: 'Missing patientId' }, { status: 400 });
-        result = await recordTransfusion(id, body.patientId as string, auth.name || auth.sub);
+        result = await recordTransfusion(id, body.patientId as string, auth.name || auth.sub, scope);
         break;
       case 'discard':
         if (!body.reason) return NextResponse.json({ error: 'Missing discard reason' }, { status: 400 });
-        result = await discardUnit(id, body.reason as string);
+        result = await discardUnit(id, body.reason as string, scope);
         break;
       default:
-        result = await updateUnit(id, body);
+        result = await updateUnit(id, body, scope);
     }
     if (!result) return NextResponse.json({ error: 'Unit not found or action failed' }, { status: 404 });
     return NextResponse.json({ unit: result });

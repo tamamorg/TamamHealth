@@ -373,7 +373,19 @@ export default function PatientDetailPage() {
   // registered at another facility in the same organisation (referred in, an
   // appointment booked here, a shared record) isn't in it — the chart would
   // wrongly show "Patient not found". Fetch such a patient directly by id, but
-  // gate on the org boundary so tenant isolation still holds (no cross-org PHI).
+  // gate it through the canonical `getPatientById(id, scope)` so tenant
+  // isolation still holds (no cross-org PHI) using the SAME `filterByScope`
+  // every other read path uses, rather than a bespoke check.
+  //
+  // The scope passed here is deliberately org + role only, with `hospitalId`
+  // dropped — this is what preserves the "referred-in / cross-facility"
+  // lookup this fallback exists for. `filterByScope` only engages its
+  // facility narrowing when `scope.hospitalId` is set, so omitting it here
+  // limits enforcement to the org boundary, exactly like before, while now
+  // also correctly rejecting a doc with no `orgId` at all (the old check
+  // treated a missing `orgId` as an automatic pass for every viewer) and
+  // routing super_admin/government through `filterByScope`'s own bypass
+  // instead of a second, separately-maintained "isNational" check.
   const [fallbackPatient, setFallbackPatient] = useState<PatientDoc | null>(null);
   const [fallbackChecked, setFallbackChecked] = useState(false);
   useEffect(() => {
@@ -381,13 +393,14 @@ export default function PatientDetailPage() {
     setFallbackPatient(null);
     setFallbackChecked(false);
     if (!id || loading || scopedPatient) { setFallbackChecked(true); return; }
+    const role = currentUser?.role;
+    if (!role) { setFallbackChecked(true); return; }
+    const orgId = currentUser?.orgId;
     (async () => {
       const { getPatientById } = await import('@/lib/services/patient-service');
-      const doc = await getPatientById(id);
+      const doc = await getPatientById(id, { orgId, role });
       if (cancelled) return;
-      const sameOrg = !doc?.orgId || !currentUser?.orgId || doc.orgId === currentUser.orgId;
-      const isNational = currentUser?.role === 'super_admin' || currentUser?.role === 'government';
-      setFallbackPatient(doc && (sameOrg || isNational) ? doc : null);
+      setFallbackPatient(doc);
       setFallbackChecked(true);
     })();
     return () => { cancelled = true; };

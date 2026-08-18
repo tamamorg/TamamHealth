@@ -34,6 +34,7 @@ const IS_NATIVE = Platform.OS === 'ios' || Platform.OS === 'android';
 // Lazy-load expo-sqlite only on native to avoid web crash
 let SQLite: typeof import('expo-sqlite') | null = null;
 if (IS_NATIVE) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- synchronous native-only load prevents expo-sqlite from entering the web bundle
   SQLite = require('expo-sqlite') as typeof import('expo-sqlite');
 }
 

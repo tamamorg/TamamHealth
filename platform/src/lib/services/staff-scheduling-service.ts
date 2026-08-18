@@ -18,21 +18,21 @@ export async function getAllSchedules(scope?: DataScope): Promise<StaffScheduleD
   return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getSchedulesByDate(date: string, facilityId?: string): Promise<StaffScheduleDoc[]> {
-  const all = await getAllSchedules();
+export async function getSchedulesByDate(date: string, facilityId?: string, scope?: DataScope): Promise<StaffScheduleDoc[]> {
+  const all = await getAllSchedules(scope);
   return all.filter(s =>
     s.shiftDate === date &&
     (!facilityId || s.facilityId === facilityId)
   );
 }
 
-export async function getSchedulesByUser(userId: string): Promise<StaffScheduleDoc[]> {
-  const all = await getAllSchedules();
+export async function getSchedulesByUser(userId: string, scope?: DataScope): Promise<StaffScheduleDoc[]> {
+  const all = await getAllSchedules(scope);
   return all.filter(s => s.userId === userId);
 }
 
-export async function getOnCallStaff(date: string, facilityId?: string): Promise<StaffScheduleDoc[]> {
-  const all = await getAllSchedules();
+export async function getOnCallStaff(date: string, facilityId?: string, scope?: DataScope): Promise<StaffScheduleDoc[]> {
+  const all = await getAllSchedules(scope);
   return all.filter(s =>
     s.shiftDate === date &&
     s.isOnCall &&
@@ -72,12 +72,20 @@ export async function createSchedule(
 
 export async function updateSchedule(
   id: string,
-  updates: Partial<StaffScheduleDoc>
+  updates: Partial<StaffScheduleDoc>,
+  scope?: DataScope,
 ): Promise<StaffScheduleDoc | null> {
   const db = staffSchedulesDB();
   try {
     const existing = await db.get(id) as StaffScheduleDoc;
-    const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+    if (scope && filterByScope([existing], scope).length === 0) return null;
+    const updated = {
+      ...existing,
+      ...updates,
+      orgId: existing.orgId,
+      facilityId: existing.facilityId,
+      updatedAt: new Date().toISOString(),
+    };
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     await logAuditSafe('UPDATE_SCHEDULE', undefined, undefined, `Schedule ${id} updated`);
@@ -95,10 +103,11 @@ export async function updateSchedule(
   }
 }
 
-export async function deleteSchedule(id: string): Promise<boolean> {
+export async function deleteSchedule(id: string, scope?: DataScope): Promise<boolean> {
   const db = staffSchedulesDB();
   try {
     const existing = await db.get(id) as StaffScheduleDoc;
+    if (scope && filterByScope([existing], scope).length === 0) return false;
     /* istanbul ignore next -- PouchDB always returns _rev on successful get() */
     if (!existing._rev) {
       throw new Error('Cannot delete document without revision');
@@ -118,8 +127,8 @@ export async function deleteSchedule(id: string): Promise<boolean> {
   }
 }
 
-export async function getWeeklyRoster(startDate: string, facilityId?: string): Promise<StaffScheduleDoc[]> {
-  const all = await getAllSchedules();
+export async function getWeeklyRoster(startDate: string, facilityId?: string, scope?: DataScope): Promise<StaffScheduleDoc[]> {
+  const all = await getAllSchedules(scope);
   const start = new Date(startDate);
   const end = new Date(start);
   end.setDate(end.getDate() + 7);
@@ -133,8 +142,8 @@ export async function getWeeklyRoster(startDate: string, facilityId?: string): P
   );
 }
 
-export async function getStaffingGaps(date: string, facilityId?: string): Promise<{ shift: string; gap: number; requiredStaff: number; currentStaff: number }[]> {
-  const schedules = await getSchedulesByDate(date, facilityId);
+export async function getStaffingGaps(date: string, facilityId?: string, scope?: DataScope): Promise<{ shift: string; gap: number; requiredStaff: number; currentStaff: number }[]> {
+  const schedules = await getSchedulesByDate(date, facilityId, scope);
 
   // Define minimum staffing requirements by shift
   const requirements: Record<string, number> = {

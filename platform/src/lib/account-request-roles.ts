@@ -31,6 +31,24 @@ export const REQUESTABLE_ROLES: UserRole[] = [
   'hospital_manager', 'medical_biller', 'government', 'county_health_director',
 ];
 
+/** Roles whose accounts are organisation-wide rather than facility-bound. */
+export const ACCOUNT_REQUEST_ROLES_WITHOUT_FACILITY: UserRole[] = [
+  'org_admin', 'government', 'county_health_director',
+];
+
+export function accountRequestRoleNeedsFacility(role: string): boolean {
+  return isRequestableRole(role)
+    && !ACCOUNT_REQUEST_ROLES_WITHOUT_FACILITY.includes(role);
+}
+
+/** Fail closed when binding a requested account to a tenant-owned facility. */
+export function accountRequestFacilityMatchesOrg(
+  facility: { orgId?: string } | null,
+  orgId?: string,
+): facility is { orgId: string } {
+  return Boolean(facility && orgId && facility.orgId === orgId);
+}
+
 export function isRequestableRole(role: string): role is UserRole {
   return (REQUESTABLE_ROLES as string[]).includes(role);
 }

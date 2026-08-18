@@ -116,7 +116,7 @@ export async function createLabResult(
   const resp = await db.put(doc);
   doc._rev = resp.rev;
   const plaintextDoc = decryptLabResult(doc);
-  await logAuditSafe('CREATE_LAB_ORDER', undefined, undefined, `Lab order ${plaintextDoc._id}: ${plaintextDoc.testName} for ${plaintextDoc.patientName}`);
+  await logAuditSafe('CREATE_LAB_ORDER', undefined, undefined, `Lab order ${plaintextDoc._id} created`);
   emitSyncEvent({
     resourceType: 'lab_result',
     resourceId: plaintextDoc._id,
@@ -148,7 +148,7 @@ export async function updateLabResult(id: string, data: Partial<LabResultDoc>): 
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     const plaintextUpdated = decryptLabResult(updated);
-    await logAuditSafe('UPDATE_LAB_RESULT', undefined, undefined, `Lab ${id} status: ${plaintextUpdated.status}${plaintextUpdated.result ? `, result: ${plaintextUpdated.result}` : ''}`);
+    await logAuditSafe('UPDATE_LAB_RESULT', undefined, undefined, `Lab order ${id} updated; status=${plaintextUpdated.status}; stage=${effectiveOrderStatus(plaintextUpdated)}`);
     emitSyncEvent({
       resourceType: 'lab_result',
       resourceId: plaintextUpdated._id,

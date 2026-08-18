@@ -30,7 +30,14 @@ export async function GET(request: NextRequest) {
     const slug = request.nextUrl.searchParams.get('slug');
     const orgId = request.nextUrl.searchParams.get('orgId');
     const withStats = request.nextUrl.searchParams.get('stats') === 'true';
+    const ownOrgId = auth.role === 'org_admin' ? auth.orgId : undefined;
+    if (auth.role === 'org_admin' && !ownOrgId) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
     if (id) {
+      if (ownOrgId && id !== ownOrgId) {
+        return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      }
       const org = await getOrganizationById(id);
       if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
       if (withStats) {
@@ -41,7 +48,9 @@ export async function GET(request: NextRequest) {
     }
     if (slug) {
       const org = await getOrganizationBySlug(slug);
-      if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      if (!org || (ownOrgId && org._id !== ownOrgId)) {
+        return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      }
       if (withStats) {
         const stats = await getOrganizationStats(org._id);
         return NextResponse.json({ organization: org, stats });
@@ -49,8 +58,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ organization: org });
     }
     if (orgId && withStats) {
+      if (ownOrgId && orgId !== ownOrgId) {
+        return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      }
       const stats = await getOrganizationStats(orgId);
       return NextResponse.json({ stats });
+    }
+    if (ownOrgId) {
+      const org = await getOrganizationById(ownOrgId);
+      return NextResponse.json({ organizations: org ? [org] : [] });
     }
     const organizations = await getAllOrganizations();
     return NextResponse.json({ organizations });

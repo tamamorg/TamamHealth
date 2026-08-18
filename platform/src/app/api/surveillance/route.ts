@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const filter = request.nextUrl.searchParams.get('filter');
     let alerts;
     if (filter === 'active') {
-      alerts = await getActiveAlerts();
+      alerts = await getActiveAlerts(scope);
     } else {
       alerts = await getAllAlerts(scope);
     }
@@ -50,11 +50,13 @@ async function postHandler(request: NextRequest) {
     }
     const { sanitizePayload } = await import('@/lib/validation');
     body = sanitizePayload(body);
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     const action = body.action as string;
     // Delete alert
     if (action === 'delete' && body.alertId) {
       const { deleteAlert } = await import('@/lib/services/surveillance-service');
-      const deleted = await deleteAlert(body.alertId as string);
+      const deleted = await deleteAlert(body.alertId as string, scope);
       if (!deleted) return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
       return NextResponse.json({ deleted: true });
     }
@@ -72,7 +74,7 @@ async function postHandler(request: NextRequest) {
       if (body.county !== undefined) update.county = body.county as string;
       if (body.deaths !== undefined) update.deaths = Number(body.deaths);
       if (body.trend !== undefined) update.trend = body.trend as 'increasing' | 'stable' | 'decreasing';
-      const updated = await updateAlert(body.alertId as string, update);
+      const updated = await updateAlert(body.alertId as string, update, scope);
       if (!updated) return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
       return NextResponse.json({ alert: updated });
     }

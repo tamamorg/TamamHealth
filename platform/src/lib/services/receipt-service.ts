@@ -2,6 +2,7 @@
  * Receipt Service — generates printable and emailable receipts for payments.
  */
 import type { PaymentDoc } from '../db-types-payments';
+import { escapeHtml, openIsolatedHtmlWindow } from '../safe-html';
 
 export interface ReceiptData {
   receiptNumber: string;
@@ -48,11 +49,21 @@ export function buildReceiptData(payment: PaymentDoc, facilityName?: string): Re
 }
 
 export function generateReceiptHTML(receipt: ReceiptData): string {
+  const facilityName = escapeHtml(receipt.facilityName);
+  const receiptNumber = escapeHtml(receipt.receiptNumber);
+  const date = escapeHtml(receipt.date);
+  const time = escapeHtml(receipt.time);
+  const patientName = escapeHtml(receipt.patientName);
+  const methodLabel = escapeHtml(receipt.methodLabel);
+  const reference = escapeHtml(receipt.reference);
+  const currency = escapeHtml(receipt.currency);
+  const processedBy = escapeHtml(receipt.processedBy);
+  const notes = escapeHtml(receipt.notes);
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Payment Receipt — ${receipt.receiptNumber}</title>
+<title>Payment Receipt — ${receiptNumber}</title>
 <style>
   @page { margin: 10mm; size: 80mm auto; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -75,21 +86,21 @@ export function generateReceiptHTML(receipt: ReceiptData): string {
 </head>
 <body>
   <div class="header">
-    <h1>${receipt.facilityName}</h1>
+    <h1>${facilityName}</h1>
     <p>Digital Health Records — Powered by TamamHealth</p>
   </div>
   <div class="receipt-title">Payment Receipt</div>
-  <div class="row"><span class="label">Receipt #</span><span class="value">${receipt.receiptNumber}</span></div>
-  <div class="row"><span class="label">Date</span><span class="value">${receipt.date}</span></div>
-  <div class="row"><span class="label">Time</span><span class="value">${receipt.time}</span></div>
+  <div class="row"><span class="label">Receipt #</span><span class="value">${receiptNumber}</span></div>
+  <div class="row"><span class="label">Date</span><span class="value">${date}</span></div>
+  <div class="row"><span class="label">Time</span><span class="value">${time}</span></div>
   <div style="height: 8px"></div>
-  <div class="row"><span class="label">Patient</span><span class="value">${receipt.patientName}</span></div>
-  <div class="row"><span class="label">Method</span><span class="value">${receipt.methodLabel}</span></div>
-  ${receipt.reference ? `<div class="row"><span class="label">Reference</span><span class="value">${receipt.reference}</span></div>` : ''}
-  <div class="row amount-row"><span class="label">Amount Paid</span><span class="value">${receipt.amount.toLocaleString()} ${receipt.currency}</span></div>
+  <div class="row"><span class="label">Patient</span><span class="value">${patientName}</span></div>
+  <div class="row"><span class="label">Method</span><span class="value">${methodLabel}</span></div>
+  ${receipt.reference ? `<div class="row"><span class="label">Reference</span><span class="value">${reference}</span></div>` : ''}
+  <div class="row amount-row"><span class="label">Amount Paid</span><span class="value">${receipt.amount.toLocaleString()} ${currency}</span></div>
   <div class="row"><span class="label">Status</span><span class="value"><span class="status">Paid</span></span></div>
-  <div class="row"><span class="label">Processed By</span><span class="value">${receipt.processedBy}</span></div>
-  ${receipt.notes ? `<div class="row"><span class="label">Notes</span><span class="value">${receipt.notes}</span></div>` : ''}
+  <div class="row"><span class="label">Processed By</span><span class="value">${processedBy}</span></div>
+  ${receipt.notes ? `<div class="row"><span class="label">Notes</span><span class="value">${notes}</span></div>` : ''}
   <div class="footer">
     <p>Thank you for your payment.<br>This receipt was electronically generated.<br>For inquiries, contact the billing desk.</p>
   </div>
@@ -99,16 +110,7 @@ export function generateReceiptHTML(receipt: ReceiptData): string {
 
 export function printReceipt(receipt: ReceiptData): void {
   const html = generateReceiptHTML(receipt);
-  const printWindow = window.open('', '_blank', 'width=400,height=600');
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      // Don't auto-close — let user decide
-    }, 500);
-  }
+  openIsolatedHtmlWindow(html, 'width=400,height=600', true);
 }
 
 /**

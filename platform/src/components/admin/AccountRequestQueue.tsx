@@ -15,7 +15,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AccountRequestDoc, UserRole } from '@/lib/db-types';
 import { getRoleConfig } from '@/lib/permissions';
-import { PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES } from '@/lib/account-request-roles';
+import {
+  PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES, accountRequestRoleNeedsFacility,
+} from '@/lib/account-request-roles';
 
 interface Props {
   /** The signed-in approver's role — decides which roles may be granted. */
@@ -28,6 +30,8 @@ interface Granted {
   temporaryPassword: string;
 }
 
+interface FacilityOption { id: string; name: string; orgId: string }
+
 function roleLabel(role: UserRole): string {
   try {
     return getRoleConfig(role).label;
@@ -38,6 +42,7 @@ function roleLabel(role: UserRole): string {
 
 export default function AccountRequestQueue({ viewerRole }: Props) {
   const [requests, setRequests] = useState<AccountRequestDoc[]>([]);
+  const [facilities, setFacilities] = useState<FacilityOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState('');
@@ -75,18 +80,35 @@ export default function AccountRequestQueue({ viewerRole }: Props) {
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/account-requests/options')
+      .then(res => (res.ok ? res.json() : { facilities: [] }))
+      .then(body => { if (!cancelled) setFacilities(body.facilities ?? []); })
+      .catch(() => { if (!cancelled) setFacilities([]); });
+    return () => { cancelled = true; };
+  }, []);
+
   const decide = async (doc: AccountRequestDoc, action: 'approve' | 'reject') => {
     setBusyId(doc._id);
     setError('');
     try {
+      const grantedRole = roleFor[doc._id] ?? doc.requestedRole;
+      const selectedFacilityId = facilityFor[doc._id] ?? doc.hospitalId ?? '';
+      const selectedFacility = facilities.find(f => f.id === selectedFacilityId);
+      if (action === 'approve' && accountRequestRoleNeedsFacility(grantedRole) && !selectedFacility) {
+        setError('Choose a valid facility before approving this account.');
+        return;
+      }
       const res = await fetch(`/api/account-requests/${encodeURIComponent(doc._id)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
           action,
-          role: roleFor[doc._id] ?? doc.requestedRole,
-          hospitalName: facilityFor[doc._id] ?? doc.hospitalName,
+          role: grantedRole,
+          hospitalId: selectedFacility?.id,
+          hospitalName: selectedFacility?.name,
           decisionNote: noteFor[doc._id],
         }),
       });
@@ -190,9 +212,20 @@ export default function AccountRequestQueue({ viewerRole }: Props) {
                 </label>
                 <label className="arq-ctl">
                   <span>Facility</span>
-                  <input value={facilityFor[doc._id] ?? doc.hospitalName ?? ''}
-                    placeholder="Assign a facility"
-                    onChange={e => setFacilityFor(m => ({ ...m, [doc._id]: e.target.value }))} />
+                  <select
+                    value={facilityFor[doc._id] ?? doc.hospitalId ?? ''}
+                    disabled={!accountRequestRoleNeedsFacility(roleFor[doc._id] ?? doc.requestedRole)}
+                    onChange={e => setFacilityFor(m => ({ ...m, [doc._id]: e.target.value }))}
+                  >
+                    <option value="">
+                      {accountRequestRoleNeedsFacility(roleFor[doc._id] ?? doc.requestedRole)
+                        ? 'Choose a facility…'
+                        : 'Not required'}
+                    </option>
+                    {facilities
+                      .filter(f => !doc.orgId || f.orgId === doc.orgId)
+                      .map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                  </select>
                 </label>
                 <label className="arq-ctl arq-ctl--wide">
                   <span>Note</span>

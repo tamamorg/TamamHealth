@@ -23,6 +23,9 @@ import {
 // request produces a password with the shape staff already expect — and one
 // that can be read aloud in a clinic with no email.
 import { generateTempPassword } from '@/lib/temp-password';
+import {
+  accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility,
+} from '@/lib/account-request-roles';
 
 export const runtime = 'nodejs';
 
@@ -85,6 +88,23 @@ async function postHandler(
     // request claims. super_admin may place the account where the request asks.
     const orgId = auth.role === 'super_admin' ? (doc.orgId ?? auth.orgId) : auth.orgId;
 
+    let hospitalId = typeof body.hospitalId === 'string' ? body.hospitalId.trim() : doc.hospitalId;
+    let hospitalName = typeof body.hospitalName === 'string' ? body.hospitalName.trim() : doc.hospitalName;
+    if (accountRequestRoleNeedsFacility(grantedRole)) {
+      if (!orgId || !hospitalId) {
+        return NextResponse.json({ error: 'Choose a facility for this account' }, { status: 400 });
+      }
+      const { getHospitalById } = await import('@/lib/services/hospital-service');
+      const hospital = await getHospitalById(hospitalId);
+      if (!accountRequestFacilityMatchesOrg(hospital, orgId)) {
+        return NextResponse.json({ error: 'Choose a facility in this organisation' }, { status: 400 });
+      }
+      hospitalName = hospital.name;
+    } else {
+      hospitalId = undefined;
+      hospitalName = undefined;
+    }
+
     const { createUser, getAllUsers } = await import('@/lib/services/user-service');
     const existing = await getAllUsers();
     const taken = new Set(existing.map(u => u.username));
@@ -100,8 +120,8 @@ async function postHandler(
           password,
           name: doc.fullName,
           role: grantedRole,
-          hospitalId: (typeof body.hospitalId === 'string' ? body.hospitalId : doc.hospitalId),
-          hospitalName: (typeof body.hospitalName === 'string' ? body.hospitalName : doc.hospitalName),
+          hospitalId,
+          hospitalName,
           orgId,
           email: doc.email,
           phone: doc.phone,

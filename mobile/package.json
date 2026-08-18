@@ -21,10 +21,10 @@
     "expo": "~56.0.16",
     "expo-asset": "^56.0.17",
     "expo-constants": "^56.0.18",
-    "expo-linking": "~56.0.15",
-    "expo-router": "~56.2.15",
+    "expo-linking": "~56.0.17",
+    "expo-router": "~56.2.19",
     "expo-secure-store": "~56.0.4",
-    "expo-splash-screen": "~56.0.13",
+    "expo-splash-screen": "~56.0.14",
     "expo-sqlite": "~56.0.5",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
@@ -32,14 +32,14 @@
     "react-native": "0.85.3",
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "4.25.2",
+    "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",
     "eslint": "^8.57.0",
-    "eslint-config-expo": "~8.0.1",
+    "eslint-config-expo": "~56.0.4",
     "typescript": "~5.8.0"
   },
   "overrides": {

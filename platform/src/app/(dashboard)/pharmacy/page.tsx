@@ -23,6 +23,7 @@ import { usePatientBalances } from '@/lib/hooks/usePatientBalances';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { prescription as rxLifecycle } from '@/lib/clinical-flow/order-lifecycles';
 import Select from '@/components/Select';
+import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 
 const UNITS = ['tablets', 'vials', 'bottles', 'sachets', 'tubes', 'ampoules', 'sachet', 'ml'];
 
@@ -713,25 +714,22 @@ export default function PharmacyPage() {
 
   // Print a reorder / purchase order from the items currently needing restock.
   const handlePrintReorder = () => {
-    const w = window.open('', '_blank');
-    if (!w) return;
     const rows = reorderList.map(i =>
-      `<tr><td>${i.medicationName}</td><td>${i.category}</td><td>${i.stockLevel} ${i.unit}</td><td>${i.reorderLevel}</td><td>${orderQtyFor(i)}</td></tr>`
+      `<tr><td>${escapeHtml(i.medicationName)}</td><td>${escapeHtml(i.category)}</td><td>${escapeHtml(`${i.stockLevel} ${i.unit}`)}</td><td>${escapeHtml(i.reorderLevel)}</td><td>${escapeHtml(orderQtyFor(i))}</td></tr>`
     ).join('');
-    w.document.write(`<html><head><title>${t('pharmacy.purchaseOrder')}</title><style>
+    const html = `<html><head><title>${escapeHtml(t('pharmacy.purchaseOrder'))}</title><style>
       body{font-family:system-ui,sans-serif;padding:30px;} h1{font-size:18px;margin-bottom:4px;} h2{font-size:13px;color:#666;margin-bottom:18px;}
       table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:8px;text-align:left;font-size:13px;} th{background:#f3f4f6;}
       .footer{margin-top:36px;font-size:12px;color:#888;}
     </style></head><body>
-      <h1>${t('pharmacy.purchaseOrderRestock')}</h1>
-      <h2>${currentUser?.hospitalName || ''} · ${new Date().toLocaleDateString('en-GB')}</h2>
+      <h1>${escapeHtml(t('pharmacy.purchaseOrderRestock'))}</h1>
+      <h2>${escapeHtml(currentUser?.hospitalName || '')} · ${escapeHtml(new Date().toLocaleDateString('en-GB'))}</h2>
       <table><thead><tr>
-        <th>${t('pharmacy.medication')}</th><th>${t('pharmacy.category')}</th><th>${t('pharmacy.currentStock')}</th><th>${t('pharmacy.reorderLevel')}</th><th>${t('pharmacy.orderQty')}</th>
+        <th>${escapeHtml(t('pharmacy.medication'))}</th><th>${escapeHtml(t('pharmacy.category'))}</th><th>${escapeHtml(t('pharmacy.currentStock'))}</th><th>${escapeHtml(t('pharmacy.reorderLevel'))}</th><th>${escapeHtml(t('pharmacy.orderQty'))}</th>
       </tr></thead><tbody>${rows}</tbody></table>
-      <div class="footer">${t('pharmacy.authorizedBy')}: _____________________ &nbsp;&nbsp; ${t('pharmacy.dateLabel')}: _____________________</div>
-    </body></html>`);
-    w.document.close();
-    w.print();
+      <div class="footer">${escapeHtml(t('pharmacy.authorizedBy'))}: _____________________ &nbsp;&nbsp; ${escapeHtml(t('pharmacy.dateLabel'))}: _____________________</div>
+    </body></html>`;
+    openIsolatedHtmlWindow(html, '', true);
   };
 
   // Export the rows currently visible on the active tab to CSV — mirrors the

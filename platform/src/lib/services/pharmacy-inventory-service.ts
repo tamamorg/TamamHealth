@@ -46,12 +46,20 @@ export async function createInventoryItem(
 
 export async function updateInventoryItem(
   id: string,
-  updates: Partial<PharmacyInventoryDoc>
+  updates: Partial<PharmacyInventoryDoc>,
+  scope?: DataScope,
 ): Promise<PharmacyInventoryDoc | null> {
   const db = pharmacyInventoryDB();
   try {
     const existing = await db.get(id) as PharmacyInventoryDoc;
-    const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+    if (scope && filterByScope([existing], scope).length === 0) return null;
+    const updated = {
+      ...existing,
+      ...updates,
+      orgId: existing.orgId,
+      hospitalId: existing.hospitalId,
+      updatedAt: new Date().toISOString(),
+    };
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     emitSyncEvent({
@@ -84,7 +92,8 @@ export async function updateInventoryItem(
 export async function decrementStock(
   medicationName: string,
   hospitalId: string | undefined,
-  quantity: number = 1
+  quantity: number = 1,
+  scope?: DataScope,
 ): Promise<void> {
   const db = pharmacyInventoryDB();
   const MAX_RETRIES = 5;
@@ -97,7 +106,12 @@ export async function decrementStock(
     { medicationName },
     { indexFields: ['type', 'medicationName'] },
   );
-  const initial = items.find(i => i.hospitalId === hospitalId) || items[0];
+  const visibleItems = scope ? filterByScope(items, scope) : items;
+  // When a facility is supplied, never fall back to another facility's row.
+  // The old fallback let a dispense at facility A decrement the first matching
+  // medication in facility B when A had no local stock record.
+  const initial = visibleItems.find(i => i.hospitalId === hospitalId)
+    || (!hospitalId ? visibleItems[0] : undefined);
   if (!initial) return;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -134,11 +148,12 @@ export async function decrementStock(
   }
 }
 
-export async function deleteInventoryItem(id: string): Promise<boolean> {
+export async function deleteInventoryItem(id: string, scope?: DataScope): Promise<boolean> {
   const db = pharmacyInventoryDB();
   try {
     const doc = await db.get(id);
     const typed = doc as unknown as PharmacyInventoryDoc;
+    if (scope && filterByScope([typed], scope).length === 0) return false;
     await db.remove(doc);
     emitSyncEvent({
       resourceType: 'pharmacy_inventory',

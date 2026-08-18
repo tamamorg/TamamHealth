@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import { updatePaymentStatus } from '@/lib/services/payment-service';
+import { reconcileProviderPayment } from '@/lib/services/payment-service';
 import crypto from 'crypto';
 
 /**
@@ -97,6 +97,7 @@ async function postHandler(req: NextRequest) {
       const mpesaReceiptNumber = items.find(
         (i) => i.Name === 'MpesaReceiptNumber'
       )?.Value;
+      const mpesaAmount = items.find((i) => i.Name === 'Amount')?.Value;
 
       // Log only opaque transaction correlators — never the payer phone
       // number, receipt number, or amount (PII / financial data in stdout).
@@ -109,15 +110,20 @@ async function postHandler(req: NextRequest) {
       // Match the checkoutRequestId to the pending payment (stored as the
       // payment's `reference`) and mark it posted. A missing/unknown match is
       // logged but still acked — never throw back at the gateway.
-      try {
-        const updated = await updatePaymentStatus(checkoutRequestId, 'posted', {
-          providerReference: typeof mpesaReceiptNumber === 'string' ? mpesaReceiptNumber : undefined,
+      const reconciliation = await reconcileProviderPayment({
+        reference: checkoutRequestId,
+        provider: 'mpesa',
+        status: 'posted',
+        providerReference: mpesaReceiptNumber === undefined ? undefined : String(mpesaReceiptNumber),
+        amount: typeof mpesaAmount === 'number' ? mpesaAmount : Number(mpesaAmount),
+        // Daraja callbacks do not carry currency. The configured integration
+        // currency is therefore the trusted provider-side value.
+        currency: process.env.MPESA_CURRENCY || 'KES',
+      });
+      if (reconciliation.outcome === 'mismatch' || reconciliation.outcome === 'invalid_state') {
+        console.warn('[M-Pesa Webhook] Callback did not match pending payment:', {
+          checkoutRequestId, reason: reconciliation.reason,
         });
-        if (!updated) {
-          console.warn('[M-Pesa Webhook] No matching payment for reference:', checkoutRequestId);
-        }
-      } catch (persistErr) {
-        console.error('[M-Pesa Webhook] Failed to persist payment status:', persistErr);
       }
 
       return NextResponse.json({
@@ -135,14 +141,9 @@ async function postHandler(req: NextRequest) {
       });
 
       // Mark the matching payment failed; ack the gateway regardless.
-      try {
-        const updated = await updatePaymentStatus(checkoutRequestId, 'failed', { reason: resultDesc });
-        if (!updated) {
-          console.warn('[M-Pesa Webhook] No matching payment for reference:', checkoutRequestId);
-        }
-      } catch (persistErr) {
-        console.error('[M-Pesa Webhook] Failed to persist payment status:', persistErr);
-      }
+      await reconcileProviderPayment({
+        reference: checkoutRequestId, provider: 'mpesa', status: 'failed', reason: resultDesc,
+      });
 
       return NextResponse.json({
         ResultCode: 0,

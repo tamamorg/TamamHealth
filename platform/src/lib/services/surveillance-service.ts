@@ -13,8 +13,8 @@ export async function getAllAlerts(scope?: DataScope): Promise<DiseaseAlertDoc[]
   return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getActiveAlerts(): Promise<DiseaseAlertDoc[]> {
-  const all = await getAllAlerts();
+export async function getActiveAlerts(scope?: DataScope): Promise<DiseaseAlertDoc[]> {
+  const all = await getAllAlerts(scope);
   return all.filter(a => a.alertLevel === 'emergency' || a.alertLevel === 'warning');
 }
 
@@ -29,15 +29,18 @@ export async function getAlertsBySourceRecord(recordId: string): Promise<Disease
   return all.filter(a => a.sourceRecordId === recordId);
 }
 
-export async function updateAlert(id: string, data: Partial<DiseaseAlertDoc>): Promise<DiseaseAlertDoc | null> {
+export async function updateAlert(id: string, data: Partial<DiseaseAlertDoc>, scope?: DataScope): Promise<DiseaseAlertDoc | null> {
   const db = diseaseAlertsDB();
   try {
     const existing = await db.get(id) as DiseaseAlertDoc;
+    if (scope && filterByScope([existing], scope).length === 0) return null;
     const updated = {
       ...existing,
       ...data,
       _id: existing._id,
       _rev: existing._rev,
+      orgId: existing.orgId,
+      hospitalId: existing.hospitalId,
       updatedAt: new Date().toISOString(),
     };
     const resp = await db.put(updated);
@@ -55,11 +58,12 @@ export async function updateAlert(id: string, data: Partial<DiseaseAlertDoc>): P
   }
 }
 
-export async function deleteAlert(id: string): Promise<boolean> {
+export async function deleteAlert(id: string, scope?: DataScope): Promise<boolean> {
   const db = diseaseAlertsDB();
   try {
     const doc = await db.get(id);
     const typed = doc as unknown as DiseaseAlertDoc;
+    if (scope && filterByScope([typed], scope).length === 0) return false;
     await db.remove(doc);
     emitSyncEvent({
       resourceType: 'disease_alert',

@@ -172,9 +172,33 @@ async function bootstrapUserLogin(
   };
   try {
     await db.put(doc);
-  } catch {
-    // Couch write failed (unreachable, or a concurrent login won the race).
-    // Still allow this session; the doc will be (re)provisioned next time.
+  } catch (putErr) {
+    // Never issue a session backed only by the bootstrap secret. If another
+    // first login won the create race, accept only when the persisted account
+    // still verifies this same password. On an infrastructure/write failure,
+    // fail closed so the initial credential cannot remain a reusable shadow
+    // login indefinitely.
+    try {
+      const persisted = await db.get(`user-${username}`) as import('./db-types').UserDoc;
+      if (!persisted || persisted.isActive === false || !(await bcrypt.compare(password, persisted.passwordHash))) {
+        return null;
+      }
+      return {
+        _id: persisted._id,
+        username: persisted.username,
+        passwordHash: persisted.passwordHash,
+        name: persisted.name,
+        role: persisted.role,
+        hospitalId: persisted.hospitalId,
+        hospitalName: persisted.hospitalName,
+        orgId: persisted.orgId,
+        isActive: persisted.isActive,
+        mustChangePassword: persisted.mustChangePassword,
+        passwordUpdatedAt: persisted.passwordUpdatedAt,
+      };
+    } catch {
+      throw new UsersDbUnavailableError(putErr);
+    }
   }
   return {
     _id: doc._id,

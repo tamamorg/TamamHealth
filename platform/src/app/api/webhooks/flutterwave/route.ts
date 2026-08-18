@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import { updatePaymentStatus } from '@/lib/services/payment-service';
+import { reconcileProviderPayment } from '@/lib/services/payment-service';
 import crypto from 'crypto';
 
 interface FlutterWaveCustomer {
@@ -89,20 +89,25 @@ async function postHandler(req: NextRequest) {
         // Match the txRef to the pending payment (stored as the payment's
         // `reference`) and mark it posted. Unknown match is logged but still
         // acked — never throw back at the gateway.
-        try {
-          const updated = await updatePaymentStatus(data.tx_ref, 'posted', { providerReference: String(data.id) });
-          if (!updated) {
-            console.warn('[Flutterwave Webhook] No matching payment for reference:', data.tx_ref);
-          }
-        } catch (persistErr) {
-          console.error('[Flutterwave Webhook] Failed to persist payment status:', persistErr);
+        const reconciliation = await reconcileProviderPayment({
+          reference: data.tx_ref,
+          provider: 'flutterwave',
+          status: 'posted',
+          providerReference: Number.isFinite(data.id) ? String(data.id) : undefined,
+          amount: data.amount,
+          currency: data.currency,
+        });
+        if (reconciliation.outcome === 'mismatch' || reconciliation.outcome === 'invalid_state') {
+          console.warn('[Flutterwave Webhook] Callback did not match pending payment:', {
+            txRef: data.tx_ref, reason: reconciliation.reason,
+          });
         }
 
         return NextResponse.json({
           status: 'ok',
           message: 'Payment processed successfully',
         });
-      } else {
+      } else if (['failed', 'cancelled'].includes(data.status.toLowerCase())) {
         // Payment unsuccessful
         console.log('[Flutterwave Webhook] Payment unsuccessful:', {
           flutterWaveId: data.id,
@@ -112,19 +117,18 @@ async function postHandler(req: NextRequest) {
         });
 
         // Mark the matching payment failed; ack the gateway regardless.
-        try {
-          const updated = await updatePaymentStatus(data.tx_ref, 'failed', { reason: data.status });
-          if (!updated) {
-            console.warn('[Flutterwave Webhook] No matching payment for reference:', data.tx_ref);
-          }
-        } catch (persistErr) {
-          console.error('[Flutterwave Webhook] Failed to persist payment status:', persistErr);
-        }
+        await reconcileProviderPayment({
+          reference: data.tx_ref, provider: 'flutterwave', status: 'failed', reason: data.status,
+        });
 
         return NextResponse.json({
           status: 'ok',
           message: 'Payment status recorded',
         });
+      } else {
+        // A completed event carrying a non-terminal provider state must not
+        // prematurely fail the local attempt. A later callback can settle it.
+        return NextResponse.json({ status: 'ok', message: 'Non-terminal status acknowledged' });
       }
     } else {
       // Other event types (e.g., charge.failed, transfer.completed, etc.)

@@ -13,6 +13,7 @@ export {};
 
 // In-memory users DB shared with the module under test.
 const store = new Map<string, Record<string, unknown>>();
+let putFailure: Error | null = null;
 const usersDB = () => ({
   async get(id: string) {
     if (store.has(id)) return store.get(id);
@@ -21,6 +22,7 @@ const usersDB = () => ({
     throw err;
   },
   async put(doc: Record<string, unknown>) {
+    if (putFailure) throw putFailure;
     store.set(doc._id as string, doc);
     return { ok: true, id: doc._id, rev: '1-x' };
   },
@@ -33,6 +35,7 @@ const BASE_ENV = process.env;
 async function load(env: Record<string, string | undefined>) {
   jest.resetModules();
   store.clear();
+  putFailure = null;
   process.env = {
     ...BASE_ENV,
     NEXT_PUBLIC_DEMO_MODE: 'false',
@@ -88,5 +91,12 @@ describe('production bootstrap login', () => {
     const { authenticateUser } = await load({});
     expect(await authenticateUser('nurse.stella', 'whatever')).toBeNull();
     expect(store.size).toBe(0);
+  });
+
+  test('does not authenticate when the bootstrap account cannot be persisted', async () => {
+    const { authenticateUser, UsersDbUnavailableError } = await load({});
+    putFailure = new Error('couch write unavailable');
+    await expect(authenticateUser('superadmin', 'Superadmin!')).rejects.toBeInstanceOf(UsersDbUnavailableError);
+    expect(store.has('user-superadmin')).toBe(false);
   });
 });

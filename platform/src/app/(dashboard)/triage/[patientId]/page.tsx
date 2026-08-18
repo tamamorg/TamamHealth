@@ -52,7 +52,16 @@ export default function PatientTriagePage() {
 
   // The nurse queue can contain a patient registered at another facility in
   // the same organisation (for example, a referral). The scoped list will not
-  // include that record, so resolve the exact id directly as a safe fallback.
+  // include that record, so resolve the exact id directly as a safe fallback,
+  // gated through the canonical `getPatientById(id, scope)` / `filterByScope`
+  // rather than a bespoke check.
+  //
+  // The scope passed is deliberately org + role only (no `hospitalId`) — see
+  // the identical fallback in PatientDetailPage.tsx for why: it keeps this
+  // limited to the org boundary (same as before) while now correctly
+  // rejecting a doc with no `orgId` at all, and folding the super_admin /
+  // government bypass into the one shared `filterByScope` check instead of a
+  // second "isNational" condition maintained here separately.
   const [fallbackPatient, setFallbackPatient] = useState<PatientDoc | null>(null);
   const [fallbackChecked, setFallbackChecked] = useState(false);
   useEffect(() => {
@@ -63,13 +72,17 @@ export default function PatientTriagePage() {
       setFallbackChecked(true);
       return () => { cancelled = true; };
     }
+    const role = currentUser?.role;
+    if (!role) {
+      setFallbackChecked(true);
+      return () => { cancelled = true; };
+    }
+    const orgId = currentUser?.orgId;
     (async () => {
       const { getPatientById } = await import('@/lib/services/patient-service');
-      const doc = await getPatientById(patientId);
+      const doc = await getPatientById(patientId, { orgId, role });
       if (cancelled) return;
-      const sameOrg = !doc?.orgId || !currentUser?.orgId || doc.orgId === currentUser.orgId;
-      const isNational = currentUser?.role === 'super_admin' || currentUser?.role === 'government';
-      setFallbackPatient(doc && (sameOrg || isNational) ? doc : null);
+      setFallbackPatient(doc);
       setFallbackChecked(true);
     })();
     return () => { cancelled = true; };

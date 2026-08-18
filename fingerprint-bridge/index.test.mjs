@@ -10,12 +10,22 @@ let port;
 before(async () => {
   const adapter = await loadAdapter('mock');
   server = createServer(adapter);
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  await new Promise((resolve, reject) => {
+    const onError = error => reject(error);
+    server.once('error', onError);
+    server.listen(0, '127.0.0.1', () => {
+      server.off('error', onError);
+      resolve();
+    });
+  });
   port = server.address().port;
   baseUrl = `http://127.0.0.1:${port}`;
 });
 
-after(() => new Promise(resolve => server.close(resolve)));
+after(() => new Promise((resolve, reject) => {
+  if (!server?.listening) return resolve();
+  server.close(error => error ? reject(error) : resolve());
+}));
 
 async function post(path, body, headers = {}) {
   const res = await fetch(`${baseUrl}${path}`, {

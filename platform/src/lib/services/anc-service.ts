@@ -198,8 +198,8 @@ export async function deleteANCVisit(id: string): Promise<boolean> {
   }
 }
 
-export async function getHighRiskPregnancies(): Promise<ANCVisitDoc[]> {
-  const all = await getAllANCVisits();
+export async function getHighRiskPregnancies(scope?: DataScope): Promise<ANCVisitDoc[]> {
+  const all = await getAllANCVisits(scope);
   // Get the most recent visit for each high-risk mother
   const motherLatest = new Map<string, ANCVisitDoc>();
   for (const visit of all) {
