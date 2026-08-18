@@ -289,7 +289,7 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
                     {['Test name', 'Tier', 'Specimen', ''].map(h => (
-                      <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                      <th key={h} className="px-3 py-2 text-start text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -322,7 +322,7 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
                           placeholder="e.g. Blood"
                         />
                       </td>
-                      <td className="px-3 py-2 text-right" style={{ width: 48 }}>
+                      <td className="px-3 py-2 text-end" style={{ width: 48 }}>
                         <button
                           type="button"
                           onClick={() => setDraft({ ...draft, labCatalog: draft.labCatalog.filter((_, idx) => idx !== i) })}

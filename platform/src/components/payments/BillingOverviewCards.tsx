@@ -171,7 +171,7 @@ export default function BillingOverviewCards({
         <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <Wallet className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
           <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cash Flow</span>
-          <span className="text-[11px] ml-auto" style={{ color: 'var(--text-muted)' }}>All invoices</span>
+          <span className="text-[11px] ms-auto" style={{ color: 'var(--text-muted)' }}>All invoices</span>
         </div>
         <div className="flex items-center gap-3 p-4">
           <div className="relative flex-shrink-0" style={{ width: 124, height: 124 }}>

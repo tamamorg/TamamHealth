@@ -467,7 +467,7 @@ function DispenseConfirm({
         ].map(([label, value]) => (
           <div key={label} className="flex justify-between gap-3">
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
-            <span className="text-xs font-semibold text-right" style={{ color: 'var(--text-primary)' }}>{value}</span>
+            <span className="text-xs font-semibold text-end" style={{ color: 'var(--text-primary)' }}>{value}</span>
           </div>
         ))}
       </div>

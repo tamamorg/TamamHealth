@@ -149,7 +149,7 @@ export default function CheckoutModal({
                     <span className="font-semibold">{condition.label}</span>
                     {condition.detail && <span style={{ color: 'var(--text-secondary)' }}> — {condition.detail}</span>}
                     {condition.resolveHref && (
-                      <Link href={condition.resolveHref} className="ml-1.5 font-semibold underline" style={{ color: 'var(--accent-primary)' }}>
+                      <Link href={condition.resolveHref} className="ms-1.5 font-semibold underline" style={{ color: 'var(--accent-primary)' }}>
                         Resolve
                       </Link>
                     )}

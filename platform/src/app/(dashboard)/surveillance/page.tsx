@@ -639,15 +639,15 @@ export default function SurveillancePage() {
                 <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: 720 }}>
                   <thead>
                     <tr>
-                      <th className="text-left text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
+                      <th className="text-start text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
                         style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
                         {t('surveillance.colDisease')}
                       </th>
-                      <th className="text-right text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
+                      <th className="text-end text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
                         style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
                         {t('surveillance.colCases')}
                       </th>
-                      <th className="text-right text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
+                      <th className="text-end text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
                         style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
                         {t('surveillance.colPrev')}
                       </th>
@@ -655,11 +655,11 @@ export default function SurveillancePage() {
                         style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
                         {t('surveillance.colTrend')}
                       </th>
-                      <th className="text-right text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
+                      <th className="text-end text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
                         style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
                         {t('surveillance.colDeaths')}
                       </th>
-                      <th className="text-right text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
+                      <th className="text-end text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
                         style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
                         {t('surveillance.colCfr')}
                       </th>
@@ -675,10 +675,10 @@ export default function SurveillancePage() {
                           <td className="px-3 py-2 text-xs font-semibold" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--table-row-border)' }}>
                             {row.disease}
                           </td>
-                          <td className="px-3 py-2 text-xs text-right font-semibold" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--table-row-border)' }}>
+                          <td className="px-3 py-2 text-xs text-end font-semibold" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--table-row-border)' }}>
                             {row.casesThisWeek.toLocaleString()}
                           </td>
-                          <td className="px-3 py-2 text-xs text-right" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--table-row-border)' }}>
+                          <td className="px-3 py-2 text-xs text-end" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--table-row-border)' }}>
                             {row.casesPrevWeek.toLocaleString()}
                           </td>
                           <td className="px-3 py-2 text-center" style={{ borderBottom: '1px solid var(--table-row-border)' }}>
@@ -697,13 +697,13 @@ export default function SurveillancePage() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-3 py-2 text-xs text-right font-semibold" style={{
+                          <td className="px-3 py-2 text-xs text-end font-semibold" style={{
                             color: row.deaths > 0 ? 'var(--tamamhealth-red)' : 'var(--text-muted)',
                             borderBottom: '1px solid var(--table-row-border)'
                           }}>
                             {row.deaths.toLocaleString()}
                           </td>
-                          <td className="px-3 py-2 text-xs text-right" style={{
+                          <td className="px-3 py-2 text-xs text-end" style={{
                             color: row.cfrPercent >= 10 ? 'var(--color-danger-text)' : row.cfrPercent >= 5 ? 'var(--color-warning-text)' : 'var(--text-secondary)',
                             fontWeight: row.cfrPercent >= 10 ? 700 : 600,
                             borderBottom: '1px solid var(--table-row-border)'
@@ -717,10 +717,10 @@ export default function SurveillancePage() {
                   <tfoot>
                     <tr style={{ background: 'var(--overlay-subtle)' }}>
                       <td className="px-3 py-2 text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{t('surveillance.total')}</td>
-                      <td className="px-3 py-2 text-xs text-right font-bold" style={{ color: 'var(--text-primary)' }}>
+                      <td className="px-3 py-2 text-xs text-end font-bold" style={{ color: 'var(--text-primary)' }}>
                         {idsrSummary.reduce((s, r) => s + r.casesThisWeek, 0).toLocaleString()}
                       </td>
-                      <td className="px-3 py-2 text-xs text-right font-bold" style={{ color: 'var(--text-muted)' }}>
+                      <td className="px-3 py-2 text-xs text-end font-bold" style={{ color: 'var(--text-muted)' }}>
                         {idsrSummary.reduce((s, r) => s + r.casesPrevWeek, 0).toLocaleString()}
                       </td>
                       <td className="px-3 py-2 text-center">
@@ -731,10 +731,10 @@ export default function SurveillancePage() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-xs text-right font-bold" style={{ color: 'var(--tamamhealth-red)' }}>
+                      <td className="px-3 py-2 text-xs text-end font-bold" style={{ color: 'var(--tamamhealth-red)' }}>
                         {idsrSummary.reduce((s, r) => s + r.deaths, 0).toLocaleString()}
                       </td>
-                      <td className="px-3 py-2 text-xs text-right font-bold" style={{ color: 'var(--text-secondary)' }}>
+                      <td className="px-3 py-2 text-xs text-end font-bold" style={{ color: 'var(--text-secondary)' }}>
                         {(() => {
                           const totalDeathsSum = idsrSummary.reduce((s, r) => s + r.deaths, 0);
                           const totalCasesSum = idsrSummary.reduce((s, r) => s + r.casesThisWeek, 0);

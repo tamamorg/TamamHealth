@@ -117,7 +117,7 @@ export default function Sidebar() {
 
     const badgePill = badgeCount > 0 ? (
       <span
-        className="ml-auto flex-shrink-0 flex items-center justify-center rounded-full text-[10px] font-bold leading-none"
+        className="ms-auto flex-shrink-0 flex items-center justify-center rounded-full text-[10px] font-bold leading-none"
         style={{
           background: '#F8593E4D',
           color: '#F8593E',
@@ -137,7 +137,7 @@ export default function Sidebar() {
           type="button"
           onClick={() => { handleNavClick(); setShowAvailability(true); }}
           title={collapsed ? navLabel(item) : undefined}
-          className={`nav-item w-full text-left ${compactItemClass}`}
+          className={`nav-item w-full text-start ${compactItemClass}`}
         >
           <item.icon className="w-[20px] h-[20px] flex-shrink-0" color="var(--accent-primary)" />
           {!collapsed && <span>{navLabel(item)}</span>}
@@ -303,7 +303,7 @@ export default function Sidebar() {
         <button
           onClick={() => setSidebarCollapsed(!collapsed)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={`hidden lg:flex nav-item items-center ${collapsed ? 'mx-auto w-10 justify-center !px-0' : 'w-full text-left'}`}
+          className={`hidden lg:flex nav-item items-center ${collapsed ? 'mx-auto w-10 justify-center !px-0' : 'w-full text-start'}`}
           style={{ color: 'var(--nav-text)' }}
         >
           {collapsed ? (
@@ -332,7 +332,7 @@ export default function Sidebar() {
             </button>
             {showLangPicker && (
               <div
-                className="absolute left-0 bottom-full mb-1 rounded-xl overflow-hidden"
+                className="absolute start-0 bottom-full mb-1 rounded-xl overflow-hidden"
                 style={{
                   background: 'var(--bg-card-solid)',
                   border: '1px solid var(--border-medium)',
@@ -360,7 +360,7 @@ export default function Sidebar() {
                       }
                       setShowLangPicker(false);
                     }}
-                    className="flex items-center gap-2.5 w-full px-3 py-2 text-left transition-colors"
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-start transition-colors"
                     style={{
                       background: loc.code === locale ? 'var(--accent-light)' : 'transparent',
                       color: loc.code === locale ? 'var(--accent-primary)' : 'var(--text-primary)',
@@ -407,7 +407,7 @@ export default function Sidebar() {
       {/* Desktop sidebar — solid floating panel */}
       <aside
         ref={sidebarRef}
-        className="hidden lg:flex fixed left-0 top-0 bottom-0 flex-col z-40 transition-all duration-300 ease-in-out"
+        className="hidden lg:flex fixed start-0 top-0 bottom-0 flex-col z-40 transition-all duration-300 ease-in-out"
         style={{
           width: collapsed ? '80px' : '220px',
           margin: '10px 0 10px 10px',
@@ -425,11 +425,11 @@ export default function Sidebar() {
         <div
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
-          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-50 group"
+          className="absolute end-0 top-0 bottom-0 w-2 cursor-col-resize z-50 group"
           style={{ borderRadius: '0 var(--card-radius) var(--card-radius) 0' }}
         >
           <div
-            className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            className="absolute end-0 top-1/2 -translate-y-1/2 w-[3px] h-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             style={{ background: roleConfig?.color || 'var(--accent-primary)' }}
           />
         </div>
@@ -447,7 +447,7 @@ export default function Sidebar() {
       {/* Off-canvas drawer — the full LABELLED sidebar, opened from the TopBar
           hamburger. Slides over the persistent icon rail when you need labels. */}
       <aside
-        className={`lg:hidden fixed left-0 top-0 bottom-0 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
+        className={`lg:hidden fixed start-0 top-0 bottom-0 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{
@@ -456,7 +456,7 @@ export default function Sidebar() {
           height: 'calc(100vh - 20px)',
           background: 'var(--sidebar-bg)',
           borderRadius: 18,
-          borderRight: 'none',
+          borderInlineEnd: 'none',
           boxShadow: sidebarOpen ? '0 4px 32px rgba(1, 86, 151, 0.24)' : 'none',
         }}
       >

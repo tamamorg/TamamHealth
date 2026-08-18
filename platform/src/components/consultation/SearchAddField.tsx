@@ -57,7 +57,7 @@ export default function SearchAddField({
       {label && <label>{label}</label>}
       <div className="flex items-start gap-2">
         <div className="relative min-w-0 flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+          <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
           <input
             type="search"
             value={query}
@@ -75,7 +75,7 @@ export default function SearchAddField({
             }}
             placeholder={placeholder}
             className="search-icon-input"
-            style={{ background: 'var(--overlay-subtle)', paddingRight: query ? 34 : undefined }}
+            style={{ background: 'var(--overlay-subtle)', paddingInlineEnd: query ? 34 : undefined }}
           />
           {query && (
             <button
@@ -83,14 +83,14 @@ export default function SearchAddField({
               aria-label="Clear"
               onMouseDown={e => e.preventDefault()}
               onClick={() => { setQuery(''); setOpen(true); }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full transition-colors"
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full transition-colors"
               style={{ width: 20, height: 20, color: 'var(--text-muted)', background: 'var(--border-light)' }}
             >
               <X size={12} strokeWidth={2.5} />
             </button>
           )}
           {open && (
-            <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-lg border overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-light)', boxShadow: 'none' }}>
+            <div className="absolute z-20 top-full start-0 end-0 mt-1 rounded-lg border overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-light)', boxShadow: 'none' }}>
               {filtered.length > 0 ? (
                 filtered.map(option => (
                   <button
@@ -98,7 +98,7 @@ export default function SearchAddField({
                     type="button"
                     onMouseDown={e => e.preventDefault()}
                     onClick={() => handlePick(option)}
-                    className="w-full px-4 py-2.5 text-left hover:bg-white/5 transition-colors"
+                    className="w-full px-4 py-2.5 text-start hover:bg-white/5 transition-colors"
                     style={{ borderBottom: '1px solid var(--border-light)' }}
                   >
                     <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{option}</span>

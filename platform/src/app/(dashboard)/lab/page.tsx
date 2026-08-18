@@ -316,7 +316,7 @@ export default function LabPage() {
                     </EhrListHeaderButton>
                     {showHeaderFilters && (
                       <div
-                        className="absolute right-0 mt-2 rounded-2xl overflow-hidden z-50"
+                        className="absolute end-0 mt-2 rounded-2xl overflow-hidden z-50"
                         style={{ width: 'min(92vw, 420px)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
                       >
                         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
@@ -434,7 +434,7 @@ export default function LabPage() {
                     <td className="font-semibold text-sm">
                       {order.testName}
                       {order.tier && (
-                        <Badge tone={order.tier === 'special' ? 'accent' : 'neutral'} uppercase className="ml-2 align-middle">{order.tier}</Badge>
+                        <Badge tone={order.tier === 'special' ? 'accent' : 'neutral'} uppercase className="ms-2 align-middle">{order.tier}</Badge>
                       )}
                     </td>
                     <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>

@@ -435,7 +435,7 @@ export default function RadiologyDashboard() {
                 <button
                   onClick={(e) => { e.stopPropagation(); removeAttachment(study.id, att.url); }}
                   title={t('radiology.removeImage')}
-                  className="absolute top-1 right-1 flex items-center justify-center rounded-full"
+                  className="absolute top-1 end-1 flex items-center justify-center rounded-full"
                   style={{ width: 18, height: 18, background: 'rgba(15,23,42,0.65)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
                 >
                   ×

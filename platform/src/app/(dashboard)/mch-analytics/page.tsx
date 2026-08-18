@@ -603,7 +603,7 @@ export default function MCHAnalyticsPage() {
                         const maxCount = ageGroupValues.length > 0 ? Math.max(...ageGroupValues, 1) : 1;
                         return (
                           <div key={age} className="flex items-center gap-2">
-                            <span className="text-xs w-12 text-right font-mono" style={{ color: 'var(--text-muted)' }}>{age}</span>
+                            <span className="text-xs w-12 text-end font-mono" style={{ color: 'var(--text-muted)' }}>{age}</span>
                             <div className="flex-1 h-3 rounded-full" style={{ background: 'var(--overlay-light)' }}>
                               <div className="h-full rounded-full" style={{
                                 width: `${(count / maxCount) * 100}%`,
@@ -900,7 +900,7 @@ export default function MCHAnalyticsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="text-right">
+                        <div className="text-end">
                           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{mother.state}</p>
                           <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('mch.lastVisit', { date: mother.lastVisitDate })}</p>
                         </div>

@@ -562,7 +562,7 @@ function StaffPickerModal({
             />
           )}
           <div className="relative mb-2">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ehr-muted)' }} />
+            <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ehr-muted)' }} />
             <input
               type="search"
               value={search}
@@ -570,7 +570,7 @@ function StaffPickerModal({
               placeholder="Search staff by name or role"
               className="w-full text-[13px]"
               style={{
-                paddingLeft: 34, paddingTop: 9, paddingBottom: 9, borderRadius: 8,
+                paddingInlineStart: 34, paddingTop: 9, paddingBottom: 9, borderRadius: 8,
                 background: 'var(--bg-card-solid)',
                 border: '1px solid var(--ehr-border)',
                 color: 'var(--ehr-text)',
@@ -584,10 +584,10 @@ function StaffPickerModal({
           {multi && selectedList.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2">
               {selectedList.map(u => (
-                <span key={u._id} className="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: 'var(--ehr-info-bg)', color: 'var(--accent-text)' }}>
+                <span key={u._id} className="inline-flex items-center gap-1 ps-1 pe-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: 'var(--ehr-info-bg)', color: 'var(--accent-text)' }}>
                   <Avatar name={u.name} seed={u.name} size={18} />
                   {u.name.split(' ')[0]}
-                  <button onClick={() => toggle(u)} aria-label="Remove" className="ml-0.5"><X className="w-3 h-3" /></button>
+                  <button onClick={() => toggle(u)} aria-label="Remove" className="ms-0.5"><X className="w-3 h-3" /></button>
                 </span>
               ))}
             </div>
@@ -604,7 +604,7 @@ function StaffPickerModal({
               <button
                 key={u._id}
                 onClick={() => (multi ? toggle(u) : onStartDM?.(u))}
-                className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-[var(--ehr-hover)] focus:outline-none"
+                className="w-full text-start flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-[var(--ehr-hover)] focus:outline-none"
                 style={{ background: isSel ? 'var(--ehr-info-bg)' : 'transparent' }}
               >
                 <Avatar name={u.name} seed={u.name} size={36} presence={u.presence} />

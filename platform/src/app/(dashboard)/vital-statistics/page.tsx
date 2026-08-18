@@ -89,7 +89,7 @@ export default function VitalStatisticsPage() {
                           <div className="flex-1 h-2 rounded-full" style={{ background: 'var(--overlay-light)' }}>
                             <div className="h-full rounded-full" style={{ width: `${birthStats.total > 0 ? (count / birthStats.total) * 100 : 0}%`, background: 'var(--accent-primary)' }} />
                           </div>
-                          <span className="text-sm font-bold w-8 text-right">{count}</span>
+                          <span className="text-sm font-bold w-8 text-end">{count}</span>
                         </div>
                       ))}
                     </div>

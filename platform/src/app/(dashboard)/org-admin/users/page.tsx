@@ -372,7 +372,7 @@ export default function OrgUsersPage() {
                   {/* Status values right-align (shared .appointment-card-status),
                       so its label right-aligns too — the last-child rule only
                       covers the empty actions gutter here. */}
-                  <span style={{ justifySelf: 'end', paddingRight: 6 }}>{t('orgUsers.colStatus')}</span>
+                  <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('orgUsers.colStatus')}</span>
                   <span />
                 </div>
                 {filteredUsers.length === 0 && (
@@ -511,13 +511,13 @@ export default function OrgUsersPage() {
                     value={formPassword}
                     onChange={e => setFormPassword(e.target.value)}
                     placeholder={t('orgUsers.passwordPlaceholder')}
-                    className="w-full px-3 py-2 pr-10 rounded-lg text-sm"
+                    className="w-full px-3 py-2 pe-10 rounded-lg text-sm"
                     style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    className="absolute end-3 top-1/2 -translate-y-1/2"
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
@@ -538,14 +538,14 @@ export default function OrgUsersPage() {
                   <Select
                     value={formRole}
                     onChange={e => setFormRole(e.target.value as UserRole)}
-                    className="w-full appearance-none px-3 py-2 pr-8 rounded-lg text-sm"
+                    className="w-full appearance-none px-3 py-2 pe-8 rounded-lg text-sm"
                     style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                   >
                     {availableRoles.map(r => (
                       <option key={r} value={r}>{roleLabel(r)}</option>
                     ))}
                   </Select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 </div>
               </div>
 
@@ -557,7 +557,7 @@ export default function OrgUsersPage() {
                     <Select
                       value={formHospitalId}
                       onChange={e => setFormHospitalId(e.target.value)}
-                      className="w-full appearance-none px-3 py-2 pr-8 rounded-lg text-sm"
+                      className="w-full appearance-none px-3 py-2 pe-8 rounded-lg text-sm"
                       style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                     >
                       <option value="">{t('orgUsers.selectHospitalOption')}</option>
@@ -565,7 +565,7 @@ export default function OrgUsersPage() {
                         <option key={h._id} value={h._id}>{h.name}</option>
                       ))}
                     </Select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                    <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   </div>
                 </div>
               )}
@@ -704,13 +704,13 @@ export default function OrgUsersPage() {
                 value={resetPassword}
                 onChange={e => setResetPassword(e.target.value)}
                 placeholder={t('orgUsers.newPasswordPlaceholder')}
-                className="w-full px-3 py-2 pr-10 rounded-lg text-sm"
+                className="w-full px-3 py-2 pe-10 rounded-lg text-sm"
                 style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
+                className="absolute end-3 top-1/2 -translate-y-1/2"
               >
                 {showPassword ? (
                   <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />

@@ -88,7 +88,7 @@ function StepRow({ step, dayKey }: { step: DerivedStep; dayKey: string }) {
         )}
       </span>
 
-      <span className="text-right flex-shrink-0" style={{ minWidth: 0 }}>
+      <span className="text-end flex-shrink-0" style={{ minWidth: 0 }}>
         {done ? (
           <>
             <span

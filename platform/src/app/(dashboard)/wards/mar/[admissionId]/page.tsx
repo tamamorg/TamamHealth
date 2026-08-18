@@ -112,7 +112,7 @@ function MARCell({ rx, day, time, onRecord }: CellProps) {
     return (
       <button
         onClick={() => onRecord(rx, scheduledFor)}
-        className="w-full h-full p-1.5 text-left rounded-md transition-all"
+        className="w-full h-full p-1.5 text-start rounded-md transition-all"
         style={{
           background: tint.bg,
           color: tint.color,
@@ -384,7 +384,7 @@ export default function MARPage() {
                 <thead>
                   <tr style={{ background: 'var(--overlay-subtle)' }}>
                     <th
-                      className="text-left px-4 py-3 font-bold sticky left-0 z-10"
+                      className="text-start px-4 py-3 font-bold sticky start-0 z-10"
                       style={{
                         minWidth: 280,
                         borderBottom: '1px solid var(--border-light)',
@@ -421,7 +421,7 @@ export default function MARPage() {
                       background: idx % 2 === 0 ? 'transparent' : 'var(--overlay-subtle)',
                     }}>
                       <td
-                        className="px-4 py-3 align-top sticky left-0 z-[5]"
+                        className="px-4 py-3 align-top sticky start-0 z-[5]"
                         style={{
                           background: idx % 2 === 0 ? 'var(--bg-card-solid)' : 'var(--overlay-subtle)',
                           borderBottom: '1px solid var(--border-light)',

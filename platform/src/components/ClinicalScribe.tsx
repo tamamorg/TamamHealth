@@ -95,7 +95,7 @@ export default function ClinicalScribe({ onApply, onClose }: ClinicalScribeProps
               background: isRecording ? 'rgba(229,46,66,0.12)' : 'var(--overlay-subtle)',
               color: isRecording ? 'var(--color-danger-text)' : 'var(--text-secondary)',
             }}>
-              {isRecording && <span className="inline-block w-1.5 h-1.5 rounded-full mr-1.5 animate-pulse" style={{ background: 'var(--color-danger)' }} />}
+              {isRecording && <span className="inline-block w-1.5 h-1.5 rounded-full me-1.5 animate-pulse" style={{ background: 'var(--color-danger)' }} />}
               {formatDuration(scribe.duration)}
             </span>
           )}

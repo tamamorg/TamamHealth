@@ -263,7 +263,7 @@ export default function AdminUsersPage() {
   // No custom chevron artwork here — the global `select` rule already draws
   // one (globals.css); this only reserves room for it, since inline padding
   // would otherwise override the stylesheet's own padding-right.
-  const selectStyle: React.CSSProperties = { ...inputStyle, paddingRight: 40 };
+  const selectStyle: React.CSSProperties = { ...inputStyle, paddingInlineEnd: 40 };
 
   return (
     <SadbPage>
@@ -319,7 +319,7 @@ export default function AdminUsersPage() {
             {/* Status values right-align (shared .appointment-card-status),
                 so its label right-aligns too — the last-child rule only
                 covers the empty actions gutter here. */}
-            <span style={{ justifySelf: 'end', paddingRight: 6 }}>{t('adminUsers.colStatus')}</span>
+            <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('adminUsers.colStatus')}</span>
             <span />
           </div>
           {loading && (
@@ -481,10 +481,10 @@ export default function AdminUsersPage() {
                     type={showAddUserPassword ? 'text' : 'password'}
                     value={addForm.password}
                     onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))}
-                    style={{ ...inputStyle, paddingRight: 40, fontFamily: showAddUserPassword ? 'var(--font-mono, monospace)' : undefined }}
+                    style={{ ...inputStyle, paddingInlineEnd: 40, fontFamily: showAddUserPassword ? 'var(--font-mono, monospace)' : undefined }}
                     autoComplete="new-password"
                   />
-                  <button type="button" onClick={() => setShowAddUserPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <button type="button" onClick={() => setShowAddUserPassword(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2">
                     {showAddUserPassword
                       ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                       : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
@@ -614,10 +614,10 @@ export default function AdminUsersPage() {
                 type={showResetPassword ? 'text' : 'password'}
                 value={resetPasswordValue}
                 onChange={e => setResetPasswordValue(e.target.value)}
-                style={{ ...inputStyle, paddingRight: 40, fontFamily: showResetPassword ? 'var(--font-mono, monospace)' : undefined }}
+                style={{ ...inputStyle, paddingInlineEnd: 40, fontFamily: showResetPassword ? 'var(--font-mono, monospace)' : undefined }}
                 autoComplete="new-password"
               />
-              <button type="button" onClick={() => setShowResetPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <button type="button" onClick={() => setShowResetPassword(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2">
                 {showResetPassword
                   ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                   : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}

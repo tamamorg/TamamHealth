@@ -116,7 +116,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
       ) : !ready ? (
         <div className="flex items-center gap-2 p-3 rounded-lg text-xs" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
           <span>{status?.available ? t('fingerprint.scannerDisconnected') : t('fingerprint.bridgeUnavailable')}</span>
-          <button type="button" onClick={refreshStatus} className="btn btn-secondary btn-sm ml-auto">
+          <button type="button" onClick={refreshStatus} className="btn btn-secondary btn-sm ms-auto">
             <RefreshCw className="w-3.5 h-3.5" /> {t('fingerprint.retry')}
           </button>
         </div>

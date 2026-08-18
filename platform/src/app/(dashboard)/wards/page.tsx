@@ -195,7 +195,7 @@ export default function WardsPage() {
                       )}
                     </EhrListHeaderButton>
                     {showWardFilter && (
-                      <div className="absolute left-0 mt-2 rounded-2xl overflow-hidden z-50"
+                      <div className="absolute start-0 mt-2 rounded-2xl overflow-hidden z-50"
                         style={{ width: 240, background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: '0 16px 48px rgba(0,0,0,0.15)' }}>
                         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
                           <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Filter by ward</span>

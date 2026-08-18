@@ -147,7 +147,7 @@ export default function HrSchedulePage() {
             <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
               Below the configured minimum for {date}.
             </span>
-            <div className="flex flex-wrap gap-2 ml-auto">
+            <div className="flex flex-wrap gap-2 ms-auto">
               {staffingGaps.map(g => (
                 <span
                   key={g.shift}

@@ -31,7 +31,7 @@ const SECTION_TITLE_STYLE: React.CSSProperties = {
 function Th({ children, onClick, active, dir }: { children?: React.ReactNode; onClick?: () => void; active?: boolean; dir?: 'asc' | 'desc' }) {
   return (
     <th
-      className="text-left px-4 py-2.5"
+      className="text-start px-4 py-2.5"
       style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', cursor: onClick ? 'pointer' : undefined }}
       onClick={onClick}
     >

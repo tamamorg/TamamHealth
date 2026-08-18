@@ -580,12 +580,12 @@ export default function TriageWorkflow({
                   }}
                 />
                 {triagePatientMatches.length > 0 && (
-                  <div className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-10" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg)' }}>
+                  <div className="absolute start-0 end-0 mt-1 rounded-xl overflow-hidden z-10" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg)' }}>
                     {triagePatientMatches.map(p => (
                       <button
                         key={p._id}
                         onClick={() => { setTriagePatientId(p._id); setTriagePatientSearch(''); }}
-                        className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--overlay-subtle)]"
+                        className="w-full text-start px-3 py-2 text-xs hover:bg-[var(--overlay-subtle)]"
                         style={{ borderBottom: '1px solid var(--border-light)' }}
                       >
                         <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{patientFullName(p)}</div>

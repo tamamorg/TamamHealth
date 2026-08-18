@@ -372,7 +372,7 @@ export default function BloodBankPage() {
                     <th
                       key={g}
                       className="text-[11px] font-bold uppercase tracking-wider px-2 py-1.5"
-                      style={{ color: 'var(--accent-primary)', borderBottom: '1px solid var(--border-light)', borderLeft: i === 0 ? undefined : '1px solid var(--border-light)' }}
+                      style={{ color: 'var(--accent-primary)', borderBottom: '1px solid var(--border-light)', borderInlineStart: i === 0 ? undefined : '1px solid var(--border-light)' }}
                     >
                       {g}
                     </th>
@@ -388,7 +388,7 @@ export default function BloodBankPage() {
                       <td
                         key={g}
                         className="text-base font-bold px-2 py-2"
-                        style={{ color, fontVariantNumeric: 'tabular-nums', borderLeft: i === 0 ? undefined : '1px solid var(--border-light)' }}
+                        style={{ color, fontVariantNumeric: 'tabular-nums', borderInlineStart: i === 0 ? undefined : '1px solid var(--border-light)' }}
                       >
                         {count}
                       </td>
@@ -608,13 +608,13 @@ export default function BloodBankPage() {
                     </div>
                   ) : (
                     <div className="relative">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                      <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                       <input
                         autoFocus
                         value={reserveQuery}
                         onChange={e => setReserveQuery(e.target.value)}
                         placeholder="Search by name, patient ID, or phone…"
-                        style={{ paddingLeft: 40 }}
+                        style={{ paddingInlineStart: 40 }}
                       />
                       {reserveMatches.length > 0 && (
                         <div className="mt-1 rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card)' }}>
@@ -623,7 +623,7 @@ export default function BloodBankPage() {
                               key={p._id}
                               type="button"
                               onClick={() => setReservePatient(p)}
-                              className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-[var(--table-row-hover)]"
+                              className="w-full text-start px-3 py-2 flex items-center gap-2.5 hover:bg-[var(--table-row-hover)]"
                               style={{ borderBottom: '1px solid var(--border-light)' }}
                             >
                               <PatientAvatar patient={p} size={26} />

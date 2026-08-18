@@ -108,14 +108,14 @@ export default function GlobalSearchBar({ title, titleIcon, actions, searchTrail
       )}
       {!hideInput && (
       <div className={split ? 'relative flex-1 min-w-0' : 'relative flex-1 min-w-[220px] max-w-2xl'} ref={searchContainerRef}>
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px]" color="var(--text-muted)" />
+        <Search className="absolute start-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px]" color="var(--text-muted)" />
         <input
           type="search"
           placeholder={t('topbar.searchPlaceholder')}
           value={localSearch}
           onChange={e => handleSearch(e.target.value)}
           onFocus={() => { if (localSearch.trim().length >= 2) setDropdownOpen(true); }}
-          className="search-icon-input w-full py-3 pr-4 text-sm"
+          className="search-icon-input w-full py-3 pe-4 text-sm"
           style={{
             border: '1px solid var(--border-medium)',
             background: 'var(--bg-card-solid)',
@@ -129,7 +129,7 @@ export default function GlobalSearchBar({ title, titleIcon, actions, searchTrail
         {/* Quick-jump dropdown */}
         {dropdownOpen && localSearch.trim().length >= 2 && (
           <div
-            className="absolute top-full left-0 mt-1.5 rounded-xl overflow-hidden z-50"
+            className="absolute top-full start-0 mt-1.5 rounded-xl overflow-hidden z-50"
             style={{
               width: 'min(100%, 420px)',
               background: 'var(--bg-card-solid)',
@@ -155,7 +155,7 @@ export default function GlobalSearchBar({ title, titleIcon, actions, searchTrail
                   <button
                     key={p._id}
                     onMouseDown={(e) => { e.preventDefault(); jumpToPatient(p._id); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--overlay-subtle)]"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-start transition-colors hover:bg-[var(--overlay-subtle)]"
                     style={{ borderBottom: '1px solid var(--border-light)' }}
                   >
                     <div className="flex-1 min-w-0">
@@ -187,7 +187,7 @@ export default function GlobalSearchBar({ title, titleIcon, actions, searchTrail
             type="button"
             onClick={clear}
             aria-label={t('action.close')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--overlay-subtle)]"
+            className="absolute end-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--overlay-subtle)]"
             style={{ color: 'var(--text-muted)' }}
           >
             ×

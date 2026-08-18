@@ -194,7 +194,7 @@ export default function OrgAdminAnalyticsPage() {
               <thead>
                 <tr>
                   {[t('orgAnalytics.colDate'), t('analytics.colUsers'), t('analytics.colAction'), t('analytics.colPath')].map(h => (
-                    <th key={h} className="text-left px-3 py-2 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{h}</th>
+                    <th key={h} className="text-start px-3 py-2 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>

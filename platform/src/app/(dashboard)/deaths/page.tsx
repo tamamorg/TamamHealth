@@ -311,7 +311,7 @@ export default function DeathsPage() {
                   <td className="text-xs font-mono">{d.dateOfDeath}</td>
                   <td>
                     <div>
-                      {d.underlyingICD11 && <span className="font-mono text-[10px] px-1.5 py-0.5 rounded mr-1" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.underlyingICD11}</span>}
+                      {d.underlyingICD11 && <span className="font-mono text-[10px] px-1.5 py-0.5 rounded me-1" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.underlyingICD11}</span>}
                       <span className="text-xs">{d.underlyingCause || d.immediateCause}</span>
                     </div>
                   </td>
@@ -413,13 +413,13 @@ export default function DeathsPage() {
                   ) : (
                     <>
                       <div className="relative">
-                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                        <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                         <input
                           type="text"
                           value={patientLookup}
                           onChange={e => setPatientLookup(e.target.value)}
                           placeholder={t('deaths.searchPatientPlaceholder')}
-                          className="w-full text-xs p-2 pl-8 rounded-lg outline-none"
+                          className="w-full text-xs p-2 ps-8 rounded-lg outline-none"
                           style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                         />
                       </div>
@@ -429,7 +429,7 @@ export default function DeathsPage() {
                             <button
                               key={p._id}
                               onClick={() => selectLinkedPatient(p._id)}
-                              className="w-full px-2.5 py-2 text-left text-xs hover:bg-[var(--overlay-subtle)] transition-colors"
+                              className="w-full px-2.5 py-2 text-start text-xs hover:bg-[var(--overlay-subtle)] transition-colors"
                               style={{ borderBottom: '1px solid var(--border-light)' }}
                             >
                               <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{p.firstName} {p.surname}</p>

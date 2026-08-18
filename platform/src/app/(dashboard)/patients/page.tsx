@@ -289,8 +289,8 @@ export default function PatientsPage() {
                     <label className="flex flex-col gap-1">
                       <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterOlderThan')}</span>
                       <div className="relative">
-                        <input type="number" min={0} max={120} value={filters.olderThan} onChange={e => setF('olderThan', e.target.value)} placeholder="—" className="w-full text-sm py-2 pl-3 pr-12" style={fieldStyle} />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('patients.filterYears')}</span>
+                        <input type="number" min={0} max={120} value={filters.olderThan} onChange={e => setF('olderThan', e.target.value)} placeholder="—" className="w-full text-sm py-2 ps-3 pe-12" style={fieldStyle} />
+                        <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('patients.filterYears')}</span>
                       </div>
                     </label>
                     <label className="flex flex-col gap-1">
@@ -456,14 +456,14 @@ export default function PatientsPage() {
                 </label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                    <Hash className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                     <input
                       type="text"
                       value={lookupId}
                       onChange={(e) => { setLookupId(e.target.value); setLookupError(''); }}
                       onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
                       placeholder={t('patients.lookupPlaceholder')}
-                      className="pl-9 w-full"
+                      className="ps-9 w-full"
                       autoFocus
                       style={{ background: 'var(--overlay-subtle)' }}
                     />
@@ -493,11 +493,11 @@ export default function PatientsPage() {
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'transparent' }}>
                   <ScanLine className="w-5 h-5" style={{ color: 'var(--tamamhealth-blue)' }} />
                 </div>
-                <div className="text-left">
+                <div className="text-start">
                   <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('patients.scanQrCode')}</p>
                   <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('patients.scanQrDesc')}</p>
                 </div>
-                <ArrowRight className="w-4 h-4 ml-auto" style={{ color: 'var(--text-muted)' }} />
+                <ArrowRight className="w-4 h-4 ms-auto" style={{ color: 'var(--text-muted)' }} />
               </button>
 
               {/* Fingerprint identification (feature-flagged, needs local bridge) */}
@@ -510,11 +510,11 @@ export default function PatientsPage() {
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'transparent' }}>
                     <ScanLine className="w-5 h-5" style={{ color: 'var(--tamamhealth-blue)' }} />
                   </div>
-                  <div className="text-left">
+                  <div className="text-start">
                     <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('fingerprint.identifyTitle')}</p>
                     <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('fingerprint.identifyOptionDesc')}</p>
                   </div>
-                  <ArrowRight className="w-4 h-4 ml-auto" style={{ color: 'var(--text-muted)' }} />
+                  <ArrowRight className="w-4 h-4 ms-auto" style={{ color: 'var(--text-muted)' }} />
                 </button>
               )}
             </div>

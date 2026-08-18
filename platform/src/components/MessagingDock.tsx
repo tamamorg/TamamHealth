@@ -432,12 +432,12 @@ export default function MessagingDock() {
                 <span className="text-[11px] font-semibold hidden sm:inline" style={{ color: 'var(--text-secondary)' }}>{AVAILABILITY_LABELS[availability]}</span>
               </button>
               {showAvailability && (
-                <div className="absolute right-0 top-full mt-1 z-50 py-1 rounded-xl shadow-xl min-w-[160px]" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>
+                <div className="absolute end-0 top-full mt-1 z-50 py-1 rounded-xl shadow-xl min-w-[160px]" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>
                   {(Object.entries(AVAILABILITY_LABELS) as [StaffPresence, string][]).map(([key, label]) => (
                     <button
                       key={key}
                       onClick={() => { pickAvailability(key); setShowAvailability(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left hover:bg-[var(--overlay-subtle)]"
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-start hover:bg-[var(--overlay-subtle)]"
                     >
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: AVAILABILITY_COLORS[key] }} />
                       <span className="text-[12px]" style={{ color: availability === key ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: availability === key ? 700 : 600 }}>{label}</span>
@@ -463,7 +463,7 @@ export default function MessagingDock() {
                       closes it without also triggering what's underneath. */}
                   <div className="fixed inset-0 z-40" onClick={() => setComposeOpen(false)} />
                   <div
-                    className="absolute right-0 top-full mt-1.5 z-50 py-1 rounded-xl overflow-hidden min-w-[196px]"
+                    className="absolute end-0 top-full mt-1.5 z-50 py-1 rounded-xl overflow-hidden min-w-[196px]"
                     style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', boxShadow: '0 8px 24px rgba(15,23,42,0.14)' }}
                     role="menu"
                   >
@@ -481,7 +481,7 @@ export default function MessagingDock() {
                           else if (item.key === 'team') { setView('newTeam'); setTeamName(''); setTeamMembers([]); setStaffSearch(''); }
                           else { setTab('transfers'); }
                         }}
-                        className="w-full flex items-start gap-2.5 px-3 py-2 text-left hover:bg-[var(--overlay-subtle)]"
+                        className="w-full flex items-start gap-2.5 px-3 py-2 text-start hover:bg-[var(--overlay-subtle)]"
                       >
                         <span className="mt-0.5 flex-shrink-0" style={{ color: 'var(--accent-primary)' }}>{item.icon}</span>
                         <span className="min-w-0">
@@ -521,7 +521,7 @@ export default function MessagingDock() {
                 <div key={m._id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                   <div className="max-w-[78%]">
                     {!mine && activeConversation!.kind === 'group' && (
-                      <p className="text-[10px] font-semibold mb-0.5 ml-1" style={{ color: 'var(--text-muted)' }}>{m.fromDoctorName}</p>
+                      <p className="text-[10px] font-semibold mb-0.5 ms-1" style={{ color: 'var(--text-muted)' }}>{m.fromDoctorName}</p>
                     )}
                     <div
                       className="px-3 py-2 text-[13px] leading-snug"
@@ -564,7 +564,7 @@ export default function MessagingDock() {
                         </div>
                       )}
                     </div>
-                    <p className={`text-[10px] mt-0.5 ${mine ? 'text-right mr-1' : 'ml-1'}`} style={{ color: 'var(--text-muted)' }}>
+                    <p className={`text-[10px] mt-0.5 ${mine ? 'text-end me-1' : 'ms-1'}`} style={{ color: 'var(--text-muted)' }}>
                       {clockTime(m.sentAt || m.createdAt)}{m.editedAt ? ' · edited' : ''}
                     </p>
                   </div>
@@ -655,13 +655,13 @@ export default function MessagingDock() {
               style={{ background: 'var(--bg-app)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', fontFamily: 'var(--font-platform)', outline: 'none' }}
             />
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
               <input
                 value={staffSearch}
                 onChange={e => setStaffSearch(e.target.value)}
                 placeholder="Add colleagues…"
-                className="w-full text-[13px] pr-3 py-2 rounded-xl"
-                style={{ paddingLeft: 34, background: 'var(--bg-app)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', fontFamily: 'var(--font-platform)', outline: 'none' }}
+                className="w-full text-[13px] pe-3 py-2 rounded-xl"
+                style={{ paddingInlineStart: 34, background: 'var(--bg-app)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', fontFamily: 'var(--font-platform)', outline: 'none' }}
               />
             </div>
           </div>
@@ -673,7 +673,7 @@ export default function MessagingDock() {
                 <button
                   key={u._id}
                   onClick={() => setTeamMembers(prev => picked ? prev.filter(id => id !== u._id) : [...prev, u._id])}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors hover:bg-[var(--overlay-subtle)] text-left"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors hover:bg-[var(--overlay-subtle)] text-start"
                   aria-pressed={picked}
                 >
                   <Avatar name={u.name} size={34} />
@@ -723,12 +723,12 @@ export default function MessagingDock() {
         <>
           <div className="px-3 pt-2.5 pb-2 flex-shrink-0">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
               <input
                 value={staffSearch}
                 onChange={e => setStaffSearch(e.target.value)}
                 placeholder="Search staff…"
-                className="w-full text-[13px] pl-9 pr-3 py-2 rounded-xl"
+                className="w-full text-[13px] ps-9 pe-3 py-2 rounded-xl"
                 style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', fontFamily: "var(--font-platform)", outline: 'none' }}
               />
             </div>
@@ -740,7 +740,7 @@ export default function MessagingDock() {
               <button
                 key={u._id}
                 onClick={async () => { await startDM({ id: u._id, name: u.name }); setView('list'); setStaffSearch(''); }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors hover:bg-[var(--overlay-subtle)] text-left"
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors hover:bg-[var(--overlay-subtle)] text-start"
               >
                 <Avatar name={u.name} size={34} />
                 <div className="min-w-0 flex-1">
@@ -798,16 +798,16 @@ export default function MessagingDock() {
           {tab !== 'transfers' && (
             <div className="px-3 pt-2 pb-2 flex-shrink-0">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 <input
                   value={convSearch}
                   onChange={e => setConvSearch(e.target.value)}
                   placeholder={tab === 'teams' ? 'Search teams…' : 'Search conversations…'}
-                  className="w-full text-[13px] pr-3 py-2 rounded-xl"
+                  className="w-full text-[13px] pe-3 py-2 rounded-xl"
                   // paddingLeft set inline, not via a utility class: a global
                   // input rule was overriding the Tailwind padding and the
                   // placeholder rendered underneath the search icon.
-                  style={{ paddingLeft: 34, background: 'var(--bg-app)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', fontFamily: 'var(--font-platform)', outline: 'none' }}
+                  style={{ paddingInlineStart: 34, background: 'var(--bg-app)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', fontFamily: 'var(--font-platform)', outline: 'none' }}
                 />
               </div>
             </div>
@@ -860,7 +860,7 @@ export default function MessagingDock() {
                 <button
                   key={c._id}
                   onClick={() => openConversation(c._id)}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors hover:bg-[var(--overlay-subtle)] text-left"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors hover:bg-[var(--overlay-subtle)] text-start"
                 >
                   <Avatar name={convTitle(c)} size={38} group={c.kind === 'group'} />
                   <div className="min-w-0 flex-1">

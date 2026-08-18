@@ -138,7 +138,7 @@ export default function PublicStatsPage() {
                           <div className="flex-1 h-1.5 rounded-full" style={{ background: 'var(--overlay-light)' }}>
                             <div className="h-full rounded-full" style={{ width: `${birthStats.total ? (count / birthStats.total) * 100 : 0}%`, background: 'var(--accent-primary)' }} />
                           </div>
-                          <span className="text-[10px] font-bold w-6 text-right">{count}</span>
+                          <span className="text-[10px] font-bold w-6 text-end">{count}</span>
                         </div>
                       ))}
                     </div>

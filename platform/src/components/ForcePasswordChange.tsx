@@ -172,13 +172,13 @@ function PasswordField({
           autoFocus={autoFocus}
           onChange={e => onChange(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && onEnter) onEnter(); }}
-          className="w-full px-3 py-2 pr-10 rounded-lg text-sm"
+          className="w-full px-3 py-2 pe-10 rounded-lg text-sm"
           style={{ background: 'var(--bg-input)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}
         />
         <button
           type="button"
           onClick={() => setReveal(r => !r)}
-          className="absolute right-3 top-1/2 -translate-y-1/2"
+          className="absolute end-3 top-1/2 -translate-y-1/2"
           tabIndex={-1}
         >
           {visible ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /> : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}

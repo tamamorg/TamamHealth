@@ -572,9 +572,9 @@ export default function LabDashboardPage() {
                       <table className="w-full" style={{ minWidth: 520 }}>
                         <thead className="appointment-table-head">
                           <tr style={{ background: 'var(--overlay-subtle)' }}>
-                            <th className="text-left px-3 py-2 text-[9px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('lab.patient')}</th>
-                            <th className="text-left px-3 py-2 text-[9px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('lab.specimen')}</th>
-                            <th className="text-left px-3 py-2 text-[9px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('lab.result')}</th>
+                            <th className="text-start px-3 py-2 text-[9px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('lab.patient')}</th>
+                            <th className="text-start px-3 py-2 text-[9px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('lab.specimen')}</th>
+                            <th className="text-start px-3 py-2 text-[9px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('lab.result')}</th>
                             <th className="text-center px-3 py-2 text-[9px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('lab.flag')}</th>
                             <th className="px-3 py-2"></th>
                           </tr>
@@ -641,7 +641,7 @@ export default function LabDashboardPage() {
                                     <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>--</span>
                                   )}
                                 </td>
-                                <td className="px-3 py-2 text-right">
+                                <td className="px-3 py-2 text-end">
                                   <button
                                     onClick={() => handleRemoveBatchEntry(entry.orderId)}
                                     title={t('action.remove')}

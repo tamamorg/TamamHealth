@@ -270,17 +270,17 @@ export default function ANCPage() {
                 const barColor = step.key === 'anc4' ? 'var(--accent-primary)' : pct >= 50 ? 'var(--accent-hover)' : pct >= 25 ? 'var(--color-warning)' : 'var(--color-danger)';
                 return (
                   <div key={step.key} className="flex items-center gap-3">
-                    <span className="text-xs font-bold w-44 text-right" style={{ color: 'var(--text-secondary)' }}>{step.label}</span>
+                    <span className="text-xs font-bold w-44 text-end" style={{ color: 'var(--text-secondary)' }}>{step.label}</span>
                     <div className="flex-1 h-7 rounded-md overflow-hidden" style={{ background: 'var(--overlay-light)' }}>
                       <div
-                        className="h-full rounded-md flex items-center justify-end pr-2 transition-all duration-700"
+                        className="h-full rounded-md flex items-center justify-end pe-2 transition-all duration-700"
                         style={{ width: `${Math.max(pct, 4)}%`, background: barColor }}
                       >
                         <span className="text-[10px] font-bold text-white">{step.count} ({pct}%)</span>
                       </div>
                     </div>
                     {i > 0 && dropoff > 0 ? (
-                      <span className="text-[10px] font-mono w-16 text-right" style={{ color: 'var(--color-danger-text)' }}>{t('anc.dropCount', { count: dropoff })}</span>
+                      <span className="text-[10px] font-mono w-16 text-end" style={{ color: 'var(--color-danger-text)' }}>{t('anc.dropCount', { count: dropoff })}</span>
                     ) : (
                       <span className="text-[10px] w-16" />
                     )}
@@ -540,7 +540,7 @@ export default function ANCPage() {
                               key={p._id}
                               type="button"
                               onClick={() => selectAncPatient(p._id)}
-                              className="w-full px-2.5 py-2 text-left text-xs hover:bg-[var(--overlay-subtle)] transition-colors"
+                              className="w-full px-2.5 py-2 text-start text-xs hover:bg-[var(--overlay-subtle)] transition-colors"
                               style={{ borderBottom: '1px solid var(--border-light)' }}
                             >
                               <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{p.firstName} {p.surname}</p>

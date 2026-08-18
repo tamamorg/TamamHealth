@@ -1015,7 +1015,7 @@ export default function PharmacyDashboardPage() {
                     }}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[11px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{item.medicationName}</span>
-                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ml-1" style={{
+                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ms-1" style={{
                           background: isDanger ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)',
                           color: isDanger ? 'var(--color-danger-text)' : 'var(--color-warning-text)',
                         }}>{statusLabel}</span>
@@ -1130,19 +1130,19 @@ export default function PharmacyDashboardPage() {
                     <table className="w-full text-[11px]" style={{ borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ background: 'var(--overlay-subtle)' }}>
-                          <th className="text-left px-2.5 py-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}>Medication</th>
-                          <th className="text-right px-2.5 py-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}>Stock</th>
-                          <th className="text-right px-2.5 py-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}>Dispensed today</th>
-                          <th className="text-right px-2.5 py-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}>Est. days remaining</th>
+                          <th className="text-start px-2.5 py-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}>Medication</th>
+                          <th className="text-end px-2.5 py-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}>Stock</th>
+                          <th className="text-end px-2.5 py-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}>Dispensed today</th>
+                          <th className="text-end px-2.5 py-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}>Est. days remaining</th>
                         </tr>
                       </thead>
                       <tbody>
                         {stockRiskRows.map(({ item, daysRemaining, rag }) => (
                           <tr key={item._id} style={{ borderTop: '1px solid var(--border-light)' }}>
                             <td className="px-2.5 py-1.5" style={{ color: 'var(--text-primary)' }}>{item.medicationName}</td>
-                            <td className="px-2.5 py-1.5 text-right" style={{ color: 'var(--text-muted)' }}>{item.stockLevel} {item.unit}</td>
-                            <td className="px-2.5 py-1.5 text-right" style={{ color: 'var(--text-muted)' }}>{item.dispensedToday}</td>
-                            <td className="px-2.5 py-1.5 text-right">
+                            <td className="px-2.5 py-1.5 text-end" style={{ color: 'var(--text-muted)' }}>{item.stockLevel} {item.unit}</td>
+                            <td className="px-2.5 py-1.5 text-end" style={{ color: 'var(--text-muted)' }}>{item.dispensedToday}</td>
+                            <td className="px-2.5 py-1.5 text-end">
                               {daysRemaining == null ? (
                                 <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>No dispenses today</span>
                               ) : (

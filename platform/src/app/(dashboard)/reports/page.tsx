@@ -742,7 +742,7 @@ export default function ReportsPage() {
                 {headers.map(h => (
                   <th
                     key={h}
-                    className="text-left px-4 py-2 font-bold text-xs"
+                    className="text-start px-4 py-2 font-bold text-xs"
                     style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--overlay-medium)' }}
                   >
                     {h}
@@ -889,7 +889,7 @@ export default function ReportsPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
-                          <div className="text-right">
+                          <div className="text-end">
                             <span
                               className="text-xs px-2 py-0.5 rounded"
                               style={{

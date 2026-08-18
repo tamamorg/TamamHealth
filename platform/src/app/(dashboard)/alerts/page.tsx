@@ -184,7 +184,7 @@ export default function AlertsPage() {
       <button
         key={a.id}
         onClick={() => router.push(a.actionHref)}
-        className="w-full text-left rounded-xl transition-all"
+        className="w-full text-start rounded-xl transition-all"
         style={{
           background: styles.bg,
           border: `1px solid ${styles.border}`,
@@ -216,7 +216,7 @@ export default function AlertsPage() {
                 · {a.source}
               </span>
             )}
-            <span className="text-[11px] ml-auto" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-[11px] ms-auto" style={{ color: 'var(--text-muted)' }}>
               {formatRelative(a.timestamp, t)}
             </span>
           </div>

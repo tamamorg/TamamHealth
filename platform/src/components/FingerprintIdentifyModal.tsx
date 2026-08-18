@@ -79,7 +79,7 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
           {!ready && (
             <div className="flex items-center gap-2 p-3 rounded-lg text-xs" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
               <span>{status?.available ? t('fingerprint.scannerDisconnected') : t('fingerprint.bridgeUnavailable')}</span>
-              <button type="button" onClick={refreshStatus} className="btn btn-secondary btn-sm ml-auto">
+              <button type="button" onClick={refreshStatus} className="btn btn-secondary btn-sm ms-auto">
                 <RefreshCw className="w-3.5 h-3.5" /> {t('fingerprint.retry')}
               </button>
             </div>
@@ -125,13 +125,13 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'transparent' }}>
                         <UserCheck className="w-5 h-5" style={{ color: 'var(--tamamhealth-blue)' }} />
                       </div>
-                      <div className="text-left">
+                      <div className="text-start">
                         <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{m.patientName}</p>
                         <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
                           {t('fingerprint.confidence', { score: m.score })}
                         </p>
                       </div>
-                      <ChevronRight className="w-4 h-4 ml-auto" style={{ color: 'var(--text-muted)' }} />
+                      <ChevronRight className="w-4 h-4 ms-auto" style={{ color: 'var(--text-muted)' }} />
                     </button>
                   ))}
                 </>

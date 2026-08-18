@@ -244,7 +244,7 @@ function NotificationsPageInner() {
                         <button
                           key={n.id}
                           onClick={() => open(n)}
-                          className="w-full text-left rounded-xl transition-colors hover:bg-[var(--overlay-subtle)]"
+                          className="w-full text-start rounded-xl transition-colors hover:bg-[var(--overlay-subtle)]"
                           style={{
                             display: 'flex',
                             alignItems: 'flex-start',
@@ -272,7 +272,7 @@ function NotificationsPageInner() {
                                   New
                                 </span>
                               )}
-                              <span className="text-[11px] ml-auto" style={{ color: 'var(--text-muted)' }}>{relativeNotificationTime(n.time)}</span>
+                              <span className="text-[11px] ms-auto" style={{ color: 'var(--text-muted)' }}>{relativeNotificationTime(n.time)}</span>
                             </div>
                             <p className="text-sm truncate" style={{ color: 'var(--text-primary)', fontWeight: n.read ? 500 : 700 }}>{n.title}</p>
                             <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{n.subtitle}</p>

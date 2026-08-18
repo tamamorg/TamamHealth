@@ -142,7 +142,7 @@ export default function FacilityAssessmentsPage() {
                     <div className="flex-1 h-3 rounded-full" style={{ background: 'var(--overlay-light)' }}>
                       <div className="h-full rounded-full transition-all" style={{ width: `${item.score}%`, background: scoreColor(item.score) }} />
                     </div>
-                    <span className="text-sm font-bold w-12 text-right" style={{ color: scoreColor(item.score) }}>{item.score}%</span>
+                    <span className="text-sm font-bold w-12 text-end" style={{ color: scoreColor(item.score) }}>{item.score}%</span>
                   </div>
                 ))}
               </div>

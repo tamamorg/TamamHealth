@@ -91,7 +91,7 @@ export default function SuperintendentDashboard() {
               key={k.id}
               type="button"
               onClick={() => router.push(k.href)}
-              className="dash-card text-left transition-colors"
+              className="dash-card text-start transition-colors"
               style={{ padding: '14px 16px', position: 'relative', cursor: 'pointer' }}
             >
               {k.alarm && <span className="data-tile__alarm-pulse" aria-hidden="true" />}
@@ -134,7 +134,7 @@ export default function SuperintendentDashboard() {
                     key={a._id || i}
                     onClick={() => router.push('/surveillance')}
                     className="data-row data-row--warning w-full"
-                    style={{ textAlign: 'left' }}
+                    style={{ textAlign: 'start' }}
                   >
                     <div className="icon-box-sm flex-shrink-0">
                       <AlertTriangle className="w-4 h-4" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : 'var(--color-warning)' }} />
@@ -160,7 +160,7 @@ export default function SuperintendentDashboard() {
             { Icon: HeartPulse, label: t('dataEntry.nurses'), value: totalNurses, href: '/hr' },
             { Icon: SendHorizontal, label: t('dashboard.pendingReferrals'), value: pendingReferrals.length, href: '/referrals' },
           ].map(s => (
-            <button key={s.label} onClick={() => router.push(s.href)} className="dash-card flex items-center gap-3" style={{ padding: '14px 16px', textAlign: 'left' }}>
+            <button key={s.label} onClick={() => router.push(s.href)} className="dash-card flex items-center gap-3" style={{ padding: '14px 16px', textAlign: 'start' }}>
               <div className="icon-box-sm">
                 <s.Icon className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
               </div>

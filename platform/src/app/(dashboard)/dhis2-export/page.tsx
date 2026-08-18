@@ -437,7 +437,7 @@ export default function DHIS2ExportPage() {
                 <button
                   onClick={() => handleExport('json')}
                   disabled={exporting}
-                  className="p-4 rounded-xl border text-left transition-all hover:shadow-md"
+                  className="p-4 rounded-xl border text-start transition-all hover:shadow-md"
                   style={{ borderColor: 'var(--border-light)', background: 'var(--overlay-subtle)' }}
                 >
                   <div className="flex items-center gap-3 mb-2">
@@ -453,7 +453,7 @@ export default function DHIS2ExportPage() {
                 <button
                   onClick={() => handleExport('csv')}
                   disabled={exporting}
-                  className="p-4 rounded-xl border text-left transition-all hover:shadow-md"
+                  className="p-4 rounded-xl border text-start transition-all hover:shadow-md"
                   style={{ borderColor: 'var(--border-light)', background: 'var(--overlay-subtle)' }}
                 >
                   <div className="flex items-center gap-3 mb-2">

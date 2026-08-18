@@ -881,7 +881,7 @@ svg.lucide:not([style*="color"]) {
 .th-tabs > button {
   padding: 8px 16px;
   border: 1px solid var(--ehr-border);
-  border-left-width: 0;
+  border-inline-start-width: 0;
   background: var(--bg-card-solid, #FFFFFF);
   color: var(--ehr-text-body, #39536B);
   font-family: var(--font-condensed);
@@ -891,7 +891,7 @@ svg.lucide:not([style*="color"]) {
   text-transform: uppercase;
   cursor: pointer;
 }
-.th-tabs > button:first-child { border-left-width: 1px; border-radius: 8px 0 0 8px; }
+.th-tabs > button:first-child { border-inline-start-width: 1px; border-radius: 8px 0 0 8px; }
 .th-tabs > button:last-child { border-radius: 0 8px 8px 0; }
 .th-tabs > button[aria-selected="true"],
 .th-tabs > button.is-active {
@@ -905,7 +905,7 @@ svg.lucide:not([style*="color"]) {
 .th-badge {
   position: absolute;
   top: 2px;
-  right: 2px;
+  inset-inline-end: 2px;
   min-width: 15px;
   height: 15px;
   padding: 0 3px;
@@ -1157,7 +1157,7 @@ a.link-accent:hover {
   content: '';
   position: absolute;
   bottom: -1px;
-  left: 0; right: 0;
+  inset-inline-start: 0; inset-inline-end: 0;
   height: 3px;
   background: var(--accent-primary);
   border-radius: 3px 3px 0 0;
@@ -1219,12 +1219,12 @@ textarea {
 }
 
 input[type="search"].search-icon-input {
-  padding-left: 2.75rem;
+  padding-inline-start: 2.75rem;
 }
 
 .search-input-icon {
   position: absolute;
-  left: 12px;
+  inset-inline-start: 12px;
   top: 50%;
   width: 15px;
   height: 15px;
@@ -1428,7 +1428,7 @@ select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
-  padding-right: 40px;
+  padding-inline-end: 40px;
 }
 
 select option {
@@ -1620,7 +1620,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: #5B6B7E;
-  text-align: left;
+  text-align: start;
   border-bottom: 1px solid var(--border-light);
   font-family: var(--font-condensed);
 }
@@ -1760,8 +1760,8 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
 .referral-table tbody tr > td:first-child { box-shadow: none; transition: box-shadow 0.15s ease; }
 .referral-table tbody tr:hover > td:first-child { box-shadow: none; }
 /* Actions column hugs the right edge. */
-.referral-table .ref-actions-col { text-align: right; }
-.referral-table tbody td:last-child { text-align: right; }
+.referral-table .ref-actions-col { text-align: end; }
+.referral-table tbody td:last-child { text-align: end; }
 
 /* ============ Appointments Table — compact list view ============ */
 /* Tighter, denser rows than the base data-table, with a sticky header and a
@@ -1832,7 +1832,7 @@ thead th {
 }
 
 .patients-registry-table-wrap {
-  padding-right: 8px;
+  padding-inline-end: 8px;
   scrollbar-gutter: stable both-edges;
 }
 
@@ -1842,7 +1842,7 @@ thead th {
 
 .patients-registry-table th:last-child,
 .patients-registry-table td:last-child {
-  padding-right: 18px;
+  padding-inline-end: 18px;
 }
 
 @media (max-width: 960px) {
@@ -1862,18 +1862,18 @@ thead th {
 
   .patients-registry-table th,
   .patients-registry-table td {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+    padding-inline-start: 12px !important;
+    padding-inline-end: 12px !important;
   }
 
   .patients-registry-table th:last-child,
   .patients-registry-table td:last-child {
-    padding-right: 18px !important;
+    padding-inline-end: 18px !important;
   }
 
   .patients-registry-table th:last-child > div,
   .patients-registry-table td:last-child > div {
-    padding-right: 46px;
+    padding-inline-end: 46px;
   }
 }
 
@@ -1908,7 +1908,7 @@ thead th {
 
   .patients-registry-table.has-row-actions th:last-child > div,
   .patients-registry-table.has-row-actions td:last-child > div {
-    padding-right: 0;
+    padding-inline-end: 0;
     transform: translateX(-58px);
   }
 
@@ -1951,7 +1951,7 @@ thead th {
   font-weight: 700;
   font-size: 15px;
   border-radius: 12px;
-  border-left: none;
+  border-inline-start: none;
   box-shadow: none;
 }
 .nav-item-active:hover {
@@ -2202,7 +2202,7 @@ thead th {
   justify-content: center;
   padding: 14px;
   border-radius: 10px;
-  text-align: left;
+  text-align: start;
   transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
@@ -2273,8 +2273,8 @@ thead th {
 
 @media (max-width: 640px) {
   .patient-registration-page {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-inline-start: 10px;
+    padding-inline-end: 10px;
   }
 
   .patient-registration-toolbar,
@@ -2426,7 +2426,7 @@ thead th {
 
   /* Dashboard content: remove left margin below lg — the sidebar is an
      off-canvas drawer (opened from the TopBar hamburger), not a persistent rail. */
-  .dashboard-content-area { margin-left: 0 !important; }
+  .dashboard-content-area { margin-inline-start: 0 !important; }
 }
 
 /* -- Mobile: 639px and below -- */
@@ -2538,8 +2538,8 @@ html:has(.ehr-top-rail) {
     align-items: center;
     justify-content: space-around;
     position: fixed;
-    left: 0;
-    right: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     bottom: 0;
     z-index: 1200;
     height: 64px;
@@ -2857,7 +2857,7 @@ html:has(.ehr-top-rail) {
   color: var(--text-secondary);
   font-size: 13.5px;
   font-weight: 600;
-  text-align: left;
+  text-align: start;
   padding: 0;
 }
 
@@ -2929,7 +2929,7 @@ html:has(.ehr-top-rail) {
   border: 1px solid var(--border-light);
   border-radius: 14px;
   background: var(--bg-card);
-  text-align: left;
+  text-align: start;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
@@ -3329,7 +3329,7 @@ html:has(.ehr-top-rail) {
   border: 1px solid var(--border-light);
   border-radius: 14px;
   background: var(--bg-card);
-  text-align: left;
+  text-align: start;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
@@ -3410,8 +3410,8 @@ html:has(.ehr-top-rail) {
 
 .mobile-sheet {
   position: fixed;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   bottom: 0;
   z-index: 1301;
   max-height: 86%;
@@ -3485,7 +3485,7 @@ html:has(.ehr-top-rail) {
   border: 1px solid var(--border-light);
   border-radius: 16px;
   background: var(--bg-card);
-  text-align: left;
+  text-align: start;
 }
 
 .mobile-sheet-grid-item b {
@@ -3657,7 +3657,7 @@ html:has(.ehr-top-rail) {
 .ehr-top-action-badge {
   position: absolute;
   top: 2px;
-  right: 2px;
+  inset-inline-end: 2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3771,7 +3771,7 @@ html:has(.ehr-top-rail) {
 .ehr-module-menu {
   position: fixed;
   top: var(--ehr-top-rail-height);
-  left: 12px;
+  inset-inline-start: 12px;
   width: 284px;
   max-height: min(560px, calc(100vh - var(--ehr-top-rail-height) - 16px));
   overflow: hidden;
@@ -3840,7 +3840,7 @@ html:has(.ehr-top-rail) {
   color: var(--nav-text);
   font-size: 12.5px;
   font-weight: 700;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-module-menu section > button svg {
@@ -3920,8 +3920,8 @@ html:has(.ehr-top-rail) {
 .ehr-top-search-menu {
   position: absolute;
   top: calc(100% + 7px);
-  left: 0;
-  right: auto;
+  inset-inline-start: 0;
+  inset-inline-end: auto;
   width: min(420px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
   min-width: 0;
@@ -3940,7 +3940,7 @@ html:has(.ehr-top-rail) {
   border: 0;
   border-bottom: 1px solid var(--ehr-border);
   background: transparent;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-top-search-menu button:hover {
@@ -4007,7 +4007,7 @@ html:has(.ehr-top-rail) {
   max-width: 112px;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-align: left;
+  text-align: start;
 }
 
 /* The avatar disc IS the button now — the mark drops its own dark plate so
@@ -4057,7 +4057,7 @@ html:has(.ehr-top-rail) {
 .ehr-user-menu {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  inset-inline-end: 0;
   width: min(260px, calc(100vw - 24px));
   min-width: 0;
   max-width: calc(100vw - 24px);
@@ -4441,7 +4441,7 @@ html:has(.ehr-top-rail) {
 .ehr-schedule-shell .ehr-segmented button {
   min-height: 0;
   padding: 8px 16px;
-  border-left-width: 0;
+  border-inline-start-width: 0;
   border-radius: 0;
   font-family: var(--font-condensed);
   font-size: 12.5px;
@@ -4451,11 +4451,11 @@ html:has(.ehr-top-rail) {
   color: var(--ehr-text-body, #39536B);
 }
 .ehr-segmented button:first-child {
-  border-left-width: 1px;
+  border-inline-start-width: 1px;
   border-radius: 8px 0 0 8px;
 }
 .ehr-segmented button:last-child { border-radius: 0 8px 8px 0; }
-.ehr-segmented.ehr-segmented-single button { border-left-width: 1px; border-radius: 8px; }
+.ehr-segmented.ehr-segmented-single button { border-inline-start-width: 1px; border-radius: 8px; }
 
 .ehr-schedule-actions button:not(.primary):hover {
   border-color: var(--ehr-blue);
@@ -4815,7 +4815,7 @@ html:has(.ehr-top-rail) {
   height: 34px;
   padding: 0 16px;
   border: 1px solid var(--ehr-border);
-  border-left-width: 0;
+  border-inline-start-width: 0;
   border-radius: 0;
   background: transparent;
   color: color-mix(in srgb, var(--text-primary) 70%, transparent);
@@ -4827,7 +4827,7 @@ html:has(.ehr-top-rail) {
   white-space: nowrap;
 }
 .ehr-day-tabs button:not(.ehr-mobile-day-check):first-child {
-  border-left-width: 1px;
+  border-inline-start-width: 1px;
   border-radius: 8px 0 0 8px;
 }
 .ehr-day-tabs button:not(.ehr-mobile-day-check):last-child {
@@ -5021,7 +5021,7 @@ html:has(.ehr-top-rail) {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-appointment-main p,
@@ -5074,7 +5074,7 @@ html:has(.ehr-top-rail) {
      against the subtitles below them. The name starts where the subtitle
      starts. */
   justify-self: start;
-  text-align: left;
+  text-align: start;
   /* Inherits `width: fit-content` from the pill rule; capping it at the column
      keeps a long name truncating instead of widening the cell. */
   max-width: 100%;
@@ -5100,7 +5100,7 @@ html:has(.ehr-top-rail) {
   justify-self: auto;
   align-self: center;
   width: auto;
-  margin-left: 0;
+  margin-inline-start: 0;
   padding: 0;
   border-radius: 0;
   background: none;
@@ -5357,7 +5357,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 700;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   transition: box-shadow 140ms ease;
 }
@@ -5493,7 +5493,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   max-height: 188px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 4px;
+  padding-inline-end: 4px;
   scrollbar-width: thin;
 }
 
@@ -5510,7 +5510,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex-direction: column;
   gap: 2px;
   padding: 8px 10px;
-  text-align: left;
+  text-align: start;
   background: var(--ehr-surface-2, rgba(148, 163, 184, 0.08));
   border: 1px solid transparent;
   border-radius: 10px;
@@ -5568,7 +5568,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 700;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-side-card > button:hover {
@@ -5665,7 +5665,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 700;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-outstanding-chips button:hover {
@@ -5908,7 +5908,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex: 1 1 260px;
   max-width: 420px;
   min-width: min(260px, 100%);
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .ehr-care-filter,
@@ -5926,7 +5926,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 700;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-care-filter b {
@@ -6078,7 +6078,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-care-row.active,
 .ehr-care-row.warning,
 .ehr-care-row.danger {
-  border-left: 0;
+  border-inline-start: 0;
 }
 
 .ehr-appointment-main small {
@@ -6687,7 +6687,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-registration-dialog-actions {
   position: absolute;
   top: 10px;
-  right: 12px;
+  inset-inline-end: 12px;
   z-index: 3;
   display: flex;
   align-items: center;
@@ -7041,7 +7041,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   .ehr-care-dashboard .ehr-appointment-main button {
     max-width: 100%;
     overflow: hidden;
-    text-align: left;
+    text-align: start;
     white-space: nowrap;
     text-overflow: ellipsis;
     font-size: 14px;
@@ -7069,7 +7069,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   }
 
   .ehr-care-detail {
-    margin-left: 16px;
+    margin-inline-start: 16px;
   }
 
   .ehr-care-detail dl {
@@ -7292,7 +7292,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   font-size: 14px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: left;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -7306,7 +7306,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-consult-change-btn {
   height: 34px;
   min-width: 76px;
-  margin-left: auto;
+  margin-inline-start: auto;
   border: 1px solid var(--ehr-border);
   border-radius: 5px;
   background: var(--ehr-panel);
@@ -7402,7 +7402,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 10px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 4px;
+  padding-inline-end: 4px;
   padding-bottom: 14px;
 }
 
@@ -7826,7 +7826,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   line-height: 1.1 !important;
   letter-spacing: 0 !important;
   color: var(--ehr-text) !important;
-  margin-right: 6px;
+  margin-inline-end: 6px;
 }
 
 .ehr-patient-heading {
@@ -7865,7 +7865,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   grid-template-areas: "heading strip actions";
   align-items: start;
   gap: 12px 20px;
-  padding-right: 0;
+  padding-inline-end: 0;
 }
 
 .ehr-patient-heading {
@@ -7899,7 +7899,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-patient-strip > button {
   appearance: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-patient-strip > button:hover,
@@ -7933,7 +7933,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   grid-area: actions;
   position: static;
   flex: 0 1 auto;
-  margin-left: 0;
+  margin-inline-start: 0;
   align-self: start;
   justify-self: end;
   max-width: 440px;
@@ -8135,8 +8135,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
      used to sit above both, full-width) — its own margin/padding was sized
      for that older full-width position and just double-indents it here. */
   .ehr-chart-main .ehr-patient-banner {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+    margin-inline-start: 0 !important;
+    margin-inline-end: 0 !important;
   }
 
   .ehr-chart-main {
@@ -8158,7 +8158,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
     justify-content: flex-start !important;
     width: 100%;
     padding: 0 16px !important;
-    text-align: left;
+    text-align: start;
     white-space: normal;
   }
 
@@ -8281,12 +8281,12 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   align-items: center;
   gap: 12px;
   padding: 8px 14px;
-  border-right: 1px solid var(--table-row-border);
+  border-inline-end: 1px solid var(--table-row-border);
   border-bottom: 1px solid var(--table-row-border);
 }
 
 .ehr-demo-row:nth-child(2n) {
-  border-right: 0;
+  border-inline-end: 0;
 }
 
 .ehr-demo-row span {
@@ -8348,13 +8348,13 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   align-items: baseline;
   gap: 6px;
   padding: 8px 10px;
-  border-right: 1px solid var(--table-row-border);
+  border-inline-end: 1px solid var(--table-row-border);
   border-bottom: 1px solid var(--table-row-border);
   background: var(--ehr-panel);
 }
 
 .ehr-vital-row:nth-child(4n) {
-  border-right: 0;
+  border-inline-end: 0;
 }
 
 .ehr-vital-row:nth-last-child(-n + 4) {
@@ -8397,11 +8397,11 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   }
 
   .ehr-vital-row:nth-child(4n) {
-    border-right: 1px solid var(--table-row-border);
+    border-inline-end: 1px solid var(--table-row-border);
   }
 
   .ehr-vital-row:nth-child(2n) {
-    border-right: 0;
+    border-inline-end: 0;
   }
 
   .ehr-vital-row:nth-last-child(-n + 4) {
@@ -8686,7 +8686,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-demo-edit {
   position: absolute;
   top: 12px;
-  right: 16px;
+  inset-inline-end: 16px;
   min-width: 96px;
   height: 28px;
   border: 1px solid #D7DEDD;
@@ -8789,7 +8789,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   color: #111827;
   font-size: 13px;
   font-weight: 600;
-  text-align: left;
+  text-align: start;
 }
 
 .tebra-demo-table th {
@@ -8814,14 +8814,14 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
   .ehr-patient-banner {
     width: auto;
-    margin-left: calc(var(--ehr-chart-content-pad-x) + var(--ehr-mobile-header-offset)) !important;
-    margin-right: var(--ehr-chart-content-pad-x) !important;
+    margin-inline-start: calc(var(--ehr-chart-content-pad-x) + var(--ehr-mobile-header-offset)) !important;
+    margin-inline-end: var(--ehr-chart-content-pad-x) !important;
     margin-bottom: 8px !important;
     padding: 18px var(--ehr-chart-content-pad-x) !important;
   }
 
   .ehr-patient-summary {
-    padding-right: 0;
+    padding-inline-end: 0;
   }
 
   .ehr-chart-layout {
@@ -8916,7 +8916,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   .ehr-chart-actions {
     position: static;
     max-width: none;
-    margin-left: 0;
+    margin-inline-start: 0;
     justify-content: flex-start;
     gap: 4px;
     padding-top: 8px;
@@ -9282,7 +9282,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-care-dashboard .ehr-care-row.active,
 .ehr-care-dashboard .ehr-care-row.warning,
 .ehr-care-dashboard .ehr-care-row.danger {
-  border-left: 0 !important;
+  border-inline-start: 0 !important;
   /* Cards stay white on the soft list backdrop; tone lives in the status pill. */
   background: #fff !important;
 }
@@ -9473,7 +9473,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   font-size: var(--type-size-body-sm) !important;
   font-weight: var(--type-weight-semibold) !important;
   line-height: var(--type-leading-caption) !important;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-chart-nav svg {
@@ -9851,8 +9851,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
    ~18px inset from the banner's edges. Align them. */
 @media (min-width: 1025px) {
   .ehr-chart-content {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+    padding-inline-start: 0 !important;
+    padding-inline-end: 0 !important;
   }
 }
 
@@ -9882,7 +9882,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-page .ehr-chart-actions {
   flex: 0 1 auto;
-  margin-left: auto !important;
+  margin-inline-start: auto !important;
   min-width: 0 !important;
   max-width: none !important;
 }
@@ -9915,8 +9915,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-content .p-5,
 .ehr-chart-content .px-5 {
-  padding-left: 14px !important;
-  padding-right: 14px !important;
+  padding-inline-start: 14px !important;
+  padding-inline-end: 14px !important;
 }
 
 .ehr-chart-content .p-5,
@@ -10487,7 +10487,7 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 .skip-link {
   position: absolute;
   top: -100%;
-  left: 16px;
+  inset-inline-start: 16px;
   z-index: 9999;
   padding: 12px 24px;
   background: var(--accent-primary);
@@ -10661,7 +10661,7 @@ svg circle {
   background: var(--bg-card);
   border: 1px solid var(--border-panel);
   border-top: none;
-  border-left: none;
+  border-inline-start: none;
 }
 
 .state-label-tooltip {
@@ -10703,7 +10703,7 @@ svg circle {
 
 /* ============ Sidebar scrollbar ============ */
 /* Static gray track (border-right on track, always visible) + blue thumb that
-   slides over it. border-right: 4px transparent + background-clip: padding-box
+   slides over it. border-inline-end: 4px transparent + background-clip: padding-box
    constrains the blue fill to the left 6px, letting the track line show through. */
 .sidebar-scrollbar { scrollbar-width: none; overflow-y: auto; }
 .sidebar-scrollbar::-webkit-scrollbar { display: none; }
@@ -10718,16 +10718,16 @@ svg circle {
   width: 100%;
   max-width: var(--site-width);
   margin: 0 auto;
-  padding-left: var(--container-padding);
-  padding-right: var(--container-padding);
+  padding-inline-start: var(--container-padding);
+  padding-inline-end: var(--container-padding);
 }
 
 .site-row-wide {
   width: 100%;
   max-width: calc(var(--site-width) + var(--container-padding) * 2);
   margin: 0 auto;
-  padding-left: var(--container-padding);
-  padding-right: var(--container-padding);
+  padding-inline-start: var(--container-padding);
+  padding-inline-end: var(--container-padding);
 }
 
 .site-section {
@@ -10737,8 +10737,8 @@ svg circle {
 
 @media only screen and (max-width: 1024px) {
   .site-row, .site-row-wide {
-    padding-left: var(--container-padding-medium);
-    padding-right: var(--container-padding-medium);
+    padding-inline-start: var(--container-padding-medium);
+    padding-inline-end: var(--container-padding-medium);
   }
   .site-section {
     padding-top: var(--section-spacing-medium);
@@ -10748,8 +10748,8 @@ svg circle {
 
 @media only screen and (max-width: 640px) {
   .site-row, .site-row-wide {
-    padding-left: var(--container-padding-small);
-    padding-right: var(--container-padding-small);
+    padding-inline-start: var(--container-padding-small);
+    padding-inline-end: var(--container-padding-small);
   }
   .site-section {
     padding-top: var(--section-spacing-small);
@@ -10804,7 +10804,7 @@ svg circle {
 /* Compact density (Settings → Workspace → Spacing): tighten the central page
    spacing so more content fits per screen. Scoped to the shared layout classes
    so it can't distort individual components. */
-[data-density="compact"] .page-container { padding-top: 12px !important; padding-left: 14px; padding-right: 14px; }
+[data-density="compact"] .page-container { padding-top: 12px !important; padding-inline-start: 14px; padding-inline-end: 14px; }
 [data-density="compact"] .page-header-row { margin-bottom: 22px !important; }
 [data-density="compact"] .space-y-6 > * + * { margin-top: 14px !important; }
 
@@ -11030,7 +11030,7 @@ svg circle {
 
 /* Pulse indicator used on the corner of a danger tile to draw the eye */
 .data-tile__alarm-pulse {
-  position: absolute; top: 10px; right: 10px;
+  position: absolute; top: 10px; inset-inline-end: 10px;
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--color-danger);
   box-shadow: none;
@@ -11557,22 +11557,22 @@ span:has(> svg:only-child) {
   font-size: 17px;
   white-space: nowrap;
   /* Leave room for the absolutely-positioned close button in the corner. */
-  padding-right: 34px;
+  padding-inline-end: 34px;
 }
 /* Close sits in the top-right corner (on the time row); the status select then
    takes the full width of the row below it. */
 .ehr-right-rail-overlay .appointment-detail-modal__close {
   position: absolute;
   top: 10px;
-  right: 10px;
+  inset-inline-end: 10px;
 }
 .ehr-right-rail-overlay .appointment-detail-modal__status-select {
   flex: 1 1 auto;
   min-width: 0;
 }
 .ehr-right-rail-overlay .appointment-detail-modal__body {
-  padding-left: 14px;
-  padding-right: 14px;
+  padding-inline-start: 14px;
+  padding-inline-end: 14px;
 }
 
 /* Footer: two compact, icon-only actions side by side. The text labels and the
@@ -11772,7 +11772,7 @@ span:has(> svg:only-child) {
 .tbn-toggle__knob {
   position: absolute;
   top: 3px;
-  left: 0;
+  inset-inline-start: 0;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -12087,7 +12087,7 @@ span:has(> svg:only-child) {
 }
 
 .appointment-detail-modal__split-toggle {
-  border-left: 0;
+  border-inline-start: 0;
   border-radius: 0 7px 7px 0;
 }
 
@@ -12104,7 +12104,7 @@ span:has(> svg:only-child) {
 .appointment-detail-modal__menu {
   position: absolute;
   bottom: calc(100% + 6px);
-  left: 0;
+  inset-inline-start: 0;
   z-index: 20;
   min-width: 210px;
   display: flex;
@@ -12117,8 +12117,8 @@ span:has(> svg:only-child) {
 }
 
 .appointment-detail-modal__menu--right {
-  left: auto;
-  right: 0;
+  inset-inline-start: auto;
+  inset-inline-end: 0;
 }
 
 .appointment-detail-modal__menu button {
@@ -12132,7 +12132,7 @@ span:has(> svg:only-child) {
   color: var(--text-strong);
   font-size: 12.5px;
   font-weight: 600;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -12574,12 +12574,12 @@ span:has(> svg:only-child) {
   letter-spacing: 0.08em;
   color: var(--text-muted);
   border-bottom: 1px solid var(--glass-border);
-  border-left: none;
+  border-inline-start: none;
   background: transparent;
   text-align: center;
 }
 .rbc-tamam .rbc-header + .rbc-header {
-  border-left: 1px solid var(--glass-border);
+  border-inline-start: 1px solid var(--glass-border);
 }
 /* Today's column header stays on the page background — the filled date circle
    is the marker. Tinting the header as well as the column below it made the
@@ -12621,12 +12621,12 @@ span:has(> svg:only-child) {
   border-top: 1px solid var(--glass-border);
 }
 .rbc-tamam .rbc-month-row:first-child { border-top: none; }
-.rbc-tamam .rbc-day-bg + .rbc-day-bg { border-left: 1px solid var(--glass-border); }
+.rbc-tamam .rbc-day-bg + .rbc-day-bg { border-inline-start: 1px solid var(--glass-border); }
 
 /* Month view date number cell */
 .rbc-tamam .rbc-date-cell {
   padding: 4px 8px 0;
-  text-align: right;
+  text-align: end;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -12667,7 +12667,7 @@ span:has(> svg:only-child) {
   background: transparent;
 }
 .rbc-tamam .rbc-time-gutter .rbc-timeslot-group,
-.rbc-tamam .rbc-time-gutter .rbc-time-slot { border-left: none; }
+.rbc-tamam .rbc-time-gutter .rbc-time-slot { border-inline-start: none; }
 .rbc-tamam .rbc-time-header-gutter { border-bottom: 1px solid var(--glass-border); }
 
 /* Hour labels */
@@ -12676,7 +12676,7 @@ span:has(> svg:only-child) {
   font-weight: 700;
   color: var(--text-muted);
   padding: 0 8px 0 4px;
-  text-align: right;
+  text-align: end;
 }
 
 /* Time slot rows */
@@ -12705,8 +12705,8 @@ span:has(> svg:only-child) {
   border-top: 1px dashed rgba(203,213,225,0.40);
 }
 .rbc-tamam .rbc-time-content { border-top: 1px solid var(--glass-border); }
-.rbc-tamam .rbc-day-slot + .rbc-day-slot { border-left: 1px solid var(--glass-border); }
-.rbc-tamam .rbc-time-header-content + .rbc-time-header-content { border-left: 1px solid var(--glass-border); }
+.rbc-tamam .rbc-day-slot + .rbc-day-slot { border-inline-start: 1px solid var(--glass-border); }
+.rbc-tamam .rbc-time-header-content + .rbc-time-header-content { border-inline-start: 1px solid var(--glass-border); }
 
 /* ── Events: week / day slots ── */
 .rbc-tamam .rbc-day-slot .rbc-event {
@@ -12922,7 +12922,7 @@ span:has(> svg:only-child) {
   font-weight: 700;
   color: var(--accent-text);
   background: transparent;
-  padding-left: 4px;
+  padding-inline-start: 4px;
 }
 
 /* ── Current-time indicator — red dot + line ── */
@@ -12934,7 +12934,7 @@ span:has(> svg:only-child) {
 .rbc-tamam .rbc-current-time-indicator::before {
   content: '';
   position: absolute;
-  left: -4px;
+  inset-inline-start: -4px;
   top: -4px;
   width: 10px;
   height: 10px;
@@ -13410,7 +13410,7 @@ span:has(> svg:only-child) {
     max-width: 100%;
     overflow: hidden;
     font-size: 12px;
-    text-align: left;
+    text-align: start;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -13530,14 +13530,14 @@ span:has(> svg:only-child) {
 
 @media (max-width: 767px) {
   .ehr-consult-patient-picker {
-    border-left: 0 !important;
-    border-right: 0 !important;
+    border-inline-start: 0 !important;
+    border-inline-end: 0 !important;
     border-radius: 0 !important;
   }
 
   .ehr-consult-patient-summary {
-    border-left: 0;
-    border-right: 0;
+    border-inline-start: 0;
+    border-inline-end: 0;
     border-radius: 0;
   }
 
@@ -13908,7 +13908,7 @@ span:has(> svg:only-child) {
   width: 11px !important;
   height: 11px !important;
   display: inline-block;
-  margin-right: 4px;
+  margin-inline-end: 4px;
   vertical-align: -1px;
 }
 
@@ -13942,8 +13942,8 @@ span:has(> svg:only-child) {
   .ehr-top-search-menu,
   .ehr-user-menu {
     position: fixed;
-    left: 12px;
-    right: 12px;
+    inset-inline-start: 12px;
+    inset-inline-end: 12px;
     width: auto;
     max-width: none;
   }
@@ -14028,7 +14028,7 @@ span:has(> svg:only-child) {
     border-radius: 12px;
     background: var(--bg-card);
     box-shadow: var(--card-shadow) !important;
-    text-align: left;
+    text-align: start;
   }
 
   .ehr-outstanding-chips button span {
@@ -14112,7 +14112,7 @@ span:has(> svg:only-child) {
   .ehr-right-rail {
     position: fixed;
     top: var(--ehr-top-rail-height, 54px);
-    right: 0;
+    inset-inline-end: 0;
     bottom: 0;
     z-index: 1210;
     width: min(320px, 88vw);
@@ -14120,7 +14120,7 @@ span:has(> svg:only-child) {
     max-height: none;
     overflow-y: auto;
     background: var(--bg-card);
-    border-left: 1px solid var(--border-light);
+    border-inline-start: 1px solid var(--border-light);
     box-shadow: var(--card-shadow-lg) !important;
     padding: 14px;
     transform: translateX(100%);
@@ -14148,7 +14148,7 @@ span:has(> svg:only-child) {
     width: 28px;
     height: 28px;
     margin-bottom: 8px;
-    margin-left: auto;
+    margin-inline-start: auto;
     border: 1px solid var(--border-light);
     border-radius: 999px;
     background: var(--bg-card);
@@ -14483,7 +14483,7 @@ span:has(> svg:only-child) {
 
 .ehr-center-panel .ehr-care-row .ehr-appointment-time {
   justify-self: start;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-center-panel .ehr-worklist-head > span,
@@ -14500,7 +14500,7 @@ span:has(> svg:only-child) {
 .ehr-center-panel .ehr-worklist-row > span:last-child,
 .ehr-center-panel .ehr-worklist-head > span:last-child {
   justify-self: end;
-  text-align: right;
+  text-align: end;
 }
 
 .ehr-center-panel .ehr-worklist-status,
@@ -14687,7 +14687,7 @@ span:has(> svg:only-child) {
 .ehr-worklist-head > span:last-child,
 .ehr-worklist-row > span:last-child {
   justify-self: end;
-  text-align: right;
+  text-align: end;
 }
 
 .ehr-worklist-head {
@@ -15384,7 +15384,7 @@ span:has(> svg:only-child) {
   color: var(--tb-blue-800, #012C4E);
   font-size: 13.5px;
   font-weight: 700;
-  text-align: left;
+  text-align: start;
 }
 
 button.ehr-handoff-name:hover {
@@ -15880,7 +15880,7 @@ textarea.ehr-handoff-input {
     width: 100%;
     min-width: 0;
     justify-self: start;
-    text-align: left;
+    text-align: start;
   }
   /* Name + subtitle sit left-aligned right after the time column. */
   .ehr-care-row .ehr-appointment-main {
@@ -15888,12 +15888,12 @@ textarea.ehr-handoff-input {
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    text-align: left;
+    text-align: start;
     gap: 2px;
     min-width: 0;
   }
   .ehr-care-row .ehr-appointment-main button {
-    text-align: left;
+    text-align: start;
     padding: 0;
   }
 }
@@ -16314,7 +16314,7 @@ textarea.ehr-handoff-input {
    a consent record behind it. */
 .th-consent {
   margin-top: 18px; display: flex; align-items: flex-start; gap: 10px;
-  max-width: 420px; text-align: left; cursor: pointer;
+  max-width: 420px; text-align: start; cursor: pointer;
   padding: 12px 14px; border-radius: 10px;
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
   color: #E6ECF4; font-size: 13px; line-height: 1.45;
@@ -16325,7 +16325,7 @@ textarea.ehr-handoff-input {
 }
 .th-consent strong { font-weight: 700; }
 .th-consent-help {
-  margin-top: 6px; max-width: 420px; text-align: left;
+  margin-top: 6px; max-width: 420px; text-align: start;
   color: #93A2B5; font-size: 11px;
 }
 
@@ -16345,7 +16345,7 @@ textarea.ehr-handoff-input {
    text — never only the colour, since it also has to read in greyscale and to
    anyone with a colour vision deficiency. */
 .th-consent-state {
-  margin-top: 10px; max-width: 420px; text-align: left;
+  margin-top: 10px; max-width: 420px; text-align: start;
   font-size: 12.5px; line-height: 1.5; font-weight: 600;
   padding: 9px 12px; border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -16363,7 +16363,7 @@ textarea.ehr-handoff-input {
 }
 
 .th-self {
-  position: absolute; right: 16px; bottom: 16px;
+  position: absolute; inset-inline-end: 16px; bottom: 16px;
   width: 190px; height: 120px; border-radius: 12px; overflow: hidden;
   background: #060A12; border: 1px solid rgba(255,255,255,0.14);
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
@@ -16375,7 +16375,7 @@ textarea.ehr-handoff-input {
   color: #C4CDDA; font-size: 12px;
 }
 .th-self-name {
-  position: absolute; left: 8px; bottom: 6px; font-size: 11px; font-weight: 600;
+  position: absolute; inset-inline-start: 8px; bottom: 6px; font-size: 11px; font-weight: 600;
   color: #fff; background: rgba(0,0,0,0.45); padding: 2px 7px; border-radius: 6px;
 }
 
@@ -16416,7 +16416,7 @@ textarea.ehr-handoff-input {
 .th-ctrl.leave:hover { background: #cf2d24; }
 
 @media (max-width: 900px) {
-  .th-chat { position: absolute; right: 12px; top: 64px; bottom: 90px; z-index: 5; }
+  .th-chat { position: absolute; inset-inline-end: 12px; top: 64px; bottom: 90px; z-index: 5; }
   .th-self { width: 132px; height: 88px; }
 }
 
@@ -16446,7 +16446,7 @@ textarea.ehr-handoff-input {
 
   .ehr-center-panel .ehr-care-row .ehr-appointment-time {
     justify-self: start;
-    text-align: left;
+    text-align: start;
   }
 
   .ehr-center-panel .ehr-care-row-status {
@@ -16471,7 +16471,7 @@ textarea.ehr-handoff-input {
   background: var(--bg-secondary, var(--bg-card-solid));
   color: var(--text-primary);
   font-size: 13px;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -16590,7 +16590,7 @@ textarea.ehr-handoff-input {
   color: var(--text-strong);
   font-size: 13.5px;
   font-weight: 600;
-  text-align: left;
+  text-align: start;
 }
 
 .popup-select-row:hover {
@@ -16912,12 +16912,12 @@ textarea.ehr-handoff-input {
 
 /* Action column is right-aligned, matching the flex-end action buttons. */
 .ehr-queue-guide span:last-child {
-  text-align: right;
+  text-align: end;
 }
 
 .ehr-queue-guide:not(.ehr-queue-guide--station):not(.ehr-queue-guide--care) span:last-child,
 .ehr-care-list--no-actions .ehr-queue-guide--care span:last-child {
-  text-align: left;
+  text-align: start;
 }
 
 /* Nurse-station variant (design 02): Patient / Location / Acuity / Status /
@@ -17033,7 +17033,7 @@ textarea.ehr-handoff-input {
   font-size: 13.5px;
   font-weight: 700;
   line-height: 1.25;
-  text-align: left;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -17295,7 +17295,7 @@ textarea.ehr-handoff-input {
   min-width: 0;
   padding: 0 16px;
   border: 1px solid var(--ehr-border);
-  border-left-width: 0;
+  border-inline-start-width: 0;
   border-radius: 0;
   background: transparent;
   color: color-mix(in srgb, var(--text-primary) 70%, transparent);
@@ -17308,7 +17308,7 @@ textarea.ehr-handoff-input {
   white-space: nowrap;
 }
 .ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check):first-child {
-  border-left-width: 1px;
+  border-inline-start-width: 1px;
   border-radius: 8px 0 0 8px;
 }
 .ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check):last-child {
@@ -17460,7 +17460,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-queue-guide--mar span:last-child {
-  text-align: left;
+  text-align: start;
 }
 
 @media (max-width: 1180px) {
@@ -17529,7 +17529,7 @@ textarea.ehr-handoff-input {
 .ehr-queue-move-room {
   display: flex;
   flex-direction: column;
-  margin-left: 26px;
+  margin-inline-start: 26px;
 }
 
 .ehr-queue-move-room input,
@@ -17858,7 +17858,7 @@ textarea.ehr-handoff-input {
   border-radius: 10px;
   background: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   color: inherit;
 }
 
@@ -18096,7 +18096,7 @@ textarea.ehr-handoff-input {
 
 .appointment-card-head span:last-child {
   justify-self: end;
-  padding-right: 6px;
+  padding-inline-end: 6px;
 }
 
 /* 4px side padding, down from 16px: with the list gutter cut to 1px, the
@@ -18154,7 +18154,7 @@ textarea.ehr-handoff-input {
   font-size: 14px;
   font-weight: 800;
   line-height: 1.15;
-  text-align: left;
+  text-align: start;
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -18307,12 +18307,12 @@ textarea.ehr-handoff-input {
   /* Align the cue with the pill's inner TEXT (13px pill padding + 1px
      border), not the pill's border, so Routine/Urgent stacks directly
      under the status label. */
-  padding-right: 14px;
+  padding-inline-end: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: right;
+  text-align: end;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -18348,7 +18348,7 @@ textarea.ehr-handoff-input {
 .appointment-status-pill--select {
   position: relative;
   gap: 5px;
-  padding-right: 9px;
+  padding-inline-end: 9px;
   cursor: pointer;
 }
 
@@ -18357,8 +18357,8 @@ textarea.ehr-handoff-input {
   width: 0;
   height: 0;
   flex: 0 0 auto;
-  border-left: 3.5px solid transparent;
-  border-right: 3.5px solid transparent;
+  border-inline-start: 3.5px solid transparent;
+  border-inline-end: 3.5px solid transparent;
   border-top: 4px solid currentColor;
   opacity: 0.75;
 }
@@ -18406,7 +18406,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  margin-left: auto;
+  margin-inline-start: auto;
   min-width: 0;
 }
 
@@ -18757,7 +18757,7 @@ textarea.ehr-handoff-input {
   .appointment-card-provider,
   .appointment-card-row .ehr-appointment-department {
     grid-column: 1 / -1;
-    padding-left: 54px;
+    padding-inline-start: 54px;
   }
 }
 
@@ -18779,12 +18779,12 @@ textarea.ehr-handoff-input {
   .appointment-card-row .ehr-appointment-department {
     grid-column: 1;
     justify-self: stretch;
-    padding-left: 0;
-    text-align: left;
+    padding-inline-start: 0;
+    text-align: start;
   }
 
   .appointment-card-row .ehr-appointment-time {
-    text-align: left;
+    text-align: start;
   }
 
   .appointment-card-status {
@@ -18820,7 +18820,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-center-panel .ehr-appointment-row:not(.ehr-care-row) {
-  padding-left: 10px;
+  padding-inline-start: 10px;
 }
 
 /* Must stay in lockstep with `.appointment-card-head`'s side padding (4px):
@@ -18828,11 +18828,11 @@ textarea.ehr-handoff-input {
    here shifts every label off the values it names. Both were 16px before the
    rows were tightened to the panel edges. */
 .appointment-card-row.ehr-appointment-row {
-  padding-left: 4px;
+  padding-inline-start: 4px;
 }
 
 .ehr-center-panel .ehr-care-row {
-  padding-left: 10px;
+  padding-inline-start: 10px;
 }
 
 .ehr-center-panel .ehr-appointment-identity,
@@ -19615,7 +19615,7 @@ textarea.ehr-handoff-input {
   color: var(--text-strong);
   font-size: 12px;
   font-weight: 600;
-  text-align: right;
+  text-align: end;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -19793,7 +19793,7 @@ textarea.ehr-handoff-input {
   color: #334155;
   font-size: 13px;
   font-weight: 600;
-  text-align: left;
+  text-align: start;
 }
 
 .ehr-set-nav button:hover {
@@ -19824,7 +19824,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-nav button b {
-  margin-left: auto;
+  margin-inline-start: auto;
   flex: none;
   color: var(--ehr-muted);
   font-size: 11px;
@@ -19943,7 +19943,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   background: #fff;
-  text-align: left;
+  text-align: start;
   color: var(--ehr-text);
   cursor: pointer;
   box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
@@ -20135,12 +20135,12 @@ textarea.ehr-handoff-input {
   border-radius: 999px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(16, 42, 67, 0.25);
-  margin-left: 0;
+  margin-inline-start: 0;
   transition: margin-left 120ms ease;
 }
 
 .ehr-set-toggle.is-on > span i {
-  margin-left: 16px;
+  margin-inline-start: 16px;
 }
 
 .ehr-set-select,
@@ -20178,7 +20178,7 @@ textarea.ehr-handoff-input {
   color: var(--text-strong);
   font-size: 12.5px;
   font-weight: 700;
-  text-align: right;
+  text-align: end;
   outline: none;
 }
 
@@ -20284,7 +20284,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-users-head span:last-child {
-  text-align: right;
+  text-align: end;
 }
 
 .ehr-set-user-row {
@@ -20659,7 +20659,7 @@ textarea.ehr-handoff-input {
   color: var(--ehr-text);
   font-size: 12.5px;
   font-weight: 750;
-  text-align: right;
+  text-align: end;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -20775,7 +20775,7 @@ textarea.ehr-handoff-input {
 
 .org-set-list li {
   position: relative;
-  padding-left: 14px;
+  padding-inline-start: 14px;
   color: var(--ehr-muted);
   font-size: 12px;
   font-weight: 600;
@@ -20786,7 +20786,7 @@ textarea.ehr-handoff-input {
   content: "";
   position: absolute;
   top: 0.65em;
-  left: 0;
+  inset-inline-start: 0;
   width: 5px;
   height: 5px;
   border-radius: 999px;
@@ -20897,7 +20897,7 @@ textarea.ehr-handoff-input {
   }
 
   .org-set-info-row b {
-    text-align: left;
+    text-align: start;
   }
 }
 
@@ -20923,8 +20923,8 @@ textarea.ehr-handoff-input {
 
 .settings-embedded-page .dash-card {
   border-radius: 0;
-  border-left: 0;
-  border-right: 0;
+  border-inline-start: 0;
+  border-inline-end: 0;
   box-shadow: none;
 }
 
@@ -21035,7 +21035,7 @@ textarea.ehr-handoff-input {
   text-decoration: none;
   box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
   font: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -21247,14 +21247,14 @@ table.patient-data-table.patient-data-table {
 /* Matches `.appointment-card-head span:last-child` — the label is nudged in so
    it sits over the status pill's text rather than its border. */
 .patient-data-head-cell.is-right {
-  padding-right: 22px;
+  padding-inline-end: 22px;
 }
 
 /* Roles that can reassign get a pencil at the row's right edge, which pushes
    the pill/caption stack inboard — the header label follows it so the two
    still line up (button 32px + 10px gap on top of the 22px nudge). */
 .patient-data-head-cell.is-right.has-row-action {
-  padding-right: 64px;
+  padding-inline-end: 64px;
 }
 
 /* The app-wide `.tamam-ehr-app table thead th` rule paints every table header
@@ -21297,12 +21297,12 @@ table.patient-data-table.patient-data-table {
 }
 
 .patient-data-row .patient-data-cell:first-child {
-  border-left: 1px solid var(--ehr-border);
+  border-inline-start: 1px solid var(--ehr-border);
   border-radius: 14px 0 0 14px;
 }
 
 .patient-data-row .patient-data-cell:last-child {
-  border-right: 1px solid var(--ehr-border);
+  border-inline-end: 1px solid var(--ehr-border);
   border-radius: 0 14px 14px 0;
 }
 
@@ -21313,7 +21313,7 @@ table.patient-data-table.patient-data-table {
 }
 
 .patient-data-cell.is-right {
-  text-align: right;
+  text-align: end;
 }
 
 .patient-data-main {
@@ -21375,12 +21375,12 @@ table.patient-data-table.patient-data-table {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  padding-right: 14px;
+  padding-inline-end: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: right;
+  text-align: end;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -21392,7 +21392,7 @@ table.patient-data-table.patient-data-table {
 
 .patient-data-cell .ehr-queue-action,
 .patient-data-cell .ehr-queue-action-pill {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 @media (max-width: 900px) {
@@ -21407,18 +21407,18 @@ table.patient-data-table.patient-data-table {
 
   .patient-data-head-cell,
   .patient-data-row .patient-data-cell {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-inline-start: 12px;
+    padding-inline-end: 12px;
   }
 
   /* Keep the header label over the pill's text at the tighter gutter too,
      otherwise STATUS drifts right of the pill on narrow screens. */
   .patient-data-head-cell.is-right {
-    padding-right: 18px;
+    padding-inline-end: 18px;
   }
 
   .patient-data-head-cell.is-right.has-row-action {
-    padding-right: 60px;
+    padding-inline-end: 60px;
   }
 }
 
@@ -21480,7 +21480,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 700 !important;
   letter-spacing: 0.12em !important;
   line-height: 1.2;
-  text-align: left;
+  text-align: start;
   text-transform: uppercase !important;
   white-space: nowrap;
 }
@@ -21496,12 +21496,12 @@ table.patient-data-table.patient-data-table {
 .ehr-list-scroll .data-table td.is-right,
 .ehr-list-scroll .data-table th.text-right,
 .ehr-list-scroll .data-table td.text-right {
-  text-align: right !important;
+  text-align: end !important;
 }
 
 .ehr-list-scroll .data-table thead th.is-right,
 .ehr-list-scroll .data-table thead th.text-right {
-  padding-right: 22px !important;
+  padding-inline-end: 22px !important;
 }
 
 /* ── Rows: bordered cards, not ruled lines ── */
@@ -21523,13 +21523,13 @@ table.patient-data-table.patient-data-table {
 
 .tamam-ehr-app .ehr-list-scroll .data-table tbody td:first-child,
 .ehr-list-scroll .data-table tbody td:first-child {
-  border-left: 1px solid var(--ehr-border) !important;
+  border-inline-start: 1px solid var(--ehr-border) !important;
   border-radius: 14px 0 0 14px;
 }
 
 .tamam-ehr-app .ehr-list-scroll .data-table tbody td:last-child,
 .ehr-list-scroll .data-table tbody td:last-child {
-  border-right: 1px solid var(--ehr-border) !important;
+  border-inline-end: 1px solid var(--ehr-border) !important;
   border-radius: 0 14px 14px 0;
 }
 
@@ -21623,12 +21623,12 @@ table.patient-data-table.patient-data-table {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  padding-right: 14px;
+  padding-inline-end: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: right;
+  text-align: end;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -21642,12 +21642,12 @@ table.patient-data-table.patient-data-table {
   .ehr-list-scroll .data-table thead th,
   .tamam-ehr-app .ehr-list-scroll .data-table tbody td,
   .ehr-list-scroll .data-table tbody td {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+    padding-inline-start: 12px !important;
+    padding-inline-end: 12px !important;
   }
 
   .ehr-list-scroll .data-table thead th:last-child {
-    padding-right: 18px !important;
+    padding-inline-end: 18px !important;
   }
 }
 
@@ -21718,7 +21718,7 @@ table.patient-data-table.patient-data-table {
 .sa-card-actions {
   display: flex;
   gap: 6px;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .sa-card > *:not(.sa-card-head):not(.sa-table-scroll) {
@@ -21790,7 +21790,7 @@ table.patient-data-table.patient-data-table {
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.1em;
-  text-align: left;
+  text-align: start;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -21827,7 +21827,7 @@ table.patient-data-table.patient-data-table {
   color: var(--text-muted);
   font-size: 12.5px;
   font-weight: 600;
-  text-align: left;
+  text-align: start;
 }
 
 /* Compact key→value rows for status rails. */
@@ -22157,7 +22157,7 @@ table.patient-data-table.patient-data-table {
   padding: 0;
   background: transparent;
   border: 0;
-  text-align: left;
+  text-align: start;
   color: #144972;
   font-family: var(--font-condensed);
   font-size: 11.5px;
@@ -22356,14 +22356,14 @@ table.patient-data-table.patient-data-table {
   text-overflow: ellipsis;
 }
 .epi-rt-right { display: flex; align-items: center; gap: 10px; flex: none; }
-.epi-rt-delta { font-size: 11px; font-weight: 600; width: 46px; text-align: right; flex: none; }
+.epi-rt-delta { font-size: 11px; font-weight: 600; width: 46px; text-align: end; flex: none; }
 .epi-rt-value {
   font-family: var(--font-condensed);
   font-weight: 700;
   font-size: 15px;
   font-variant-numeric: tabular-nums;
   width: 42px;
-  text-align: right;
+  text-align: end;
   flex: none;
 }
 
@@ -22393,7 +22393,7 @@ table.patient-data-table.patient-data-table {
   text-overflow: ellipsis;
 }
 .epi-alert-state { margin: 1px 0 0; font-size: 11px; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.epi-alert-right { text-align: right; flex: none; }
+.epi-alert-right { text-align: end; flex: none; }
 .epi-alert-cases {
   display: block;
   font-family: var(--font-condensed);
@@ -22524,7 +22524,7 @@ table.patient-data-table.patient-data-table {
 /* Clinician's camera, demoted while they share. Sits opposite the patient's
    own self-view so the two never overlap. */
 .th-join-pip {
-  position: absolute; left: 16px; bottom: 16px;
+  position: absolute; inset-inline-start: 16px; bottom: 16px;
   width: 132px; height: 84px; border-radius: 10px; object-fit: cover;
   background: #0B1220; border: 1px solid rgba(255, 255, 255, 0.18);
 }
@@ -22564,7 +22564,7 @@ table.patient-data-table.patient-data-table {
 .th-join-stage { position: relative; flex: 1; width: 100%; overflow: hidden; }
 .th-join-remote { width: 100%; height: 100%; object-fit: cover; background: #0B1220; }
 .th-join-self {
-  position: absolute; right: 14px; bottom: 14px; width: 116px; height: 156px;
+  position: absolute; inset-inline-end: 14px; bottom: 14px; width: 116px; height: 156px;
   object-fit: cover; border-radius: 10px; background: #060A12;
   border: 1px solid rgba(255,255,255,0.16); transform: scaleX(-1);
 }
@@ -22640,7 +22640,7 @@ table.patient-data-table.patient-data-table {
   flex: none;
   width: 28px;
   height: 28px;
-  margin-left: auto;
+  margin-inline-start: auto;
   border-radius: 7px;
   color: var(--text-muted);
   background: transparent;
@@ -22718,7 +22718,7 @@ table.patient-data-table.patient-data-table {
   align-items: flex-start;
   gap: 9px;
   padding: 10px 11px;
-  text-align: left;
+  text-align: start;
   border: 1px solid var(--border-light);
   border-radius: 10px;
   background: var(--bg-card);
@@ -22810,7 +22810,7 @@ table.patient-data-table.patient-data-table {
   border-radius: 10px;
   background: var(--bg-app);
 }
-.xfer-meter { display: flex; align-items: center; gap: 7px; margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.xfer-meter { display: flex; align-items: center; gap: 7px; margin-inline-start: auto; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .xfer-meter-track { width: 56px; height: 4px; border-radius: 999px; background: var(--border-medium); overflow: hidden; }
 .xfer-meter-fill { height: 100%; border-radius: 999px; background: var(--color-success); transition: width 0.2s ease; }
 .xfer-meter-fill[data-pending='true'] { background: var(--color-warning); }
@@ -22821,7 +22821,7 @@ table.patient-data-table.patient-data-table {
   gap: 8px;
   width: 100%;
   padding: 7px 9px;
-  text-align: left;
+  text-align: start;
   border: 1px solid var(--border-light);
   border-radius: 8px;
   background: var(--bg-card);
@@ -22856,7 +22856,7 @@ table.patient-data-table.patient-data-table {
   color: var(--color-white);
 }
 .xfer-check-req {
-  margin-left: auto;
+  margin-inline-start: auto;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -22973,7 +22973,7 @@ table.patient-data-table.patient-data-table {
 }
 
 @media (max-width: 720px) {
-  .ehr-row-detail { padding-left: 20px; }
+  .ehr-row-detail { padding-inline-start: 20px; }
 }
 
 /* The visit panel in its inline frame: no dialog chrome, no shadow of its own —
@@ -23004,7 +23004,7 @@ table.patient-data-table.patient-data-table {
 .ehr-row-detail--form > * > .px-5 { padding-inline: 12px; }
 
 @media (max-width: 720px) {
-  .ehr-row-detail--form { padding-left: 8px; }
+  .ehr-row-detail--form { padding-inline-start: 8px; }
 }
 
 /* The same panel inside a data table, where the unfolded content has to live
@@ -23020,7 +23020,7 @@ table.patient-data-table.patient-data-table {
 
 .ehr-table-detail-row > td > .ehr-row-detail--table {
   padding: 14px 18px;
-  border-left: 3px solid var(--accent-primary);
+  border-inline-start: 3px solid var(--accent-primary);
 }
 
 .ehr-visit-pop--inline {
@@ -23047,7 +23047,7 @@ table.patient-data-table.patient-data-table {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  margin-inline-start: auto;
   padding-bottom: 6px;
 }
 
@@ -23159,7 +23159,7 @@ table.patient-data-table.patient-data-table {
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 600;
-  text-align: right;
+  text-align: end;
 }
 
 /* ── Row detail: the icon actions ride the phone/hospital-number line ────────
@@ -23183,7 +23183,7 @@ table.patient-data-table.patient-data-table {
 .ehr-row-detail__custom > .ehr-visit-pop-tabs {
   order: 2;
   width: auto;
-  margin-left: auto;
+  margin-inline-start: auto;
   padding: 0;
   border-bottom: 0;
 }
@@ -23755,7 +23755,7 @@ table.patient-data-table.patient-data-table {
 }
 
 .appt-edit-shell.is-inline .appointment-billing-panel dd {
-  text-align: left;
+  text-align: start;
 }
 
 /* The clash stays a sentence in the flow, red ink, no plate. */
@@ -23851,7 +23851,7 @@ table.patient-data-table.patient-data-table {
    left the form indented 34px past the avatar above it. Scoped with :has() so
    every other row panel keeps its own inset. */
 .ehr-row-detail:has(.appt-edit-shell) {
-  padding-left: 10px;
+  padding-inline-start: 10px;
 }
 
 /* Keep the caret on every select in the appointment form.
@@ -23870,7 +23870,7 @@ table.patient-data-table.patient-data-table {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
-  padding-right: 28px;
+  padding-inline-end: 28px;
 }
 
 /* Billing rows stack, one pair per line. An earlier block in this file makes the
@@ -23919,7 +23919,7 @@ table.patient-data-table.patient-data-table {
 .ehr-row-telehealth {
   display: inline-flex;
   align-items: center;
-  margin-left: 6px;
+  margin-inline-start: 6px;
   color: var(--ehr-blue, var(--accent-primary));
   vertical-align: middle;
 }
@@ -24154,7 +24154,7 @@ table.patient-data-table.patient-data-table {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.29;
-  text-align: left;
+  text-align: start;
   color: var(--omrs-ui-05);
   text-decoration: none;
   cursor: pointer;
@@ -24245,7 +24245,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 400;
   line-height: 1.29;
   letter-spacing: 0.16px;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   transition: background 0.11s cubic-bezier(0.2, 0, 0.38, 0.9);
 }
@@ -24393,7 +24393,7 @@ table.patient-data-table.patient-data-table {
   padding: 11px 16px;
   line-height: 1.43;
 }
-.omrs-reg select { padding-right: 40px; background-position: right 14px center; }
+.omrs-reg select { padding-inline-end: 40px; background-position: right 14px center; }
 
 .omrs-reg input::placeholder,
 .omrs-reg textarea::placeholder { color: var(--text-muted, #5B6B7E); opacity: 0.75; }
@@ -24517,7 +24517,7 @@ table.patient-data-table.patient-data-table {
 .omrs-reg .registration-info-note {
   padding: 12px 16px;
   border: none;
-  border-left: 3px solid var(--omrs-interactive);
+  border-inline-start: 3px solid var(--omrs-interactive);
   border-radius: 0;
   background: var(--omrs-interactive-soft);
 }
@@ -24667,7 +24667,7 @@ table.patient-data-table.patient-data-table {
   align-items: flex-start;
   gap: 4px;
   margin: 4px 0 20px;
-  text-align: left;
+  text-align: start;
 }
 .triage-rail-patient .triage-patient-photo {
   width: 168px;
@@ -24881,7 +24881,7 @@ table.patient-data-table.patient-data-table {
 
 .tsel-search .tsel-search-icon {
   position: absolute;
-  left: 20px;
+  inset-inline-start: 20px;
   top: 50%;
   width: 15px;
   height: 15px;
@@ -24937,7 +24937,7 @@ table.patient-data-table.patient-data-table {
 }
 
 .tsel-menu.is-inline .tsel-search .tsel-search-icon {
-  left: 15px;
+  inset-inline-start: 15px;
   width: 16px;
   height: 16px;
   color: var(--accent-primary);
@@ -24964,7 +24964,7 @@ table.patient-data-table.patient-data-table {
 
 .tsel-menu.is-inline .tsel-search-caret {
   position: absolute;
-  right: 14px;
+  inset-inline-end: 14px;
   top: 50%;
   width: 16px;
   height: 16px;
@@ -24978,7 +24978,7 @@ table.patient-data-table.patient-data-table {
 /* Rows left after filtering, sitting where the chevron was. */
 .tsel-menu.is-inline .tsel-search-count {
   position: absolute;
-  right: 10px;
+  inset-inline-end: 10px;
   top: 50%;
   transform: translateY(-50%);
   min-width: 22px;
@@ -25050,7 +25050,7 @@ table.patient-data-table.patient-data-table {
   font-family: var(--font-platform);
   font-size: 0.85rem;
   font-weight: 600;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
@@ -25059,7 +25059,7 @@ table.patient-data-table.patient-data-table {
    input's 41px inset), so the eye follows one column from the box down through
    the matches rather than two staggered edges. */
 .tsel-menu.is-inline .tsel-row {
-  padding-left: 35px;
+  padding-inline-start: 35px;
 }
 
 /* Keyboard and pointer share one highlight, so arrowing down and hovering
@@ -25707,7 +25707,7 @@ table.patient-data-table.patient-data-table {
   color: var(--nav-text);
   font-size: 12.5px;
   font-weight: 700;
-  text-align: left;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -25803,7 +25803,7 @@ table.patient-data-table.patient-data-table {
 .appointment-card-flow > .appointment-card-row.ehr-appointment-row:last-child,
 .ehr-center-panel .ehr-appointment-group:last-child .ehr-appointment-row { border-bottom: 0; }
 
-.appointment-card-head { padding-left: 6px; padding-right: 6px; }
+.appointment-card-head { padding-inline-start: 6px; padding-inline-end: 6px; }
 
 /* The row still carried a top rule (from the grouped-list markup), so two
    consecutive rows drew two hairlines with a seam between them. One rule per
@@ -26358,7 +26358,7 @@ table.patient-data-table.patient-data-table {
   border: 0;
   border-bottom: 1px solid var(--ehr-border-soft);
   background: transparent;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   transition: background 120ms ease;
 }
@@ -26433,7 +26433,7 @@ table.patient-data-table.patient-data-table {
   padding: 10px 16px;
   border: 0;
   background: transparent;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .msgs-me-btn:hover { background: var(--ehr-hover); }
@@ -26457,8 +26457,8 @@ table.patient-data-table.patient-data-table {
 }
 .msgs-me-menu {
   position: absolute;
-  left: 10px;
-  right: 10px;
+  inset-inline-start: 10px;
+  inset-inline-end: 10px;
   bottom: calc(100% + 6px);
   z-index: 20;
   padding: 4px 0;
@@ -26526,7 +26526,7 @@ table.patient-data-table.patient-data-table {
 
 .msgs-menu {
   position: absolute;
-  right: 16px;
+  inset-inline-end: 16px;
   top: calc(100% + 4px);
   z-index: 20;
   width: 200px;
@@ -26544,7 +26544,7 @@ table.patient-data-table.patient-data-table {
   padding: 8px 14px;
   border: 0;
   background: transparent;
-  text-align: left;
+  text-align: start;
   font-size: 12.5px;
   font-weight: 700;
   color: var(--ehr-text);
@@ -26619,7 +26619,7 @@ table.patient-data-table.patient-data-table {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  border-left: 2px solid var(--accent-primary);
+  border-inline-start: 2px solid var(--accent-primary);
   border-radius: 6px;
   background: var(--ehr-head);
   font-size: 11px;
@@ -26656,7 +26656,7 @@ table.patient-data-table.patient-data-table {
 .msgs-react-pop {
   position: absolute;
   top: 28px;
-  right: 0;
+  inset-inline-end: 0;
   z-index: 20;
   display: flex;
   gap: 2px;
@@ -26704,7 +26704,7 @@ table.patient-data-table.patient-data-table {
   flex: 0 0 280px;
   width: 280px;
   overflow-y: auto;
-  border-left: 1px solid var(--ehr-border);
+  border-inline-start: 1px solid var(--ehr-border);
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
@@ -26786,7 +26786,7 @@ table.patient-data-table.patient-data-table {
   gap: 8px;
   margin-bottom: 8px;
   padding: 6px 12px;
-  border-left: 2px solid var(--accent-primary);
+  border-inline-start: 2px solid var(--accent-primary);
   border-radius: 6px;
   background: var(--ehr-head);
   font-size: 11.5px;
@@ -26834,7 +26834,7 @@ table.patient-data-table.patient-data-table {
 }
 .ehr-side-card-head .ehr-week-activity-caption,
 .ehr-side-card-head .ehr-day-stats-nav {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 /* ═══════════ Design alignment — "Super Admin Settings" (dashboard redesign) ═══════════
@@ -26968,7 +26968,7 @@ table.patient-data-table.patient-data-table {
 }
 .ehr-set-section-head small {
   margin-top: 0;
-  margin-left: auto;
+  margin-inline-start: auto;
   font-size: 11px;
   font-weight: 700;
   color: var(--set-ghost, #597386);
@@ -26989,7 +26989,7 @@ table.patient-data-table.patient-data-table {
 .ehr-set-toggle > span { width: 38px; height: 21px; background: #C7D5E0; }
 .ehr-set-toggle.is-on > span { background: var(--set-accent, #144972); }
 .ehr-set-toggle > span i { width: 17px; height: 17px; box-shadow: 0 1px 2px rgba(14, 42, 74, 0.25); }
-.ehr-set-toggle.is-on > span i { margin-left: 17px; }
+.ehr-set-toggle.is-on > span i { margin-inline-start: 17px; }
 
 /* Value controls sit on the band, hairline-edged, tabular. */
 .ehr-set-select,
@@ -27349,7 +27349,7 @@ table.patient-data-table.patient-data-table {
 }
 
 /* Search — translucent pill on the bar, white popover under it. */
-.pp-search-wrap { position: relative; margin-left: auto; flex: 0 1 330px; min-width: 150px; }
+.pp-search-wrap { position: relative; margin-inline-start: auto; flex: 0 1 330px; min-width: 150px; }
 .pp-search {
   display: flex;
   align-items: center;
@@ -27399,7 +27399,7 @@ table.patient-data-table.patient-data-table {
   overflow: hidden;
   padding: 5px;
 }
-.pp-search-menu { top: 42px; left: 0; right: 0; }
+.pp-search-menu { top: 42px; inset-inline-start: 0; inset-inline-end: 0; }
 .pp-search-menu button {
   display: block;
   width: 100%;
@@ -27407,7 +27407,7 @@ table.patient-data-table.patient-data-table {
   background: transparent;
   border: 0;
   border-radius: 7px;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .pp-search-menu button:hover { background: #F0F6FA; }
@@ -27452,7 +27452,7 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.85);
 }
-.pp-user-menu { top: 44px; right: 0; width: 236px; }
+.pp-user-menu { top: 44px; inset-inline-end: 0; width: 236px; }
 .pp-user-menu-id { padding: 9px 10px 8px; border-bottom: 1px solid #EDF2F7; margin-bottom: 4px; }
 .pp-user-menu-id b { display: block; font-size: 13px; color: #0E2A4A; }
 .pp-user-menu-id small { display: block; margin-top: 1px; font-size: 11px; color: #5B6B7E; }
@@ -27468,7 +27468,7 @@ table.patient-data-table.patient-data-table {
   color: #0E2A4A;
   font-family: var(--font-platform);
   font-size: 13px;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .pp-menu-item:hover { background: #F0F6FA; }
@@ -27490,7 +27490,7 @@ table.patient-data-table.patient-data-table {
   flex-direction: column;
   padding: 14px 10px 14px 12px;
   background: #FFFFFF;
-  border-right: 1px solid #E3EBF2;
+  border-inline-end: 1px solid #E3EBF2;
 }
 .pp-side-group { margin-bottom: 14px; }
 .pp-side-title {
@@ -27516,7 +27516,7 @@ table.patient-data-table.patient-data-table {
   font-family: var(--font-platform);
   font-size: 13px;
   font-weight: 700;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .pp-side-item:hover { background: #F0F6FA; }
@@ -27684,7 +27684,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .pp-card-foot:hover { background: #F7FAFC; }
@@ -27707,7 +27707,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #0E2A4A;
-  text-align: right;
+  text-align: end;
   white-space: nowrap;
 }
 .pp-row-toggle {
@@ -27719,7 +27719,7 @@ table.patient-data-table.patient-data-table {
   background: none;
   border: 0;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   font-family: var(--font-platform);
 }
 .pp-row-toggle:hover { background: #FBFDFE; }
@@ -27796,9 +27796,9 @@ table.patient-data-table.patient-data-table {
   padding: 12px 14px;
   background: transparent;
   border: 0;
-  border-right: 1px solid #EDF2F7;
+  border-inline-end: 1px solid #EDF2F7;
   border-bottom: 1px solid #EDF2F7;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   font-family: var(--font-platform);
 }
@@ -27998,7 +27998,7 @@ table.patient-data-table.patient-data-table {
     overflow-x: auto;
     overflow-y: hidden;
     padding: 8px 10px;
-    border-right: 0;
+    border-inline-end: 0;
     border-bottom: 1px solid #E3EBF2;
   }
   .pp-side-group { display: contents; }
@@ -28082,7 +28082,7 @@ table.patient-data-table.patient-data-table {
   gap: 10px;
 }
 .sadb-kpi {
-  text-align: left;
+  text-align: start;
   padding: 12px 14px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
@@ -28166,7 +28166,7 @@ button.sadb-kpi:hover { border-color: var(--brand-300); }
 .sadb-signal {
   display: block;
   width: 100%;
-  text-align: left;
+  text-align: start;
   padding: 9px 12px;
   border-radius: 8px;
   border: 1px solid transparent;
@@ -28225,7 +28225,7 @@ button.sadb-signal { cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
+  margin-inline-start: auto;
   flex-wrap: wrap;
   font-size: 11.5px;
   font-weight: 700;
@@ -28291,7 +28291,7 @@ button.sadb-signal { cursor: pointer; }
 }
 .sadb-tenant-row {
   width: 100%;
-  text-align: left;
+  text-align: start;
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
@@ -28322,7 +28322,7 @@ button.sadb-signal { cursor: pointer; }
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .sadb-queue-row:hover { background: var(--ehr-head); }
@@ -28395,7 +28395,7 @@ button.sadb-signal { cursor: pointer; }
   font-family: var(--font-platform);
   font-size: 13px;
   font-weight: 700;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .sadb-rail-item:hover { background: var(--ehr-head); }
@@ -28584,7 +28584,7 @@ button.sadb-signal { cursor: pointer; }
 }
 .sadb-status-name { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .sadb-status-detail { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
-.sadb-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
+.sadb-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-inline-end: 6px; }
 
 /* ── Danger zone ── */
 .sadb-danger {

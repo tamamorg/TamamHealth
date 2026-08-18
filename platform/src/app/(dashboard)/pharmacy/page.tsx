@@ -882,7 +882,7 @@ export default function PharmacyPage() {
                 </EhrListHeaderButton>
                 {showHeaderFilters && (
                   <div
-                    className="absolute right-0 mt-2 rounded-2xl overflow-hidden z-50"
+                    className="absolute end-0 mt-2 rounded-2xl overflow-hidden z-50"
                     style={{ width: 'min(92vw, 420px)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
                   >
                     <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
@@ -1259,7 +1259,7 @@ export default function PharmacyPage() {
                   const pending = rxs.filter(r => isActivePharmacyStage(pharmacyStage(r)) && r.status !== 'discontinued').length;
                   return (
                     <button key={p._id} onClick={() => setSelectedPatient(p._id)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--table-row-hover)]">
+                      className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-[var(--table-row-hover)]">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">{patientName(p)}</p>
                         <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>

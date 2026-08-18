@@ -34,7 +34,7 @@ export default function SearchInput({
     >
       <Search
         size={15}
-        className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+        className="absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none"
         style={{ color: 'var(--text-muted)' }}
       />
       <input
@@ -45,14 +45,14 @@ export default function SearchInput({
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         className="search-icon-input"
-        style={{ background: 'var(--overlay-subtle)', paddingRight: value ? 34 : undefined }}
+        style={{ background: 'var(--overlay-subtle)', paddingInlineEnd: value ? 34 : undefined }}
       />
       {value && (
         <button
           type="button"
           aria-label="Clear search"
           onClick={() => onChange('')}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full transition-colors"
+          className="absolute end-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full transition-colors"
           style={{ width: 20, height: 20, color: 'var(--text-muted)', background: 'var(--border-light)' }}
         >
           <X size={12} strokeWidth={2.5} />

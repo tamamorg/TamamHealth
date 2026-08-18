@@ -184,7 +184,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                     {/* The name opens this patient's focused rooming page. */}
                     <button
                       type="button"
-                      className="text-sm font-semibold truncate text-left"
+                      className="text-sm font-semibold truncate text-start"
                       style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                       onClick={() => router.push(`/rooming/${encounter.patientId}`)}
                       title={`Room ${encounter.patientName}`}

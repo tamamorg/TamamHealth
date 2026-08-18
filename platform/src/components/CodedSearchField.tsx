@@ -123,7 +123,7 @@ export default function CodedSearchField({
           an empty <label> would still occupy its bottom margin. */}
       {label && <label>{label}</label>}
       <div className="relative" ref={anchorRef}>
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
         <input
           type="search"
           value={value}
@@ -135,7 +135,7 @@ export default function CodedSearchField({
           onClick={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           placeholder={placeholder}
-          className="pl-9 search-icon-input w-full"
+          className="ps-9 search-icon-input w-full"
           style={{ background: 'var(--overlay-subtle)' }}
           autoFocus={autoFocus}
         />
@@ -159,7 +159,7 @@ export default function CodedSearchField({
               key={`${option.code}-${option.name}`}
               type="button"
               onClick={() => { onSelect(option); setOpen(false); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-white/5 transition-colors"
               style={{ borderBottom: '1px solid var(--border-light)' }}
             >
               {showCodeBadge && (
@@ -175,7 +175,7 @@ export default function CodedSearchField({
             <button
               type="button"
               onClick={() => { onAddCustom!(customText); setOpen(false); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-white/5 transition-colors"
             >
               <Plus className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--accent-primary)' }} aria-hidden />
               <span className="text-sm font-bold truncate" style={{ color: 'var(--accent-primary)' }}>Add &ldquo;{customText}&rdquo;</span>

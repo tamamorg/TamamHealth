@@ -18,7 +18,8 @@
     "setup:couchdb:validators": "node --import tsx scripts/install-validate-doc-updates.mjs",
     "db:migrate:couchdb-tenants": "node --import tsx scripts/migrate-couchdb-to-tenant-databases.mjs",
     "db:verify:couchdb-tenants": "node --import tsx scripts/verify-couchdb-tenant-migration.mjs",
-    "docs:api": "typedoc"
+    "docs:api": "typedoc",
+    "i18n:check": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.62.0",

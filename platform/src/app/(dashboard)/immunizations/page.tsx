@@ -461,7 +461,7 @@ export default function ImmunizationsPage() {
               return (
                 <div key={vaccine} className="card-elevated overflow-hidden">
                   <button
-                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                    className="w-full flex items-center justify-between px-4 py-3 text-start"
                     onClick={() => setVaccineExpanded(s => ({ ...s, [vaccine]: !s[vaccine] }))}
                   >
                     <div className="flex items-center gap-3">
@@ -576,10 +576,10 @@ export default function ImmunizationsPage() {
             <div className="data-row-divider-sm">
               {coverage.map(c => (
                 <div key={c.vaccine} className="flex items-center gap-3">
-                  <span className="text-xs font-bold w-24 text-right" style={{ color: 'var(--text-secondary)' }}>{c.vaccine}</span>
+                  <span className="text-xs font-bold w-24 text-end" style={{ color: 'var(--text-secondary)' }}>{c.vaccine}</span>
                   <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ background: 'var(--overlay-light)' }}>
                     <div
-                      className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
+                      className="h-full rounded-full flex items-center justify-end pe-2 transition-all duration-700"
                       style={{
                         width: `${Math.max(c.percentage, 8)}%`,
                         background: c.percentage >= 80 ? 'var(--accent-primary)' :
@@ -590,7 +590,7 @@ export default function ImmunizationsPage() {
                       <span className="text-[10px] font-bold text-white">{c.percentage}%</span>
                     </div>
                   </div>
-                  <span className="text-xs w-12 text-right" style={{ color: 'var(--text-muted)' }}>{c.count}/{stats?.totalChildren || 0}</span>
+                  <span className="text-xs w-12 text-end" style={{ color: 'var(--text-muted)' }}>{c.count}/{stats?.totalChildren || 0}</span>
                 </div>
               ))}
             </div>
@@ -613,7 +613,7 @@ export default function ImmunizationsPage() {
               <table className="w-full text-xs" style={{ minWidth: 720 }}>
                 <thead>
                   <tr>
-                    <th className="text-left p-2" style={{ color: 'var(--text-muted)' }}>{t('immun.colVaccine')}</th>
+                    <th className="text-start p-2" style={{ color: 'var(--text-muted)' }}>{t('immun.colVaccine')}</th>
                     {cohortKeys.map(c => (
                       <th key={c} className="text-center p-2" style={{ color: 'var(--text-muted)' }}>{c}</th>
                     ))}
@@ -703,7 +703,7 @@ export default function ImmunizationsPage() {
                     <th>{t('immun.colDaysOverdue')}</th>
                     <th>{t('immun.colFacility')}</th>
                     <th>{t('immun.colUrgency')}</th>
-                    <th className="text-right">Recall</th>
+                    <th className="text-end">Recall</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -729,7 +729,7 @@ export default function ImmunizationsPage() {
                         <td>
                           <Badge tone={urgencyTone} uppercase>{d.urgency}</Badge>
                         </td>
-                        <td className="text-right">
+                        <td className="text-end">
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleSendRecall(d, rowKey); }}
@@ -805,7 +805,7 @@ export default function ImmunizationsPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
                   className="w-full flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--table-row-hover)] cursor-pointer"
                 >
-                  <div className="flex-1 text-left min-w-0">
+                  <div className="flex-1 text-start min-w-0">
                     <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{child.patientName}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {child.gender} · DOB: {child.dateOfBirth} · {child.facilityName}
@@ -915,13 +915,13 @@ export default function ImmunizationsPage() {
                   ) : (
                     <>
                       <div className="relative">
-                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                        <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                         <input
                           type="text"
                           value={patientLookup}
                           onChange={e => setPatientLookup(e.target.value)}
                           placeholder={t('immun.searchChildPlaceholder')}
-                          className="w-full text-xs p-2 pl-8 rounded-lg outline-none"
+                          className="w-full text-xs p-2 ps-8 rounded-lg outline-none"
                           style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                         />
                       </div>
@@ -932,7 +932,7 @@ export default function ImmunizationsPage() {
                               key={p._id}
                               type="button"
                               onClick={() => selectImmunizationPatient(p._id)}
-                              className="w-full px-2.5 py-2 text-left text-xs hover:bg-[var(--overlay-subtle)] transition-colors"
+                              className="w-full px-2.5 py-2 text-start text-xs hover:bg-[var(--overlay-subtle)] transition-colors"
                               style={{ borderBottom: '1px solid var(--border-light)' }}
                             >
                               <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{p.firstName} {p.surname}</p>

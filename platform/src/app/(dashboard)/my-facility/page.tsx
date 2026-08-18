@@ -296,7 +296,7 @@ export default function MyFacilityPage() {
             <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
               {toggle(t('myFacility.hasElectricity'), hasElectricity, setHasElectricity)}
               {hasElectricity && (
-                <div className="pl-4 pb-2">
+                <div className="ps-4 pb-2">
                   {numberInput(t('myFacility.electricityHoursPerDay'), electricityHours, setElectricityHours, 24)}
                 </div>
               )}
@@ -307,7 +307,7 @@ export default function MyFacilityPage() {
             <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
               {toggle(t('myFacility.hasInternet'), hasInternet, setHasInternet)}
               {hasInternet && (
-                <div className="pl-4 pb-2">
+                <div className="ps-4 pb-2">
                   <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t('myFacility.internetType')}</label>
                   <Select
                     value={internetType}

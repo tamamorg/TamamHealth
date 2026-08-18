@@ -574,7 +574,7 @@ export function TransferBanner({
         <span> · {describeAssignment(t.from)} → {describeAssignment(t.to)}</span>
         {t.expiresAt && <span> · ends {formatDateTime(t.expiresAt)}</span>}
         {onOpenHistory && (
-          <button className="ml-2 underline" onClick={onOpenHistory}>View</button>
+          <button className="ms-2 underline" onClick={onOpenHistory}>View</button>
         )}
       </div>
     </div>

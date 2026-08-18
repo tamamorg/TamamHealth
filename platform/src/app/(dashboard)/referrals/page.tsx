@@ -306,7 +306,7 @@ export default function ReferralsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {refAttachments.map(att => (
-                <button key={att.id} onClick={() => setPreviewAttachment(att)} className="flex items-center gap-2 p-2 rounded-lg text-left transition-colors" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+                <button key={att.id} onClick={() => setPreviewAttachment(att)} className="flex items-center gap-2 p-2 rounded-lg text-start transition-colors" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
                   {isImage(att.mimeType) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={`data:${att.mimeType};base64,${att.base64Data}`} alt={att.name} className="w-8 h-8 rounded object-cover flex-shrink-0" />
@@ -393,7 +393,7 @@ export default function ReferralsPage() {
                         if (next.has(rec.id)) next.delete(rec.id); else next.add(rec.id);
                         return next;
                       })}
-                      className="w-full flex items-center justify-between p-3 text-left"
+                      className="w-full flex items-center justify-between p-3 text-start"
                     >
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{rec.visitDate}</span>
@@ -465,22 +465,22 @@ export default function ReferralsPage() {
               <table className="w-full text-xs" style={{ minWidth: 600 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <th className="text-left py-1.5 pr-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.testName')}</th>
-                    <th className="text-left py-1.5 pr-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.result')}</th>
-                    <th className="text-left py-1.5 pr-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.reference')}</th>
-                    <th className="text-left py-1.5 pr-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('referrals.date')}</th>
-                    <th className="text-left py-1.5 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.status')}</th>
+                    <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.testName')}</th>
+                    <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.result')}</th>
+                    <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.reference')}</th>
+                    <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('referrals.date')}</th>
+                    <th className="text-start py-1.5 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pkg.labResults.map((lab, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td className="py-1.5 pr-3 font-semibold">{lab.testName}</td>
-                      <td className="py-1.5 pr-3" style={{ color: lab.abnormal ? (lab.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: lab.abnormal ? 600 : 400 }}>
+                      <td className="py-1.5 pe-3 font-semibold">{lab.testName}</td>
+                      <td className="py-1.5 pe-3" style={{ color: lab.abnormal ? (lab.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: lab.abnormal ? 600 : 400 }}>
                         {lab.result} {lab.unit}
                       </td>
-                      <td className="py-1.5 pr-3" style={{ color: 'var(--text-muted)' }}>{lab.referenceRange}</td>
-                      <td className="py-1.5 pr-3 font-mono" style={{ color: 'var(--text-muted)' }}>{lab.date}</td>
+                      <td className="py-1.5 pe-3" style={{ color: 'var(--text-muted)' }}>{lab.referenceRange}</td>
+                      <td className="py-1.5 pe-3 font-mono" style={{ color: 'var(--text-muted)' }}>{lab.date}</td>
                       <td className="py-1.5">
                         {lab.abnormal ? (
                           <Badge tone={lab.critical ? 'danger' : 'warning'}>
@@ -696,7 +696,7 @@ export default function ReferralsPage() {
                           nameClassName="font-semibold text-sm"
                         />
                         {hasPatientChart && (
-                          <ExternalLink className="w-3 h-3 ml-1 opacity-50" aria-hidden="true" />
+                          <ExternalLink className="w-3 h-3 ms-1 opacity-50" aria-hidden="true" />
                         )}
                       </td>
                       {/* Destination on top, origin beneath — the same
@@ -724,7 +724,7 @@ export default function ReferralsPage() {
                           {getStatusLabel(ref.status)}
                         </Badge>
                         {tp && (
-                          <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-semibold ml-1" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
+                          <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-semibold ms-1" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
                             <Package className="w-3 h-3" /> {t('referrals.dataPackage')}
                           </span>
                         )}

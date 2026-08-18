@@ -28,7 +28,7 @@ function thresholdColor(value: number) {
 
 function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
   return (
-    <th className={`${right ? 'text-right' : 'text-left'} px-4 py-2.5`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}>
+    <th className={`${right ? 'text-end' : 'text-start'} px-4 py-2.5`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}>
       <span className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">{children}</span>
     </th>
   );
@@ -165,7 +165,7 @@ export default function DataQualityPage() {
                   <div className="flex justify-between text-xs mb-1">
                     <span style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
                     <span className="font-bold" style={{ color: scoreColor(item.value) }}>{item.value}%
-                      <span className="font-semibold ml-1" style={{ color: 'var(--text-muted)' }}>/ {item.target}%</span>
+                      <span className="font-semibold ms-1" style={{ color: 'var(--text-muted)' }}>/ {item.target}%</span>
                     </span>
                   </div>
                   <div className="relative w-full h-3 rounded-full" style={{ background: 'var(--overlay-light)' }}>
@@ -304,7 +304,7 @@ export default function DataQualityPage() {
                         <tr key={a._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                           <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{a.disease}</td>
                           <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{a.county}, {a.state}</td>
-                          <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: RED }}>{a.cases.toLocaleString()}</td>
+                          <td className="px-4 py-2.5 text-[13px] text-end font-mono" style={{ color: RED }}>{a.cases.toLocaleString()}</td>
                           <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>{a.reportDate}</td>
                         </tr>
                       ))}

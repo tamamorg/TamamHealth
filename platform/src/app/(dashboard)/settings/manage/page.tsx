@@ -461,7 +461,7 @@ export default function SettingsPage() {
     fontSize: '14px', width: '100%', outline: 'none',
   };
   const selectStyle: React.CSSProperties = {
-    ...inputStyle, appearance: 'none' as const, paddingRight: '36px',
+    ...inputStyle, appearance: 'none' as const, paddingInlineEnd: '36px',
     backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238A9E9A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
   };
@@ -551,7 +551,7 @@ export default function SettingsPage() {
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
                       {['Name', 'Username', 'Role', 'Hospital', 'Status', 'Created', 'Actions'].map(h => (
-                        <th key={h} className="text-left px-4 py-3" style={{
+                        <th key={h} className="text-start px-4 py-3" style={{
                           fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
                           textTransform: 'uppercase', letterSpacing: '0.05em',
                         }}>{h}</th>
@@ -637,7 +637,7 @@ export default function SettingsPage() {
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
                       {['Name', 'State', 'Type', 'Beds', 'Staff', 'Status'].map(h => (
-                        <th key={h} className="text-left px-4 py-3" style={{
+                        <th key={h} className="text-start px-4 py-3" style={{
                           fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
                           textTransform: 'uppercase', letterSpacing: '0.05em',
                         }}>{h}</th>
@@ -780,7 +780,7 @@ export default function SettingsPage() {
                             <p style={{ fontSize: 11, color: 'var(--color-danger-text)', marginTop: 2 }}>{lastPush.message}</p>
                           )}
                         </div>
-                        <span className="flex-shrink-0 ml-3 text-[11px] font-semibold px-2.5 py-0.5 rounded-full" style={{ background: s.bg, color: s.fg }}>
+                        <span className="flex-shrink-0 ms-3 text-[11px] font-semibold px-2.5 py-0.5 rounded-full" style={{ background: s.bg, color: s.fg }}>
                           {s.label}
                         </span>
                       </div>
@@ -842,7 +842,7 @@ export default function SettingsPage() {
                         style={inputStyle}
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
+                        className="absolute end-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
@@ -914,7 +914,7 @@ export default function SettingsPage() {
                     style={inputStyle}
                   />
                   <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
+                    className="absolute end-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
                     {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -1084,7 +1084,7 @@ export default function SettingsPage() {
                         color: hospitalForm.services.includes(svc) ? 'var(--accent-primary)' : 'var(--text-muted)',
                         border: `1px solid ${hospitalForm.services.includes(svc) ? 'rgba(0,119,215,0.3)' : 'var(--border-light)'}`,
                       }}>
-                      {hospitalForm.services.includes(svc) && <Check className="w-3 h-3 inline mr-1" />}
+                      {hospitalForm.services.includes(svc) && <Check className="w-3 h-3 inline me-1" />}
                       {svc}
                     </button>
                   ))}

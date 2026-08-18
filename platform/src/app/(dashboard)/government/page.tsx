@@ -371,13 +371,13 @@ export default function GovernmentNationalDashboard() {
       </button>
       {diseaseMenuOpen && (
         <div
-          className="absolute right-0 z-30 mt-1 py-1 rounded-lg overflow-y-auto"
+          className="absolute end-0 z-30 mt-1 py-1 rounded-lg overflow-y-auto"
           style={{ top: '100%', minWidth: 210, maxHeight: 260, background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', boxShadow: 'var(--card-shadow-lg)' }}
         >
           <button
             type="button"
             onClick={() => setSelectedDiseases(null)}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--overlay-subtle)]"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-start hover:bg-[var(--overlay-subtle)]"
             style={{ fontSize: 11, fontWeight: 700, color: selectedDiseases === null ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
           >
             <span className="flex-1">All diseases</span>
@@ -391,7 +391,7 @@ export default function GovernmentNationalDashboard() {
                 key={d}
                 type="button"
                 onClick={() => toggleDisease(d)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--overlay-subtle)]"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-start hover:bg-[var(--overlay-subtle)]"
                 style={{ fontSize: 11, fontWeight: 600, color: on ? 'var(--text-primary)' : 'var(--text-muted)' }}
               >
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: on ? color : 'var(--border-medium)' }} />

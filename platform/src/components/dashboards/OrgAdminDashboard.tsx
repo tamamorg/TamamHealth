@@ -430,7 +430,7 @@ export default function OrgAdminDashboard() {
                 <button
                   key={tile.key}
                   onClick={tile.onClick}
-                  className="text-left rounded-xl p-3 transition-all hover:opacity-90"
+                  className="text-start rounded-xl p-3 transition-all hover:opacity-90"
                   style={{ background: toneBg, border: `1px solid ${toneColor}33` }}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
@@ -462,7 +462,7 @@ export default function OrgAdminDashboard() {
                 <button
                   key={s.path}
                   onClick={() => router.push(s.path)}
-                  className="flex items-center gap-3 rounded-xl p-3.5 text-left transition-all hover:opacity-90"
+                  className="flex items-center gap-3 rounded-xl p-3.5 text-start transition-all hover:opacity-90"
                   style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}
                 >
                   <div className="icon-box-sm flex-shrink-0">

@@ -38,7 +38,7 @@ function StatDots({ stats }: { stats: { label: string; value: number | string; c
 
 function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
   return (
-    <th className={`${right ? 'text-right' : 'text-left'} px-4 py-2.5`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}>
+    <th className={`${right ? 'text-end' : 'text-start'} px-4 py-2.5`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}>
       <span className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">{children}</span>
     </th>
   );
@@ -158,8 +158,8 @@ export default function PriorityAlertsPage() {
                   <tr key={a._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{a.disease}</td>
                     <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{a.county}, {a.state}</td>
-                    <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{a.cases.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: a.deaths > 0 ? LEVEL_COLORS.emergency : 'var(--ehr-muted, var(--text-secondary))' }}>{a.deaths}</td>
+                    <td className="px-4 py-2.5 text-[13px] text-end font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{a.cases.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-[13px] text-end font-mono" style={{ color: a.deaths > 0 ? LEVEL_COLORS.emergency : 'var(--ehr-muted, var(--text-secondary))' }}>{a.deaths}</td>
                     <td className="px-4 py-2.5"><LevelPill level={a.alertLevel} /></td>
                     <td className="px-4 py-2.5">
                       <span className="inline-flex items-center gap-1 text-[12px] capitalize" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>

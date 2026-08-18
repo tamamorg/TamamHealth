@@ -96,7 +96,7 @@ export default function QuickActions({ notificationCount }: {
         >
           <Megaphone className="w-5 h-5" />
           {unread > 0 && (
-            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full border-2 border-white" aria-hidden="true" style={{ background: RAIL_BADGE_RED }} />
+            <span className="absolute top-0.5 end-0.5 w-2 h-2 rounded-full border-2 border-white" aria-hidden="true" style={{ background: RAIL_BADGE_RED }} />
           )}
         </button>
         {announceOpen && (
