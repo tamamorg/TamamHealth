@@ -16,8 +16,12 @@ import { pathToFileURL } from 'node:url';
 const SRC = 'src';
 const OPAQUE = new Set(['slug','href','src','image','accent','color','dateISO','id','key','icon','value','code','email','phone','url','name_en','focus','lifecycle','idPlaceholder','WEB3FORMS_ACCESS_KEY','d','d2','d3']);
 
+// lib/i18n is the machinery, not the copy — and scanning it would match the
+// `t("…")` written in its own doc comments.
+const I18N_DIR = join(SRC, 'lib', 'i18n');
 const files = [];
 (function walk(dir) {
+  if (dir === I18N_DIR) return;
   for (const entry of readdirSync(dir)) {
     const p = join(dir, entry);
     if (statSync(p).isDirectory()) walk(p);
