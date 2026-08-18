@@ -232,7 +232,12 @@ export default function SiteHeader() {
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 5, background: "var(--color-accent)", zIndex: 60 }} />
       <header
         onMouseLeave={() => setMenu(null)}
-        style={{ position: "fixed", top: 5, left: 0, right: 0, zIndex: 55, background: "#FFFFFF", borderBottom: "1px solid var(--color-divider)" }}
+        /* --tm-bar is the nav row's current height. On phones the utility row
+           is absolutely positioned over the bar, and it needs to stop there:
+           stretching it to the header's full height (which it used to do) laid
+           it over an open panel, floating the icons across the search field and
+           swallowing clicks on the results underneath. */
+        style={{ position: "fixed", top: 5, left: 0, right: 0, zIndex: 55, background: "#FFFFFF", borderBottom: "1px solid var(--color-divider)", "--tm-bar": `${barH}px` } as React.CSSProperties}
       >
         {/* utility row: contact · account · language · search */}
         <div

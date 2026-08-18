@@ -508,7 +508,12 @@ header > div { min-width: 0; }
 
 /* header utility row folds into the nav bar on phones */
 @media (max-width: 760px) {
-  .tm-util { position: absolute !important; top: 0 !important; inset-inline-end: 74px !important; height: 100% !important; padding: 0 !important; max-width: none !important; z-index: 72; }
+  /* Height of the BAR, not of the header: an open menu/search panel makes the
+     header hundreds of pixels tall, and a 100%-height overlay at z-index 72
+     then covers the panel — icons drawn across the search field, and clicks on
+     the results going to this row instead. --tm-bar is set on <header> and
+     follows the condensed state. */
+  .tm-util { position: absolute !important; top: 0 !important; inset-inline-end: 74px !important; height: var(--tm-bar, 76px) !important; padding: 0 !important; max-width: none !important; z-index: 72; }
   .tm-navrow { padding: 0 18px !important; gap: 12px !important; }
   .tm-navrow > button.tm-burger { width: 44px !important; height: 44px !important; }
   .tm-util button { width: 40px !important; height: 40px !important; }
