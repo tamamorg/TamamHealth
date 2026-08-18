@@ -1,3 +1,4 @@
+import { generateTempPassword } from './temp-password';
 import { hashPassword } from './auth';
 import {
   usersDB, patientsDB, hospitalsDB, referralsDB,
@@ -223,39 +224,6 @@ const ROLE_PROFILE: Record<SeedUserRole, { department: string; specialty?: strin
   hospital_manager: { department: 'Administration' },
   medical_superintendent: { department: 'Administration', specialty: 'Physician' },
 };
-
-/**
- * Demo-mode seed: pull plaintext passwords for the seeded users from the
- * server. The /api/demo-credentials route reads `.seed-credentials.json` (or
- * generates it on first hit) so the same passwords work for the local
- * PouchDB seed and the server-side login API.
- */
-async function fetchDemoCredentials(): Promise<Record<string, string>> {
-  const res = await fetch('/api/demo-credentials', { cache: 'no-store' });
-  if (!res.ok) {
-    throw new Error(`[db-seed] /api/demo-credentials returned ${res.status}`);
-  }
-  const body = (await res.json()) as { profiles: { username: string; password: string | null }[] };
-  const out: Record<string, string> = {};
-  for (const p of body.profiles) {
-    if (p.password) out[p.username] = p.password;
-  }
-  return out;
-}
-
-/** Same endpoint, but only the bootstrap admin password is needed in production. */
-async function fetchAdminCredential(): Promise<{ username: string; password: string } | null> {
-  try {
-    const res = await fetch('/api/demo-credentials', { cache: 'no-store' });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { profiles: { username: string; password: string | null }[] };
-    const adminRow = body.profiles.find((p) => p.username === 'admin');
-    if (!adminRow?.password) return null;
-    return { username: 'admin', password: adminRow.password };
-  } catch {
-    return null;
-  }
-}
 
 export const labOrders: Omit<LabResultDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'lab-001', type: 'lab_result', patientId: 'pat-00001', patientName: 'Deng Mabior Garang', hospitalNumber: 'JTH-000001', testName: 'Malaria RDT', specimen: 'Blood', status: 'completed', result: 'Positive (P. falciparum)', unit: '', referenceRange: 'Negative', abnormal: true, critical: false, orderedBy: 'Dr. James Wani Igga', orderedAt: '2026-02-09T08:30:00Z', completedAt: '2026-02-09T09:15:00Z', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', accessionNumber: 'ACC-260209-001', specimenCollectedAt: '2026-02-09T08:38:00Z', specimenCollectedBy: 'Nurse Stella Keji Lemi', specimenReceivedAt: '2026-02-09T08:47:00Z', specimenReceivedBy: 'Lab Tech Gatluak Puok', specimenContainer: 'Capillary tube', specimenCondition: 'acceptable', orderStatus: 'resulted', createdAt: '2026-02-09T08:30:00Z', updatedAt: '2026-02-09T09:15:00Z' },
@@ -2141,20 +2109,19 @@ async function seedDatabaseExclusive(): Promise<void> {
     await safePut(orgDB, org as unknown as Record<string, unknown>);
   }
 
-  // Seed users. Plaintext passwords for the demo accounts live only on the
-  // server (see lib/seed-credentials.ts); fetch them once and hash locally
-  // so the offline-fallback PouchDB login path verifies the same plaintext
-  // the server-side login endpoint accepts.
-  const credentials = await fetchDemoCredentials();
+  // Seed users. These carry no usable credential any more: sign-in reads the
+  // shared users database on the server and nothing else, so a locally hashed
+  // password would authenticate nobody. They exist as staff RECORDS — the
+  // names, roles and facilities the seeded clinical data refers to — and the
+  // accounts that can actually sign in are created by an administrator or by
+  // approving an account request.
   const db = usersDB();
   let userIdx = 0;
   for (const u of defaultUsers) {
-    const plaintext = credentials[u.username];
-    if (!plaintext) {
-      console.warn(`[db-seed] skipping ${u.username} — no credential returned by /api/demo-credentials`);
-      continue;
-    }
-    const hash = await hashPassword(plaintext);
+    // An unusable hash, deliberately: a random value no password produces.
+    // Leaving the field out would be a document that fails validation, and
+    // putting a known value in it would be a credential.
+    const hash = await hashPassword(generateTempPassword(32));
     userIdx += 1;
     const profile = ROLE_PROFILE[u.role];
     // Canonical South Sudan staff phone: +211 921 000 0NN (national number is

@@ -10,8 +10,8 @@
  * The look is the website's; the behaviour is the platform's. This page holds
  * a real session — the site's copy is a mock that only flips a success line —
  * so the fields are the ones auth actually needs (username, optional role,
- * password) and every state the platform has (offline-database boot, the
- * demo-mode roster, error and loading) keeps working.
+ * password) and every state the platform has (offline-database boot, error
+ * and loading) keeps working.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -42,46 +42,6 @@ const ROLE_OPTIONS = (() => {
     .sort((a, b) => a.label.localeCompare(b.label));
 })();
 
-/**
- * The seeded demo roster, shown only where `NEXT_PUBLIC_DEMO_MODE` is on (the
- * tamamhealth-v6 deployment). Passwords are never hard-coded — they are minted
- * per environment and fetched at runtime from `/api/demo-credentials`, which
- * only answers in demo mode.
- *
- * One login per distinct role, batched by facility and escalating up the health
- * system: Juba Teaching Hospital carries the whole patient journey in the order
- * a patient meets each role (reception → registration → triage → consult →
- * diagnostics → pharmacy → billing → records), then the other facilities, then
- * group and county oversight, ending at the Ministry of Health and the platform
- * admin. `group` drives the section headers.
- */
-const DEMO_ACCOUNTS: { group: string; role: string; user: string }[] = [
-  { group: 'Juba Teaching Hospital',    role: 'Medical Receptionist',   user: 'desk.amira' },
-  { group: 'Juba Teaching Hospital',    role: 'Registration Clerk',     user: 'reg.clerk' },
-  { group: 'Juba Teaching Hospital',    role: 'Clinic Clerk',           user: 'clinic.clerk' },
-  { group: 'Juba Teaching Hospital',    role: 'Triage Nurse',           user: 'triage.mary' },
-  { group: 'Juba Teaching Hospital',    role: 'Rooming Nurse',          user: 'rooming.sara' },
-  { group: 'Juba Teaching Hospital',    role: 'Doctor',                 user: 'clinician.peter' },
-  { group: 'Juba Teaching Hospital',    role: 'Radiologist',            user: 'rad.tamamhealth' },
-  { group: 'Juba Teaching Hospital',    role: 'Pharmacist',             user: 'pharma.rose' },
-  { group: 'Juba Teaching Hospital',    role: 'Nutritionist',           user: 'nutr.nyabol' },
-  { group: 'Juba Teaching Hospital',    role: 'Cashier',                user: 'cashier.deng' },
-  { group: 'Juba Teaching Hospital',    role: 'Medical Biller',         user: 'biller.nyandeng' },
-  { group: 'Juba Teaching Hospital',    role: 'Data Entry Clerk',       user: 'data.ayen' },
-  { group: 'Juba Teaching Hospital',    role: 'Records / HMIS Officer', user: 'hmis.john' },
-  { group: 'Wau State Hospital',        role: 'Clinical Officer',       user: 'co.deng' },
-  { group: 'Malakal Teaching Hospital', role: 'Nurse',                  user: 'nurse.stella' },
-  { group: 'Malakal Teaching Hospital', role: 'Midwife',                user: 'midwife.nyakong' },
-  { group: 'Bentiu State Hospital',     role: 'Lab Tech',               user: 'lab.gatluak' },
-  { group: 'Mercy Hospital Group',      role: 'Org Admin',              user: 'org.admin' },
-  { group: 'County Health Office',      role: 'County Health Director', user: 'county.lopez' },
-  { group: 'Ministry of Health',        role: 'Government',             user: 'admin' },
-  { group: 'Ministry of Health',        role: 'Super Admin',            user: 'superadmin' },
-];
-
-const DEMO_GROUPS = Array.from(new Set(DEMO_ACCOUNTS.map(a => a.group)));
-
-
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, currentUser, dbReady } = useAuth();
@@ -98,10 +58,6 @@ export default function LoginPage() {
   // open, the chosen role's label once picked) and whether the menu shows.
   const [roleQuery, setRoleQuery] = useState('');
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
-  // Demo-only account picker. Off unless the deployment says it is a demo, so
-  // production never advertises a roster of accounts.
-  const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
-  const [demoCreds, setDemoCreds] = useState<Record<string, string>>({});
 
   // Username handed over from the marketing site's login (?u=). Read from
   // window rather than useSearchParams — the same pattern the patients and
@@ -121,25 +77,6 @@ export default function LoginPage() {
     const qs = params.toString();
     window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
   }, []);
-
-  // Passwords are minted per environment; pull them once per load rather than
-  // shipping any in the bundle.
-  useEffect(() => {
-    if (!demoEnabled) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/demo-credentials', { cache: 'no-store' });
-        if (!res.ok) return;
-        const body = await res.json() as { profiles?: { username: string; password: string | null }[] };
-        if (cancelled) return;
-        const map: Record<string, string> = {};
-        for (const p of body.profiles || []) if (p.password) map[p.username] = p.password;
-        setDemoCreds(map);
-      } catch { /* the picker is a convenience — the manual form still works */ }
-    })();
-    return () => { cancelled = true; };
-  }, [demoEnabled]);
 
   const roleLabelFor = (value: UserRole | '') =>
     value ? (ROLE_OPTIONS.find(r => r.value === value)?.label || '') : '';
@@ -161,23 +98,6 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated && currentUser) router.push(resolveLandingPage(currentUser.role));
   }, [isAuthenticated, currentUser, router]);
-
-  /** One tap = filled form + signed in, so a demo never stalls on a password. */
-  const signInAsDemo = async (user: string) => {
-    const pw = demoCreds[user];
-    setUsername(user);
-    setPassword(pw || '');
-    setRoleChoice('');
-    setRoleQuery('');
-    if (!pw) { setError('Demo credentials are still loading — try that account again in a moment.'); return; }
-    setError('');
-    setLoading(true);
-    try {
-      const result = await login(user, pw);
-      if (result) router.push(resolveLandingPage(result));
-      else { setError('That demo account could not sign in.'); setLoading(false); }
-    } catch { setError('Login failed. Please try again.'); setLoading(false); }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -368,53 +288,25 @@ export default function LoginPage() {
 
         </div>
 
-        {/* ── Right: the demo roster on demo deployments, the product panel
-              everywhere else. The roster takes the whole column so every
-              account is on screen beside the form rather than below the fold.
-              Grouped by facility and ordered the way a patient meets each
-              role, so a visitor can walk the journey without knowing a
-              username. */}
-        {demoEnabled ? (
-          <aside className="lg-demo blueprint" aria-labelledby="lg-demo-title">
+        {/* ── Right: what the platform is. This column used to hold a
+              one-tap roster of seeded accounts on demo deployments. Accounts
+              are issued by an administrator now — there is no roster to
+              choose from, and a sign-in page that offers working credentials
+              to anyone who loads it is not something to keep behind a flag. */}
+        <aside className="lg-aside blueprint">
+          <Corners />
+          <span className="lg-eyebrow">One record, every level of care</span>
+          <h2 className="lg-h2">Registration, consultation, lab, pharmacy — one patient story</h2>
+          <p className="lg-aside-copy">
+            Every visit adds to the same record and rolls up into facility dashboards and DHIS2-ready national reports.
+          </p>
+          <a className="lg-aside-link" href="https://tamamhealth.org/products">See the products &nbsp;›</a>
+          <div className="lg-shot blueprint">
             <Corners />
-            <h2 id="lg-demo-title">Choose a demo account</h2>
-            <p>One tap signs you in — seeded data, no real patients.</p>
-            {DEMO_GROUPS.map(group => (
-              <div className="lg-demo-group" key={group}>
-                <p className="lg-demo-group-name">{group}</p>
-                <div className="lg-demo-rows">
-                  {DEMO_ACCOUNTS.filter(a => a.group === group).map(acct => (
-                    <button
-                      key={acct.user}
-                      type="button"
-                      className="lg-demo-row"
-                      disabled={loading || !dbReady}
-                      onClick={() => signInAsDemo(acct.user)}
-                    >
-                      <span className="lg-demo-role">{acct.role}</span>
-                      <span className="lg-demo-user">{acct.user}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </aside>
-        ) : (
-          <aside className="lg-aside blueprint">
-            <Corners />
-            <span className="lg-eyebrow">One record, every level of care</span>
-            <h2 className="lg-h2">Registration, consultation, lab, pharmacy — one patient story</h2>
-            <p className="lg-aside-copy">
-              Every visit adds to the same record and rolls up into facility dashboards and DHIS2-ready national reports.
-            </p>
-            <a className="lg-aside-link" href="https://tamamhealth.org/products">See the products &nbsp;›</a>
-            <div className="lg-shot blueprint">
-              <Corners />
-              {/* eslint-disable-next-line @next/next/no-img-element -- photograph, cropped by CSS */}
-              <img src="/assets/doctor-at-workstation.jpg" alt="A doctor at a workstation, reading a patient's record on screen" />
-            </div>
-          </aside>
-        )}
+            {/* eslint-disable-next-line @next/next/no-img-element -- photograph, cropped by CSS */}
+            <img src="/assets/doctor-at-workstation.jpg" alt="A doctor at a workstation, reading a patient's record on screen" />
+          </div>
+        </aside>
       </div>
 
       <footer className="lg-footer">

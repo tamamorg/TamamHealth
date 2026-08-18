@@ -184,6 +184,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
         && window.location.pathname.startsWith('/book');
       if (isPublicBooking) return;
 
+      // Before anything reads or re-seeds the local record: settle what the
+      // last session left behind. Two cases, both of them a device holding
+      // charts that nobody is signed in to read.
+      //
+      //   1. A logout whose wipe could not finish (IndexedDB still had the
+      //      database open). It was recorded; complete it now.
+      //   2. No session cookie at all — expired, cleared, or a tablet that
+      //      was simply put down. The data outlived the session it belonged
+      //      to, so it goes, except for anything still holding unsynced
+      //      writes (local-wipe.ts explains why those are kept).
+      //
+      // Demo builds are exempt: the seeded dataset is the product there, it
+      // contains no real patient, and wiping it on every visit would leave
+      // the demo empty.
+      const isDemoBuild = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+      const hasSessionCookie = document.cookie.split(';').some(c => {
+        const name = c.trim().split('=')[0];
+        return name === 'tamamhealth-token' || name === CSRF_COOKIE_NAME;
+      });
+      if (!isDemoBuild) {
+        try {
+          const { completePendingWipe, wipeLocalData } = await import('./security/local-wipe');
+          await completePendingWipe();
+          if (!hasSessionCookie) await wipeLocalData('session-expired');
+        } catch {
+          // Never block boot on the wipe; the pending flag survives for the
+          // next attempt and the route guards still require a login.
+        }
+      }
+
       // Seed database on first load (client-side only)
       // In production, seeding only runs if DB is empty (isSeeded check inside seedDatabase)
       try {
@@ -200,11 +230,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // sessions and force-logs-out the user on every hard refresh. The
       // offline/PouchDB fallback login sets `tamamhealth-token` itself
       // (non-httpOnly), so that name still needs checking directly.
-      const hasCookie = document.cookie.split(';').some(c => {
-        const name = c.trim().split('=')[0];
-        return name === 'tamamhealth-token' || name === CSRF_COOKIE_NAME;
-      });
-      if (hasCookie) {
+      if (hasSessionCookie) {
         try {
           const res = await fetch('/api/auth/me');
           if (res.ok) {
@@ -612,6 +638,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       await logAudit('login_success', user._id, user.username, usedApi ? 'API login' : 'Offline PouchDB login', true);
 
+      // Shift change on a shared tablet: if the last person to sign in here
+      // was somebody else, their ward is still in IndexedDB. Clear it before
+      // this session reads or writes over the top of it. Anything holding
+      // unsynced writes is kept — the outgoing clinician's work is not this
+      // login's to destroy — and sync repopulates whatever this user is
+      // entitled to see.
+      //
+      // Demo builds are exempt: switching roles is the point there, the data
+      // is seeded, and no patient in it is real.
+      if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+        try {
+          const { enforceDeviceUser } = await import('./security/local-wipe');
+          const handover = await enforceDeviceUser(user._id);
+          if (handover && (!handover.ok || handover.kept.length)) {
+            console.warn(
+              '[TamamHealth] Previous user data not fully cleared on device handover.',
+              { kept: handover.kept, remaining: handover.remaining },
+            );
+          }
+        } catch {
+          // Never block a clinician from signing in on a wipe failure; the
+          // pending flag carries it to the next boot.
+        }
+      }
+
       // Load hospital data
       let hospital: HospitalDoc | undefined;
       if (user.hospitalId) {
@@ -773,12 +824,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } catch {
         // best-effort
       }
+      // Clear the local record. This used to race a 5s timer against
+      // resetAllDatabases(), so on a device where IndexedDB was slow to
+      // release its handles the charts simply stayed on disk and nothing
+      // said so. wipeLocalData() reports what survived and records it, and
+      // the next boot finishes the job. Databases holding writes that never
+      // reached the server are kept deliberately — see local-wipe.ts.
       try {
-        const { resetAllDatabases } = await import('./db');
-        await Promise.race([
-          resetAllDatabases(),
-          new Promise<void>(resolve => window.setTimeout(resolve, 5000)),
-        ]);
+        const { wipeLocalData } = await import('./security/local-wipe');
+        const result = await wipeLocalData('logout');
+        if (!result.ok || result.kept.length) {
+          console.warn(
+            '[TamamHealth] Local data not fully cleared on logout.',
+            { kept: result.kept, remaining: result.remaining },
+          );
+        }
       } catch {
         // best-effort — the auth state was already cleared above
       }

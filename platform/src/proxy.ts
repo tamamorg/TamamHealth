@@ -37,7 +37,6 @@ const CSRF_EXEMPT_API_PATHS = new Set<string>([
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/me',
-  '/api/demo-credentials',
   // Public account request. Exempt for the same reason as login: the caller
   // has no session, so there is none to ride. The route grants nothing and
   // is rate-limited by IP.
@@ -202,15 +201,6 @@ export async function proxy(request: NextRequest) {
   // The organisation list the request form chooses from. Names only — see the
   // route for what it withholds and why.
   if (pathname === '/api/account-requests/options') {
-    return NextResponse.next();
-  }
-
-  // Seed-credentials route — public read so the unauthenticated browser-side
-  // PouchDB seed and the demo-accounts dropdown on /login can fetch the
-  // freshly generated demo passwords. The route itself self-gates: in
-  // production it returns only the bootstrap admin row, never the full
-  // demo roster.
-  if (pathname === '/api/demo-credentials') {
     return NextResponse.next();
   }
 

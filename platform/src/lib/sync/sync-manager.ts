@@ -95,6 +95,8 @@ export class SyncManager {
   private _leader = false;
   /** Set to true while this tab is queued waiting for the leader to release. */
   private _pendingLeader = false;
+  /** lastSync value of the most recent clean settle, to debounce the mark. */
+  private _lastCleanPoint: string | null = null;
   /** Resolved once we want to release the lock (on stopAll or destroy). */
   private _lockReleaser: (() => void) | null = null;
 
@@ -329,7 +331,31 @@ export class SyncManager {
   }
 
   private notifyChange(): void {
-    this.onChange?.(this.getStatus());
+    const status = this.getStatus();
+    this.onChange?.(status);
+    this.rememberCleanPoint(status);
+  }
+
+  /**
+   * When every database has settled with nothing in flight and no errors,
+   * record where each one had got to. The security wipe reads that mark to
+   * tell "already on the server" from "only on this device", and refuses to
+   * delete the latter (see lib/security/local-wipe.ts).
+   *
+   * Fire-and-forget and debounced: it is bookkeeping for a rare event, and
+   * notifyChange() runs on every replication tick.
+   */
+  private rememberCleanPoint(status: AggregateStatus): void {
+    if (status.state !== 'synced') return;
+    if (status.activeDatabases > 0 || status.errorDatabases > 0) return;
+    if (status.lastSync === this._lastCleanPoint) return;
+    this._lastCleanPoint = status.lastSync;
+    void import('../security/local-wipe')
+      .then(({ recordSyncedSequences }) => recordSyncedSequences())
+      .catch(() => {
+        // Bookkeeping only. Failing here leaves databases looking dirty,
+        // which keeps data rather than losing it.
+      });
   }
 }
 
