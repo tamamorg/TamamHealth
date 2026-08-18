@@ -98,21 +98,54 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.WEBSITE_SSH_KEY }}
 
+      # `accept-new` rather than a prior ssh-keyscan: the keyscan was itself a
+      # connection that could fail, and when it did it left known_hosts empty,
+      # so the deploy died claiming the key was unauthorised when the truth was
+      # that the host had not answered. It still refuses a host key that
+      # CHANGES, which is the protection that matters.
+      - name: Configure the SSH client
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          cat >> ~/.ssh/config <<'EOF'
+          Host *
+            BatchMode yes
+            StrictHostKeyChecking accept-new
+            ConnectTimeout 20
+            ConnectionAttempts 5
+            ServerAliveInterval 15
+            ServerAliveCountMax 8
+          EOF
+
       # Fail with the fix, not with "Permission denied (publickey)". The
       # deploy key is set in this environment, but it only works once its
       # public half is in the droplet's authorized_keys — and that needs the
       # DO console, because there is no API to add a key to a running droplet.
+      #
+      # A refused key and an unreachable host are different problems with
+      # different fixes, so this reports which one it saw rather than
+      # swallowing stderr and blaming the key for both.
       - name: Check the deploy key is authorised on the droplet
         if: steps.gate.outputs.ready == 'true'
         env:
           HOST: ${{ secrets.WEBSITE_SSH_HOST }}
           USER: ${{ secrets.WEBSITE_SSH_USER }}
         run: |
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          if ! ssh -o BatchMode=yes -o ConnectTimeout=15 "$USER@$HOST" 'true' 2>/dev/null; then
-            echo "::error title=Deploy key not authorised::$USER@$HOST rejected the deploy key, so nothing was built. Add the public half of WEBSITE_SSH_KEY to ~/.ssh/authorized_keys on the droplet (DigitalOcean → Droplets → tamamhealth-website → Console)."
-            exit 1
-          fi
+          for attempt in 1 2 3 4 5; do
+            if OUT=$(ssh "$USER@$HOST" 'true' 2>&1); then
+              echo "deploy key accepted (attempt $attempt)"
+              exit 0
+            fi
+            echo "attempt $attempt: $OUT"
+            case "$OUT" in
+              *"Permission denied"*|*"Too many authentication failures"*)
+                echo "::error title=Deploy key not authorised::$USER@$HOST rejected the deploy key. Add the public half of WEBSITE_SSH_KEY to ~/.ssh/authorized_keys on the droplet (DigitalOcean → Droplets → tamamhealth-website → Console)."
+                exit 1 ;;
+            esac
+            sleep $((attempt * 10))
+          done
+          echo "::error title=Droplet unreachable over SSH::$USER@$HOST did not complete an SSH handshake in five attempts. The key was never rejected, so this is the host or the network, not authorisation."
+          exit 1
 
       - uses: docker/setup-buildx-action@v3
 
@@ -167,7 +200,7 @@ jobs:
         run: |
           docker save "${{ steps.meta.outputs.local_tag }}" \
             | gzip -1 \
-            | ssh -o BatchMode=yes -o ConnectTimeout=20 "$USER@$HOST" 'docker load'
+            | ssh "$USER@$HOST" 'docker load'
 
       # The unit shipped pulling from DigitalOcean's registry. Point it at the
       # tag delivered above and drop the pull, which would now fail on every
@@ -182,7 +215,7 @@ jobs:
           USER: ${{ secrets.WEBSITE_SSH_USER }}
           TAG: ${{ steps.meta.outputs.local_tag }}
         run: |
-          ssh -o BatchMode=yes "$USER@$HOST" "TAG='$TAG' bash -s" <<'REMOTE'
+          ssh "$USER@$HOST" "TAG='$TAG' bash -s" <<'REMOTE'
             set -euo pipefail
             UNIT=/etc/systemd/system/website.service
             sed -i "/ExecStartPre=.*docker pull/d" "$UNIT"
@@ -207,7 +240,7 @@ jobs:
           HOST: ${{ secrets.WEBSITE_SSH_HOST }}
           USER: ${{ secrets.WEBSITE_SSH_USER }}
         run: |
-          ssh -o BatchMode=yes "$USER@$HOST" 'bash -s' <<'REMOTE'
+          ssh "$USER@$HOST" 'bash -s' <<'REMOTE'
             set -euo pipefail
             systemctl restart website
             sleep 5
