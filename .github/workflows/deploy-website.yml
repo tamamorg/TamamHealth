@@ -65,6 +65,36 @@ jobs:
       - name: Log in to DigitalOcean Container Registry
         run: doctl registry login --expiry-seconds 1200
 
+      # The registry is DigitalOcean's `starter` tier: 500 MB total, which one
+      # Next.js image very nearly fills. Without pruning, the second or third
+      # deploy dies with `denied: quota exceeded` AFTER a full build — so free
+      # the previous image before pushing the new one, not after.
+      #
+      # Tags are deleted first because garbage collection only reclaims
+      # UNTAGGED manifests; a tagged old image is never collected. `latest` is
+      # what the droplet pulls, so it is the last thing removed and the first
+      # thing restored by the push below.
+      - name: Prune the registry before pushing
+        run: |
+          REPO=website
+          TAGS=$(doctl registry repository list-tags "$REPO" --format Tag --no-header 2>/dev/null || true)
+          for t in $TAGS; do
+            echo "removing tag $t"
+            doctl registry repository delete-tag "$REPO" "$t" --force || true
+          done
+          echo "starting garbage collection"
+          doctl registry garbage-collection start --include-untagged-manifests --force || true
+          # GC is asynchronous; the push below fails if it has not freed space
+          # yet, so wait for it to finish rather than racing it.
+          for i in $(seq 1 30); do
+            ACTIVE=$(doctl registry garbage-collection get --format Status --no-header 2>/dev/null || echo "")
+            case "$ACTIVE" in
+              *RUNNING*|*REQUESTED*) sleep 10 ;;
+              *) break ;;
+            esac
+          done
+          doctl registry get --format Name,StorageUsageBytes --no-header || true
+
       - uses: docker/setup-buildx-action@v3
 
       # NEXT_PUBLIC_* is inlined into the client bundle at BUILD time, exactly
@@ -81,9 +111,10 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_PLATFORM_URL=${{ vars.NEXT_PUBLIC_PLATFORM_URL || 'https://app.tamamhealth.org' }}
-          tags: |
-            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}
-            ${{ steps.meta.outputs.image }}:latest
+          # Only `latest`. A SHA tag as well would keep two images resident,
+          # which does not fit the starter tier — the SHA is recorded in the
+          # run summary instead, and any commit can be rebuilt from it.
+          tags: ${{ steps.meta.outputs.image }}:latest
 
       # The droplet's website.service re-pulls on start, but a RUNNING
       # container keeps its old image — `Restart=always` only fires when the
