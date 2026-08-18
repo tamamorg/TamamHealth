@@ -1,0 +1,244 @@
+'use client';
+
+/**
+ * The chrome both sign-in screens are drawn in: the marketing site's login
+ * language (tamamhealth.org), which the staff login at /login established and
+ * the patient portal's sign-in now shares — centred logo bar, a two-column
+ * body with the form on the left and a blueprint panel on the right,
+ * square-cornered fields with registration marks, Barlow typography, and the
+ * one amber call to action.
+ *
+ * It lives here, not in either page, so a staff door and a patient door cannot
+ * drift into two different-looking front steps of the same building. Both
+ * routes must load Barlow / Barlow Condensed into --lg-font-body /
+ * --lg-font-heading (their layouts do it with next/font).
+ */
+
+/** The blueprint frame's four registration marks (the site's `Corners`). */
+export function Corners() {
+  return (
+    <>
+      <i className="lg-corner tl" />
+      <i className="lg-corner tr" />
+      <i className="lg-corner bl" />
+      <i className="lg-corner br" />
+    </>
+  );
+}
+
+/* The marketing site's login tokens, kept to the sign-in routes so the
+   platform palette is untouched. Values mirror website/src/app/globals.css. */
+export const loginStyles = (
+  <style jsx global>{`
+    .lg-root {
+      --lg-text: #0E2A4A;
+      --lg-divider: rgba(14, 42, 74, 0.3);
+      --lg-surface: #F2F8FC;
+      --lg-accent: #2191D0;
+      --lg-accent-100: #F5FBFE;
+      --lg-accent-700: #015697;
+      --lg-cta: #E8863A;
+      --lg-cta-hover: #D2712A;
+      --lg-neutral-600: #6C7C8E;
+      --lg-neutral-700: #5B6B7E;
+      --lg-neutral-800: #3D5166;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #FFFFFF;
+      color: var(--lg-text);
+      font-family: var(--lg-font-body), 'Barlow', system-ui, sans-serif;
+    }
+    .lg-root h1, .lg-root h2 {
+      font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif;
+      font-weight: 600;
+      line-height: 1.12;
+      letter-spacing: -0.015em;
+      margin: 0 0 7px;
+    }
+
+    /* Blueprint frame + its four registration marks. */
+    .blueprint { position: relative; border: 1px solid var(--lg-divider); border-radius: 0; }
+    .lg-corner { position: absolute; width: 11px; height: 11px; color: rgba(14, 42, 74, 0.55); }
+    .lg-corner::before, .lg-corner::after { content: ''; position: absolute; background: currentColor; }
+    .lg-corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
+    .lg-corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
+    .lg-corner.tl { top: -6px; left: -6px; }
+    .lg-corner.tr { top: -6px; right: -6px; }
+    .lg-corner.bl { bottom: -6px; left: -6px; }
+    .lg-corner.br { bottom: -6px; right: -6px; }
+
+    .lg-topbar { border-bottom: 1px solid var(--lg-divider); padding: 22px 32px; display: flex; justify-content: center; }
+    .lg-topbar-link { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+    .lg-topbar-logo { height: 27px; width: auto; display: block; }
+
+    .lg-grid {
+      flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 56px;
+      max-width: 1320px; width: 100%; margin: 0 auto; padding: 64px 32px 60px; align-items: start;
+    }
+    /* With the roster in the right column, trade headroom for roster room. */
+    .lg-grid:has(.lg-demo) { padding-top: 24px; }
+    .lg-col { display: flex; flex-direction: column; gap: 20px; }
+    .lg-h1 { font-size: 36px; margin: 0 0 4px; }
+    .lg-h2 { font-size: 30px; margin: 0; }
+    .lg-lede { margin: 0; font-size: 15px; color: var(--lg-neutral-700); }
+
+    .lg-form { display: flex; flex-direction: column; gap: 20px; }
+    .lg-field { display: block; }
+    .lg-field--rel { position: relative; }
+    .lg-field > label { display: block; font-size: 12px; margin-bottom: 5px; color: rgba(14, 42, 74, 0.7); text-transform: none; letter-spacing: normal; }
+    /* The .lg-root scoping is load-bearing: globals.css paints every
+       input[type=...] with --bg-card-solid at specificity 0,1,1, which
+       outranks a bare .lg-input and left the fields a pale grey. The site's
+       fields are white. */
+    .lg-root .lg-input {
+      width: 100%; min-height: 46px; padding: 6px 12px; font: inherit; font-size: 14px;
+      color: var(--lg-text); caret-color: var(--lg-accent); background: #FFFFFF;
+      border: 1px solid var(--lg-divider); border-radius: 0; box-shadow: none;
+    }
+    .lg-input:hover { border-color: rgba(14, 42, 74, 0.45); }
+    .lg-input:focus, .lg-input:focus-visible { border-color: var(--lg-accent); outline: none; box-shadow: none; }
+    .lg-input::placeholder { color: rgba(14, 42, 74, 0.45); }
+    .lg-inputwrap { display: flex; align-items: center; border: 1px solid var(--lg-divider); background: #FFFFFF; }
+    .lg-inputwrap:focus-within { border-color: var(--lg-accent); }
+    .lg-input--bare { border: 0 !important; background: transparent !important; }
+    .lg-inputicon { margin-left: 13px; flex-shrink: 0; color: var(--lg-neutral-600); }
+    .lg-clear, .lg-eye {
+      appearance: none; border: 0; background: none; cursor: pointer; height: 44px;
+      display: grid; place-items: center;
+    }
+    .lg-clear { width: 40px; color: var(--lg-neutral-600); font-size: 17px; }
+    .lg-eye { width: 44px; color: var(--lg-accent-700); }
+
+    .lg-rolelist {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 40; background: #FFFFFF;
+      border: 1px solid var(--lg-divider); border-top: 0; max-height: 232px; overflow-y: auto;
+      box-shadow: 0 3px 10px rgba(43, 43, 45, 0.16);
+    }
+    .lg-rolerow {
+      appearance: none; border: 0; border-bottom: 1px solid var(--lg-divider); background: #FFFFFF;
+      cursor: pointer; width: 100%; text-align: left; padding: 11px 14px;
+      display: flex; flex-direction: column; gap: 2px; font: inherit;
+    }
+    .lg-rolerow:hover, .lg-rolerow.is-selected { background: var(--lg-accent-100); }
+    .lg-rolerow-name { font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif; font-weight: 600; font-size: 15px; color: var(--lg-text); }
+    .lg-rolerow-scope { font-size: 12.5px; color: var(--lg-neutral-600); }
+    .lg-rolelist-empty { display: block; padding: 14px; font-size: 13.5px; color: var(--lg-neutral-600); }
+
+    /* text-transform guard: globals.css uppercases every label. */
+    .lg-keep { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--lg-neutral-800); text-transform: none; letter-spacing: normal; }
+    .lg-keep input { width: 16px; height: 16px; accent-color: var(--lg-accent-700); }
+
+    /* Amber on navy ink, the site's primary call to action (.btn-primary in
+       website/globals.css). Every other blue on this screen is structural —
+       the links, the headings, the field focus ring — so the one button that
+       submits is the one warm colour on the page. White text on amber misses
+       4.5:1; navy ink carries it. */
+    .lg-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; padding: 15px 0; font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif;
+      font-weight: 600; font-size: 16px; color: #0E2A4A; background: var(--lg-cta);
+      border: 1px solid var(--lg-cta); border-radius: 0; cursor: pointer;
+    }
+    .lg-btn:hover:not(:disabled) { background: var(--lg-cta-hover); border-color: var(--lg-cta-hover); }
+    .lg-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* The platform's danger token, not the site's own red: an auth failure is
+       the same alarm here as anywhere else in the app. */
+    .lg-error { font-size: 14px; line-height: 1.55; color: var(--color-danger); border-left: 3px solid var(--color-danger); padding-left: 12px; }
+    .lg-boot { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--lg-neutral-700); }
+    .lg-spin, .lg-redirect-mark {
+      width: 14px; height: 14px; border: 2px solid rgba(14, 42, 74, 0.2);
+      border-top-color: var(--lg-accent-700); border-radius: 50%; animation: lg-spin 0.8s linear infinite;
+    }
+    @keyframes lg-spin { to { transform: rotate(360deg); } }
+
+    .lg-links { display: flex; gap: 24px; flex-wrap: wrap; padding-top: 4px; }
+    .lg-links a { font-size: 14.5px; font-weight: 700; color: var(--lg-accent-700); text-underline-offset: 3px; }
+    /* Footnote under the form — the staff door's offline promise, the
+       patient door's privacy note. */
+    .lg-note { font-size: 13px; line-height: 1.55; color: var(--lg-neutral-600); border-top: 1px solid var(--lg-divider); padding-top: 14px; }
+
+    /* Demo roster — fills the right column on demo deployments (the aside's
+       surface language) so the whole roster sits beside the form instead of
+       below the fold. Compact paddings are deliberate: 21 accounts across 7
+       facilities should fit a 900px-tall laptop viewport. */
+    .lg-demo { background: var(--lg-surface); padding: 16px 20px 18px; align-self: start; }
+    .lg-demo h2 { font-size: 19px; margin: 0; }
+    .lg-demo > p { margin: 2px 0 8px; font-size: 13px; color: var(--lg-neutral-600); }
+    .lg-demo-group + .lg-demo-group { margin-top: 8px; }
+    .lg-demo-group-name { margin: 0 0 3px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lg-neutral-600); }
+    .lg-demo-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 4px; }
+    /* Stacked like the role-list rows (name over detail): uniform card height
+       keeps the 21-account roster inside one laptop viewport. */
+    .lg-demo-row {
+      display: flex; flex-direction: column; gap: 1px;
+      padding: 5px 10px; border: 1px solid var(--lg-divider); background: #FFFFFF;
+      cursor: pointer; font: inherit; text-align: left;
+    }
+    .lg-demo-row:hover:not(:disabled) { background: var(--lg-accent-100); border-color: var(--lg-accent); }
+    .lg-demo-row:disabled { opacity: 0.5; cursor: not-allowed; }
+    .lg-demo-role { font-size: 13px; line-height: 1.25; font-weight: 600; color: var(--lg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lg-demo-user { font-size: 10.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--lg-neutral-600); }
+
+    .lg-aside { background: var(--lg-surface); padding: 30px 32px 32px; display: flex; flex-direction: column; gap: 14px; }
+    .lg-eyebrow { font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lg-accent-700); }
+    .lg-aside-copy { margin: 0; font-size: 15px; line-height: 1.6; color: var(--lg-neutral-800); }
+    .lg-aside-link { font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif; font-weight: 600; font-size: 16px; color: var(--lg-accent-700); text-decoration: none; }
+    /* A photograph, not a screenshot of the app: the panel argues what the
+       record is for, and the person signing in is about to see the interface
+       anyway. A fixed height with an object-fit crop so a landscape frame
+       sits as a band under the copy rather than setting the column height. */
+    .lg-shot { margin-top: 10px; height: 232px; background: #FFFFFF; overflow: hidden; }
+    .lg-shot img { width: 100%; height: 100%; object-fit: cover; object-position: center 38%; display: block; }
+    /* A portrait source in the same landscape band needs a higher anchor, or
+       the crop keeps the desk and loses the person. */
+    .lg-shot--portrait img { object-position: center 12%; }
+
+    .lg-footer {
+      border-top: 1px solid var(--lg-divider); padding: 22px 32px; display: flex;
+      justify-content: center; gap: 28px; font-size: 13.5px; flex-wrap: wrap;
+    }
+    .lg-footer a { color: var(--lg-accent-700); text-underline-offset: 3px; }
+
+    .lg-redirect {
+      min-height: 100vh; display: flex; flex-direction: column; gap: 16px;
+      align-items: center; justify-content: center; background: #FFFFFF;
+    }
+    .lg-redirect-mark { width: 26px; height: 26px; border-width: 3px; }
+    .lg-redirect p { color: var(--lg-accent-700, #015697); font-size: 14px; font-weight: 600; }
+
+    /* Value rows in the aside — hairline-separated lines rather than a
+       bulleted list, the way the site sets its step rows. Used by the patient
+       sign-in's product panel. */
+    .lg-points { list-style: none; margin: 4px 0 0; padding: 0; }
+    .lg-points li {
+      display: flex; align-items: flex-start; gap: 12px; padding: 11px 0;
+      border-top: 1px solid var(--lg-divider); font-size: 14.5px; line-height: 1.5;
+      color: var(--lg-neutral-800);
+    }
+    .lg-points li::before {
+      content: ''; flex: none; width: 7px; height: 7px; margin-top: 8px;
+      border: 1px solid var(--lg-accent-700); background: #FFFFFF;
+    }
+
+    /* Demo credential hint under the fields (the patient portal has one demo
+       account, not a roster, so it is a line rather than a panel). */
+    .lg-hint { margin: -6px 0 0; font-size: 13px; color: var(--lg-neutral-600); }
+    .lg-hint strong { font-weight: 700; color: var(--lg-neutral-800); }
+
+    /* Text-only escape hatch ("Back to sign in" under the OTP form) — it must
+       not compete with the amber submit beside it. */
+    .lg-btn-quiet {
+      appearance: none; background: none; border: 0; padding: 6px 0; cursor: pointer;
+      font: inherit; font-size: 14.5px; font-weight: 700; color: var(--lg-accent-700);
+      text-align: left; align-self: flex-start;
+    }
+    .lg-btn-quiet:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+    /* One column below the split — the product panel follows the form. */
+    @media (max-width: 900px) {
+      .lg-grid { grid-template-columns: 1fr; gap: 36px; padding: 40px 20px 48px; }
+    }
+  `}</style>
+);

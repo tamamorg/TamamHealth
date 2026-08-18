@@ -4240,7 +4240,7 @@ const en: TranslationMap = {
   'patientPortal.selectedCount': '{{count}} selected',
   'patientPortal.sendMessage': 'Send message',
   'patientPortal.signInSubtitle': 'Access your health records securely',
-  'patientPortal.signInTitle': 'Patient Sign In',
+  'patientPortal.signInTitle': 'Patient sign in',
   'patientPortal.username': 'Username',
   'patientPortal.usernamePlaceholder': 'Enter your username',
   'patientPortal.password': 'Password',
