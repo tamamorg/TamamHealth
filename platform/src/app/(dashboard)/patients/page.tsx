@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { patientFullName, patientDisplayName, shortenPersonName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { ScanLine, Hash, X, ArrowRight, Download } from '@/components/icons/lucide';
+import { ScanLine, Hash, X, ArrowRight, Download, UserPlus } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useApp } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -351,6 +351,28 @@ export default function PatientsPage() {
                 >
                   <Download className="w-4 h-4" />
                 </button>
+                {/* Registration is the one thing a reader of this list starts
+                    rather than finds, so it sits at the end of the toolbar as
+                    the only filled control. A link, not a button — the desk
+                    often wants it in a second tab alongside the registry.
+                    Gated on the same capability the front desk uses. */}
+                {canRegisterPatients && (
+                  <Link
+                    href="/patients/new"
+                    data-tour="patients-register"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      height: 38, padding: '0 16px',
+                      borderRadius: 999, background: 'var(--accent-primary)', color: 'var(--color-white)',
+                      border: '1px solid var(--accent-primary)',
+                      fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+                      textDecoration: 'none', cursor: 'pointer', flexShrink: 0,
+                    }}
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    {t('patients.registerShort')}
+                  </Link>
+                )}
               </div>
             </div>
             {/* Same compact card-row list as the appointments page — identical

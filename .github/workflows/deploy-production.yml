@@ -38,6 +38,21 @@ jobs:
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
     steps:
+      # `workflow_dispatch` lets the operator choose the ref, and with `sha`
+      # left blank the promotion silently targets THAT ref's HEAD — so running
+      # this from a topic branch would ship whatever happened to be on it. Every
+      # other check here is about the image; this one is about the button.
+      #
+      # It is a floor, not the gate. The real gate is a required-reviewer list
+      # on the `production` environment (see the note at the top of this file);
+      # a branch check cannot ask a second person whether now is a good time.
+      - name: Refuse to promote from anything but main
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error title=Wrong branch::deploy-production was dispatched from '$GITHUB_REF'. Production promotes main only — re-run this workflow with the branch set to main."
+            exit 1
+          fi
+
       - name: Resolve target SHA
         id: resolve
         env:
