@@ -205,9 +205,12 @@ jobs:
             free -m | head -2
             df -h / | tail -1
             echo "images: $(docker images -q | wc -l), containers: $(docker ps -q | wc -l)"
+            # This box drops connections during key exchange often enough to
+            # cost a deploy, so record what sshd is actually turning away.
             echo "sshd rejections in the last hour:"
             journalctl -u ssh --since '1 hour ago' --no-pager 2>/dev/null \
-              | grep -icE 'error|maximum|refus|drop' || echo 0
+              | grep -iE 'error|maximum|refus|drop' | tail -6 || echo "(none)"
+            echo "unauthenticated-connection limit: $(grep -E '^MaxStartups' /etc/ssh/sshd_config || echo 'MaxStartups (default 10:30:100)')"
           REMOTE
 
       # `docker load` reads a gzipped stream directly, so this is one hop with
