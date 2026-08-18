@@ -67,6 +67,22 @@ export default function LoginPage() {
   // of a Suspense boundary. Only the username ever travels, never a password,
   // and the param is stripped once read so it does not linger in the address
   // bar, history or a referrer header.
+  // Text can reach these fields before React hydrates — a password manager
+  // autofilling, or someone typing while "Initializing offline database…" is
+  // still up. Those writes land straight on the DOM node, so `username` and
+  // `password` never see them, and hydration does not clear the visible text.
+  // The form then looks filled while submit posts empty strings, which the API
+  // rejects with "Username and password are required". Adopt whatever the DOM
+  // already holds, once, on mount.
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const preHydrationName = nameInputRef.current?.value;
+    const preHydrationPassword = passwordInputRef.current?.value;
+    if (preHydrationName) setUsername(prev => prev || preHydrationName);
+    if (preHydrationPassword) setPassword(prev => prev || preHydrationPassword);
+  }, []);
+
   const handedOffRef = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined' || handedOffRef.current) return;
@@ -149,6 +165,7 @@ export default function LoginPage() {
               <label htmlFor="tl-name">{t('login.usernameLabel')}</label>
               <input
                 id="tl-name"
+                ref={nameInputRef}
                 type="text"
                 className="lg-input"
                 value={username}
@@ -241,6 +258,7 @@ export default function LoginPage() {
               <div className="lg-inputwrap">
                 <input
                   id="tl-password"
+                  ref={passwordInputRef}
                   type={showPassword ? 'text' : 'password'}
                   className="lg-input lg-input--bare"
                   value={password}
