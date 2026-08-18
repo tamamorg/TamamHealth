@@ -105,11 +105,18 @@ docker compose --profile analytics up -d --build
 
 ## 7. First login (rotate the admin password immediately)
 
-- Sign in at `https://app.<domain>` as the system administrator using
-  `ADMIN_INITIAL_PASSWORD` from `platform/.env.production`.
-- **Immediately change it** in the UI. If you ever leave it unset, the platform
-  writes a generated one to `.seed-credentials.json` in the platform working
-  dir — read it once and rotate.
+- The platform's login-page demo role chips and `/api/demo-credentials` are
+  gone; the seeded `superadmin` account is the actual bootstrap path. Sign in
+  at `https://app.<domain>` as `superadmin` using `SUPERADMIN_INITIAL_PASSWORD`
+  from `platform/.env.production`. **Set this yourself before first boot** —
+  it isn't in `platform/.env.production.example`, and the platform refuses to
+  boot without it (or with the well-known demo default `Superadmin!`) whenever
+  `NEXT_PUBLIC_SYNC_ENABLED=true`.
+- `ADMIN_INITIAL_PASSWORD` is a separate, optional credential for the legacy
+  `admin` account. **Immediately change whichever password you used** in the
+  UI. If you leave `ADMIN_INITIAL_PASSWORD` unset, the platform writes a
+  generated one to `.seed-credentials.json` in the platform working dir — read
+  it once and rotate.
 
 ## 8. Backups (encrypted)
 

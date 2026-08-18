@@ -38,7 +38,7 @@ Never rewrite `package-lock.json` casually; the repo regenerates lockfiles with 
 - `src/proxy.ts` — Edge middleware (auth gate, role routing, CSRF). Next 16 name for `middleware.ts`. Only import Edge-safe modules from it.
 - `src/instrumentation.ts` — server boot: fail-closed config validation, Sentry, Postgres migrations.
 - `src/lib/services/**` (100+) — all business logic and DB access. `src/lib/hooks/**` (60+) — one hook per service area.
-- `src/lib/db.ts` — 77 `tamamhealth_*` PouchDB databases; `src/lib/sync/**` — replication, tenant DBs, CouchDB auth/policy.
+- `src/lib/db.ts` — 76 `tamamhealth_*` PouchDB databases; `src/lib/sync/**` — replication, tenant DBs, CouchDB auth/policy.
 - `src/app/globals.css` — the single source of design tokens.
 - `src/__tests__/**` — 59 Jest test files.
 

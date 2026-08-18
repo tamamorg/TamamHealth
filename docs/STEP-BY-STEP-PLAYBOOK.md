@@ -206,6 +206,11 @@ CouchDB/Postgres stay private (bound to localhost by compose) — never open 598
 # sed -i 's#^NEXT_PUBLIC_COUCHDB_URL=.*#NEXT_PUBLIC_COUCHDB_URL=https://couch.<your-country-domain>#' platform/.env.production
 # sed -i 's#^NEXT_PUBLIC_DEMO_MODE=.*#NEXT_PUBLIC_DEMO_MODE=false#' platform/.env.production   # CLEAN SLATE
 # grep -q '^NEXT_PUBLIC_APP_URL=' platform/.env.production || echo 'NEXT_PUBLIC_APP_URL=https://app.<your-country-domain>' >> platform/.env.production
+
+# Bootstrap login credential. Not in the .example template — the platform
+# refuses to boot without it once sync is enabled (real value, 16+ chars,
+# not the demo default "Superadmin!"):
+# echo "SUPERADMIN_INITIAL_PASSWORD=$(openssl rand -base64 24 | tr -d '\n/+=')" >> platform/.env.production
 ```
 Point Docker's data at the encrypted mount (so PHI lands on the encrypted disk):
 ```
@@ -221,8 +226,12 @@ Add the same three A records for the country domain in your DNS host, then:
 ```
 
 ### Step B7 — First login & facility setup (in the app)
-1. Open `https://app.<your-country-domain>`, log in with the bootstrap admin
-   (`ADMIN_INITIAL_PASSWORD` from `platform/.env.production`).
+1. Open `https://app.<your-country-domain>`, log in as `superadmin` with
+   `SUPERADMIN_INITIAL_PASSWORD` from `platform/.env.production` — this is
+   the actual bootstrap account (the login page's old demo role chips and
+   `/api/demo-credentials` are gone). Set this value **yourself** before Step
+   B6's deploy: it isn't in `platform/.env.production.example`, and the
+   platform refuses to boot without it once `NEXT_PUBLIC_SYNC_ENABLED=true`.
 2. **Immediately change that password** in the UI.
 3. Create the **hospital/facility** record, then a **facility administrator**.
 4. The facility admin creates real users by role (front desk, nurse, clinical

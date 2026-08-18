@@ -1,7 +1,7 @@
 # TamamHealth — Complete User Journeys
 
 **How every user moves through the platform, module by module, step by step.**
-Generated from the codebase on 2026-07-14 (branch `web-v2`). Route paths are under `platform/src/app/`; page routes in `(dashboard)/` unless noted. Sibling docs: `RBAC-MATRIX.md`, `CLINICAL-WORKFLOW-SPEC-2026-06.md`, `ARCHITECTURE.md`.
+Generated from the codebase on 2026-07-14, revised 2026-08-18 against `main`. Route paths are under `platform/src/app/`; page routes in `(dashboard)/` unless noted. Sibling docs: `RBAC-MATRIX.md`, `CLINICAL-WORKFLOW-SPEC-2026-06.md`, `ARCHITECTURE.md`.
 
 ---
 
@@ -134,28 +134,40 @@ List or full calendar (month/week/day). Lifecycle: `requested → scheduled → 
 
 ## 5. Nursing
 
-All nurse stations are tabs of `/dashboard/nurse` (Ward / MAR / Triage / Handoff) and standalone routes.
+The standalone nurse station (`/dashboard/nurse/*`) is retired. Nurse-family roles
+(nurse, midwife, triage nurse, rooming nurse) land on the same shared `/dashboard`
+as doctors — `DashboardPage` role-switches to `NurseHomeView`, which renders the
+same `EhrClinicalDashboard` shell as the clinician view, just assembled from
+nursing worklists (triage, wards, rooming, MAR, handoffs) instead of a clinician's.
+Ward, triage, MAR, and handoff each keep one real underlying route; the nurse's
+`/dashboard` is a worklist of outstanding items that deep-link into them.
 
-### 5.1 Triage (`/dashboard/nurse/triage`)
+### 5.1 Triage — inline on `/dashboard`, assessed at `/triage/[patientId]`
 
-1. Pick the patient (walk-ins arrive as `pending` from check-in; deep link `?patient=`).
-2. Record chief complaint, **ETAT ABCC** (Airway/Breathing/Circulation/Consciousness-AVPU), full vitals (incl. GCS, MUAC, glucose), and context (arrival mode, duration, referral source, allergies).
-3. **Priority auto-derives**: any obstructed airway / absent breathing / absent circulation / unresponsive → **RED**; distressed/impaired → **YELLOW**; else **GREEN**.
-4. Save → triage record updated (edits reuse the same document for audit stability).
-5. From "Recent Triages", disposition rows: `pending → seen | admitted | referred | discharged`.
+There's no triage queue *page*; the queue is the "triage" section of the nurse's
+`/dashboard` worklist (walk-ins arrive as `pending` from check-in). Opening a row
+goes to `/triage/[patientId]`:
 
-### 5.2 Ward board (`/dashboard/nurse/ward`)
+1. Record chief complaint, **ETAT ABCC** (Airway/Breathing/Circulation/Consciousness-AVPU), full vitals (incl. GCS, MUAC, glucose), and context (arrival mode, duration, referral source, allergies).
+2. **Priority auto-derives**: any obstructed airway / absent breathing / absent circulation / unresponsive → **RED**; distressed/impaired → **YELLOW**; else **GREEN**.
+3. Save → triage record updated (edits reuse the same document for audit stability).
+4. Disposition: `pending → seen | admitted | referred | discharged`.
+
+Rooming works the same way — no list page, just `/rooming/[patientId]` deep-linked
+from the worklist.
+
+### 5.2 Ward board (`/wards`)
 
 Acuity-sorted patient roster. Row actions: **Vitals** (quick entry — persists a real medical record with vital signs and fluid balance, visible on chart trends), **Triage** (re-triage deep link), **Assign doctor**.
 
 ### 5.3 Medication administration — MAR
 
-- **Rounds list** (`/dashboard/nurse/mar`): every scheduled dose across patients as rows with **overdue / due / upcoming / given** status (overdue = >1 h past). Quick "Given", or a detail modal (actual dose, route, witness, notes); **Undo** voids an administration (append-only).
+- **Rounds list**: every scheduled dose across patients, as an "Open MAR" outstanding-items table on the nurse's `/dashboard` — **overdue / due / upcoming / given** status (overdue = >1 h past), each row deep-linking to its admission's bedside grid.
 - **Bedside time-grid** (`/wards/mar/[admissionId]`): one admission's meds × dose times; each cell records **GIVEN / MISSED / REFUSED / HELD** (non-given requires a reason; controlled drugs require a witness). Allergy + isolation banners; printable.
 
-### 5.4 Shift handoff (`/dashboard/nurse/handoff`)
+### 5.4 Shift handoff (`/wards/handoff`)
 
-Auto-detects the shift (day/evening/night), lists critical (RED) patients with a per-patient **SBAR** editor plus task list, and shows shift KPIs (census, critical count, overdue/due MAR). **Sign off** creates a signed handoff document; the oncoming nurse **acknowledges** it. One handoff per shift; printable.
+Auto-detects the shift (day/evening/night), lists critical (RED) patients with a per-patient **SBAR** editor plus task list, and shows shift KPIs (census, critical count, overdue/due MAR). **Sign off** creates a signed handoff document; the oncoming nurse **acknowledges** it (an unacknowledged handoff surfaces as an outstanding item on the nurse's `/dashboard`). One handoff per shift; printable.
 
 ---
 
@@ -163,7 +175,7 @@ Auto-detects the shift (day/evening/night), lists critical (RED) patients with a
 
 ### 6.1 Clinician dashboard (`/dashboard`)
 
-Worklist of **assigned patients** (with today's triage acuity) plus queues that demand action: **Documents to sign** (co-sign inbox), Phone notes, Open referrals, Patient intake reviews, **Awaiting labs** (paused visits, resume link), and today's telehealth visits. A calendar view is one click away.
+Worklist of **assigned patients** (with today's triage acuity) plus queues that demand action: **Transfers to accept**, **Documents to sign** (co-sign inbox), Phone notes, Open referrals, **Awaiting labs** (paused visits, resume link), Follow-ups due, and today's telehealth visits. A calendar view is one click away.
 
 ### 6.2 Consultation (`/consultation`) — the 6-step visit wizard
 

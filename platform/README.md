@@ -211,7 +211,7 @@ The platform uses a **single PouchDB API with two runtime backings** so the same
 
 Both share the same service functions (`patientsDB()`, `medicalRecordsDB()`, etc.), so route handlers don't care which runtime they run in. See [`src/lib/db.ts`](src/lib/db.ts). The server path deliberately avoids the full `pouchdb` package because it bundles leveldb native binaries.
 
-**Databases auto-create**: PouchDB's http adapter issues `PUT /<db>` on first access when the admin credentials permit it (they do on a fresh CouchDB install). No manual bootstrap is required — the 77 `tamamhealth_*` databases appear the first time a service touches them.
+**Databases auto-create**: PouchDB's http adapter issues `PUT /<db>` on first access when the admin credentials permit it (they do on a fresh CouchDB install). No manual bootstrap is required — the 76 `tamamhealth_*` databases appear the first time a service touches them.
 
 ### Server-side CouchDB env (required for `/api/*` in production)
 
@@ -372,7 +372,7 @@ src/
 │   └── ClinicalScribe.tsx     # Voice/text clinical note parser
 ├── lib/
 │   ├── context.tsx            # AppContext & useApp hook
-│   ├── db.ts                  # PouchDB database factory (77 databases)
+│   ├── db.ts                  # PouchDB database factory (76 databases)
 │   ├── db-types*.ts           # Document interfaces, split by domain
 │   ├── db-seed.ts             # Demo data seeding
 │   ├── permissions.ts         # Role permissions, nav, module gating
@@ -528,7 +528,7 @@ Decision support runs entirely in the browser with no network dependency:
 
 ### PouchDB Collections (Client-Side)
 
-77 `tamamhealth_*` databases are declared in [`src/lib/db.ts`](src/lib/db.ts). A representative sample:
+76 `tamamhealth_*` databases are declared in [`src/lib/db.ts`](src/lib/db.ts). A representative sample:
 
 | Database | Purpose |
 |----------|---------|
