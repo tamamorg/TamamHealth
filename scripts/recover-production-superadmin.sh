@@ -90,6 +90,46 @@ VERIFY=$(compose exec -T platform node -e '
 ')
 echo "verification=$VERIFY"
 
+RATE_LIMIT_BACKEND=$(compose exec -T platform node -e '
+  const shared = Boolean(
+    (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL)
+    && (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN)
+  );
+  process.stdout.write(shared ? "redis" : "memory");
+')
+if [ "$RATE_LIMIT_BACKEND" = redis ]; then
+  compose exec -T platform node -e '
+    const crypto = require("crypto");
+    const url = (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL).replace(/\/+$/, "");
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+    const hashed = crypto.createHash("sha256").update("tamam-rl:login:user:superadmin").digest("hex").slice(0, 16);
+    fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify([["DEL", `rl:${hashed}`]])
+    }).then(response => {
+      if (!response.ok) throw new Error(`rate-limit reset failed (${response.status})`);
+      console.log("shared username rate limit cleared");
+    }).catch(error => { console.error(error.message); process.exit(1); });
+  '
+else
+  compose restart platform >/dev/null
+  attempt=0
+  until compose exec -T platform node -e '
+    fetch("http://127.0.0.1:3000/api/health")
+      .then(response => process.exit(response.ok ? 0 : 1))
+      .catch(() => process.exit(1));
+  ' >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 30 ]; then
+      echo 'platform did not become healthy after rate-limit reset' >&2
+      exit 1
+    fi
+    sleep 1
+  done
+  echo 'in-memory login rate limits cleared by single-replica restart'
+fi
+
 LOGIN_VERIFY=$(compose exec -T platform node -e '
   fetch("http://127.0.0.1:3000/api/auth/login", {
     method: "POST",
