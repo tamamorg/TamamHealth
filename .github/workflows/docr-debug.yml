@@ -1,0 +1,52 @@
+name: docr-debug
+
+# Temporary. Answers one question: why does the token endpoint refuse push
+# scope on registry.digitalocean.com/tamamhealth/website? Delete once known.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Registry state
+        run: |
+          echo "=== registry ==="
+          doctl registry get -o json || true
+          echo "=== repositories ==="
+          doctl registry repository list-v2 -o json || true
+          echo "=== garbage collections ==="
+          doctl registry garbage-collection list -o json || true
+          echo "=== token scopes (account read works?) ==="
+          doctl account get -o json || true
+
+      - name: Ask the token endpoint directly
+        run: |
+          doctl registry login --expiry-seconds 600
+          AUTH=$(jq -r '.auths["registry.digitalocean.com"].auth' ~/.docker/config.json)
+          for SCOPE in "repository:tamamhealth/website:pull" "repository:tamamhealth/website:pull,push"; do
+            echo "=== scope: $SCOPE ==="
+            CODE=$(curl -s -o /tmp/body -w '%{http_code}' \
+              -H "Authorization: Basic $AUTH" \
+              --get --data-urlencode "scope=$SCOPE" --data-urlencode "service=registry.digitalocean.com" \
+              "https://api.digitalocean.com/v2/registry/auth")
+            echo "http $CODE"
+            # print the body but never the token it may contain
+            jq -r 'if has("token") then "token granted (redacted)" else . end' /tmp/body 2>/dev/null || head -c 400 /tmp/body
+          done
+
+      - name: Probe push with a 3 MB image
+        run: |
+          docker pull alpine:3.20
+          docker tag alpine:3.20 registry.digitalocean.com/tamamhealth/website:probe
+          docker push registry.digitalocean.com/tamamhealth/website:probe && echo "PROBE PUSH OK" || echo "PROBE PUSH FAILED"
+          doctl registry repository delete-tag website probe --force || true
