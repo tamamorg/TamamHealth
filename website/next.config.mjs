@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   devIndicators: false,
+  // Emit a self-contained server with only the modules the app actually
+  // imports. The image used to copy the whole node_modules tree and came to
+  // 885 MB — one copy of which nearly filled the container registry's 500 MB
+  // quota, so every second deploy died mid-push.
+  output: "standalone",
   async headers() {
     return [
       {

@@ -73,60 +73,79 @@ jobs:
       # This runs BEFORE the docker login on purpose: starting a garbage
       # collection invalidates the registry's existing credentials, so a login
       # taken beforehand comes back 401 on push.
+      # The registry is DigitalOcean's `starter` tier: 500 MB total. Keeping a
+      # few generations means old tags have to be retired, and retiring them
+      # means an occasional garbage collection — which is the delicate part.
+      #
+      # A collection puts the registry into a phase literally named "waiting
+      # for write JWTs to expire", during which the token endpoint refuses
+      # `push` scope and returns a bare 401 that mentions nothing about
+      # collection. Three deploys failed that way. Worse, each attempt's
+      # `docker login` minted a fresh write token, so the collection kept
+      # waiting and never drained — the retries were what sustained the
+      # outage. Hence: drain first, log in after, and keep the token's life
+      # short so the next drain is short too.
       - name: Prune the registry before pushing
         run: |
           REPO=website
+          CAP=500000000                     # starter tier, bytes
+          THRESHOLD=$((CAP * 60 / 100))     # collect only once genuinely full
 
-          # A collection leaves the registry read-only while it runs, and that
-          # surfaces on push as `401 Unauthorized` from the token endpoint —
-          # not as anything mentioning collection — so drain one before doing
-          # anything else. `garbage-collection get` is not a doctl subcommand;
-          # calling it returned an error this loop read as "nothing active"
-          # and pushed straight into the read-only window.
+          # Terminal states only. Everything else — including the JWT-drain
+          # phase — means the registry is still refusing writes. Listing the
+          # states that mean "busy" is what went wrong before: the drain phase
+          # was not among them, so the wait fell through into a failing push.
           wait_for_gc() {
-            for _ in $(seq 1 90); do
-              ACTIVE=$(doctl registry garbage-collection list -o json 2>/dev/null \
-                | jq '[.[]? | select((.status // "") | test("requested|running|cancelling"))] | length' 2>/dev/null || echo 0)
-              [ "${ACTIVE:-0}" = "0" ] && return 0
-              echo "waiting: ${ACTIVE} garbage collection(s) active"
+            for _ in $(seq 1 120); do
+              BUSY=$(doctl registry garbage-collection list -o json 2>/dev/null \
+                | jq '[.[]? | select((.status // "") | test("^(succeeded|failed|cancelled)$") | not)] | length' 2>/dev/null || echo 0)
+              [ "${BUSY:-0}" = "0" ] && return 0
+              echo "waiting: garbage collection in progress ($(doctl registry garbage-collection list -o json 2>/dev/null | jq -r '[.[]? | select((.status // "") | test("^(succeeded|failed|cancelled)$") | not)] | .[0].status // "?"'))"
               sleep 10
             done
-            echo "garbage collection still running after 15 minutes" >&2
+            echo "garbage collection has not finished after 20 minutes" >&2
             return 1
           }
 
           wait_for_gc
 
-          # Tags are deleted before collecting because collection only reclaims
-          # UNTAGGED manifests; a tagged old image is never freed. `latest` is
-          # what the droplet pulls, so the push below restores it immediately.
-          #
-          # Read JSON, not the table: `list-tags` ignores `--format Tag`, so
-          # splitting its output on whitespace fed doctl the header row and
-          # every size, date and digest field as though each were a tag.
-          TAGS=$(doctl registry repository list-tags "$REPO" -o json 2>/dev/null | jq -r '.[]?.tag // empty')
+          # Retire old builds, but never the two newest or `latest` — the
+          # droplet pulls `latest` on every start, so deleting it leaves a
+          # restart with nothing to pull if the build below then fails.
+          # Read JSON: `list-tags` ignores `--format Tag`, and splitting its
+          # table on whitespace fed doctl the header row and every size, date
+          # and digest as though each were a tag.
+          OLD=$(doctl registry repository list-tags "$REPO" -o json 2>/dev/null \
+            | jq -r '[.[]? | select(.tag != "latest")] | sort_by(.updated_at) | reverse | .[2:] | .[]?.tag // empty')
           REMOVED=0
-          for t in $TAGS; do
-            echo "removing tag $t"
+          for t in $OLD; do
+            echo "retiring tag $t"
             doctl registry repository delete-tag "$REPO" "$t" --force && REMOVED=1 || true
           done
 
-          # Only collect when something was actually untagged. Starting a
-          # collection with nothing to free still costs minutes of read-only.
-          if [ "$REMOVED" = 1 ]; then
-            echo "starting garbage collection"
+          USED=$(doctl registry get -o json 2>/dev/null | jq '.[0].storage_usage_bytes // 0')
+          echo "registry holds ${USED} of ${CAP} bytes"
+
+          # Collection is expensive and blocks pushes, so it is worth it only
+          # when the space is actually needed.
+          if [ "${USED:-0}" -gt "$THRESHOLD" ]; then
+            echo "above ${THRESHOLD} bytes — collecting"
             doctl registry garbage-collection start --include-untagged-manifests --force >/dev/null || true
             wait_for_gc
+          elif [ "$REMOVED" = 1 ]; then
+            echo "tags retired; leaving their blobs for a later collection"
           else
-            echo "nothing to collect"
+            echo "nothing to reclaim"
           fi
-          echo "tags remaining: $(doctl registry repository list-tags "$REPO" -o json 2>/dev/null | jq -r '[.[]?.tag] | join(", ")')"
 
       # Short-lived registry credentials from the same token Terraform used to
       # create the registry, rather than a second long-lived docker login.
-      # Taken after the prune above, which revokes any earlier ones.
+      # Taken after the prune, never before: a collection cannot finish while
+      # any write token is outstanding, and the expiry is the ceiling on how
+      # long the next one has to wait. Ten minutes covers build + push with
+      # room to spare.
       - name: Log in to DigitalOcean Container Registry
-        run: doctl registry login --expiry-seconds 1200
+        run: doctl registry login --expiry-seconds 600
 
       - uses: docker/setup-buildx-action@v3
 
@@ -144,10 +163,12 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_PLATFORM_URL=${{ vars.NEXT_PUBLIC_PLATFORM_URL || 'https://app.tamamhealth.org' }}
-          # Only `latest`. A SHA tag as well would keep two images resident,
-          # which does not fit the starter tier — the SHA is recorded in the
-          # run summary instead, and any commit can be rebuilt from it.
-          tags: ${{ steps.meta.outputs.image }}:latest
+          # Both tags point at one image, so they cost one image's storage —
+          # and the SHA tag is what makes a rollback possible without a
+          # rebuild. The prune above keeps the two newest and retires the rest.
+          tags: |
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}
 
       # The droplet's website.service re-pulls on start, but a RUNNING
       # container keeps its old image — `Restart=always` only fires when the
