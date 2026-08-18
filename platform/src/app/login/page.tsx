@@ -416,8 +416,8 @@ export default function LoginPage() {
             <a className="lg-aside-link" href="https://tamamhealth.org/products">See the products &nbsp;›</a>
             <div className="lg-shot blueprint">
               <Corners />
-              {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-              <img src="/assets/platform-doctor.png" alt="The TamamHealth clinical workspace: a doctor's patient list for the day with acuity, care team and outstanding items" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- photograph, cropped by CSS */}
+              <img src="/assets/doctor-at-workstation.jpg" alt="A doctor at a workstation, reading a patient's record on screen" />
             </div>
           </aside>
         )}
@@ -591,8 +591,12 @@ const loginStyles = (
     .lg-eyebrow { font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lg-accent-700); }
     .lg-aside-copy { margin: 0; font-size: 15px; line-height: 1.6; color: var(--lg-neutral-800); }
     .lg-aside-link { font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif; font-weight: 600; font-size: 16px; color: var(--lg-accent-700); text-decoration: none; }
-    .lg-shot { margin-top: 6px; background: #FFFFFF; }
-    .lg-shot img { width: 100%; display: block; }
+    /* A photograph, not a screenshot of the app: the panel argues what the
+       record is for, and the person signing in is about to see the interface
+       anyway. A fixed height with an object-fit crop so a landscape frame
+       sits as a band under the copy rather than setting the column height. */
+    .lg-shot { margin-top: 10px; height: 232px; background: #FFFFFF; overflow: hidden; }
+    .lg-shot img { width: 100%; height: 100%; object-fit: cover; object-position: center 38%; display: block; }
 
     .lg-footer {
       border-top: 1px solid var(--lg-divider); padding: 22px 32px; display: flex;

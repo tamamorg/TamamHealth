@@ -204,17 +204,12 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
           </div>
         </section>
 
-        {/* ── Right: hero — the portal itself, not a stock photograph. What
-            someone is signing in to is the strongest thing to show them, and
-            the shot is the patient's own overview (records, medications, lab
-            results), so the promise under it is the screen above it. ── */}
-        <section className="pl-hero">
+        {/* ── Right: hero — a person with their own record, not a screenshot
+            of one. This is the patient's door into the system, so the picture
+            is the promise ("your health record, in your hands") rather than
+            the interface waiting behind the form. ── */}
+        <section className="pl-hero" style={{ backgroundImage: 'url(/assets/clinician-with-tablet.jpg)' }}>
           <Link href="/" aria-label="Close" className="pl-hero-close"><X size={18} /></Link>
-
-          <div className="pl-hero-shot">
-            {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-            <img src="/assets/patient-portal.png" alt="The Tamam patient portal: a patient's overview with visit summary, latest observations, medications and recent activity" />
-          </div>
 
           {/* What the portal offers — replaces the old decorative chips, which
               advertised an invented appointment and a fixed calendar week. */}
@@ -292,15 +287,10 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
 
         /* ── Hero — mirrors the staff login (tl-hero): flat tint over the
            photo, blue task chip, frosted week strip, white card bottom-left. */
-        .pl-hero { position: relative; overflow: hidden; background: linear-gradient(158deg, #0E2A4A 0%, #123B63 100%); }
-        /* The screenshot runs off the right edge rather than being fitted
-           inside it: cropped, the interface stays at a scale where the rows
-           and cards are still readable; contained, it shrank to a smear. */
-        .pl-hero-shot { position: absolute; top: 48px; left: 30px; right: -190px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 26px 60px rgba(2, 26, 45, 0.45); }
-        /* Faded at the foot rather than cut: the screenshot ends in the
-           navy instead of stopping on a hard white edge above the copy. */
-        .pl-hero-shot { -webkit-mask-image: linear-gradient(180deg, #000 74%, transparent 100%); mask-image: linear-gradient(180deg, #000 74%, transparent 100%); }
-        .pl-hero-shot img { width: 100%; display: block; }
+        /* The photograph is portrait (2:3), the shape of this panel, so the
+           cover crop takes the sides rather than the head and shoulders. */
+        .pl-hero { position: relative; background-size: cover; background-position: 50% 28%; }
+        .pl-hero::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--accent-hover) 18%, transparent); }
         .pl-hero-close { position: absolute; top: 18px; right: 18px; z-index: 3; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: none; background: var(--bg-card-solid); color: var(--text-primary); cursor: pointer; box-shadow: none; }
         .pl-hero-close:hover { background: var(--bg-card-solid); }
         /* Value panel over the hero photo: a readable scrim rather than
