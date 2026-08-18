@@ -3,6 +3,14 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 COPY . .
+
+# NEXT_PUBLIC_* is read at BUILD time and inlined into the client bundle, so it
+# has to be present here — a runtime env var cannot change it afterwards. Every
+# login entry point on the site redirects through PLATFORM_URL, so an image
+# built without this ships whatever the code default is.
+ARG NEXT_PUBLIC_PLATFORM_URL
+ENV NEXT_PUBLIC_PLATFORM_URL=${NEXT_PUBLIC_PLATFORM_URL}
+
 RUN npm run build
 # Drop devDependencies (typescript, eslint, @types/*) so the runner stage
 # only ships what `next start` needs.

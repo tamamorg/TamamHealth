@@ -1,0 +1,121 @@
+name: deploy-website
+
+# The marketing site does NOT ride the platform's pipeline.
+#
+# It runs on its own droplet (infra/digitalocean-website), whose systemd unit
+# pulls `registry.digitalocean.com/tamamhealth/website:latest` — DigitalOcean's
+# registry. Every other workflow here publishes to GHCR, so nothing CI has ever
+# built reached that droplet: the public site could only be updated by hand,
+# and it drifted a generation behind main. This publishes the same image CI
+# builds to the registry the droplet actually reads.
+#
+# Manual, and gated on the `production` environment, so shipping the public
+# site is a decision rather than a side effect of merging.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Git SHA to build and publish. Blank = current main HEAD.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-website
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: build + push website image to DOCR
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.sha || 'main' }}
+
+      - name: Resolve metadata
+        id: meta
+        run: |
+          SHA="$(git rev-parse HEAD)"
+          {
+            echo "sha=${SHA:0:7}"
+            echo "image=registry.digitalocean.com/tamamhealth/website"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      # Short-lived registry credentials from the same token Terraform used to
+      # create the registry, rather than a second long-lived docker login.
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login --expiry-seconds 1200
+
+      - uses: docker/setup-buildx-action@v3
+
+      # NEXT_PUBLIC_* is inlined into the client bundle at BUILD time, exactly
+      # as the platform image warns. Every login entry point on the site
+      # redirects through PLATFORM_URL, so if this is wrong the public site
+      # sends staff to the wrong deployment. The code default is production;
+      # the repo/environment variable overrides it when a deployment needs to
+      # point somewhere else.
+      - name: Build + push website image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./website
+          file: ./website/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_PLATFORM_URL=${{ vars.NEXT_PUBLIC_PLATFORM_URL || 'https://app.tamamhealth.org' }}
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}
+            ${{ steps.meta.outputs.image }}:latest
+
+      # The droplet's website.service re-pulls on start, but a RUNNING
+      # container keeps its old image — `Restart=always` only fires when the
+      # process exits. So a push alone does not update a healthy droplet; the
+      # unit has to be restarted. Opt-in, matching deploy-production's SSH gate.
+      - name: Check whether website SSH is configured
+        id: gate
+        env:
+          H: ${{ secrets.WEBSITE_SSH_HOST }}
+          U: ${{ secrets.WEBSITE_SSH_USER }}
+          K: ${{ secrets.WEBSITE_SSH_KEY }}
+        run: |
+          if [ -n "$H" ] && [ -n "$U" ] && [ -n "$K" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Website droplet not restarted::Image ${{ steps.meta.outputs.sha }} is published to DOCR, but no WEBSITE_SSH_* secrets are set, so the running container still serves the old image. Restart it with: ssh <user>@<host> 'systemctl restart website'"
+          fi
+
+      - name: Set up SSH agent
+        if: steps.gate.outputs.ready == 'true'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.WEBSITE_SSH_KEY }}
+
+      - name: Restart website.service
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+        run: |
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          ssh "$USER@$HOST" "systemctl restart website && sleep 5 && systemctl is-active website"
+
+      - name: Verify the live site
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 https://tamamhealth.org/health-system || true)
+            [ "$code" = "200" ] && echo "live: /health-system 200" && exit 0
+            sleep 10
+          done
+          echo "::error title=Site did not come up::/health-system never returned 200 after the restart."
+          exit 1
