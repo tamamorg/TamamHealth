@@ -50,9 +50,25 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      # checkout fetches its `ref` as a ref *pattern*, so a short SHA finds
+      # nothing (refs/heads/e45120ff* → exit 1 after three retries) — that is
+      # exactly how the 2026-08-18 dispatch failed. Only a full 40-char SHA is
+      # special-cased. The commits/{ref} API accepts a short SHA, a full SHA,
+      # a branch, or a tag, so expand the input there and hand checkout the
+      # one form it always honours.
+      - name: Resolve input to a full commit SHA
+        id: ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT: ${{ github.event.inputs.sha || 'main' }}
+        run: |
+          SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/$INPUT" --jq .sha)" \
+            || { echo "::error title=Unknown ref::'$INPUT' is not a commit, branch, or tag in $GITHUB_REPOSITORY."; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.sha || 'main' }}
+          ref: ${{ steps.ref.outputs.sha }}
 
       - name: Resolve metadata
         id: meta
