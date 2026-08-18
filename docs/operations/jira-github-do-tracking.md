@@ -16,7 +16,7 @@ staging and production droplets on DigitalOcean.
 | System | Role in tracking |
 |--------|------------------|
 | **Jira** (`tamamorg.atlassian.net`, project **KAN**) | Work items — epic KAN-90, phase stories, subtasks |
-| **GitHub** (`makuachteny/TamamHealth`) | Code, PRs, CI, GHCR images, deploy workflows |
+| **GitHub** (`tamamorg/TamamHealth`) | Code, PRs, CI, GHCR images, deploy workflows |
 | **DigitalOcean** | Two droplets — **staging** (auto) + **production** (manual promote) |
 
 ---
@@ -112,7 +112,7 @@ Root [`docker-compose.yml`](../../docker-compose.yml) builds from source. CI use
 [`docker-compose.ghcr.yml`](../../docker-compose.ghcr.yml):
 
 ```bash
-export GH_OWNER=makuachteny IMAGE_TAG=staging   # or production
+export GH_OWNER=tamamorg IMAGE_TAG=staging   # or production
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
 ```
@@ -134,7 +134,7 @@ docker compose -f docker-compose.yml -f docker-compose.ghcr.yml ps
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml images
 ```
 
-**GHCR:** Package tags under `ghcr.io/makuachteny/tamamhealth-platform` (and website, sync-worker).
+**GHCR:** Package tags under `ghcr.io/tamamorg/tamamhealth-platform` (and website, sync-worker) — GHCR namespaces images under whichever GitHub org actually runs the workflow (`$GITHUB_REPOSITORY_OWNER`), so this must match the org the repo really lives in.
 
 **Jira (manual):** Comment on KAN-91 / KAN-92 with environment URL + SHA after deploy.
 

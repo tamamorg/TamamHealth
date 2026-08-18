@@ -71,6 +71,13 @@ Three env files have been created and are **gitignored** (never commit them):
 `NEXT_PUBLIC_DEMO_MODE=false` is set — so **no demo users/credentials are
 seeded**; production seeds only the bootstrap admin.
 
+> **Gotcha:** `gen-secrets.sh` fills `ADMIN_INITIAL_PASSWORD` automatically
+> (it's a `REPLACE-*` placeholder in the template), but the account you
+> actually log in with — `superadmin` — is controlled by a *different*
+> variable, `SUPERADMIN_INITIAL_PASSWORD`, which isn't in the template at
+> all. Add it yourself before first boot; `lib/config-validation.ts` refuses
+> to start once sync is enabled without a real (16+ char, non-default) value.
+
 > **Gotcha:** there is no `website/.env.production.example` template in the
 > repo, so `scripts/gen-secrets.sh` cannot generate `website/.env.production`
 > for you — it silently skips it. `deploy.sh` still requires the file to
@@ -95,6 +102,8 @@ traffic — including CouchDB replication — is **encrypted in transit**.
 
 ```bash
 # On the server, after env files + DNS are in place:
+# REPO_URL only needs setting for a fork or mirror — deploy.sh defaults to
+# the canonical tamamorg/TamamHealth.
 export REPO_URL=https://github.com/<your-org>/tamamhealth.git
 export DOMAIN_ROOT=<domain> DOMAIN_APP=app.<domain> DOMAIN_COUCH=couch.<domain>
 sudo -E bash deploy.sh           # installs Docker + Caddy, builds, starts, TLS

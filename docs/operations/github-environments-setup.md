@@ -4,13 +4,23 @@ Configure repo **Settings → Environments** so [deploy-staging.yml](../../.gith
 and [deploy-production.yml](../../.github/workflows/deploy-production.yml) can SSH to
 DigitalOcean droplets.
 
+> **The `production` environment is no longer just deploy-production's SSH
+> secrets.** GitHub environments are matched by name, so every workflow that
+> declares `environment: production` shares this same reviewer gate and
+> secret store: `deploy-production.yml`, `deploy-app-platform.yml`,
+> `deploy-website.yml`, `backups-cron.yml`, `reminders-cron.yml`,
+> `telehealth-maintenance-cron.yml`, and `transfers-sweep-cron.yml`. See
+> [Everything else gated on `production`](#everything-else-gated-on-production)
+> below for the full secret list. `mobile-beta.yml` uses its own separate
+> `mobile-beta` environment, not `production`.
+
 Parent doc: [jira-github-do-tracking.md](./jira-github-do-tracking.md).
 
 ---
 
 ## Create environments
 
-**GitHub → makuachteny/TamamHealth → Settings → Environments**
+**GitHub → tamamorg/TamamHealth → Settings → Environments**
 
 1. **New environment** → name: `staging`
 2. **New environment** → name: `production`
@@ -52,6 +62,38 @@ Environment: **`production`**
 | `PROD_APP_DIR` | Optional; default `/opt/tamamhealth` |
 
 Use a different key than staging (`tamamhealth_prod`).
+
+---
+
+## Everything else gated on `production`
+
+Each row below is a **separate** workflow that also declares
+`environment: production` — set only the secrets for the workflows you
+actually intend to run. All of these gate behind the same required-reviewer
+approval as `deploy-production.yml`.
+
+| Workflow | Secrets (all on the `production` environment) |
+|---|---|
+| [`deploy-app-platform.yml`](../../.github/workflows/deploy-app-platform.yml) | `DIGITALOCEAN_ACCESS_TOKEN`, `DO_APP_ID`, `DO_BASE_URL` |
+| [`deploy-production.yml`](../../.github/workflows/deploy-production.yml) (`target: aws`) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `PROD_ACM_CERT_ARN`, `PROD_DOMAIN`, `PROD_EC2_KEYPAIR`, `PROD_DB_MASTER_PASSWORD`; optional `AWS_REGION` (default `af-south-1`), repo/env var `PROD_INSTANCE_TYPE` (default `t3.large`) |
+| [`deploy-website.yml`](../../.github/workflows/deploy-website.yml) | `WEBSITE_SSH_HOST`, `WEBSITE_SSH_USER`, `WEBSITE_SSH_KEY` (only checked when `restart: ssh`, the default); `DIGITALOCEAN_ACCESS_TOKEN` (only for `restart: reboot`) |
+| [`backups-cron.yml`](../../.github/workflows/backups-cron.yml) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `BACKUP_BUCKET`, `BACKUP_PRIVKEY_GPG`, `BACKUP_PRIVKEY_PASSPHRASE`; optional `AWS_REGION` (default `af-south-1`), `AWS_ENDPOINT_URL`, repo/env var `DRILL_SKIP_POSTGRES` — see [`backups.md`](backups.md) |
+| [`reminders-cron.yml`](../../.github/workflows/reminders-cron.yml) | `PLATFORM_BASE_URL`, `REMINDER_DISPATCH_SECRET` |
+| [`telehealth-maintenance-cron.yml`](../../.github/workflows/telehealth-maintenance-cron.yml) | `PLATFORM_BASE_URL`, `TELEHEALTH_MAINTENANCE_SECRET` |
+| [`transfers-sweep-cron.yml`](../../.github/workflows/transfers-sweep-cron.yml) | `PLATFORM_BASE_URL`, `TRANSFER_SWEEP_SECRET` |
+
+`PLATFORM_BASE_URL` and `DIGITALOCEAN_ACCESS_TOKEN` are each shared across
+several of the rows above — set them once and every workflow that needs them
+picks up the same value. Every one of these workflows fails open (skips with
+a `::notice`, not an error) when its secrets are unset, so the pipeline stays
+green before you wire each piece up — see each workflow file's own header
+comment for the up-to-date rationale and requirements.
+
+A separate, non-`production` environment:
+
+| Workflow | Environment | Secrets |
+|---|---|---|
+| [`mobile-beta.yml`](../../.github/workflows/mobile-beta.yml) | `mobile-beta` | `EXPO_TOKEN` |
 
 ---
 

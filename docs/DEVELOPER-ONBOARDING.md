@@ -32,7 +32,7 @@ non-interactively. Either gets you a working `.env.local`; the one above is
 the interactive per-developer version.)
 
 First page load takes a while: Next.js cold-compiles, then the browser seeds
-~77 demo databases ("Initializing offline database..."). One-time per
+~76 demo databases ("Initializing offline database..."). One-time per
 browser profile.
 
 Log in with the demo credentials (generated into
@@ -58,7 +58,7 @@ TamamHealth/
 │       ├── app/       # Routes: pages + /api/* handlers
 │       ├── components/
 │       └── lib/
-│           ├── db.ts             # PouchDB accessors — ~77 typed databases
+│           ├── db.ts             # PouchDB accessors — ~76 typed databases
 │           ├── db-types*.ts      # Document schemas (split by domain)
 │           ├── db-seed.ts        # Demo data seeding (SEED_VERSION gate)
 │           ├── db/               # Postgres migrations + client (analytics only)
@@ -127,7 +127,7 @@ npm run db:migrate
 
 ```bash
 npm test                 # Jest
-npm run lint             # next lint
+npm run lint             # eslint . (flat config; Next.js 16 dropped `next lint`)
 npx tsc --noEmit         # type-check (CI runs this)
 ```
 

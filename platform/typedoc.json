@@ -22,7 +22,7 @@
   "skipErrorChecking": true,
   "readme": "none",
   "navigationLinks": {
-    "Architecture": "https://github.com/makuachteny/TamamHealth/blob/main/docs/ARCHITECTURE.md",
-    "Principles": "https://github.com/makuachteny/TamamHealth/blob/main/docs/PRINCIPLES.md"
+    "Architecture": "https://github.com/tamamorg/TamamHealth/blob/main/docs/ARCHITECTURE.md",
+    "Principles": "https://github.com/tamamorg/TamamHealth/blob/main/docs/PRINCIPLES.md"
   }
 }

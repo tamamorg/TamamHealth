@@ -61,6 +61,13 @@ sed -i 's#^NEXT_PUBLIC_DEMO_MODE=.*#NEXT_PUBLIC_DEMO_MODE=true#'  platform/.env.
 grep -q '^NEXT_PUBLIC_APP_URL=' platform/.env.production \
   || echo 'NEXT_PUBLIC_APP_URL=https://app.tamamhealth.org' >> platform/.env.production
 
+# 3b. Bootstrap login credential for the seeded `superadmin` account. Not in
+# the .example template, and the platform refuses to boot (even in demo mode)
+# once NEXT_PUBLIC_SYNC_ENABLED=true — the production default this template
+# ships with — without a real value here:
+grep -q '^SUPERADMIN_INITIAL_PASSWORD=' platform/.env.production \
+  || echo "SUPERADMIN_INITIAL_PASSWORD=$(openssl rand -base64 24 | tr -d '\n/+=')" >> platform/.env.production
+
 # 4. Sanity check, then one-shot deploy (installs Docker + Caddy + TLS, builds, starts)
 ./scripts/preflight.sh
 sudo bash deploy.sh            # defaults already target tamamhealth.org

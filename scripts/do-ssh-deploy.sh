@@ -68,7 +68,7 @@ case "$ENV" in
     ;;
 esac
 
-REPO_URL="https://github.com/makuachteny/TamamHealth.git"
+REPO_URL="https://github.com/tamamorg/TamamHealth.git"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cyan() { printf '\033[1;36m%s\033[0m\n' "$*"; }

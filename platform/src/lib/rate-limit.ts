@@ -237,8 +237,9 @@ async function upstashReset(cfg: UpstashConfig, hashed: string): Promise<void> {
 /**
  * Increment the counter for `key` and report whether the request is allowed.
  *
- * On Upstash failure we fail-open (return `allowed: true`) and log; rate
- * limiting must never deny legitimate traffic because of an upstream blip.
+ * On Upstash failure we degrade to the per-replica in-process counter and log.
+ * That still enforces `limit` per replica per window, so an upstream blip
+ * weakens rate limiting without suspending it (KAN-34).
  */
 export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitVerdict> {
   const { key, limit, windowMs } = opts;

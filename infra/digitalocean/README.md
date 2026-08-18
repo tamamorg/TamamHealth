@@ -117,7 +117,7 @@ should move in-country or to `af-south-1` — see [`docs/AFRICA-HOSTING-STRATEGY
 
 ```bash
 ssh root@<reserved-ip>
-git clone https://github.com/makuachteny/TamamHealth.git /opt/tamamhealth
+git clone https://github.com/tamamorg/TamamHealth.git /opt/tamamhealth
 cd /opt/tamamhealth
 ./scripts/gen-secrets.sh
 # Edit platform/.env.production URLs for this environment (staging vs prod subdomains)

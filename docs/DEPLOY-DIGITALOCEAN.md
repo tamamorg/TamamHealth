@@ -121,6 +121,14 @@ sed -i "s#^PHI_ENCRYPTION_KEY=.*#PHI_ENCRYPTION_KEY=$(openssl rand -base64 32)#"
 # Public demo only — seeds fictional patients, and exempts the boot guard
 # above. Skip both lines for any deployment that will hold real patient data.
 sed -i 's#^NEXT_PUBLIC_DEMO_MODE=.*#NEXT_PUBLIC_DEMO_MODE=true#' platform/.env.production   # demo
+
+# Bootstrap login for the seeded `superadmin` account. Not in the .example
+# template, and required — demo or not — because the template ships with
+# NEXT_PUBLIC_SYNC_ENABLED=true; lib/config-validation.ts refuses to boot
+# without a real value here (16+ chars, not the demo default "Superadmin!").
+grep -q '^SUPERADMIN_INITIAL_PASSWORD=' platform/.env.production \
+  || echo "SUPERADMIN_INITIAL_PASSWORD=$(openssl rand -base64 24 | tr -d '\n/+=')" >> platform/.env.production
+
 ./scripts/preflight.sh
 sudo bash deploy.sh
 ```
@@ -171,7 +179,7 @@ Then re-run `sudo bash deploy.sh`. (Or just use a 4 GB droplet.)
 Only if you accept DO as the host (residency caveat above):
 - Attach a **Block Storage Volume**, LUKS-encrypt it, mount at
   `/opt/tamamhealth-data`, and point Docker's data-root there (so PHI lands on
-  the encrypted volume) — see `docs/DEPLOYMENT-AND-ROLLOUT.md` §B3/B5.
+  the encrypted volume) — see `docs/STEP-BY-STEP-PLAYBOOK.md` Steps B3/B5.
 - Enable **DO weekly Droplet backups** AND ship the nightly CouchDB dump offsite
   (encrypted) — DO Spaces in the same region works as the offsite target.
 - Set `NEXT_PUBLIC_DEMO_MODE=false` (clean slate).
@@ -184,4 +192,6 @@ Only if you accept DO as the host (residency caveat above):
 - **Cloud Firewall** = network allowlist (22/80/443).
 - **Block Storage Volume** = the encrypted data disk for production PHI.
 - **Spaces** = S3-compatible object storage for offsite encrypted backups.
-- **App Platform** = not used (doesn't fit the docker-compose + CouchDB stack).
+- **App Platform** = not used *on this page's path* (the single-box docker-compose
+  + CouchDB stack doesn't fit it) — but it IS the current production host for
+  the platform app alone, split from CouchDB; see `DEPLOY-PRODUCTION.md`.

@@ -165,9 +165,15 @@ host shell makes the compose entrypoint fetch them at boot) — see
 
 ### 3.5 Bring up the stack
 
+> **Deploying a fork or a mirror? Set `REPO_URL`.** `deploy.sh` now defaults to
+> the canonical `https://github.com/tamamorg/TamamHealth.git`, so the plain
+> invocation is correct for this repo. (It previously defaulted to a
+> pre-transfer `makuachteny/…` URL that only resolved via a GitHub 301; that
+> default was corrected on 2026-08-18.)
+
 ```bash
 # One-shot on a fresh VPS (installs Docker + Caddy + Let's Encrypt TLS, builds, starts):
-sudo REPO_URL=<your-git-url> DOMAIN_ROOT=tamamhealth.org \
+sudo REPO_URL=https://github.com/tamamorg/TamamHealth.git DOMAIN_ROOT=tamamhealth.org \
      DOMAIN_APP=app.tamamhealth.org DOMAIN_COUCH=couch.tamamhealth.org \
      bash deploy.sh
 

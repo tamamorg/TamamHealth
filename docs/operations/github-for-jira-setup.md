@@ -1,7 +1,7 @@
 # GitHub for Jira — setup (tamamorg.atlassian.net)
 
 One-time install to link Jira issues with GitHub PRs, commits, and (optionally)
-deployments for **makuachteny/TamamHealth**.
+deployments for **tamamorg/TamamHealth**.
 
 Parent doc: [jira-github-do-tracking.md](./jira-github-do-tracking.md).
 
@@ -13,14 +13,14 @@ Parent doc: [jira-github-do-tracking.md](./jira-github-do-tracking.md).
 2. **Settings** (gear) → **Apps** → **Explore apps** (or Atlassian Marketplace)
 3. Search **GitHub for Jira** (by Atlassian)
 4. Click **Get app** → install for **tamamorg**
-5. Complete OAuth: authorize **GitHub** and select org/user **makuachteny**
+5. Complete OAuth: authorize **GitHub** and select org/user **tamamorg**
 
 ---
 
 ## 2. Connect the repository
 
 1. In Jira: **Apps → GitHub → Get started** (or **Manage your GitHub accounts**)
-2. **Add organization** → `makuachteny`
+2. **Add organization** → `tamamorg`
 3. **Include repositories** → select **TamamHealth** (or all repos)
 4. Enable:
    - **Pull request linking**
@@ -84,5 +84,5 @@ Site ID `147a321a-6723-462e-8ee2-ba43700629cd` = **tamamorg** (`tamamorg.atlassi
 | Problem | Fix |
 |---------|-----|
 | PRs not linking | Confirm repo included in GitHub for Jira settings; key must match `KAN-123` |
-| Wrong GitHub org | Re-authorize app under **makuachteny** |
+| Wrong GitHub org | Re-authorize app under **tamamorg** |
 | Deployments empty | GitHub Deployments API not used yet — track SHA manually in Jira comments |

@@ -122,6 +122,11 @@ password.
 # sed -i 's#^NEXT_PUBLIC_DEMO_MODE=.*#NEXT_PUBLIC_DEMO_MODE=true#' platform/.env.production
 # grep -q '^NEXT_PUBLIC_APP_URL=' platform/.env.production || echo 'NEXT_PUBLIC_APP_URL=https://app.tamamhealth.org' >> platform/.env.production
 
+# 3b. Bootstrap login for the seeded `superadmin` account — not in the
+# .example template, and required (even in demo mode) because this template
+# ships with NEXT_PUBLIC_SYNC_ENABLED=true:
+# grep -q '^SUPERADMIN_INITIAL_PASSWORD=' platform/.env.production || echo "SUPERADMIN_INITIAL_PASSWORD=$(openssl rand -base64 24 | tr -d '\n/+=')" >> platform/.env.production
+
 # 4. One-shot deploy: installs Docker + Caddy, issues HTTPS, builds, starts
 # sudo bash deploy.sh
 ```

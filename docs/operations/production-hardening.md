@@ -29,7 +29,8 @@ deploy — it now enforces several of the gates below automatically.
   never server-valid. See §6.)
 - **MUST** rotate every secret before go-live and on staff offboarding:
   `JWT_SECRET`, `COUCHDB_ADMIN_PASSWORD`, the Postgres password in
-  `DATABASE_URL`, `COUCHDB_WEBHOOK_SECRET`, and the bootstrap admin password.
+  `DATABASE_URL`, `COUCHDB_WEBHOOK_SECRET`, and the bootstrap credentials
+  (`SUPERADMIN_INITIAL_PASSWORD`, `ADMIN_INITIAL_PASSWORD` if set — see §2).
   Prefer a secrets manager (Doppler — see [`secrets.md`](secrets.md) — or AWS
   SSM / `docker secrets`) over files on disk.
 

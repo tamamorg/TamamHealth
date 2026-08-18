@@ -21,6 +21,7 @@ import { resolveLandingPage } from '@/lib/user-prefs';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 import { getRoleConfig } from '@/lib/permissions';
 import type { UserRole } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Corners, loginStyles } from '@/components/login/login-chrome';
 
 // Role picker options — every role in the platform, labeled like the rest of
@@ -43,6 +44,7 @@ const ROLE_OPTIONS = (() => {
 })();
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { login, isAuthenticated, currentUser, dbReady } = useAuth();
   const [username, setUsername] = useState('');
@@ -106,15 +108,15 @@ export default function LoginPage() {
     try {
       const result = await login(username, password, undefined, roleChoice || undefined);
       if (result) router.push(resolveLandingPage(result));
-      else { setError('Invalid credentials. Please try again.'); setLoading(false); }
-    } catch { setError('Login failed. Please try again.'); setLoading(false); }
+      else { setError(t('login.errorInvalidCredentials')); setLoading(false); }
+    } catch { setError(t('login.errorLoginFailed')); setLoading(false); }
   };
 
   if (isAuthenticated) {
     return (
       <div className="lg-redirect">
         <span className="lg-redirect-mark" />
-        <p>Redirecting to your dashboard…</p>
+        <p>{t('login.redirectingDashboard')}</p>
         {loginStyles}
       </div>
     );
@@ -134,17 +136,17 @@ export default function LoginPage() {
         {/* ── Left: the form ── */}
         <div className="lg-col">
           <div>
-            <h1 className="lg-h1">Log in</h1>
-            <p className="lg-lede">Enter the username and password issued by your facility administrator.</p>
+            <h1 className="lg-h1">{t('login.logIn')}</h1>
+            <p className="lg-lede">{t('login.subheadingIssued')}</p>
           </div>
 
           {!dbReady && (
-            <div className="lg-boot"><span className="lg-spin" /> Initializing offline database…</div>
+            <div className="lg-boot"><span className="lg-spin" /> {t('login.initializingOffline')}</div>
           )}
 
           <form onSubmit={handleSubmit} className="lg-form">
             <div className="lg-field">
-              <label htmlFor="tl-name">Username or Staff ID</label>
+              <label htmlFor="tl-name">{t('login.usernameLabel')}</label>
               <input
                 id="tl-name"
                 type="text"
@@ -160,7 +162,7 @@ export default function LoginPage() {
                 super-admin may pick any role and enter its workspace.
                 Searchable: typing filters the list, picking fills it. */}
             <div className="lg-field lg-field--rel">
-              <label htmlFor="tl-role">Role</label>
+              <label htmlFor="tl-role">{t('login.roleLabel')}</label>
               <div className="lg-inputwrap">
                 <svg className="lg-inputicon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="11" cy="11" r="7" /><path d="m20 20-4.2-4.2" />
@@ -174,7 +176,7 @@ export default function LoginPage() {
                   aria-controls="tl-role-menu"
                   aria-autocomplete="list"
                   autoComplete="off"
-                  placeholder="Search your role — doctor, nurse, pharmacist…"
+                  placeholder={t('login.rolePlaceholder')}
                   value={roleQuery}
                   onChange={(e) => {
                     setRoleQuery(e.target.value);
@@ -212,8 +214,8 @@ export default function LoginPage() {
                     className={`lg-rolerow${roleChoice === '' ? ' is-selected' : ''}`}
                     onMouseDown={(e) => { e.preventDefault(); selectRole(null); }}
                   >
-                    <span className="lg-rolerow-name">Your assigned role</span>
-                    <span className="lg-rolerow-scope">Sign in as whatever your account carries</span>
+                    <span className="lg-rolerow-name">{t('login.roleAssigned')}</span>
+                    <span className="lg-rolerow-scope">{t('login.roleAnyHint')}</span>
                   </button>
                   {roleMatches.map((r) => (
                     <button
@@ -235,7 +237,7 @@ export default function LoginPage() {
             </div>
 
             <div className="lg-field">
-              <label htmlFor="tl-password">Password</label>
+              <label htmlFor="tl-password">{t('login.passwordLabel')}</label>
               <div className="lg-inputwrap">
                 <input
                   id="tl-password"
@@ -261,29 +263,28 @@ export default function LoginPage() {
 
             <label className="lg-keep">
               <input type="checkbox" checked={keepSignedIn} onChange={(e) => setKeepSignedIn(e.target.checked)} />
-              Keep me signed in on this device
+              {t('login.keepSignedIn')}
             </label>
 
             {error && <div role="alert" className="lg-error">{error}</div>}
 
             <button type="submit" disabled={loading || !dbReady} className="lg-btn blueprint">
-              {loading ? 'Signing in…' : 'Log in'}
+              {loading ? t('login.signingIn') : t('login.logIn')}
               <Corners />
             </button>
           </form>
 
           <div className="lg-links">
-            <a href="/patient-portal">Patient portal</a>
+            <a href="/patient-portal">{t('login.patientPortal')}</a>
             {/* A mailto asked someone with no account to compose an email to
                 an address that cannot verify them, and the reply was a human
                 copying a password into a message. This goes to a form whose
                 answer is an account, routed to whoever is allowed to grant it. */}
-            <a href="/request-account">Request account</a>
+            <a href="/request-account">{t('login.requestAccount')}</a>
           </div>
 
           <span className="lg-note">
-            Works offline: once signed in on a facility device, the record keeps working through power cuts and
-            network gaps and syncs when connection returns.
+            {t('login.offlineNote')}
           </span>
 
         </div>
@@ -295,12 +296,12 @@ export default function LoginPage() {
               to anyone who loads it is not something to keep behind a flag. */}
         <aside className="lg-aside blueprint">
           <Corners />
-          <span className="lg-eyebrow">One record, every level of care</span>
-          <h2 className="lg-h2">Registration, consultation, lab, pharmacy — one patient story</h2>
+          <span className="lg-eyebrow">{t('login.tagline')}</span>
+          <h2 className="lg-h2">{t('login.promoHeadline')}</h2>
           <p className="lg-aside-copy">
-            Every visit adds to the same record and rolls up into facility dashboards and DHIS2-ready national reports.
+            {t('login.promoBody')}
           </p>
-          <a className="lg-aside-link" href="https://tamamhealth.org/products">See the products &nbsp;›</a>
+          <a className="lg-aside-link" href="https://tamamhealth.org/products">{t('login.seeProducts')} &nbsp;›</a>
           <div className="lg-shot blueprint">
             <Corners />
             {/* eslint-disable-next-line @next/next/no-img-element -- photograph, cropped by CSS */}
@@ -310,9 +311,9 @@ export default function LoginPage() {
       </div>
 
       <footer className="lg-footer">
-        <a href="/terms">Terms &amp; Conditions</a>
-        <a href="/terms">Privacy Policy</a>
-        <a href="https://tamamhealth.org">Back to tamamhealth.org</a>
+        <a href="/terms">{t('login.termsAndConditions')}</a>
+        <a href="/terms">{t('login.privacyPolicy')}</a>
+        <a href="https://tamamhealth.org">{t('login.backToSite')}</a>
       </footer>
 
       {loginStyles}

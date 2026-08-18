@@ -17,7 +17,7 @@ flowchart TB
     subgraph clinic [Clinic Device - offline-first]
         UI[Next.js React UI]
         Services["Service layer (100+ services)"]
-        Pouch["PouchDB (IndexedDB)<br/>~77 local databases"]
+        Pouch["PouchDB (IndexedDB)<br/>~76 local databases"]
         UI --> Services --> Pouch
     end
 

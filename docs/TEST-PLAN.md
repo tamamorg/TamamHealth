@@ -4,7 +4,7 @@
 **Date:** 2026-02-21 (revised 2026-08-18)
 **Application:** TamamHealth
 **URL:** https://app.tamamhealth.org (production, DigitalOcean-hosted)
-**Repository:** github.com/tamamHealth/TamamHealth
+**Repository:** github.com/tamamorg/TamamHealth
 
 ---
 
