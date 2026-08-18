@@ -117,6 +117,33 @@ jobs:
             ServerAliveCountMax 8
           EOF
 
+          # sshd on this droplet hits MaxStartups under the background port-22
+          # scanning every public host gets, and drops connections during key
+          # exchange — including ours, mid-deploy. `ConnectionAttempts` does not
+          # help: the TCP connect succeeds and the reset comes after it.
+          #
+          # Every remote step here is idempotent, so retrying is safe. stdin is
+          # buffered first because a retry would otherwise replay an already
+          # consumed stream — which for the image transfer is the entire
+          # payload, and for the scripts is the script itself.
+          mkdir -p ~/.local/bin
+          cat > ~/.local/bin/ssh-retry <<'EOF'
+          #!/usr/bin/env bash
+          set -uo pipefail
+          IN="$(mktemp)"
+          trap 'rm -f "$IN"' EXIT
+          [ -t 0 ] || cat > "$IN"
+          for attempt in 1 2 3 4 5; do
+            if ssh "$@" < "$IN"; then exit 0; fi
+            echo "ssh attempt $attempt failed; retrying" >&2
+            sleep $((attempt * 15))
+          done
+          echo "ssh failed five times" >&2
+          exit 1
+          EOF
+          chmod +x ~/.local/bin/ssh-retry
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       # Fail with the fix, not with "Permission denied (publickey)". The
       # deploy key is set in this environment, but it only works once its
       # public half is in the droplet's authorized_keys — and that needs the
@@ -216,27 +243,15 @@ jobs:
       # `docker load` reads a gzipped stream directly, so this is one hop with
       # no intermediate file on either end and no credentials on the droplet.
       #
-      # Retried: this droplet resets connections during key exchange under a
-      # burst, and a deploy opens several in a row. A reset costs the whole
-      # transfer, so it is worth paying for it again rather than failing a
-      # release on it.
       - name: Copy the image to the droplet
         if: steps.gate.outputs.ready == 'true'
         env:
           HOST: ${{ secrets.WEBSITE_SSH_HOST }}
           USER: ${{ secrets.WEBSITE_SSH_USER }}
         run: |
-          for attempt in 1 2 3 4; do
-            if docker save "${{ steps.meta.outputs.local_tag }}" \
-                 | gzip -1 \
-                 | ssh "$USER@$HOST" 'docker load'; then
-              exit 0
-            fi
-            echo "transfer attempt $attempt failed; retrying"
-            sleep $((attempt * 20))
-          done
-          echo "::error title=Image transfer failed::Could not stream the image to the droplet in four attempts."
-          exit 1
+          docker save "${{ steps.meta.outputs.local_tag }}" \
+            | gzip -1 \
+            | ssh-retry "$USER@$HOST" 'docker load'
 
       # The unit shipped pulling from DigitalOcean's registry. Point it at the
       # tag delivered above and drop the pull, which would now fail on every
@@ -251,7 +266,7 @@ jobs:
           USER: ${{ secrets.WEBSITE_SSH_USER }}
           TAG: ${{ steps.meta.outputs.local_tag }}
         run: |
-          ssh "$USER@$HOST" "TAG='$TAG' bash -s" <<'REMOTE'
+          ssh-retry "$USER@$HOST" "TAG='$TAG' bash -s" <<'REMOTE'
             set -euo pipefail
             UNIT=/etc/systemd/system/website.service
             sed -i "/ExecStartPre=.*docker pull/d" "$UNIT"
@@ -276,7 +291,7 @@ jobs:
           HOST: ${{ secrets.WEBSITE_SSH_HOST }}
           USER: ${{ secrets.WEBSITE_SSH_USER }}
         run: |
-          ssh "$USER@$HOST" 'bash -s' <<'REMOTE'
+          ssh-retry "$USER@$HOST" 'bash -s' <<'REMOTE'
             set -euo pipefail
             systemctl restart website
             sleep 5
