@@ -65,14 +65,27 @@ changes nothing:
 |---|---|---|---|
 | `tamamhealth-production` | `app.tamamhealth.org` — the platform | `deploy-production` (promotes a staging-tested image) | GHCR |
 | `tamamhealth-data` | `couch.tamamhealth.org` | `docker-compose.data.yml` on the box | — |
-| `tamamhealth-website` | `tamamhealth.org` — the marketing site | **`deploy-website`** | **DigitalOcean registry** |
+| `tamamhealth-website` | `tamamhealth.org` — the marketing site | **`deploy-website`** | GHCR for the record; the droplet gets the image over SSH |
 
-The website is the odd one out: its droplet pulls from
-`registry.digitalocean.com/tamamhealth/website:latest`, while everything else
-uses GHCR. Until Aug 2026 no workflow published there at all, so the public site
-could only be updated by hand and drifted a generation behind `main`.
-`deploy-website` closes that — see `infra/digitalocean-website/README.md`,
-which also carries a standing warning about that droplet's Terraform state.
+The website is the odd one out, and was the one that silently changed nothing:
+its droplet pulled from DigitalOcean's container registry while every workflow
+published to GHCR, so until Aug 2026 nothing CI built ever reached the public
+site and it drifted a generation behind `main`.
+
+Publishing to DigitalOcean's registry instead ran into what its free tier
+actually is — 500 MB and exactly one repository. Collecting garbage to stay
+under the size cap emptied the repository, and the tier then refused to let it
+be recreated, with the registry's own catalog reporting zero repositories while
+its auth endpoint counted one and denied every push. So that registry is out of
+the path entirely: `deploy-website` builds the image, publishes it to GHCR as
+the record of what shipped, and streams it to the droplet with `docker save`
+piped into `docker load` over the deploy key. The droplet holds no registry
+credentials, and no storage tier can block a release.
+
+Because the droplet no longer pulls, a **reboot cannot deliver a new build** —
+it only restarts whatever image is already loaded. See
+`infra/digitalocean-website/README.md`, which also carries a standing warning
+about that droplet's Terraform state.
 
 Merging to `main` does **not** release anything: staging deploys automatically,
 production and the website are both manual, gated on the `production`
