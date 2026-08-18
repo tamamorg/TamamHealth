@@ -6,3 +6,7 @@
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+
+# Scratch output from the Juba Arabic i18n tooling (extract/build/batch JSON).
+# Regenerated on demand; it was committed once and removed again, so keep it out.
+.tmp-i18n/
