@@ -1,80 +1,98 @@
 # TamamHealth Country Node
 
-National-layer service in the federated EHR architecture. Receives synchronized
-event batches from facility nodes (hospitals, clinics, PHCUs) inside a given
-country's jurisdiction and provides:
+> **Status: design stake — there is no service here yet.** This directory holds
+> this README and an empty `src/`. Nothing builds, runs, or deploys from it.
+> It exists so the national layer has an agreed shape and a home for the day a
+> ministry or partner org commits to hosting one. Everything below the next
+> section is **planned**, not implemented.
 
-- National ingestion API (the receiver for facility `sync_events` outbox pushes)
-- Canonical clinical store, partitioned by country
-- DHIS2 adapter (country-specific mappings, periods, org units)
-- National metadata service (`/metadata`) — concept mappings, facility registry,
-  program definitions; facility nodes fetch and cache this
-- National analytics — dashboards for ministry users, partner orgs
-- Reconciliation + profile/version distribution back to facilities
+The national layer in the federated EHR architecture: the receiver for the
+facility nodes (hospitals, clinics, PHCUs) inside a country's jurisdiction, and
+the country's interoperability and governance runtime. It does not replace the
+facility node's clinical runtime — clinicians keep working locally even when the
+country node is unreachable.
 
-This layer is the country's **interoperability and governance runtime**. It does
-not replace the facility node's clinical runtime — clinicians keep working
-locally even when the country node is unreachable.
+## What exists today, on the facility side
 
-## Status
+The facility platform is already built to talk to a country node, and stands in
+for one until it exists:
 
-**Scaffold / Phase 3 design stake.** This directory is a placeholder so that
-`docker-compose.country.yml` can point at it when a country ministry or partner
-org commits to deploying a country node. The facility platform already emits
-`sync_events` (see `platform/src/lib/services/sync-event-service.ts`) and the
-country metadata API at `platform/src/app/api/country/metadata/route.ts` is a
-stand-in the facility uses until this service is live.
+- **Outbox.** `platform/src/lib/services/sync-event-service.ts` writes a
+  `sync_event` for clinical mutations into `tamamhealth_sync_events`, with a
+  `pending` / `synced` status, and exposes stats for the admin sync views
+  (`/admin/sync`, `/admin/interop`).
+- **Push.** `pushPendingToCountryNode()` POSTs `{ events: SyncEventDoc[] }` to
+  `SYNC_PUSH_URL`, optionally signed with an `X-Sync-Secret` header from
+  `SYNC_PUSH_SECRET`, and marks acknowledged events synced from the response's
+  `acceptedIds`. **With `SYNC_PUSH_URL` unset it is a no-op** — the facility
+  works fully offline and the admin UI says the country node is not configured.
+- **Metadata stand-in.** `platform/src/app/api/country/metadata/route.ts` serves
+  `GET /api/country/metadata?country=SS` (facility levels, referral network,
+  states, DHIS2 period type, terminologies) from the facility itself. This
+  endpoint is what the country node's `/metadata` would eventually replace.
+- **Downstream pieces the country layer would take over** already have facility
+  implementations to port or reuse: the DHIS2 exporter
+  (`platform/src/lib/services/dhis2-export-service.ts`), the FHIR read APIs
+  under `platform/src/app/api/fhir/`, and the `conflict_queue` documents behind
+  `/admin/conflicts`.
 
-## Intended architecture
+So the first country node can be built against a live, already-emitting
+facility: point `SYNC_PUSH_URL` at its `/ingest/events` and the outbox starts
+draining.
+
+## Planned architecture
 
 ```
 platform (facility node)                  country-node
 ─────────────────────────                 ─────────────────
-/api/patients (write)                     /ingest/events (receive push)
-/api/sync     (CouchDB webhook)    ───►   canonical store (PostgreSQL)
-sync_events outbox                        DHIS2 adapter → ministry DHIS2
+sync_events outbox         ───►           /ingest/events (receive push)
+                                          canonical store (PostgreSQL)
+                                          DHIS2 adapter → ministry DHIS2
                                           /metadata     (serve to facilities)
                                           /fhir/*       (national FHIR API)
                                           /analytics    (ministry dashboard)
 ```
 
-## Recommended stack
+Planned responsibilities: national ingestion API, a canonical clinical store
+partitioned by country, a DHIS2 adapter with country-specific mappings/periods/
+org units, a national metadata service facilities fetch and cache, national
+analytics for ministry and partner users, and reconciliation plus profile /
+version distribution back to facilities.
 
-- **FastAPI (Python 3.12)** or **Spring Boot (Java 21)** for the ingestion and
-  query APIs — the spec calls out these stacks for the country layer because
-  they're common in African ministry IT environments.
-- **PostgreSQL 16** as the canonical store with per-country schemas.
-- **Celery/RQ** (Python) or scheduled workers (Java) for DHIS2 push, backup,
-  reconciliation.
-- **Kafka or CouchDB `_changes`** as the ingestion backbone.
+## Planned stack
+
+Nothing is chosen or committed. The spec calls for **FastAPI (Python 3.12)** or
+**Spring Boot (Java 21)** for the ingestion and query APIs, since both are
+common in African ministry IT environments; **PostgreSQL 16** as the canonical
+store with per-country schemas; Celery/RQ or scheduled workers for DHIS2 push,
+backup and reconciliation; and Kafka or CouchDB `_changes` as the ingestion
+backbone.
 
 ## First milestones
 
-1. `/ingest/events` endpoint — accepts the facility's `sync_events` batches,
-   validates against the country's allowed resource types, writes to Postgres.
-2. `/metadata` endpoint — serve country profile (currently stubbed in the
-   facility platform at `/api/country/metadata`).
-3. DHIS2 scheduled push — weekly `dataValueSets` submission using the existing
-   exporter logic from the facility service.
-4. FHIR read API at the national level — already prototyped on the facility
-   platform, port to this service for aggregate queries.
-5. Reconciliation queue push-back — country-detected identifier collisions
-   return to facility `conflict_queue`.
+1. `/ingest/events` — accept the facility's `sync_events` batches, validate the
+   shared secret and the country's allowed resource types, write to Postgres,
+   and return `acceptedIds` so the facility can mark them synced.
+2. `/metadata` — serve the country profile currently stubbed at the facility's
+   `/api/country/metadata`.
+3. DHIS2 scheduled push — `dataValueSets` submission, reusing the facility
+   exporter's logic.
+4. National FHIR read API for aggregate queries, ported from the facility
+   prototype.
+5. Reconciliation push-back — country-detected identifier collisions returned to
+   the facility's `conflict_queue`.
 
-## Why this lives in its own service
+## Why this is its own service
 
 - **Sovereignty**: ministries require country-owned data perimeters; a shared
   regional transactional DB is politically and legally infeasible.
-- **Resilience**: facility nodes must continue serving care during country
-  node outages; separate services make the failure domain explicit.
-- **Scaling**: national aggregate analytics load profile is very different
+- **Resilience**: facility nodes must continue serving care during country-node
+  outages; separate services make the failure domain explicit.
+- **Scaling**: national aggregate analytics has a very different load profile
   from point-of-care write traffic; separating them lets each layer scale
   independently.
 
 ---
 
-When you're ready to build this out, start with the `/ingest/events` endpoint
-and a minimal Postgres schema mirroring the facility `db-types.ts`. The
-facility platform already knows where to push — just point
-`SYNC_PUSH_URL=https://country.example.org/ingest/events` in the facility's
-env and it will start draining its outbox here.
+When building this out, start with `/ingest/events` and a minimal Postgres
+schema mirroring the facility's `platform/src/lib/db-types.ts`.

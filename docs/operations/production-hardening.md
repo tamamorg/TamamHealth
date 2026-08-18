@@ -65,10 +65,10 @@ deploy — it now enforces several of the gates below automatically.
 ## 5. Backups & retention
 
 - **MUST** schedule the nightly CouchDB + Postgres dumps
-  ([`backup-couchdb.sh`](../../backup-couchdb.sh),
-  [`backup-postgres.sh`](../../backup-postgres.sh)) and ship them **encrypted,
+  ([`backup-couchdb.sh`](../../scripts/backup-couchdb.sh),
+  [`backup-postgres.sh`](../../scripts/backup-postgres.sh)) and ship them **encrypted,
   offsite** (in-country/approved storage). See [`backups.md`](backups.md).
-- **MUST** periodically run [`backup-restore-drill.sh`](../../backup-restore-drill.sh)
+- **MUST** periodically run [`backup-restore-drill.sh`](../../scripts/backup-restore-drill.sh)
   — an untested backup is not a backup. Document the retention window and who
   holds the restore key.
 

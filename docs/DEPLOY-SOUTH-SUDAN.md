@@ -71,6 +71,13 @@ Three env files have been created and are **gitignored** (never commit them):
 `NEXT_PUBLIC_DEMO_MODE=false` is set — so **no demo users/credentials are
 seeded**; production seeds only the bootstrap admin.
 
+> **Gotcha:** there is no `website/.env.production.example` template in the
+> repo, so `scripts/gen-secrets.sh` cannot generate `website/.env.production`
+> for you — it silently skips it. `deploy.sh` still requires the file to
+> exist before it will run. The website container needs no secrets today
+> (nothing in `docker-compose.yml` loads an env file for it), so
+> `touch website/.env.production` is sufficient before running `deploy.sh`.
+
 ## 5. DNS + TLS
 
 Create A records pointing at the server:

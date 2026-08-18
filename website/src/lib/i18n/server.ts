@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { COOKIE_NAME, DEFAULT_LOCALE, isLocale, localeConfig, translate, translateDeep } from './index';
-import type { Locale } from './index';
+import type { Locale, Vars } from './index';
 import { apd } from './apd';
 
 const DICTIONARIES: Record<Locale, Record<string, string>> = { en: {}, apd };
@@ -24,8 +24,8 @@ export async function getLocale(): Promise<Locale> {
 export interface ServerTranslator {
   locale: Locale;
   dir: 'ltr' | 'rtl';
-  /** Translate one literal string of copy. */
-  t: (text: string) => string;
+  /** Translate one literal string of copy; `vars` fills {{placeholders}}. */
+  t: (text: string, vars?: Vars) => string;
   /** Translate a whole content object out of site-data. */
   content: <T>(value: T) => T;
 }
@@ -36,7 +36,7 @@ export async function getTranslator(): Promise<ServerTranslator> {
   return {
     locale,
     dir: localeConfig(locale).dir,
-    t: (text: string) => translate(text, dict),
+    t: (text: string, vars?: Vars) => translate(text, dict, vars),
     content: <T,>(value: T) => translateDeep(value, dict),
   };
 }

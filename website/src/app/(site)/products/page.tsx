@@ -85,7 +85,7 @@ export default async function ProductsPage() {
                     ))}
                     {p.modules.length > TAGS_SHOWN && (
                       <span className="tag" style={{ color: "var(--color-neutral-600)", background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
-                        +{p.modules.length - TAGS_SHOWN} more
+                        {t("+{{count}} more", { count: p.modules.length - TAGS_SHOWN })}
                       </span>
                     )}
                   </div>

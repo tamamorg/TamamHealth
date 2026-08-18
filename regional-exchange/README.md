@@ -1,11 +1,17 @@
 # TamamHealth Regional Exchange Layer
 
-Regional-layer service in the federated EHR architecture. Exchanges ONLY the
-minimum data needed for cross-border continuity of care and regional programs.
-Does not hold a pan-regional transactional database (would break sovereignty
-and resilience).
+> **Status: design stake — this directory contains nothing but this file.** No
+> code, no package, no service, nothing that builds or deploys. Everything
+> below describes an intended design, not something that exists. It is written
+> down so partners and ministries can see where a regional layer would fit, and
+> so the shape is agreed before anyone is under pressure to ship one.
 
-## Scope
+The regional layer in the federated EHR architecture. It would exchange ONLY
+the minimum data needed for cross-border continuity of care and regional
+programs, and would not hold a pan-regional transactional database (which would
+break both sovereignty and resilience).
+
+## Intended scope
 
 - **Regional Referral Service** — cross-border referral packet (FHIR Bundle)
   routing between country nodes.
@@ -20,10 +26,11 @@ and resilience).
 - **Governance + Audit** — who agreed to exchange what, when, and under which
   data-sharing agreement.
 
-## Status
+## Realistic path to ship
 
-**Design stake.** This directory is a placeholder so partners can see where
-the regional layer fits when/if it's commissioned. Realistic path to ship:
+The prerequisite is not written yet either: `country-node/` is also a design
+stake, so today there are zero country nodes and the facility platform is
+standing in for the national layer itself. In order:
 
 1. Two country nodes stable and exchanging data with their facility nodes.
 2. A bilateral data-sharing MOU between two country ministries.
@@ -33,7 +40,7 @@ the regional layer fits when/if it's commissioned. Realistic path to ship:
    to consenting patients crossing a specific border).
 5. Regional MPI last (hardest politically — cross-country identity linkage).
 
-## Architecture principles
+## Architecture principles (intended)
 
 - **Minimum-data**: the regional layer stores only referral metadata + shared
   reference data. PHI flows through it but is not stored beyond a short
@@ -45,7 +52,7 @@ the regional layer fits when/if it's commissioned. Realistic path to ship:
   cross-border data flow; the Bundle header records the consent token.
 - **Standards-based**: everything over FHIR R4; no private formats.
 
-## Terminology registry (concrete next step)
+## Terminology registry (the first thing to build, when the time comes)
 
 The lowest-risk, highest-value first shipment. A read-only registry serving:
 
@@ -54,8 +61,8 @@ The lowest-risk, highest-value first shipment. A read-only registry serving:
   LOINC subset, regional ICD-11 mappings)
 - `GET /registry/valuesets/<id>` — regional value sets for common forms
 
-Country nodes cache these and fall back to country-local definitions when the
-regional registry is unreachable. This keeps offline-first semantics intact.
+Country nodes would cache these and fall back to country-local definitions when
+the regional registry is unreachable, keeping offline-first semantics intact.
 
 ## When to build this
 

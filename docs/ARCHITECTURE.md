@@ -16,8 +16,8 @@
 flowchart TB
     subgraph clinic [Clinic Device - offline-first]
         UI[Next.js React UI]
-        Services["Service layer (50+ services)"]
-        Pouch["PouchDB (IndexedDB)<br/>~50 local databases"]
+        Services["Service layer (100+ services)"]
+        Pouch["PouchDB (IndexedDB)<br/>~77 local databases"]
         UI --> Services --> Pouch
     end
 
@@ -73,6 +73,14 @@ Sync directions (`sync-config.ts`):
 - **push** — client → server only (append-only trails)
 - **pull** — server → client only (admin-managed reference data)
 
+`DATABASE_SYNC_CONFIGS` currently lists ~68 synced databases — more than
+this catalog enumerates. The tables below cover the core clinical, vital
+events, operational, billing, and identity/config/audit domains; newer
+additions (clinical workspace notes/tasks/encounters, nutrition screening,
+program enrollments, online booking/provider profiles, patient documents,
+facility census) follow the same `both`+org-scoped pattern and are omitted
+here for brevity — `sync-config.ts` is the authoritative full list.
+
 ### Core clinical
 
 | Database | Doc type | Relationships (id references) | Sync | Org-scoped | Postgres table |
@@ -84,7 +92,7 @@ Sync directions (`sync-config.ts`):
 | `tamamhealth_prescriptions` | `prescription` | patientId; admissionId → wards; witnessId → users; embeds `administrations[]` (MAR, append-only) | both | yes | `prescriptions` |
 | `tamamhealth_problems` | `problem` | patientId; sourceEncounterId → medical_records | both | yes | `problems` |
 | `tamamhealth_triage` | `triage` | patientId; triagedBy / handoffTo → users; facilityId | both | yes | `triage_events` |
-| `tamamhealth_disease_alerts` | `disease_alert` | reportedBy → users | both | **no** (cross-org surveillance) | `disease_alerts` |
+| `tamamhealth_disease_alerts` | `disease_alert` | reportedBy → users | both | yes (a facility user must never replicate another org's alerts) | `disease_alerts` |
 | `tamamhealth_hospitals` | `hospital` | orgId; `facilityLevel`: boma/payam/county/state/national | both | yes | `hospitals` |
 | `tamamhealth_appointments` | `appointment` | patientId; providerId → users; referralId; previousAppointmentId (follow-up chain) | both | yes | `appointments` |
 | `tamamhealth_availability` | `availability` | providerId → users; facilityId | both | yes | — |
@@ -101,8 +109,7 @@ Sync directions (`sync-config.ts`):
 | `tamamhealth_deaths` | `death` | patientId; facilityId; WHO ICD-11 cause chain | both | yes | `deaths` |
 | `tamamhealth_immunizations` | `immunization` | patientId; facilityId | both | yes | `immunizations` |
 | `tamamhealth_anc` | `anc_visit` | motherId/patientId → patients; linkedBirthId → births (bidirectional link) | both | yes | `anc_visits` |
-| `tamamhealth_boma_visits` | `boma_visit` | patientId (optional); workerId → users; referredTo → hospitals | both | yes | `boma_visits` |
-| `tamamhealth_follow_ups` | `follow_up` | patientId; assignedWorker → users; sourceVisitId → boma_visits | both | yes | `follow_ups` |
+| `tamamhealth_follow_ups` | `follow_up` | patientId; assignedWorker → users; sourceVisitId → encounter | both | yes | `follow_ups` |
 | `tamamhealth_facility_assessments` | `facility_assessment` | facilityId → hospitals | both | yes | `facility_assessments` |
 
 ### Operational / facility
@@ -135,13 +142,13 @@ Sync directions (`sync-config.ts`):
 | `tamamhealth_saved_payment_methods` | patientId (tokenized) | both | yes | — |
 | `tamamhealth_payment_plans` | patientId, balance | both | yes | `payment_plans` |
 | `tamamhealth_invoices` | charges, patientId | both | yes | `invoices` |
-| `tamamhealth_ledger` | double-entry rows referencing payments/charges | **push** (append-only) | yes | `ledger_entries` |
+| `tamamhealth_ledger` | double-entry rows referencing payments/charges | **both** (append-only rows, but must converge live between stations — e.g. a charge raised at the clinic and a payment taken at the cashier) | yes | `ledger_entries` |
 
 ### Identity, config & audit (trust-boundary databases)
 
 | Database | Doc type | Sync | Org-scoped | Why this direction |
 |---|---|---|---|---|
-| `tamamhealth_users` | `user` | **pull** | yes | Clients must never mint/modify accounts; admin-managed server-side |
+| `tamamhealth_users` | `user` | **not synced** | n/a | Server-only control-plane database (password/PIN hashes). Never replicated to browsers; staff-directory reads go through `/api/users`, which returns a redacted, tenant-scoped view |
 | `tamamhealth_organizations` | `organization` | **pull** | no | Tenant registry pushed down to all clients |
 | `tamamhealth_platform_config` | `platform_config` | **pull** | no | Platform-level, super_admin-only writes |
 | `tamamhealth_audit_log` | `audit_log` | **push** | yes | Tamper-resistance: clients can't receive/rewrite history |
@@ -178,8 +185,7 @@ erDiagram
     ANC_VISIT }o--|| PATIENT : mother
     ANC_VISIT |o--o| BIRTH : "linkedBirthId"
     BIRTH }o--o| PATIENT : "child + mother"
-    BOMA_VISIT }o--o| PATIENT : "optional link"
-    BOMA_VISIT ||--o{ FOLLOW_UP : spawns
+    MEDICAL_RECORD ||--o{ FOLLOW_UP : "may schedule"
     PATIENT ||--o{ INSURANCE_POLICY : holds
     PATIENT ||--o{ CHARGE : incurs
     CHARGE }o--o{ CLAIM : "billed to insurer"
@@ -199,11 +205,11 @@ Roles and their route/data access are documented in
 
 | Layer | Mechanism | File |
 |---|---|---|
-| Route access | Role → allowed-route table, checked identically in Edge middleware + server + client | `platform/src/lib/role-routes.ts`, `permissions.ts` |
-| Data scoping (reads) | `filterByScope()` — orgId always; payam scope for supervisors; hospitalId for non-admin roles | `platform/src/lib/services/data-scope.ts` |
-| API auth | JWT payload → `buildScopeFromAuth()`; HMAC signature on `/api/sync` | `api-auth.ts`, `api-security.ts` |
-| Replication scope | Per-DB `orgScoped` flag — clients replicate only their org's partition | `sync/sync-config.ts` |
-| CouchDB write guard | `validate_doc_update`: requires `orgId` on every doc, rejects mismatch with the user's `org:<id>` CouchDB role, makes `orgId` immutable | `sync/validate-doc-update.ts` |
+| Route access | Role → allowed-route table, checked identically in the Edge proxy (`src/proxy.ts`, Next.js 16's middleware layer) + server + client | `platform/src/lib/role-routes.ts`, `permissions.ts` |
+| Data scoping (reads) | `filterByScope()` — orgId always (fail-closed if missing); hospitalId for non-admin, non-national roles; `super_admin`/`government` see everything | `platform/src/lib/services/data-scope.ts` |
+| API auth | JWT payload → `buildScopeFromAuth()`; HMAC signature on `/api/sync` | `services/data-scope.ts`, `api-security.ts` |
+| Replication scope | Per-DB `orgScoped` flag — clients replicate only their org's partition; a facility-level CouchDB selector further narrows PHI-bearing docs to the user's entitled facilities (see [FACILITY-ISOLATION.md](FACILITY-ISOLATION.md)) | `sync/sync-config.ts`, `sync/facility-entitlements.ts` |
+| CouchDB write guard | `validate_doc_update`: requires `orgId` on every doc, rejects mismatch with the user's `org:<id>` CouchDB role, makes `orgId`/`hospitalId`/`type` immutable | `sync/validate-doc-update.ts` (re-exports from `sync/write-permissions.ts`, which holds the logic) |
 | Append-only domains | Push-only sync; corrections are new rows, never edits | `sync-config.ts`, `db-types.ts` |
 | Two-person control | Controlled substances (Schedule II–V): operator + witness signature on every movement | `ControlledSubstanceLogDoc` |
 | PHI scrubbing | `stripPHI()` `beforeSend` hook removes patient data from error reports | `observability.ts` |
@@ -213,8 +219,8 @@ Special permission lists in `permissions.ts`:
 - `CONFLICT_RESOLUTION_ROLES`: `super_admin`, `org_admin`,
   `medical_superintendent`, `hrio` — the only roles that may act on the
   conflict queue.
-- Private-sector orgs exclude government/community roles
-  (`getAvailableRoles()`).
+- Private-sector orgs exclude `super_admin`, `government`, and
+  `county_health_director` — national/oversight roles (`getAvailableRoles()`).
 
 ---
 
@@ -228,8 +234,8 @@ PouchDB ──replication──► CouchDB ──_changes──► sync-worker �
   per-database last-seen `seq`, and POSTs batches signed with HMAC-SHA256
   (`x-tamamhealth-signature`).
 - `/api/sync` verifies the signature and flattens JSON documents into the
-  ~45 relational tables created by `platform/src/lib/db/migrations/`
-  (`0001`–`0005`), plus `sync_metadata` (checkpoint per database).
+  ~49 relational tables created by `platform/src/lib/db/migrations/`
+  (`0001`–`0012`), plus `sync_metadata` (checkpoint per database).
 - If `DATABASE_URL` is unset, migrations are skipped at startup
   (`instrumentation.ts`) and the tier simply does not exist. Nothing in the
   operational path notices.

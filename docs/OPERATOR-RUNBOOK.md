@@ -50,11 +50,16 @@ cd TamamHealth
 cp .env.example .env          # then edit: set strong COUCHDB_USER/PASSWORD
 
 # 2. Platform runtime config
-cp platform/.env.example platform/.env.production
+cp platform/.env.production.example platform/.env.production
 # Edit: JWT_SECRET (long random string), NEXT_PUBLIC_SYNC_ENABLED=true,
 # NEXT_PUBLIC_COUCHDB_URL (the public URL clients will reach CouchDB on).
 # NOTE: NEXT_PUBLIC_* values are baked in at BUILD time — set them before
 # the next step.
+#
+# Use platform/.env.production.example, not platform/.env.example — the
+# latter is the local-dev template (npm run dev) and is missing
+# production-required keys such as TAMAMHEALTH_LICENSE_SECRET and
+# COUCHDB_GATEWAY_SECRET that lib/config-validation.ts enforces at boot.
 
 # 3. Build and start (CouchDB-only install — no analytics)
 docker compose up -d --build

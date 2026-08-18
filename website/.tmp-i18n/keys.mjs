@@ -16,7 +16,7 @@ const files = [];
 const keys = new Set();
 for (const f of files) {
   const src = readFileSync(f, 'utf8');
-  for (const m of src.matchAll(/\bt\("((?:[^"\\]|\\.)*)"\)/g)) {
+  for (const m of src.matchAll(/\bt\("((?:[^"\\]|\\.)*)"\s*[,)]/g)) {
     keys.add(m[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\').trim());
   }
 }
@@ -24,7 +24,7 @@ const fromCode = keys.size;
 
 // 2. every translatable string reachable from site-data, using the same
 //    opaque-key rules as translateDeep
-const OPAQUE = new Set(['slug','href','src','image','accent','color','dateISO','id','key','icon','value','code','email','phone','url','name_en','focus','lifecycle','idPlaceholder','WEB3FORMS_ACCESS_KEY','d','d2','d3','menu']);
+const OPAQUE = new Set(['slug','href','src','image','accent','color','dateISO','id','key','icon','code','email','phone','url','name_en','focus','idPlaceholder','WEB3FORMS_ACCESS_KEY','d','d2','d3','menu']);
 function walkData(v, key) {
   if (typeof v === 'string') {
     if (OPAQUE.has(key)) return;

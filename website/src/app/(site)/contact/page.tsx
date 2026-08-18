@@ -1,20 +1,12 @@
 import type { Metadata } from "next";
 import ContactForm from "@/components/ContactForm";
 import { getTranslator } from "@/lib/i18n/server";
+import { CONTACT_POINTS } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "Get in touch",
   description: "Facility, NGO, funder, or just curious — tell us what you're building or how you want to help. We answer every message.",
 };
-
-/** What a demo actually gets you — the reason to fill the form in. */
-const CONTACT_POINTS = [
-  "See the system running on a real facility day, offline",
-  "Get a deployment plan sized to your level of care",
-  "Talk to the people who built it, not a sales desk",
-  "Understand what it takes to run without reliable power or connectivity",
-  "Find out what a pilot costs, and what the first month involves",
-];
 
 function Check() {
   return (
@@ -45,7 +37,7 @@ export default async function ContactPage() {
               {CONTACT_POINTS.map((point) => (
                 <div key={point} style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
                   <Check />
-                  <span style={{ fontSize: 16.5, lineHeight: 1.5, color: "rgba(255,255,255,0.9)" }}>{point}</span>
+                  <span style={{ fontSize: 16.5, lineHeight: 1.5, color: "rgba(255,255,255,0.9)" }}>{t(point)}</span>
                 </div>
               ))}
             </div>

@@ -66,11 +66,11 @@ export default function LevelsExplorer() {
           <img src={lv.image} alt={lv.alt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(1,86,151,0.72) 0%, rgba(1,86,151,0.06) 74%)" }} />
           <div style={{ position: "absolute", left: 40, top: "50%", transform: "translateY(-50%)", width: "min(440px, 72%)", background: "rgba(1,86,151,0.92)", padding: "32px 32px 34px", color: "#FFFFFF" }}>
-            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-300)" }}>Level {String(level + 1).padStart(2, "0")}</span>
+            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-300)" }}>{t("Level {{n}}", { n: String(level + 1).padStart(2, "0") })}</span>
             <h3 style={{ fontSize: 30, margin: "10px 0 10px", color: "#FFFFFF" }}>{lv.level}</h3>
             <p style={{ margin: "0 0 18px", fontSize: 15.5, lineHeight: 1.6, color: "rgba(255,255,255,0.82)" }}>{lv.role}</p>
             <span className="fs12" style={{ letterSpacing: "0.1em", textTransform: "uppercase", color: "#FFFFFF", background: lv.tone, padding: "7px 13px", display: "inline-block" }}>
-              Served by {lv.product}
+              {t("Served by {{product}}", { product: lv.product })}
             </span>
           </div>
         </div>

@@ -10,7 +10,7 @@ import {
   translate,
   translateDeep,
 } from './index';
-import type { Dictionary, Locale } from './index';
+import type { Dictionary, Locale, Vars } from './index';
 import { apd } from './apd';
 
 const DICTIONARIES: Record<Locale, Dictionary> = {
@@ -21,8 +21,8 @@ const DICTIONARIES: Record<Locale, Dictionary> = {
 interface LanguageValue {
   locale: Locale;
   setLocale: (next: Locale) => void;
-  /** Translate one literal string of UI copy. */
-  t: (text: string) => string;
+  /** Translate one literal string of UI copy; `vars` fills {{placeholders}}. */
+  t: (text: string, vars?: Vars) => string;
   /** Translate a whole content object from site-data. */
   content: <T>(value: T) => T;
 }
@@ -73,7 +73,7 @@ export function LanguageProvider({
     return {
       locale,
       setLocale,
-      t: (text: string) => translate(text, dict),
+      t: (text: string, vars?: Vars) => translate(text, dict, vars),
       content: <T,>(v: T) => translateDeep(v, dict),
     };
   }, [locale, setLocale]);

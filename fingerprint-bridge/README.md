@@ -35,6 +35,9 @@ cd fingerprint-bridge
 npm start           # mock driver, http://127.0.0.1:7345
 ```
 
+Node >= 20 and nothing else — this package has no dependencies and no lockfile,
+so there is no install step.
+
 Environment variables:
 
 | Variable | Default | Purpose |
@@ -63,7 +66,13 @@ On the platform side, set in `platform/.env.local`:
 ```bash
 NEXT_PUBLIC_FINGERPRINT_ENABLED=true
 NEXT_PUBLIC_FINGERPRINT_BRIDGE_URL=http://127.0.0.1:7345
+# only when the bridge runs with FINGERPRINT_BRIDGE_TOKEN — same value, sent
+# as the X-Bridge-Token header on capture/match:
+NEXT_PUBLIC_FINGERPRINT_BRIDGE_TOKEN=<random-secret>
 ```
+
+With the flag off or the bridge unreachable, `fingerprint-service.ts` reports
+`available: false` and the UI hides itself — see `platform/.env.example`.
 
 ## API
 
@@ -91,7 +100,8 @@ Body: `{ "probe": "<base64>", "candidates": [{ "id": "tpl-1", "template": "<base
 ```
 
 Matches are sorted by score (0–100) descending and filtered to
-`score >= threshold` (default 40).
+`score >= threshold` (default 40, clamped to 1–100 so a caller cannot pass 0 or
+a negative value and match everyone).
 
 ## Adding a real scanner adapter
 
@@ -120,5 +130,9 @@ then run with `FINGERPRINT_DRIVER=<vendor>`. Guidance:
 ## Test
 
 ```bash
-npm test
+npm run check       # node --check index.mjs — parse only
+npm test            # node --test index.test.mjs — built-in runner, no deps
 ```
+
+CI runs both on every PR as the `fingerprint-bridge · syntax check + tests`
+job, with no `npm ci` step.

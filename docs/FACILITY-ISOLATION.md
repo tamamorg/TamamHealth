@@ -76,10 +76,19 @@ Concretely, the current state is:
    `facility:<facilityId>`. Provision that role on each CouchDB user alongside
    the existing `role:<name>` and `org:<orgId>` roles.
 
-   > **Operator hazard:** provision the new roles on every CouchDB user
-   > *before* switching the client to per-facility databases, or every
-   > non-admin read fails at once. This is the same ordering trap as the
-   > `validate_doc_update` rollout (KAN-94).
+   > **Status:** the role-provisioning half is already live — `couch-auth.ts`
+   > pushes a `facility:<hospitalId>` CouchDB role for every user with a
+   > `hospitalId`. What's still outstanding is using it: no `_security`
+   > object binds to a `facility:` role yet, and database naming
+   > (`tenant-database.ts`) is still per-org (`tamamhealth_<type>--org-<orgId>`),
+   > not per-facility.
+   >
+   > **Operator hazard:** provisioning the role ahead of any database
+   > actually checking it is deliberate and safe. Doing it in the other
+   > order — pointing `_security` at `facility:<id>` before every relevant
+   > CouchDB user carries that role — fails every non-admin read at once.
+   > This is the same ordering trap as the `validate_doc_update` rollout
+   > (KAN-94).
 
 4. **Route replication per facility** — the client opens one replication per
    entitled facility instead of one per document type. Multi-facility roles
@@ -97,7 +106,7 @@ Concretely, the current state is:
 
 ## Verifying
 
-`src/__tests__/sync/facility-entitlements.test.ts` evaluates the generated
+`src/__tests__/security/replication-selector.test.ts` evaluates the generated
 selector against documents directly, with no UI filtering applied — so a pass
 means exclusion happened at the replication layer, not at render time.
 

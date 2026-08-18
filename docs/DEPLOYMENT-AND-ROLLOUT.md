@@ -157,6 +157,12 @@ For larger deployments, manage secrets with **Doppler** (`DOPPLER_TOKEN` in the
 host shell makes the compose entrypoint fetch them at boot) — see
 `docs/operations/secrets.md`.
 
+> **Gotcha:** `website/.env.production.example` doesn't exist in the repo, so
+> nothing auto-generates `website/.env.production` — `deploy.sh` still checks
+> for the file and refuses to run without it. `touch website/.env.production`
+> is enough; the website container currently loads no env file at all
+> (`docker-compose.yml` has no `env_file:` on that service).
+
 ### 3.5 Bring up the stack
 
 ```bash

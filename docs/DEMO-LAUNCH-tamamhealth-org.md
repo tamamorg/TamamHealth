@@ -49,6 +49,11 @@ git clone <YOUR-REPO-URL> /opt/tamamhealth && cd /opt/tamamhealth
 # 2. Generate all secrets automatically
 ./scripts/gen-secrets.sh
 
+# 2b. website/.env.production has no .example template, so gen-secrets.sh
+# silently skips it — deploy.sh still requires the file to exist. The
+# website container reads no secrets from it today, so an empty file works:
+touch website/.env.production
+
 # 3. Set the demo's non-secret values (domain + demo mode)
 sed -i 's/REPLACE-DOMAIN/tamamhealth.org/g' platform/.env.production website/.env.production
 sed -i 's#^NEXT_PUBLIC_COUCHDB_URL=.*#NEXT_PUBLIC_COUCHDB_URL=https://couch.tamamhealth.org#' platform/.env.production

@@ -110,6 +110,12 @@ password.
 # 2. Generate all secrets automatically
 # ./scripts/gen-secrets.sh
 
+# 2b. website/.env.production has no .example template in the repo, so
+# gen-secrets.sh silently skips creating it — but deploy.sh below still
+# requires the file to exist. The website container reads no secrets from
+# it today, so an empty file is enough:
+# touch website/.env.production
+
 # 3. Set the demo's non-secret values (domain + demo mode)
 # sed -i 's/REPLACE-DOMAIN/tamamhealth.org/g' platform/.env.production website/.env.production
 # sed -i 's#^NEXT_PUBLIC_COUCHDB_URL=.*#NEXT_PUBLIC_COUCHDB_URL=https://couch.tamamhealth.org#' platform/.env.production
@@ -144,6 +150,9 @@ success banner with the admin login info.
 - **TLS not issuing?** DNS probably hasn't propagated — re-check Step A3, wait,
   then `# systemctl reload caddy`.
 - **"Missing .env" error from deploy.sh?** You skipped Step A5.2 (gen-secrets).
+- **"Missing .../website/.env.production" error from deploy.sh?** Expected —
+  see Step A5.2b. `gen-secrets.sh` has no template to generate that file from,
+  so create it yourself: `# touch website/.env.production`.
 - **Build out of memory?** Use a 4 GB+ server (CPX21 or bigger).
 
 ---
@@ -192,6 +201,7 @@ CouchDB/Postgres stay private (bound to localhost by compose) — never open 598
 # git clone https://github.com/<you>/tamamhealth.git /opt/tamamhealth
 # cd /opt/tamamhealth
 # ./scripts/gen-secrets.sh
+# touch website/.env.production   # no .example template ships for this file — see Step A5.2b
 # sed -i 's/REPLACE-DOMAIN/<your-country-domain>/g' platform/.env.production website/.env.production
 # sed -i 's#^NEXT_PUBLIC_COUCHDB_URL=.*#NEXT_PUBLIC_COUCHDB_URL=https://couch.<your-country-domain>#' platform/.env.production
 # sed -i 's#^NEXT_PUBLIC_DEMO_MODE=.*#NEXT_PUBLIC_DEMO_MODE=false#' platform/.env.production   # CLEAN SLATE

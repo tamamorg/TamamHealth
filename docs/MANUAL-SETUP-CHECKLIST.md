@@ -8,9 +8,10 @@ platform is deployable.
 
 ## Already handled for you (no action needed)
 
-- ✅ Env **templates** for all three files (`.env.example`,
-  `platform/.env.production.example`, `website/.env.production.example`) — every
-  required key, documented.
+- ✅ Env **templates** for the platform and compose files (`.env.example`,
+  `platform/.env.production.example`) — every required key, documented.
+  `website/.env.production.example` does **not** exist yet — see the note in
+  step 1 below.
 - ✅ **Secret generation** — `scripts/gen-secrets.sh` fills every random secret
   (JWT, CouchDB/Postgres passwords, admin bootstrap, HMAC webhook) so you never
   invent a key.
@@ -29,8 +30,15 @@ platform is deployable.
 
 ### 1. Generate your secrets — 1 command
 ```bash
-./scripts/gen-secrets.sh        # writes the 3 gitignored env files, secrets filled
+./scripts/gen-secrets.sh        # writes .env and platform/.env.production, secrets filled
+touch website/.env.production   # no .example template exists for this one (see below)
 ```
+`gen-secrets.sh` only writes 2 of the 3 gitignored env files: there's no
+`website/.env.production.example` template in the repo, so it silently skips
+`website/.env.production` — but `deploy.sh` still refuses to run without that
+file present. The website container reads no secrets from it today, so an
+empty file is enough.
+
 Then store a copy of those secrets in a password manager and **escrow the LUKS
 disk key** somewhere safe off the server. (Only you should hold these.)
 

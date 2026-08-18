@@ -16,7 +16,7 @@ feature work.
 git clone <repo-url> && cd TamamHealth/platform
 npm install
 
-# Interactive setup: writes .env.local
+# Interactive setup: writes .env.local (node scripts/setup.mjs)
 npm run setup
 
 # macOS/Linux: raise the file-descriptor limit first or Next.js dev mode
@@ -26,8 +26,13 @@ ulimit -n 10240
 npm run dev          # http://localhost:3000
 ```
 
+(There's also a repo-root `npm run setup`, which runs `scripts/setup.sh` —
+prereq checks plus seeding `platform/.env.local` from `.env.example`
+non-interactively. Either gets you a working `.env.local`; the one above is
+the interactive per-developer version.)
+
 First page load takes a while: Next.js cold-compiles, then the browser seeds
-~50 demo databases ("Initializing offline database..."). One-time per
+~77 demo databases ("Initializing offline database..."). One-time per
 browser profile.
 
 Log in with the demo credentials (generated into
@@ -48,19 +53,19 @@ Gotchas:
 
 ```
 TamamHealth/
-├── platform/          # The EMR (Next.js 14, App Router) — most work happens here
+├── platform/          # The EMR (Next.js 16, App Router) — most work happens here
 │   └── src/
 │       ├── app/       # Routes: pages + /api/* handlers
 │       ├── components/
 │       └── lib/
-│           ├── db.ts             # PouchDB accessors — ~50 typed databases
+│           ├── db.ts             # PouchDB accessors — ~77 typed databases
 │           ├── db-types*.ts      # Document schemas (split by domain)
 │           ├── db-seed.ts        # Demo data seeding (SEED_VERSION gate)
 │           ├── db/               # Postgres migrations + client (analytics only)
 │           ├── sync/             # Replication: sync-config, manager, CouchDB guards
-│           ├── services/         # ALL business logic — 50+ domain services
+│           ├── services/         # ALL business logic — 100+ domain services
 │           ├── permissions.ts    # Role configs + nav
-│           ├── role-routes.ts    # Route gating table (middleware + server + client)
+│           ├── role-routes.ts    # Route gating table (Edge proxy + server + client)
 │           └── observability.ts  # Sentry shim (no-ops without DSN)
 ├── website/           # Marketing site (Next.js)
 ├── mobile/            # React Native client (early)
@@ -68,6 +73,7 @@ TamamHealth/
 ├── fingerprint-bridge/ # Localhost HTTP bridge for USB fingerprint scanners
 ├── country-node/      # National aggregation tier (skeleton)
 ├── regional-exchange/ # Cross-border tier (skeleton)
+├── infra/             # Terraform (DigitalOcean App Platform, AWS CloudFormation)
 ├── scripts/           # Backups, preflight, CouchDB dumps
 ├── docs/              # You are here
 └── docker-compose.yml # Full-stack production deployment
@@ -125,9 +131,11 @@ npm run lint             # next lint
 npx tsc --noEmit         # type-check (CI runs this)
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint + type-check + test + build on
-every PR. The build step catches server/client boundary mistakes — run
-`npm run build` locally if you touched env handling or `instrumentation.ts`.
+CI (`.github/workflows/ci.yml`) runs lint + type-check + test + build for
+`platform`, `website`, `mobile`, and `fingerprint-bridge` on every PR, plus
+an `infrastructure` job (Terraform fmt/validate). The build step catches
+server/client boundary mistakes — run `npm run build` locally if you touched
+env handling or `instrumentation.ts`.
 
 ## 5. Glossary (domain terms you'll meet in code)
 
@@ -146,7 +154,7 @@ every PR. The build step catches server/client boundary mistakes — run
 ## 6. Jira, GitHub, and deploy tracking
 
 - **Jira:** tamamorg.atlassian.net, project **KAN** — include `KAN-N` in branches, commits, and PRs ([CONTRIBUTING.md](../CONTRIBUTING.md)).
-- **Staging:** merges to `main` auto-deploy to the staging DigitalOcean droplet via GitHub Actions.
-- **Production:** manual **deploy-production** workflow after staging smoke test.
+- **Staging:** `deploy-staging.yml` fires automatically once `ci.yml` passes on `main`.
+- **Production:** `deploy-production.yml` is manual (`workflow_dispatch`) and requires environment approval.
 
 Operator guide: [operations/jira-github-do-tracking.md](operations/jira-github-do-tracking.md).
