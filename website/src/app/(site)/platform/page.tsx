@@ -136,9 +136,14 @@ export default function PlatformPage() {
             </div>
             <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", maxWidth: 420 }}>Seven steps, one record — from the front desk to the national report.</span>
           </div>
+          {/* The seven steps divide the container rather than sitting on a fixed
+              190px basis: seven of those came to 1330px inside a 1320px row, so
+              the whole flow scrolled sideways by ten pixels for no reason. They
+              still fall back to a scrolling rail under 1100px, where seven
+              columns genuinely do not fit. */}
           <div className="tm-flow-rail" style={{ display: "flex", gap: 0, marginTop: 34, overflowX: "auto" }}>
             {PLATFORM_FLOW.map((s) => (
-              <div key={s.n} className="tm-flow-step" style={{ flex: "1 0 190px", padding: "0 22px 4px 0", display: "flex", flexDirection: "column", gap: 11 }}>
+              <div key={s.n} className="tm-flow-step" style={{ flex: "1 1 0", minWidth: 0, padding: "0 22px 4px 0", display: "flex", flexDirection: "column", gap: 11 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ width: 11, height: 11, background: "#7FC4EA", flexShrink: 0 }} />
                   <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.28)" }} />
