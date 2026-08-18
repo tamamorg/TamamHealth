@@ -131,6 +131,12 @@ jobs:
             doctl registry repository delete-tag "$REPO" "$t" --force && REMOVED=1 || true
           done
 
+          # The starter tier caps repositories as well as bytes, and the push
+          # is refused on that count with a message that names neither, so
+          # record what the registry holds on every run.
+          echo "repositories: $(doctl registry repository list-v2 -o json 2>/dev/null \
+            | jq -r '[.. | objects | select(has("name") and has("tag_count")) | "\(.name) (\(.tag_count) tags)"] | join(", ")' 2>/dev/null)"
+
           USED=$(doctl registry get -o json 2>/dev/null | jq '.[0].storage_usage_bytes // 0')
           echo "registry holds ${USED:-?} of ${CAP} bytes"
 
