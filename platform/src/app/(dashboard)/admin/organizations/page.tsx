@@ -33,6 +33,7 @@ import {
   emptyOrgAdminForm, validateOrgAdminForm, buildOrgAdminUserPayload,
   ORG_ADMIN_MIN_PASSWORD_LENGTH, type OrgAdminFormData,
 } from '@/lib/org-admin-provisioning';
+import { BRAND_PRIMARY, BRAND_SECONDARY, WARNING } from '@/lib/theme-colors';
 
 type FeatureFlagKey =
   | 'epidemicIntelligence' | 'mchAnalytics' | 'dhis2Export'
@@ -53,14 +54,88 @@ type OrgFormData = {
   maxHospitals: number;
 } & Record<FeatureFlagKey, boolean>;
 
+// primaryColor/secondaryColor/accentColor below used to default to
+// 'var(--accent-primary)' etc., which <input type="color"> cannot parse (it
+// only accepts a 7-char hex) — the swatch rendered black, and an org saved
+// without touching the picker persisted that literal string as its brand
+// colour. BRAND_PRIMARY/BRAND_SECONDARY/WARNING (lib/theme-colors.ts) are the
+// tested literal mirror of --accent-primary/--accent-hover/--color-warning —
+// used here as the pre-mount-safe default; resolveCssVarToHex() below
+// re-resolves the live cascade once mounted so these track the real tokens
+// rather than staying hard-coded if a tenant ever overrides them at runtime.
 const emptyForm: OrgFormData = {
   name: '', slug: '', orgType: 'public', contactEmail: '', country: 'South Sudan',
-  primaryColor: 'var(--accent-primary)', secondaryColor: 'var(--accent-hover)', accentColor: 'var(--accent-primary)',
+  primaryColor: BRAND_PRIMARY, secondaryColor: BRAND_SECONDARY, accentColor: BRAND_PRIMARY,
   subscriptionPlan: 'professional', subscriptionStatus: 'trial',
   maxUsers: 50, maxHospitals: 10,
   epidemicIntelligence: true, mchAnalytics: true, dhis2Export: false,
   aiClinicalSupport: true, communityHealth: true, facilityAssessments: true,
 };
+
+/** Normalize a resolved CSS colour string — `#rrggbb`, `#rgb`, or `rgb()`/
+ *  `rgba()` (what getComputedStyle returns, possibly with whitespace) — to a
+ *  lowercase `#rrggbb` hex string. Returns null for anything else (unresolved
+ *  `var(--missing-token)`, a named colour, empty string). */
+function normalizeToHex(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  const hex6 = value.match(/^#([0-9a-f]{6})$/i);
+  if (hex6) return `#${hex6[1].toLowerCase()}`;
+  const hex3 = value.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+  if (hex3) return `#${hex3[1]}${hex3[1]}${hex3[2]}${hex3[2]}${hex3[3]}${hex3[3]}`.toLowerCase();
+  const rgb = value.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (rgb) {
+    const toHex = (n: string) => Math.max(0, Math.min(255, Number(n))).toString(16).padStart(2, '0');
+    return `#${toHex(rgb[1])}${toHex(rgb[2])}${toHex(rgb[3])}`;
+  }
+  return null;
+}
+
+/**
+ * Resolve a CSS custom property (e.g. "--accent-primary") to a concrete hex
+ * colour by reading the live cascade — globals.css defines these tokens as
+ * chains of var() references (--accent-primary -> --tb-blue-900 ->
+ * --brand-accent -> #144972), and getComputedStyle() on :root fully
+ * substitutes that chain down to the literal value, unlike a static read of
+ * the stylesheet text. Falls back to `fallbackHex` outside the browser (SSR)
+ * or if the token can't be resolved.
+ */
+function resolveCssVarToHex(varName: string, fallbackHex: string): string {
+  if (typeof window === 'undefined') return fallbackHex;
+  try {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue(varName);
+    return normalizeToHex(raw) ?? fallbackHex;
+  } catch {
+    return fallbackHex;
+  }
+}
+
+/**
+ * Coerce a *stored* organization colour value for display in the picker.
+ * Handles three cases: already-valid hex (pass through), a legacy
+ * `var(--...)` string saved before this fix (resolve it through the DOM —
+ * assigning to an element's `color` and reading the computed value resolves
+ * var() chains and any CSS colour syntax uniformly), or missing/unparseable
+ * (fall back to the given resolved brand default).
+ */
+function coerceStoredColorToHex(raw: string | undefined, fallbackHex: string): string {
+  if (!raw) return fallbackHex;
+  const direct = normalizeToHex(raw);
+  if (direct) return direct;
+  if (typeof document === 'undefined') return fallbackHex;
+  try {
+    const probe = document.createElement('div');
+    probe.style.color = '';
+    probe.style.color = raw;
+    if (!probe.style.color) return fallbackHex; // browser rejected the value
+    document.body.appendChild(probe);
+    const computed = getComputedStyle(probe).color;
+    document.body.removeChild(probe);
+    return normalizeToHex(computed) ?? fallbackHex;
+  } catch {
+    return fallbackHex;
+  }
+}
 
 /** Grid: Organization (wide) · Plan · Facilities · Users · Status · row actions (narrow). */
 const GRID_TEMPLATE = 'minmax(200px,1.7fr) minmax(88px,0.8fr) minmax(104px,0.9fr) minmax(104px,0.9fr) minmax(88px,0.8fr) 48px';
@@ -89,10 +164,12 @@ export default function AdminOrganizationsPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
   const [deactivating, setDeactivating] = useState(false);
 
-  // "Create an administrator for this organization" — create-only (never
-  // shown while editingId is set). Defaults ON: the whole point is to
-  // collapse "create org" + "go create its admin at /admin/users" into one
-  // step, so the shortcut should be the default, not an opt-in extra click.
+  // The "Administrator" section's toggle. On create it defaults ON — the
+  // whole point is to collapse "create org" + "go create its admin at
+  // /admin/users" into one step, so the shortcut should be the default, not
+  // an opt-in extra click. On edit it defaults OFF (set in openEdit) —
+  // editing an org's name or plan must never silently mint a user account;
+  // issuing a login is an explicit, separate decision there.
   const [createAdmin, setCreateAdmin] = useState(true);
   const [adminForm, setAdminForm] = useState<OrgAdminFormData>(emptyOrgAdminForm);
   const [showAdminPassword, setShowAdminPassword] = useState(true);
@@ -100,6 +177,19 @@ export default function AdminOrganizationsPage() {
   // Credential hand-off for the admin account just created — same one-time
   // panel as /admin/users, shown only after both writes succeed.
   const [handoff, setHandoff] = useState<{ username: string; password: string } | null>(null);
+
+  // Resolved brand colours for the branding pickers — starts at the literal
+  // (tested) mirror in theme-colors.ts so the first paint is never black,
+  // then re-resolves the live cascade on mount so the defaults track the
+  // actual tokens (see resolveCssVarToHex above).
+  const [brandDefaults, setBrandDefaults] = useState<{ primary: string; hover: string; warning: string }>({ primary: BRAND_PRIMARY, hover: BRAND_SECONDARY, warning: WARNING });
+  useEffect(() => {
+    setBrandDefaults({
+      primary: resolveCssVarToHex('--accent-primary', BRAND_PRIMARY),
+      hover: resolveCssVarToHex('--accent-hover', BRAND_SECONDARY),
+      warning: resolveCssVarToHex('--color-warning', WARNING),
+    });
+  }, []);
 
   // Per-org user + facility counts for the grid. Run all getStats() calls
   // concurrently so the overall wait is the slowest single call, not the sum.
@@ -138,8 +228,11 @@ export default function AdminOrganizationsPage() {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, primaryColor: brandDefaults.primary, secondaryColor: brandDefaults.hover, accentColor: brandDefaults.primary });
     setCreateAdmin(true);
+    // Fresh admin sub-form + freshly generated password every time the modal
+    // opens, so a password generated in one session (create or edit) can
+    // never leak into the next.
     setAdminForm({ ...emptyOrgAdminForm, password: generateTempPassword() });
     setShowAdminPassword(true);
     setAdminError(null);
@@ -154,9 +247,12 @@ export default function AdminOrganizationsPage() {
       orgType: org.orgType,
       contactEmail: org.contactEmail,
       country: org.country,
-      primaryColor: org.primaryColor,
-      secondaryColor: org.secondaryColor,
-      accentColor: org.accentColor || 'var(--color-warning)',
+      // Stored colours are normally already valid hex; coerce covers a
+      // legacy `var(--...)` string saved before this fix (or a missing
+      // accentColor) so the picker never renders black.
+      primaryColor: coerceStoredColorToHex(org.primaryColor, brandDefaults.primary),
+      secondaryColor: coerceStoredColorToHex(org.secondaryColor, brandDefaults.hover),
+      accentColor: coerceStoredColorToHex(org.accentColor, brandDefaults.warning),
       subscriptionPlan: org.subscriptionPlan,
       subscriptionStatus: org.subscriptionStatus,
       maxUsers: org.maxUsers,
@@ -168,16 +264,64 @@ export default function AdminOrganizationsPage() {
       communityHealth: org.featureFlags.communityHealth,
       facilityAssessments: org.featureFlags.facilityAssessments,
     });
+    // Administrator section defaults OFF on edit — see the createAdmin
+    // state comment. Reset the admin sub-form + generate a fresh password
+    // here too, so nothing from a prior create/edit session survives.
+    setCreateAdmin(false);
+    setAdminForm({ ...emptyOrgAdminForm, password: generateTempPassword() });
+    setShowAdminPassword(true);
+    setAdminError(null);
     setShowForm(true);
+  };
+
+  // Shared tail of both the create and edit paths once the organization
+  // write itself has succeeded: create the org_admin (scoped to `orgId` —
+  // the just-created org, or `editingId` on the edit path) via the same
+  // createUser() central-provisioning path every other admin-created account
+  // uses, then show the same one-time CredentialHandoffModal. A failure here
+  // is a PARTIAL failure — the organization write already committed, so this
+  // never rolls it back, and the toast is worded per `savedAs` so the admin
+  // knows exactly what did and didn't happen.
+  const provisionOrgAdmin = async (orgId: string, savedAs: 'created' | 'updated') => {
+    const savedToast = savedAs === 'created' ? `Organization "${form.name}" created.` : `Organization "${form.name}" updated.`;
+    try {
+      const { createUser } = await import('@/lib/services/user-service');
+      const created = await createUser(
+        buildOrgAdminUserPayload(adminForm, orgId),
+        currentUser?._id,
+        currentUser?.username
+      );
+      showToast(savedToast, 'success');
+      setShowForm(false);
+      // Hand the credentials to the admin exactly once — mirrors the
+      // /admin/users "Add user" flow. mustChangePassword was set server-side
+      // by createUser()'s POST /api/users path, not here.
+      setHandoff({ username: created.username, password: adminForm.password });
+    } catch (adminErr) {
+      setShowForm(false);
+      showToast(
+        t(savedAs === 'created' ? 'orgAdmin.adminCreationPartialError' : 'orgAdmin.adminCreationPartialErrorEdit', {
+          name: form.name,
+          reason: adminErr instanceof Error ? adminErr.message : 'Unknown error',
+        }),
+        'error',
+        {
+          durationMs: 15000,
+          action: { label: t('orgAdmin.goToUsers'), onClick: () => router.push('/admin/users') },
+        }
+      );
+    }
   };
 
   const handleSubmit = async () => {
     if (!form.name || !form.slug || !form.contactEmail) return;
 
-    // Create-only, and only when the toggle is on. Validate BEFORE the
-    // organization write starts — a bad admin field (empty username, short
-    // password) must never leave an org behind with no admin attempt at all.
-    const wantsAdmin = !editingId && createAdmin;
+    // Applies on both paths now — the toggle already defaults appropriately
+    // per path (ON for create, OFF for edit; see openCreate/openEdit).
+    // Validate BEFORE any organization write starts — a bad admin field
+    // (empty username, short password) must never leave an org created or
+    // updated with no admin attempt at all.
+    const wantsAdmin = createAdmin;
     if (wantsAdmin) {
       const errorCode = validateOrgAdminForm(adminForm);
       if (errorCode) {
@@ -215,11 +359,16 @@ export default function AdminOrganizationsPage() {
         },
       };
 
-      // Edit path — completely unchanged from before this feature.
       if (editingId) {
         await update(editingId, orgData, currentUser?._id, currentUser?.username);
-        showToast(`Organization "${form.name}" updated.`, 'success');
-        setShowForm(false);
+
+        if (!wantsAdmin) {
+          showToast(`Organization "${form.name}" updated.`, 'success');
+          setShowForm(false);
+          return;
+        }
+
+        await provisionOrgAdmin(editingId, 'updated');
         return;
       }
 
@@ -231,37 +380,7 @@ export default function AdminOrganizationsPage() {
         return;
       }
 
-      // The organization now exists. From here, a failure is a PARTIAL
-      // failure — never roll the org back (out of scope, and CouchDB tenant
-      // provisioning already ran), and never let the admin believe nothing
-      // happened.
-      try {
-        const { createUser } = await import('@/lib/services/user-service');
-        const created = await createUser(
-          buildOrgAdminUserPayload(adminForm, newOrg._id),
-          currentUser?._id,
-          currentUser?.username
-        );
-        showToast(`Organization "${form.name}" created.`, 'success');
-        setShowForm(false);
-        // Hand the credentials to the admin exactly once — mirrors the
-        // /admin/users "Add user" flow. mustChangePassword was set server-side
-        // by createUser()'s POST /api/users path, not here.
-        setHandoff({ username: created.username, password: adminForm.password });
-      } catch (adminErr) {
-        setShowForm(false);
-        showToast(
-          t('orgAdmin.adminCreationPartialError', {
-            name: form.name,
-            reason: adminErr instanceof Error ? adminErr.message : 'Unknown error',
-          }),
-          'error',
-          {
-            durationMs: 15000,
-            action: { label: t('orgAdmin.goToUsers'), onClick: () => router.push('/admin/users') },
-          }
-        );
-      }
+      await provisionOrgAdmin(newOrg._id, 'created');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to save organization.', 'error');
     } finally {
@@ -309,6 +428,12 @@ export default function AdminOrganizationsPage() {
     textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', display: 'block',
   };
   const sectionTitleStyle: React.CSSProperties = { marginBottom: 10 };
+
+  // The Administrator section's toggle copy differs by path (see the
+  // createAdmin state comment) — create-specific wording must never leak
+  // onto the edit path, so each uses its own i18n key.
+  const adminToggleLabel = t(editingId ? 'orgAdmin.addAdminToggleLabel' : 'orgAdmin.createAdminToggleLabel');
+  const adminToggleSub = t(editingId ? 'orgAdmin.addAdminToggleSub' : 'orgAdmin.createAdminToggleSub');
 
   return (
     <SadbPage>
@@ -496,16 +621,18 @@ export default function AdminOrganizationsPage() {
                 </div>
               </div>
 
-              {/* Administrator — create-only. Never rendered while editing an
-                  existing organization, so the edit path is unaffected. */}
-              {!editingId && (
-                <div>
-                  <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionAdministrator')}</h4>
-                  <div style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
-                    <SadbSettingRow label={t('orgAdmin.createAdminToggleLabel')} sub={t('orgAdmin.createAdminToggleSub')}>
-                      <SadbToggle checked={createAdmin} onChange={setCreateAdmin} label={t('orgAdmin.createAdminToggleLabel')} />
-                    </SadbSettingRow>
-                  </div>
+              {/* Administrator — rendered on both create and edit, but with
+                  different defaults and copy (see createAdmin state comment):
+                  create defaults ON ("create the first administrator"), edit
+                  defaults OFF and reads as adding one to an org that may
+                  already have staff, never as re-creating the first one. */}
+              <div>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionAdministrator')}</h4>
+                <div style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
+                  <SadbSettingRow label={adminToggleLabel} sub={adminToggleSub}>
+                    <SadbToggle checked={createAdmin} onChange={setCreateAdmin} label={adminToggleLabel} />
+                  </SadbSettingRow>
+                </div>
 
                   {createAdmin && (
                     <div className="grid grid-cols-2 gap-3" style={{ marginTop: 12 }}>
@@ -556,8 +683,7 @@ export default function AdminOrganizationsPage() {
                       )}
                     </div>
                   )}
-                </div>
-              )}
+              </div>
 
               <div className="sadb-modal-actions" style={{ marginTop: 0, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>
