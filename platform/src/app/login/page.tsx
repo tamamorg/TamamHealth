@@ -417,7 +417,7 @@ export default function LoginPage() {
             <div className="lg-shot blueprint">
               <Corners />
               {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-              <img src="/assets/platform-receptionist.png" alt="The TamamHealth reception dashboard: today's schedule, patient flow and triage queue" />
+              <img src="/assets/platform-doctor.png" alt="The TamamHealth clinical workspace: a doctor's patient list for the day with acuity, care team and outstanding items" />
             </div>
           </aside>
         )}
@@ -445,6 +445,8 @@ const loginStyles = (
       --lg-accent: #2191D0;
       --lg-accent-100: #F5FBFE;
       --lg-accent-700: #015697;
+      --lg-cta: #E8863A;
+      --lg-cta-hover: #D2712A;
       --lg-neutral-600: #6C7C8E;
       --lg-neutral-700: #5B6B7E;
       --lg-neutral-800: #3D5166;
@@ -535,13 +537,18 @@ const loginStyles = (
     .lg-keep { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--lg-neutral-800); text-transform: none; letter-spacing: normal; }
     .lg-keep input { width: 16px; height: 16px; accent-color: var(--lg-accent-700); }
 
+    /* Amber on navy ink, the site's primary call to action (.btn-primary in
+       website/globals.css). Every other blue on this screen is structural —
+       the links, the headings, the field focus ring — so the one button that
+       submits is the one warm colour on the page. White text on amber misses
+       4.5:1; navy ink carries it. */
     .lg-btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 6px;
       width: 100%; padding: 15px 0; font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif;
-      font-weight: 600; font-size: 16px; color: #FFFFFF; background: var(--lg-accent-700);
-      border: 1px solid var(--lg-accent-700); border-radius: 0; cursor: pointer;
+      font-weight: 600; font-size: 16px; color: #0E2A4A; background: var(--lg-cta);
+      border: 1px solid var(--lg-cta); border-radius: 0; cursor: pointer;
     }
-    .lg-btn:hover:not(:disabled) { background: #0E2A4A; border-color: #0E2A4A; }
+    .lg-btn:hover:not(:disabled) { background: var(--lg-cta-hover); border-color: var(--lg-cta-hover); }
     .lg-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
     /* The platform's danger token, not the site's own red: an auth failure is

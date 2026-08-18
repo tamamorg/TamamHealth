@@ -73,7 +73,6 @@ const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: strin
     allHref: "/platform",
     links: [
       { label: "How it works", note: "A patient day, end to end", href: "/platform#how-it-works" },
-      { label: "Facility dashboard", note: "The day's patients at a glance", href: "/platform#dashboard" },
       { label: "Offline-first by design", note: "Power cuts, network gaps, role-based access", href: "/platform#offline" },
       { label: "Where care breaks down", note: "The paper problem the platform replaces", href: "/health-system#challenges" },
       { label: "Staff log in", note: "Clinicians, lab, pharmacy, front desk", href: "/login?role=staff" },

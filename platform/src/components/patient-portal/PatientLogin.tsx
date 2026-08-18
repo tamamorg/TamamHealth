@@ -204,10 +204,17 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
           </div>
         </section>
 
-        {/* ── Right: hero — same floating-chip treatment as the staff login
-            (decorative copy hardcoded in English there too). ── */}
-        <section className="pl-hero" style={{ backgroundImage: 'url(/assets/doctor-nurse-consultation.jpg)' }}>
+        {/* ── Right: hero — the portal itself, not a stock photograph. What
+            someone is signing in to is the strongest thing to show them, and
+            the shot is the patient's own overview (records, medications, lab
+            results), so the promise under it is the screen above it. ── */}
+        <section className="pl-hero">
           <Link href="/" aria-label="Close" className="pl-hero-close"><X size={18} /></Link>
+
+          <div className="pl-hero-shot">
+            {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
+            <img src="/assets/patient-portal.png" alt="The Tamam patient portal: a patient's overview with visit summary, latest observations, medications and recent activity" />
+          </div>
 
           {/* What the portal offers — replaces the old decorative chips, which
               advertised an invented appointment and a fixed calendar week. */}
@@ -262,10 +269,17 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
 
         .pl-error { padding: 10px 13px; font-size: 12.5px; color: var(--color-danger); background: var(--color-danger-bg); border: 1px solid color-mix(in srgb, var(--color-danger) 22%, transparent); border-radius: 10px; }
 
-        .pl-submit { width: 100%; padding: 14px 24px; margin-top: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; color: #fff; background: var(--accent-primary); border: none; border-radius: 999px; cursor: pointer; transition: transform .12s, opacity .15s; }
-        .pl-submit:hover:not(:disabled) { transform: translateY(-1px); }
+        /* Amber, the marketing site's one call-to-action colour (.btn-primary
+           in the website's globals.css), carried onto the sign-in screens so
+           the button that submits is the only warm thing on the page. Navy
+           ink, not white: white on amber misses 4.5:1. */
+        .pl-submit { width: 100%; padding: 14px 24px; margin-top: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; color: #0E2A4A; background: #E8863A; border: none; border-radius: 999px; cursor: pointer; transition: transform .12s, background .15s, opacity .15s; }
+        .pl-submit:hover:not(:disabled) { transform: translateY(-1px); background: #D2712A; }
         .pl-submit:disabled { opacity: .6; cursor: not-allowed; }
         .pl-submit-loading { display: inline-flex; align-items: center; gap: 8px; }
+        /* The button's spinner follows its ink: navy on amber, where the
+           white variant used against the old blue fill disappeared. */
+        .pl-submit .pl-spin-light { border-color: rgba(14, 42, 74, 0.3); border-top-color: #0E2A4A; }
         /* Secondary action under the OTP form ("Back to sign in"). Text-only so
            it reads as an escape hatch rather than competing with Verify. */
         .pl-link-btn { width: 100%; margin-top: 10px; padding: 8px; background: none; border: none; font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
@@ -278,8 +292,15 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
 
         /* ── Hero — mirrors the staff login (tl-hero): flat tint over the
            photo, blue task chip, frosted week strip, white card bottom-left. */
-        .pl-hero { position: relative; background-size: cover; background-position: 50% 32%; }
-        .pl-hero::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--accent-hover) 18%, transparent); }
+        .pl-hero { position: relative; overflow: hidden; background: linear-gradient(158deg, #0E2A4A 0%, #123B63 100%); }
+        /* The screenshot runs off the right edge rather than being fitted
+           inside it: cropped, the interface stays at a scale where the rows
+           and cards are still readable; contained, it shrank to a smear. */
+        .pl-hero-shot { position: absolute; top: 48px; left: 30px; right: -190px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 26px 60px rgba(2, 26, 45, 0.45); }
+        /* Faded at the foot rather than cut: the screenshot ends in the
+           navy instead of stopping on a hard white edge above the copy. */
+        .pl-hero-shot { -webkit-mask-image: linear-gradient(180deg, #000 74%, transparent 100%); mask-image: linear-gradient(180deg, #000 74%, transparent 100%); }
+        .pl-hero-shot img { width: 100%; display: block; }
         .pl-hero-close { position: absolute; top: 18px; right: 18px; z-index: 3; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: none; background: var(--bg-card-solid); color: var(--text-primary); cursor: pointer; box-shadow: none; }
         .pl-hero-close:hover { background: var(--bg-card-solid); }
         /* Value panel over the hero photo: a readable scrim rather than

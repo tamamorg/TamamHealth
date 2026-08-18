@@ -732,13 +732,6 @@ export const PLATFORM_FACTS = [
   { value: "DHIS2-ready", label: "National reports are generated from the same records, not retyped at month end." },
 ];
 
-export const PLATFORM_PANELS = [
-  { t: "Today's schedule", b: "Every booked patient with time, care team, contact and status — scheduled, in office, finished — so the desk can see the whole day at once." },
-  { t: "Patient flow", b: "A live list of who has been triaged and how long ago, next to counts for emergency, urgent and routine arrivals." },
-  { t: "Register and check in", b: "Register a new patient, open an intake form, or check in someone already on the record, from the same bar." },
-  { t: "Day activity", b: "Active against completed visits for the week, so a facility can see its own throughput without a report request." },
-];
-
 export const PLATFORM_FLOW = [
   { n: "01", t: "Arrival and identification", b: "The patient is registered once, or found again by name, hospital number, geocode, QR card or fingerprint. No folder has to be located." },
   { n: "02", t: "Triage", b: "Vitals are entered at the triage station and ETAT criteria assign RED, YELLOW or GREEN. The queue re-sorts itself by urgency rather than arrival order." },

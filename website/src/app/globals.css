@@ -337,6 +337,8 @@ select.input-dark option { color: #0e2a4a; background: #ffffff; }
 .tm-chalstep-lit:hover { background: #ffffff !important; }
 .tm-cost:hover { background: var(--color-accent-100) !important; }
 .tm-prodcard:hover { background: #f2f8fc !important; }
+/* /products hero: the six acronym jump chips on the navy band. */
+.tm-prodchip:hover { background: rgba(255, 255, 255, 0.14) !important; border-color: rgba(255, 255, 255, 0.6) !important; }
 /* The whole failure/fix card is the link, so it lifts on hover like the rest. */
 .tm-solution-card:hover { background: #e8f2f9 !important; }
 .tm-handled:hover { background: #ffffff !important; }

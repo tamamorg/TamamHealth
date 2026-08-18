@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Corners from "@/components/Corners";
 import { emphasise } from "@/components/emphasise";
-import { CHALLENGES, PLATFORM_FACTS, PLATFORM_FLOW, PLATFORM_PANELS, PLATFORM_PILLARS } from "@/lib/site-data";
+import { CHALLENGES, PLATFORM_FACTS, PLATFORM_FLOW, PLATFORM_PILLARS } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "The Platform",
@@ -15,7 +15,7 @@ export default function PlatformPage() {
     <main>
       <section style={{ background: "#015697", color: "#FFFFFF", padding: "60px 32px 74px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <div className="tm-platform-split" style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 56, alignItems: "center" }}>
+          <div className="tm-platform-split" style={{ display: "grid", gridTemplateColumns: "1fr 1.05fr", gap: 52, alignItems: "center" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 18, alignItems: "flex-start" }}>
               <h1 style={{ fontSize: "clamp(31px, 5vw, 54px)", margin: 0, color: "#FFFFFF" }}>One record, from the front desk to the Ministry</h1>
               <p style={{ margin: 0, fontSize: 17, lineHeight: 1.7, color: "rgba(255,255,255,0.82)", maxWidth: 660 }}>
@@ -32,15 +32,29 @@ export default function PlatformPage() {
                 </Link>
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {PLATFORM_FACTS.map((f) => (
-                <div key={f.value} className="blueprint tm-fact" style={{ padding: "20px 24px", borderColor: "rgba(255,255,255,0.28)" }}>
-                  <Corners light />
-                  <span style={{ fontFamily: "var(--font-heading)", fontSize: 30, lineHeight: 1, color: "#7FC4EA" }}>{f.value}</span>
-                  <p style={{ margin: "8px 0 0", fontSize: 14.5, lineHeight: 1.6, color: "rgba(255,255,255,0.82)" }}>{f.label}</p>
-                </div>
-              ))}
+            {/* The platform itself, opposite the claim about it — the front
+                desk, which is where the sentence to the left starts. The
+                doctor's workspace is further down the page under "The clinical
+                dashboard", so the hero and that section show different rooms
+                rather than the same screenshot twice. */}
+            <div className="blueprint tm-figure" style={{ position: "relative", background: "#FFFFFF", padding: 8, borderColor: "rgba(255,255,255,0.28)" }}>
+              <Corners light />
+              {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
+              <img src="/assets/platform-front-desk.png" alt="The TamamHealth front desk: the day's arrivals with times, care team and triage status, beside the reception queue and patient flow" style={{ width: "100%", display: "block" }} />
             </div>
+          </div>
+          {/* The three facts move out of the right column and under both, as a
+              row: stacked beside the copy they competed with the headline for
+              the same eye, and the column they sat in is where the product
+              belongs. */}
+          <div className="tm-g3" style={{ gap: 14, marginTop: 42 }}>
+            {PLATFORM_FACTS.map((f) => (
+              <div key={f.value} className="blueprint tm-fact" style={{ padding: "20px 24px", borderColor: "rgba(255,255,255,0.28)" }}>
+                <Corners light />
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: 30, lineHeight: 1, color: "#7FC4EA" }}>{f.value}</span>
+                <p style={{ margin: "8px 0 0", fontSize: 14.5, lineHeight: 1.6, color: "rgba(255,255,255,0.82)" }}>{f.label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -107,30 +121,6 @@ export default function PlatformPage() {
                 </span>
               </Link>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="dashboard" style={{ padding: "74px 32px 20px" }}>
-        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 20, paddingBottom: 18, borderBottom: "1px solid var(--color-divider)" }}>
-            <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>The clinical dashboard</h2>
-            <span className="fs125" style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-accent-700)", whiteSpace: "nowrap" }}>A doctor&rsquo;s workspace, on a real patient day</span>
-          </div>
-          <div className="tm-dash-grid" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 48, alignItems: "start", marginTop: 34 }}>
-            <div className="blueprint" style={{ position: "relative" }}>
-              <Corners />
-              {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-              <img src="/assets/platform-doctor.png" alt="The TamamHealth clinical dashboard: a doctor's checked-in patient list with acuity, care team and visit context, alongside outstanding items and patient flow" style={{ width: "100%", display: "block" }} />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {PLATFORM_PANELS.map((p) => (
-                <div key={p.t} style={{ padding: "16px 0", borderBottom: "1px solid var(--color-divider)" }}>
-                  <h3 style={{ fontSize: 19, margin: "0 0 7px" }}>{p.t}</h3>
-                  <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>{p.b}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
