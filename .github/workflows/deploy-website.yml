@@ -115,8 +115,16 @@ jobs:
           # Read JSON: `list-tags` ignores `--format Tag`, and splitting its
           # table on whitespace fed doctl the header row and every size, date
           # and digest as though each were a tag.
+          # Pick tag records out of the response wherever they sit rather than
+          # assuming a top-level array of objects: doctl nests this one, and
+          # indexing the nesting as though it were flat aborted the deploy
+          # before it reached the build. Failing to parse should cost a prune,
+          # never a release, so this degrades to "nothing to retire".
           OLD=$(doctl registry repository list-tags "$REPO" -o json 2>/dev/null \
-            | jq -r '[.[]? | select(.tag != "latest")] | sort_by(.updated_at) | reverse | .[2:] | .[]?.tag // empty')
+            | jq -r '[.. | objects | select(has("tag") and has("updated_at"))]
+                     | sort_by(.updated_at) | reverse | map(.tag)
+                     | map(select(. != "latest" and . != "")) | .[2:] | .[]' 2>/dev/null \
+            || { echo "could not read tags; skipping retirement" >&2; echo ""; })
           REMOVED=0
           for t in $OLD; do
             echo "retiring tag $t"
@@ -124,7 +132,7 @@ jobs:
           done
 
           USED=$(doctl registry get -o json 2>/dev/null | jq '.[0].storage_usage_bytes // 0')
-          echo "registry holds ${USED} of ${CAP} bytes"
+          echo "registry holds ${USED:-?} of ${CAP} bytes"
 
           # Collection is expensive and blocks pushes, so it is worth it only
           # when the space is actually needed.
