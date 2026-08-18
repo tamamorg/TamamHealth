@@ -1,13 +1,20 @@
 name: deploy-website
 
-# The marketing site does NOT ride the platform's pipeline.
+# The marketing site runs on its own droplet (infra/digitalocean-website), and
+# for a long time nothing CI built ever reached it: the droplet's systemd unit
+# pulled from DigitalOcean's container registry while every workflow here
+# published to GHCR, so the public site could only be updated by hand and
+# drifted a generation behind main.
 #
-# It runs on its own droplet (infra/digitalocean-website), whose systemd unit
-# pulls `registry.digitalocean.com/tamamhealth/website:latest` — DigitalOcean's
-# registry. Every other workflow here publishes to GHCR, so nothing CI has ever
-# built reached that droplet: the public site could only be updated by hand,
-# and it drifted a generation behind main. This publishes the same image CI
-# builds to the registry the droplet actually reads.
+# Closing that by publishing to DigitalOcean's registry instead ran into what
+# its free tier actually is — 500 MB and exactly one repository. Collecting
+# garbage to stay under the size cap emptied the repository, and the tier then
+# refused to let it be recreated, with the registry's own catalog reporting
+# zero repositories while the auth endpoint counted one. So the site is
+# delivered without that registry in the path at all: built here, published to
+# GHCR alongside every other image in this repo, and copied to the droplet over
+# the same SSH key the platform deploy uses. Nothing on the droplet needs
+# registry credentials, and no storage tier can block a release.
 #
 # Manual, and gated on the `production` environment, so shipping the public
 # site is a decision rather than a side effect of merging.
@@ -20,7 +27,7 @@ on:
         required: false
         type: string
       restart:
-        description: 'How to make the droplet pick up the new image. "ssh" needs WEBSITE_SSH_* secrets. "reboot" uses the DO API instead (~40s downtime) and needs no extra secrets. "none" publishes only.'
+        description: 'How to deliver the image. "ssh" copies it to the droplet and restarts (needs WEBSITE_SSH_* secrets). "reboot" only publishes to GHCR and reboots the droplet, which cannot pick up a new image on its own — use it only to recover an unresponsive box. "none" publishes only.'
         required: true
         type: choice
         default: ssh
@@ -31,6 +38,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: deploy-website
@@ -38,7 +46,7 @@ concurrency:
 
 jobs:
   publish:
-    name: build + push website image to DOCR
+    name: build website image + deliver to the droplet
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -49,21 +57,20 @@ jobs:
       - name: Resolve metadata
         id: meta
         run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           SHA="$(git rev-parse HEAD)"
           {
             echo "sha=${SHA:0:7}"
-            echo "image=registry.digitalocean.com/tamamhealth/website"
+            echo "image=ghcr.io/$OWNER/tamamhealth-website"
+            # The tag the droplet's unit runs. Deliberately not a registry
+            # reference: the image arrives over SSH, and a name docker could
+            # try to pull would invite it to on every restart.
+            echo "local_tag=tamamhealth-website:current"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
-      # The droplet's website.service re-pulls on start, but a RUNNING
-      # container keeps its old image — `Restart=always` only fires when the
-      # process exits. So a push alone does not update a healthy droplet; the
-      # unit has to be restarted. Opt-in, matching deploy-production's SSH gate.
+      # The droplet's website.service does not pull, so a publish alone never
+      # updates it — the image has to be copied in and the unit restarted.
+      # Opt-in, matching deploy-production's SSH gate.
       #
       # Checked before the build rather than after it: a key the droplet will
       # not accept is a five-second answer, and finding out only once the image
@@ -82,7 +89,7 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Website droplet will not be restarted::No WEBSITE_SSH_* secrets are set, so the image will publish but the running container will keep serving the old one. Restart it with: ssh <user>@<host> 'systemctl restart website'"
+            echo "::warning title=Website droplet will not be updated::No WEBSITE_SSH_* secrets are set, so the image publishes to GHCR but the droplet keeps serving the old one."
           fi
 
       - name: Set up SSH agent
@@ -103,112 +110,18 @@ jobs:
         run: |
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
           if ! ssh -o BatchMode=yes -o ConnectTimeout=15 "$USER@$HOST" 'true' 2>/dev/null; then
-            echo "::error title=Deploy key not authorised::$USER@$HOST rejected the deploy key, so nothing was built. Add the public half of WEBSITE_SSH_KEY to ~/.ssh/authorized_keys on the droplet (DigitalOcean → Droplets → tamamhealth-website → Console), or re-run this workflow with restart=reboot, which needs no key."
+            echo "::error title=Deploy key not authorised::$USER@$HOST rejected the deploy key, so nothing was built. Add the public half of WEBSITE_SSH_KEY to ~/.ssh/authorized_keys on the droplet (DigitalOcean → Droplets → tamamhealth-website → Console)."
             exit 1
           fi
 
-      # The registry is DigitalOcean's `starter` tier: 500 MB total, which one
-      # Next.js image very nearly fills. Without pruning, the second or third
-      # deploy dies with `denied: quota exceeded` AFTER a full build — so free
-      # the previous image before pushing the new one, not after.
-      #
-      # Tags are deleted first because garbage collection only reclaims
-      # UNTAGGED manifests; a tagged old image is never collected. `latest` is
-      # what the droplet pulls, so it is the last thing removed and the first
-      # thing restored by the push below.
-      #
-      # This runs BEFORE the docker login on purpose: starting a garbage
-      # collection invalidates the registry's existing credentials, so a login
-      # taken beforehand comes back 401 on push.
-      # The registry is DigitalOcean's `starter` tier: 500 MB total. Keeping a
-      # few generations means old tags have to be retired, and retiring them
-      # means an occasional garbage collection — which is the delicate part.
-      #
-      # A collection puts the registry into a phase literally named "waiting
-      # for write JWTs to expire", during which the token endpoint refuses
-      # `push` scope and returns a bare 401 that mentions nothing about
-      # collection. Three deploys failed that way. Worse, each attempt's
-      # `docker login` minted a fresh write token, so the collection kept
-      # waiting and never drained — the retries were what sustained the
-      # outage. Hence: drain first, log in after, and keep the token's life
-      # short so the next drain is short too.
-      - name: Prune the registry before pushing
-        run: |
-          REPO=website
-          CAP=500000000                     # starter tier, bytes
-          THRESHOLD=$((CAP * 60 / 100))     # collect only once genuinely full
-
-          # Terminal states only. Everything else — including the JWT-drain
-          # phase — means the registry is still refusing writes. Listing the
-          # states that mean "busy" is what went wrong before: the drain phase
-          # was not among them, so the wait fell through into a failing push.
-          wait_for_gc() {
-            for _ in $(seq 1 120); do
-              BUSY=$(doctl registry garbage-collection list -o json 2>/dev/null \
-                | jq '[.[]? | select((.status // "") | test("^(succeeded|failed|cancelled)$") | not)] | length' 2>/dev/null || echo 0)
-              [ "${BUSY:-0}" = "0" ] && return 0
-              echo "waiting: garbage collection in progress ($(doctl registry garbage-collection list -o json 2>/dev/null | jq -r '[.[]? | select((.status // "") | test("^(succeeded|failed|cancelled)$") | not)] | .[0].status // "?"'))"
-              sleep 10
-            done
-            echo "garbage collection has not finished after 20 minutes" >&2
-            return 1
-          }
-
-          wait_for_gc
-
-          # Retire old builds, but never the two newest or `latest` — the
-          # droplet pulls `latest` on every start, so deleting it leaves a
-          # restart with nothing to pull if the build below then fails.
-          # Read JSON: `list-tags` ignores `--format Tag`, and splitting its
-          # table on whitespace fed doctl the header row and every size, date
-          # and digest as though each were a tag.
-          # Pick tag records out of the response wherever they sit rather than
-          # assuming a top-level array of objects: doctl nests this one, and
-          # indexing the nesting as though it were flat aborted the deploy
-          # before it reached the build. Failing to parse should cost a prune,
-          # never a release, so this degrades to "nothing to retire".
-          OLD=$(doctl registry repository list-tags "$REPO" -o json 2>/dev/null \
-            | jq -r '[.. | objects | select(has("tag") and has("updated_at"))]
-                     | sort_by(.updated_at) | reverse | map(.tag)
-                     | map(select(. != "latest" and . != "")) | .[2:] | .[]' 2>/dev/null \
-            || { echo "could not read tags; skipping retirement" >&2; echo ""; })
-          REMOVED=0
-          for t in $OLD; do
-            echo "retiring tag $t"
-            doctl registry repository delete-tag "$REPO" "$t" --force && REMOVED=1 || true
-          done
-
-          # The starter tier caps repositories as well as bytes, and the push
-          # is refused on that count with a message that names neither, so
-          # record what the registry holds on every run.
-          echo "repositories: $(doctl registry repository list-v2 -o json 2>/dev/null \
-            | jq -r '[.. | objects | select(has("name") and has("tag_count")) | "\(.name) (\(.tag_count) tags)"] | join(", ")' 2>/dev/null)"
-
-          USED=$(doctl registry get -o json 2>/dev/null | jq '.[0].storage_usage_bytes // 0')
-          echo "registry holds ${USED:-?} of ${CAP} bytes"
-
-          # Collection is expensive and blocks pushes, so it is worth it only
-          # when the space is actually needed.
-          if [ "${USED:-0}" -gt "$THRESHOLD" ]; then
-            echo "above ${THRESHOLD} bytes — collecting"
-            doctl registry garbage-collection start --include-untagged-manifests --force >/dev/null || true
-            wait_for_gc
-          elif [ "$REMOVED" = 1 ]; then
-            echo "tags retired; leaving their blobs for a later collection"
-          else
-            echo "nothing to reclaim"
-          fi
-
-      # Short-lived registry credentials from the same token Terraform used to
-      # create the registry, rather than a second long-lived docker login.
-      # Taken after the prune, never before: a collection cannot finish while
-      # any write token is outstanding, and the expiry is the ceiling on how
-      # long the next one has to wait. Ten minutes covers build + push with
-      # room to spare.
-      - name: Log in to DigitalOcean Container Registry
-        run: doctl registry login --expiry-seconds 600
-
       - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # NEXT_PUBLIC_* is inlined into the client bundle at BUILD time, exactly
       # as the platform image warns. Every login entry point on the site
@@ -216,20 +129,77 @@ jobs:
       # sends staff to the wrong deployment. The code default is production;
       # the repo/environment variable overrides it when a deployment needs to
       # point somewhere else.
-      - name: Build + push website image
+      #
+      # `load` rather than `push` so the built image lands in this runner's
+      # daemon, where it can be both pushed to GHCR and streamed to the
+      # droplet without being pulled back down. Attestations cannot be loaded,
+      # hence provenance off.
+      - name: Build website image
         uses: docker/build-push-action@v6
         with:
           context: ./website
           file: ./website/Dockerfile
-          push: true
+          load: true
+          provenance: false
           build-args: |
             NEXT_PUBLIC_PLATFORM_URL=${{ vars.NEXT_PUBLIC_PLATFORM_URL || 'https://app.tamamhealth.org' }}
-          # Both tags point at one image, so they cost one image's storage —
-          # and the SHA tag is what makes a rollback possible without a
-          # rebuild. The prune above keeps the two newest and retires the rest.
-          tags: |
-            ${{ steps.meta.outputs.image }}:latest
-            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}
+          tags: ${{ steps.meta.outputs.local_tag }}
+          cache-from: type=gha,scope=website
+          cache-to: type=gha,mode=max,scope=website
+
+      # GHCR is the record of what shipped, and what a rollback rebuilds from.
+      # It is not what the droplet reads — that copy goes over SSH below — so a
+      # failure here must not silently leave the site un-updated.
+      - name: Publish to GHCR
+        run: |
+          docker tag "${{ steps.meta.outputs.local_tag }}" "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}"
+          docker tag "${{ steps.meta.outputs.local_tag }}" "${{ steps.meta.outputs.image }}:latest"
+          docker push "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}"
+          docker push "${{ steps.meta.outputs.image }}:latest"
+
+      # `docker load` reads a gzipped stream directly, so this is one hop with
+      # no intermediate file on either end and no credentials on the droplet.
+      - name: Copy the image to the droplet
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+        run: |
+          docker save "${{ steps.meta.outputs.local_tag }}" \
+            | gzip -1 \
+            | ssh -o BatchMode=yes -o ConnectTimeout=20 "$USER@$HOST" 'docker load'
+
+      # The unit shipped pulling from DigitalOcean's registry. Point it at the
+      # tag delivered above and drop the pull, which would now fail on every
+      # start. Written as a patch rather than a fresh unit so nothing else the
+      # droplet carries is silently overwritten, and verified afterwards so a
+      # pattern that stops matching fails loudly instead of restarting the old
+      # image and reporting success.
+      - name: Point website.service at the delivered image
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+          TAG: ${{ steps.meta.outputs.local_tag }}
+        run: |
+          ssh -o BatchMode=yes "$USER@$HOST" "TAG='$TAG' bash -s" <<'REMOTE'
+            set -euo pipefail
+            UNIT=/etc/systemd/system/website.service
+            sed -i "/ExecStartPre=.*docker pull/d" "$UNIT"
+            sed -i "s#\(ExecStart=/usr/bin/docker run .*\) [^ ]*website[^ ]*\$#\1 ${TAG}#" "$UNIT"
+            if ! grep -q "ExecStart=.*${TAG}\$" "$UNIT"; then
+              echo "website.service does not run ${TAG} after patching:" >&2
+              cat "$UNIT" >&2
+              exit 1
+            fi
+            if grep -q "registry.digitalocean.com" "$UNIT"; then
+              echo "website.service still references DigitalOcean's registry:" >&2
+              cat "$UNIT" >&2
+              exit 1
+            fi
+            systemctl daemon-reload
+            grep -E "ExecStart" "$UNIT"
+          REMOTE
 
       - name: Restart website.service
         if: steps.gate.outputs.ready == 'true'
@@ -237,14 +207,25 @@ jobs:
           HOST: ${{ secrets.WEBSITE_SSH_HOST }}
           USER: ${{ secrets.WEBSITE_SSH_USER }}
         run: |
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
-          ssh "$USER@$HOST" "systemctl restart website && sleep 5 && systemctl is-active website"
+          ssh -o BatchMode=yes "$USER@$HOST" 'bash -s' <<'REMOTE'
+            set -euo pipefail
+            systemctl restart website
+            sleep 5
+            systemctl is-active website
+            # Old generations pile up on a 2 GB droplet otherwise. Only
+            # untagged layers go: the running image keeps its tag.
+            docker image prune -f >/dev/null
+          REMOTE
 
-      # No SSH on this droplet today, and adding a key needs console access. The
-      # DO token that already publishes the image can also reboot the box, and
-      # website.service pulls on boot — so a reboot delivers the image without
-      # any new secret. It costs ~40s of downtime, which is why it is an
-      # explicit choice rather than the default.
+      # The droplet cannot fetch an image on its own any more, so a reboot only
+      # recovers an unresponsive box — it cannot deliver a new build. Kept for
+      # that case, and it restarts the unit with whatever image is loaded.
+      - name: Install doctl
+        if: ${{ github.event.inputs.restart == 'reboot' }}
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
       - name: Reboot the website droplet
         if: ${{ github.event.inputs.restart == 'reboot' }}
         env:
@@ -258,7 +239,6 @@ jobs:
           fi
           echo "Rebooting $DROPLET (id=$ID)"
           doctl compute droplet-action reboot "$ID" --wait
-          echo "Reboot complete; website.service pulls the image on boot."
 
       - name: Verify the live site
         if: ${{ steps.gate.outputs.ready == 'true' || github.event.inputs.restart == 'reboot' }}

@@ -26,7 +26,6 @@ write_files:
       Restart=always
       RestartSec=10
       ExecStartPre=-/usr/bin/docker rm -f website
-      ExecStartPre=/usr/bin/docker pull ${website_image}
       ExecStartPre=/usr/bin/touch /etc/website.env
       ExecStart=/usr/bin/docker run --rm --name website -p 3001:3001 --env-file /etc/website.env ${website_image}
       ExecStop=/usr/bin/docker stop website
@@ -51,9 +50,13 @@ runcmd:
   - apt-get install -y caddy
   - systemctl restart caddy
 
-  # Registry auth (DigitalOcean Container Registry - token doubles as user/pass)
-  - echo "${do_token}" | docker login registry.digitalocean.com -u "${do_token}" --password-stdin
-
-  # Website container - will retry via systemd until the image is pushed
+  # No registry auth: the deploy-website workflow builds the image, publishes
+  # it to GHCR for the record, and copies it here over SSH. Nothing on this box
+  # needs registry credentials, and no storage tier can block a release —
+  # DigitalOcean's free registry tier is 500 MB and one repository, and
+  # collecting garbage to stay under it left the repository unrecreatable.
+  #
+  # The consequence is that a freshly built droplet has no image yet, so
+  # website.service restarts every 10s until the first deploy delivers one.
   - systemctl daemon-reload
   - systemctl enable --now website.service
