@@ -76,29 +76,50 @@ jobs:
       - name: Prune the registry before pushing
         run: |
           REPO=website
-          # Read JSON, not the table. `list-tags` ignores `--format Tag`, so
+
+          # A collection leaves the registry read-only while it runs, and that
+          # surfaces on push as `401 Unauthorized` from the token endpoint —
+          # not as anything mentioning collection — so drain one before doing
+          # anything else. `garbage-collection get` is not a doctl subcommand;
+          # calling it returned an error this loop read as "nothing active"
+          # and pushed straight into the read-only window.
+          wait_for_gc() {
+            for _ in $(seq 1 90); do
+              ACTIVE=$(doctl registry garbage-collection list -o json 2>/dev/null \
+                | jq '[.[]? | select((.status // "") | test("requested|running|cancelling"))] | length' 2>/dev/null || echo 0)
+              [ "${ACTIVE:-0}" = "0" ] && return 0
+              echo "waiting: ${ACTIVE} garbage collection(s) active"
+              sleep 10
+            done
+            echo "garbage collection still running after 15 minutes" >&2
+            return 1
+          }
+
+          wait_for_gc
+
+          # Tags are deleted before collecting because collection only reclaims
+          # UNTAGGED manifests; a tagged old image is never freed. `latest` is
+          # what the droplet pulls, so the push below restores it immediately.
+          #
+          # Read JSON, not the table: `list-tags` ignores `--format Tag`, so
           # splitting its output on whitespace fed doctl the header row and
           # every size, date and digest field as though each were a tag.
           TAGS=$(doctl registry repository list-tags "$REPO" -o json 2>/dev/null | jq -r '.[]?.tag // empty')
+          REMOVED=0
           for t in $TAGS; do
             echo "removing tag $t"
-            doctl registry repository delete-tag "$REPO" "$t" --force || true
+            doctl registry repository delete-tag "$REPO" "$t" --force && REMOVED=1 || true
           done
-          echo "starting garbage collection"
-          doctl registry garbage-collection start --include-untagged-manifests --force >/dev/null || true
-          # GC is asynchronous and the registry refuses writes while it runs,
-          # so wait for it rather than racing it. Statuses come back lowercase
-          # (`requested`, `running`); matching them against *RUNNING* left this
-          # loop on its first tick and pushed into a read-only registry.
-          for _ in $(seq 1 60); do
-            STATUS=$(doctl registry garbage-collection get -o json 2>/dev/null \
-              | jq -r 'if type == "array" then (.[0].status // "none") else (.status // "none") end' 2>/dev/null || echo none)
-            echo "garbage collection: ${STATUS:-none}"
-            case "$STATUS" in
-              requested|running|cancelling) sleep 10 ;;
-              *) break ;;
-            esac
-          done
+
+          # Only collect when something was actually untagged. Starting a
+          # collection with nothing to free still costs minutes of read-only.
+          if [ "$REMOVED" = 1 ]; then
+            echo "starting garbage collection"
+            doctl registry garbage-collection start --include-untagged-manifests --force >/dev/null || true
+            wait_for_gc
+          else
+            echo "nothing to collect"
+          fi
           echo "tags remaining: $(doctl registry repository list-tags "$REPO" -o json 2>/dev/null | jq -r '[.[]?.tag] | join(", ")')"
 
       # Short-lived registry credentials from the same token Terraform used to
