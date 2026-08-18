@@ -62,7 +62,7 @@ const CHANNEL_LABELS: Record<MessageDoc['channel'], string> = {
 };
 
 /** Unique, sorted enquiry "types" (subject lines) present in the list — feeds the type filter. */
-export function buildTypeOptions(messages: MessageDoc[]): string[] {
+function buildTypeOptions(messages: MessageDoc[]): string[] {
   const set = new Set<string>();
   for (const m of messages) set.add(enquiryType(m));
   return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -70,10 +70,10 @@ export function buildTypeOptions(messages: MessageDoc[]): string[] {
 
 /** Assignment moves aren't triage states, so they ride the status pill under
  *  their own heading with these sentinel values. */
-export const ASSIGN_TO_ME = '__assign-me' as const;
-export const UNASSIGN = '__unassign' as const;
+const ASSIGN_TO_ME = '__assign-me' as const;
+const UNASSIGN = '__unassign' as const;
 
-export interface InquiryActionSpec {
+interface InquiryActionSpec {
   value: EnquiryStatus | typeof ASSIGN_TO_ME | typeof UNASSIGN;
   label: string;
   group?: string;
@@ -86,7 +86,7 @@ export interface InquiryActionSpec {
  * a native select's disabled options are still announced, and the pill already
  * displays the current state.
  */
-export function buildInquiryActions(
+function buildInquiryActions(
   message: Pick<MessageDoc, 'enquiryStatus' | 'enquiryAssignedToId'>,
   currentUserId?: string,
 ): InquiryActionSpec[] {

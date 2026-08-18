@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { Corners, loginStyles } from '@/components/login/login-chrome';
 import { getRoleConfig } from '@/lib/permissions';
 import { REQUESTABLE_ROLES } from '@/lib/account-request-roles';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface Org { id: string; name: string }
 
@@ -26,6 +27,7 @@ const ROLE_OPTIONS = REQUESTABLE_ROLES
   .sort((a, b) => a.label.localeCompare(b.label));
 
 export default function RequestAccountPage() {
+  const { t } = useTranslation();
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -180,6 +182,24 @@ export default function RequestAccountPage() {
             </>
           )}
         </div>
+
+        {/* Keep the account-request doorway paired with the same product
+            story as staff sign-in. The form changes; the platform promise
+            and visual landmark do not. */}
+        <aside className="lg-aside blueprint">
+          <Corners />
+          <span className="lg-eyebrow">{t('login.tagline')}</span>
+          <h2 className="lg-h2">{t('login.promoHeadline')}</h2>
+          <p className="lg-aside-copy">{t('login.promoBody')}</p>
+          <a className="lg-aside-link" href="https://tamamhealth.org/products">
+            {t('login.seeProducts')} &nbsp;›
+          </a>
+          <div className="lg-shot blueprint">
+            <Corners />
+            {/* eslint-disable-next-line @next/next/no-img-element -- photograph, cropped by shared login CSS */}
+            <img src="/assets/doctor-at-workstation.jpg" alt="A doctor at a workstation, reading a patient's record on screen" />
+          </div>
+        </aside>
       </div>
 
       {loginStyles}

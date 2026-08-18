@@ -64,10 +64,15 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const autoStartedRef = useRef(false);
+  // Some steps click the row they are describing and the next step lives on
+  // the record that row opens. Remember that expected transition so the route
+  // guard does not immediately send the user back to the list page.
+  const pendingRouteStepRef = useRef<{ fromIndex: number; toIndex: number; route: string } | null>(null);
 
   const step = active ? steps[stepIndex] : undefined;
 
   const stop = useCallback(() => {
+    pendingRouteStepRef.current = null;
     setActive(false);
     setRect(null);
   }, []);
@@ -83,6 +88,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     // users — exactly when the tour auto-launches. Ask it to collapse to its
     // pill so the tour can actually point at the page underneath.
     window.dispatchEvent(new CustomEvent('tamam:tour-started'));
+    pendingRouteStepRef.current = null;
     setStepIndex(0);
     setRect(null);
     setActive(true);
@@ -119,22 +125,43 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!active || !step) return;
     if (isDynamicRoute(step.route)) return;
-    if (pathname !== step.route) router.push(step.route);
-  }, [active, step, pathname, router]);
+    if (pathname === step.route) return;
+
+    const pending = pendingRouteStepRef.current;
+    if (
+      pending?.fromIndex === stepIndex &&
+      pending.toIndex === stepIndex + 1 &&
+      routeMatches(pathname, pending.route)
+    ) {
+      pendingRouteStepRef.current = null;
+      setStepIndex(pending.toIndex);
+      return;
+    }
+
+    pendingRouteStepRef.current = null;
+    router.push(step.route);
+  }, [active, step, stepIndex, pathname, router]);
 
   // Locate (and, if needed, reveal) the current step's target once we're on
   // the right route. Polls briefly since a fresh navigation's target may not
   // exist in the DOM the instant the route changes.
   useEffect(() => {
     if (!active || !step) return;
-    if (!routeMatches(pathname, step.route)) { setRect(null); return; }
+    // Clear the previous spotlight on the next paint. Keeping this inside the
+    // browser callback avoids a synchronous effect-state cascade while still
+    // preventing an old page's highlight from lingering during navigation.
+    const clearRectFrame = requestAnimationFrame(() => setRect(null));
+    if (!routeMatches(pathname, step.route)) {
+      return () => cancelAnimationFrame(clearRectFrame);
+    }
 
     // Narrative step with no anchor — render the card centred over the page.
-    if (!step.target) { setRect(null); return; }
+    if (!step.target) {
+      return () => cancelAnimationFrame(clearRectFrame);
+    }
 
     let cancelled = false;
     let clickedPreStep = false;
-    setRect(null);
     const startedAt = Date.now();
 
     const tick = () => {
@@ -142,6 +169,21 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       if (step.preClickSelector && !clickedPreStep) {
         const trigger = document.querySelector<HTMLElement>(step.preClickSelector);
         if (trigger) {
+          const nextStep = steps[stepIndex + 1];
+          // A click on the highlighted row can be the bridge into a dynamic
+          // record route. The route cannot be pushed directly because its id
+          // only becomes known after the row handles the click.
+          if (
+            step.preClickSelector === step.target &&
+            nextStep &&
+            isDynamicRoute(nextStep.route)
+          ) {
+            pendingRouteStepRef.current = {
+              fromIndex: stepIndex,
+              toIndex: stepIndex + 1,
+              route: nextStep.route,
+            };
+          }
           trigger.click();
           clickedPreStep = true;
         }
@@ -164,8 +206,11 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     };
     tick();
 
-    return () => { cancelled = true; };
-  }, [active, step, pathname]);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(clearRectFrame);
+    };
+  }, [active, step, stepIndex, steps, pathname]);
 
   // Keep the highlight glued to its target through scrolling/resizing.
   useEffect(() => {
@@ -184,11 +229,18 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
   const next = useCallback(() => {
     if (stepIndex >= steps.length - 1) { finish(); return; }
+    pendingRouteStepRef.current = null;
     setStepIndex(i => i + 1);
   }, [stepIndex, steps.length, finish]);
 
   const back = useCallback(() => {
+    pendingRouteStepRef.current = null;
     setStepIndex(i => Math.max(0, i - 1));
+  }, []);
+
+  const jumpTo = useCallback((index: number) => {
+    pendingRouteStepRef.current = null;
+    setStepIndex(index);
   }, []);
 
   const value = useMemo(() => ({ available: !!tour, start }), [tour, start]);
@@ -203,7 +255,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           index={stepIndex}
           total={steps.length}
           stepTitles={steps.map(s => s.title)}
-          onJumpTo={setStepIndex}
+          onJumpTo={jumpTo}
           onBack={stepIndex > 0 ? back : undefined}
           onNext={next}
           onSkip={finish}
