@@ -131,11 +131,18 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
         const localHost = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|couchdb)$/i.test(url.hostname);
         const privateAddress = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(url.hostname)
           || url.hostname.endsWith('.internal');
+        // Server-side traffic to the Compose service stays inside Docker's
+        // private bridge network. TLS terminates at the public app/gateway;
+        // requiring https:// for `http://couchdb:5984` makes the documented
+        // Compose deployment impossible to start.
+        const internalComposeHop = name === 'COUCHDB_URL'
+          && url.protocol === 'http:'
+          && (url.hostname === 'couchdb' || privateAddress);
         const privateGatewayHop = name === 'COUCHDB_URL' && syncGateway && privateAddress;
-        if (url.protocol !== 'https:' && !(privateGatewayHop && url.protocol === 'http:')) {
+        if (url.protocol !== 'https:' && !internalComposeHop && !(privateGatewayHop && url.protocol === 'http:')) {
           errors.push(`${name} must use https:// in production — clinical data must not cross the network in clear text.`);
         }
-        if (localHost || (privateAddress && !privateGatewayHop)) {
+        if ((localHost && !internalComposeHop) || (privateAddress && !privateGatewayHop && !internalComposeHop)) {
           errors.push(`${name} points to a private/local Docker hostname (${url.hostname}) — configure the reachable production CouchDB hostname.`);
         }
       } catch {
