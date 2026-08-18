@@ -8,9 +8,12 @@ import Link from "next/link";
 import { useState } from "react";
 import Corners from "@/components/Corners";
 import HeroNav from "@/components/HeroNav";
-import { PRODUCTS } from "@/lib/site-data";
+import { PRODUCTS as PRODUCTS_EN } from "@/lib/site-data";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export default function ProductsBand() {
+  const { content } = useLanguage();
+  const PRODUCTS = content(PRODUCTS_EN);
   const [prod, setProd] = useState(0);
   const p = PRODUCTS[prod];
   const step = (d: number) => setProd((prod + PRODUCTS.length + d) % PRODUCTS.length);
@@ -30,7 +33,7 @@ export default function ProductsBand() {
                   onClick={() => setProd(i)}
                   className="tm-tab"
                   style={{
-                    appearance: "none", background: "none", border: 0, textAlign: "left", cursor: "pointer",
+                    appearance: "none", background: "none", border: 0, textAlign: "start", cursor: "pointer",
                     fontFamily: "var(--font-body)",
                     fontWeight: i === prod ? 700 : 400,
                     fontSize: 15, letterSpacing: "0.045em", textTransform: "uppercase", padding: "12px 0",
@@ -51,7 +54,7 @@ export default function ProductsBand() {
           </div>
         </div>
 
-        <div className="tm-prod-card blueprint" style={{ position: "relative", marginTop: -326, marginLeft: 425, background: "#FFFFFF", display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch" }}>
+        <div className="tm-prod-card blueprint" style={{ position: "relative", marginTop: -326, marginInlineStart: 425, background: "#FFFFFF", display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch" }}>
           <Corners />
           <div className="tm-prod-photo" style={{ position: "relative", minHeight: 420 }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}

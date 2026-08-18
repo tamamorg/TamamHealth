@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import LevelsExplorer from "@/components/LevelsExplorer";
 import ChallengesBand from "@/components/ChallengesBand";
-import { ALIGN_FACTS, TOOLING_STATS, PROBLEM_LEAD, PROBLEM_BREAKS, PROBLEM_WHY_TITLE, PROBLEM_WHY } from "@/lib/site-data";
+import { ALIGN_FACTS as ALIGN_FACTS_EN, TOOLING_STATS as TOOLING_STATS_EN, PROBLEM_LEAD as PROBLEM_LEAD_EN, PROBLEM_BREAKS as PROBLEM_BREAKS_EN, PROBLEM_WHY_TITLE as PROBLEM_WHY_TITLE_EN, PROBLEM_WHY as PROBLEM_WHY_EN } from "@/lib/site-data";
+import { getTranslator } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
   title: "The Health System",
@@ -9,15 +10,22 @@ export const metadata: Metadata = {
     "South Sudan's healthcare system — the 2025 Essential Health Services Package's six levels of care, on one offline-first record.",
 };
 
-export default function HealthSystemPage() {
+export default async function HealthSystemPage() {
+  const { t, content } = await getTranslator();
+  const ALIGN_FACTS = content(ALIGN_FACTS_EN);
+  const TOOLING_STATS = content(TOOLING_STATS_EN);
+  const PROBLEM_LEAD = content(PROBLEM_LEAD_EN);
+  const PROBLEM_BREAKS = content(PROBLEM_BREAKS_EN);
+  const PROBLEM_WHY_TITLE = content(PROBLEM_WHY_TITLE_EN);
+  const PROBLEM_WHY = content(PROBLEM_WHY_EN);
   return (
     <main>
       <section style={{ padding: "70px 32px 46px" }}>
         <div className="tm-nat-hero" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.15fr 1fr", gap: 64, alignItems: "end" }}>
           <div>
-            <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px" }}>South Sudan&rsquo;s healthcare system</h1>
+            <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px" }}>{t("South Sudan’s healthcare system")}</h1>
             <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
-              The Ministry of Health&rsquo;s <strong>2025 Essential Health Services Package</strong>{" "}organises the country&rsquo;s care into six
+              {t("The Ministry of Health’s")} <strong>{t("2025 Essential Health Services Package")}</strong>{" "}organises the country&rsquo;s care into six
               levels — and names fragmented, paper-bound data as one of its biggest gaps. Tamam is shaped to fit that system, not
               replace it — and the same six-tier structure runs through most sub-Saharan health systems, so what fits here travels.
             </p>
@@ -42,8 +50,8 @@ export default function HealthSystemPage() {
       <section id="reality" style={{ padding: "78px 32px 84px", background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 28, flexWrap: "wrap", paddingBottom: 20, borderBottom: "1px solid var(--color-divider)" }}>
-            <h2 style={{ fontSize: "clamp(25px, 3.6vw, 40px)", margin: 0 }}>The reality Tamam is built for</h2>
-            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>Essential Health Services Package, 2025</span>
+            <h2 style={{ fontSize: "clamp(25px, 3.6vw, 40px)", margin: 0 }}>{t("The reality Tamam is built for")}</h2>
+            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>{t("Essential Health Services Package, 2025")}</span>
           </div>
 
           {/* The problem, argued — the strip's "The Problem" card lands here.
@@ -90,7 +98,7 @@ export default function HealthSystemPage() {
               <h3 style={{ fontSize: "clamp(21px, 2.2vw, 27px)", lineHeight: 1.24, margin: 0, maxWidth: "26ch" }}>{PROBLEM_WHY_TITLE}</h3>
               <p style={{ margin: 0, maxWidth: "60ch", fontSize: 16, lineHeight: 1.72, color: "var(--color-neutral-800)" }}>{PROBLEM_WHY}</p>
             </div>
-            <div className="tm-problem-figs" style={{ borderLeft: "1px solid var(--color-divider)", display: "flex", flexDirection: "column" }}>
+            <div className="tm-problem-figs" style={{ borderInlineStart: "1px solid var(--color-divider)", display: "flex", flexDirection: "column" }}>
               {TOOLING_STATS.map((s, i) => (
                 <div key={s.value} style={{ flex: 1, padding: "24px 26px", display: "flex", alignItems: "baseline", gap: 14, borderTop: i === 0 ? "none" : "1px solid var(--color-divider)" }}>
                   <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(34px, 3.4vw, 44px)", lineHeight: 0.92, color: "var(--color-accent-700)", minWidth: 72 }}>{s.value}</span>
@@ -116,13 +124,12 @@ export default function HealthSystemPage() {
       <section id="diagnosis" style={{ padding: "60px 32px 96px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div className="tm-pad-lg" style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "46px 52px", display: "flex", flexDirection: "column", gap: 16 }}>
-            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-300)" }}>The Ministry&rsquo;s own diagnosis</span>
+            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-300)" }}>{t("The Ministry’s own diagnosis")}</span>
             <p style={{ margin: 0, maxWidth: 980, fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(23px, 2.6vw, 31px)", lineHeight: 1.3 }}>
-              The sector still runs on parallel, disconnected systems — and the lack of accurate, timely data means care and planning
-              can&rsquo;t rely on what&rsquo;s recorded.
+              {t("The sector still runs on parallel, disconnected systems — and the lack of accurate, timely data means care and planning can’t rely on what’s recorded.")}
             </p>
             <span style={{ fontSize: 13, color: "rgba(255,255,255,0.66)" }}>
-              Paraphrased from the South Sudan Essential Health Services Package, 2025 — the exact gap a single offline-first record closes.
+              {t("Paraphrased from the South Sudan Essential Health Services Package, 2025 — the exact gap a single offline-first record closes.")}
             </span>
           </div>
         </div>

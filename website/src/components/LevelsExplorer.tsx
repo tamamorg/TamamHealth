@@ -6,9 +6,12 @@
 import { useState } from "react";
 import Corners from "@/components/Corners";
 import HeroNav from "@/components/HeroNav";
-import { CARE_LEVELS, careLevelLabel } from "@/lib/site-data";
+import { CARE_LEVELS as CARE_LEVELS_EN, careLevelLabel } from "@/lib/site-data";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export default function LevelsExplorer() {
+  const { content } = useLanguage();
+  const CARE_LEVELS = content(CARE_LEVELS_EN);
   const [level, setLevel] = useState(0);
   const lv = CARE_LEVELS[level];
   const step = (d: number) => setLevel((level + CARE_LEVELS.length + d) % CARE_LEVELS.length);
@@ -48,7 +51,7 @@ export default function LevelsExplorer() {
               style={{
                 appearance: "none", border: 0,
                 background: i === level ? "#FFFFFF" : "transparent",
-                cursor: "pointer", textAlign: "left",
+                cursor: "pointer", textAlign: "start",
                 fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, letterSpacing: "0.02em",
                 padding: "14px 18px",
                 color: i === level ? "var(--color-text)" : "var(--color-neutral-600)",

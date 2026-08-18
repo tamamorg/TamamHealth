@@ -34,7 +34,10 @@
   body { width: 1200px; height: 630px; overflow: hidden; font-family: var(--font-body); color: var(--color-text); }
 
   .card { position: relative; width: 1200px; height: 630px; background: var(--color-accent-700); overflow: hidden; }
-  .card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 27%; }
+  /* The hero anchors this photograph at 27%; a 1200×630 card is a far
+     shallower window and 27% cuts the doctor's head. 4% keeps both
+     clinicians and the paper file whole. */
+  .card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 4%; }
   /* The hero's scrim, pulled a little heavier: a share card is read at a
      third of this size in a feed, and the right edge has to stay quiet
      behind the mark rather than merely tinted. */
@@ -91,7 +94,7 @@
         <p class="lede">Offline-first health records for South&nbsp;Sudan — <b>so care never starts from zero.</b></p>
         <div class="foot">
           <span class="chip">tamamhealth.org</span>
-          <span class="foot-note">Offline first, Connected Workflows</span>
+          <span class="foot-note">Works with power shortage, no signal</span>
         </div>
       </div>
     </div>

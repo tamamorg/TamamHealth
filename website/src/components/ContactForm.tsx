@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import Corners from "@/components/Corners";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { WEB3FORMS_ACCESS_KEY } from "@/lib/site-data";
 
 const SUBJECTS = ["What is this about?", "Book a demo", "Deploy Tamam in a facility", "Fund the pilot", "Partner or integrate", "Something else"];
@@ -58,6 +59,7 @@ const primaryBtn: React.CSSProperties = {
 };
 
 export default function ContactForm() {
+  const { t } = useLanguage();
   const [step, setStep] = useState<1 | 2>(1);
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   // Step 1's answers have to outlive the step switch: those inputs unmount when
@@ -123,19 +125,19 @@ export default function ContactForm() {
       {step === 1 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 26 }}>
           <input
-            aria-label="Full name" placeholder="Full name*" className="tm-cfield" style={field}
+            aria-label={t("Full name")} placeholder={t("Full name*")} className="tm-cfield" style={field}
             value={who.name} onChange={(e) => setWho({ ...who, name: e.target.value })}
           />
           <input
-            aria-label="Email" type="email" placeholder="Email*" className="tm-cfield" style={field}
+            aria-label={t("Email")} type="email" placeholder={t("Email*")} className="tm-cfield" style={field}
             value={who.email} onChange={(e) => setWho({ ...who, email: e.target.value })}
           />
           <input
-            aria-label="Phone" type="tel" placeholder="Phone" className="tm-cfield" style={field}
+            aria-label={t("Phone")} type="tel" placeholder={t("Phone")} className="tm-cfield" style={field}
             value={who.phone} onChange={(e) => setWho({ ...who, phone: e.target.value })}
           />
           <input
-            aria-label="Organisation" placeholder="Organisation — clinic, hospital, NGO or ministry*" className="tm-cfield" style={field}
+            aria-label={t("Organisation")} placeholder={t("Organisation — clinic, hospital, NGO or ministry*")} className="tm-cfield" style={field}
             value={who.organisation} onChange={(e) => setWho({ ...who, organisation: e.target.value })}
           />
           {/* type="button": step 1 advances the wizard, it never submits. */}
@@ -143,33 +145,33 @@ export default function ContactForm() {
             type="button" onClick={() => setStep(2)} disabled={!step1Complete} className="blueprint"
             style={{ ...primaryBtn, marginTop: 6, width: "100%", opacity: step1Complete ? 1 : 0.5, cursor: step1Complete ? "pointer" : "not-allowed" }}
           >
-            Next
+            {t("Next")}
             <Corners />
           </button>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 26 }}>
-          <select name="topic" aria-label="What is this about?" className="tm-cfield" style={field} defaultValue={SUBJECTS[0]}>
+          <select name="topic" aria-label={t("What is this about?")} className="tm-cfield" style={field} defaultValue={SUBJECTS[0]}>
             {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
           </select>
-          <select name="level" aria-label="Level of care" className="tm-cfield" style={field} defaultValue={LEVELS[0]}>
+          <select name="level" aria-label={t("Level of care")} className="tm-cfield" style={field} defaultValue={LEVELS[0]}>
             {LEVELS.map((l) => <option key={l}>{l}</option>)}
           </select>
-          <select name="place" aria-label="Where you are" className="tm-cfield" style={field} defaultValue={PLACES[0]}>
+          <select name="place" aria-label={t("Where you are")} className="tm-cfield" style={field} defaultValue={PLACES[0]}>
             {PLACES.map((p) => <option key={p}>{p}</option>)}
           </select>
           <textarea
-            name="message" aria-label="Message" rows={4} className="tm-cfield"
-            placeholder="What you're building, or how you'd like to help."
+            name="message" aria-label={t("Message")} rows={4} className="tm-cfield"
+            placeholder={t("What you're building, or how you'd like to help.")}
             style={{ ...field, resize: "vertical" }}
           />
           <p style={{ margin: "4px 0 0", fontSize: 13, lineHeight: 1.55, color: "var(--color-neutral-700)" }}>
             By submitting, you agree that TamamHealth may contact you about this enquiry, as described in our{" "}
-            <Link href="/terms" style={{ color: "var(--color-accent-700)" }}>Terms &amp; Privacy</Link>.
+            <Link href="/terms" style={{ color: "var(--color-accent-700)" }}>{t("Terms & Privacy")}</Link>.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "62px 1fr", gap: 12, marginTop: 6 }}>
             <button
-              type="button" onClick={() => { setStep(1); setState("idle"); }} aria-label="Back" className="blueprint"
+              type="button" onClick={() => { setStep(1); setState("idle"); }} aria-label={t("Back")} className="blueprint"
               style={{ appearance: "none", cursor: "pointer", fontSize: 18, padding: "16px 0", background: "transparent", border: "1px solid var(--color-neutral-400, #a9b4c0)", color: "var(--color-text)" }}
             >
               ←
@@ -182,7 +184,7 @@ export default function ContactForm() {
           </div>
           {state === "error" && (
             <span style={{ fontSize: 14, lineHeight: 1.5, color: "#b3251e" }}>
-              Something went wrong sending that — please email support.tamam@gmail.com directly.
+              {t("Something went wrong sending that — please email support.tamam@gmail.com directly.")}
             </span>
           )}
         </div>

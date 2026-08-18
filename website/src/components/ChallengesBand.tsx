@@ -6,9 +6,12 @@
 import Link from "next/link";
 import { useRef } from "react";
 import Corners from "@/components/Corners";
-import { CHALLENGES } from "@/lib/site-data";
+import { CHALLENGES as CHALLENGES_EN } from "@/lib/site-data";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export default function ChallengesBand() {
+  const { content } = useLanguage();
+  const CHALLENGES = content(CHALLENGES_EN);
   const rail = useRef<HTMLDivElement>(null);
   const scroll = (d: number) => rail.current?.scrollBy({ left: d * 336, behavior: "smooth" });
 

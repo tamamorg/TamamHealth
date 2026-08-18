@@ -6,9 +6,12 @@
 
 import { useState } from "react";
 import Corners from "@/components/Corners";
-import { DONATION_TIERS, WEB3FORMS_ACCESS_KEY } from "@/lib/site-data";
+import { DONATION_TIERS as DONATION_TIERS_EN, WEB3FORMS_ACCESS_KEY } from "@/lib/site-data";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export default function DonateWidget() {
+  const { content } = useLanguage();
+  const DONATION_TIERS = content(DONATION_TIERS_EN);
   const [tier, setTier] = useState(1);
   const [freq, setFreq] = useState<"one-time" | "monthly">("one-time");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -64,7 +67,7 @@ export default function DonateWidget() {
               className="blueprint tm-tier"
               aria-pressed={i === tier}
               style={{
-                appearance: "none", cursor: "pointer", textAlign: "left", font: "inherit",
+                appearance: "none", cursor: "pointer", textAlign: "start", font: "inherit",
                 padding: "20px 24px",
                 background: i === tier ? "rgba(1,86,151,0.08)" : "transparent",
                 border: `${i === tier ? "2px" : "1px"} solid ${i === tier ? x.accent : "var(--color-divider)"}`,

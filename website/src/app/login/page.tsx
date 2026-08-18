@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { platformHref, type LoginRole } from "@/lib/site-data";
+import { getTranslator } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
   title: "Log in",
@@ -32,6 +33,7 @@ const ROLE_KEYS = ["staff", "patient", "ministry", "superadmin"] as const;
  * hazard outright rather than relying on the field staying absent.
  */
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
+  const { t, content } = await getTranslator();
   const { role } = await searchParams;
   const key: LoginRole["key"] = (ROLE_KEYS as readonly string[]).includes(role ?? "")
     ? (role as LoginRole["key"])

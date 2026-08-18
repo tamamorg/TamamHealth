@@ -1,24 +1,19 @@
 /* ═══ Site chrome: footer ═══
-   Server component — the ≤520px accordions are native <details>, no JS.
-
-   The columns render CLOSED, and CSS forces their content visible above
-   520px (see .tm-foot-col::details-content in globals.css). That inversion is
-   what makes one markup serve both: a phone gets collapsed accordions it can
-   tap open, a desktop gets plain lists. Adding `open` here instead would
-   expand them everywhere — including the phones the accordion exists for —
-   because the initial state of <details> cannot be set per breakpoint. */
+   Server component — the ≤520px accordions are native <details>{t(", no JS. The columns render CLOSED, and CSS forces their content visible above 520px (see .tm-foot-col::details-content in globals.css). That inversion is what makes one markup serve both: a phone gets collapsed accordions it can tap open, a desktop gets plain lists. Adding `open` here instead would expand them everywhere — including the phones the accordion exists for — because the initial state of")} <details> cannot be set per breakpoint. */
 
 import Link from "next/link";
-import { FOOTER_COLS, platformHref } from "@/lib/site-data";
+import { FOOTER_COLS as FOOTER_COLS_EN, platformHref } from "@/lib/site-data";
+import { getTranslator } from "@/lib/i18n/server";
 
-export default function SiteFooter() {
+export default async function SiteFooter() {
+  const { t, content } = await getTranslator();
+  const FOOTER_COLS = content(FOOTER_COLS_EN);
+
   return (
     <footer style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)", padding: "60px 32px 30px" }}>
       <div className="tm-footer-grid" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1fr", gap: 44 }}>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-          TamamHealth is offline-first digital health infrastructure for South Sudan and sub-Saharan Africa — one patient record
-          that works through power cuts and network gaps, from the Boma health worker to the Ministry of Health. Founded at Tufts
-          University · starting in South Sudan, built for sub-Saharan Africa.
+          {t("TamamHealth is offline-first digital health infrastructure for South Sudan and sub-Saharan Africa — one patient record that works through power cuts and network gaps, from the Boma health worker to the Ministry of Health. Founded at Tufts University · starting in South Sudan, built for sub-Saharan Africa.")}
         </p>
         {FOOTER_COLS.map((col) => (
           <details key={col.title} className="tm-foot-col">
@@ -46,14 +41,14 @@ export default function SiteFooter() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {/* eslint-disable-next-line @next/next/no-img-element -- small inline SVG mark */}
           <img src="/assets/tamam-logo-mark.svg" alt="" style={{ height: 26, width: "auto" }} />
-          <span className="fs125" style={{ color: "var(--color-neutral-700)" }}>© 2026 TamamHealth</span>
+          <span className="fs125" style={{ color: "var(--color-neutral-700)" }}>{t("© 2026 TamamHealth")}</span>
         </div>
         <div className="fs125" style={{ display: "flex", gap: 26, flexWrap: "wrap" }}>
-          <Link href="/terms" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Terms &amp; Conditions</Link>
+          <Link href="/terms" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Terms & Conditions")}</Link>
           {/* Privacy lives as a clause inside the terms, so it deep-links to
               that clause rather than dropping the reader at the page top. */}
-          <Link href="/terms#patient-data" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Privacy Policy</Link>
-          <a href={platformHref("staff")} style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>Platform login</a>
+          <Link href="/terms#patient-data" style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Privacy Policy")}</Link>
+          <a href={platformHref("staff")} style={{ color: "var(--color-neutral-700)", textDecoration: "none" }}>{t("Platform login")}</a>
         </div>
       </div>
     </footer>

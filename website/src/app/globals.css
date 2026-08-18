@@ -128,12 +128,12 @@ section[id] { scroll-margin-top: 130px; }
   position: absolute;
   background: currentColor;
 }
-.blueprint > .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
-.blueprint > .corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
-.blueprint > .corner.tl { top: -6px; left: -6px; }
-.blueprint > .corner.tr { top: -6px; right: -6px; }
-.blueprint > .corner.bl { bottom: -6px; left: -6px; }
-.blueprint > .corner.br { bottom: -6px; right: -6px; }
+.blueprint > .corner::before { inset-inline-start: 5px; top: 0; width: 1px; height: 100%; }
+.blueprint > .corner::after { top: 5px; inset-inline-start: 0; width: 100%; height: 1px; }
+.blueprint > .corner.tl { top: -6px; inset-inline-start: -6px; }
+.blueprint > .corner.tr { top: -6px; inset-inline-end: -6px; }
+.blueprint > .corner.bl { bottom: -6px; inset-inline-start: -6px; }
+.blueprint > .corner.br { bottom: -6px; inset-inline-end: -6px; }
 .corner-light { color: rgba(255, 255, 255, 0.5) !important; }
 
 /* Horizontal photo gallery — film strip: fixed height, natural aspect ratio,
@@ -366,16 +366,16 @@ header > div { min-width: 0; }
 .tm-desktop-nav { min-width: 0; flex-wrap: nowrap; }
 
 @media (max-width: 1240px) {
-  .tm-prod-card { margin-left: max(425px, 34%) !important; }
+  .tm-prod-card { margin-inline-start: max(425px, 34%) !important; }
 }
 @media (max-width: 1320px) {
-  .tm-desktop-nav .tm-navlink { padding-left: 9px !important; padding-right: 9px !important; font-size: 15px !important; }
-  .tm-desktop-nav > a:last-child { margin-left: 8px !important; padding-left: 15px !important; padding-right: 15px !important; }
+  .tm-desktop-nav .tm-navlink { padding-inline-start: 9px !important; padding-inline-end: 9px !important; font-size: 15px !important; }
+  .tm-desktop-nav > a:last-child { margin-inline-start: 8px !important; padding-inline-start: 15px !important; padding-inline-end: 15px !important; }
   .tm-navrow { gap: 20px !important; }
 }
 @media (max-width: 1180px) {
-  .tm-desktop-nav .tm-navlink { padding-left: 7px !important; padding-right: 7px !important; font-size: 14.5px !important; }
-  .tm-navrow, .tm-util { padding-left: 24px !important; padding-right: 24px !important; }
+  .tm-desktop-nav .tm-navlink { padding-inline-start: 7px !important; padding-inline-end: 7px !important; font-size: 14.5px !important; }
+  .tm-navrow, .tm-util { padding-inline-start: 24px !important; padding-inline-end: 24px !important; }
 }
 @media (max-width: 1100px) {
   .tm-desktop-nav { display: none !important; }
@@ -385,10 +385,10 @@ header > div { min-width: 0; }
   .tm-split { grid-template-columns: 1fr !important; }
   /* Stacked, the home lead story's divider moves from the copy's left edge to
      its top, and the figure drops to a banner height above it. */
-  .tm-news-lead > div:last-of-type { border-left: 0 !important; border-top: 1px solid var(--color-divider) !important; padding: 34px 30px 38px !important; }
+  .tm-news-lead > div:last-of-type { border-inline-start: 0 !important; border-top: 1px solid var(--color-divider) !important; padding: 34px 30px 38px !important; }
   .tm-news-lead > .tm-figure { min-height: 260px !important; }
   .tm-sticky { position: static !important; top: auto !important; }
-  .tm-prod-card { margin-top: 0 !important; margin-left: 0 !important; }
+  .tm-prod-card { margin-top: 0 !important; margin-inline-start: 0 !important; }
   .tm-prod-photo { min-height: 320px !important; }
   .tm-products-band { background: #0e2a4a; }
   .tm-prod-grid { grid-template-columns: 1fr !important; }
@@ -398,14 +398,14 @@ header > div { min-width: 0; }
   /* Stacked, the closing figures move under the argument rather than beside
      it, and the divider between them turns with them. */
   .tm-problem-close { grid-template-columns: 1fr !important; }
-  .tm-problem-figs { flex-direction: row !important; border-left: 0 !important; border-top: 1px solid var(--color-divider); }
-  .tm-problem-figs > div + div { border-top: 0 !important; border-left: 1px solid var(--color-divider); }
+  .tm-problem-figs { flex-direction: row !important; border-inline-start: 0 !important; border-top: 1px solid var(--color-divider); }
+  .tm-problem-figs > div + div { border-top: 0 !important; border-inline-start: 1px solid var(--color-divider); }
   /* One column wide, the banner is the full measure of the panel — a taller
      crop keeps it off the subjects' chins — and the plate no longer has three
      numerals to line up with, so it drops its floor. */
   .tm-break-fig { height: 232px !important; }
   .tm-problem-plate { min-height: 0 !important; }
-  main section { padding-left: 28px !important; padding-right: 28px !important; }
+  main section { padding-inline-start: 28px !important; padding-inline-end: 28px !important; }
   /* Below 1100 the hero stops being a fixed-height band, and with the
      photograph absolutely filling that box the picture took its height from
      whichever slide was showing — a long body grew the image, a short one
@@ -418,7 +418,7 @@ header > div { min-width: 0; }
   .tm-hero-scrim { height: 360px; bottom: auto !important; }
   .tm-hero-wrap { height: auto !important; padding: 0 28px !important; margin-top: -72px !important; margin-bottom: 0 !important; }
   .tm-hero-card { width: 100% !important; background: #ffffff !important; }
-  .tm-map iframe { height: 460px !important; margin-left: 0 !important; }
+  .tm-map iframe { height: 460px !important; margin-inline-start: 0 !important; }
   /* touch targets: nothing tappable under 44px once the pointer is a finger */
   main button, header button, footer button { min-height: 44px; min-width: 44px; }
   /* …except the carousel dashes: the 44px-tall bar is the touch target, and a
@@ -456,7 +456,7 @@ header > div { min-width: 0; }
 }
 @media (max-width: 760px) {
   .tm-award { grid-template-columns: 1fr !important; }
-  .tm-award > .tm-figure { border-left: 0 !important; border-top: 1px solid rgba(255, 255, 255, 0.28) !important; min-height: 220px !important; }
+  .tm-award > .tm-figure { border-inline-start: 0 !important; border-top: 1px solid rgba(255, 255, 255, 0.28) !important; min-height: 220px !important; }
 }
 @media (max-width: 639px) {
   .tm-g4, .tm-g3 { grid-template-columns: 1fr !important; }
@@ -469,11 +469,11 @@ header > div { min-width: 0; }
   .tm-g6 { grid-template-columns: repeat(2, 1fr) !important; }
   .tm-problem-breaks { grid-template-columns: 1fr !important; }
   .tm-problem-figs { flex-direction: column !important; }
-  .tm-problem-figs > div + div { border-left: 0 !important; border-top: 1px solid var(--color-divider) !important; }
+  .tm-problem-figs > div + div { border-inline-start: 0 !important; border-top: 1px solid var(--color-divider) !important; }
   /* One column wide, the break banner is the full page width — a taller crop
      keeps it from reading as a letterbox strip. */
   .tm-break-fig { height: 196px !important; }
-  main section { padding-left: 18px !important; padding-right: 18px !important; }
+  main section { padding-inline-start: 18px !important; padding-inline-end: 18px !important; }
   main section:not(.tm-hero):not(.tm-hero-nav) { padding-top: 42px !important; padding-bottom: 46px !important; }
   .tm-hero { min-height: 480px; padding: 0 !important; }
   .tm-h420 { height: 260px !important; }
@@ -481,7 +481,7 @@ header > div { min-width: 0; }
   .tm-map iframe { height: 380px !important; }
   .tm-rule { width: 100% !important; }
   .tm-steprow > summary { grid-template-columns: 52px 1fr auto !important; gap: 16px !important; }
-  .tm-steprow > p { padding-left: 68px !important; }
+  .tm-steprow > p { padding-inline-start: 68px !important; }
   .fs11, .fs115 { font-size: 12.5px; }
   .fs12, .fs125 { font-size: 13px; }
   .tm-flow-step { flex: 1 0 250px !important; }
@@ -491,10 +491,10 @@ header > div { min-width: 0; }
   footer { padding-top: 44px !important; padding-bottom: 34px !important; }
 }
 @media (max-width: 479px) {
-  main section { padding-left: 14px !important; padding-right: 14px !important; }
+  main section { padding-inline-start: 14px !important; padding-inline-end: 14px !important; }
   .tm-g6 { grid-template-columns: 1fr !important; }
   .tm-steprow > summary { grid-template-columns: 34px 1fr auto !important; gap: 10px !important; }
-  .tm-steprow > p { padding-left: 44px !important; }
+  .tm-steprow > p { padding-inline-start: 44px !important; }
   .tm-pad-lg { padding: 22px 18px !important; }
 }
 
@@ -508,13 +508,13 @@ header > div { min-width: 0; }
 
 /* header utility row folds into the nav bar on phones */
 @media (max-width: 760px) {
-  .tm-util { position: absolute !important; top: 0 !important; right: 74px !important; height: 100% !important; padding: 0 !important; max-width: none !important; z-index: 72; }
+  .tm-util { position: absolute !important; top: 0 !important; inset-inline-end: 74px !important; height: 100% !important; padding: 0 !important; max-width: none !important; z-index: 72; }
   .tm-navrow { padding: 0 18px !important; gap: 12px !important; }
   .tm-navrow > button.tm-burger { width: 44px !important; height: 44px !important; }
   .tm-util button { width: 40px !important; height: 40px !important; }
 }
 @media (max-width: 420px) {
-  .tm-util { right: 66px !important; gap: 0 !important; }
+  .tm-util { inset-inline-end: 66px !important; gap: 0 !important; }
   .tm-util button { width: 36px !important; height: 36px !important; }
   .tm-navrow { padding: 0 14px !important; }
 }
@@ -569,7 +569,7 @@ header > div { min-width: 0; }
 /* mobile insight strip: one card at a time, dashes + steppers */
 @media (max-width: 760px) {
   .tm-strip-rail { grid-template-columns: 100% !important; grid-auto-flow: column; grid-auto-columns: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding: 0 !important; }
-  .tm-strip-rail > button { scroll-snap-align: start; border-left: 0 !important; padding: 18px 18px 20px !important; min-height: 0 !important; }
+  .tm-strip-rail > button { scroll-snap-align: start; border-inline-start: 0 !important; padding: 18px 18px 20px !important; min-height: 0 !important; }
   .tm-strip-rail::-webkit-scrollbar { display: none; }
   .tm-strip-section { display: none !important; }
   .tm-hero-nav { display: flex !important; }
@@ -587,16 +587,16 @@ header > div { min-width: 0; }
 
 /* ── One gutter: content columns align with the header logo at every width ── */
 @media (max-width: 1180px) {
-  main section { padding-left: 24px !important; padding-right: 24px !important; }
-  .tm-inset { padding-left: 0 !important; padding-right: 0 !important; }
-  footer { padding-left: 0 !important; padding-right: 0 !important; }
-  footer > div { padding-left: 24px !important; padding-right: 24px !important; }
+  main section { padding-inline-start: 24px !important; padding-inline-end: 24px !important; }
+  .tm-inset { padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  footer { padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  footer > div { padding-inline-start: 24px !important; padding-inline-end: 24px !important; }
 }
 @media (max-width: 639px) {
-  .tm-navrow, .tm-util { padding-left: 18px !important; padding-right: 18px !important; }
-  main section { padding-left: 18px !important; padding-right: 18px !important; }
-  footer { padding-left: 0 !important; padding-right: 0 !important; }
-  footer > div { padding-left: 18px !important; padding-right: 18px !important; }
+  .tm-navrow, .tm-util { padding-inline-start: 18px !important; padding-inline-end: 18px !important; }
+  main section { padding-inline-start: 18px !important; padding-inline-end: 18px !important; }
+  footer { padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  footer > div { padding-inline-start: 18px !important; padding-inline-end: 18px !important; }
 }
 
 /* ── One content width (1320px): containers with their own 32px gutter get 1320+64 ── */
@@ -627,11 +627,11 @@ header > div { min-width: 0; }
   .tm-hero-img { position: relative !important; inset: auto !important; height: 260px !important; }
   .tm-hero-wrap { height: auto !important; padding: 0 !important; }
   .tm-hero-card { width: 100% !important; }
-  main section, footer { padding-left: 0 !important; padding-right: 0 !important; }
-  header > div, .tm-util, .tm-navrow { max-width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; }
-  main section > div, footer > div { max-width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; }
+  main section, footer { padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  header > div, .tm-util, .tm-navrow { max-width: 100% !important; padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  main section > div, footer > div { max-width: 100% !important; padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
   img, iframe { max-width: 100% !important; }
-  .tm-map iframe { height: 400px !important; margin-left: 0 !important; }
+  .tm-map iframe { height: 400px !important; margin-inline-start: 0 !important; }
   .blueprint, .tm-figure { break-inside: avoid; }
   h1, h2, h3 { break-after: avoid; }
   a { text-decoration: none !important; }

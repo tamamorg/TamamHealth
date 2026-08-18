@@ -15,7 +15,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Corners from "@/components/Corners";
-import { LANGUAGES, PRODUCTS, SUPPORT_EMAIL, SUPPORT_PHONE, platformHref } from "@/lib/site-data";
+import { PRODUCTS, SUPPORT_EMAIL, SUPPORT_PHONE, platformHref } from "@/lib/site-data";
+import { SUPPORTED_LOCALES } from "@/lib/i18n";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type MenuKey = "products" | "platform" | "system" | "about";
 type UtilKey = "account" | "lang" | "search" | "drawer";
@@ -120,7 +122,7 @@ export default function SiteHeader() {
   const [condensed, setCondensed] = useState(false);
   const [menu, setMenu] = useState<MenuKey | null>(null);
   const [util, setUtil] = useState<UtilKey | null>(null);
-  const [lang, setLang] = useState("English");
+  const { locale, setLocale, t } = useLanguage();
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -189,7 +191,7 @@ export default function SiteHeader() {
           className="tm-util"
           style={{ maxWidth: 1320, margin: "0 auto", padding: "0 32px", height: utilH, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, transition: "height .18s ease" }}
         >
-          <div className="tm-util-contact" style={{ marginRight: "auto", display: "flex", alignItems: "center", gap: 20 }}>
+          <div className="tm-util-contact" style={{ marginInlineEnd: "auto", display: "flex", alignItems: "center", gap: 20 }}>
             {/* Displayed, not dialled — a <span>, so a tap on a phone cannot
                 start a call. Email is the channel that takes a click. */}
             <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--color-neutral-700)" }}>
@@ -203,13 +205,13 @@ export default function SiteHeader() {
           </div>
 
           <div style={{ position: "relative", zIndex: 70 }}>
-            <button onClick={() => toggleUtil("account")} aria-label="Log in" title="Log in" aria-expanded={util === "account"} style={iconBtn("account")}>
+            <button onClick={() => toggleUtil("account")} aria-label={t("Log in")} title={t("Log in")} aria-expanded={util === "account"} style={iconBtn("account")}>
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="10" r="3"></circle><path d="M6.7 19a5.3 5.3 0 0 1 10.6 0"></path></svg>
             </button>
             {util === "account" && (
               <div className="blueprint" style={{ position: "absolute", right: 0, top: 40, width: 262, background: "#FFFFFF", boxShadow: "var(--shadow-md)", padding: "18px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
                 <Corners />
-                <span className="fs11" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>Log in to the portal</span>
+                <span className="fs11" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>{t("Log in to the portal")}</span>
                 {PORTAL_LINKS.map((p) => (
                   <Link key={p.label} href={p.href} style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 2 }}>
                     <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 17, color: "#0E2A4A" }}>{p.label} &nbsp;›</span>
@@ -217,40 +219,45 @@ export default function SiteHeader() {
                   </Link>
                 ))}
                 <span className="fs12" style={{ lineHeight: 1.5, color: "var(--color-neutral-600)", borderTop: "1px solid var(--color-divider)", paddingTop: 10 }}>
-                  Accounts are issued by your facility administrator.
+                  {t("Accounts are issued by your facility administrator.")}
                 </span>
               </div>
             )}
           </div>
 
           <div style={{ position: "relative", zIndex: 70 }}>
-            <button onClick={() => toggleUtil("lang")} aria-label="Change language" title="Change language" aria-expanded={util === "lang"} style={iconBtn("lang")}>
+            <button onClick={() => toggleUtil("lang")} aria-label={t("Change language")} title={t("Change language")} aria-expanded={util === "lang"} style={iconBtn("lang")}>
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"></path></svg>
             </button>
             {util === "lang" && (
               <div className="blueprint" style={{ position: "absolute", right: 0, top: 40, width: 228, background: "#FFFFFF", boxShadow: "var(--shadow-md)", padding: "10px 0", display: "flex", flexDirection: "column" }}>
                 <Corners />
-                {LANGUAGES.map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => { setLang(l); setUtil(null); }}
-                    style={{
-                      appearance: "none", border: 0, background: "none", cursor: "pointer", textAlign: "left", padding: "9px 20px",
-                      fontFamily: "var(--font-body)", fontSize: 14.5,
-                      fontWeight: l === lang ? 700 : 400,
-                      color: l === lang ? "#015697" : "#0E2A4A",
-                      textDecoration: l === lang ? "underline" : "none",
-                      textUnderlineOffset: 4,
-                    }}
-                  >
-                    {l}
-                  </button>
-                ))}
+                {SUPPORTED_LOCALES.map((l) => {
+                  const active = l.code === locale;
+                  return (
+                    <button
+                      key={l.code}
+                      lang={l.code}
+                      aria-current={active ? "true" : undefined}
+                      onClick={() => { setLocale(l.code); setUtil(null); }}
+                      style={{
+                        appearance: "none", border: 0, background: "none", cursor: "pointer", textAlign: "start", padding: "9px 20px",
+                        fontFamily: "var(--font-body)", fontSize: 14.5,
+                        fontWeight: active ? 700 : 400,
+                        color: active ? "#015697" : "#0E2A4A",
+                        textDecoration: active ? "underline" : "none",
+                        textUnderlineOffset: 4,
+                      }}
+                    >
+                      {l.nativeName}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          <button onClick={() => toggleUtil("search")} aria-label="Search" title="Search" aria-expanded={util === "search"} style={iconBtn("search")}>
+          <button onClick={() => toggleUtil("search")} aria-label={t("Search")} title={t("Search")} aria-expanded={util === "search"} style={iconBtn("search")}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>
           </button>
         </div>
@@ -265,11 +272,11 @@ export default function SiteHeader() {
             {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo, no optimisation needed */}
             <img
               src="/assets/tamam-logo-full.svg"
-              alt="Tamam Healthcare System"
+              alt={t("Tamam Healthcare System")}
               style={{ height: logoH, width: "auto", transition: "height .18s ease" }}
             />
           </Link>
-          <nav className="tm-desktop-nav" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
+          <nav className="tm-desktop-nav" style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: 4 }}>
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
@@ -291,12 +298,12 @@ export default function SiteHeader() {
             ))}
             {/* The rail's one call to action, in the brand accent rather than
                 the deep blue the header itself is drawn in. */}
-            <Link href="/contact" className="btn blueprint" style={{ marginLeft: 14, padding: "11px 20px", fontSize: 15, color: "#0E2A4A", whiteSpace: "nowrap", background: "#E8863A", borderColor: "#E8863A" }}>
-              Get in touch
+            <Link href="/contact" className="btn blueprint" style={{ marginInlineStart: 14, padding: "11px 20px", fontSize: 15, color: "#0E2A4A", whiteSpace: "nowrap", background: "#E8863A", borderColor: "#E8863A" }}>
+              {t("Get in touch")}
               <Corners />
             </Link>
           </nav>
-          <button className="tm-burger" onClick={() => toggleUtil("drawer")} aria-label="Menu" aria-expanded={util === "drawer"} style={{ appearance: "none", marginLeft: "auto", background: "none", border: "1px solid var(--color-divider)", cursor: "pointer", width: 46, height: 46, placeItems: "center", color: "#015697" }}>
+          <button className="tm-burger" onClick={() => toggleUtil("drawer")} aria-label={t("Menu")} aria-expanded={util === "drawer"} style={{ appearance: "none", marginInlineStart: "auto", background: "none", border: "1px solid var(--color-divider)", cursor: "pointer", width: 46, height: 46, placeItems: "center", color: "#015697" }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>
           </button>
         </div>
@@ -337,7 +344,7 @@ export default function SiteHeader() {
               </Link>
             ))}
             <Link href="/contact" className="btn btn-primary" style={{ margin: "16px 28px 0", padding: "14px 0", fontSize: 16, color: "#0E2A4A" }}>
-              Get in touch
+              {t("Get in touch")}
             </Link>
           </div>
         )}
@@ -346,16 +353,16 @@ export default function SiteHeader() {
         {util === "search" && (
           <div style={{ borderTop: "1px solid var(--color-divider)", background: "var(--color-surface)", padding: "56px 32px 60px", boxShadow: "var(--shadow-md)" }}>
             <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
-              <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0, textAlign: "center" }}>What can we help you with?</h2>
+              <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0, textAlign: "center" }}>{t("What can we help you with?")}</h2>
               <div className="blueprint" style={{ width: "100%", display: "flex", alignItems: "center", background: "#FFFFFF", borderWidth: 2, borderColor: "#2191D0", padding: "4px 12px 4px 18px" }}>
                 <Corners />
                 <input
                   ref={searchRef}
-                  placeholder="Search"
-                  aria-label="Search the site"
+                  placeholder={t("Search")}
+                  aria-label={t("Search the site")}
                   style={{ flex: 1, border: 0, outline: "none", background: "none", fontFamily: "var(--font-body)", fontSize: 17, color: "#0E2A4A", padding: "12px 0" }}
                 />
-                <button aria-label="Run search" style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", width: 40, height: 40, display: "grid", placeItems: "center", color: "#015697" }}>
+                <button aria-label={t("Run search")} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", width: 40, height: 40, display: "grid", placeItems: "center", color: "#015697" }}>
                   <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>
                 </button>
               </div>

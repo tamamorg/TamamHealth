@@ -4,7 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Corners from "@/components/Corners";
 import NewsCard from "@/components/NewsCard";
-import { NEWS, newsBySlug, type Photo } from "@/lib/site-data";
+import { NEWS as NEWS_EN, newsBySlug, type Photo } from "@/lib/site-data";
+import { getTranslator } from "@/lib/i18n/server";
 
 /** A photo set into the story. One fills the measure; two run side by side and
     stack on a phone. Captions sit under each frame in the body's own ink. */
@@ -29,7 +30,7 @@ function BodyFigure({ photos }: { photos: Photo[] }) {
 }
 
 export function generateStaticParams() {
-  return NEWS.map((n) => ({ slug: n.slug }));
+  return NEWS_EN.map((n) => ({ slug: n.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -40,6 +41,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function NewsArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { t, content } = await getTranslator();
+  const NEWS = content(NEWS_EN);
   const { slug } = await params;
   const i = NEWS.findIndex((x) => x.slug === slug);
   if (i === -1) notFound();
@@ -61,7 +64,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
       {/* Hero band */}
       <section style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "30px 32px 74px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <Link href="/news" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7FC4EA", textDecoration: "none" }}>← All news</Link>
+          <Link href="/news" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7FC4EA", textDecoration: "none" }}>{t("← All news")}</Link>
           <div className="tm-split" style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 48, alignItems: "center", marginTop: 26 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "flex-start" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
@@ -125,7 +128,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "12px 24px", marginBottom: 24, borderTop: "1px solid var(--color-divider)", paddingTop: 26 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>More from the night</span>
+                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{t("More from the night")}</span>
                 {n.galleryTitle && (
                   <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(20px, 2.6vw, 28px)", lineHeight: 1.15, color: "var(--color-text)" }}>
                     {n.galleryTitle}
@@ -153,7 +156,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
       {more.length > 0 && (
         <section style={{ padding: "50px 32px 20px" }}>
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-            <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 22px", paddingBottom: 16, borderBottom: "1px solid var(--color-divider)" }}>More news</h2>
+            <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 22px", paddingBottom: 16, borderBottom: "1px solid var(--color-divider)" }}>{t("More news")}</h2>
             <div className="tm-g3" style={{ gap: 22 }}>
               {more.map((x) => (
                 <NewsCard key={x.slug} item={x} />
@@ -167,7 +170,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
       <section style={{ padding: "50px 32px 92px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: siblings ? "space-between" : "center", gap: 20, borderTop: "1px solid var(--color-divider)", paddingTop: 26, flexWrap: "wrap" }}>
           {siblings && <Link href={`/news/${prev.slug}`} style={{ fontSize: 15, color: "#015697", textDecoration: "none" }}>← {prev.title}</Link>}
-          <Link href="/news" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-neutral-600)", textDecoration: "none" }}>All news</Link>
+          <Link href="/news" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-neutral-600)", textDecoration: "none" }}>{t("All news")}</Link>
           {siblings && <Link href={`/news/${next.slug}`} style={{ fontSize: 15, color: "#015697", textDecoration: "none" }}>{next.title} →</Link>}
         </div>
       </section>

@@ -591,7 +591,16 @@ export const DONATION_FAQ = [
   { q: "How do I know it worked?", a: "Every level writes to the same patient record and rolls up into DHIS2-ready national reports — the pilot is designed to be measured, not asserted." },
 ];
 
-export const LANGUAGES = ["English", "Arabic (Juba)", "Dinka", "Nuer", "Shilluk", "Bari", "Murle", "Zande"];
+/**
+ * The languages the site and the platform are actually translated into.
+ *
+ * This used to list eight South Sudanese languages, none of which the site
+ * could render — the picker set a state variable and nothing else. A language
+ * belongs here only once its dictionary exists end to end; the canonical list
+ * now lives in `@/lib/i18n` (SUPPORTED_LOCALES) and this re-exports the display
+ * names for prose that talks about language support.
+ */
+export const LANGUAGES = ["English", "Arabic (Juba)"];
 
 export const STAFF_USERS = [
   { name: "Doctor", scope: "Consultation, orders, admissions, discharge" },

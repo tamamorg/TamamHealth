@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
+import { getLocale } from "@/lib/i18n/server";
+import { localeConfig } from "@/lib/i18n";
 
 /** What the browser tab says. Short on purpose: a tab is ~25 characters
  *  before it truncates, so the tagline was being cut mid-word and every tab
@@ -43,11 +46,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Resolved on the server so the first byte is already in the right language
+  // and the right direction — no English flash before an Arabic repaint.
+  const locale = await getLocale();
+  const { dir } = localeConfig(locale);
+
   return (
-    <html lang="en">
+    <html lang={locale} dir={dir}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font -- root layout, applies site-wide */}
@@ -56,7 +64,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <LanguageProvider locale={locale}>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

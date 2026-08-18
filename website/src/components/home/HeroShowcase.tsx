@@ -8,10 +8,13 @@ import Link from "next/link";
 import { useState } from "react";
 import Corners from "@/components/Corners";
 import HeroNav from "@/components/HeroNav";
-import { HEROES } from "@/lib/site-data";
+import { HEROES as HEROES_EN } from "@/lib/site-data";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { emphasise } from "@/components/emphasise";
 
 export default function HeroShowcase() {
+  const { content } = useLanguage();
+  const HEROES = content(HEROES_EN);
   const [hero, setHero] = useState(0);
   const h = HEROES[hero];
 
@@ -82,9 +85,9 @@ export default function HeroShowcase() {
               onClick={() => go(i)}
               className="tm-card"
               style={{
-                appearance: "none", cursor: "pointer", textAlign: "left", font: "inherit", color: "inherit",
+                appearance: "none", cursor: "pointer", textAlign: "start", font: "inherit", color: "inherit",
                 padding: "22px 26px 28px", border: 0,
-                borderLeft: "1px solid var(--color-divider)", borderTop: "1px solid var(--color-divider)",
+                borderInlineStart: "1px solid var(--color-divider)", borderTop: "1px solid var(--color-divider)",
                 background: i === hero ? "rgba(1,86,151,0.09)" : "transparent",
                 display: "flex", flexDirection: "column", gap: 11, minHeight: 132,
               }}

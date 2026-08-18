@@ -7,7 +7,8 @@
 import { useMemo, useState } from "react";
 import NewsCard from "@/components/NewsCard";
 import Corners from "@/components/Corners";
-import { NEWS } from "@/lib/site-data";
+import { NEWS as NEWS_EN } from "@/lib/site-data";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type GroupKey = "type" | "year";
 
@@ -17,10 +18,17 @@ const count = (list: string[]) => {
   return [...m.entries()];
 };
 
-const TYPE_OPTIONS = count(NEWS.map((n) => n.tag));
-const YEAR_OPTIONS = count(NEWS.map((n) => n.dateISO.slice(0, 4))).sort((a, b) => b[0].localeCompare(a[0]));
+const TYPE_OPTIONS = count(NEWS_EN.map((n) => n.tag));
+const YEAR_OPTIONS = count(NEWS_EN.map((n) => n.dateISO.slice(0, 4))).sort((a, b) => b[0].localeCompare(a[0]));
 
 export default function NewsExplorer() {
+  const { t, content } = useLanguage();
+  // Facet values stay English (they are the filter's identity, and the checked
+  // set must survive a language switch); only the labels are translated. The
+  // article list is translated in full so search matches what the reader sees.
+  // Memoised on `content`, whose identity changes only with the locale — a
+  // fresh array every render would make the filter memo below recompute always.
+  const NEWS = useMemo(() => content(NEWS_EN), [content]);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Record<GroupKey, boolean>>({ type: true, year: false });
   const [types, setTypes] = useState<string[]>([]);
@@ -37,7 +45,10 @@ export default function NewsExplorer() {
       if (!q) return true;
       return [n.title, n.summary, n.tag, n.date, ...n.body].join(" ").toLowerCase().includes(q);
     });
-  }, [query, types, years]);
+    // NEWS is in the deps because it is re-derived per language: without it the
+    // list would keep showing the previous language's copy — and searching
+    // against it — until a filter changed.
+  }, [query, types, years, NEWS]);
 
   const hasFilters = query.trim() !== "" || types.length > 0 || years.length > 0;
 
@@ -46,7 +57,7 @@ export default function NewsExplorer() {
       <button
         onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
         aria-expanded={open[key]}
-        style={{ appearance: "none", background: "none", border: 0, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "15px 0", textAlign: "left" }}
+        style={{ appearance: "none", background: "none", border: 0, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "15px 0", textAlign: "start" }}
       >
         <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 17, color: "#0E2A4A" }}>{label}</span>
         <span aria-hidden="true" style={{ fontFamily: "var(--font-heading)", fontWeight: 400, fontSize: 24, lineHeight: 1, color: "var(--color-accent-700)" }}>
@@ -85,8 +96,8 @@ export default function NewsExplorer() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search"
-              aria-label="Search news"
+              placeholder={t("Search")}
+              aria-label={t("Search news")}
               style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "none", fontFamily: "var(--font-body)", fontSize: 15, color: "#0E2A4A", padding: "12px 0" }}
             />
             <span aria-hidden="true" style={{ width: 36, height: 36, display: "grid", placeItems: "center", color: "#015697" }}>
@@ -94,7 +105,7 @@ export default function NewsExplorer() {
             </span>
           </div>
           <div>
-            <span style={{ display: "block", fontSize: 15, color: "var(--color-neutral-700)", paddingBottom: 6 }}>Filter by:</span>
+            <span style={{ display: "block", fontSize: 15, color: "var(--color-neutral-700)", paddingBottom: 6 }}>{t("Filter by:")}</span>
             {group("type", "News type", TYPE_OPTIONS, types, setTypes)}
             {group("year", "Year", YEAR_OPTIONS, years, setYears)}
           </div>
@@ -103,7 +114,7 @@ export default function NewsExplorer() {
               onClick={() => { setQuery(""); setTypes([]); setYears([]); }}
               style={{ appearance: "none", background: "none", border: 0, cursor: "pointer", alignSelf: "flex-start", padding: 0, fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 15, color: "var(--color-accent-700)" }}
             >
-              Clear all filters ✕
+              {t("Clear all filters ✕")}
             </button>
           )}
         </aside>
@@ -118,9 +129,9 @@ export default function NewsExplorer() {
         ) : (
           <div className="blueprint" style={{ position: "relative", background: "#FFFFFF", padding: "46px 40px", display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
             <Corners />
-            <h3 style={{ margin: 0, fontSize: 22 }}>Nothing matches that search</h3>
+            <h3 style={{ margin: 0, fontSize: 22 }}>{t("Nothing matches that search")}</h3>
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>
-              Try a different word, or clear the filters to see every update.
+              {t("Try a different word, or clear the filters to see every update.")}
             </p>
           </div>
         )}
