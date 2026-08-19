@@ -23,6 +23,13 @@ export const metadata: Metadata = {
     template: "%s — TamamHealth",
   },
   description: DESCRIPTION,
+  // Names the apex as the one real address for every page. Without it, the
+  // site answered on both tamamhealth.org and www.tamamhealth.org with
+  // identical content and nothing saying which was authoritative — so a
+  // crawler indexing a two-month-old domain had to pick, and could split the
+  // little signal there is across two hosts. Resolved against `metadataBase`,
+  // so each route emits its own canonical rather than all pointing at "/".
+  alternates: { canonical: "./" },
   manifest: "/manifest.webmanifest",
   // Its own file, not the logo's: the tab icon has to stay legible against
   // whatever chrome the browser puts behind it, so it does not follow the

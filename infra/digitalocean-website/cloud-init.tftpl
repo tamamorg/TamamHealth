@@ -11,7 +11,15 @@ packages:
 write_files:
   - path: /etc/caddy/Caddyfile
     content: |
-      ${domain}, www.${domain} {
+      # www redirects to the apex rather than serving alongside it. Both names
+      # used to answer 200 with byte-identical content and no canonical link,
+      # so a crawler saw two unrelated sites and had to guess which was real —
+      # splitting whatever ranking signal a new domain manages to earn.
+      www.${domain} {
+        redir https://${domain}{uri} permanent
+      }
+
+      ${domain} {
         reverse_proxy localhost:3001
       }
 
