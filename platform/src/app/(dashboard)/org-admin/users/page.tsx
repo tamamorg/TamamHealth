@@ -82,7 +82,7 @@ export default function OrgUsersPage() {
     }
     try {
       const scope: DataScope = { orgId: currentUser.orgId, role: currentUser.role as UserRole };
-      const [{ getAllUsers }, { getAllHospitals }, { getAvailableRoles }] = await Promise.all([
+      const [{ getAllUsers }, { getAllHospitals }, { assignableRolesForOrgAdmin }] = await Promise.all([
         import('@/lib/services/user-service'),
         import('@/lib/services/hospital-service'),
         import('@/lib/permissions'),
@@ -96,12 +96,17 @@ export default function OrgUsersPage() {
       setUsers(u);
       setHospitals(h);
 
-      // Determine org type to get available roles
-      if (currentUser.organization) {
-        const roles = getAvailableRoles(currentUser.organization.orgType);
-        // Org admin can't assign super_admin
-        setAvailableRoles(roles.filter(r => r !== 'super_admin'));
-      }
+      // Which roles this admin may hand out.
+      //
+      // `orgType` only chooses between the full list and the private-sector
+      // subset, and `getAvailableRoles` already treats anything that is not
+      // 'private' as public — so an organization document that has not loaded
+      // should narrow nothing. Gating the whole computation on
+      // `currentUser.organization` instead left `availableRoles` at its initial
+      // `[]` whenever the org record was missing from the local replica: the
+      // Role picker rendered with no options at all, the org admin could not
+      // create a single user, and nothing on screen said why.
+      setAvailableRoles(assignableRolesForOrgAdmin(currentUser.organization?.orgType));
     } catch (err) {
       console.error('Failed to load users:', err);
     } finally {
@@ -563,7 +568,31 @@ export default function OrgUsersPage() {
               </div>
 
               {/* Hospital (conditional) */}
-              {needsHospital && (
+              {needsHospital && hospitals.length === 0 && (
+                /* A facility-scoped role with no facility to scope it to. The
+                   picker used to render empty here and the submit answered
+                   "Please select a hospital for this role" — an instruction the
+                   admin had no way to follow. An organisation's first facility
+                   has to exist before its clinical staff can, so say that and
+                   point at the page that creates one. */
+                <div
+                  className="rounded-lg px-3 py-2.5 text-sm"
+                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}
+                  data-field="no-facilities"
+                >
+                  <p className="mb-1.5" style={{ color: 'var(--text-primary)' }}>{t('orgUsers.noFacilitiesTitle')}</p>
+                  <p className="mb-2">{t('orgUsers.noFacilitiesBody')}</p>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/org-admin/hospitals')}
+                    className="text-sm font-semibold"
+                    style={{ color: 'var(--accent-primary)' }}
+                  >
+                    {t('orgUsers.noFacilitiesAction')}
+                  </button>
+                </div>
+              )}
+              {needsHospital && hospitals.length > 0 && (
                 <div>
                   <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldAssignedHospital')}</label>
                   <div className="relative">

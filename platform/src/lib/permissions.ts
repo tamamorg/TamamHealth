@@ -760,3 +760,21 @@ export function getAvailableRoles(orgType: 'public' | 'private', isSuperAdmin = 
   if (orgType === 'private') return PRIVATE_SECTOR_ROLES;
   return ALL_ROLES;
 }
+
+/**
+ * The roles an organization administrator may hand out.
+ *
+ * `orgType` is optional on purpose. It only chooses between the full list and
+ * the private-sector subset, so not knowing it should narrow nothing — the
+ * caller must still get a usable list. The org-admin user page used to compute
+ * this only when `currentUser.organization` was present, which left the Role
+ * picker with NO options whenever the organization record had not reached the
+ * local replica: an org admin could not create a single user, and the empty
+ * dropdown gave no reason.
+ *
+ * `super_admin` is never assignable here — an organization administrator must
+ * not be able to mint a platform-wide account.
+ */
+export function assignableRolesForOrgAdmin(orgType?: 'public' | 'private'): UserRole[] {
+  return getAvailableRoles(orgType ?? 'public').filter(r => r !== 'super_admin');
+}
