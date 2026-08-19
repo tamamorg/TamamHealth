@@ -88,6 +88,17 @@ async function postHandler(
     // request claims. super_admin may place the account where the request asks.
     const orgId = auth.role === 'super_admin' ? (doc.orgId ?? auth.orgId) : auth.orgId;
 
+    if (grantedRole === 'org_admin' || accountRequestRoleNeedsFacility(grantedRole)) {
+      if (!orgId) {
+        return NextResponse.json({ error: 'Choose an organization for this account' }, { status: 400 });
+      }
+      const { getOrganizationById } = await import('@/lib/services/organization-service');
+      const organization = await getOrganizationById(orgId);
+      if (!organization || organization.isActive === false) {
+        return NextResponse.json({ error: 'Choose an active organization for this account' }, { status: 400 });
+      }
+    }
+
     let hospitalId = typeof body.hospitalId === 'string' ? body.hospitalId.trim() : doc.hospitalId;
     let hospitalName = typeof body.hospitalName === 'string' ? body.hospitalName.trim() : doc.hospitalName;
     if (accountRequestRoleNeedsFacility(grantedRole)) {

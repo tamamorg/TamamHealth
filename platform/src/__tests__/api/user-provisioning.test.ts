@@ -19,6 +19,11 @@ jest.mock('@/lib/services/hospital-service', () => ({
     _id: 'hosp-a', name: 'Canonical Hospital', orgId: 'org-a',
   })),
 }));
+jest.mock('@/lib/services/organization-service', () => ({
+  getOrganizationById: jest.fn(async (id: string) => id === 'org-a'
+    ? { _id: 'org-a', name: 'Organization A', isActive: true }
+    : null),
+}));
 jest.mock('@/lib/services/user-service', () => ({
   createUser: jest.fn(async (input: Record<string, unknown>) => ({
     _id: `user-${input.username}`, type: 'user', ...input, passwordHash: 'redacted',
@@ -33,8 +38,10 @@ jest.mock('@/lib/services/user-service', () => ({
 
 import { POST } from '@/app/api/users/route';
 import { createUser } from '@/lib/services/user-service';
+import { getOrganizationById } from '@/lib/services/organization-service';
 
 const mockCreateUser = createUser as jest.MockedFunction<typeof createUser>;
+const mockGetOrganizationById = getOrganizationById as jest.MockedFunction<typeof getOrganizationById>;
 
 function post(body: Record<string, unknown>) {
   return new NextRequest('https://app.example.org/api/users', {
@@ -71,6 +78,20 @@ it('rejects an org administrator that could not delegate within any organization
   expect(mockCreateUser).not.toHaveBeenCalled();
   expect(await response.json()).toEqual(expect.objectContaining({
     error: expect.stringMatching(/assigned to an organization/i),
+  }));
+});
+
+it('rejects an org administrator assigned to a missing organization', async () => {
+  mockGetOrganizationById.mockResolvedValueOnce(null);
+  const response = await POST(post({
+    username: 'dangling.admin', name: 'Dangling Admin', role: 'org_admin',
+    password: 'TempPass!123', orgId: 'org-missing',
+  }));
+
+  expect(response.status).toBe(400);
+  expect(mockCreateUser).not.toHaveBeenCalled();
+  expect(await response.json()).toEqual(expect.objectContaining({
+    error: expect.stringMatching(/not found or is inactive/i),
   }));
 });
 

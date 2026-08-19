@@ -72,6 +72,18 @@ function assignableRoleError(actorRole: UserRole, targetRole: UserRole | undefin
   return null;
 }
 
+async function validateActiveOrganization(orgId: string | undefined): Promise<NextResponse | null> {
+  if (!orgId) {
+    return NextResponse.json({ error: 'Organization assignment is required' }, { status: 400 });
+  }
+  const { getOrganizationById } = await import('@/lib/services/organization-service');
+  const organization = await getOrganizationById(orgId);
+  if (!organization || organization.isActive === false) {
+    return NextResponse.json({ error: 'Assigned organization was not found or is inactive' }, { status: 400 });
+  }
+  return null;
+}
+
 /**
  * Authorize a mutation that targets an EXISTING user (reset_password,
  * deactivate, reactivate, update, delete). Two independent rules, both
@@ -315,6 +327,10 @@ async function postHandler(request: NextRequest) {
         canonicalHospitalName = canonicalHospital.name;
         canonicalOrgId = canonicalHospital.orgId || requestedOrgId;
       }
+      if (effectiveRole === 'org_admin' || !rolesWithoutHospital.includes(effectiveRole)) {
+        const organizationError = await validateActiveOrganization(canonicalOrgId);
+        if (organizationError) return organizationError;
+      }
 
       const updated = await updateUser(
         body.userId as string,
@@ -389,6 +405,10 @@ async function postHandler(request: NextRequest) {
     } else {
       body.hospitalId = undefined;
       body.hospitalName = undefined;
+    }
+    if (targetRole === 'org_admin' || !rolesWithoutHospital.includes(targetRole)) {
+      const organizationError = await validateActiveOrganization(body.orgId as string | undefined);
+      if (organizationError) return organizationError;
     }
     const newPhoto = normalisePhoto(body.photoUrl);
     if ('error' in newPhoto) {
