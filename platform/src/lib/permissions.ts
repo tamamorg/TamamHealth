@@ -158,9 +158,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     // Settings so org admins do not see duplicate management surfaces.
     navItems: [
       { href: '/facility-management', label: 'Dashboard', icon: Gauge, section: 'OVERVIEW' },
-      // /org-admin (Org Overview) stays a reachable route for deep links but
-      // is deliberately not in the nav — the Facility Operations dashboard is
-      // the org admin's single home.
+      // The separate /org-admin "Org Overview" dashboard was merged into this
+      // one on 2026-08-19 and deleted — facilities, visits, inpatients, staff
+      // and revenue are the band above the work queue now, so there is one
+      // home rather than a nav entry and a hidden twin.
       // This is staff-to-staff chat. It was labelled "Enquiries", which sent
       // anyone looking for inbound patient enquiries to the wrong screen —
       // those now have their own page, reachable from the People & HR menu.

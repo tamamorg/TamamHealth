@@ -4,6 +4,21 @@ import { CSRF_COOKIE_NAME, mintCsrfToken } from '@/lib/csrf';
 import { isTokenRevoked } from '@/lib/token-blacklist';
 import { applySessionCookies, SESSION_RENEW_AFTER_SEC, SESSION_TTL_SEC } from '@/lib/session';
 
+/**
+ * The display name of an organization, for accounts whose own record predates
+ * `UserDoc.orgName`. Never throws: a session must still hydrate when the
+ * organizations store is unreachable — the caller simply gets no name.
+ */
+async function lookupOrgName(orgId?: string): Promise<string | undefined> {
+  if (!orgId) return undefined;
+  try {
+    const { getOrganizationById } = await import('@/lib/services/organization-service');
+    return (await getOrganizationById(orgId))?.name;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const token = request.cookies.get('tamamhealth-token')?.value;
 
@@ -82,7 +97,15 @@ export async function GET(request: NextRequest) {
         // Not carried on the JWT — the organization the account belongs to is
         // stable, so it is read from the live record rather than adding another
         // claim that would go stale on a rename.
-        orgName: impersonating ? undefined : user.orgName,
+        //
+        // Resolved from the organization when the account itself does not carry
+        // the name. Every account created before `orgName` existed is in that
+        // state, and they are the majority — without this fallback the header
+        // and settings would name the organization only for accounts created
+        // after the field shipped, which reads as the feature being broken.
+        // Doing it here rather than in a migration means existing users are
+        // fixed on their next page load, with nothing to run.
+        orgName: impersonating ? undefined : (user.orgName || await lookupOrgName(user.orgId)),
         mustChangePassword: user.mustChangePassword,
         department: user.department,
       };

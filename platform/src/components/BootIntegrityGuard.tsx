@@ -1,10 +1,10 @@
 'use client';
 
-// Guards against the "raw unstyled HTML" failure mode — when a stylesheet or JS
-// chunk fails to load (stale PWA/service-worker cache after a deploy, a 404 on a
-// hashed asset, or a flaky network), the page renders with no CSS instead of
-// the app. React error boundaries can't catch this because nothing *throws*, so
-// we listen for resource-load failures directly.
+// Guards against the "raw unstyled HTML" failure mode — when one of the app's
+// stylesheets fails to load (stale PWA/service-worker cache after a deploy, a
+// 404 on a hashed asset, or a flaky network), the page renders with no CSS
+// instead of the app. React error boundaries can't catch this because nothing
+// *throws*, so we listen for resource-load failures directly.
 //
 // Recovery: reload once (a fresh fetch usually resolves a stale-cache/chunk
 // mismatch). If the failure survives the reload, we stop retrying and render a
@@ -19,15 +19,38 @@ const RELOAD_FLAG = 'ths-boot-reloaded';
 // How long a recovery reload suppresses the next one.
 //
 // This used to be a bare '1' that the effect below CLEARED on every mount, on
-// the theory that "a clean mount means the bundle loaded fine". It doesn't: the
-// failures this guard exists for — a lazily-loaded chunk, a stylesheet that
-// 404s after a rebuild — land AFTER the guard has mounted and already wiped the
-// flag. So every reload started with a clean slate, the "at most once" cap never
-// held, and one bad chunk turned into a page reloading roughly five times a
-// second until the tab was closed. A timestamp fixes that: it ages out on its
-// own, so a genuinely *later* failure still earns its one recovery, while a
-// failure that repeats immediately gets the error screen instead of a loop.
+// the theory that "a clean mount means the bundle loaded fine". It doesn't: a
+// stylesheet that 404s after a rebuild lands AFTER the guard has mounted and
+// already wiped the flag. So every reload started with a clean slate, the "at
+// most once" cap never held, and one bad asset turned into a page reloading
+// roughly five times a second until the tab was closed. A timestamp fixes
+// that: it ages out on its own, so a genuinely *later* failure still earns its
+// one recovery, while a failure that repeats immediately gets the error screen
+// instead of a loop.
 const RECOVERY_COOLDOWN_MS = 60_000;
+
+// SCOPE: stylesheets only, deliberately.
+//
+// This guard exists for one symptom — the page renders as raw unstyled HTML
+// instead of the app — and that symptom is a missing stylesheet. It used to
+// react to failed SCRIPTS too, which turned out to be both useless and
+// harmful.
+//
+// Useless, because a JS bundle that never arrives means React never runs, so
+// this component never mounts and never gets to listen. By the time its
+// listeners are attached the app is demonstrably up.
+//
+// Harmful, because what a running app actually fails to fetch is
+// lazily-imported feature chunks — one dashboard's data services, a modal, a
+// chart — and every one of those callers already handles its own failure. The
+// facility dashboard, for instance, names the datasets it could not load and
+// offers Retry. Replacing that with a full-screen "Couldn't load the app", or
+// a reload, threw away a working session over one optional chunk. A timing
+// window doesn't separate the two either: those chunks are requested within a
+// second or two of mount, indistinguishable from boot.
+//
+// So: a stylesheet that fails, whenever it happens, is this guard's business.
+// A script that fails belongs to whoever imported it.
 
 // Only treat the app's OWN stylesheets/scripts as boot-critical. Third-party or
 // browser-extension scripts can fail without breaking the app, and reacting to
@@ -38,15 +61,9 @@ function isOwnAsset(url: string): boolean {
   try { return new URL(url, window.location.href).origin === window.location.origin; } catch { return false; }
 }
 
-function isAssetFailure(target: EventTarget | null): boolean {
-  if (target instanceof HTMLLinkElement) return (target.rel || '').includes('stylesheet') && isOwnAsset(target.href);
-  if (target instanceof HTMLScriptElement) return isOwnAsset(target.src);
-  return false;
-}
-
-function isChunkError(reason: unknown): boolean {
-  const msg = reason instanceof Error ? `${reason.name} ${reason.message}` : String(reason ?? '');
-  return /ChunkLoadError|Loading (CSS )?chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(msg);
+function isStylesheetFailure(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLLinkElement)) return false;
+  return (target.rel || '').includes('stylesheet') && isOwnAsset(target.href);
 }
 
 /**
@@ -90,16 +107,12 @@ export default function BootIntegrityGuard() {
       window.location.reload();
     };
 
-    // Resource (CSS/JS) load failures bubble to window only in the capture phase.
+    // Resource load failures bubble to window only in the capture phase.
     const onResourceError = (e: Event) => {
-      if (isAssetFailure(e.target)) recover();
-    };
-    const onRejection = (e: PromiseRejectionEvent) => {
-      if (isChunkError(e.reason)) recover();
+      if (isStylesheetFailure(e.target)) recover();
     };
 
     window.addEventListener('error', onResourceError, true);
-    window.addEventListener('unhandledrejection', onRejection);
 
     // NB: the flag is deliberately NOT cleared here. It expires on its own
     // after RECOVERY_COOLDOWN_MS, which is what lets a later failure still get
@@ -107,7 +120,6 @@ export default function BootIntegrityGuard() {
 
     return () => {
       window.removeEventListener('error', onResourceError, true);
-      window.removeEventListener('unhandledrejection', onRejection);
     };
   }, []);
 

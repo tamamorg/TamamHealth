@@ -11,6 +11,21 @@ const USER_LOCK_MS = 15 * 60 * 1000; // 15 minutes
 const IP_LOCK_THRESHOLD = 20;        // failed tries from one IP before IP lock
 const IP_LOCK_MS = 15 * 60 * 1000;   // 15 minutes
 
+/**
+ * The display name of an organization, for accounts whose own record predates
+ * `UserDoc.orgName`. Never throws — a sign-in must not fail because the
+ * organizations store is briefly unreachable; the session just carries no name.
+ */
+async function lookupOrgName(orgId?: string): Promise<string | undefined> {
+  if (!orgId) return undefined;
+  try {
+    const { getOrganizationById } = await import('@/lib/services/organization-service');
+    return (await getOrganizationById(orgId))?.name;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Parse request body with explicit error handling
@@ -157,11 +172,13 @@ export async function POST(request: NextRequest) {
         hospitalId: effective.hospitalId,
         hospitalName: effective.hospitalName,
         orgId: effective.orgId,
-        // Denormalised on the user record (see UserDoc.orgName). Suppressed
-        // while impersonating, where `effective.orgId` may be a substituted
-        // org the account itself does not belong to — showing that account's
-        // real organization name next to a borrowed org id would be a lie.
-        orgName: effective.actualRole ? undefined : user.orgName,
+        // Denormalised on the user record (see UserDoc.orgName), and resolved
+        // from the organization for accounts created before that field existed
+        // — see the same fallback in /api/auth/me. Suppressed while
+        // impersonating, where `effective.orgId` may be a substituted org the
+        // account itself does not belong to; showing that account's real
+        // organization name next to a borrowed org id would be a lie.
+        orgName: effective.actualRole ? undefined : (user.orgName || await lookupOrgName(user.orgId)),
         mustChangePassword: user.mustChangePassword,
       },
     });

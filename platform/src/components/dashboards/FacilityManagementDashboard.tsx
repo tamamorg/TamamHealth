@@ -18,6 +18,13 @@
  * decision, folded in from the HR landing dashboard at
  * `src/app/(dashboard)/dashboard/hr/page.tsx` — approve/reject here mirrors
  * that page's `decideLeave` wiring and approver gating).
+ *
+ * The standalone "Org Overview" page (/org-admin) was merged in on 2026-08-19
+ * and deleted. Its headline KPIs and operational-status tiles are the band
+ * above the queue (`FacilityOverviewBand`), its transfer inbox is the footer
+ * under the queue, and its Quick Actions are the rail links beneath Facility
+ * Overview — so an org admin no longer has to know that half the organization's
+ * numbers lived on a second screen the nav never pointed at.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -25,15 +32,23 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Activity, UserCheck, Plus,
-  AlertTriangle, RefreshCw, Phone, XCircle, Check, X,
+  AlertTriangle, RefreshCw, Phone, XCircle, Check, X, Loader2,
+  Building2, Users, Wallet, Receipt, BarChart3, DollarSign,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
+import { useHospitals } from '@/lib/hooks/useHospitals';
+import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
+import TransferInboxCard from '@/components/patients/TransferInboxCard';
+import FacilityOverviewBand, {
+  buildOverviewBand, overviewBandPreviewItems,
+  type OverviewBillingSummary, type OverviewStockAlerts,
+} from '@/components/dashboards/FacilityOverviewBand';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -44,6 +59,7 @@ import AddPayrollEntryDialog from '@/components/create-dialogs/AddPayrollEntryDi
 import { formatMoney, titleCase } from '@/lib/format-utils';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import { getRoleConfig } from '@/lib/permissions';
+import { isPathAllowed } from '@/lib/role-routes';
 import { buildAddMenuEntries, usersHrefForRole } from '@/lib/people-nav';
 import { ROLE_LABEL } from '@/lib/role-display';
 import {
@@ -52,6 +68,7 @@ import {
 } from '@/lib/services/enquiry-service';
 import type { MessageDoc, UserDoc, PatientDoc, StaffScheduleDoc } from '@/lib/db-types';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
+import type { ClaimDoc } from '@/lib/db-types-payments';
 
 // recharts (~80–100 KB) is deferred behind a dynamic boundary so it is fetched
 // only when this chart renders (KAN-66). ssr:false because recharts measures
@@ -152,6 +169,10 @@ export interface FacilityOverviewMetric {
   value: number | string;
   href: string;
   tone?: 'neutral' | 'warning' | 'danger' | 'success';
+  /** Preview-dialog body. The rail metrics are bare totals and fall back to the
+   *  generic line; the overview band's tiles carry their own breakdown
+   *  ("3 critical · 1 low · 0 expired"), which must survive into the dialog. */
+  detail?: string;
 }
 
 function withFocus(href: string, key: string, value: string): string {
@@ -182,7 +203,8 @@ function FacilityMetricPreviewDialog({ metric, onClose, onOpen }: {
         <div className="py-5">
           <p className="stat-value text-3xl" style={{ color: 'var(--text-primary)' }}>{metric.value}</p>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            This is the current scope-visible total. Open the full page to review and manage the underlying records.
+            {metric.detail
+              || 'This is the current scope-visible total. Open the full page to review and manage the underlying records.'}
           </p>
         </div>
         <div className="flex items-center justify-end gap-2 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
@@ -372,11 +394,23 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
   };
 }
 
-type ExtraKey = 'billing' | 'enquiries' | 'availability' | 'leave' | 'schedule' | 'gaps';
+type ExtraKey = 'billing' | 'enquiries' | 'availability' | 'leave' | 'schedule' | 'gaps'
+  | 'payments' | 'claims' | 'stock';
 const EXTRA_LABELS: Record<ExtraKey, string> = {
   billing: 'billing', enquiries: 'inquiries', availability: 'staff availability',
   leave: 'leave requests', schedule: 'shift schedule', gaps: 'staffing gaps',
+  payments: 'payments', claims: 'insurance claims', stock: 'pharmacy stock',
 };
+
+/** The 14 calendar days ending at `endIso`, oldest first. Built by stepping a
+ *  UTC-midnight instant so the sequence is a run of calendar days in whatever
+ *  zone `endIso` was produced in, never a re-derivation from the local clock. */
+function trailingDays(endIso: string, count = 14): string[] {
+  const end = new Date(`${endIso}T00:00:00Z`).getTime();
+  if (!Number.isFinite(end)) return [];
+  return Array.from({ length: count }, (_, i) =>
+    new Date(end - (count - 1 - i) * 86400000).toISOString().slice(0, 10));
+}
 
 type QueueTab = 'inquiries' | 'leave' | 'staff';
 
@@ -430,9 +464,24 @@ export default function FacilityManagementDashboard() {
 
   const { users, loading: usersLoading, error: usersError, reload: reloadUsers } = useUsers();
   const { patients, loading: patientsLoading } = usePatients();
-  const { availableBeds, loading: wardsLoading } = useWards();
+  const {
+    admissions, activeAdmissions, totalBeds, availableBeds, occupancyRate,
+    loading: wardsLoading,
+  } = useWards();
+  // Facility count, today's schedule, and the ward census are the three org-wide
+  // reads the deleted Org Overview page owned. All three are scope-filtered in
+  // their own hook, so an org admin sees their whole organization and a facility
+  // manager sees their own site — neither crosses the tenant boundary.
+  const { hospitals, loading: hospitalsLoading } = useHospitals();
+  const { appointments, loading: appointmentsLoading } = useAppointments();
 
   const [cash, setCash] = useState<{ currency: string; days: DailyCash[] }>({ currency: 'SSP', days: [] });
+  // Derived from the SAME bill list the weekly cash chart is built from, so the
+  // outstanding-balance tile never costs a second getAllBills() round trip.
+  const [billing, setBilling] = useState<OverviewBillingSummary | null>(null);
+  const [payments, setPayments] = useState<{ amount: number; status: string; processedAt: string }[]>([]);
+  const [claims, setClaims] = useState<ClaimDoc[]>([]);
+  const [stockAlerts, setStockAlerts] = useState<OverviewStockAlerts>({ low: 0, critical: 0, expired: 0 });
   const [enquiries, setEnquiries] = useState<MessageDoc[]>([]);
   const [availableProviderIds, setAvailableProviderIds] = useState<Set<string>>(new Set());
   const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
@@ -440,6 +489,11 @@ export default function FacilityManagementDashboard() {
   const [staffingGaps, setStaffingGaps] = useState<StaffingGap[]>([]);
   const [loadErrors, setLoadErrors] = useState<Set<ExtraKey>>(new Set());
   const [extraLoading, setExtraLoading] = useState(true);
+  // Distinct from `extraLoading`, which only covers the FIRST load (it gates
+  // the whole-page spinner). A retry re-runs the same six fetches with the
+  // page already painted, and without its own flag the Retry button sat there
+  // looking inert for the whole round trip.
+  const [retrying, setRetrying] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const hasLoadedExtraRef = useRef(false);
   // Shared by both queue tabs — each tab filters its own dataset by the same
@@ -450,10 +504,11 @@ export default function FacilityManagementDashboard() {
   const today = jubaDate();
   const facilityId = currentUser?.hospitalId;
 
-  // Billing, enquiries, provider availability, leave, and today's
-  // schedule/staffing-gaps are all fetched together; each is tracked
-  // independently in `loadErrors` so a single failure degrades only its own
-  // card instead of the whole dashboard, and Retry re-runs all six.
+  // Billing, enquiries, provider availability, leave, today's
+  // schedule/staffing-gaps, and the overview band's payments/claims/stock are
+  // all fetched together; each is tracked independently in `loadErrors` so a
+  // single failure degrades only its own card instead of the whole dashboard,
+  // and Retry re-runs the lot.
   useEffect(() => {
     let cancelled = false;
     if (!hasLoadedExtraRef.current) setExtraLoading(true);
@@ -476,7 +531,23 @@ export default function FacilityManagementDashboard() {
         row.pending += Math.max(0, b.balanceDue || 0);
         byDate.set(date, row);
       }
-      return { currency: bills[0]?.currency || 'SSP', days: Array.from(byDate.values()) };
+      // The outstanding-balance tile is the same pass over the same bills —
+      // `getBillingSummary()` would just re-run `getAllBills(scope)`.
+      const outstanding = bills.filter(b => b.status === 'pending' || b.status === 'partial');
+      const currency = bills[0]?.currency || 'SSP';
+      return {
+        currency,
+        days: Array.from(byDate.values()),
+        summary: {
+          totalRevenue: bills.filter(b => b.status === 'paid').reduce((sum, b) => sum + b.totalAmount, 0),
+          totalOutstanding: outstanding.reduce((sum, b) => sum + b.balanceDue, 0),
+          totalWaived: bills.filter(b => b.status === 'waived').reduce((sum, b) => sum + b.totalAmount, 0),
+          billCount: bills.length,
+          paidCount: bills.filter(b => b.status === 'paid').length,
+          pendingCount: outstanding.length,
+          currency,
+        } satisfies OverviewBillingSummary,
+      };
     };
     const loadAvailability = async () => {
       // Recurrence-aware: a clinic that runs every Monday has no row dated
@@ -501,27 +572,89 @@ export default function FacilityManagementDashboard() {
       const { getStaffingGaps } = await import('@/lib/services/staff-scheduling-service');
       return getStaffingGaps(today, facilityId);
     };
+    const loadPayments = async () => {
+      const { getAllPayments } = await import('@/lib/services/payment-service');
+      return getAllPayments(scope);
+    };
+    const loadClaims = async () => {
+      const { getAllClaims } = await import('@/lib/services/payment-service');
+      return getAllClaims(scope);
+    };
+    const loadStock = async () => {
+      const { getAllInventory, classifyStockStatus } = await import('@/lib/services/pharmacy-inventory-service');
+      const items = await getAllInventory(scope);
+      const risky: OverviewStockAlerts = { low: 0, critical: 0, expired: 0 };
+      for (const item of items) {
+        const status = classifyStockStatus(item);
+        if (status === 'low' || status === 'critical' || status === 'expired') risky[status] += 1;
+      }
+      return risky;
+    };
+
+    const runAll = () => Promise.allSettled([
+      loadCash(),
+      getPatientEnquiries(scope),
+      loadAvailability(),
+      loadLeave(),
+      loadSchedules(),
+      loadGaps(),
+      loadPayments(),
+      loadClaims(),
+      loadStock(),
+    ]);
 
     (async () => {
       const failed = new Set<ExtraKey>();
-      const [billingRes, enquiriesRes, availRes, leaveRes, schedRes, gapsRes] = await Promise.allSettled([
-        loadCash(),
-        getPatientEnquiries(scope),
-        loadAvailability(),
-        loadLeave(),
-        loadSchedules(),
-        loadGaps(),
-      ]);
+      if (hasLoadedExtraRef.current) setRetrying(true);
+      let results = await runAll();
       if (cancelled) return;
-      if (billingRes.status === 'fulfilled') setCash(billingRes.value); else failed.add('billing');
+
+      // One automatic second attempt before showing anyone a red banner.
+      //
+      // Every loader begins with a dynamic `import()`, so a single chunk that
+      // fails to arrive rejects all of them at once — which is why the
+      // banner reads "Couldn't load billing, inquiries, staff availability,
+      // leave requests, shift schedule, staffing gaps" rather than naming one
+      // thing. That is one transient network fault, not nine broken subsystems,
+      // and on the connections this app is built for it is routine. Retrying
+      // turns it into a slightly slower load instead of an alarm.
+      if (results.some(r => r.status === 'rejected')) {
+        await new Promise(resolve => setTimeout(resolve, 700));
+        if (cancelled) return;
+        results = await runAll();
+        if (cancelled) return;
+      }
+      const [
+        billingRes, enquiriesRes, availRes, leaveRes, schedRes, gapsRes,
+        paymentsRes, claimsRes, stockRes,
+      ] = results;
+      if (billingRes.status === 'fulfilled') {
+        setCash({ currency: billingRes.value.currency, days: billingRes.value.days });
+        setBilling(billingRes.value.summary);
+      } else failed.add('billing');
       if (enquiriesRes.status === 'fulfilled') setEnquiries(enquiriesRes.value); else failed.add('enquiries');
       if (availRes.status === 'fulfilled') setAvailableProviderIds(availRes.value); else failed.add('availability');
       if (leaveRes.status === 'fulfilled') setLeave(leaveRes.value); else failed.add('leave');
       if (schedRes.status === 'fulfilled') setSchedules(schedRes.value); else failed.add('schedule');
       if (gapsRes.status === 'fulfilled') setStaffingGaps(gapsRes.value); else failed.add('gaps');
+      if (paymentsRes.status === 'fulfilled') setPayments(paymentsRes.value); else failed.add('payments');
+      if (claimsRes.status === 'fulfilled') setClaims(claimsRes.value); else failed.add('claims');
+      if (stockRes.status === 'fulfilled') setStockAlerts(stockRes.value); else failed.add('stock');
+
+      // `allSettled` swallows the reason, and this banner names every subsystem
+      // at once whenever anything shared underneath them breaks — identical
+      // symptoms and no cause. Log what actually rejected.
+      for (const [key, res] of [
+        ['billing', billingRes], ['enquiries', enquiriesRes], ['availability', availRes],
+        ['leave', leaveRes], ['schedule', schedRes], ['gaps', gapsRes],
+        ['payments', paymentsRes], ['claims', claimsRes], ['stock', stockRes],
+      ] as [ExtraKey, PromiseSettledResult<unknown>][]) {
+        if (res.status === 'rejected') console.error(`[facility-dashboard] ${key} failed to load:`, res.reason);
+      }
       setLoadErrors(failed);
       hasLoadedExtraRef.current = true;
       setExtraLoading(false);
+      setRetrying(false);
     })();
 
     return () => { cancelled = true; };
@@ -552,7 +685,70 @@ export default function FacilityManagementDashboard() {
     availableBeds,
   }), [today, queueSearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, staffListHref, availableBeds]);
 
-  const metricPreview = overview.metrics.find(metric => metric.key === searchParams.get('preview')) || null;
+  // ── The org/facility headline band (the former /org-admin page) ──
+  const brandColor = currentUser?.branding?.primaryColor || 'var(--accent-primary)';
+  // Admission/discharge/payment timestamps are stored as `toISOString()` UTC
+  // instants; `appointmentDate` is a calendar day on the Juba clock. Both are
+  // sliced with the semantics they were written with rather than one shared
+  // "today", which is what made the visits count drift on the old page.
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  const band = useMemo(() => buildOverviewBand({
+    today,
+    todayUtc,
+    last14Local: trailingDays(today),
+    last14Utc: trailingDays(todayUtc),
+    hospitals,
+    appointments,
+    admissions,
+    activeAdmissionCount: activeAdmissions.length,
+    users,
+    usersUnavailable,
+    usersHref: staffListHref,
+    payments,
+    claims,
+    stockAlerts,
+    billing,
+    totalBeds,
+    availableBeds,
+    occupancyRate,
+    brandColor,
+  }), [
+    today, todayUtc, hospitals, appointments, admissions, activeAdmissions.length,
+    users, usersUnavailable, staffListHref, payments, claims, stockAlerts, billing,
+    totalBeds, availableBeds, occupancyRate, brandColor,
+  ]);
+
+  // One preview registry for the whole page: the band's tiles and the Facility
+  // Overview rail metrics share a single `?preview=` param and a single dialog,
+  // so Back closes any of them the same way. Keys are namespaced (`kpi-`,
+  // `ops-`) so the band's bed tile and the rail's bed metric never collide.
+  const previewItems: FacilityOverviewMetric[] = useMemo(
+    () => [...overviewBandPreviewItems(band), ...overview.metrics],
+    [band, overview.metrics],
+  );
+
+  const metricPreview = previewItems.find(metric => metric.key === searchParams.get('preview')) || null;
+
+  // Quick Actions, inherited from the deleted Org Overview page and gated on
+  // the SAME allow-list the Edge proxy enforces — a link the proxy would 302
+  // away is worse than no link. `staffListHref` is used rather than a literal
+  // /org-admin/users so a super_admin lands on their own accounts page.
+  const quickActions = useMemo(() => {
+    const role = currentUser?.role;
+    if (!role) return [];
+    const entries: { label: string; icon: typeof Building2; href: string }[] = [
+      { label: 'Facilities', icon: Building2, href: '/hospitals' },
+      { label: 'Manage Users', icon: Users, href: staffListHref },
+      { label: 'Usage Analytics', icon: Activity, href: '/org-admin/analytics' },
+      { label: 'Billing & Payments', icon: Wallet, href: '/payments' },
+      { label: 'Claims', icon: Receipt, href: '/payments/claims' },
+      { label: 'Reports', icon: BarChart3, href: '/reports' },
+      { label: 'Service Pricing', icon: DollarSign, href: '/org-admin/pricing' },
+    ];
+    return entries
+      .filter(entry => isPathAllowed(role, entry.href))
+      .map(entry => ({ label: entry.label, icon: entry.icon, onClick: () => router.push(entry.href) }));
+  }, [currentUser?.role, staffListHref, router]);
 
   const openMetricPreview = useCallback((key: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -786,7 +982,8 @@ export default function FacilityManagementDashboard() {
       ? (inquiriesFailed ? retryExtra : () => router.push('/inquiries'))
       : (leaveFailed ? retryExtra : () => router.push('/hr/leave'));
 
-  const initialLoading = usersLoading || patientsLoading || wardsLoading || extraLoading;
+  const initialLoading = usersLoading || patientsLoading || wardsLoading
+    || hospitalsLoading || appointmentsLoading || extraLoading;
 
   if (!currentUser) return null;
 
@@ -803,20 +1000,39 @@ export default function FacilityManagementDashboard() {
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      {hasErrors && (
+      {/* While a retry is in flight the strip reports THAT, not the stale
+          failure: pressing Retry and seeing the same red banner sit there is
+          indistinguishable from the button being broken. */}
+      {(hasErrors || retrying) && (
         <div
           className="flex items-center gap-3 rounded-xl px-4 py-3 mb-3"
-          style={{ background: 'rgba(196,69,54,0.08)', border: '1px solid rgba(196,69,54,0.25)' }}
+          style={retrying
+            ? { background: 'var(--surface-muted, rgba(20,73,114,0.06))', border: '1px solid var(--border-light)' }
+            : { background: 'rgba(196,69,54,0.08)', border: '1px solid rgba(196,69,54,0.25)' }}
+          aria-live="polite"
         >
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--color-danger)' }} />
+          {retrying ? (
+            <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" style={{ color: 'var(--accent-primary)' }} />
+          ) : (
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--color-danger)' }} />
+          )}
           <span className="text-[12.5px] flex-1" style={{ color: 'var(--text-primary)' }}>
-            Couldn&apos;t load {failedLabels.join(', ')}. Some numbers on this page may be incomplete.
+            {retrying
+              ? `Reloading ${failedLabels.length > 0 ? failedLabels.join(', ') : 'this page'}…`
+              : <>Couldn&apos;t load {failedLabels.join(', ')}. Some numbers on this page may be incomplete.</>}
           </span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={retryAll}>
-            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          <button type="button" className="btn btn-secondary btn-sm" onClick={retryAll} disabled={retrying}>
+            <RefreshCw className={`w-3.5 h-3.5${retrying ? ' animate-spin' : ''}`} />
+            {retrying ? 'Retrying…' : 'Retry'}
           </button>
         </div>
       )}
+
+      {/* The organization's headline numbers, formerly the standalone
+          /org-admin page. Above the workspace so the figures a manager opens
+          the dashboard to read are the first thing on it, and the work queue
+          keeps the full width underneath. */}
+      <FacilityOverviewBand band={band} onPreview={openMetricPreview} />
 
       <EhrCareDashboard
         title="Facility Management"
@@ -926,6 +1142,11 @@ export default function FacilityManagementDashboard() {
           onClick: () => openMetricPreview(metric.key),
         }))}
         metricsTitle="Facility Overview"
+        // The deleted Org Overview page's Quick Actions. Three of them
+        // (Analytics, Claims, Service Pricing) had NO other entry point in the
+        // org-admin nav, so dropping the page without rehoming these would have
+        // orphaned the routes outright.
+        metricsActions={quickActions}
         emptyTitle={emptyTitle}
         emptyActionLabel={emptyActionLabel}
         onEmptyAction={onEmptyAction}
@@ -939,6 +1160,11 @@ export default function FacilityManagementDashboard() {
             </div>
           </div>
         }
+        // Transfers addressed to the facility with no named receiver escalate
+        // to whoever runs it, so the inbox belongs under the work queue — not
+        // in the left rail, which is hidden entirely below the mobile
+        // breakpoint. Renders its own empty state when nothing is outstanding.
+        footerContent={<TransferInboxCard />}
         // Add sits in the header beside Print (EhrCareDashboard `headerExtra`),
         // not in the rail: `actions` only carries {label,icon,onClick}, so a
         // dropdown needs the component slot.

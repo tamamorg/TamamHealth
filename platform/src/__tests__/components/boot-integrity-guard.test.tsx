@@ -1,21 +1,26 @@
 /**
  * BootIntegrityGuard — the "reload once" cap on asset-failure recovery.
  *
- * The bug this pins: the guard stored a bare '1' in sessionStorage to record
- * that it had already spent its one recovery reload, and then CLEARED that flag
- * on every mount, reasoning that "a clean mount means the bundle loaded fine".
- * It does not. The failures the guard exists for — a lazily-loaded chunk, a
- * stylesheet that 404s after a rebuild or a stale service-worker cache — arrive
- * AFTER the guard has mounted and already wiped the flag. So every reload
- * started with a clean slate and the cap never held: one bad chunk reloaded the
- * page about five times a second, indefinitely, which made the app unusable
- * (observed: 57 navigations in 12 seconds, and an org admin unable to finish
- * creating a staff account).
+ * Two bugs are pinned here.
+ *
+ * 1. The cap that never held. The guard stored a bare '1' in sessionStorage to
+ *    record that it had spent its one recovery reload, then CLEARED that flag
+ *    on every mount, reasoning that "a clean mount means the bundle loaded
+ *    fine". It does not: the failures it watches for arrive AFTER the guard has
+ *    mounted and already wiped the flag. Every reload started with a clean
+ *    slate, so one bad asset reloaded the page about five times a second,
+ *    indefinitely (observed: 57 navigations in 12 seconds, and an org admin
+ *    unable to finish creating a staff account).
+ *
+ * 2. The scope that was too wide. It also reacted to failed SCRIPTS, so a
+ *    lazily-imported feature chunk — one dashboard's data services — replaced
+ *    a working session with a full-screen "Couldn't load the app". Stylesheets
+ *    only now; see the SCOPE note in the component.
  *
  * The reload decision is tested through the pure `recoveryAction` rule, because
  * jsdom's `location.reload` is unforgeable and a mounted component cannot
- * observe it. The DOM test below covers the other half: which failures are
- * treated as boot-critical at all.
+ * observe it. The DOM tests below cover the other half: which failures the
+ * guard treats as its business at all.
  */
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -70,6 +75,10 @@ describe('which failures count as boot-critical', () => {
   let container: HTMLDivElement;
   let root: Root;
 
+  // Captured before any test mocks Date.now, so the "long after boot" cases can
+  // still express a real wall-clock offset from mount.
+  const realNow = Date.now.bind(Date);
+
   beforeEach(() => {
     sessionStorage.clear();
     container = document.createElement('div');
@@ -79,6 +88,7 @@ describe('which failures count as boot-critical', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     act(() => { root.unmount(); });
     container.remove();
   });
@@ -94,15 +104,6 @@ describe('which failures count as boot-critical', () => {
 
   const errorScreen = () => container.querySelector('[role="alert"]');
 
-  it("reacts to the app's own script", () => {
-    // NODE_ENV is 'test' under Jest, so recoveryAction returns 'show-error' —
-    // which is exactly what makes the reaction observable here.
-    const script = document.createElement('script');
-    script.src = 'http://localhost/_next/static/chunks/main-abc123.js';
-    failAsset(script);
-    expect(errorScreen()).not.toBeNull();
-  });
-
   it("reacts to the app's own stylesheet", () => {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -111,10 +112,21 @@ describe('which failures count as boot-critical', () => {
     expect(errorScreen()).not.toBeNull();
   });
 
-  it('ignores third-party scripts and browser extensions', () => {
-    const thirdParty = document.createElement('script');
-    thirdParty.src = 'https://cdn.example.com/widget.js';
+  it('ignores third-party stylesheets and browser extensions', () => {
+    const thirdParty = document.createElement('link');
+    thirdParty.rel = 'stylesheet';
+    thirdParty.href = 'https://cdn.example.com/widget.css';
     failAsset(thirdParty);
+    expect(errorScreen()).toBeNull();
+  });
+
+  it("ignores the app's own scripts entirely", () => {
+    // A failed script is a lazily-imported feature chunk, and its caller
+    // handles it. Reacting here blanked a working app over one optional chunk
+    // — see the SCOPE note in BootIntegrityGuard.
+    const script = document.createElement('script');
+    script.src = 'http://localhost/_next/static/chunks/src_lib_services_1-bu.js';
+    failAsset(script);
     expect(errorScreen()).toBeNull();
   });
 
@@ -124,5 +136,16 @@ describe('which failures count as boot-critical', () => {
     preconnect.href = 'http://localhost/_next/static/css/app.css';
     failAsset(preconnect);
     expect(errorScreen()).toBeNull();
+  });
+
+  it('still reacts to a stylesheet that fails long after boot', () => {
+    // Whenever it happens, a missing stylesheet is the raw-unstyled-HTML
+    // symptom this guard exists for.
+    jest.spyOn(Date, 'now').mockReturnValue(realNow() + 60_000);
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'http://localhost/_next/static/css/app.css';
+    failAsset(link);
+    expect(errorScreen()).not.toBeNull();
   });
 });

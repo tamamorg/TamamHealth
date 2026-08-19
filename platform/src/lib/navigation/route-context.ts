@@ -16,6 +16,13 @@ type RouteGroup = {
   root: string;
   rootLabelKey: string;
   children: Record<string, string>;
+  /**
+   * Set when the group's root is a URL prefix with no page behind it. Back and
+   * the parent crumb then resolve to the VIEWER's own home dashboard instead
+   * of a route that would only bounce or 302 — the label follows, so the crumb
+   * reads "Dashboard" rather than naming a screen that no longer exists.
+   */
+  rootIsPrefixOnly?: boolean;
 };
 
 const GROUPS: RouteGroup[] = [
@@ -42,8 +49,12 @@ const GROUPS: RouteGroup[] = [
     },
   },
   {
+    // The Org Overview dashboard at /org-admin was merged into
+    // /facility-management on 2026-08-19; only the editors below still live
+    // under this prefix, so their Back lands on the caller's own dashboard.
     root: '/org-admin',
     rootLabelKey: 'breadcrumb.orgAdmin',
+    rootIsPrefixOnly: true,
     children: {
       analytics: 'routeContext.analytics',
       branding: 'routeContext.branding',
@@ -109,8 +120,14 @@ const DYNAMIC_ROUTES: DynamicRoute[] = [
  * Resolve the compact navigation context shown above hierarchical desktop
  * pages. Routes absent from this curated registry are intentionally treated as
  * top-level destinations and do not receive an extra navigation bar.
+ *
+ * `homeHref` is the signed-in role's default dashboard. Only groups marked
+ * `rootIsPrefixOnly` use it — those whose URL prefix has no page of its own —
+ * and it must be role-derived, because the roles that share such a prefix do
+ * not share a dashboard (an org admin lands on /facility-management, a medical
+ * superintendent on /dashboard).
  */
-export function resolveRouteContext(pathname: string): RouteContext | null {
+export function resolveRouteContext(pathname: string, homeHref = '/dashboard'): RouteContext | null {
   const normalizedPath = normalizePath(pathname);
   const exact = EXACT_ROUTES[normalizedPath];
   if (exact) return exact;
@@ -124,7 +141,9 @@ export function resolveRouteContext(pathname: string): RouteContext | null {
     const child = normalizedPath.slice(group.root.length + 1);
     const childLabelKey = group.children[child];
     if (!childLabelKey) return null;
-    return context(group.root, group.rootLabelKey, childLabelKey, true);
+    return group.rootIsPrefixOnly
+      ? context(homeHref, 'breadcrumb.dashboard', childLabelKey, true)
+      : context(group.root, group.rootLabelKey, childLabelKey, true);
   }
 
   return null;

@@ -3,14 +3,22 @@
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from '@/components/icons/lucide';
+import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { getDefaultDashboard } from '@/lib/role-routes';
 import { resolveRouteContext, routeContextBackHref } from '@/lib/navigation/route-context';
 
 export default function RouteContextBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { t } = useTranslation();
-  const context = resolveRouteContext(pathname);
+  const { currentUser } = useAuth();
+  // Groups whose URL prefix has no page of its own (/org-admin, since the Org
+  // Overview dashboard moved into /facility-management) send Back here, and the
+  // roles that share such a prefix do not share a dashboard — so it has to be
+  // resolved per role, not hard-coded in the route table.
+  const homeHref = currentUser ? getDefaultDashboard(currentUser.role) : '/dashboard';
+  const context = resolveRouteContext(pathname, homeHref);
 
   if (!context) return null;
 

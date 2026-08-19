@@ -47,7 +47,12 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/admin/interop', '/admin/data', '/admin/security', '/admin/config', '/admin/flags',
       '/it', '/system-admin',
       '/admin/billing', '/admin/analytics',
-      '/org-admin', '/org-admin/analytics',
+      // The /org-admin root page (Org Overview) was merged into
+      // /facility-management and deleted, so the editors are listed
+      // individually rather than inherited from a prefix that no longer
+      // resolves to a screen.
+      '/org-admin/analytics', '/org-admin/users', '/org-admin/hospitals',
+      '/org-admin/branding', '/org-admin/pricing', '/org-admin/settings',
       '/dashboard', '/patients', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
       '/surveillance', '/reports', '/hospitals', '/settings', '/settings/manage',
@@ -66,8 +71,11 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
 
   org_admin: {
     allowed: [
-      '/org-admin',
       '/facility-management',
+      // No '/org-admin' root: the Org Overview dashboard it served was merged
+      // into /facility-management on 2026-08-19. The route still exists as a
+      // redirect stub, and leaving it off this list is what makes the Edge
+      // proxy send an old bookmark straight to the real dashboard.
       '/org-admin/users', '/org-admin/hospitals',
       '/org-admin/branding', '/org-admin/settings', '/org-admin/pricing',
       '/org-admin/analytics',
@@ -89,8 +97,8 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard/front-desk', '/dashboard/lab', '/dashboard/pharmacy',
       '/dashboard/radiology', '/dashboard/data-entry', '/dashboard/nutrition',
     ],
-    // Org admins land on the Facility Operations dashboard; the org-level
-    // command center stays reachable as "Org Overview" (/org-admin).
+    // Org admins land on the Facility Operations dashboard, which now carries
+    // the org-wide command view too (see FacilityOverviewBand).
     defaultDashboard: '/facility-management',
   },
 

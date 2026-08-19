@@ -20759,7 +20759,15 @@ textarea.ehr-handoff-input {
   grid-template-columns: minmax(120px, 0.9fr) minmax(0, 1.1fr);
   gap: 12px;
   align-items: center;
-  padding: 9px 0;
+  /* Fixed row height, not padding around content.
+     These cards sit side by side and read as one table, so their rows have to
+     line up across the gap. With height driven by content, the STATUS row —
+     the only one holding a pill rather than plain text — came out ~4px taller
+     than its neighbours, and every row below it in that card sat progressively
+     lower than the matching row opposite. Pinning the height makes a pill row
+     and a text row measure the same. */
+  min-height: 38px;
+  padding: 4px 0;
   border-bottom: 1px solid #F2F6FA;
 }
 
@@ -20799,6 +20807,8 @@ textarea.ehr-handoff-input {
   border-radius: 999px;
   font-size: 11px !important;
   font-weight: 800 !important;
+  /* Keeps the pill from growing the row it sits in — see .org-set-info-row. */
+  line-height: 1.2;
   text-transform: capitalize;
 }
 
@@ -21015,6 +21025,10 @@ textarea.ehr-handoff-input {
   .org-set-info-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 3px;
+    /* Stacked: label above value, nothing alongside to align to, and the
+       desktop row height would clip the pair. */
+    min-height: 0;
+    padding: 9px 0;
   }
 
   .org-set-info-row b {
