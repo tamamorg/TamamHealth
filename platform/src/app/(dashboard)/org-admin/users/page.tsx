@@ -81,7 +81,13 @@ export default function OrgUsersPage() {
       return;
     }
     try {
-      const scope: DataScope = { orgId: currentUser.orgId, role: currentUser.role as UserRole };
+      // `userId` matters here: filterByScope hides peer org_admin accounts from
+      // an org admin, and this is what keeps their OWN account in the roster.
+      const scope: DataScope = {
+        orgId: currentUser.orgId,
+        role: currentUser.role as UserRole,
+        userId: currentUser._id,
+      };
       const [{ getAllUsers }, { getAllHospitals }, { assignableRolesForOrgAdmin }] = await Promise.all([
         import('@/lib/services/user-service'),
         import('@/lib/services/hospital-service'),
