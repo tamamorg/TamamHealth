@@ -43,6 +43,18 @@ export interface UserDoc extends BaseDoc {
   hospitalId?: string;
   hospitalName?: string;
   orgId?: string;
+  /**
+   * Display name of the owning organization, denormalised alongside `orgId`
+   * exactly as `hospitalName` sits alongside `hospitalId`.
+   *
+   * The name is stamped server-side from the organization record at create /
+   * update time, so it is never client-supplied. It exists because the org
+   * document itself is not always on the device: an account created by an org
+   * admin, replicated to a phone that never pulled the organizations database,
+   * had an `orgId` no screen could turn into a name — so every surface that
+   * wanted to say who the user works for said nothing at all.
+   */
+  orgName?: string;
   isActive: boolean;
   /**
    * Set when an admin creates the account or resets the password. Forces the
@@ -1931,6 +1943,17 @@ export interface OrganizationDoc extends BaseDoc {
     facilityAssessments: boolean;
   };
   orgType: 'public' | 'private';
+  /**
+   * The staff roles this organization actually staffs, chosen by the platform
+   * super-admin when the organization is created.
+   *
+   * Absent (the default, and every organization created before this field) means
+   * "no restriction" — the org admin may hand out every role its `orgType`
+   * allows. It is a scoping convenience, NOT a security boundary: the API
+   * re-checks what an actor may assign regardless of what is listed here, so a
+   * stale or hand-edited list cannot widen anyone's privileges.
+   */
+  enabledRoles?: UserRole[];
   contactEmail: string;
   country: string;
   isActive: boolean;

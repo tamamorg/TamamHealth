@@ -123,21 +123,15 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/admin/security', label: 'Security & Compliance', icon: Shield, section: 'GOVERNANCE' },
       { href: '/admin/config', label: 'Configuration', icon: Settings, section: 'GOVERNANCE' },
       { href: '/admin/flags', label: 'Feature Flags', icon: Flag, section: 'GOVERNANCE' },
-      // Total access: direct entry into every role's workspace so the platform
-      // super-admin can support/QA any station without typing URLs. Route
-      // access is already granted by the super_admin wildcard in isPathAllowed.
-      // Nursing no longer has its own workspace entry: the nurse station was
-      // merged into the shared clinical workspace above (/dashboard is
-      // role-adapted for nursing when a nurse-family user is signed in).
-      { href: '/dashboard/front-desk', label: 'Front Desk', icon: MessageSquare, section: 'WORKSPACES' },
-      { href: '/dashboard/lab', label: 'Laboratory', icon: Microscope, section: 'WORKSPACES' },
-      { href: '/dashboard/pharmacy', label: 'Pharmacy', icon: Pill, section: 'WORKSPACES' },
-      { href: '/dashboard/radiology', label: 'Radiology', icon: ScanLine, section: 'WORKSPACES' },
-      { href: '/payments', label: 'Billing', icon: Wallet, section: 'WORKSPACES' },
-      { href: '/dashboard/data-entry', label: 'Records / HMIS', icon: BarChart3, section: 'WORKSPACES' },
-      { href: '/dashboard/nutrition', label: 'Nutrition', icon: LayoutDashboard, section: 'WORKSPACES' },
-      { href: '/dashboard/state', label: 'County', icon: LayoutDashboard, section: 'WORKSPACES' },
-      { href: '/government', label: 'Government', icon: Building2, section: 'WORKSPACES' },
+      // WORKSPACES removed 2026-08-19: the platform operator is not a clinical
+      // user, and a menu of live facility stations put real patient queues one
+      // click from the governance console. The clinical workspaces now belong
+      // to org_admin, who actually runs the facilities. Support/QA entry into a
+      // station is still available — and better — through the login role
+      // picker, which records `actualRole: 'super_admin'` on the session so the
+      // access is auditable rather than ambient. Route access itself is
+      // unchanged (the super_admin wildcard in isPathAllowed still permits deep
+      // links); this only stops the console advertising them.
       // Facility Ops (/facility-management) removed from the super-admin nav
       // 2026-08-15: it renders the facility-admin dashboard language inside
       // the governance console. The route stays in allowedRoutes for deep
@@ -190,6 +184,20 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/reports', label: 'Reports', icon: ClipboardCheck, section: 'INTELLIGENCE & REPORTING' },
       { href: '/equipment', label: 'Assets', icon: Package, section: 'RISK, ASSETS & PREPAREDNESS' },
       { href: '/emergency-preparedness', label: 'Emergency Prep', icon: ShieldAlert, section: 'RISK, ASSETS & PREPAREDNESS' },
+      // WORKSPACES moved here from super_admin 2026-08-19. The org admin runs
+      // these facilities, so a station shortcut is part of the job rather than
+      // a platform operator reaching into a tenant's clinical floor. Each entry
+      // is also added to org_admin's `allowed` list in role-routes.ts — a nav
+      // item without the matching route is silently 302'd by the Edge proxy.
+      // County (/dashboard/state) and Government (/government) deliberately did
+      // NOT come along: both are supra-organisational surfaces, and granting
+      // them here would let one tenant's admin see across tenants.
+      { href: '/dashboard/front-desk', label: 'Front Desk', icon: MessageSquare, section: 'WORKSPACES' },
+      { href: '/dashboard/lab', label: 'Laboratory', icon: Microscope, section: 'WORKSPACES' },
+      { href: '/dashboard/pharmacy', label: 'Pharmacy', icon: Pill, section: 'WORKSPACES' },
+      { href: '/dashboard/radiology', label: 'Radiology', icon: ScanLine, section: 'WORKSPACES' },
+      { href: '/dashboard/data-entry', label: 'Records / HMIS', icon: BarChart3, section: 'WORKSPACES' },
+      { href: '/dashboard/nutrition', label: 'Nutrition', icon: LayoutDashboard, section: 'WORKSPACES' },
       // IT Operations and System Administration both live inside the personal
       // Settings page now (Settings -> System administration); /it and
       // /system-admin stay routable for deep links but have no nav entry.
@@ -724,6 +732,31 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
 
 };
 
+/**
+ * Role labels that stay distinguishable inside one picker.
+ *
+ * Two roles legitimately share a written label — `doctor` and `clinician` are
+ * both "Doctor" — which is fine in a badge (they mean the same thing to a
+ * patient) and useless in a list of checkboxes, where it rendered as two
+ * identical "Doctor" rows with no way to tell which was which. Only the
+ * colliding labels get the identifier appended; everything else reads exactly
+ * as it did.
+ */
+export function labelRolesDistinctly(roles: UserRole[]): { role: UserRole; label: string }[] {
+  const counts = new Map<string, number>();
+  for (const role of roles) {
+    const label = getRoleConfig(role).label;
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return roles.map(role => {
+    const label = getRoleConfig(role).label;
+    return {
+      role,
+      label: (counts.get(label) ?? 0) > 1 ? `${label} (${role.replace(/_/g, ' ')})` : label,
+    };
+  });
+}
+
 export function getRoleConfig(role: UserRole): RoleConfig {
   return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.doctor;
 }
@@ -772,9 +805,28 @@ export function getAvailableRoles(orgType: 'public' | 'private', isSuperAdmin = 
  * local replica: an org admin could not create a single user, and the empty
  * dropdown gave no reason.
  *
+ * `enabledRoles` is the organization's own roster of roles, set by the platform
+ * super-admin (see `OrganizationDoc.enabledRoles`). It NARROWS the list so a
+ * clinic that employs four kinds of staff doesn't scroll past twenty-five, and
+ * it follows the same "not knowing narrows nothing" rule: absent or empty means
+ * the full list for the org type. Anything in it that the org type does not
+ * allow is dropped, so the list can only ever be a subset of what was already
+ * permitted — it is a convenience, never the gate. The API re-checks every
+ * assignment independently.
+ *
  * `super_admin` is never assignable here — an organization administrator must
  * not be able to mint a platform-wide account.
  */
-export function assignableRolesForOrgAdmin(orgType?: 'public' | 'private'): UserRole[] {
-  return getAvailableRoles(orgType ?? 'public').filter(r => r !== 'super_admin');
+export function assignableRolesForOrgAdmin(
+  orgType?: 'public' | 'private',
+  enabledRoles?: UserRole[],
+): UserRole[] {
+  const allowed = getAvailableRoles(orgType ?? 'public').filter(r => r !== 'super_admin');
+  if (!enabledRoles || enabledRoles.length === 0) return allowed;
+  const enabled = new Set(enabledRoles);
+  const narrowed = allowed.filter(r => enabled.has(r));
+  // An org whose list somehow intersects nothing assignable still has to leave
+  // the admin a usable picker rather than the empty dropdown this function was
+  // written to prevent.
+  return narrowed.length > 0 ? narrowed : allowed;
 }

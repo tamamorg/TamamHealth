@@ -15,6 +15,7 @@
     "test": "jest",
     "test:ci": "jest --ci --coverage",
     "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed:organizations": "node --import tsx scripts/seed-organizations.mjs",
     "setup:couchdb:validators": "node --import tsx scripts/install-validate-doc-updates.mjs",
     "db:migrate:couchdb-tenants": "node --import tsx scripts/migrate-couchdb-to-tenant-databases.mjs",
     "db:verify:couchdb-tenants": "node --import tsx scripts/verify-couchdb-tenant-migration.mjs",

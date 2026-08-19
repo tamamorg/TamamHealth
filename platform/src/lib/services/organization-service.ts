@@ -3,6 +3,45 @@ import type { OrganizationDoc } from '../db-types';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 
+/**
+ * Organization writes are provisioned CENTRALLY, like user accounts.
+ *
+ * `tamamhealth_organizations` carries a `validate_doc_update` that refuses
+ * every non-`_admin` write, so a document written into the browser's local
+ * PouchDB replica is rejected the moment replication tries to push it. The
+ * write looked like it worked — the super-admin saw the toast and the row —
+ * while the server never learned the organization existed. Everything the
+ * server checks against it then failed: creating a staff account answered
+ * "Assigned organization was not found or is inactive", so an organization
+ * admin could not add a single member of staff.
+ *
+ * Routing through /api/organizations puts the write where the admin
+ * credentials are. Same shape, and same reason, as user-service.
+ */
+const isBrowserRuntime = () => typeof window !== 'undefined' && !process.env.JEST_WORKER_ID;
+
+/** POST an action to /api/organizations and translate failures into readable errors. */
+async function postOrganizationsApi(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { apiFetch } = await import('../api-fetch');
+  let res: Response;
+  try {
+    res = await apiFetch('/api/organizations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Do NOT fall back to a local write: it cannot replicate, so it would
+    // report success and leave the organization invisible to the server.
+    throw new Error('Organizations are managed centrally and require a connection. Check your internet and try again.');
+  }
+  const body = await res.json().catch(() => ({})) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error((body.error as string) || `Organization request failed (${res.status})`);
+  }
+  return body;
+}
+
 export async function getAllOrganizations(): Promise<OrganizationDoc[]> {
   const db = organizationsDB();
   return findByType<OrganizationDoc>(db, 'organization');
@@ -13,6 +52,27 @@ export async function getOrganizationById(id: string): Promise<OrganizationDoc |
     const db = organizationsDB();
     return await db.get(id) as OrganizationDoc;
   } catch {
+    // Not in the local replica. Organizations are written server-side (see the
+    // note at the top of this file), so a browser only receives them by
+    // replication — and an organization created after this device last pulled,
+    // or any device with sync switched off, simply does not have it. Ask the
+    // server directly rather than reporting that the signed-in user's own
+    // organization does not exist, which is what left the org admin's Role
+    // picker unable to see which roles their organization employs.
+    if (isBrowserRuntime()) {
+      try {
+        const { apiFetch } = await import('../api-fetch');
+        const res = await apiFetch(`/api/organizations?id=${encodeURIComponent(id)}`);
+        if (!res.ok) return null;
+        const body = await res.json() as { organization?: OrganizationDoc };
+        return body.organization ?? null;
+      } catch {
+        // Offline, or a role the organizations API does not serve. Callers all
+        // treat a missing organization as "no org-specific configuration",
+        // which is the same answer they got before this fallback existed.
+        return null;
+      }
+    }
     return null;
   }
 }
@@ -27,6 +87,11 @@ export async function createOrganization(
   actorId?: string,
   actorUsername?: string
 ): Promise<OrganizationDoc> {
+  if (isBrowserRuntime()) {
+    const body = await postOrganizationsApi({ ...data });
+    return body.organization as OrganizationDoc;
+  }
+
   const db = organizationsDB();
   const now = new Date().toISOString();
 
@@ -80,6 +145,11 @@ export async function updateOrganization(
   actorId?: string,
   actorUsername?: string
 ): Promise<OrganizationDoc> {
+  if (isBrowserRuntime()) {
+    const body = await postOrganizationsApi({ action: 'update', orgId: id, ...data });
+    return body.organization as OrganizationDoc;
+  }
+
   const db = organizationsDB();
   const existing = await db.get(id) as OrganizationDoc;
 
@@ -112,6 +182,11 @@ export async function deactivateOrganization(
   actorId?: string,
   actorUsername?: string
 ): Promise<void> {
+  if (isBrowserRuntime()) {
+    await postOrganizationsApi({ action: 'deactivate', orgId: id });
+    return;
+  }
+
   const db = organizationsDB();
   const existing = await db.get(id) as OrganizationDoc;
 

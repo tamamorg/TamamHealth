@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   const isProduction = process.env.NODE_ENV === 'production';
   let fresh: {
     name?: string; role?: string; actualRole?: string; hospitalId?: string; hospitalName?: string;
-    orgId?: string; mustChangePassword?: boolean;
+    orgId?: string; orgName?: string; mustChangePassword?: boolean;
     /** Staff department — routes department-addressed patient transfers to the
      *  right inbox. Not a JWT claim, so it is only populated from the live user
      *  record; a JWT-only fallback leaves it undefined rather than stale. */
@@ -79,6 +79,10 @@ export async function GET(request: NextRequest) {
         hospitalId: impersonating ? payload.hospitalId : user.hospitalId,
         hospitalName: impersonating ? payload.hospitalName : user.hospitalName,
         orgId: impersonating ? payload.orgId : user.orgId,
+        // Not carried on the JWT — the organization the account belongs to is
+        // stable, so it is read from the live record rather than adding another
+        // claim that would go stale on a rename.
+        orgName: impersonating ? undefined : user.orgName,
         mustChangePassword: user.mustChangePassword,
         department: user.department,
       };
@@ -103,6 +107,7 @@ export async function GET(request: NextRequest) {
       hospitalId: fresh.hospitalId,
       hospitalName: fresh.hospitalName,
       orgId: fresh.orgId,
+      orgName: fresh.orgName,
       mustChangePassword: fresh.mustChangePassword,
       department: fresh.department,
     },

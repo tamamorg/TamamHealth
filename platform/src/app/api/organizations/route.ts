@@ -9,6 +9,7 @@ import {
 } from '@/lib/api-auth';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole, OrganizationDoc } from '@/lib/db-types';
+import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin',
 ];
@@ -75,6 +76,48 @@ export async function GET(request: NextRequest) {
     return serverError();
   }
 }
+/**
+ * The organization's staff-role roster, validated against the real role table.
+ *
+ * Returns undefined for anything that is not a non-empty array of known roles,
+ * which is the documented "not configured" value — the org admin is then
+ * offered every role their organization type allows, exactly as before the
+ * field existed. Unknown strings are dropped rather than stored, so a typo or
+ * a renamed role cannot quietly shrink a tenant's picker later.
+ */
+function sanitizeEnabledRoles(value: unknown): UserRole[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const known = new Set<string>(Object.keys(ROLE_ROUTE_TABLE));
+  const roles = value.filter((r): r is UserRole => typeof r === 'string' && known.has(r));
+  return roles.length > 0 ? roles : undefined;
+}
+
+/** The organization fields the super-admin form may change, read off a request body. */
+function editableOrganizationFields(body: Record<string, unknown>): Partial<OrganizationDoc> {
+  const fields: Partial<OrganizationDoc> = {};
+  const str = (key: keyof OrganizationDoc) => {
+    const v = body[key as string];
+    if (typeof v === 'string') (fields as Record<string, unknown>)[key as string] = v;
+  };
+  const num = (key: keyof OrganizationDoc) => {
+    const v = body[key as string];
+    if (v !== undefined && v !== null && Number.isFinite(Number(v))) {
+      (fields as Record<string, unknown>)[key as string] = Number(v);
+    }
+  };
+  (['name', 'slug', 'contactEmail', 'country', 'primaryColor', 'secondaryColor',
+    'accentColor', 'orgType', 'subscriptionPlan', 'subscriptionStatus', 'locale',
+    'bankDetails', 'logoUrl'] as (keyof OrganizationDoc)[]).forEach(str);
+  (['maxUsers', 'maxHospitals', 'lockTimeoutMinutes'] as (keyof OrganizationDoc)[]).forEach(num);
+  if (body.featureFlags && typeof body.featureFlags === 'object') {
+    fields.featureFlags = body.featureFlags as OrganizationDoc['featureFlags'];
+  }
+  // Present-but-empty is a real choice here ("clear the roster"), so the key is
+  // written whenever the caller sent an array at all.
+  if (Array.isArray(body.enabledRoles)) fields.enabledRoles = sanitizeEnabledRoles(body.enabledRoles);
+  return fields;
+}
+
 async function postHandler(request: NextRequest) {
   try {
     const { checkRateLimit } = await import('@/lib/api-security');
@@ -104,15 +147,19 @@ async function postHandler(request: NextRequest) {
       await deactivateOrganization(body.orgId as string, auth.sub, auth.username);
       return NextResponse.json({ success: true });
     }
-    // Update existing organization
+    // Update existing organization.
+    //
+    // This used to accept only name and slug, so every other field the
+    // super-admin can edit — plan, limits, branding, feature flags, staff roles
+    // — was silently dropped on save. The organization form writes through this
+    // route (organization-service routes browser writes here, because the
+    // organizations database refuses client writes outright), so anything not
+    // listed below is a field the UI cannot actually change.
     if (action === 'update' && body.orgId) {
       const { updateOrganization } = await import('@/lib/services/organization-service');
       const updated = await updateOrganization(
         body.orgId as string,
-        {
-          name: body.name as string | undefined,
-          slug: body.slug as string | undefined,
-        },
+        editableOrganizationFields(body),
         auth.sub,
         auth.username
       );
@@ -161,6 +208,7 @@ async function postHandler(request: NextRequest) {
           facilityAssessments: false,
         },
         orgType: (body.orgType as OrganizationDoc['orgType']) || 'public',
+        enabledRoles: sanitizeEnabledRoles(body.enabledRoles),
         isActive: true,
       },
       auth.sub,

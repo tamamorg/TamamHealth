@@ -42,10 +42,18 @@ import type { WardDoc, BedDoc, AdmissionDoc } from './db-types-ward';
 import type { AssetDoc } from './db-types-asset';
 import type { PayrollEntryDoc, LeaveRequestDoc } from './db-types-hr';
 import { BRAND_PRIMARY, BRAND_SECONDARY } from './theme-colors';
+import {
+  DEFAULT_ORGANIZATIONS,
+  PUBLIC_ORG_ID as SEED_PUBLIC_ORG_ID,
+  PRIVATE_ORG_ID as SEED_PRIVATE_ORG_ID,
+} from './seed-organizations';
 
-// Default org IDs
-const PUBLIC_ORG_ID = 'org-moh-ss';
-const PRIVATE_ORG_ID = 'org-mercy-hospital';
+// Default org IDs + the organizations themselves now live in
+// `seed-organizations.ts`, so the Node-side provisioning script can import the
+// exact same tenants without pulling in pouchdb-browser through this module.
+const PUBLIC_ORG_ID = SEED_PUBLIC_ORG_ID;
+const PRIVATE_ORG_ID = SEED_PRIVATE_ORG_ID;
+const defaultOrganizations = DEFAULT_ORGANIZATIONS;
 
 // ═══ Date-freshness helpers ═══════════════════════════════════════
 // Demo clinical data is anchored RELATIVE to "now" so trend charts and
@@ -72,52 +80,6 @@ function dateAgo(n: number): string {
 function dateFromNow(n: number): string {
   return localIsoDate(SEED_NOW + n * 86400000);
 }
-
-const defaultOrganizations: Omit<OrganizationDoc, '_rev'>[] = [
-  {
-    _id: PUBLIC_ORG_ID,
-    type: 'organization',
-    name: 'Republic of South Sudan',
-    slug: 'moh-ss',
-    primaryColor: BRAND_PRIMARY,
-    secondaryColor: BRAND_SECONDARY,
-    accentColor: BRAND_PRIMARY,
-    subscriptionStatus: 'active',
-    subscriptionPlan: 'enterprise',
-    maxUsers: 1000,
-    maxHospitals: 200,
-    featureFlags: { epidemicIntelligence: true, mchAnalytics: true, dhis2Export: true, aiClinicalSupport: true, communityHealth: true, facilityAssessments: true },
-    orgType: 'public',
-    contactEmail: 'support.tamam@gmail.com',
-    country: 'South Sudan',
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-  },
-  {
-    _id: PRIVATE_ORG_ID,
-    type: 'organization',
-    name: 'Mercy Hospital Group',
-    slug: 'mercy-hospital',
-    // Default brand palette — orgs only carry a custom color when an admin
-    // deliberately rebrands (see branding.ts, which also rejects non-hex
-    // values so buttons never lose the default action blue).
-    primaryColor: BRAND_PRIMARY,
-    secondaryColor: BRAND_SECONDARY,
-    accentColor: BRAND_PRIMARY,
-    subscriptionStatus: 'active',
-    subscriptionPlan: 'professional',
-    maxUsers: 50,
-    maxHospitals: 5,
-    featureFlags: { epidemicIntelligence: false, mchAnalytics: true, dhis2Export: false, aiClinicalSupport: true, communityHealth: false, facilityAssessments: false },
-    orgType: 'private',
-    contactEmail: 'support.tamam@gmail.com',
-    country: 'South Sudan',
-    isActive: true,
-    createdAt: '2026-01-15T00:00:00Z',
-    updatedAt: '2026-01-15T00:00:00Z',
-  },
-];
 
 // Profile metadata for the seeded demo users. Plaintext passwords are
 // generated server-side at first boot (see lib/seed-credentials.ts) and

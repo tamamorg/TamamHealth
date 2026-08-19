@@ -334,6 +334,10 @@ export default function RoleSettingsView() {
 
   const identityRows = [
     { label: 'Role', value: roleConfig?.label || spec.title },
+    // The organization the account belongs to. Shown above Facility because it
+    // is the wider scope, and because org-wide roles have no facility at all —
+    // for them this row is the only answer to "who do I work for".
+    { label: 'Organization', value: currentUser.orgName || 'No organization' },
     { label: 'Facility', value: currentUser.hospitalName || 'All facilities' },
     { label: 'Username', value: currentUser.username },
   ];

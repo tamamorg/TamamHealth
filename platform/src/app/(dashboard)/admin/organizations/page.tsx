@@ -12,13 +12,13 @@
  * favor of SadbConfirmModal.
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useToast } from '@/components/Toast';
-import type { OrganizationDoc } from '@/lib/db-types';
+import type { OrganizationDoc, UserRole } from '@/lib/db-types';
 import { Plus, X, Edit3, Ban, RefreshCw, Eye, EyeOff, ShieldCheck } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import Modal from '@/components/Modal';
@@ -34,6 +34,7 @@ import {
   ORG_ADMIN_MIN_PASSWORD_LENGTH, type OrgAdminFormData,
 } from '@/lib/org-admin-provisioning';
 import { BRAND_PRIMARY, BRAND_SECONDARY, WARNING } from '@/lib/theme-colors';
+import { assignableRolesForOrgAdmin, labelRolesDistinctly } from '@/lib/permissions';
 
 type FeatureFlagKey =
   | 'epidemicIntelligence' | 'mchAnalytics' | 'dhis2Export'
@@ -43,6 +44,8 @@ type OrgFormData = {
   name: string;
   slug: string;
   orgType: 'public' | 'private';
+  /** Staff roles this organization employs — see OrganizationDoc.enabledRoles. */
+  enabledRoles: UserRole[];
   contactEmail: string;
   country: string;
   primaryColor: string;
@@ -64,7 +67,11 @@ type OrgFormData = {
 // re-resolves the live cascade once mounted so these track the real tokens
 // rather than staying hard-coded if a tenant ever overrides them at runtime.
 const emptyForm: OrgFormData = {
-  name: '', slug: '', orgType: 'public', contactEmail: '', country: 'South Sudan',
+  name: '', slug: '', orgType: 'public',
+  // Every role its type allows, so a new organization behaves exactly as it did
+  // before this field existed until the super-admin narrows it on purpose.
+  enabledRoles: assignableRolesForOrgAdmin('public'),
+  contactEmail: '', country: 'South Sudan',
   primaryColor: BRAND_PRIMARY, secondaryColor: BRAND_SECONDARY, accentColor: BRAND_PRIMARY,
   subscriptionPlan: 'professional', subscriptionStatus: 'trial',
   maxUsers: 50, maxHospitals: 10,
@@ -156,6 +163,23 @@ export default function AdminOrganizationsPage() {
   // Local to this page now — the previous binding to the app-wide global
   // search leaked whatever was typed here into every other screen's search.
   const [search, setSearch] = useState('');
+
+  // The dashboard's tenant rows link here as `?org=<id>`. That used to lock the
+  // list to one row behind an explanatory banner whose button was the only way
+  // out. The deep link still narrows the list, but it does it by seeding the
+  // search box — so the way back is the control already on screen, and there is
+  // nothing to explain. Runs once, after the organizations load, since the id
+  // has to be resolved to a name the search can match.
+  const deepLinkApplied = useRef(false);
+  useEffect(() => {
+    if (deepLinkApplied.current || organizations.length === 0) return;
+    const orgId = new URLSearchParams(window.location.search).get('org');
+    if (!orgId) return;
+    const match = organizations.find(o => o._id === orgId);
+    if (!match) return;
+    deepLinkApplied.current = true;
+    setSearch(match.name);
+  }, [organizations]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<OrgFormData>(emptyForm);
@@ -163,12 +187,6 @@ export default function AdminOrganizationsPage() {
   const [orgStats, setOrgStats] = useState<Record<string, { userCount: number; hospitalCount: number }>>({});
   const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
   const [deactivating, setDeactivating] = useState(false);
-  const [focusedOrgId, setFocusedOrgId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setFocusedOrgId(new URLSearchParams(window.location.search).get('org'));
-  }, []);
-
   // The "Administrator" section's toggle. On create it defaults ON — the
   // whole point is to collapse "create org" + "go create its admin at
   // /admin/users" into one step, so the shortcut should be the default, not
@@ -220,13 +238,16 @@ export default function AdminOrganizationsPage() {
     return () => { cancelled = true; };
   }, [organizations, getStats]);
 
+  // The list always shows every organization; a `?org=` deep link no longer
+  // narrows it. The narrowing came with a banner as its only reset, so losing
+  // the banner would have stranded anyone arriving from the dashboard on a
+  // one-row list. Search is the way to narrow now, and it clears itself.
   const filteredOrgs = useMemo(() => {
-    if (focusedOrgId) return organizations.filter(o => o._id === focusedOrgId);
     const q = search.trim().toLowerCase();
     return organizations.filter(o =>
       !q || o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q) || o.contactEmail.toLowerCase().includes(q)
     );
-  }, [organizations, search, focusedOrgId]);
+  }, [organizations, search]);
 
   const activeOrgs = organizations.filter(o => o.isActive && o.subscriptionStatus !== 'suspended' && o.subscriptionStatus !== 'cancelled');
   const trialOrgs = organizations.filter(o => o.subscriptionStatus === 'trial');
@@ -251,6 +272,12 @@ export default function AdminOrganizationsPage() {
       name: org.name,
       slug: org.slug,
       orgType: org.orgType,
+      // An organization saved before this field existed has no list; show every
+      // role its type allows rather than an empty set that would read as
+      // "this organization employs nobody".
+      enabledRoles: org.enabledRoles?.length
+        ? assignableRolesForOrgAdmin(org.orgType, org.enabledRoles)
+        : assignableRolesForOrgAdmin(org.orgType),
       contactEmail: org.contactEmail,
       country: org.country,
       // Stored colours are normally already valid hex; coerce covers a
@@ -345,6 +372,7 @@ export default function AdminOrganizationsPage() {
         name: form.name,
         slug: form.slug,
         orgType: form.orgType,
+        enabledRoles: form.enabledRoles,
         contactEmail: form.contactEmail,
         country: form.country,
         primaryColor: form.primaryColor,
@@ -408,6 +436,21 @@ export default function AdminOrganizationsPage() {
     }
   };
 
+  // Every role this organization's TYPE permits — the menu the checkboxes below
+  // are drawn from. Recomputed from `form.orgType` so switching public→private
+  // immediately stops offering roles the private-sector list excludes.
+  const selectableRoles = assignableRolesForOrgAdmin(form.orgType);
+  const enabledRoleSet = new Set(form.enabledRoles);
+  const toggleRole = (role: UserRole, on: boolean) => {
+    setForm(p => {
+      const next = new Set(p.enabledRoles);
+      if (on) next.add(role); else next.delete(role);
+      // Preserve the canonical order rather than click order, so the saved list
+      // and the org admin's Role dropdown read the same way every time.
+      return { ...p, enabledRoles: selectableRoles.filter(r => next.has(r)) };
+    });
+  };
+
   const FEATURE_FLAGS: { key: FeatureFlagKey; label: string; sub: string }[] = [
     { key: 'epidemicIntelligence', label: t('orgAdmin.featureEpidemicIntelligence'), sub: t('orgSettings.flagEpidemicIntelligenceDesc') },
     { key: 'mchAnalytics', label: t('orgAdmin.featureMchAnalytics'), sub: t('orgSettings.flagMchAnalyticsDesc') },
@@ -460,15 +503,6 @@ export default function AdminOrganizationsPage() {
             <Plus className="w-4 h-4" /> {t('orgAdmin.newOrganization')}
           </button>
         </div>
-
-        {focusedOrgId && (
-          <div className="px-4 py-2.5 flex items-center justify-between gap-3" role="status" style={{ background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              Showing the organization opened from the dashboard.
-            </span>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFocusedOrgId(null)}>Show all organizations</button>
-          </div>
-        )}
 
         <SadbGridList
           template={GRID_TEMPLATE}
@@ -548,7 +582,16 @@ export default function AdminOrganizationsPage() {
                   </div>
                   <div>
                     <label style={labelStyle}>{t('orgAdmin.labelOrgType')}</label>
-                    <Select value={form.orgType} onChange={e => setForm(p => ({ ...p, orgType: e.target.value as 'public' | 'private' }))} style={selectStyle}>
+                    <Select value={form.orgType} onChange={e => setForm(p => {
+                      // Switching type changes which roles exist at all. Keep the
+                      // admin's selections where they survive the new type, and
+                      // drop the rest — leaving them would persist roles the org
+                      // admin can never be offered.
+                      const nextType = e.target.value as 'public' | 'private';
+                      const allowed = assignableRolesForOrgAdmin(nextType);
+                      const kept = allowed.filter(r => p.enabledRoles.includes(r));
+                      return { ...p, orgType: nextType, enabledRoles: kept.length ? kept : allowed };
+                    })} style={selectStyle}>
                       <option value="public">{t('orgAdmin.typePublic')}</option>
                       <option value="private">{t('orgAdmin.typePrivate')}</option>
                     </Select>
@@ -618,6 +661,67 @@ export default function AdminOrganizationsPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Staff roles — the roster of roles this organization employs.
+                  What is ticked here is exactly what the organization's own
+                  admin is offered in the Role dropdown when they create a user,
+                  so a clinic that runs on five roles stops scrolling past
+                  twenty-five. It narrows a picker; it does not grant anything —
+                  POST /api/users re-checks every assignment regardless. */}
+              <div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionRoles')}</h4>
+                  <div className="flex items-center gap-3" style={{ marginBottom: 8 }}>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold"
+                      style={{ color: 'var(--accent-text)' }}
+                      onClick={() => setForm(p => ({ ...p, enabledRoles: selectableRoles }))}
+                    >
+                      {t('orgAdmin.rolesSelectAll')}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold"
+                      style={{ color: 'var(--text-muted)' }}
+                      onClick={() => setForm(p => ({ ...p, enabledRoles: [] }))}
+                    >
+                      {t('orgAdmin.rolesClear')}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[11px]" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>
+                  {t('orgAdmin.rolesHint')}
+                </p>
+                <div
+                  className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1"
+                  style={{ border: '1px solid var(--border-light)', borderRadius: 8, padding: 12 }}
+                >
+                  {labelRolesDistinctly(selectableRoles).map(({ role, label }) => (
+                    <label
+                      key={role}
+                      className="flex items-center gap-2 text-xs"
+                      /* globals.css force-uppercases every bare <label>; these
+                         are checkbox captions, not field labels, so opt out. */
+                      style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500, marginBottom: 0, display: 'flex' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={enabledRoleSet.has(role)}
+                        onChange={e => toggleRole(role, e.target.checked)}
+                      />
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {form.enabledRoles.length === 0 && (
+                  <p className="text-[11px]" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
+                    {t('orgAdmin.rolesNoneSelected')}
+                  </p>
+                )}
               </div>
 
               {/* Feature Flags */}

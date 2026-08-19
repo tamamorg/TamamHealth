@@ -81,6 +81,13 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/billing', '/payments', '/payments/claims',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
+      // Facility station workspaces, moved off the super-admin console
+      // 2026-08-19 (see the WORKSPACES block in permissions.ts). These pair
+      // with nav entries there; both halves are required or the proxy 302s the
+      // link away. County and Government are intentionally absent — they are
+      // supra-organisational and would cross the tenant boundary.
+      '/dashboard/front-desk', '/dashboard/lab', '/dashboard/pharmacy',
+      '/dashboard/radiology', '/dashboard/data-entry', '/dashboard/nutrition',
     ],
     // Org admins land on the Facility Operations dashboard; the org-level
     // command center stays reachable as "Org Overview" (/org-admin).

@@ -55,3 +55,39 @@ describe('roles an org admin may assign', () => {
     expect(roles.filter(r => !withoutHospital.includes(r)).length).toBeGreaterThan(0);
   });
 });
+
+describe("an organization's own roster of roles", () => {
+  it('narrows the picker to the roles the organization employs', () => {
+    const roles = assignableRolesForOrgAdmin('public', ['doctor', 'nurse', 'front_desk']);
+    expect(roles).toEqual(expect.arrayContaining(['doctor', 'nurse', 'front_desk']));
+    expect(roles).toHaveLength(3);
+    expect(roles).not.toContain('org_admin');
+  });
+
+  it('narrows nothing when the organization has no roster', () => {
+    // Absent and empty both mean "not configured" — every organization created
+    // before the field existed relies on this.
+    const full = assignableRolesForOrgAdmin('public');
+    expect(assignableRolesForOrgAdmin('public', undefined)).toEqual(full);
+    expect(assignableRolesForOrgAdmin('public', [])).toEqual(full);
+  });
+
+  it('cannot widen what the org type already allows', () => {
+    // The roster is a convenience, not a grant: a role the private-sector list
+    // excludes stays excluded even when the organization lists it, and
+    // super_admin is never assignable however it is listed.
+    const priv = assignableRolesForOrgAdmin('private');
+    const listedButNotAllowed = getAvailableRoles('public').filter(r => !priv.includes(r));
+    const roles = assignableRolesForOrgAdmin('private', [...priv, ...listedButNotAllowed, 'super_admin']);
+    expect(roles).toEqual(priv);
+    expect(roles).not.toContain('super_admin');
+  });
+
+  it('falls back to the full list rather than emptying the dropdown', () => {
+    // A roster that intersects nothing assignable (stale roles, a hand-edited
+    // document) must not reproduce the empty-picker bug this module exists to
+    // prevent.
+    const roles = assignableRolesForOrgAdmin('public', ['super_admin']);
+    expect(roles).toEqual(assignableRolesForOrgAdmin('public'));
+  });
+});

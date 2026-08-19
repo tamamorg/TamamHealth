@@ -20,6 +20,8 @@ export interface ServerUser {
   hospitalId?: string;
   hospitalName?: string;
   orgId?: string;
+  /** Organization display name denormalised onto the user doc — see UserDoc.orgName. */
+  orgName?: string;
   /** ISO 3166-1 alpha-2 — facility's country (e.g. "SS" for South Sudan). */
   countryId?: string;
   /** Geographic tier fields for sub-org scoping (P0 tier-isolation). */
@@ -81,6 +83,7 @@ async function authenticateFromUsersDb(
       hospitalId: doc.hospitalId,
       hospitalName: doc.hospitalName,
       orgId: doc.orgId,
+      orgName: doc.orgName,
       isActive: doc.isActive,
       mustChangePassword: doc.mustChangePassword,
       passwordUpdatedAt: doc.passwordUpdatedAt,

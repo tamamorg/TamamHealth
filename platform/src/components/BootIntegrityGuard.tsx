@@ -12,7 +12,22 @@
 
 import { useEffect, useState } from 'react';
 
+// Timestamp (ms) of the last recovery reload, kept in sessionStorage so it
+// survives that reload — the whole point of the cap.
 const RELOAD_FLAG = 'ths-boot-reloaded';
+
+// How long a recovery reload suppresses the next one.
+//
+// This used to be a bare '1' that the effect below CLEARED on every mount, on
+// the theory that "a clean mount means the bundle loaded fine". It doesn't: the
+// failures this guard exists for — a lazily-loaded chunk, a stylesheet that
+// 404s after a rebuild — land AFTER the guard has mounted and already wiped the
+// flag. So every reload started with a clean slate, the "at most once" cap never
+// held, and one bad chunk turned into a page reloading roughly five times a
+// second until the tab was closed. A timestamp fixes that: it ages out on its
+// own, so a genuinely *later* failure still earns its one recovery, while a
+// failure that repeats immediately gets the error screen instead of a loop.
+const RECOVERY_COOLDOWN_MS = 60_000;
 
 // Only treat the app's OWN stylesheets/scripts as boot-critical. Third-party or
 // browser-extension scripts can fail without breaking the app, and reacting to
@@ -34,18 +49,44 @@ function isChunkError(reason: unknown): boolean {
   return /ChunkLoadError|Loading (CSS )?chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(msg);
 }
 
+/**
+ * What to do about an asset failure: reload to fetch fresh copies, or stop and
+ * show the error screen.
+ *
+ * Pure and exported so the "never loop" invariant can be tested directly —
+ * jsdom's `location.reload` is unforgeable, so a DOM test cannot observe the
+ * reload itself, and this rule is the whole of the fix.
+ */
+export function recoveryAction(input: {
+  /** Raw sessionStorage value, or null when unset/unreadable. */
+  storedFlag: string | null;
+  now: number;
+  isDev: boolean;
+}): 'reload' | 'show-error' {
+  // A dev server invalidates chunk URLs on every edit, so a page open across a
+  // rebuild routinely hits exactly this failure. Reloading there fights Fast
+  // Refresh (already recovering) and hides the real error behind a storm.
+  if (input.isDev) return 'show-error';
+  const lastRecovery = Number(input.storedFlag) || 0;
+  return input.now - lastRecovery < RECOVERY_COOLDOWN_MS ? 'show-error' : 'reload';
+}
+
 export default function BootIntegrityGuard() {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const recover = () => {
-      // Reload at most once per tab session to fetch fresh assets; if the page
-      // is already a post-recovery reload, surface the error screen instead of
-      // looping forever.
-      let alreadyReloaded = false;
-      try { alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG) === '1'; } catch { /* storage blocked */ }
-      if (alreadyReloaded) { setFailed(true); return; }
-      try { sessionStorage.setItem(RELOAD_FLAG, '1'); } catch { /* ignore */ }
+      // Reload at most once per cooldown window to fetch fresh assets; if the
+      // page is already a post-recovery reload, surface the error screen
+      // instead of looping forever.
+      let storedFlag: string | null = null;
+      try { storedFlag = sessionStorage.getItem(RELOAD_FLAG); } catch { /* storage blocked */ }
+      const now = Date.now();
+      if (recoveryAction({ storedFlag, now, isDev: process.env.NODE_ENV !== 'production' }) === 'show-error') {
+        setFailed(true);
+        return;
+      }
+      try { sessionStorage.setItem(RELOAD_FLAG, String(now)); } catch { /* ignore */ }
       window.location.reload();
     };
 
@@ -60,9 +101,9 @@ export default function BootIntegrityGuard() {
     window.addEventListener('error', onResourceError, true);
     window.addEventListener('unhandledrejection', onRejection);
 
-    // A clean mount means the bundle loaded fine — clear the one-shot flag so a
-    // *future* failure is still allowed its single recovery reload.
-    try { sessionStorage.removeItem(RELOAD_FLAG); } catch { /* ignore */ }
+    // NB: the flag is deliberately NOT cleared here. It expires on its own
+    // after RECOVERY_COOLDOWN_MS, which is what lets a later failure still get
+    // a recovery reload without letting an immediate repeat become a loop.
 
     return () => {
       window.removeEventListener('error', onResourceError, true);

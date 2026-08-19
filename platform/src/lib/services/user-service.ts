@@ -103,6 +103,11 @@ interface CreateUserData {
   hospitalId?: string;
   hospitalName?: string;
   orgId?: string;
+  /**
+   * Organization display name. Stamped by POST /api/users from the
+   * organization record, never taken from the browser — see `UserDoc.orgName`.
+   */
+  orgName?: string;
   /** Downscaled data URL from `PhotoCaptureModal`. Optional at every step. */
   photoUrl?: string;
   department?: string;
@@ -191,6 +196,7 @@ export async function createUser(
     hospitalId: needsHospital ? data.hospitalId : undefined,
     hospitalName: needsHospital ? data.hospitalName : undefined,
     orgId: data.orgId,
+    orgName: data.orgName,
     photoUrl: data.photoUrl,
     department: data.department,
     specialty: data.specialty,
@@ -224,6 +230,8 @@ interface UpdateUserData {
   department?: string;
   specialty?: string;
   orgId?: string;
+  /** See `CreateUserData.orgName` — server-stamped, never client-supplied. */
+  orgName?: string;
 }
 
 export async function updateUser(

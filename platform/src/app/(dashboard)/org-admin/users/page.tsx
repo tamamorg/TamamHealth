@@ -17,6 +17,7 @@ import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import { generateTempPassword } from '@/lib/temp-password';
 import { canCreateUsers } from '@/lib/people-nav';
+import { getRoleConfig, labelRolesDistinctly } from '@/lib/permissions';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -112,7 +113,12 @@ export default function OrgUsersPage() {
       // `[]` whenever the org record was missing from the local replica: the
       // Role picker rendered with no options at all, the org admin could not
       // create a single user, and nothing on screen said why.
-      setAvailableRoles(assignableRolesForOrgAdmin(currentUser.organization?.orgType));
+      // `enabledRoles` is the roster the platform super-admin picked for this
+      // organization (Organizations → Staff roles). Absent narrows nothing.
+      setAvailableRoles(assignableRolesForOrgAdmin(
+        currentUser.organization?.orgType,
+        currentUser.organization?.enabledRoles,
+      ));
     } catch (err) {
       console.error('Failed to load users:', err);
     } finally {
@@ -271,8 +277,24 @@ export default function OrgUsersPage() {
       hospital_manager: t('orgUsers.roleHospitalManager'),
       medical_biller: t('orgUsers.roleMedicalBiller'),
     };
-    return map[role] || role;
+    // The map above is translated but partial — roles added since it was
+    // written (midwife, cashier, county_health_director, the clinical-flow
+    // stations) fell through to the raw enum, so the Role picker listed
+    // "midwife" and "county_health_director" beside "Clinical Officer".
+    // ROLE_PERMISSIONS carries a written label for every role; use it before
+    // giving up and showing the identifier.
+    return map[role] || getRoleConfig(role as UserRole)?.label || role;
   };
+
+  // Options for the Role pickers. `doctor` and `clinician` share the label
+  // "Doctor", which listed two identical options with no way to tell them
+  // apart; labelRolesDistinctly appends the identifier to just those.
+  const roleOptions = labelRolesDistinctly(availableRoles).map(({ role, label }) => ({
+    role,
+    // The translated map still wins where it has an entry — this only supplies
+    // the labels it never covered, and the disambiguation where it is needed.
+    label: label.includes('(') ? label : roleLabel(role),
+  }));
 
   // Filter users — role/status pills from the header's Filters popover, plus
   // the header's own search box combined with any lingering platform-wide
@@ -342,7 +364,7 @@ export default function OrgUsersPage() {
                     onChange={setFilterRole}
                     neutralValue="all"
                     size="sm"
-                    options={[{ value: 'all', label: t('orgUsers.allRoles') }, ...availableRoles.map(r => ({ value: r, label: roleLabel(r) }))]}
+                    options={[{ value: 'all', label: t('orgUsers.allRoles') }, ...roleOptions.map(o => ({ value: o.role, label: o.label }))]}
                   />
                   <FilterSelect
                     label={t('orgUsers.colStatus')}
@@ -565,8 +587,8 @@ export default function OrgUsersPage() {
                     className="w-full appearance-none px-3 py-2 pe-8 rounded-lg text-sm"
                     style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                   >
-                    {availableRoles.map(r => (
-                      <option key={r} value={r}>{roleLabel(r)}</option>
+                    {roleOptions.map(o => (
+                      <option key={o.role} value={o.role}>{o.label}</option>
                     ))}
                   </Select>
                   <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />

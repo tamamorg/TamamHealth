@@ -3697,8 +3697,13 @@ html:has(.ehr-top-rail) {
 /* Current facility name in the top rail — context for which hospital the
    signed-in user is working in. Truncates; hidden on narrow viewports. */
 .ehr-top-facility {
+  /* Column, not row: the organization name sits under the facility as a
+     quieter second line (see EhrTopRail's centerSubLabel). Stays a single
+     centred line when there is no organization to add. */
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   max-width: 320px;
   color: rgba(255, 255, 255, 0.92);
   font-family: var(--font-condensed);
@@ -3710,8 +3715,24 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-top-facility span {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Organization line. Deliberately lighter and smaller than the facility above
+   it — it is context for the facility name, not a competing title. */
+.ehr-top-facility-org {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
 }
 
 @media (max-width: 1100px) {

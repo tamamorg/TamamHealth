@@ -54,7 +54,16 @@ export default function EhrTopRail() {
   // show the ministry name in the rail's center and give it the header search,
   // so the National Dashboard page doesn't need its own title + search row.
   const isNationalRole = currentUser?.role === 'government';
-  const centerLabel = facilityName || (isNationalRole ? 'Ministry of Health' : undefined);
+  // Who the signed-in user works for. Org-wide roles (org_admin above all)
+  // have no facility at all, so a facility-only header left them with a blank
+  // centre — signed into an organization the app never named anywhere.
+  const orgName = currentUser?.orgName;
+  // Facility first when there is one: it is the narrower, more useful answer to
+  // "where am I". The organization then rides underneath as context rather than
+  // replacing it, and stands alone when there is no facility to show.
+  const centerLabel = facilityName || orgName || (isNationalRole ? 'Ministry of Health' : undefined);
+  // Only a second line when it would say something the main line doesn't.
+  const centerSubLabel = facilityName && orgName && orgName !== facilityName ? orgName : undefined;
   const { canRegisterPatients } = usePermissions();
   const { available: tourAvailable, start: startTour } = useTourContext();
   const { patients } = usePatients();
@@ -271,8 +280,12 @@ export default function EhrTopRail() {
           shifts the brand/modules/search columns. */}
       {centerLabel && (
         <div className="ehr-top-center">
-          <div className="ehr-top-facility" title={centerLabel}>
+          <div
+            className="ehr-top-facility"
+            title={centerSubLabel ? `${centerLabel} · ${centerSubLabel}` : centerLabel}
+          >
             <span>{centerLabel}</span>
+            {centerSubLabel && <em className="ehr-top-facility-org">{centerSubLabel}</em>}
           </div>
         </div>
       )}

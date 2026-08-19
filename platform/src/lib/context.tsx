@@ -41,6 +41,17 @@ interface AppUser {
   department?: string;
   orgId?: string;
   organization?: OrganizationDoc;
+  /**
+   * Name of the organization the user belongs to, for display.
+   *
+   * Resolved from the organization document when the device has replicated it,
+   * and otherwise from the name stamped on the user's own record. Two sources
+   * because either can be missing on its own: the org document is not on every
+   * device, and `UserDoc.orgName` is absent on accounts created before it
+   * existed. Header and settings read this rather than `organization?.name` so
+   * neither gap leaves the org anonymous.
+   */
+  orgName?: string;
   /** Geographic scope claims propagated from JWT/UserDoc for tier-aware
    *  dashboards (state/county/payam pages, DHIS2 export level picker). */
   payam?: string;
@@ -273,7 +284,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 initLocaleFromOrg(organization.locale);
               }
 
-              setCurrentUser({ ...data.user, hospital, organization, branding });
+              setCurrentUser({
+        ...data.user,
+        hospital,
+        organization,
+        orgName: organization?.name ?? data.user.orgName,
+        branding,
+      });
               setIsAuthenticated(true);
 
               // The platform session was restored from cookies, but the
@@ -698,7 +715,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Geographic claims may live on UserDoc (server augment) or the auth
       // response shape. Read defensively so we still populate them when the
       // server-side login returns them but the local PouchDB record doesn't.
-      const geo = user as unknown as { payam?: string; county?: string; state?: string; mustChangePassword?: boolean };
+      const geo = user as unknown as {
+        payam?: string; county?: string; state?: string; mustChangePassword?: boolean; orgName?: string;
+      };
       setCurrentUser({
         _id: user._id,
         username: user.username,
@@ -711,6 +730,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         department: user.department,
         orgId: user.orgId,
         organization,
+        orgName: organization?.name ?? geo.orgName,
         payam: geo.payam,
         county: geo.county,
         state: geo.state,

@@ -157,6 +157,11 @@ export async function POST(request: NextRequest) {
         hospitalId: effective.hospitalId,
         hospitalName: effective.hospitalName,
         orgId: effective.orgId,
+        // Denormalised on the user record (see UserDoc.orgName). Suppressed
+        // while impersonating, where `effective.orgId` may be a substituted
+        // org the account itself does not belong to — showing that account's
+        // real organization name next to a borrowed org id would be a lie.
+        orgName: effective.actualRole ? undefined : user.orgName,
         mustChangePassword: user.mustChangePassword,
       },
     });

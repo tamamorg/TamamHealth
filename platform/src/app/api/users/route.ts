@@ -85,6 +85,27 @@ async function validateActiveOrganization(orgId: string | undefined): Promise<Ne
 }
 
 /**
+ * The organization's display name, for stamping onto the user document.
+ *
+ * Deliberately read from the organization record rather than accepted from the
+ * request body: the name travels with the account to devices that never
+ * replicated the organizations database, so a client-supplied value would let
+ * a caller label their own account with any organization they liked. Returns
+ * undefined when there is no org (platform/national accounts) or it cannot be
+ * read — `orgName` is a display convenience and must never fail a write that
+ * the tenant checks above have already allowed.
+ */
+async function resolveOrgName(orgId: string | undefined): Promise<string | undefined> {
+  if (!orgId) return undefined;
+  try {
+    const { getOrganizationById } = await import('@/lib/services/organization-service');
+    return (await getOrganizationById(orgId))?.name;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Authorize a mutation that targets an EXISTING user (reset_password,
  * deactivate, reactivate, update, delete). Two independent rules, both
  * enforced for every non-super_admin actor:
@@ -341,6 +362,7 @@ async function postHandler(request: NextRequest) {
           hospitalId: rolesWithoutHospital.includes(effectiveRole) ? undefined : requestedHospitalId,
           hospitalName: rolesWithoutHospital.includes(effectiveRole) ? undefined : canonicalHospitalName,
           orgId: canonicalOrgId,
+          orgName: await resolveOrgName(canonicalOrgId),
           isActive: body.isActive as boolean | undefined,
           photoUrl: adminPhoto.value,
           department: body.department as string | undefined,
@@ -424,6 +446,7 @@ async function postHandler(request: NextRequest) {
         hospitalId: body.hospitalId as string | undefined,
         hospitalName: body.hospitalName as string | undefined,
         orgId: body.orgId as string | undefined,
+        orgName: await resolveOrgName(body.orgId as string | undefined),
         photoUrl: newPhoto.value ?? undefined,
         department: body.department as string | undefined,
         specialty: body.specialty as string | undefined,
