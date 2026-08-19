@@ -424,7 +424,18 @@ export default function SettingsPage() {
     }
     setHospitalFormLoading(true);
     try {
-      await createHospital(hospitalForm, currentUser._id, currentUser.username);
+      // Stamp the creator's tenant. Without it the facility is written with no
+      // `orgId`: CouchDB's tenant validator rejects it on push and
+      // `filterByScope` hides it from every role but super_admin, so the org
+      // that just created a hospital keeps reading "Active Facilities 0".
+      // `createHospital` refuses the write outright when this is missing —
+      // which is what a super_admin (who has no org of their own) will now
+      // get here, instead of a silently orphaned record.
+      await createHospital(
+        { ...hospitalForm, orgId: currentUser.orgId },
+        currentUser._id,
+        currentUser.username,
+      );
       showToast('Hospital created successfully', 'success');
       setShowHospitalForm(false);
       await reloadHospitals();
