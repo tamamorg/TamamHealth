@@ -11,6 +11,15 @@
 
 export {};
 
+/**
+ * bcrypt at cost 12 is deliberately expensive — that is the point of it — and
+ * this suite runs a dozen hashes and comparisons. Jest's default 5s budget is
+ * fine on an idle machine and not fine on a loaded CI runner sharing cores
+ * with 90-odd other suites, where these tests time out non-deterministically.
+ * The work is bounded and known; the default limit is what is wrong.
+ */
+jest.setTimeout(60_000);
+
 // In-memory users DB shared with the module under test.
 const store = new Map<string, Record<string, unknown>>();
 let putFailure: Error | null = null;

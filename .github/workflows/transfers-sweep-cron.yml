@@ -47,7 +47,17 @@ jobs:
   sweep:
     name: apply due transfers
     runs-on: ubuntu-latest
-    environment: production
+    # NOT `environment: production`.
+    #
+    # That gate exists so a human confirms a DEPLOYMENT. This is a scheduled
+    # maintenance sweep, and a cron that needs an approval click every hour is
+    # not a cron: once the environment gained required reviewers, every run sat
+    # waiting, the next hour's run superseded it in the concurrency group, and
+    # it was cancelled. No sweep ran at all between 2026-08-18 21:34 and the
+    # removal of this line.
+    #
+    # The concurrency group above STAYS — it is what stops two sweeps racing
+    # the same records, and it was not the cause.
     timeout-minutes: 10
     steps:
       - name: Check configuration
@@ -60,7 +70,8 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Transfer sweep not configured::Set PLATFORM_BASE_URL and TRANSFER_SWEEP_SECRET in the production environment to enable the hourly transfer sweep. Until then, scheduled transfers will NOT take effect on their own and temporary grants will NOT lapse."
+            echo "::error title=Transfer sweep not configured::PLATFORM_BASE_URL and TRANSFER_SWEEP_SECRET are unset, so the hourly transfer sweep did nothing — scheduled transfers do NOT take effect on their own and temporary grants do NOT lapse. Set them as repository secrets. This step FAILS rather than passing quietly: it reported success for weeks while doing nothing, and a green tick on a job that no-ops is how that went unnoticed."
+            exit 1
           fi
 
       - name: Sweep
