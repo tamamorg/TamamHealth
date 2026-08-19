@@ -16,10 +16,19 @@ const posthogConnectSrc = posthogHost ? ` ${posthogHost}` : '';
 const isProd = process.env.NODE_ENV === 'production';
 
 // Next.js requires 'unsafe-eval' in dev (HMR / react-refresh uses eval) and
-// 'unsafe-inline' for the bootstrap script injection. In production we drop
-// 'unsafe-eval' entirely; inline scripts are still needed by the Next.js
-// runtime but we scope them with 'strict-dynamic' so only scripts loaded by
-// already-trusted code execute.
+// 'unsafe-inline' for its own bootstrap script injection. Production drops
+// 'unsafe-eval'.
+//
+// 'unsafe-inline' remains, and it is the weakest directive in this header set:
+// an injected inline <script> would execute. Removing it means per-request
+// nonces, which cannot be built here — `headers()` in next.config is static, so
+// the policy has to move into the middleware (src/proxy.ts), the root layout's
+// pre-paint locale bootstrap has to carry the nonce, and the whole app becomes
+// dynamically rendered. That is a deliberate piece of work, not a config tweak.
+//
+// (An earlier version of this comment claimed 'strict-dynamic' scoped the
+// inline scripts. It never appeared in the emitted policy — the header below is
+// the whole truth.)
 const scriptSrc = isProd
   ? "script-src 'self' 'unsafe-inline'"
   : "script-src 'self' 'unsafe-eval' 'unsafe-inline'";
@@ -31,6 +40,9 @@ const scriptSrc = isProd
 const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || String(Date.now());
 
 const nextConfig = {
+  // `X-Powered-By: Next.js` names the framework and its major behaviour to
+  // anyone scanning, for no benefit to the app.
+  poweredByHeader: false,
   // Pin Turbopack to this package so a stray lockfile under $HOME (e.g.
   // ~/package-lock.json) is not treated as the workspace root — that broke
   // `@/` module resolution and inflated compile failures in local dev.
