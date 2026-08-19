@@ -10,8 +10,24 @@ compose() {
     docker compose -f docker-compose.yml -f docker-compose.ghcr.yml "$@"
 }
 
-PASSWORD_READY=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T platform node -e '
-  const supplied = require("fs").readFileSync(0, "utf8");
+RECOVERY_SECRET_PATH=/tmp/.tamamhealth-superadmin-recovery
+TMP_DOC=$(mktemp)
+TMP_UPDATED=$(mktemp)
+cleanup() {
+  rm -f "$TMP_DOC" "$TMP_UPDATED"
+  compose exec -T platform rm -f "$RECOVERY_SECRET_PATH" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+if [ -n "${SUPERADMIN_RECOVERY_PASSWORD:-}" ]; then
+  printf '%s' "$SUPERADMIN_RECOVERY_PASSWORD" | compose exec -T platform sh -c \
+    "umask 077; cat > '$RECOVERY_SECRET_PATH'"
+fi
+
+PASSWORD_READY=$(compose exec -T platform node -e '
+  const fs = require("fs");
+  const path = "/tmp/.tamamhealth-superadmin-recovery";
+  const supplied = fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "";
   const password = supplied || process.env.SUPERADMIN_INITIAL_PASSWORD || "";
   process.stdout.write(String(password.length >= 16));
 ')
@@ -28,13 +44,11 @@ if [ -z "$COUCHDB_USER" ] || [ -z "$COUCHDB_PASSWORD" ]; then
 fi
 
 DOC_URL=http://127.0.0.1:5984/tamamhealth_users/user-superadmin
-TMP_DOC=$(mktemp)
-TMP_UPDATED=$(mktemp)
-trap 'rm -f "$TMP_DOC" "$TMP_UPDATED"' EXIT
-
 STATUS=$(curl -sS -u "$COUCHDB_USER:$COUCHDB_PASSWORD" -o "$TMP_DOC" -w '%{http_code}' "$DOC_URL")
-PASSWORD_HASH=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T platform node -e '
-  const supplied = require("fs").readFileSync(0, "utf8");
+PASSWORD_HASH=$(compose exec -T platform node -e '
+  const fs = require("fs");
+  const path = "/tmp/.tamamhealth-superadmin-recovery";
+  const supplied = fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "";
   const password = supplied || process.env.SUPERADMIN_INITIAL_PASSWORD;
   require("bcryptjs").hash(password, 12)
     .then(hash => process.stdout.write(hash))
@@ -80,9 +94,11 @@ else
   exit 1
 fi
 
-VERIFY=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T platform node -e '
+VERIFY=$(compose exec -T platform node -e '
   const bcrypt = require("bcryptjs");
-  const supplied = require("fs").readFileSync(0, "utf8");
+  const fs = require("fs");
+  const path = "/tmp/.tamamhealth-superadmin-recovery";
+  const supplied = fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "";
   const base = process.env.COUCHDB_URL.replace(/\/$/, "");
   const user = process.env.COUCHDB_ADMIN_USER;
   const pass = process.env.COUCHDB_ADMIN_PASSWORD;
@@ -138,8 +154,10 @@ else
   echo 'in-memory login rate limits cleared by single-replica restart'
 fi
 
-LOGIN_VERIFY=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T platform node -e '
-  const supplied = require("fs").readFileSync(0, "utf8");
+LOGIN_VERIFY=$(compose exec -T platform node -e '
+  const fs = require("fs");
+  const path = "/tmp/.tamamhealth-superadmin-recovery";
+  const supplied = fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "";
   const password = supplied || process.env.SUPERADMIN_INITIAL_PASSWORD;
   fetch("http://127.0.0.1:3000/api/auth/login", {
     method: "POST",
@@ -165,8 +183,10 @@ LOGIN_VERIFY=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T
 ')
 echo "login=$LOGIN_VERIFY"
 
-PUBLIC_LOGIN_VERIFY=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T -e PUBLIC_BASE_URL="$PUBLIC_BASE_URL" platform node -e '
-  const supplied = require("fs").readFileSync(0, "utf8");
+PUBLIC_LOGIN_VERIFY=$(compose exec -T -e PUBLIC_BASE_URL="$PUBLIC_BASE_URL" platform node -e '
+  const fs = require("fs");
+  const path = "/tmp/.tamamhealth-superadmin-recovery";
+  const supplied = fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "";
   const endpoint = `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}/api/auth/login`;
   const password = supplied || process.env.SUPERADMIN_INITIAL_PASSWORD;
   fetch(endpoint, {

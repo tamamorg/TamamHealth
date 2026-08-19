@@ -55,4 +55,4 @@ jobs:
           # line, exports it only for the recovery process, then removes the
           # uploaded script regardless of success.
           printf '%s\n' "$RECOVERY_PASSWORD" | ssh "$USER@$HOST" \
-            "IFS= read -r SUPERADMIN_RECOVERY_PASSWORD; export SUPERADMIN_RECOVERY_PASSWORD; chmod 700 /tmp/recover-production-superadmin.sh && GH_OWNER=tamamorg IMAGE_TAG=production /tmp/recover-production-superadmin.sh '$APP_DIR'; status=\$?; rm -f /tmp/recover-production-superadmin.sh; exit \$status"
+            "IFS= read -r SUPERADMIN_RECOVERY_PASSWORD; if [ \"\${#SUPERADMIN_RECOVERY_PASSWORD}\" -lt 16 ]; then echo 'Recovery credential was not received' >&2; exit 1; fi; export SUPERADMIN_RECOVERY_PASSWORD; chmod 700 /tmp/recover-production-superadmin.sh && GH_OWNER=tamamorg IMAGE_TAG=production /tmp/recover-production-superadmin.sh '$APP_DIR'; status=\$?; rm -f /tmp/recover-production-superadmin.sh; exit \$status"
