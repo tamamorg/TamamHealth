@@ -4,6 +4,7 @@ import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
+import { ValidationError } from '../validation';
 
 export async function getAllHospitals(scope?: DataScope): Promise<HospitalDoc[]> {
   const db = hospitalsDB();
@@ -29,6 +30,26 @@ export async function createHospital(
   actorId?: string,
   actorUsername?: string
 ): Promise<HospitalDoc> {
+  // A facility with no organisation is not a saved facility, however cleanly
+  // the local write succeeds — the same two failure modes `createPatient`
+  // refuses for a patient:
+  //   • CouchDB's tenant validator rejects every document without an `orgId`,
+  //     so the facility is written to the device's replica, pushed, rejected,
+  //     and never seen again — under a "Hospital created successfully" toast.
+  //   • `filterByScope` requires an `orgId` match for every role except
+  //     super_admin and government, so even on that one device the facility is
+  //     invisible to the organization that just created it. That is exactly
+  //     how an org admin ends up reading "Active Facilities 0" while their
+  //     staff accounts are right there.
+  // Unlike a patient there is no facility to infer the org from, so the caller
+  // must supply it. Settings → Manage did not (its hospital form had no orgId
+  // field at all); /org-admin/hospitals and /api/hospitals always have.
+  if (!data.orgId) {
+    throw new ValidationError({
+      orgId: 'Select the organization this facility belongs to — a facility cannot be saved without one.',
+    });
+  }
+
   const db = hospitalsDB();
   const now = new Date().toISOString();
   const { v4: uuidv4 } = await import('uuid');

@@ -83,6 +83,17 @@ async function postHandler(request: NextRequest) {
       if (auth.orgId) body.orgId = auth.orgId;
       else delete body.orgId;
     }
+    // `createHospital` refuses a facility with no organisation (it would be
+    // rejected by the tenant validator on push and hidden by filterByScope
+    // everywhere else). That is a bad request, not a server fault: it means a
+    // scoped caller has no orgId on their session, or a platform admin did not
+    // name the org to create it under.
+    if (!body.orgId) {
+      return NextResponse.json(
+        { error: 'orgId is required — name the organization this facility belongs to' },
+        { status: 400 },
+      );
+    }
     const { createHospital } = await import('@/lib/services/hospital-service');
     const hospital = await createHospital(body as Parameters<typeof createHospital>[0], auth.sub, auth.username);
     return NextResponse.json({ hospital }, { status: 201 });
