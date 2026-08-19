@@ -97,8 +97,8 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard/front-desk', '/dashboard/lab', '/dashboard/pharmacy',
       '/dashboard/radiology', '/dashboard/data-entry', '/dashboard/nutrition',
     ],
-    // Org admins land on the Facility Operations dashboard, which now carries
-    // the org-wide command view too (see FacilityOverviewBand).
+    // Org admins land on the Facility Operations dashboard — the single home
+    // since the separate /org-admin Org Overview page was deleted.
     defaultDashboard: '/facility-management',
   },
 

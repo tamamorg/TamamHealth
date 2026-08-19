@@ -1,11 +1,9 @@
 /**
  * The standalone "Org Overview" dashboard was merged into Facility Management
- * on 2026-08-19 and deleted. It held the organization's headline numbers
- * (facilities, visits, inpatients, staff, revenue), an operational-status
- * strip and a transfer inbox — all of which an org admin needed beside the
- * work queue, not on a second screen the nav deliberately did not link to.
- * They are now the overview band on `/facility-management`
- * (`components/dashboards/FacilityOverviewBand.tsx`).
+ * on 2026-08-19 and deleted. Its transfer inbox and Quick Actions live on
+ * `/facility-management`; its headline KPI/operational-status band came along
+ * too and was dropped the same day, because it read all-zero for real accounts
+ * and pushed the work queue below the fold to say nothing.
  *
  * This route stays only so old links and bookmarks keep working — same pattern
  * as /org-admin/settings and /system-admin. Roles other than super_admin never

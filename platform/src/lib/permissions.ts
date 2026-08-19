@@ -159,9 +159,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     navItems: [
       { href: '/facility-management', label: 'Dashboard', icon: Gauge, section: 'OVERVIEW' },
       // The separate /org-admin "Org Overview" dashboard was merged into this
-      // one on 2026-08-19 and deleted — facilities, visits, inpatients, staff
-      // and revenue are the band above the work queue now, so there is one
-      // home rather than a nav entry and a hidden twin.
+      // one on 2026-08-19 and deleted, so the org admin has one home rather
+      // than a nav entry and a hidden twin.
       // This is staff-to-staff chat. It was labelled "Enquiries", which sent
       // anyone looking for inbound patient enquiries to the wrong screen —
       // those now have their own page, reachable from the People & HR menu.
