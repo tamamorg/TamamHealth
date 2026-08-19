@@ -10,8 +10,9 @@ compose() {
     docker compose -f docker-compose.yml -f docker-compose.ghcr.yml "$@"
 }
 
-PASSWORD_READY=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
-  const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD || "";
+PASSWORD_READY=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T platform node -e '
+  const supplied = require("fs").readFileSync(0, "utf8");
+  const password = supplied || process.env.SUPERADMIN_INITIAL_PASSWORD || "";
   process.stdout.write(String(password.length >= 16));
 ')
 if [ "$PASSWORD_READY" != true ]; then
@@ -32,8 +33,9 @@ TMP_UPDATED=$(mktemp)
 trap 'rm -f "$TMP_DOC" "$TMP_UPDATED"' EXIT
 
 STATUS=$(curl -sS -u "$COUCHDB_USER:$COUCHDB_PASSWORD" -o "$TMP_DOC" -w '%{http_code}' "$DOC_URL")
-PASSWORD_HASH=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
-  const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD;
+PASSWORD_HASH=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T platform node -e '
+  const supplied = require("fs").readFileSync(0, "utf8");
+  const password = supplied || process.env.SUPERADMIN_INITIAL_PASSWORD;
   require("bcryptjs").hash(password, 12)
     .then(hash => process.stdout.write(hash))
     .catch(error => { console.error(error.message); process.exit(1); });
@@ -78,8 +80,9 @@ else
   exit 1
 fi
 
-VERIFY=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
+VERIFY=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T platform node -e '
   const bcrypt = require("bcryptjs");
+  const supplied = require("fs").readFileSync(0, "utf8");
   const base = process.env.COUCHDB_URL.replace(/\/$/, "");
   const user = process.env.COUCHDB_ADMIN_USER;
   const pass = process.env.COUCHDB_ADMIN_PASSWORD;
@@ -87,7 +90,7 @@ VERIFY=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
   fetch(`${base}/tamamhealth_users/user-superadmin`, { headers: { authorization: `Basic ${auth}` } })
     .then(response => response.json())
     .then(async doc => {
-      const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD;
+      const password = supplied || process.env.SUPERADMIN_INITIAL_PASSWORD;
       const matches = await bcrypt.compare(password, doc.passwordHash || "");
       console.log(JSON.stringify({ username: doc.username, role: doc.role, active: doc.isActive, mustChangePassword: doc.mustChangePassword, passwordMatches: matches }));
       if (doc.username !== "superadmin" || doc.role !== "super_admin" || !doc.isActive || !matches) process.exitCode = 1;
@@ -135,8 +138,9 @@ else
   echo 'in-memory login rate limits cleared by single-replica restart'
 fi
 
-LOGIN_VERIFY=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
-  const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD;
+LOGIN_VERIFY=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T platform node -e '
+  const supplied = require("fs").readFileSync(0, "utf8");
+  const password = supplied || process.env.SUPERADMIN_INITIAL_PASSWORD;
   fetch("http://127.0.0.1:3000/api/auth/login", {
     method: "POST",
     headers: {
@@ -161,9 +165,10 @@ LOGIN_VERIFY=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e 
 ')
 echo "login=$LOGIN_VERIFY"
 
-PUBLIC_LOGIN_VERIFY=$(compose exec -T -e PUBLIC_BASE_URL="$PUBLIC_BASE_URL" -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
+PUBLIC_LOGIN_VERIFY=$(printf '%s' "${SUPERADMIN_RECOVERY_PASSWORD:-}" | compose exec -T -e PUBLIC_BASE_URL="$PUBLIC_BASE_URL" platform node -e '
+  const supplied = require("fs").readFileSync(0, "utf8");
   const endpoint = `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}/api/auth/login`;
-  const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD;
+  const password = supplied || process.env.SUPERADMIN_INITIAL_PASSWORD;
   fetch(endpoint, {
     method: "POST",
     headers: {
