@@ -20,14 +20,32 @@ export function escapeHtml(value: unknown): string {
  * All dynamic values in `html` must still be passed through `escapeHtml`.
  */
 export function openIsolatedHtmlWindow(html: string, features = '', autoPrint = false): void {
+  if (autoPrint) {
+    // Print from a script-free iframe. Strict CSP blocks scripts embedded in
+    // generated blob documents, and blob-policy inheritance differs between
+    // browsers. The trusted application document invokes print instead.
+    const frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.setAttribute('sandbox', 'allow-modals allow-same-origin');
+    frame.style.position = 'fixed';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    frame.style.inset = '0';
+    frame.onload = () => {
+      const printable = frame.contentWindow;
+      if (!printable) return;
+      printable.focus();
+      printable.print();
+      printable.addEventListener('afterprint', () => frame.remove(), { once: true });
+      setTimeout(() => frame.remove(), 60_000);
+    };
+    frame.srcdoc = html;
+    document.body.appendChild(frame);
+    return;
+  }
   const featureList = ['noopener', 'noreferrer', features].filter(Boolean).join(',');
-  const printScript = autoPrint
-    ? '<script>addEventListener("load",()=>{focus();print()},{once:true})</script>'
-    : '';
-  const isolatedHtml = printScript
-    ? html.replace(/<\/body>/i, `${printScript}</body>`)
-    : html;
-  const url = URL.createObjectURL(new Blob([isolatedHtml], { type: 'text/html;charset=utf-8' }));
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
   // Blob documents have an opaque origin; noopener also severs the navigation
   // relationship. Do not depend on the return value: browsers commonly return
   // null precisely because noopener isolation succeeded.

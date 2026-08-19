@@ -137,8 +137,22 @@ async function postHandler(request: NextRequest) {
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
+    // Credentials are opaque secrets, not display text. Generic string
+    // sanitization trims and rewrites HTML-like substrings, which meant the
+    // password shown in the one-time handoff could differ from the hash that
+    // was stored. Preserve them byte-for-byte and reject invisible edge spaces
+    // explicitly instead of silently changing what the administrator entered.
+    const rawPassword = body.password;
+    const rawNewPassword = body.newPassword;
     const { sanitizePayload } = await import('@/lib/validation');
     body = sanitizePayload(body);
+    if (typeof rawPassword === 'string') body.password = rawPassword;
+    if (typeof rawNewPassword === 'string') body.newPassword = rawNewPassword;
+    for (const [field, value] of [['password', rawPassword], ['newPassword', rawNewPassword]] as const) {
+      if (typeof value === 'string' && value !== value.trim()) {
+        return NextResponse.json({ error: `${field} cannot start or end with spaces` }, { status: 400 });
+      }
+    }
     const action = body.action as string;
     const { getUserById } = await import('@/lib/services/user-service');
 
@@ -268,14 +282,49 @@ async function postHandler(request: NextRequest) {
       if ('error' in adminPhoto) {
         return NextResponse.json({ error: adminPhoto.error }, { status: 400 });
       }
+      const effectiveRole = (body.role as UserRole | undefined) ?? existingUser?.role;
+      if (!existingUser || !effectiveRole) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      const rolesWithoutHospital: UserRole[] = ['super_admin', 'org_admin', 'government', 'county_health_director'];
+      const requestedOrgId = (body.orgId as string | undefined) ?? existingUser.orgId;
+      const requestedHospitalId = (body.hospitalId as string | undefined) ?? existingUser.hospitalId;
+      let canonicalHospitalName: string | undefined;
+      let canonicalOrgId = requestedOrgId;
+      if (effectiveRole === 'org_admin' && !requestedOrgId) {
+        return NextResponse.json(
+          { error: 'Organization administrators must be assigned to an organization' },
+          { status: 400 },
+        );
+      }
+      if (!rolesWithoutHospital.includes(effectiveRole)) {
+        if (!requestedHospitalId) {
+          return NextResponse.json({ error: 'Clinical users must be assigned to a hospital' }, { status: 400 });
+        }
+        const { getHospitalById } = await import('@/lib/services/hospital-service');
+        const canonicalHospital = await getHospitalById(requestedHospitalId);
+        if (!canonicalHospital) {
+          return NextResponse.json({ error: 'Assigned hospital was not found' }, { status: 400 });
+        }
+        if (requestedOrgId && canonicalHospital.orgId && requestedOrgId !== canonicalHospital.orgId) {
+          return NextResponse.json(
+            { error: 'Assigned hospital does not belong to the selected organization' },
+            { status: 400 },
+          );
+        }
+        canonicalHospitalName = canonicalHospital.name;
+        canonicalOrgId = canonicalHospital.orgId || requestedOrgId;
+      }
+
       const updated = await updateUser(
         body.userId as string,
         {
           name: body.name as string | undefined,
           phone: body.phone as string | undefined,
           role: body.role as UserRole | undefined,
-          hospitalId: body.hospitalId as string | undefined,
-          hospitalName: body.hospitalName as string | undefined,
+          hospitalId: rolesWithoutHospital.includes(effectiveRole) ? undefined : requestedHospitalId,
+          hospitalName: rolesWithoutHospital.includes(effectiveRole) ? undefined : canonicalHospitalName,
+          orgId: canonicalOrgId,
           isActive: body.isActive as boolean | undefined,
           photoUrl: adminPhoto.value,
           department: body.department as string | undefined,
@@ -309,6 +358,37 @@ async function postHandler(request: NextRequest) {
           return forbidden('Cannot assign user to a facility outside your organization');
         }
       }
+    }
+    const targetRole = body.role as UserRole;
+    const rolesWithoutHospital: UserRole[] = ['super_admin', 'org_admin', 'government', 'county_health_director'];
+    if (targetRole === 'org_admin' && !body.orgId) {
+      return NextResponse.json(
+        { error: 'Organization administrators must be assigned to an organization' },
+        { status: 400 },
+      );
+    }
+    if (!rolesWithoutHospital.includes(targetRole)) {
+      if (!body.hospitalId) {
+        return NextResponse.json({ error: 'Clinical users must be assigned to a hospital' }, { status: 400 });
+      }
+      const { getHospitalById } = await import('@/lib/services/hospital-service');
+      const canonicalHospital = await getHospitalById(body.hospitalId as string);
+      if (!canonicalHospital) {
+        return NextResponse.json({ error: 'Assigned hospital was not found' }, { status: 400 });
+      }
+      if (body.orgId && canonicalHospital.orgId && body.orgId !== canonicalHospital.orgId) {
+        return NextResponse.json(
+          { error: 'Assigned hospital does not belong to the selected organization' },
+          { status: 400 },
+        );
+      }
+      // Never trust client-supplied names or a contradictory tenant. Login
+      // scope comes from these fields, so persist the canonical relationship.
+      body.hospitalName = canonicalHospital.name;
+      body.orgId = canonicalHospital.orgId || body.orgId;
+    } else {
+      body.hospitalId = undefined;
+      body.hospitalName = undefined;
     }
     const newPhoto = normalisePhoto(body.photoUrl);
     if ('error' in newPhoto) {
@@ -346,6 +426,7 @@ async function postHandler(request: NextRequest) {
       }
       if (
         /must be assigned to a hospital/i.test(msg) ||
+        /must be assigned to an organization/i.test(msg) ||
         /^Invalid role/i.test(msg) ||
         /^Invalid username/i.test(msg) ||
         /^Password/i.test(msg)

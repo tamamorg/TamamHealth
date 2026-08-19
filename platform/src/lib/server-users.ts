@@ -62,15 +62,17 @@ export class UsersDbUnavailableError extends Error {
 async function authenticateFromUsersDb(
   username: string,
   password: string,
-): Promise<ServerUser | null> {
+): Promise<{ user: ServerUser | null; exists: boolean }> {
   try {
     const { usersDB } = await import('./db');
     const db = usersDB();
     const doc = await db.get(`user-${username}`) as import('./db-types').UserDoc;
-    if (!doc || doc.type !== 'user' || doc.isActive === false) return null;
+    if (!doc || doc.type !== 'user' || typeof doc.passwordHash !== 'string') {
+      return { user: null, exists: true };
+    }
     const valid = await bcrypt.compare(password, doc.passwordHash);
-    if (!valid) return null;
-    return {
+    if (!valid || doc.isActive === false) return { user: null, exists: true };
+    return { user: {
       _id: doc._id,
       username: doc.username,
       passwordHash: doc.passwordHash,
@@ -82,7 +84,7 @@ async function authenticateFromUsersDb(
       isActive: doc.isActive,
       mustChangePassword: doc.mustChangePassword,
       passwordUpdatedAt: doc.passwordUpdatedAt,
-    };
+    }, exists: true };
   } catch (err) {
     // A 404 is a real answer: there is no such account. Anything else — the
     // database missing, CouchDB refusing the connection, a network fault — is
@@ -90,7 +92,7 @@ async function authenticateFromUsersDb(
     // "invalid credentials" tells an operator to go and check a password when
     // they should be checking a server.
     const status = (err as { status?: number; name?: string })?.status;
-    if (status === 404) return null;
+    if (status === 404) return { user: null, exists: false };
     throw new UsersDbUnavailableError(err);
   }
 }
@@ -119,6 +121,7 @@ const BOOTSTRAP_USERNAMES = new Set(['admin', 'superadmin']);
 async function bootstrapUserLogin(
   username: string,
   password: string,
+  userDocKnownMissing = false,
 ): Promise<ServerUser | null> {
   if (!BOOTSTRAP_USERNAMES.has(username)) return null;
   const profile = profileByUsername.get(username);
@@ -132,14 +135,16 @@ async function bootstrapUserLogin(
   // have been changed. (A DB match would already have returned in the caller;
   // reaching here with an existing doc means the seed password was offered
   // for an account that has one — reject it.)
-  try {
-    await db.get(`user-${username}`);
-    return null;
-  } catch (err) {
-    const status = (err as { status?: number; name?: string })?.status;
-    // Anything other than "not found" (e.g. CouchDB unreachable) is not a
-    // safe bootstrap condition — fail closed.
-    if (status !== 404) return null;
+  if (!userDocKnownMissing) {
+    try {
+      await db.get(`user-${username}`);
+      return null;
+    } catch (err) {
+      const status = (err as { status?: number; name?: string })?.status;
+      // Anything other than "not found" (e.g. CouchDB unreachable) is not a
+      // safe bootstrap condition — fail closed.
+      if (status !== 404) return null;
+    }
   }
 
   const credentials = await getOrCreateSeedCredentials();
@@ -219,6 +224,12 @@ async function bootstrapUserLogin(
 // hashed against, so a regenerated password file invalidates automatically.
 const hashCache: Record<string, { plaintext: string; hash: string }> = {};
 
+// A fixed verifier for unknown usernames. Comparing against a real cost-12
+// hash keeps misses timing-compatible with a bad password without generating
+// a brand-new hash on every request (which previously doubled CPU cost and
+// made typo-heavy login bursts noticeably slow).
+const DUMMY_PASSWORD_HASH = '$2b$12$gNB1VUNmx6fi4XsavwguR.3iwu6bqFy0LDcaFxb4ygNt/dTUKcIlq';
+
 async function getHash(username: string, plaintext: string): Promise<string> {
   const cached = hashCache[username];
   if (cached && cached.plaintext === plaintext) return cached.hash;
@@ -246,17 +257,22 @@ export async function authenticateUser(
   //
   // Accounts are now created exactly one way: by an administrator, or by
   // approving an account request, which calls the same `createUser`.
-  const user = await authenticateFromUsersDb(username, password);
-  if (user) return user;
+  const lookup = await authenticateFromUsersDb(username, password);
+  if (lookup.user) return lookup.user;
+
+  // An existing document is authoritative. Its bcrypt comparison above is
+  // already the constant-work password check; do not query CouchDB again or
+  // add a second cost-12 hash for a simple wrong password.
+  if (lookup.exists) return null;
 
   // First-login provisioning for the platform operator accounts, so a fresh
   // deployment is reachable at all. Narrow and create-if-absent — see
   // bootstrapUserLogin.
-  const bootstrapped = await bootstrapUserLogin(username, password);
+  const bootstrapped = await bootstrapUserLogin(username, password, true);
   if (bootstrapped) return bootstrapped;
 
   // No match — constant-time dummy hash so a non-existent user takes roughly
   // as long as a valid one (anti username-enumeration).
-  await bcrypt.hash(password, 12);
+  await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
   return null;
 }

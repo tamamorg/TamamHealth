@@ -20,7 +20,7 @@ describe('safe HTML output', () => {
     expect(html).toContain('&lt;script&gt;window.opener.pwned=true&lt;/script&gt;');
   });
 
-  test('opens a blob document with opener isolation without relying on a window handle', () => {
+  test('opens a non-print blob document with opener isolation without relying on a window handle', () => {
     const url = 'blob:test';
     const createObjectURL = jest.fn(() => url);
     const revokeObjectURL = jest.fn();
@@ -28,12 +28,22 @@ describe('safe HTML output', () => {
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });
     const open = jest.spyOn(window, 'open').mockReturnValue(null);
 
-    openIsolatedHtmlWindow('<html><body>safe</body></html>', 'width=400', true);
+    openIsolatedHtmlWindow('<html><body>safe</body></html>', 'width=400');
 
     expect(createObjectURL).toHaveBeenCalled();
     expect(open).toHaveBeenCalledWith(url, '_blank', expect.stringContaining('noopener'));
     open.mockRestore();
     delete (URL as unknown as Record<string, unknown>).createObjectURL;
     delete (URL as unknown as Record<string, unknown>).revokeObjectURL;
+  });
+
+  test('auto-print uses a script-free isolated frame under strict CSP', () => {
+    openIsolatedHtmlWindow('<html><body>invoice</body></html>', '', true);
+    const frame = document.querySelector('iframe');
+    expect(frame).not.toBeNull();
+    expect(frame?.srcdoc).toContain('invoice');
+    expect(frame?.srcdoc).not.toContain('<script');
+    expect(frame?.getAttribute('sandbox')).toBe('allow-modals allow-same-origin');
+    frame?.remove();
   });
 });

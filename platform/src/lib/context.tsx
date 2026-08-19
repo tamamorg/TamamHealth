@@ -286,7 +286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               ) {
                 try {
                   const { refreshCouchSessionFromServer } = await import('./sync/couch-client-auth');
-                  await refreshCouchSessionFromServer();
+                  await refreshCouchSessionFromServer({ expectedUsername: data.user.username });
                 } catch {
                   // Best-effort; offline-first PouchDB still works.
                 }
@@ -534,33 +534,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
           }
 
-          // Establish a CouchDB session cookie in the browser. The server
-          // provisioned/updated the matching CouchDB user as part of the
-          // login route, so the same plaintext password works for /_session.
-          // Best-effort: a failure here means sync won't run this session
-          // (offline-first PouchDB still works), so we don't fail login.
+          // Establish replication credentials after platform authentication,
+          // but do not hold the sign-in button behind CouchDB. The session
+          // endpoint provisions a short-lived server-generated credential, so
+          // the platform password is never copied into CouchDB and role changes
+          // take effect without waiting on the next password login.
           if (
             process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true' &&
             process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true'
           ) {
-            try {
-              const { loginCouch, registerCouchCredentials, startCouchSessionHeartbeat } =
-                await import('./sync/couch-client-auth');
-              const result = await loginCouch(sanitizedUsername, password);
-              if (!result.ok) {
-                // Expected when CouchDB is down (offline-first still works) —
-                // one concise line, not an alarming error.
-                console.warn(`[sync] CouchDB session unavailable — offline-only this session (${result.error || result.status})`);
-              } else {
-                // The AuthSession cookie expires server-side; keep it renewed
-                // for as long as this tab lives, or replication dies with 401s
-                // mid-session (in-memory only, never persisted).
-                registerCouchCredentials(sanitizedUsername, password);
-                startCouchSessionHeartbeat();
-              }
-            } catch (err) {
-              console.warn(`[sync] CouchDB session unavailable — offline-only this session (${err instanceof Error ? err.message : String(err)})`);
-            }
+            void import('./sync/couch-client-auth')
+              .then(({ refreshCouchSessionFromServer }) => refreshCouchSessionFromServer({
+                force: true,
+                expectedUsername: sanitizedUsername,
+              }))
+              .then((ok) => {
+                if (!ok) console.warn('[sync] CouchDB session unavailable — offline-only this session');
+              })
+              .catch((err) => {
+                console.warn(`[sync] CouchDB session unavailable — offline-only this session (${err instanceof Error ? err.message : String(err)})`);
+              });
           }
         } else if (res.status === 401 || res.status === 403 || res.status === 429) {
           // Server explicitly rejected — do not fall back silently.

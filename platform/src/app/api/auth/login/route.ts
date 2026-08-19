@@ -124,33 +124,6 @@ export async function POST(request: NextRequest) {
     // Clear failed attempts on successful login (both counters)
     await Promise.all([resetRateLimit(userRateKey), resetRateLimit(ipRateKey)]);
 
-    // Provision (or refresh) the matching CouchDB user. Runs with admin
-    // credentials server-side so the browser never sees them. The browser
-    // then issues its own POST /_session to mint an AuthSession cookie.
-    // Best-effort: if CouchDB is down, platform login still succeeds — the
-    // user just won't sync until CouchDB is back.
-    if (
-      process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true' &&
-      process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true'
-    ) {
-      try {
-        const { ensureCouchUser } = await import('@/lib/sync/couch-auth');
-        await ensureCouchUser({
-          username: sanitizedUsername,
-          password,
-          orgId: effective.orgId,
-          hospitalId: effective.hospitalId,
-          platformRole: effective.role,
-        });
-      } catch (err) {
-        // Expected when CouchDB isn't running (e.g. local dev) — login still
-        // succeeds; the session is simply offline-only. Concise, single line.
-        const reason = err instanceof Error ? err.message : String(err);
-        const unreachable = /fetch failed|ECONNREFUSED|ENOTFOUND|network/i.test(reason);
-        console.warn(`[login] CouchDB ${unreachable ? 'unreachable' : 'provisioning failed'} — sync unavailable this session (${reason})`);
-      }
-    }
-
     // Create JWT
     const token = await createToken({
       _id: user._id,

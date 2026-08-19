@@ -164,10 +164,23 @@ export async function ensureCouchSession(): Promise<boolean> {
  * Without this, replication 401-loops for the rest of a restored session and
  * locally-entered data never pushes.
  */
-export async function refreshCouchSessionFromServer(): Promise<boolean> {
+export async function refreshCouchSessionFromServer(options: {
+  /** Skip reuse after an interactive platform login (shared-device safety). */
+  force?: boolean;
+  /** Reuse an existing Couch cookie only when it belongs to this user. */
+  expectedUsername?: string;
+} = {}): Promise<boolean> {
   if (typeof window === 'undefined') return false;
-  // If a valid cookie already survived the reload, nothing to do.
-  if (await whoamiCouch().then((w) => w.ok).catch(() => false)) return true;
+  // If a valid cookie already survived the reload, reuse it only for the same
+  // platform identity. A shared tablet may still hold the prior clinician's
+  // Couch cookie even though the TamamHealth session has changed.
+  if (!options.force) {
+    const existing: Awaited<ReturnType<typeof whoamiCouch>> = await whoamiCouch()
+      .catch(() => ({ ok: false }));
+    if (existing.ok && (!options.expectedUsername || existing.username === options.expectedUsername)) {
+      return true;
+    }
+  }
   try {
     const { apiFetch } = await import('../api-fetch');
     const res = await apiFetch('/api/sync/couch-session', { method: 'POST' });

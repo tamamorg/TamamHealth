@@ -155,6 +155,9 @@ export async function createUser(
   }
 
   const ROLES_WITHOUT_HOSPITAL: UserRole[] = ['super_admin', 'org_admin', 'government', 'county_health_director'];
+  if (data.role === 'org_admin' && !data.orgId) {
+    throw new Error('Organization administrators must be assigned to an organization');
+  }
   if (!ROLES_WITHOUT_HOSPITAL.includes(data.role) && (!data.hospitalId || !data.hospitalName)) {
     throw new Error('Clinical users must be assigned to a hospital');
   }
@@ -220,6 +223,7 @@ interface UpdateUserData {
   photoUrl?: string | null;
   department?: string;
   specialty?: string;
+  orgId?: string;
 }
 
 export async function updateUser(
@@ -251,6 +255,10 @@ export async function updateUser(
     _rev: existing._rev,
     updatedAt: new Date().toISOString(),
   };
+
+  if (updated.role === 'org_admin' && !updated.orgId) {
+    throw new Error('Organization administrators must be assigned to an organization');
+  }
 
   const resp = await db.put(updated);
   updated._rev = resp.rev;

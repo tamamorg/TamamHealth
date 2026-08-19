@@ -341,9 +341,8 @@ export default function BillDetailPage() {
         <div><span>Paid</span><span>- ${escapeHtml(money(bill.amountPaid))}</span></div>
         <div class="due"><span>Amount due</span><span>${escapeHtml(money(bill.balanceDue))}</span></div>
       </div>
-      <script>window.onload = () => window.print();</script>
     </body></html>`;
-    openIsolatedHtmlWindow(html, 'width=800,height=900');
+    openIsolatedHtmlWindow(html, 'width=800,height=900', true);
   };
 
   // ── Render ─────────────────────────────────────────────────────────

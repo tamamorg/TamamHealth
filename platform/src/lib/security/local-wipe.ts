@@ -49,6 +49,16 @@ const DEVICE_USER_KEY = 'tamamhealth.security.device-user.v1';
 const POUCH_PREFIX = '_pouch_';
 
 const IS_BROWSER = typeof window !== 'undefined';
+const WIPE_CONCURRENCY = 8;
+
+async function inBatches<T>(
+  values: readonly T[],
+  worker: (value: T) => Promise<void>,
+): Promise<void> {
+  for (let offset = 0; offset < values.length; offset += WIPE_CONCURRENCY) {
+    await Promise.all(values.slice(offset, offset + WIPE_CONCURRENCY).map(worker));
+  }
+}
 
 function readJson<T>(key: string): T | null {
   if (!IS_BROWSER) return null;
@@ -117,7 +127,7 @@ export async function recordSyncedSequences(): Promise<void> {
   if (!IS_BROWSER) return;
   const seqs: Record<string, string> = {};
   const { getDB } = await import('../db');
-  for (const name of await listLocalDatabases()) {
+  await inBatches(await listLocalDatabases(), async (name) => {
     try {
       const info = await getDB(name).info();
       seqs[name] = String(info.update_seq);
@@ -125,7 +135,7 @@ export async function recordSyncedSequences(): Promise<void> {
       // A database that cannot be opened cannot be proven clean; leaving it
       // out of the snapshot makes it dirty, which is the conservative answer.
     }
-  }
+  });
   writeJson(SEQ_KEY, seqs);
 }
 
@@ -141,7 +151,7 @@ export async function getDirtyDatabases(): Promise<string[]> {
   const dirty: string[] = [];
   const { getDB } = await import('../db');
 
-  for (const name of await listLocalDatabases()) {
+  await inBatches(await listLocalDatabases(), async (name) => {
     const known = recorded[name];
     if (known === undefined) {
       // Never synced, or a database created since the last sync. An empty one
@@ -152,7 +162,7 @@ export async function getDirtyDatabases(): Promise<string[]> {
       } catch {
         dirty.push(name);
       }
-      continue;
+      return;
     }
     try {
       const info = await getDB(name).info();
@@ -160,7 +170,7 @@ export async function getDirtyDatabases(): Promise<string[]> {
     } catch {
       dirty.push(name);
     }
-  }
+  });
   return dirty;
 }
 
@@ -205,7 +215,7 @@ export async function wipeLocalData(
   const remaining: string[] = [];
   const wiped: string[] = [];
 
-  for (const name of targets) {
+  await inBatches(targets, async (name) => {
     // One retry: IndexedDB refuses to delete while another tab or an
     // in-flight changes() feed still holds the database open, and that
     // window is short. A silent failure here is the bug this module exists
@@ -220,7 +230,7 @@ export async function wipeLocalData(
       }
     }
     (destroyed ? wiped : remaining).push(name);
-  }
+  });
 
   if (remaining.length) markPendingWipe(reason, remaining);
   else if (!kept.length) clearPendingWipe();

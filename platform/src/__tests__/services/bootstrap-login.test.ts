@@ -14,8 +14,10 @@ export {};
 // In-memory users DB shared with the module under test.
 const store = new Map<string, Record<string, unknown>>();
 let putFailure: Error | null = null;
+let getCalls = 0;
 const usersDB = () => ({
   async get(id: string) {
+    getCalls++;
     if (store.has(id)) return store.get(id);
     const err = new Error('missing') as Error & { status: number };
     err.status = 404;
@@ -36,6 +38,7 @@ async function load(env: Record<string, string | undefined>) {
   jest.resetModules();
   store.clear();
   putFailure = null;
+  getCalls = 0;
   process.env = {
     ...BASE_ENV,
     NEXT_PUBLIC_DEMO_MODE: 'false',
@@ -91,6 +94,21 @@ describe('production bootstrap login', () => {
     const { authenticateUser } = await load({});
     expect(await authenticateUser('nurse.stella', 'whatever')).toBeNull();
     expect(store.size).toBe(0);
+    expect(getCalls).toBe(1);
+  });
+
+  test('a wrong password for an existing user performs one DB read and one verifier', async () => {
+    const { authenticateUser } = await load({});
+    const bcrypt = (await import('bcryptjs')).default;
+    store.set('user-desk.amira', {
+      _id: 'user-desk.amira', type: 'user', username: 'desk.amira',
+      name: 'Amira', role: 'front_desk', isActive: true,
+      passwordHash: await bcrypt.hash('CorrectPass!9', 12),
+    });
+    getCalls = 0;
+
+    await expect(authenticateUser('desk.amira', 'WrongPass!9')).resolves.toBeNull();
+    expect(getCalls).toBe(1);
   });
 
   test('does not authenticate when the bootstrap account cannot be persisted', async () => {
