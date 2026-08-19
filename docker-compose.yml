@@ -157,7 +157,12 @@ services:
     networks:
       - app-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/ >/dev/null 2>&1 || exit 1"]
+      # 127.0.0.1, not `localhost`. The container's /etc/hosts maps localhost to
+      # both 127.0.0.1 and ::1, wget tries ::1 first, and next-server binds
+      # IPv4-only (HOSTNAME=0.0.0.0) — so the probe got connection refused while
+      # the site was serving perfectly. It sat "unhealthy" with a 35-deep
+      # failing streak, which is exactly how a health column stops being read.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/ >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
