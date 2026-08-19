@@ -12,7 +12,8 @@ name: backups-restore-drill
 # database. The actual backup uploads run on the host via the systemd timer
 # documented in docs/operations/backups.md.
 #
-# Required GitHub secrets (production environment):
+# Required GitHub secrets — on the `production-cron` environment (see the note
+# on the job below for why it is not `production`):
 #   AWS_ACCESS_KEY_ID
 #   AWS_SECRET_ACCESS_KEY
 #   AWS_REGION                  (default af-south-1)
@@ -53,7 +54,17 @@ jobs:
   drill:
     name: restore drill (latest snapshots)
     runs-on: ubuntu-latest
-    environment: production
+    # A dedicated environment, NOT `production`.
+    #
+    # These secrets are sensitive enough to keep environment-scoped rather than
+    # repository-wide (a GPG private key and object-store credentials), but the
+    # `production` environment carries required reviewers so a DEPLOYMENT gets a
+    # human check. A weekly drill cannot: it would sit waiting for approval and
+    # be cancelled by the next scheduled run, which is exactly what happened to
+    # the operational crons. GitHub creates this environment on first use with
+    # no protection rules; add the secrets listed at the top of this file to
+    # `production-cron`, not to `production`.
+    environment: production-cron
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
