@@ -37,7 +37,7 @@ jest.mock('@/lib/auth', () => ({
   verifyPassword: jest.fn(async (pw: string, hash: string) => hash === `hashed:${pw}`),
 }));
 
-import { createUser, resetPassword, changeOwnPassword } from '@/lib/services/user-service';
+import { createUser, resetPassword, changeOwnPassword, updateUser } from '@/lib/services/user-service';
 
 beforeEach(() => store.clear());
 
@@ -73,6 +73,29 @@ describe('resetPassword policy', () => {
     expect(after.passwordHash).toBe('hashed:Fresh9Temp3Pw');
     expect(after.mustChangePassword).toBe(true);
     expect(Date.parse(after.passwordUpdatedAt)).toBeGreaterThan(Date.parse(before));
+  });
+});
+
+describe('partial user updates', () => {
+  test('does not erase identity fields whose update values are undefined', async () => {
+    store.set('user-org.admin', {
+      _id: 'user-org.admin', _rev: '1-a', type: 'user', username: 'org.admin',
+      name: 'Organization Admin', role: 'org_admin', isActive: true,
+    });
+
+    const updated = await updateUser('user-org.admin', {
+      name: undefined,
+      role: undefined,
+      orgId: 'org-a',
+    });
+
+    expect(updated).toEqual(expect.objectContaining({
+      username: 'org.admin',
+      name: 'Organization Admin',
+      role: 'org_admin',
+      orgId: 'org-a',
+      isActive: true,
+    }));
   });
 });
 

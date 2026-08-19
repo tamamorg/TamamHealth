@@ -244,9 +244,15 @@ export async function updateUser(
     throw new Error(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
   }
 
+  // API callers intentionally omit fields on partial edits. Spreading those
+  // `undefined` values over the stored document erased role/name/scope data
+  // when an administrator changed just one field (for example orgId).
+  const definedChanges = Object.fromEntries(
+    Object.entries(data).filter(([, value]) => value !== undefined),
+  ) as UpdateUserData;
   const updated: UserDoc = {
     ...existing,
-    ...data,
+    ...definedChanges,
     // `null` is the caller asking to clear the photo. Spread as-is it would
     // persist a null the readers all have to special-case, so it becomes an
     // absent field — the same shape as an account that never had one.
