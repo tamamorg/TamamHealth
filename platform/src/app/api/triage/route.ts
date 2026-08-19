@@ -9,6 +9,7 @@ import {
 } from '@/lib/api-auth';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole, TriageDoc, TriagePriority } from '@/lib/db-types';
+import { isLowerTriagePriority, validateTriageVitals } from '@/lib/clinical/vitals';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'front_desk', 'medical_superintendent',
@@ -98,10 +99,42 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
+    const vitalErrors = validateTriageVitals({
+      temperature: body.temperature as string | undefined,
+      pulse: body.pulse as string | undefined,
+      respiratoryRate: body.respiratoryRate as string | undefined,
+      oxygenSaturation: body.oxygenSaturation as string | undefined,
+      systolic: body.systolic as string | undefined,
+      diastolic: body.diastolic as string | undefined,
+      weight: body.weight as string | undefined,
+      painScore: body.painScore as string | undefined,
+      bloodGlucose: body.bloodGlucose as string | undefined,
+      gcs: body.gcs as string | undefined,
+      muac: body.muac as string | undefined,
+    });
+    if (Object.keys(vitalErrors).length > 0) {
+      return NextResponse.json({ error: 'Invalid vital signs', fields: vitalErrors }, { status: 400 });
+    }
     // Auto-calculate priority if not explicitly set
     if (!body.priority) {
       body.priority = calculatePriority(body);
     }
+    const recommendation = body.vitalUrgencyRecommendation as TriagePriority | undefined;
+    const overrideReason = typeof body.vitalUrgencyOverrideReason === 'string'
+      ? body.vitalUrgencyOverrideReason.trim()
+      : '';
+    if (
+      recommendation &&
+      isLowerTriagePriority(body.priority as TriagePriority, recommendation) &&
+      (body.vitalUrgencyOverridden !== true || !overrideReason)
+    ) {
+      return NextResponse.json(
+        { error: 'Saving below the recommended triage urgency requires a recorded override reason.' },
+        { status: 400 },
+      );
+    }
+    const vitalString = (value: unknown): string | undefined =>
+      value === undefined || value === null || value === '' ? undefined : String(value).trim();
     const { v4: uuidv4 } = await import('uuid');
     const { getDB } = await import('@/lib/db');
     const db = getDB('tamamhealth_triage');
@@ -121,13 +154,23 @@ async function postHandler(request: NextRequest) {
       consciousness: (body.consciousness as TriageDoc['consciousness']) || 'not_assessed',
       assessmentSource: body.assessmentSource === 'clerical_checkin' ? 'clerical_checkin' : 'clinician',
       priority: body.priority as TriagePriority,
-      temperature: body.temperature as string | undefined,
-      pulse: body.pulse as string | undefined,
-      respiratoryRate: body.respiratoryRate as string | undefined,
-      systolic: body.systolic as string | undefined,
-      diastolic: body.diastolic as string | undefined,
-      oxygenSaturation: body.oxygenSaturation as string | undefined,
-      weight: body.weight as string | undefined,
+      temperature: vitalString(body.temperature),
+      pulse: vitalString(body.pulse),
+      respiratoryRate: vitalString(body.respiratoryRate),
+      systolic: vitalString(body.systolic),
+      diastolic: vitalString(body.diastolic),
+      oxygenSaturation: vitalString(body.oxygenSaturation),
+      weight: vitalString(body.weight),
+      painScore: vitalString(body.painScore),
+      bloodGlucose: vitalString(body.bloodGlucose),
+      gcs: vitalString(body.gcs),
+      muac: vitalString(body.muac),
+      vitalUrgencyRecommendation: recommendation,
+      vitalUrgencyWarnings: Array.isArray(body.vitalUrgencyWarnings)
+        ? body.vitalUrgencyWarnings as TriageDoc['vitalUrgencyWarnings']
+        : undefined,
+      vitalUrgencyOverridden: body.vitalUrgencyOverridden === true,
+      vitalUrgencyOverrideReason: overrideReason || undefined,
       chiefComplaint: body.chiefComplaint as string | undefined,
       notes: body.notes as string | undefined,
       triagedBy: auth.sub,

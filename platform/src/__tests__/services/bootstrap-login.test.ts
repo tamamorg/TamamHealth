@@ -32,25 +32,54 @@ const usersDB = () => ({
 
 jest.mock('@/lib/db', () => ({ usersDB }));
 
-const BASE_ENV = process.env;
+/**
+ * Every environment variable this suite's behaviour depends on.
+ *
+ * Set and cleared EXPLICITLY per test rather than inherited from the ambient
+ * environment. Jest runs several test files per worker process, and other
+ * suites here swap `process.env` wholesale; one of them leaks
+ * SUPERADMIN_INITIAL_PASSWORD, which silently overrides the seed password
+ * these tests sign in with. Inheriting the ambient env made this file pass
+ * alone and fail in a full parallel run, depending on which suite landed in
+ * the same worker first.
+ */
+const MANAGED_KEYS = [
+  'NEXT_PUBLIC_DEMO_MODE',
+  'SEED_CREDENTIALS_SECRET',
+  'SUPERADMIN_INITIAL_PASSWORD',
+  'ADMIN_INITIAL_PASSWORD',
+] as const;
+
+const ORIGINAL_ENV: Record<string, string | undefined> = Object.fromEntries(
+  MANAGED_KEYS.map(k => [k, process.env[k]]),
+);
+
+/** Assign onto the live `process.env` — replacing the object breaks every
+ *  other module in this worker that captured a reference to it. */
+function applyEnv(next: Record<string, string | undefined>) {
+  for (const key of MANAGED_KEYS) {
+    const value = next[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+}
 
 async function load(env: Record<string, string | undefined>) {
   jest.resetModules();
   store.clear();
   putFailure = null;
   getCalls = 0;
-  process.env = {
-    ...BASE_ENV,
+  applyEnv({
     NEXT_PUBLIC_DEMO_MODE: 'false',
     SEED_CREDENTIALS_SECRET: 'jest-seed-secret-0123456789abcdef0123456789abcdef',
     ...env,
-  };
+  });
   const mod = await import('@/lib/server-users');
   return mod;
 }
 
 afterAll(() => {
-  process.env = BASE_ENV;
+  applyEnv(ORIGINAL_ENV);
 });
 
 describe('production bootstrap login', () => {
