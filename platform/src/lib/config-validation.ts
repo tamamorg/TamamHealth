@@ -131,11 +131,18 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
         const localHost = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|couchdb)$/i.test(url.hostname);
         const privateAddress = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(url.hostname)
           || url.hostname.endsWith('.internal');
+        // Server-side traffic to the Compose service stays inside Docker's
+        // private bridge network. TLS terminates at the public app/gateway;
+        // requiring https:// for `http://couchdb:5984` makes the documented
+        // Compose deployment impossible to start.
+        const internalComposeHop = name === 'COUCHDB_URL'
+          && url.protocol === 'http:'
+          && (url.hostname === 'couchdb' || privateAddress);
         const privateGatewayHop = name === 'COUCHDB_URL' && syncGateway && privateAddress;
-        if (url.protocol !== 'https:' && !(privateGatewayHop && url.protocol === 'http:')) {
+        if (url.protocol !== 'https:' && !internalComposeHop && !(privateGatewayHop && url.protocol === 'http:')) {
           errors.push(`${name} must use https:// in production — clinical data must not cross the network in clear text.`);
         }
-        if (localHost || (privateAddress && !privateGatewayHop)) {
+        if ((localHost && !internalComposeHop) || (privateAddress && !privateGatewayHop && !internalComposeHop)) {
           errors.push(`${name} points to a private/local Docker hostname (${url.hostname}) — configure the reachable production CouchDB hostname.`);
         }
       } catch {
@@ -274,4 +281,31 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   }
 
   return errors;
+}
+
+/**
+ * Conditions that make a production deployment hard to OPERATE but are not
+ * unsafe enough to refuse boot over.
+ *
+ * Kept separate from `validateProductionConfig` on purpose: that function's
+ * contract is "refuse to start", and widening it would mean a missing
+ * dashboard could take a clinic offline. These are printed at boot instead, so
+ * the gap is visible on every deploy rather than discovered during an incident.
+ */
+export function productionConfigWarnings(env: ConfigEnv): string[] {
+  const warnings: string[] = [];
+  if (env.NEXT_PUBLIC_DEMO_MODE === 'true') return warnings;
+
+  // Without a DSN, instrumentation.ts never loads the Sentry SDK, so nothing
+  // reports server errors anywhere. Real failures — a provisioning conflict
+  // that costs a clinician their replication, a route throwing 500s — are then
+  // only visible to someone reading container logs by hand.
+  if (!env.SENTRY_DSN && !env.NEXT_PUBLIC_SENTRY_DSN) {
+    warnings.push(
+      'No SENTRY_DSN — server errors are not reported anywhere. Set it, or wire an ' +
+      'equivalent error sink, before relying on this deployment.',
+    );
+  }
+
+  return warnings;
 }

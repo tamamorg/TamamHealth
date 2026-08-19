@@ -270,31 +270,47 @@ export async function getPaymentByReference(reference: string): Promise<PaymentD
 export async function updatePaymentStatus(
   reference: string,
   status: PaymentStatus,
-  details?: { providerReference?: string; reason?: string },
+  details?: { providerReference?: string; provider?: PaymentDoc['provider']; reason?: string },
 ): Promise<PaymentDoc | null> {
   const db = paymentsDB();
   const pmt = await getPaymentByReference(reference);
   if (!pmt) return null;
 
-  // Idempotency: gateways may retry callbacks. Don't re-process an already
-  // terminal payment or churn the ledger.
-  if (pmt.status === status) return pmt;
+  // Idempotency: gateways may retry callbacks. Persist missing correlators;
+  // retry-safe downstream writes use stable idempotency keys.
+  const duplicateStatus = pmt.status === status;
+  if (duplicateStatus) {
+    if ((!pmt.providerReference && details?.providerReference) || (!pmt.provider && details?.provider)) {
+      pmt.providerReference ||= details?.providerReference;
+      pmt.provider ||= details?.provider;
+      pmt.updatedAt = new Date().toISOString();
+      const duplicateResp = await db.put(pmt);
+      pmt._rev = duplicateResp.rev;
+    }
+    if (status === 'failed') {
+      await reconcilePaymentLinkState(pmt, 'active');
+      return pmt;
+    }
+  }
 
-  const wasPending = pmt.status === 'pending';
   pmt.status = status;
+  pmt.providerReference = details?.providerReference || pmt.providerReference;
+  pmt.provider = details?.provider || pmt.provider;
   if (details?.reason) {
     pmt.notes = pmt.notes ? `${pmt.notes}\n${details.reason}` : details.reason;
   }
   pmt.updatedAt = new Date().toISOString();
-  const resp = await db.put(pmt);
-  pmt._rev = resp.rev;
+  if (!duplicateStatus) {
+    const resp = await db.put(pmt);
+    pmt._rev = resp.rev;
+  }
 
   // Posting a previously-pending payment (gateway webhook confirmation, or a
   // finance user approving a cash/bank pay-by-link payment) is the moment the
   // money becomes real — credit the patient ledger exactly like collectPayment
   // does for posted-at-creation payments. Without this, webhook-confirmed
   // payments never reduced the patient's balance.
-  if (wasPending && status === 'posted') {
+  if (status === 'posted') {
     await createLedgerEntry({
       patientId: pmt.patientId,
       encounterId: pmt.encounterId,
@@ -308,6 +324,7 @@ export async function updatePaymentStatus(
       facilityId: pmt.facilityId,
       orgId: pmt.orgId,
       createdBy: pmt.processedBy,
+      idempotencyKey: `payment:${pmt._id}`,
     });
 
     // Same bill-settlement mirror as collectPayment, for the same reason:
@@ -350,6 +367,9 @@ export async function updatePaymentStatus(
       pmt._rev = resp2.rev;
     }
   }
+
+  if (status === 'posted') await reconcilePaymentLinkState(pmt, 'used');
+  if (status === 'failed') await reconcilePaymentLinkState(pmt, 'active');
 
   await logAuditSafe('PAYMENT_STATUS_UPDATED', pmt.processedBy, pmt.processedByName,
     `Payment ${pmt.reference} -> ${status}${details?.providerReference ? ` (provider ref: ${details.providerReference})` : ''}`);
@@ -457,6 +477,9 @@ export interface PaymentLinkDoc extends BaseDoc {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  /** CAS-protected reservation for the one active checkout attempt. */
+  pendingPaymentId?: string;
+  pendingReference?: string;
 }
 
 export interface CreatePaymentLinkInput {
@@ -521,6 +544,253 @@ export async function getPaymentLink(linkId: string): Promise<PaymentLinkDoc | n
   } catch {
     return null;
   }
+}
+
+export interface StartPaymentLinkAttemptInput {
+  linkId: string;
+  method: PaymentMethodType;
+  payerPhone?: string;
+}
+
+export interface StartPaymentLinkAttemptResult {
+  payment: PaymentDoc;
+  created: boolean;
+}
+
+/**
+ * Reserve and create the single active payment attempt for a public link.
+ * The PaymentLink revision is the compare-and-swap lock: concurrent submits
+ * race on the same revision, one wins, and the loser returns that winner's
+ * payment rather than creating a duplicate.
+ */
+export async function startPaymentLinkAttempt(
+  input: StartPaymentLinkAttemptInput,
+): Promise<StartPaymentLinkAttemptResult> {
+  const db = paymentsDB();
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const link = await getPaymentLink(input.linkId);
+    if (!link) throw new Error('PAYMENT_LINK_NOT_FOUND');
+    if (link.status === 'used') throw new Error('PAYMENT_LINK_USED');
+    if (link.status === 'expired' || (link.expiresAt && new Date(link.expiresAt).getTime() < Date.now())) {
+      throw new Error('PAYMENT_LINK_EXPIRED');
+    }
+
+    if (link.pendingPaymentId && link.pendingReference) {
+      try {
+        const existing = await db.get(link.pendingPaymentId) as PaymentDoc;
+        if (existing.status === 'pending' || existing.status === 'posted') {
+          return { payment: existing, created: false };
+        }
+      } catch {
+        // A concurrent request may be between reserving the link and writing
+        // its payment. Give it time to finish; only clear reservations old
+        // enough to indicate an interrupted process.
+        const reservationAge = Date.now() - new Date(link.updatedAt).getTime();
+        if (Number.isFinite(reservationAge) && reservationAge < 120_000) {
+          await new Promise(resolve => setTimeout(resolve, 10));
+          continue;
+        }
+      }
+      delete link.pendingPaymentId;
+      delete link.pendingReference;
+      link.updatedAt = new Date().toISOString();
+      try {
+        await db.put(link);
+      } catch (error) {
+        if ((error as { status?: number }).status === 409) continue;
+        throw error;
+      }
+      continue;
+    }
+
+    const now = new Date().toISOString();
+    const reference = `PBL-${link.linkId.slice(0, 8).toUpperCase()}-${uuidv4().slice(0, 6).toUpperCase()}`;
+    const paymentId = `pmt-${uuidv4().slice(0, 10)}`;
+    link.pendingPaymentId = paymentId;
+    link.pendingReference = reference;
+    link.updatedAt = now;
+
+    try {
+      const reservation = await db.put(link);
+      link._rev = reservation.rev;
+    } catch (error) {
+      if ((error as { status?: number }).status === 409) continue;
+      throw error;
+    }
+
+    const payment: PaymentDoc = {
+      _id: paymentId,
+      type: 'payment',
+      patientId: link.patientId,
+      patientName: '',
+      method: input.method,
+      amount: link.amount,
+      currency: link.currency,
+      reference,
+      paymentLinkId: link.linkId,
+      mobileMoneyPhone: input.payerPhone,
+      status: 'pending',
+      processedAt: now,
+      processedBy: 'pay-by-link',
+      processedByName: 'Pay-by-link (payer self-service)',
+      notes: '[PAY_BY_LINK] pending_verification — awaiting provider or staff confirmation',
+      facilityId: link.facilityId,
+      orgId: link.orgId,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: 'pay-by-link',
+    };
+
+    try {
+      const response = await db.put(payment);
+      payment._rev = response.rev;
+    } catch (error) {
+      // Release only our own reservation so a retry is possible.
+      try {
+        const latest = await db.get(link._id) as PaymentLinkDoc;
+        if (latest.pendingPaymentId === paymentId) {
+          delete latest.pendingPaymentId;
+          delete latest.pendingReference;
+          latest.updatedAt = new Date().toISOString();
+          await db.put(latest);
+        }
+      } catch { /* original storage error is more useful */ }
+      throw error;
+    }
+
+    await logAuditSafe(
+      'PAY_BY_LINK_SUBMITTED', 'pay-by-link', 'Pay-by-link',
+      `Pending payment ${payment._id} recorded for payment link ${link.linkId}`,
+    );
+    emitSyncEvent({
+      resourceType: 'payment', resourceId: payment._id, operation: 'create',
+      resourceVersion: payment._rev, orgId: payment.orgId, hospitalId: payment.facilityId,
+    });
+    emitSyncEvent({
+      resourceType: 'payment_link', resourceId: link._id, operation: 'update',
+      resourceVersion: link._rev, orgId: link.orgId, hospitalId: link.facilityId,
+    });
+    return { payment, created: true };
+  }
+
+  throw new Error('PAYMENT_LINK_CONFLICT');
+}
+
+async function reconcilePaymentLinkState(payment: PaymentDoc, status: PaymentLinkDoc['status']): Promise<void> {
+  if (!payment.paymentLinkId) return;
+  const db = paymentsDB();
+  try {
+    const link = await db.get(`plink-${payment.paymentLinkId}`) as PaymentLinkDoc;
+    if (status === 'used') {
+      link.status = 'used';
+    } else if (link.pendingPaymentId === payment._id) {
+      link.status = 'active';
+      delete link.pendingPaymentId;
+      delete link.pendingReference;
+    } else {
+      return;
+    }
+    link.updatedAt = new Date().toISOString();
+    const response = await db.put(link);
+    link._rev = response.rev;
+    emitSyncEvent({
+      resourceType: 'payment_link', resourceId: link._id, operation: 'update',
+      resourceVersion: link._rev, orgId: link.orgId, hospitalId: link.facilityId,
+    });
+  } catch (error) {
+    // A payment posting must remain retryable when the link state cannot be
+    // persisted. Propagate conflicts/storage failures to the webhook route.
+    throw error;
+  }
+}
+
+export type PaymentProvider = NonNullable<PaymentDoc['provider']>;
+
+export interface ProviderReconciliationInput {
+  reference: string;
+  provider: PaymentProvider;
+  status: Extract<PaymentStatus, 'posted' | 'failed'>;
+  providerReference?: string;
+  amount?: number;
+  currency?: string;
+  reason?: string;
+}
+
+export interface ProviderReconciliationResult {
+  outcome: 'updated' | 'duplicate' | 'not_found' | 'mismatch' | 'invalid_state';
+  payment?: PaymentDoc;
+  reason?: string;
+}
+
+const PROVIDER_METHODS: Record<PaymentProvider, PaymentMethodType[]> = {
+  flutterwave: ['card'],
+  airtel: ['airtel'],
+  mpesa: ['mpesa'],
+};
+
+function sameMoneyAmount(expected: number, received: number): boolean {
+  return Number.isFinite(received) && received > 0
+    && Math.abs(Math.round(expected * 100) - Math.round(received * 100)) === 0;
+}
+
+/**
+ * Validate every gateway-asserted value before allowing a pending payment to
+ * post. Mismatches are acknowledged by routes but never mutate the payment.
+ */
+export async function reconcileProviderPayment(
+  input: ProviderReconciliationInput,
+): Promise<ProviderReconciliationResult> {
+  const payment = await getPaymentByReference(input.reference);
+  if (!payment) return { outcome: 'not_found' };
+
+  if (!PROVIDER_METHODS[input.provider].includes(payment.method)) {
+    return { outcome: 'mismatch', payment, reason: 'provider_method' };
+  }
+  if (payment.provider && payment.provider !== input.provider) {
+    return { outcome: 'mismatch', payment, reason: 'provider' };
+  }
+  if (input.status === 'posted') {
+    if (input.amount === undefined || !sameMoneyAmount(payment.amount, input.amount)) {
+      return { outcome: 'mismatch', payment, reason: 'amount' };
+    }
+    if (!input.currency || payment.currency.toUpperCase() !== input.currency.toUpperCase()) {
+      return { outcome: 'mismatch', payment, reason: 'currency' };
+    }
+    if (!input.providerReference) {
+      return { outcome: 'mismatch', payment, reason: 'provider_reference' };
+    }
+
+    const reused = await findByType<PaymentDoc>(
+      paymentsDB(), 'payment', { providerReference: input.providerReference },
+      { indexFields: ['type', 'providerReference'] },
+    );
+    if (reused.some(candidate => candidate._id !== payment._id)) {
+      return { outcome: 'mismatch', payment, reason: 'provider_reference_reused' };
+    }
+  }
+
+  if (payment.status === input.status) {
+    if (payment.providerReference && input.providerReference
+      && payment.providerReference !== input.providerReference) {
+      return { outcome: 'mismatch', payment, reason: 'provider_reference' };
+    }
+    await updatePaymentStatus(input.reference, input.status, {
+      provider: input.provider,
+      providerReference: input.providerReference,
+    });
+    return { outcome: 'duplicate', payment };
+  }
+  if (payment.status !== 'pending') {
+    return { outcome: 'invalid_state', payment, reason: payment.status };
+  }
+
+  const updated = await updatePaymentStatus(input.reference, input.status, {
+    provider: input.provider,
+    providerReference: input.providerReference,
+    reason: input.reason,
+  });
+  return { outcome: 'updated', payment: updated || payment };
 }
 
 // ═══════════════════════════════════════════════════════════════════

@@ -192,6 +192,7 @@ export const platformConfigDB = () => getDB('tamamhealth_platform_config');
 export const appointmentsDB = () => getDB('tamamhealth_appointments');
 export const availabilityDB = () => getDB('tamamhealth_availability');
 export const announcementsDB = () => getDB('tamamhealth_announcements');
+export const accountRequestsDB = () => getDB('tamamhealth_account_requests');
 export const telehealthDB = () => getDB('tamamhealth_telehealth');
 export const pharmacyInventoryDB = () => getDB('tamamhealth_pharmacy_inventory');
 export const triageDB = () => getDB('tamamhealth_triage');
@@ -260,11 +261,8 @@ export const savedPaymentMethodsDB = () => getDB('tamamhealth_saved_payment_meth
 export const paymentPlansDB = () => getDB('tamamhealth_payment_plans');
 export const invoicesDB = () => getDB('tamamhealth_invoices');
 export const ledgerDB = () => getDB('tamamhealth_ledger');
-// Patient-submitted intake forms awaiting front-desk review and merge into
-// the matching patient's chart.
-export const intakeFormsDB = () => getDB('tamamhealth_intake_forms');
 
-// ── Online booking & self-intake (see db-types-booking.ts) ──
+// ── Online booking (see db-types-booking.ts) ──
 // Patient-facing service menu ("Reason for visit"), per org/facility.
 export const visitReasonsDB = () => getDB('tamamhealth_visit_reasons');
 // Per-facility rules every booking surface obeys (lead time, buffers, consent
@@ -376,7 +374,26 @@ export const patientTransfersDB = () => getDB('tamamhealth_patient_transfers');
 // clinic with two doctors seeing two patients at 09:00 keeps both bookings, and
 // the day view draws them as equal side-by-side columns. Re-seed so demo days
 // show real parallel clinics rather than one single-file queue.
-export const SEED_VERSION = 70;
+// Bumped to 71: Malakal Teaching Hospital (hosp-003) is now a live facility
+// instead of an empty shell — nurse.stella and midwife.nyakong previously had
+// no doctor, no provider availability, no wards/beds/admissions and no
+// handoffs/rooming activity there, so the merged nurse dashboard and the
+// "Find availability" booking wizard were both empty for the canonical nurse
+// demo login. Added: a Malakal doctor (dr.ochalla) with recurring clinic
+// hours; one ward (4 beds, 3 occupied) with three active admissions attended
+// by him and nursed by nurse.stella; MAR-ready scheduled prescriptions for
+// each admitted patient (q8h/q12h so a dose is always due/overdue); a signed
+// night-shift handoff from midwife.nyakong awaiting stella's acknowledgement;
+// and two rooming-station encounters. `seedAvailability` also now carries a
+// per-row facility (the four Juba rows are unchanged in output).
+// Bumped to 72: every admitted patient now has the arrival triage that sent
+// them to a bed (triage-3b, triage-m5, triage-m6). Three inpatients had none
+// at all, so their worklist rows showed no vitals beside beds that did.
+// Bumped to 73: the patient intake-forms feature is gone (staff queue, public
+// token form, API and DB). The four seeded intake docs and the
+// tamamhealth_intake_forms database go with it; the bump purges the orphaned
+// local DB from browsers seeded while the feature existed.
+export const SEED_VERSION = 73;
 
 export async function isSeeded(): Promise<boolean> {
   try {
@@ -444,10 +461,15 @@ export async function markSeeded(): Promise<void> {
 // Reset all databases (useful for debugging).
 // Browser-only: destroying a remote CouchDB database from a server process
 // would take out data for every clinic on the cluster.
-export async function resetAllDatabases(): Promise<void> {
-  if (!IS_BROWSER) return;
-  const PouchDB = loadPouchDB();
-  const dbNames = [
+/**
+ * Every PouchDB database this app opens in the browser, by name.
+ *
+ * Two callers depend on it: `resetAllDatabases()` (seed-version bumps) and
+ * the security wipe in `lib/security/local-wipe.ts`, which also discovers
+ * databases at runtime so a name missing from this list still gets cleared
+ * off a device. Keep it in sync when a new database is introduced.
+ */
+export const LOCAL_DATABASE_NAMES: readonly string[] = [
     'tamamhealth_users', 'tamamhealth_patients', 'tamamhealth_hospitals',
     'tamamhealth_medical_records', 'tamamhealth_referrals', 'tamamhealth_lab_results',
     'tamamhealth_disease_alerts', 'tamamhealth_prescriptions', 'tamamhealth_audit_log', 'tamamhealth_usage_events', 'tamamhealth_messages', 'tamamhealth_conversations', 'tamamhealth_patient_notes',
@@ -467,19 +489,28 @@ export async function resetAllDatabases(): Promise<void> {
     'tamamhealth_handoffs', 'tamamhealth_order_sets', 'tamamhealth_phone_notes', 'tamamhealth_assessments',
     // Operational DBs that were created + synced but previously missed here,
     // leaving stale data behind on reset/re-seed.
-    'tamamhealth_availability', 'tamamhealth_announcements',
+    'tamamhealth_availability', 'tamamhealth_announcements', 'tamamhealth_account_requests',
     'tamamhealth_emergency_plans', 'tamamhealth_assets',
     'tamamhealth_leave_requests', 'tamamhealth_payroll_entries', 'tamamhealth_patient_feedback',
     'tamamhealth_clinical_favorites', 'tamamhealth_consultation_templates',
     'tamamhealth_clinician_tasks', 'tamamhealth_patient_documents',
-    'tamamhealth_patient_reminders', 'tamamhealth_intake_forms',
+    'tamamhealth_patient_reminders',
+    // Retired with the patient intake-forms feature (v73). Kept in the reset
+    // list only so the bump purges the orphaned local database from browsers
+    // that were seeded while the feature existed.
+    'tamamhealth_intake_forms',
     'tamamhealth_nutrition_screenings', 'tamamhealth_nutrition_supplies',
     'tamamhealth_patient_transfers',
     // NOTE: 'tamamhealth_controlled_substance_log' is deliberately NOT reset
     // here — it is an append-only regulatory audit trail and resetAllDatabases()
     // runs on production seed-version bumps (see seedProduction).
     'tamamhealth_meta'
-  ];
+];
+
+export async function resetAllDatabases(): Promise<void> {
+  if (!IS_BROWSER) return;
+  const PouchDB = loadPouchDB();
+  const dbNames = LOCAL_DATABASE_NAMES;
   for (const name of dbNames) {
     try {
       // Prefer the cached instance — destroying a NEW PouchDB while the cached

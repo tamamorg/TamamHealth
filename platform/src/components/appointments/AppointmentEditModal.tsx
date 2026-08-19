@@ -150,6 +150,28 @@ export default function AppointmentEditModal({
     setStatus(appointment.status);
   }, [appointment._id, appointment.status]);
 
+  // The Cancel/Save bar only appears once the draft differs from the saved
+  // appointment — a clean form has nothing to save and nothing to discard.
+  // Compared against the same fallbacks the draft was seeded with, so opening
+  // the form never counts as a change. staffName follows staffId and is not
+  // its own signal.
+  const dirty =
+    date !== appointment.appointmentDate ||
+    time !== appointment.appointmentTime ||
+    duration !== appointment.duration ||
+    type !== appointment.appointmentType ||
+    priority !== appointment.priority ||
+    status !== appointment.status ||
+    department !== appointment.department ||
+    providerId !== (appointment.providerId || '') ||
+    provider !== appointment.providerName ||
+    reason !== appointment.reason ||
+    notes !== (appointment.notes || '') ||
+    detail.mode !== (appointment.appointmentMode || (appointment.appointmentType === 'telehealth' ? 'telehealth' : 'in_office')) ||
+    detail.recurrence !== (appointment.isRecurring ? (appointment.recurrencePattern || 'weekly') : '') ||
+    detail.staffId !== (appointment.staffId || '') ||
+    detail.room !== (appointment.room || '');
+
   const save = async () => {
     setSaving(true);
     try {
@@ -339,12 +361,14 @@ export default function AppointmentEditModal({
           {headerActions}
         </div>
       )}
+      {dirty && (
       <div className="appt-edit-actions">
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : `Save${status !== appointment.status ? ` · ${appointmentStatusLabel(status)}` : ''}`}
         </button>
       </div>
+      )}
       </div>
   );
 

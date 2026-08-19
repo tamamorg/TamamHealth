@@ -1,18 +1,42 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
+import { getLocale } from "@/lib/i18n/server";
+import { localeConfig } from "@/lib/i18n";
 
-const TITLE = "TamamHealth — Digital Health Records for South Sudan";
+/** What the browser tab says. Short on purpose: a tab is ~25 characters
+ *  before it truncates, so the tagline was being cut mid-word and every tab
+ *  looked the same. It still runs in full in the description and the social
+ *  card below, where there is room for it. */
+const TAB_TITLE = "TamamHealth";
+/** The full line, for search results and link previews. Matches the platform
+ *  (`platform/src/app/layout.tsx`) verbatim, so the product and the site that
+ *  sells it say the same thing. */
+const TITLE = "TamamHealth — Every Patient Deserves to Be Remembered";
 const DESCRIPTION =
   "South Sudan's clinics run on paper-based records that get lost, damaged, or destroyed. TamamHealth brings digital records that work offline, so care never starts from zero.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tamamhealth.org"),
-  title: TITLE,
+  title: {
+    default: TAB_TITLE,
+    template: "%s — TamamHealth",
+  },
   description: DESCRIPTION,
+  // Names the apex as the one real address for every page. Without it, the
+  // site answered on both tamamhealth.org and www.tamamhealth.org with
+  // identical content and nothing saying which was authoritative — so a
+  // crawler indexing a two-month-old domain had to pick, and could split the
+  // little signal there is across two hosts. Resolved against `metadataBase`,
+  // so each route emits its own canonical rather than all pointing at "/".
+  alternates: { canonical: "./" },
   manifest: "/manifest.webmanifest",
+  // Its own file, not the logo's: the tab icon has to stay legible against
+  // whatever chrome the browser puts behind it, so it does not follow the
+  // logo when the mark's colour changes.
   icons: {
-    icon: [{ url: "/assets/tamam-logo-mark.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/assets/tamam-logo-mark.svg" }],
+    icon: [{ url: "/assets/tamam-favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/assets/tamam-favicon.svg" }],
   },
   openGraph: {
     title: TITLE,
@@ -29,20 +53,27 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Resolved on the server so the first byte is already in the right language
+  // and the right direction — no English flash before an Arabic repaint.
+  const locale = await getLocale();
+  const { dir } = localeConfig(locale);
+
   return (
-    <html lang="en">
+    <html lang={locale} dir={dir}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font -- root layout, applies site-wide */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <LanguageProvider locale={locale}>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

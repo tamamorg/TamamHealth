@@ -2,7 +2,7 @@
  * Next.js Instrumentation — runs once on server startup.
  */
 
-import { validateProductionConfig } from './lib/config-validation';
+import { productionConfigWarnings, validateProductionConfig } from './lib/config-validation';
 import * as Sentry from '@sentry/nextjs';
 
 // Capture failures from nested React Server Components and server request
@@ -29,6 +29,20 @@ function assertProductionConfig(): void {
     console.error('  ============================================================');
     console.error('');
     throw new Error('Invalid production configuration — see errors above.');
+  }
+
+  // Printed, not thrown: these do not make the deployment unsafe, they make it
+  // hard to operate. Surfaced on every boot so the gap is a decision someone
+  // keeps making rather than one nobody knows about.
+  const warnings = productionConfigWarnings(process.env);
+  if (warnings.length > 0) {
+    console.warn('');
+    console.warn('  ------------------------------------------------------------');
+    console.warn('  PRODUCTION CONFIGURATION WARNINGS');
+    console.warn('  ------------------------------------------------------------');
+    for (const w of warnings) console.warn(`  • ${w}`);
+    console.warn('  ------------------------------------------------------------');
+    console.warn('');
   }
 }
 

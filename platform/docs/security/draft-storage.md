@@ -1,8 +1,23 @@
 # Encrypted draft storage
 
 This document describes how the platform protects in-progress PHI form drafts
-(currently consultation autosave) on shared workstations, and what residual
-risks remain.
+on shared workstations, and what residual risks remain.
+
+**Current status: the encrypt/decrypt path is built but not wired to any
+form today.** `saveDraft()`/`loadDraft()` have no call sites anywhere in
+`src/app` or `src/components` — consultation autosave now writes straight
+to the local PouchDB note document via `note-service.ts`
+(`ClinicalNoteEditor.tsx`), not through this module. The only piece of
+`draft-storage.ts` actually wired into the app is the defensive
+`dropAllDrafts()` cleanup called from `logout()` in `context.tsx`, which
+still matters — it clears any ciphertext left over from a form that *did*
+use this module in the past, or from a future one that does. Treat the
+rest of this document as describing a mechanism that is correct and ready
+to use, not one currently protecting a live autosave flow; if you're
+looking for where consultation drafts are protected today, that's
+PouchDB's local storage, not this. This is a real gap worth confirming
+with the team (was this intentionally disconnected, or did a refactor
+silently drop the wiring?), not something fixed by editing this doc.
 
 ## Threat model
 
@@ -74,9 +89,10 @@ The localStorage key is `tamamhealth.draft.<sanitizedKey>` — sanitized to
 ### Lazy TTL expiry
 
 `loadDraft()` checks `Date.now() - savedAt > ttlMs` and removes the entry
-before returning `null`. The 24h TTL is policy, not security — even before
-the TTL fires, encrypted drafts are unreadable to anyone without the per-tab
-key, which is gone the moment the tab closes.
+before returning `null`. The default TTL is 24h, overridable via
+`NEXT_PUBLIC_DRAFT_TTL_HOURS`. The TTL is policy, not security — even
+before it fires, encrypted drafts are unreadable to anyone without the
+per-tab key, which is gone the moment the tab closes.
 
 ### Logout cleanup contract
 
@@ -160,10 +176,13 @@ out, prompt the user, or expose the existence of orphan ciphertext.
 
 ## Tests
 
-- [`draft-storage.test.ts`](../../src/__tests__/security/draft-storage.test.ts)
-  covers the roundtrip, lazy TTL expiry, ciphertext tampering, lost
-  per-tab key, namespace cleanup, and key-isolation. Tests run under jsdom
-  with the Node webcrypto polyfill from `jest.setup.ts`.
+There is no test file for this module anywhere in the repo today — a real
+coverage gap. A `draft-storage.test.ts` covering the roundtrip, lazy TTL
+expiry, ciphertext tampering, lost per-tab key, namespace cleanup, and
+key-isolation would run cleanly under jsdom: `jest.setup.ts` already
+polyfills `globalThis.crypto` (`subtle` from Node's `crypto.webcrypto`,
+`getRandomValues` from `crypto.randomFillSync`), so the infrastructure this
+module needs is already in place — it's just unused.
 
 ## See also
 

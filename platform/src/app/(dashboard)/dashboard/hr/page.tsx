@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
+import { titleCase, formatClockTime } from '@/lib/format-utils';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -23,10 +24,7 @@ import type { StaffScheduleDoc } from '@/lib/db-types';
 function formatClockTimeOrUndefined(iso?: string): string | undefined {
   if (!iso) return undefined;
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
-function titleCase(value: string): string {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return Number.isNaN(d.getTime()) ? undefined : formatClockTime(d) || undefined;
 }
 export default function HRDashboardPage() {
   const router = useRouter();
@@ -182,7 +180,7 @@ export default function HRDashboardPage() {
     return (
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 320, color: 'var(--text-muted)' }}>
-          <Activity size={44} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+          <Activity size={44} style={{ marginInlineEnd: 8, animation: 'spin 1s linear infinite' }} />
           <span>{t('hr.loadingData')}</span>
         </div>
       </main>
@@ -234,6 +232,8 @@ export default function HRDashboardPage() {
             statusLabel: titleCase(r.leaveType),
             statusSecondary: `${r.days} day${r.days === 1 ? '' : 's'}`,
             statusTone: 'warning',
+            detailHref: `/hr/leave?status=pending&returnTo=${encodeURIComponent('/dashboard/hr')}`,
+            detailLabel: t('referrals.viewDetails'),
             popupDetail: renderLeaveDetail(r),
           };
         })}

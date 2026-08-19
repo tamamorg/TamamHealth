@@ -136,19 +136,19 @@ export default function AssignDoctorModal({
         <div className="p-4 space-y-3">
           {/* Search */}
           <div className="relative assign-doctor-search">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+            <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
             <input
               type="search"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={`Search ${providerLabel}s…`}
-              className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-lg border py-2 ps-9 pe-3 text-sm"
               style={{
                 borderColor: 'var(--border-medium)',
                 background: 'var(--bg-input, var(--bg-card-solid))',
                 color: 'var(--text-primary)',
-                paddingLeft: 38,
-                paddingRight: 12,
+                paddingInlineStart: 38,
+                paddingInlineEnd: 12,
               }}
             />
           </div>
@@ -167,7 +167,7 @@ export default function AssignDoctorModal({
                     <li key={d._id}>
                       <button
                         onClick={() => setSelectedId(d._id)}
-                        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors"
+                        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-start transition-colors"
                         style={{ background: selected ? 'var(--accent-light)' : 'transparent' }}
                       >
                         <div className="min-w-0">

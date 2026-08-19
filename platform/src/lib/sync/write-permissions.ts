@@ -203,7 +203,6 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   audit_log: ALL_STAFF,
   sync_event: ALL_STAFF,
   conflict_queue: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
-  patient_intake_form: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
 };
 
 /**

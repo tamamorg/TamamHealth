@@ -1,5 +1,6 @@
 'use client';
 
+import { shortenPersonName } from '@/lib/patient-utils';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
@@ -183,12 +184,12 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                     {/* The name opens this patient's focused rooming page. */}
                     <button
                       type="button"
-                      className="text-sm font-semibold truncate text-left"
+                      className="text-sm font-semibold truncate text-start"
                       style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                       onClick={() => router.push(`/rooming/${encounter.patientId}`)}
                       title={`Room ${encounter.patientName}`}
                     >
-                      {encounter.patientName}
+                      {shortenPersonName(encounter.patientName)}
                     </button>
                     {encounter.roomNumber && (
                       <span
@@ -344,7 +345,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                 const flagged = Boolean(getVitalFlags(vitalsDraft)[field.key]);
                 return (
                   <label key={field.key} className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                    <span className="flex justify-between gap-2 mb-1"><span>{field.label}</span><span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{field.unit}</span></span>
+                    <span className="flex justify-between gap-2 mb-1"><span>{field.label}</span><span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{field.unit}</span></span>
                     <input
                       type="number"
                       inputMode="decimal"

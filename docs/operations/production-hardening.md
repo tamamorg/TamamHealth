@@ -29,15 +29,25 @@ deploy — it now enforces several of the gates below automatically.
   never server-valid. See §6.)
 - **MUST** rotate every secret before go-live and on staff offboarding:
   `JWT_SECRET`, `COUCHDB_ADMIN_PASSWORD`, the Postgres password in
-  `DATABASE_URL`, `COUCHDB_WEBHOOK_SECRET`, and the bootstrap admin password.
+  `DATABASE_URL`, `COUCHDB_WEBHOOK_SECRET`, and the bootstrap credentials
+  (`SUPERADMIN_INITIAL_PASSWORD`, `ADMIN_INITIAL_PASSWORD` if set — see §2).
   Prefer a secrets manager (Doppler — see [`secrets.md`](secrets.md) — or AWS
   SSM / `docker secrets`) over files on disk.
 
 ## 2. Demo mode OFF
 
 - **MUST** set `NEXT_PUBLIC_DEMO_MODE=false` in `platform/.env.production`.
-  Demo mode seeds the full demo staff roster and exposes the demo password list
-  at `/api/demo-credentials`. Preflight fails if it is `true`.
+  Demo mode seeds the full demo staff roster. Preflight fails if it is `true`.
+  (`/api/demo-credentials` has since been removed from the app — the login
+  page's demo role chips are gone too; the only bootstrap path today is the
+  seeded `superadmin` account, see below.)
+- **MUST** set `SUPERADMIN_INITIAL_PASSWORD` in `platform/.env.production`
+  whenever `NEXT_PUBLIC_SYNC_ENABLED=true` (the production default) —
+  `config-validation.ts` refuses to boot without it, refuses the well-known
+  demo value (`Superadmin!`), and requires 16+ characters. Neither
+  `platform/.env.production.example` nor `platform/.env.example` currently
+  lists this variable, so add it yourself; it is separate from the older,
+  optional `ADMIN_INITIAL_PASSWORD` (for the legacy `admin` account).
 - **MUST NOT** bump `SEED_VERSION` against a live database — it triggers a
   destructive `resetAllDatabases()`. Seed once on a clean host, then leave it.
 
@@ -65,18 +75,21 @@ deploy — it now enforces several of the gates below automatically.
 ## 5. Backups & retention
 
 - **MUST** schedule the nightly CouchDB + Postgres dumps
-  ([`backup-couchdb.sh`](../../backup-couchdb.sh),
-  [`backup-postgres.sh`](../../backup-postgres.sh)) and ship them **encrypted,
+  ([`backup-couchdb.sh`](../../scripts/backup-couchdb.sh),
+  [`backup-postgres.sh`](../../scripts/backup-postgres.sh)) and ship them **encrypted,
   offsite** (in-country/approved storage). See [`backups.md`](backups.md).
-- **MUST** periodically run [`backup-restore-drill.sh`](../../backup-restore-drill.sh)
+- **MUST** periodically run [`backup-restore-drill.sh`](../../scripts/backup-restore-drill.sh)
   — an untested backup is not a backup. Document the retention window and who
   holds the restore key.
 
 ## 6. Auth & session
 
-- Online login is server-issued (`/api/auth/login`) HS256 JWT, 8h life, with
-  revocation enforced at `/api/auth/me` and every `/api/*` route. CSRF is a
-  two-layer gate (Origin check + HMAC double-submit) in `middleware.ts`.
+- Online login is server-issued (`/api/auth/login`) HS256 JWT, 30 days by
+  default (`SESSION_TTL_HOURS` override, sliding renewal on every
+  `/api/auth/me` call — see `src/lib/session.ts`), with revocation enforced
+  at `/api/auth/me` and every `/api/*` route. CSRF is a two-layer gate
+  (Origin/Host check + HMAC double-submit) in `src/proxy.ts` (Next.js 16's
+  `middleware.ts` equivalent).
 - **Offline-first tradeoff (document for operators):** when the API is
   unreachable, the client mints a local session token so a previously-synced
   clinician can keep working offline. In production that token is signed with a
@@ -115,7 +128,8 @@ deploy — it now enforces several of the gates below automatically.
 ## Pre-go-live checklist (copy into the deploy ticket)
 
 - [ ] `scripts/preflight.sh` passes (tsc + lint + jest + env hygiene + leak scan)
-- [ ] `NEXT_PUBLIC_DEMO_MODE=false`; `/api/demo-credentials` returns only the bootstrap row
+- [ ] `NEXT_PUBLIC_DEMO_MODE=false`
+- [ ] `SUPERADMIN_INITIAL_PASSWORD` set to a real, 16+ character secret (not `Superadmin!`)
 - [ ] No `NEXT_PUBLIC_JWT_SECRET` in `platform/.env.production`; all secrets rotated
 - [ ] No `*.real.bak` / plaintext secret files on the host
 - [ ] HTTPS for app **and** CouchDB; 5984/5432 bound to 127.0.0.1

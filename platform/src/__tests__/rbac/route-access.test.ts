@@ -30,10 +30,37 @@ describe('RBAC: landing pages', () => {
   });
 });
 
+describe('RBAC: nurse-family roles share the merged clinical workspace', () => {
+  const nurseFamily: UserRole[] = ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'];
+
+  test('all land on /dashboard, not a standalone nurse station', () => {
+    for (const role of nurseFamily) expect(getDefaultDashboard(role)).toBe('/dashboard');
+  });
+
+  test('all reach /dashboard and the legacy /dashboard/nurse bookmarks (redirect stubs)', () => {
+    for (const role of nurseFamily) {
+      expect(isPathAllowed(role, '/dashboard')).toBe(true);
+      // /dashboard/nurse/* now redirects, but stays reachable so the
+      // redirect stub itself can run rather than getting RoleGuard-blocked.
+      expect(isPathAllowed(role, '/dashboard/nurse')).toBe(true);
+      expect(isPathAllowed(role, '/dashboard/nurse/ward')).toBe(true);
+    }
+  });
+
+  test('nurse/triage_nurse/rooming_nurse reach the new shift-handoff page via the /wards prefix', () => {
+    for (const role of ['nurse', 'triage_nurse', 'rooming_nurse'] as UserRole[]) {
+      expect(isPathAllowed(role, '/wards/handoff')).toBe(true);
+    }
+  });
+});
+
 describe('RBAC: super_admin has total page access', () => {
   test('reaches every station dashboard and clinical module, listed or not', () => {
     const previouslyExcluded = [
-      '/dashboard/nurse', '/triage', '/rooming', '/patient-intake',
+      // The nurse station used to be a distinct dashboard listed here
+      // ('/dashboard/nurse'); it was merged into the shared clinical
+      // workspace, so there's no separate nurse station route left to test.
+      '/triage', '/rooming', '/wards/handoff',
       '/dashboard/front-desk', '/dashboard/lab', '/dashboard/pharmacy',
       '/consultation', '/payments/claims', '/settings/manage',
     ];

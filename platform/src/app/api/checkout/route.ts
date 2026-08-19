@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { logApiError, serverError } from '@/lib/api-auth';
-import type { PaymentDoc, PaymentStatus, PaymentMethodType } from '@/lib/db-types-payments';
+import type { PaymentMethodType } from '@/lib/db-types-payments';
+import { rateLimit } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/request-utils';
 
 /**
  * Public checkout helper for the pay-by-link flow.
@@ -33,18 +34,40 @@ const METHOD_MAP: Record<string, PaymentMethodType> = {
   cash: 'cash',
 };
 
+const MOBILE_METHODS = new Set(['mpesa', 'mtn', 'airtel']);
+const LINK_ID_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
+
+function normalizePhone(value: string): string | null {
+  const normalized = value.replace(/[\s().-]/g, '');
+  return /^\+?[0-9]{8,15}$/.test(normalized) ? normalized : null;
+}
+
+function rateLimited(resetAt: number) {
+  const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+  return NextResponse.json(
+    { error: 'Too many checkout attempts. Please try again shortly.' },
+    { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+  );
+}
+
 function isExpired(expiresAt?: string): boolean {
   return !!expiresAt && new Date(expiresAt).getTime() < Date.now();
 }
 
 export async function GET(req: NextRequest) {
   try {
+    const verdict = await rateLimit({
+      key: `checkout:get:ip:${getClientIp(req)}`, limit: 120, windowMs: 60_000,
+    });
+    if (!verdict.allowed) return rateLimited(verdict.resetAt);
+
     const { searchParams } = new URL(req.url);
     const linkId = searchParams.get('linkId') || searchParams.get('id');
 
-    if (!linkId) {
+    if (!linkId || !LINK_ID_PATTERN.test(linkId)) {
       return NextResponse.json(
-        { error: 'linkId query parameter is required' },
+        { error: 'A valid linkId query parameter is required' },
         { status: 400 }
       );
     }
@@ -78,19 +101,51 @@ export async function GET(req: NextRequest) {
 
 async function postHandler(req: NextRequest) {
   try {
-    let body: { linkId?: string; method?: string; payerPhone?: string };
+    const ip = getClientIp(req);
+    const ipVerdict = await rateLimit({ key: `checkout:ip:${ip}`, limit: 30, windowMs: 60_000 });
+    if (!ipVerdict.allowed) return rateLimited(ipVerdict.resetAt);
+
+    let body: unknown;
     try {
       body = await req.json();
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { linkId, method, payerPhone } = body;
-    if (!linkId) {
-      return NextResponse.json({ error: 'linkId is required' }, { status: 400 });
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const record = body as Record<string, unknown>;
+    const allowedFields = new Set(['linkId', 'method', 'payerPhone']);
+    if (Object.keys(record).some(key => !allowedFields.has(key))) {
+      return NextResponse.json({ error: 'Request contains unsupported fields' }, { status: 400 });
     }
 
-    const { getPaymentLink } = await import('@/lib/services/payment-service');
+    const linkId = typeof record.linkId === 'string' ? record.linkId.trim() : '';
+    const method = typeof record.method === 'string' ? record.method : '';
+    const rawPhone = typeof record.payerPhone === 'string' ? record.payerPhone.trim() : '';
+    if (!LINK_ID_PATTERN.test(linkId)) {
+      return NextResponse.json({ error: 'Invalid linkId' }, { status: 400 });
+    }
+    if (!Object.hasOwn(METHOD_MAP, method)) {
+      return NextResponse.json({ error: 'Unsupported payment method' }, { status: 400 });
+    }
+    const idempotencyKey = req.headers.get('idempotency-key');
+    if (idempotencyKey && !IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)) {
+      return NextResponse.json({ error: 'Invalid Idempotency-Key header' }, { status: 400 });
+    }
+    const payerPhone = rawPhone ? normalizePhone(rawPhone) : null;
+    if (MOBILE_METHODS.has(method) && !payerPhone) {
+      return NextResponse.json({ error: 'A valid payerPhone is required for mobile money' }, { status: 400 });
+    }
+    if (!MOBILE_METHODS.has(method) && rawPhone) {
+      return NextResponse.json({ error: 'payerPhone is only valid for mobile money' }, { status: 400 });
+    }
+
+    const linkVerdict = await rateLimit({ key: `checkout:link:${linkId}`, limit: 10, windowMs: 15 * 60_000 });
+    if (!linkVerdict.allowed) return rateLimited(linkVerdict.resetAt);
+
+    const { getPaymentLink, startPaymentLinkAttempt } = await import('@/lib/services/payment-service');
     const link = await getPaymentLink(linkId);
 
     if (!link) {
@@ -105,67 +160,22 @@ async function postHandler(req: NextRequest) {
       return NextResponse.json({ error: 'This payment link has expired', status: 'expired' }, { status: 409 });
     }
 
-    const paymentMethod: PaymentMethodType =
-      (method && METHOD_MAP[method]) || 'mobile_money' as PaymentMethodType;
-
-    // The reference is what the gateway webhook will match on to confirm the
-    // payment. We derive it from the link id so reconciliation is traceable
-    // back to this specific pay-by-link.
-    const reference = `PBL-${link.linkId.slice(0, 8).toUpperCase()}-${uuidv4().slice(0, 6).toUpperCase()}`;
-    const now = new Date().toISOString();
-
-    // Write a PENDING payment directly (we deliberately do NOT call
-    // collectPayment, which would post it to the ledger as completed). The
-    // payment carries the link's patientId server-side for staff reconciliation,
-    // but that id is never returned to the public caller.
-    const { paymentsDB } = await import('@/lib/db');
-    const db = paymentsDB();
-    const doc: PaymentDoc = {
-      _id: `pmt-${uuidv4().slice(0, 10)}`,
-      type: 'payment',
-      patientId: link.patientId,
-      patientName: '',
-      method: paymentMethod,
-      amount: link.amount,
-      currency: link.currency,
-      reference,
-      mobileMoneyPhone: typeof payerPhone === 'string' && payerPhone ? payerPhone : undefined,
-      status: 'pending' as PaymentStatus,
-      processedAt: now,
-      processedBy: 'pay-by-link',
-      processedByName: 'Pay-by-link (payer self-service)',
-      notes: `[PAY_BY_LINK] pending_verification — awaiting payment-gateway confirmation. Link ${link.linkId}: ${link.description}`,
-      facilityId: link.facilityId,
-      orgId: link.orgId,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: 'pay-by-link',
-    };
-
-    const resp = await db.put(doc);
-    doc._rev = resp.rev;
-
-    const { logAuditSafe } = await import('@/lib/services/audit-service');
-    await logAuditSafe(
-      'PAY_BY_LINK_SUBMITTED', 'pay-by-link', 'Pay-by-link',
-      `Pending payment ${doc._id} (ref ${reference}) recorded for link ${link.linkId}: ${link.amount} ${link.currency}`
-    );
-
-    const { emitSyncEvent } = await import('@/lib/services/sync-event-service');
-    emitSyncEvent({
-      resourceType: 'payment',
-      resourceId: doc._id,
-      operation: 'create',
-      resourceVersion: doc._rev,
-      orgId: doc.orgId,
-      hospitalId: doc.facilityId,
+    const result = await startPaymentLinkAttempt({
+      linkId,
+      method: METHOD_MAP[method],
+      payerPhone: payerPhone || undefined,
     });
 
     return NextResponse.json(
-      { ok: true, reference, status: 'pending' },
-      { status: 201 }
+      { ok: true, reference: result.payment.reference, status: result.payment.status },
+      { status: result.created ? 201 : 200 }
     );
   } catch (error) {
+    const code = error instanceof Error ? error.message : '';
+    if (code === 'PAYMENT_LINK_NOT_FOUND') return NextResponse.json({ error: 'Payment link not found' }, { status: 404 });
+    if (code === 'PAYMENT_LINK_USED') return NextResponse.json({ error: 'This payment link has already been paid', status: 'used' }, { status: 409 });
+    if (code === 'PAYMENT_LINK_EXPIRED') return NextResponse.json({ error: 'This payment link has expired', status: 'expired' }, { status: 409 });
+    if (code === 'PAYMENT_LINK_CONFLICT') return NextResponse.json({ error: 'Checkout is busy. Please retry.' }, { status: 409 });
     logApiError('[API /checkout POST]', error);
     return serverError();
   }

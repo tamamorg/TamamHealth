@@ -73,10 +73,11 @@ export async function getAllBills(scope?: DataScope): Promise<BillingDoc[]> {
   return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getBillById(id: string): Promise<BillingDoc | null> {
+export async function getBillById(id: string, scope?: DataScope): Promise<BillingDoc | null> {
   try {
     const db = billingDB();
-    return await db.get(id) as BillingDoc;
+    const bill = await db.get(id) as BillingDoc;
+    return scope && filterByScope([bill], scope).length === 0 ? null : bill;
   } catch {
     return null;
   }

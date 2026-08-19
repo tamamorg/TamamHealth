@@ -1,22 +1,29 @@
 import type { TourStep } from './types';
 
-// Walks a clinician through a full visit end to end: the dashboard they land
-// on after login, finding a patient, then the consultation wizard's six
-// stages (Intake → Examination → Assessment → Orders → Plan & checkout →
-// Summary). Section anchors correspond to `data-tour="consult-section-N"` on
-// each SectionHeader in `consultation/page.tsx`. The wizard only shows the
-// section(s) for its current stage and advancing requires that stage's data,
-// so a scripted tour (no real patient data entered) can only spotlight the
-// first stage's card; later stages are described narratively — the engine
-// renders those cards centred, and the step-nav footer
-// (`.ehr-consult-step-nav`) anchors the wrap-up.
+// Walks a clinician through a full day end to end: the dashboard they land on
+// after login, the patient registry, a patient's chart (the OpenMRS O3-style
+// shell in src/components/ehr/chart/, scoped `omrs-` classes), writing a
+// clinical note, and the telehealth and alerts entry points.
+//
+// `/consultation` is a retired route now — it only redirects into a clinical
+// note (see its own file header) — so this tour documents the note-based
+// workflow that replaced the old wizard, rather than a UI that no longer
+// exists.
+//
+// Steps that read "route: '/patients/[id]'" or "'/notes/[id]'" ride along on
+// whatever record the PRECEDING step opened via `preClickSelector` (see
+// tour-context.tsx) — the engine cannot navigate to a dynamic route directly.
+// Several chart steps also use `preClickSelector` to switch the chart's own
+// rail tab; because the chart component stays mounted across steps, each
+// tab switch persists into the steps that follow it until another step
+// switches again.
 export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'welcome',
     route: '/dashboard',
     target: '.ehr-care-greeting',
     title: 'Welcome to TamamHealth',
-    body: "Let's walk through a clinician's day — from your schedule to finishing a consultation. Use Back and Next anytime, or skip to explore on your own.",
+    body: "Let's walk through a clinician's day — from your schedule to opening a chart and writing up a visit. Use Back and Next anytime, or skip to explore on your own.",
     placement: 'bottom',
   },
   {
@@ -40,7 +47,7 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     route: '/dashboard',
     target: '.ehr-appointment-list',
     title: 'Your schedule',
-    body: 'Everyone booked with you, split into Scheduled, In Office, and Finished. Click a row to open that patient’s chart.',
+    body: 'Everyone booked with you, split into Upcoming, Checked In, and Completed. Click a row to open that patient’s chart.',
     placement: 'top',
   },
   {
@@ -50,14 +57,6 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     title: 'Outstanding items',
     body: 'Documents to sign, open referrals, and visits paused as “Awaiting labs” — resume a paused visit from here when results return.',
     placement: 'left',
-  },
-  {
-    id: 'dash-intake',
-    route: '/dashboard',
-    target: '.ehr-schedule-actions button.primary',
-    title: 'Send a patient to intake',
-    body: 'Route a walk-in to Patient Intake to capture vitals and history before you see them.',
-    placement: 'bottom',
   },
   {
     id: 'top-search',
@@ -75,56 +74,160 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     body: 'Jump between Patients, Consultation, Wards, Lab, Pharmacy, Referrals, and everything else you have access to.',
     placement: 'bottom',
   },
+
+  // ── Patient registry ──────────────────────────────────────────────────
   {
-    id: 'consult-intake',
-    route: '/consultation',
-    target: '[data-tour="consult-section-1"]',
-    title: 'Step 1 — Intake',
-    body: 'Pick the patient (the right rail shows their allergies and history), capture the chief complaint — type or search the symptom catalog — and record vitals. Next unlocks once the complaint and vitals (or today’s triage) are in.',
+    id: 'patients-registry',
+    route: '/patients',
+    target: '[data-tour="patients-toolbar"]',
+    title: 'The patient registry',
+    body: 'Every patient at your facility, with live counts for male/female, new this month, and unassigned. Search narrows by name, hospital number, or phone.',
     placement: 'bottom',
   },
   {
-    id: 'consult-exam-assessment',
-    route: '/consultation',
-    target: '',
-    title: 'Steps 2–3 — Examination & Assessment',
-    body: 'Record findings by system (general, cardiovascular, respiratory, abdominal, neurological), then code at least one diagnosis with the ICD-11 search — each with type, certainty, and severity.',
+    id: 'patients-filters',
+    route: '/patients',
+    target: '.ehr-list-filters-panel',
+    preClickSelector: 'button[title="Filters"]',
+    title: 'Narrow the list',
+    body: 'Filter by age, gender, location, registration date, allergies, chronic conditions, or just the patients assigned to you.',
+    placement: 'left',
   },
   {
-    id: 'consult-orders',
-    route: '/consultation',
-    target: '',
-    title: 'Step 4 — Orders: two cards, two search bars',
-    body: 'Prescriptions and Lab Orders sit side by side. Each starts with a search bar — click it and suggestions drop down. Medications add with preset dose/route/frequency and pass allergy, interaction, and duplicate checks; lab tests can also be ticked from the Basic/Special panels, one-tap panel bundles, or a clinical protocol.',
-  },
-  {
-    id: 'consult-send-ahead',
-    route: '/consultation',
-    target: '',
-    title: 'Send orders ahead, mid-visit',
-    body: '“Order tests & send to lab” pauses the visit as Awaiting labs — resume it from your dashboard when results return. “Send to pharmacy” queues medications for preparation now. Anything not sent goes automatically when you complete the visit.',
-  },
-  {
-    id: 'consult-plan',
-    route: '/consultation',
-    target: '',
-    title: 'Steps 5–6 — Plan, checkout & summary',
-    body: 'Write the treatment plan, set follow-up, and choose the disposition: checkout, admit (jumps to Wards pre-filled), or refer (bundles a transfer package). The Summary previews the visit — including the charges that will post — before you complete it.',
-  },
-  {
-    id: 'consult-wizard-flow',
-    route: '/consultation',
-    target: '.ehr-consult-step-nav',
-    title: 'Back and Next drive the visit',
-    body: 'The footer walks you through all six stages in order; each stage unlocks when its data is in. Your draft auto-saves as you type — a crash or closed tab never loses a consultation.',
+    id: 'patients-open-chart',
+    route: '/patients',
+    target: '.appointment-card-row',
+    preClickSelector: '.appointment-card-row',
+    title: "Open a patient's chart",
+    body: "Click any row to open that patient's full record — every visit, medication, result, and note. Let's open the first one.",
     placement: 'top',
   },
+
+  // ── Patient chart (/patients/[id]) ──────────────────────────────────────
+  {
+    id: 'chart-header',
+    route: '/patients/[id]',
+    target: '.omrs-header',
+    title: 'Every chart opens here',
+    body: 'Name, hospital number, and allergy flag up top, with one-click actions — new note, prescribe, order labs, refer — that follow you to every tab.',
+    placement: 'bottom',
+  },
+  {
+    id: 'chart-vitals-band',
+    route: '/patients/[id]',
+    target: '.omrs-vitals-band',
+    title: 'Vitals at a glance',
+    body: 'The latest recorded vitals stay pinned here no matter which tab you’re on, so an abnormal reading is never more than a glance away.',
+    placement: 'bottom',
+  },
+  {
+    id: 'chart-summary',
+    route: '/patients/[id]',
+    target: '.tebra-section-title',
+    title: 'Patient summary',
+    body: 'Safety alerts, current medications, latest vitals, and next care actions — the chart’s front page. Click any card to jump straight to its tab.',
+    placement: 'bottom',
+  },
+  {
+    id: 'chart-rail',
+    route: '/patients/[id]',
+    target: '.omrs-left-rail',
+    title: 'Every section, one rail',
+    body: 'Conditions, medications, immunizations, vitals, notes, results, billing — organized like an OpenMRS chart so nothing is more than one click away.',
+    placement: 'right',
+  },
+  {
+    id: 'chart-workspace',
+    route: '/patients/[id]',
+    target: '.omrs-right-rail',
+    title: 'Workspace panels',
+    body: 'Order basket, visit note, task list, clinical forms, and patient lists open here without ever leaving the chart you’re reading.',
+    placement: 'left',
+  },
+  {
+    id: 'chart-problems',
+    route: '/patients/[id]',
+    target: '.omrs-section-title',
+    preClickSelector: '.omrs-rail-item[title="Conditions"]',
+    title: 'Conditions',
+    body: 'Every diagnosis, coded to ICD-11, with date of onset and status. Resolve or reactivate a condition right from its row.',
+    placement: 'bottom',
+  },
+  {
+    id: 'chart-allergies',
+    route: '/patients/[id]',
+    target: '.omrs-section-title',
+    preClickSelector: '.omrs-rail-item[title="Allergies"]',
+    title: 'Allergies',
+    body: 'Active allergies and reactions — checked automatically against every new prescription.',
+    placement: 'bottom',
+  },
+  {
+    id: 'chart-vitals-tab',
+    route: '/patients/[id]',
+    target: '.omrs-section-title',
+    preClickSelector: '.omrs-rail-item[title="Vitals & Biometrics"]',
+    title: 'Vitals history',
+    body: 'The full reading history for this patient, as a table or a flowsheet — switch views with the toggle above it.',
+    placement: 'bottom',
+  },
+  {
+    id: 'chart-notes-tab',
+    route: '/patients/[id]',
+    target: '.cn-list-toolbar',
+    preClickSelector: '.omrs-rail-item[title="Notes"]',
+    title: 'Documentation lives here',
+    body: 'Every encounter note for this patient, sorted by date of service — notes are the record now, filterable by type, author, and signed status.',
+    placement: 'bottom',
+  },
+  {
+    id: 'chart-write-note',
+    route: '/patients/[id]',
+    target: '.cn-split-main',
+    preClickSelector: '.cn-split-main',
+    title: 'Start a note',
+    body: "The main button starts the note type you'll use most, SOAP; the caret next to it opens the full list — Telehealth SOAP, OB Evaluation, Nursing visit, and more.",
+    placement: 'bottom',
+  },
+
+  // ── Note editor (/notes/[id]) ───────────────────────────────────────────
+  {
+    id: 'note-editor',
+    route: '/notes/[id]',
+    target: '.cn-section-nav',
+    title: 'Write the visit',
+    body: 'Jump between sections — a filled dot means it already has content. Assign the note to a colleague or pull in a lab from the sidebar, then Sign to lock it into the record.',
+    placement: 'right',
+  },
+
+  // ── Telehealth ───────────────────────────────────────────────────────
+  {
+    id: 'telehealth-entry',
+    route: '/telehealth',
+    target: '',
+    title: 'Telehealth visits',
+    body: 'Video visits live on your Appointments calendar now — book a Video call appointment, and “Join call” opens the live visit room with vitals, chat, and a note ready to go.',
+  },
+
+  // ── Alerts ───────────────────────────────────────────────────────────
+  {
+    id: 'alerts-feed',
+    route: '/alerts',
+    // The feed spans nearly the full width AND height of the page, and
+    // TourCard's cardPosition only clamps one axis per placement (top/bottom
+    // clamp X, left/right clamp Y) — every direction pushed the card
+    // partly off-screen against a target this large. A centred narrative
+    // card is the only placement that's always fully on screen here.
+    target: '',
+    title: 'What needs attention today',
+    body: 'Outbreak warnings, critical lab results awaiting sign-off, and overdue immunizations — newest first, so nothing urgent gets buried.',
+  },
+
   {
     id: 'finish',
-    route: '/consultation',
-    target: '.ehr-consult-step-nav',
-    title: 'You’re ready',
-    body: 'That’s the full clinical workflow, start to finish. You can replay this tour anytime from your profile menu.',
-    placement: 'top',
+    route: '/alerts',
+    target: '',
+    title: "You're ready",
+    body: "That's a clinician's day end to end — schedule, chart, documentation, and the alerts that need you. Replay this tour anytime from your profile menu.",
   },
 ];

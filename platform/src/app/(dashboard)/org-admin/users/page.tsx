@@ -17,6 +17,7 @@ import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import { generateTempPassword } from '@/lib/temp-password';
 import { canCreateUsers } from '@/lib/people-nav';
+import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 
 const MIN_PASSWORD_LENGTH = 8;
 import type { UserDoc, HospitalDoc, UserRole } from '@/lib/db-types';
@@ -45,6 +46,7 @@ export default function OrgUsersPage() {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [focusedUserId, setFocusedUserId] = useState<string | null>(null);
 
   // Create form state
   const [formUsername, setFormUsername] = useState('');
@@ -79,8 +81,14 @@ export default function OrgUsersPage() {
       return;
     }
     try {
-      const scope: DataScope = { orgId: currentUser.orgId, role: currentUser.role as UserRole };
-      const [{ getAllUsers }, { getAllHospitals }, { getAvailableRoles }] = await Promise.all([
+      // `userId` matters here: filterByScope hides peer org_admin accounts from
+      // an org admin, and this is what keeps their OWN account in the roster.
+      const scope: DataScope = {
+        orgId: currentUser.orgId,
+        role: currentUser.role as UserRole,
+        userId: currentUser._id,
+      };
+      const [{ getAllUsers }, { getAllHospitals }, { assignableRolesForOrgAdmin }] = await Promise.all([
         import('@/lib/services/user-service'),
         import('@/lib/services/hospital-service'),
         import('@/lib/permissions'),
@@ -94,12 +102,17 @@ export default function OrgUsersPage() {
       setUsers(u);
       setHospitals(h);
 
-      // Determine org type to get available roles
-      if (currentUser.organization) {
-        const roles = getAvailableRoles(currentUser.organization.orgType);
-        // Org admin can't assign super_admin
-        setAvailableRoles(roles.filter(r => r !== 'super_admin'));
-      }
+      // Which roles this admin may hand out.
+      //
+      // `orgType` only chooses between the full list and the private-sector
+      // subset, and `getAvailableRoles` already treats anything that is not
+      // 'private' as public — so an organization document that has not loaded
+      // should narrow nothing. Gating the whole computation on
+      // `currentUser.organization` instead left `availableRoles` at its initial
+      // `[]` whenever the org record was missing from the local replica: the
+      // Role picker rendered with no options at all, the org admin could not
+      // create a single user, and nothing on screen said why.
+      setAvailableRoles(assignableRolesForOrgAdmin(currentUser.organization?.orgType));
     } catch (err) {
       console.error('Failed to load users:', err);
     } finally {
@@ -122,7 +135,9 @@ export default function OrgUsersPage() {
   // Deep link: /org-admin/users?new=1 opens the create-user modal directly
   // (used by the facility dashboard's Add-user button).
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has('new')) {
+    const params = new URLSearchParams(window.location.search);
+    setFocusedUserId(params.get('user'));
+    if (params.has('new')) {
       setFormPassword(generateTempPassword());
       setShowPassword(true);
       setShowCreateModal(true);
@@ -263,6 +278,7 @@ export default function OrgUsersPage() {
   // the header's own search box combined with any lingering platform-wide
   // search (same merge pattern as the hospitals list).
   const filteredUsers = users.filter(u => {
+    if (focusedUserId) return u._id === focusedUserId;
     if (filterRole !== 'all' && u.role !== filterRole) return false;
     if (filterStatus === 'active' && !u.isActive) return false;
     if (filterStatus === 'inactive' && u.isActive) return false;
@@ -301,6 +317,12 @@ export default function OrgUsersPage() {
             {error}
           </div>
         )}
+
+        {/* Approving a request IS creating a user, so it sits with the roster
+            rather than on a screen of its own that nobody thinks to open. */}
+        <div className="dash-card" style={{ flexShrink: 0, padding: '16px 20px', marginBottom: 16 }}>
+          <AccountRequestQueue viewerRole="org_admin" />
+        </div>
 
         <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
@@ -341,6 +363,7 @@ export default function OrgUsersPage() {
                 {canCreateUsers(currentUser?.role || '') && (
                   <button
                     onClick={() => { setError(''); setFormPassword(generateTempPassword()); setShowPassword(true); setShowCreateModal(true); }}
+                    data-tour="org-users-create-btn"
                     style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: brandColor, color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
                     <Plus className="w-4 h-4" /> {t('orgUsers.createUser')}
@@ -352,7 +375,7 @@ export default function OrgUsersPage() {
 
           {/* Same list anatomy as the appointments page: card-list wrapper,
               compact column head, card rows. */}
-          <div className="appointment-card-list">
+          <div className="appointment-card-list" data-tour="org-users-list">
                 {/* The column head is the table's frame, not a label for the
                     rows that happen to be loaded: it stays put when a filter
                     matches nothing, so the list never collapses into a bare
@@ -364,7 +387,7 @@ export default function OrgUsersPage() {
                   {/* Status values right-align (shared .appointment-card-status),
                       so its label right-aligns too — the last-child rule only
                       covers the empty actions gutter here. */}
-                  <span style={{ justifySelf: 'end', paddingRight: 6 }}>{t('orgUsers.colStatus')}</span>
+                  <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('orgUsers.colStatus')}</span>
                   <span />
                 </div>
                 {filteredUsers.length === 0 && (
@@ -373,8 +396,17 @@ export default function OrgUsersPage() {
                 {filteredUsers.map(user => (
                     <div
                       key={user._id}
+                      id={`org-user-${user._id}`}
+                      tabIndex={focusedUserId === user._id ? 0 : undefined}
+                      aria-current={focusedUserId === user._id ? 'true' : undefined}
                       className="ehr-appointment-row appointment-card-row"
-                      style={{ gridTemplateColumns: USER_GRID, cursor: 'default' }}
+                      style={{
+                        gridTemplateColumns: USER_GRID,
+                        cursor: 'default',
+                        background: focusedUserId === user._id ? 'var(--overlay-subtle)' : undefined,
+                        outline: focusedUserId === user._id ? '2px solid var(--accent-primary)' : undefined,
+                        outlineOffset: focusedUserId === user._id ? -2 : undefined,
+                      }}
                     >
                       {/* User: square avatar + name/username, on the shared
                           identity classes so type and spacing match the other
@@ -460,7 +492,7 @@ export default function OrgUsersPage() {
             <div className="space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldFullName')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldFullName')}</label>
                 <input
                   type="text"
                   value={formName}
@@ -473,7 +505,7 @@ export default function OrgUsersPage() {
 
               {/* Username */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldUsername')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldUsername')}</label>
                 <input
                   type="text"
                   value={formUsername}
@@ -487,7 +519,7 @@ export default function OrgUsersPage() {
               {/* Password */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldPassword')}</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldPassword')}</label>
                   <button
                     type="button"
                     onClick={() => { setFormPassword(generateTempPassword()); setShowPassword(true); }}
@@ -503,13 +535,13 @@ export default function OrgUsersPage() {
                     value={formPassword}
                     onChange={e => setFormPassword(e.target.value)}
                     placeholder={t('orgUsers.passwordPlaceholder')}
-                    className="w-full px-3 py-2 pr-10 rounded-lg text-sm"
+                    className="w-full px-3 py-2 pe-10 rounded-lg text-sm"
                     style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    className="absolute end-3 top-1/2 -translate-y-1/2"
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
@@ -525,31 +557,55 @@ export default function OrgUsersPage() {
 
               {/* Role */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldRole')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldRole')}</label>
                 <div className="relative">
                   <Select
                     value={formRole}
                     onChange={e => setFormRole(e.target.value as UserRole)}
-                    className="w-full appearance-none px-3 py-2 pr-8 rounded-lg text-sm"
+                    className="w-full appearance-none px-3 py-2 pe-8 rounded-lg text-sm"
                     style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                   >
                     {availableRoles.map(r => (
                       <option key={r} value={r}>{roleLabel(r)}</option>
                     ))}
                   </Select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 </div>
               </div>
 
               {/* Hospital (conditional) */}
-              {needsHospital && (
+              {needsHospital && hospitals.length === 0 && (
+                /* A facility-scoped role with no facility to scope it to. The
+                   picker used to render empty here and the submit answered
+                   "Please select a hospital for this role" — an instruction the
+                   admin had no way to follow. An organisation's first facility
+                   has to exist before its clinical staff can, so say that and
+                   point at the page that creates one. */
+                <div
+                  className="rounded-lg px-3 py-2.5 text-sm"
+                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}
+                  data-field="no-facilities"
+                >
+                  <p className="mb-1.5" style={{ color: 'var(--text-primary)' }}>{t('orgUsers.noFacilitiesTitle')}</p>
+                  <p className="mb-2">{t('orgUsers.noFacilitiesBody')}</p>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/org-admin/hospitals')}
+                    className="text-sm font-semibold"
+                    style={{ color: 'var(--accent-primary)' }}
+                  >
+                    {t('orgUsers.noFacilitiesAction')}
+                  </button>
+                </div>
+              )}
+              {needsHospital && hospitals.length > 0 && (
                 <div>
-                  <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldAssignedHospital')}</label>
+                  <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldAssignedHospital')}</label>
                   <div className="relative">
                     <Select
                       value={formHospitalId}
                       onChange={e => setFormHospitalId(e.target.value)}
-                      className="w-full appearance-none px-3 py-2 pr-8 rounded-lg text-sm"
+                      className="w-full appearance-none px-3 py-2 pe-8 rounded-lg text-sm"
                       style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                     >
                       <option value="">{t('orgUsers.selectHospitalOption')}</option>
@@ -557,7 +613,7 @@ export default function OrgUsersPage() {
                         <option key={h._id} value={h._id}>{h.name}</option>
                       ))}
                     </Select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                    <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   </div>
                 </div>
               )}
@@ -566,7 +622,7 @@ export default function OrgUsersPage() {
             <div className="flex items-center justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                 style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
               >
                 {t('action.cancel')}
@@ -574,7 +630,7 @@ export default function OrgUsersPage() {
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                 style={{ background: brandColor }}
               >
                 {creating ? (
@@ -696,13 +752,13 @@ export default function OrgUsersPage() {
                 value={resetPassword}
                 onChange={e => setResetPassword(e.target.value)}
                 placeholder={t('orgUsers.newPasswordPlaceholder')}
-                className="w-full px-3 py-2 pr-10 rounded-lg text-sm"
+                className="w-full px-3 py-2 pe-10 rounded-lg text-sm"
                 style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
+                className="absolute end-3 top-1/2 -translate-y-1/2"
               >
                 {showPassword ? (
                   <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
@@ -723,7 +779,7 @@ export default function OrgUsersPage() {
               <button
                 onClick={handleResetPassword}
                 disabled={resetting}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
                 style={{ background: 'var(--color-warning)' }}
               >
                 {resetting ? t('orgUsers.resetting') : t('orgUsers.resetPassword')}

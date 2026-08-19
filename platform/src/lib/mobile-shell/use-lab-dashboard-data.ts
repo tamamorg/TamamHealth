@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import type { LabResultDoc } from '@/lib/db-types';
+import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
 
 /** Lab-archetype dashboard (lab_tech): lanes grouped by LabResultDoc.status. */
@@ -14,9 +15,9 @@ export function useLabDashboardData(): MobileDashboardData {
     const inOffice = results.filter((r) => r.status === 'in_progress');
     const finished = results.filter((r) => r.status === 'completed');
     return [
-      { key: 'scheduled', label: `${scheduled.length} Scheduled`, tone: 'info', items: scheduled },
-      { key: 'in_office', label: `${inOffice.length} In Office`, tone: 'warning', items: inOffice },
-      { key: 'finished', label: `${finished.length} Finished`, tone: 'success', items: finished },
+      { key: 'scheduled', label: `${scheduled.length} ${APPOINTMENT_STATUS_GROUP_LABELS.scheduled}`, tone: 'info', items: scheduled },
+      { key: 'in_office', label: `${inOffice.length} ${APPOINTMENT_STATUS_GROUP_LABELS.in_office}`, tone: 'warning', items: inOffice },
+      { key: 'finished', label: `${finished.length} ${APPOINTMENT_STATUS_GROUP_LABELS.finished}`, tone: 'success', items: finished },
     ];
   }, [results]);
 

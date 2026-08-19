@@ -37,6 +37,16 @@ export interface DataScope {
   county?: string;
   state?: string;
   role: UserRole;
+  /**
+   * The viewer's own user `_id`.
+   *
+   * Only consulted to keep an organization administrator's OWN account visible
+   * while their peers are hidden (see the org-admin rule below). Optional
+   * because most scopes are built from tenancy alone; when it is absent the
+   * rule simply hides every peer account, which is the private direction to
+   * fail in.
+   */
+  userId?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,6 +81,24 @@ export function filterByScope<T extends Record<string, any>>(
     // `toHospitalId` — so this grants sight of referrals addressed to that
     // org's facilities, not of the sending org's data in general.
     filtered = filtered.filter(d => d.orgId === scope.orgId || d.toOrgId === scope.orgId);
+  }
+
+  // An organization administrator does not see their peers.
+  //
+  // Org admins are the accounts that can create, disable and reset the
+  // password of everyone else in the tenant. Listing them to each other means
+  // any one of them can lock the others out, and it exposes the full set of
+  // privileged accounts to anyone who reaches a single org-admin session. The
+  // platform super_admin — who returns above and sees everything — remains the
+  // only role that can see the whole set and arbitrate between them.
+  //
+  // Their own account stays visible: hiding it would leave an admin unable to
+  // find themselves in a roster they are looking at. `_id` is compared rather
+  // than username so a rename cannot resurrect the peer listing.
+  if (scope.role === 'org_admin') {
+    filtered = filtered.filter(d => (
+      !(d.type === 'user' && d.role === 'org_admin') || d._id === scope.userId
+    ));
   }
 
   // Non-admin roles that have a hospitalId are further scoped
@@ -136,6 +164,8 @@ export function buildScopeFromAuth(auth: {
   payam?: string;
   county?: string;
   state?: string;
+  /** JWT subject — the viewer's user `_id`. */
+  sub?: string;
 }): DataScope {
   return {
     role: auth.role as UserRole,
@@ -144,5 +174,8 @@ export function buildScopeFromAuth(auth: {
     payam: auth.payam,
     county: auth.county,
     state: auth.state,
+    // Carried so an org admin still sees their own account among the peers
+    // the filter hides from them.
+    userId: auth.sub,
   };
 }

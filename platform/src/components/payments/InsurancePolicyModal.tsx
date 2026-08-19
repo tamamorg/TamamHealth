@@ -136,7 +136,7 @@ export default function InsurancePolicyModal({
           </button>
         </div>
 
-        <div className="space-y-3" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+        <div className="space-y-3" style={{ maxHeight: '60vh', overflowY: 'auto', paddingInlineEnd: 4 }}>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
               {t('billing.payerType') || 'Payer type'}

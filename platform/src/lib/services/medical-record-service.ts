@@ -184,20 +184,53 @@ async function raiseNotifiableDiseaseAlerts(record: MedicalRecordDoc): Promise<v
     const diagnoses = (record.diagnoses ?? []) as DiagnosisLike[];
     if (diagnoses.length === 0) return;
 
-    const { notifiableCodes } = validateDiagnosisCodes(diagnoses);
-    if (notifiableCodes.length === 0) return;
+    // Coded notifiable diagnoses, plus uncoded free-text ones that name a
+    // notifiable disease — a free-text "measles" must reach surveillance too.
+    const { notifiableCodes, freeTextNotifiableMatches } = validateDiagnosisCodes(diagnoses);
+    const codes = [...new Set([...notifiableCodes, ...freeTextNotifiableMatches.map(m => m.code)])];
+    if (codes.length === 0) return;
 
-    const { createAlert } = await import('./surveillance-service');
+    const { createAlert, getAlertsBySourceRecord } = await import('./surveillance-service');
 
-    for (const code of [...new Set(notifiableCodes)]) {
+    // One case per (record, code) — ever. This function also runs on record
+    // updates, so a re-saved or amended consultation must not double-count.
+    const alreadyRaised = new Set(
+      (await getAlertsBySourceRecord(record._id)).map(a => a.icd11Code || '')
+    );
+
+    // Geography for the state-keyed surveillance views (epidemic curves,
+    // syndromic thresholds, the choropleth). The record itself carries no
+    // state/county, so resolve them from the patient's registration data,
+    // falling back to the reporting facility's own address.
+    let state = '';
+    let county = '';
+    if (record.patientId) {
+      try {
+        const { getPatientById } = await import('./patient-service');
+        const patient = await getPatientById(record.patientId);
+        state = patient?.state || '';
+        county = patient?.county || '';
+      } catch { /* best-effort — try the facility next */ }
+    }
+    if (!state && record.hospitalId) {
+      try {
+        const { getHospitalById } = await import('./hospital-service');
+        const hospital = await getHospitalById(record.hospitalId);
+        state = hospital?.state || '';
+        county = county || hospital?.county || '';
+      } catch { /* best-effort — an alert without geography still counts nationally */ }
+    }
+
+    for (const code of codes) {
+      if (alreadyRaised.has(code)) continue;
       const entry = lookupIcd11(code);
       if (!entry) continue;
       // One case per record. Aggregation into outbreak counts is the
       // surveillance layer's job — this only guarantees the case is visible.
       await createAlert({
         disease: entry.title,
-        state: (record as { state?: string }).state || '',
-        county: (record as { county?: string }).county || '',
+        state,
+        county,
         cases: 1,
         deaths: 0,
         // A single case is a signal to watch, not an outbreak declaration.
@@ -210,7 +243,8 @@ async function raiseNotifiableDiseaseAlerts(record: MedicalRecordDoc): Promise<v
         patientId: record.patientId,
         icd11Code: entry.code,
         sourceRecordId: record._id,
-      } as unknown as Parameters<typeof createAlert>[0]);
+      });
+      alreadyRaised.add(code);
     }
   } catch (err) {
     console.warn('[medical-record] notifiable disease alert failed (record was saved):', err);
@@ -251,6 +285,10 @@ export async function updateMedicalRecord(id: string, data: Partial<MedicalRecor
       orgId: plaintextUpdated.orgId,
       hospitalId: plaintextUpdated.hospitalId,
     });
+    // A diagnosis added after the initial save must still reach surveillance.
+    // (createMedicalRecord covers the first save; the (record, code) dedupe
+    // inside makes this safe to run on every update.)
+    await raiseNotifiableDiseaseAlerts(plaintextUpdated);
     return plaintextUpdated;
   } catch {
     return null;

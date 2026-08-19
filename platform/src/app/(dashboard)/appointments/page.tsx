@@ -9,10 +9,12 @@ import BookAppointmentModal from '@/components/appointments/BookAppointmentModal
 import {
   APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS, APPOINTMENT_STATUS_I18N_KEYS,
   APPOINTMENT_CLOSED_STATUSES, APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_FLOW,
-  APPOINTMENT_STATUS_EXITS, canonicalAppointmentStatus,
+  APPOINTMENT_STATUS_EXITS, canonicalAppointmentStatus, appointmentMatchesStatusFilter, appointmentStatusFilterKey,
 } from '@/lib/appointment-status';
 import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { getDefaultDashboard } from '@/lib/role-routes';
 import AvailabilityModal from '@/components/AvailabilityModal';
 import {
   Calendar, Plus, CheckCircle2, User,
@@ -186,6 +188,7 @@ export default function AppointmentsPage() {
   // calendar's dialog, where there is no row to unfold beneath.
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
+  const router = useRouter();
   const [showWalkIn, setShowWalkIn] = useState(false);
   const [showAvailability, setShowAvailability] = useState(false);
   const [showDayPopup, setShowDayPopup] = useState(false);
@@ -316,6 +319,13 @@ export default function AppointmentsPage() {
   // Lives here rather than beside the other deep links because it writes the
   // walk-in form state declared just above. Waits for `patients` to load.
   const walkInParamRef = useRef(false);
+  /**
+   * True while the open walk-in dialog is the tail of "Register & check in".
+   * That journey ends when the patient is checked in, not on the booking grid,
+   * so it returns to the dashboard — whereas a clerk who opened the same dialog
+   * from this page is working through a list and stays where they are.
+   */
+  const walkInFromRegistrationRef = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined' || walkInParamRef.current) return;
     const params = new URLSearchParams(window.location.search);
@@ -326,6 +336,7 @@ export default function AppointmentsPage() {
     if (canBookAppointments) {
       setWiPatient(walkInId);
       setShowWalkIn(true);
+      walkInFromRegistrationRef.current = true;
     }
     params.delete('walkIn');
     const qs = params.toString();
@@ -362,7 +373,7 @@ export default function AppointmentsPage() {
     if (filterStatus === 'pending_approval') {
       list = list.filter(a => a.status === 'scheduled' && a.appointmentDate >= today);
     } else if (listStatus !== 'all') {
-      list = list.filter(a => canonicalAppointmentStatus(a.status) === listStatus);
+      list = list.filter(a => appointmentMatchesStatusFilter(a.status, listStatus));
     }
     const q = `${listSearch} ${globalSearch}`.toLowerCase().trim();
     if (q) list = list.filter(a =>
@@ -401,10 +412,12 @@ export default function AppointmentsPage() {
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: statusBaseList.length };
-    // Counted on the merged rung, so the tab strip shows one "Scheduled" chip
-    // covering scheduled + reminder_sent + confirmed, not three lookalikes.
+    // Counted into the same bucket the filter selects, so a chip's count is
+    // exactly the number of rows picking it returns: one "Scheduled" chip
+    // covering scheduled + reminder_sent + confirmed, and `arrived` counted
+    // under its own chip rather than swelling "Checked In".
     for (const a of statusBaseList) {
-      const k = canonicalAppointmentStatus(a.status);
+      const k = appointmentStatusFilterKey(a.status);
       counts[k] = (counts[k] || 0) + 1;
     }
     return counts;
@@ -467,6 +480,16 @@ export default function AppointmentsPage() {
     });
   };
 
+  /**
+   * Dismissing the dialog also drops the "came from registration" hand-off:
+   * the clerk chose not to check this patient in, so the next walk-in they
+   * open from this page must not inherit a redirect they never triggered.
+   */
+  const closeWalkIn = () => {
+    walkInFromRegistrationRef.current = false;
+    setShowWalkIn(false);
+  };
+
   const handleWalkIn = async () => {
     if (!wiPatient || !wiReason) { showToast(t('appointments.toastFillRequiredShort'), 'error'); return; }
     const patient = patients.find(p => p._id === wiPatient);
@@ -518,6 +541,14 @@ export default function AppointmentsPage() {
       }
       showToast(t('appointments.toastWalkInRegistered'), 'success'); setShowWalkIn(false);
       setWiPatient(''); setWiReason(''); setWiNotes(''); setWiDepartment('Outpatient'); setWiPriority('routine');
+      // Registration handed off here to finish the check-in; with the patient
+      // now in the queue that errand is done, so hand the user back to their
+      // own dashboard rather than leaving them on the booking grid they never
+      // asked for. Per-role, because /dashboard is not everyone's home.
+      if (walkInFromRegistrationRef.current) {
+        walkInFromRegistrationRef.current = false;
+        router.push(getDefaultDashboard(currentUser?.role || ''));
+      }
     } catch (err) { showToast(err instanceof Error ? err.message : t('appointments.toastFailed'), 'error'); }
     finally { setSubmitting(false); }
   };
@@ -638,7 +669,7 @@ export default function AppointmentsPage() {
       // Canonical match: filtering by "Scheduled" also catches reminder_sent
       // and confirmed rows, "Checked In" catches arrived, "In Progress"
       // catches triaged — the merged vocabulary users actually see.
-      .filter(a => listStatus === 'all' || canonicalAppointmentStatus(a.status) === listStatus)
+      .filter(a => appointmentMatchesStatusFilter(a.status, listStatus))
       .filter(a => {
         if (!q) return true;
         const identifier = patientById.get(a.patientId)?.hospitalNumber || '';
@@ -768,7 +799,7 @@ export default function AppointmentsPage() {
                         <option value="all">All statuses</option>
                         {/* The merged vocabulary only — one "Scheduled", not
                             three; matching above is canonical to compensate. */}
-                        {(['requested', ...APPOINTMENT_STATUS_FLOW, ...APPOINTMENT_STATUS_EXITS] as AppointmentStatus[]).map(k => (
+                        {(['requested', 'scheduled', 'arrived', 'checked_in', 'in_progress', 'completed', ...APPOINTMENT_STATUS_EXITS] as AppointmentStatus[]).map(k => (
                           <option key={k} value={k}>{t(statusLabelKey[k])}</option>
                         ))}
                       </Select>
@@ -989,7 +1020,7 @@ export default function AppointmentsPage() {
 
         {/* Walk-In */}
         {showWalkIn && canBookAppointments && (
-          <Modal onClose={() => setShowWalkIn(false)} title={t('appointments.registerWalkIn')} icon={<UserPlus size={34} style={{ color: 'var(--accent-primary)' }} />}>
+          <Modal onClose={closeWalkIn} title={t('appointments.registerWalkIn')} icon={<UserPlus size={34} style={{ color: 'var(--accent-primary)' }} />}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               {t('appointments.walkInIntro')}
             </p>
@@ -1007,7 +1038,7 @@ export default function AppointmentsPage() {
               </div>
               <div><label>{t('appointments.labelReasonForVisit')}</label><textarea value={wiReason} onChange={e => setWiReason(e.target.value)} rows={2} placeholder={t('appointments.reasonForVisitPlaceholder')} /></div>
               <div><label>{t('appointments.labelNotes')}</label><textarea value={wiNotes} onChange={e => setWiNotes(e.target.value)} rows={2} placeholder={t('appointments.walkInNotesPlaceholder')} /></div>
-              <ModalActions onCancel={() => setShowWalkIn(false)} onConfirm={handleWalkIn} confirmLabel={submitting ? t('appointments.registering') : t('appointments.registerWalkIn')} cancelLabel={t('action.cancel')} confirmColor="var(--accent-primary)" disabled={submitting} />
+              <ModalActions onCancel={closeWalkIn} onConfirm={handleWalkIn} confirmLabel={submitting ? t('appointments.registering') : t('appointments.registerWalkIn')} cancelLabel={t('action.cancel')} confirmColor="var(--accent-primary)" disabled={submitting} />
             </div>
           </Modal>
         )}
@@ -1031,7 +1062,7 @@ export default function AppointmentsPage() {
               size="md"
               nav={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginRight: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginInlineEnd: 4 }}>
                     {idx + 1} / {sorted.length}
                   </span>
                   <button
@@ -1149,11 +1180,11 @@ export default function AppointmentsPage() {
                                 className="hover:underline"
                                 title={t('appointments.viewPatientRecord')}
                               >
-                                <PatientName name={apt.patientName} nameClassName="text-[13px] font-normal" />
+                                <PatientName name={apt.patientName} nameClassName="text-[13px]" />
                                 <ExternalLink size={10} style={{ opacity: 0.55 }} />
                               </Link>
                             ) : (
-                              <PatientName name={apt.patientName} nameClassName="text-[13px] font-normal" />
+                              <PatientName name={apt.patientName} nameClassName="text-[13px]" />
                             )}
                             {isWI && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: 'rgba(124,58,237,0.08)', color: 'var(--accent-primary)' }}>{t('appointments.walkInBadge')}</span>}
                           </div>

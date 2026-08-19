@@ -5,7 +5,7 @@ import {
 import { Icon } from '@/components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../lib/auth';
-import { colors, spacing, fontSize, radius } from '../lib/theme';
+import { colors, radius } from '../lib/theme';
 
 type Props = {
   visible: boolean;

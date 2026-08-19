@@ -95,7 +95,7 @@ export default function OrgAdminAnalyticsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4" data-tour="org-analytics-stats">
         {[
           { label: t('analytics.dau'), value: usage?.dau, icon: Users, color: 'var(--accent-primary)' },
           { label: t('analytics.wau'), value: usage?.wau, icon: Activity, color: 'var(--accent-primary)' },
@@ -194,7 +194,7 @@ export default function OrgAdminAnalyticsPage() {
               <thead>
                 <tr>
                   {[t('orgAnalytics.colDate'), t('analytics.colUsers'), t('analytics.colAction'), t('analytics.colPath')].map(h => (
-                    <th key={h} className="text-left px-3 py-2 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{h}</th>
+                    <th key={h} className="text-start px-3 py-2 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>

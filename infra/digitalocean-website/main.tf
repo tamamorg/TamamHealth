@@ -52,7 +52,6 @@ resource "digitalocean_droplet" "website" {
   user_data = templatefile("${path.module}/cloud-init.tftpl", {
     domain        = var.domain
     website_image = var.website_image
-    do_token      = var.do_token
   })
 }
 

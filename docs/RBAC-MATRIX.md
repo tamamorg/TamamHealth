@@ -1,6 +1,6 @@
 # TamamHealth — Role-Based Access Control (RBAC) Matrix
 
-_Last updated: June 2026. Source of truth: `platform/src/lib/role-routes.ts` (route gating),
+_Last updated: August 2026. Source of truth: `platform/src/lib/role-routes.ts` (route gating),
 `platform/src/lib/permissions.ts` (navigation), `platform/src/lib/hooks/usePermissions.ts`
 (capabilities). This document is a human-readable summary — code wins if they ever disagree._
 
@@ -12,7 +12,8 @@ than individual patient records.
 ## Roles at a glance (25 total)
 
 Every role below exists in the `UserRole` union in `platform/src/lib/db-types.ts`.
-Verified against code 2026-07-27 (KAN-120, KAN-121).
+Capability cells verified against code 2026-07-27 (KAN-120, KAN-121); the 25-role roster
+re-checked against `UserRole` and `ROLE_PERMISSIONS` on 2026-08-18 and still matches.
 
 **Clinical:** doctor, clinical_officer, clinician, nurse, midwife, medical_superintendent,
 nutritionist, radiologist

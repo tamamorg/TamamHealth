@@ -26,6 +26,13 @@ export interface ReviewSource {
   additionalNok: { name: string; relationship: string; phone: string; address: string }[];
   fingerprintCount: number;
   geocodeId?: string;
+  /**
+   * Facility the patient is being registered at, by name — present only when
+   * the registering user had to choose one (they carry no posting of their
+   * own). Omitted otherwise, so a clerk's read-back does not grow a row
+   * restating the hospital they are standing in.
+   */
+  registrationFacilityName?: string;
 }
 
 export function buildReviewGroups(
@@ -33,12 +40,15 @@ export function buildReviewGroups(
   source: ReviewSource,
   t: (key: string, vars?: Record<string, string | number>) => string,
 ): ReviewGroup[] {
-  const { form, additionalNok, fingerprintCount, geocodeId } = source;
+  const { form, additionalNok, fingerprintCount, geocodeId, registrationFacilityName } = source;
   return [
     {
       section: 0,
       title: steps[0],
       rows: [
+        ...(registrationFacilityName !== undefined
+          ? ([[t('patientNew.registrationFacility'), registrationFacilityName]] as [string, string][])
+          : []),
         [t('patientNew.firstName'), form.firstName],
         [t('patientNew.middleName'), form.middleName],
         [t('patientNew.surname'), form.surname],

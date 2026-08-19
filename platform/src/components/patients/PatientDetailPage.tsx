@@ -36,7 +36,7 @@ import PatientTimeline from '@/components/PatientTimeline';
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
-import { states as SOUTH_SUDAN_STATES, statesAndCounties } from '@/data/mock';
+import { states as SOUTH_SUDAN_STATES, statesAndCounties } from '@/lib/data/south-sudan-reference';
 import { formatDateTime, formatDate, formatClockTime, formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { isScreeningOverdue } from '@/lib/services/screening-service';
 import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
@@ -82,7 +82,7 @@ import ChartVitalsBand from '@/components/ehr/chart/ChartVitalsBand';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import AllergiesSection from '@/components/ehr/chart/sections/AllergiesSection';
 import ConditionsSection from '@/components/ehr/chart/sections/ConditionsSection';
-import MedicationsSection from '@/components/ehr/chart/sections/MedicationsSection';
+import PharmacyWorkspace from '@/components/pharmacy/workflow/PharmacyWorkspace';
 import OrdersSection from '@/components/ehr/chart/sections/OrdersSection';
 import ProceduresSection from '@/components/ehr/chart/sections/ProceduresSection';
 import ProgramsSection from '@/components/ehr/chart/sections/ProgramsSection';
@@ -91,6 +91,7 @@ import DirectivesSection from '@/components/ehr/chart/sections/DirectivesSection
 import AssignDoctorModal, { type AssignDoctorTarget } from '@/components/AssignDoctorModal';
 import NurseVitalsModal from '@/components/nurse/NurseVitalsModal';
 import Select from '@/components/Select';
+import { safeReturnTo } from '@/lib/navigation/return-to';
 
 // Administrative tabs are the only ones a non-clinical role (e.g. Medical
 // Receptionist) may see — the "minimum necessary" rule: contact details,
@@ -373,7 +374,19 @@ export default function PatientDetailPage() {
   // registered at another facility in the same organisation (referred in, an
   // appointment booked here, a shared record) isn't in it — the chart would
   // wrongly show "Patient not found". Fetch such a patient directly by id, but
-  // gate on the org boundary so tenant isolation still holds (no cross-org PHI).
+  // gate it through the canonical `getPatientById(id, scope)` so tenant
+  // isolation still holds (no cross-org PHI) using the SAME `filterByScope`
+  // every other read path uses, rather than a bespoke check.
+  //
+  // The scope passed here is deliberately org + role only, with `hospitalId`
+  // dropped — this is what preserves the "referred-in / cross-facility"
+  // lookup this fallback exists for. `filterByScope` only engages its
+  // facility narrowing when `scope.hospitalId` is set, so omitting it here
+  // limits enforcement to the org boundary, exactly like before, while now
+  // also correctly rejecting a doc with no `orgId` at all (the old check
+  // treated a missing `orgId` as an automatic pass for every viewer) and
+  // routing super_admin/government through `filterByScope`'s own bypass
+  // instead of a second, separately-maintained "isNational" check.
   const [fallbackPatient, setFallbackPatient] = useState<PatientDoc | null>(null);
   const [fallbackChecked, setFallbackChecked] = useState(false);
   useEffect(() => {
@@ -381,13 +394,14 @@ export default function PatientDetailPage() {
     setFallbackPatient(null);
     setFallbackChecked(false);
     if (!id || loading || scopedPatient) { setFallbackChecked(true); return; }
+    const role = currentUser?.role;
+    if (!role) { setFallbackChecked(true); return; }
+    const orgId = currentUser?.orgId;
     (async () => {
       const { getPatientById } = await import('@/lib/services/patient-service');
-      const doc = await getPatientById(id);
+      const doc = await getPatientById(id, { orgId, role });
       if (cancelled) return;
-      const sameOrg = !doc?.orgId || !currentUser?.orgId || doc.orgId === currentUser.orgId;
-      const isNational = currentUser?.role === 'super_admin' || currentUser?.role === 'government';
-      setFallbackPatient(doc && (sameOrg || isNational) ? doc : null);
+      setFallbackPatient(doc);
       setFallbackChecked(true);
     })();
     return () => { cancelled = true; };
@@ -1241,11 +1255,11 @@ export default function PatientDetailPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
                           <thead>
                             <tr style={{ background: '#f0f6fb' }}>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Test</th>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Result</th>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Unit</th>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Reference</th>
-                              <th style={{ textAlign: 'left', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Date</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Test</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Result</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Unit</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Reference</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Date</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1371,7 +1385,7 @@ export default function PatientDetailPage() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Clinician name &amp; title</label>
+                  <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Clinician name &amp; title</label>
                   <input
                     autoFocus
                     value={printSignature}
@@ -1404,7 +1418,11 @@ export default function PatientDetailPage() {
             </Modal>
           )}
 
-          <button onClick={() => router.push('/patients')} className="ehr-chart-back flex items-center gap-1.5 text-sm mb-4 no-print" style={{ color: 'var(--tamamhealth-blue)' }}>
+          <button
+            onClick={() => router.push(safeReturnTo(searchParams.get('returnTo'), '/patients'))}
+            className="ehr-chart-back flex items-center gap-1.5 text-sm mb-4 no-print"
+            style={{ color: 'var(--tamamhealth-blue)' }}
+          >
             <ArrowLeft className="w-4 h-4" /> {t('action.back')}
           </button>
 
@@ -1754,10 +1772,13 @@ export default function PatientDetailPage() {
                   </div>
                 </div>
               )}
-              <MedicationsSection
+              {/* Medication list, and the counter workflow for one script —
+                  the same shape the Labs tab gives the bench. */}
+              <PharmacyWorkspace
                 patientId={patient._id}
                 patientName={patientFullName(patient)}
                 canPrescribe={canPrescribe}
+                canWork={canDispense}
                 onAdd={() => setShowPrescribeModal(true)}
                 noKnownMedications={patient.noKnownMedications}
                 reconciliation={patient.medReconciliation}
@@ -1802,7 +1823,7 @@ export default function PatientDetailPage() {
                   <VitalsTrends records={recordsWithTriageVitals} />
                 </div>
               ) : (
-                <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+                <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto', paddingInlineEnd: 4 }}>
                 <table className="omrs-table" style={{ minWidth: 1140 }}>
                   <thead>
                     <tr>
@@ -1884,7 +1905,7 @@ export default function PatientDetailPage() {
                   </div>
                   <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Referrals</span>
                 </div>
-                <button onClick={() => router.push(`/referrals?patient=${encodeURIComponent(patient._id)}`)} className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--tamamhealth-blue)' }}>
+                <button onClick={() => router.push(`/referrals?patient=${encodeURIComponent(patient._id)}`)} className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--tamamhealth-blue)' }}>
                   All referrals <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1894,7 +1915,7 @@ export default function PatientDetailPage() {
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('referral.none')}</p>
                 </div>
               ) : (
-                <div className="space-y-3" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+                <div className="space-y-3" style={{ maxHeight: '60vh', overflowY: 'auto', paddingInlineEnd: 4 }}>
                 {patientReferrals.map(ref => {
                   const tp = ref.transferPackage as { medicalRecords?: unknown[]; labResults?: unknown[]; attachments?: unknown[]; packageSizeBytes?: number } | undefined;
                   const refAtts = ref.referralAttachments as unknown[] | undefined;
@@ -1910,7 +1931,7 @@ export default function PatientDetailPage() {
                             {ref.status === 'sent' ? 'Sent' : ref.status === 'received' ? 'Received' : ref.status === 'seen' ? 'Being Seen' : ref.status === 'completed' ? 'Completed' : 'Cancelled'}
                           </span>
                           {tp && (
-                            <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
+                            <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
                               <Package className="w-3 h-3" /> Data Package
                             </span>
                           )}
@@ -1922,12 +1943,12 @@ export default function PatientDetailPage() {
                       <div className="flex items-center gap-2 text-sm mb-2">
                         <span style={{ color: 'var(--text-secondary)' }}>{ref.fromHospital}</span>
                         <span style={{ color: 'var(--text-muted)' }}>→</span>
-                        <span className="font-medium">{ref.toHospital}</span>
+                        <span className="font-semibold">{ref.toHospital}</span>
                         <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-subtle)' }}>{ref.department}</span>
                       </div>
                       {canViewClinical ? (
                         <>
-                          <p className="text-sm mb-1"><span className="font-medium">Reason:</span> {ref.reason}</p>
+                          <p className="text-sm mb-1"><span className="font-semibold">Reason:</span> {ref.reason}</p>
                           {ref.notes && (
                             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Notes: {ref.notes}</p>
                           )}
@@ -2622,7 +2643,6 @@ function PatientDemographicsView({
         <section className="tebra-demo-panel">
           <div className="tebra-demo-columns">
             <DemoField label="Portal Status" value="Not invited" />
-            <DemoField label="Patient Intake" value="Not sent" />
             <DemoField label="Reminder Channel" value={patient.whatsapp ? 'SMS / WhatsApp' : 'SMS'} />
           </div>
         </section>

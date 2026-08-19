@@ -49,12 +49,24 @@ git clone <YOUR-REPO-URL> /opt/tamamhealth && cd /opt/tamamhealth
 # 2. Generate all secrets automatically
 ./scripts/gen-secrets.sh
 
+# 2b. website/.env.production has no .example template, so gen-secrets.sh
+# silently skips it — deploy.sh still requires the file to exist. The
+# website container reads no secrets from it today, so an empty file works:
+touch website/.env.production
+
 # 3. Set the demo's non-secret values (domain + demo mode)
 sed -i 's/REPLACE-DOMAIN/tamamhealth.org/g' platform/.env.production website/.env.production
 sed -i 's#^NEXT_PUBLIC_COUCHDB_URL=.*#NEXT_PUBLIC_COUCHDB_URL=https://couch.tamamhealth.org#' platform/.env.production
 sed -i 's#^NEXT_PUBLIC_DEMO_MODE=.*#NEXT_PUBLIC_DEMO_MODE=true#'  platform/.env.production
 grep -q '^NEXT_PUBLIC_APP_URL=' platform/.env.production \
   || echo 'NEXT_PUBLIC_APP_URL=https://app.tamamhealth.org' >> platform/.env.production
+
+# 3b. Bootstrap login credential for the seeded `superadmin` account. Not in
+# the .example template, and the platform refuses to boot (even in demo mode)
+# once NEXT_PUBLIC_SYNC_ENABLED=true — the production default this template
+# ships with — without a real value here:
+grep -q '^SUPERADMIN_INITIAL_PASSWORD=' platform/.env.production \
+  || echo "SUPERADMIN_INITIAL_PASSWORD=$(openssl rand -base64 24 | tr -d '\n/+=')" >> platform/.env.production
 
 # 4. Sanity check, then one-shot deploy (installs Docker + Caddy + TLS, builds, starts)
 ./scripts/preflight.sh

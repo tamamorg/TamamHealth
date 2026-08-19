@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { returnToFromSearch } from '@/lib/navigation/return-to';
 import { useApp } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -27,6 +28,7 @@ import type { BillingDoc, BillLineItem, ChargeCategory, PaymentMethod, FeeSchedu
 import type { PatientDoc } from '@/lib/db-types';
 import '@/components/billing/billing.css';
 import Select from '@/components/Select';
+import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 
 /** dd-MMM-yyyy — the OpenMRS DOB convention (matches ChartHeader). */
 function formatDobOmrs(iso?: string | null): string {
@@ -90,21 +92,21 @@ export default function BillDetailPage() {
   ), [currentUser]);
 
   const loadBill = useCallback(async () => {
-    if (!billId) return;
+    if (!billId || !scope) return;
     try {
       const { getBillById } = await import('@/lib/services/billing-service');
-      const doc = await getBillById(billId);
+      const doc = await getBillById(billId, scope);
       if (!doc) { setNotFound(true); return; }
       setBill(doc);
       const { getPatientById } = await import('@/lib/services/patient-service');
-      setPatient(await getPatientById(doc.patientId));
+      setPatient(await getPatientById(doc.patientId, scope));
     } catch (err) {
       console.error('Error loading bill:', err);
       setNotFound(true);
     } finally {
       setLoading(false);
     }
-  }, [billId]);
+  }, [billId, scope]);
 
   useEffect(() => { loadBill(); }, [loadBill]);
 
@@ -305,20 +307,18 @@ export default function BillDetailPage() {
 
   const handlePrint = () => {
     if (!bill) return;
-    const win = window.open('', '_blank', 'width=800,height=900');
-    if (!win) { showToast('Allow pop-ups to print the bill', 'error'); return; }
     const rows = bill.items.map((i, n) => `
       <tr>
-        <td>${n + 1}</td><td>${i.description}</td><td>${CATEGORY_LABELS[i.category] || i.category}</td>
-        <td class="r">${i.quantity}</td><td class="r">${money(i.unitPrice)}</td><td class="r">${money(i.totalPrice)}</td>
+        <td>${n + 1}</td><td>${escapeHtml(i.description)}</td><td>${escapeHtml(CATEGORY_LABELS[i.category] || i.category)}</td>
+        <td class="r">${escapeHtml(i.quantity)}</td><td class="r">${escapeHtml(money(i.unitPrice))}</td><td class="r">${escapeHtml(money(i.totalPrice))}</td>
       </tr>`).join('');
     const payRows = bill.payments.map(p => `
-      <tr><td>${new Date(p.receivedAt).toLocaleString()}</td><td>${PAYMENT_METHOD_LABELS[p.method] || p.method}</td>
-      <td>${p.reference || '—'}</td><td>${p.receivedByName}</td><td class="r">${money(p.amount)}</td></tr>`).join('');
-    win.document.write(`<!doctype html><html><head><title>${bill.invoiceNumber}</title><style>
+      <tr><td>${escapeHtml(new Date(p.receivedAt).toLocaleString())}</td><td>${escapeHtml(PAYMENT_METHOD_LABELS[p.method] || p.method)}</td>
+      <td>${escapeHtml(p.reference || '—')}</td><td>${escapeHtml(p.receivedByName)}</td><td class="r">${escapeHtml(money(p.amount))}</td></tr>`).join('');
+    const html = `<!doctype html><html><head><title>${escapeHtml(bill.invoiceNumber)}</title><style>
       body { font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #102634; margin: 32px; font-size: 13px; }
       h1 { font-size: 18px; margin: 0; } h2 { font-size: 13px; margin: 24px 0 8px; }
-      .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #007d79; padding-bottom: 12px; }
+      .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--chart-4); padding-bottom: 12px; }
       .muted { color: #667; } table { width: 100%; border-collapse: collapse; margin-top: 6px; }
       th { text-align: left; background: #eef2f5; padding: 6px 8px; font-size: 11px; text-transform: uppercase; }
       td { padding: 6px 8px; border-bottom: 1px solid #e5ebf0; } .r { text-align: right; }
@@ -327,23 +327,22 @@ export default function BillDetailPage() {
       .totals .due { font-weight: 700; border-top: 1px solid #102634; margin-top: 4px; padding-top: 6px; }
     </style></head><body>
       <div class="head">
-        <div><h1>${bill.facilityName}</h1><div class="muted">Invoice ${bill.invoiceNumber} · ${formatBillDate(bill.createdAt)}</div></div>
-        <div style="text-align:right"><strong>${bill.patientName}</strong><div class="muted">ID: ${bill.hospitalNumber || bill.patientId}</div></div>
+        <div><h1>${escapeHtml(bill.facilityName)}</h1><div class="muted">Invoice ${escapeHtml(bill.invoiceNumber)} · ${escapeHtml(formatBillDate(bill.createdAt))}</div></div>
+        <div style="text-align:right"><strong>${escapeHtml(bill.patientName)}</strong><div class="muted">ID: ${escapeHtml(bill.hospitalNumber || bill.patientId)}</div></div>
       </div>
       <h2>Line items</h2>
       <table><thead><tr><th>#</th><th>Item</th><th>Category</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th></tr></thead><tbody>${rows}</tbody></table>
       ${bill.payments.length ? `<h2>Payments</h2><table><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th class="r">Amount</th></tr></thead><tbody>${payRows}</tbody></table>` : ''}
       <div class="totals">
-        <div><span>Subtotal</span><span>${money(bill.subtotal)}</span></div>
-        <div><span>Discount</span><span>- ${money(bill.discount)}</span></div>
-        ${bill.taxAmount ? `<div><span>Tax (${bill.taxRate}%)</span><span>${money(bill.taxAmount)}</span></div>` : ''}
-        <div><span>Total</span><span>${money(bill.totalAmount)}</span></div>
-        <div><span>Paid</span><span>- ${money(bill.amountPaid)}</span></div>
-        <div class="due"><span>Amount due</span><span>${money(bill.balanceDue)}</span></div>
+        <div><span>Subtotal</span><span>${escapeHtml(money(bill.subtotal))}</span></div>
+        <div><span>Discount</span><span>- ${escapeHtml(money(bill.discount))}</span></div>
+        ${bill.taxAmount ? `<div><span>Tax (${escapeHtml(bill.taxRate)}%)</span><span>${escapeHtml(money(bill.taxAmount))}</span></div>` : ''}
+        <div><span>Total</span><span>${escapeHtml(money(bill.totalAmount))}</span></div>
+        <div><span>Paid</span><span>- ${escapeHtml(money(bill.amountPaid))}</span></div>
+        <div class="due"><span>Amount due</span><span>${escapeHtml(money(bill.balanceDue))}</span></div>
       </div>
-      <script>window.onload = () => window.print();</script>
-    </body></html>`);
-    win.document.close();
+    </body></html>`;
+    openIsolatedHtmlWindow(html, 'width=800,height=900', true);
   };
 
   // ── Render ─────────────────────────────────────────────────────────
@@ -412,15 +411,15 @@ export default function BillDetailPage() {
             </div>
           </div>
           <div className="bl-banner-actions no-print">
-            <button type="button" className="bl-btn bl-btn--link" onClick={() => router.push('/billing')}>
-              <ChevronLeft size={15} /> Bill list
+            <button type="button" className="bl-btn bl-btn--link" onClick={() => router.push(returnToFromSearch(window.location.search, '/billing'))}>
+              <ChevronLeft size={15} /> Back
             </button>
           </div>
         </div>
 
         {/* ── Bill actions ── */}
         {canCollectPayments && (
-          <div className="bl-actions-row no-print">
+          <div className="bl-actions-row no-print" data-tour="bill-actions">
             {(bill.status === 'pending' || bill.status === 'partial') && (
               <button type="button" className="bl-btn bl-btn--outline" onClick={() => setDiscountOpen(true)} disabled={busy}>
                 Request discount

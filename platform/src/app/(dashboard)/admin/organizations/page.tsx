@@ -1,18 +1,43 @@
 'use client';
 
+/**
+ * Super-admin → Organizations (tenant registry), restyled to the sadb-*
+ * design language (docs/SUPER-ADMIN-DESIGN-PLAN.md § /admin/organizations).
+ * The list now mirrors the dashboard's tenant health matrix anatomy
+ * (SadbGridList: name+sub, plan, facilities, users, status chip) so the two
+ * screens finally rhyme; the bespoke full-screen create/edit form moved into
+ * the shared Modal with sadb-modal chrome, feature flags are SadbToggle
+ * rows, and every write (create/update/deactivate) now gets toast feedback
+ * instead of console.error-only. window.confirm() on deactivate is gone in
+ * favor of SadbConfirmModal.
+ */
+
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
+import { useToast } from '@/components/Toast';
 import type { OrganizationDoc } from '@/lib/db-types';
-import {
-  Plus, X, Edit3, Ban,
-  ToggleLeft, ToggleRight
-} from '@/components/icons/lucide';
+import { Plus, X, Edit3, Ban, RefreshCw, Eye, EyeOff, ShieldCheck } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
+import Modal from '@/components/Modal';
 import Select from '@/components/Select';
+import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
+import {
+  SadbPage, SadbCard, SadbChip, SadbSearch, SadbGridList, SadbGridRow,
+  SadbSettingRow, SadbToggle, SadbConfirmModal, statusChip,
+} from '@/components/admin/sadb-ui';
+import { generateTempPassword } from '@/lib/temp-password';
+import {
+  emptyOrgAdminForm, validateOrgAdminForm, buildOrgAdminUserPayload,
+  ORG_ADMIN_MIN_PASSWORD_LENGTH, type OrgAdminFormData,
+} from '@/lib/org-admin-provisioning';
+import { BRAND_PRIMARY, BRAND_SECONDARY, WARNING } from '@/lib/theme-colors';
+
+type FeatureFlagKey =
+  | 'epidemicIntelligence' | 'mchAnalytics' | 'dhis2Export'
+  | 'aiClinicalSupport' | 'communityHealth' | 'facilityAssessments';
 
 type OrgFormData = {
   name: string;
@@ -27,78 +52,196 @@ type OrgFormData = {
   subscriptionStatus: 'trial' | 'active' | 'suspended' | 'cancelled';
   maxUsers: number;
   maxHospitals: number;
-  epidemicIntelligence: boolean;
-  mchAnalytics: boolean;
-  dhis2Export: boolean;
-  aiClinicalSupport: boolean;
-  communityHealth: boolean;
-  facilityAssessments: boolean;
-};
+} & Record<FeatureFlagKey, boolean>;
 
+// primaryColor/secondaryColor/accentColor below used to default to
+// 'var(--accent-primary)' etc., which <input type="color"> cannot parse (it
+// only accepts a 7-char hex) — the swatch rendered black, and an org saved
+// without touching the picker persisted that literal string as its brand
+// colour. BRAND_PRIMARY/BRAND_SECONDARY/WARNING (lib/theme-colors.ts) are the
+// tested literal mirror of --accent-primary/--accent-hover/--color-warning —
+// used here as the pre-mount-safe default; resolveCssVarToHex() below
+// re-resolves the live cascade once mounted so these track the real tokens
+// rather than staying hard-coded if a tenant ever overrides them at runtime.
 const emptyForm: OrgFormData = {
   name: '', slug: '', orgType: 'public', contactEmail: '', country: 'South Sudan',
-  primaryColor: 'var(--accent-primary)', secondaryColor: 'var(--accent-hover)', accentColor: 'var(--accent-primary)',
+  primaryColor: BRAND_PRIMARY, secondaryColor: BRAND_SECONDARY, accentColor: BRAND_PRIMARY,
   subscriptionPlan: 'professional', subscriptionStatus: 'trial',
   maxUsers: 50, maxHospitals: 10,
   epidemicIntelligence: true, mchAnalytics: true, dhis2Export: false,
   aiClinicalSupport: true, communityHealth: true, facilityAssessments: true,
 };
 
+/** Normalize a resolved CSS colour string — `#rrggbb`, `#rgb`, or `rgb()`/
+ *  `rgba()` (what getComputedStyle returns, possibly with whitespace) — to a
+ *  lowercase `#rrggbb` hex string. Returns null for anything else (unresolved
+ *  `var(--missing-token)`, a named colour, empty string). */
+function normalizeToHex(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  const hex6 = value.match(/^#([0-9a-f]{6})$/i);
+  if (hex6) return `#${hex6[1].toLowerCase()}`;
+  const hex3 = value.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+  if (hex3) return `#${hex3[1]}${hex3[1]}${hex3[2]}${hex3[2]}${hex3[3]}${hex3[3]}`.toLowerCase();
+  const rgb = value.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (rgb) {
+    const toHex = (n: string) => Math.max(0, Math.min(255, Number(n))).toString(16).padStart(2, '0');
+    return `#${toHex(rgb[1])}${toHex(rgb[2])}${toHex(rgb[3])}`;
+  }
+  return null;
+}
+
+/**
+ * Resolve a CSS custom property (e.g. "--accent-primary") to a concrete hex
+ * colour by reading the live cascade — globals.css defines these tokens as
+ * chains of var() references (--accent-primary -> --tb-blue-900 ->
+ * --brand-accent -> #144972), and getComputedStyle() on :root fully
+ * substitutes that chain down to the literal value, unlike a static read of
+ * the stylesheet text. Falls back to `fallbackHex` outside the browser (SSR)
+ * or if the token can't be resolved.
+ */
+function resolveCssVarToHex(varName: string, fallbackHex: string): string {
+  if (typeof window === 'undefined') return fallbackHex;
+  try {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue(varName);
+    return normalizeToHex(raw) ?? fallbackHex;
+  } catch {
+    return fallbackHex;
+  }
+}
+
+/**
+ * Coerce a *stored* organization colour value for display in the picker.
+ * Handles three cases: already-valid hex (pass through), a legacy
+ * `var(--...)` string saved before this fix (resolve it through the DOM —
+ * assigning to an element's `color` and reading the computed value resolves
+ * var() chains and any CSS colour syntax uniformly), or missing/unparseable
+ * (fall back to the given resolved brand default).
+ */
+function coerceStoredColorToHex(raw: string | undefined, fallbackHex: string): string {
+  if (!raw) return fallbackHex;
+  const direct = normalizeToHex(raw);
+  if (direct) return direct;
+  if (typeof document === 'undefined') return fallbackHex;
+  try {
+    const probe = document.createElement('div');
+    probe.style.color = '';
+    probe.style.color = raw;
+    if (!probe.style.color) return fallbackHex; // browser rejected the value
+    document.body.appendChild(probe);
+    const computed = getComputedStyle(probe).color;
+    document.body.removeChild(probe);
+    return normalizeToHex(computed) ?? fallbackHex;
+  } catch {
+    return fallbackHex;
+  }
+}
+
+/** Grid: Organization (wide) · Plan · Facilities · Users · Status · row actions (narrow). */
+const GRID_TEMPLATE = 'minmax(200px,1.7fr) minmax(88px,0.8fr) minmax(104px,0.9fr) minmax(104px,0.9fr) minmax(88px,0.8fr) 48px';
+
+function onboardedLabel(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+}
+
 export default function AdminOrganizationsPage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { currentUser, globalSearch, setGlobalSearch } = useApp();
+  const { currentUser } = useAuth();
+  const { showToast } = useToast();
   const { organizations, loading, create, update, deactivate, getStats } = useOrganizations();
 
-  // Text search comes from the shared global search state, surfaced via this
-  // page's own list header search box (the TopBar strip is gone).
-  const search = globalSearch;
+  // Local to this page now — the previous binding to the app-wide global
+  // search leaked whatever was typed here into every other screen's search.
+  const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<OrgFormData>(emptyForm);
   const [formLoading, setFormLoading] = useState(false);
-  const [orgUserCounts, setOrgUserCounts] = useState<Record<string, number>>({});
+  const [orgStats, setOrgStats] = useState<Record<string, { userCount: number; hospitalCount: number }>>({});
+  const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
+  const [focusedOrgId, setFocusedOrgId] = useState<string | null>(null);
 
-  // Access control
   useEffect(() => {
-    if (currentUser && currentUser.role !== 'super_admin') {
-      router.push('/dashboard');
-    }
-  }, [currentUser, router]);
+    setFocusedOrgId(new URLSearchParams(window.location.search).get('org'));
+  }, []);
 
-  // Load user counts per org. Run all getStats() calls concurrently so the
-  // overall wait is the slowest single call, not the sum of every call.
+  // The "Administrator" section's toggle. On create it defaults ON — the
+  // whole point is to collapse "create org" + "go create its admin at
+  // /admin/users" into one step, so the shortcut should be the default, not
+  // an opt-in extra click. On edit it defaults OFF (set in openEdit) —
+  // editing an org's name or plan must never silently mint a user account;
+  // issuing a login is an explicit, separate decision there.
+  const [createAdmin, setCreateAdmin] = useState(true);
+  const [adminForm, setAdminForm] = useState<OrgAdminFormData>(emptyOrgAdminForm);
+  const [showAdminPassword, setShowAdminPassword] = useState(true);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  // Credential hand-off for the admin account just created — same one-time
+  // panel as /admin/users, shown only after both writes succeed.
+  const [handoff, setHandoff] = useState<{ username: string; password: string } | null>(null);
+
+  // Resolved brand colours for the branding pickers — starts at the literal
+  // (tested) mirror in theme-colors.ts so the first paint is never black,
+  // then re-resolves the live cascade on mount so the defaults track the
+  // actual tokens (see resolveCssVarToHex above).
+  const [brandDefaults, setBrandDefaults] = useState<{ primary: string; hover: string; warning: string }>({ primary: BRAND_PRIMARY, hover: BRAND_SECONDARY, warning: WARNING });
   useEffect(() => {
-    const loadCounts = async () => {
+    setBrandDefaults({
+      primary: resolveCssVarToHex('--accent-primary', BRAND_PRIMARY),
+      hover: resolveCssVarToHex('--accent-hover', BRAND_SECONDARY),
+      warning: resolveCssVarToHex('--color-warning', WARNING),
+    });
+  }, []);
+
+  // Per-org user + facility counts for the grid. Run all getStats() calls
+  // concurrently so the overall wait is the slowest single call, not the sum.
+  useEffect(() => {
+    let cancelled = false;
+    const loadStats = async () => {
       const entries = await Promise.all(
-        organizations.map(async (org): Promise<[string, number]> => {
+        organizations.map(async (org): Promise<[string, { userCount: number; hospitalCount: number }]> => {
           try {
             const stats = await getStats(org._id);
-            return [org._id, stats.userCount];
+            return [org._id, { userCount: stats.userCount, hospitalCount: stats.hospitalCount }];
           } catch {
-            return [org._id, 0];
+            return [org._id, { userCount: 0, hospitalCount: 0 }];
           }
         })
       );
-      const counts: Record<string, number> = {};
-      for (const [id, count] of entries) counts[id] = count;
-      setOrgUserCounts(counts);
+      if (cancelled) return;
+      const next: Record<string, { userCount: number; hospitalCount: number }> = {};
+      for (const [id, s] of entries) next[id] = s;
+      setOrgStats(next);
     };
-    if (organizations.length > 0) loadCounts();
+    if (organizations.length > 0) loadStats();
+    return () => { cancelled = true; };
   }, [organizations, getStats]);
 
   const filteredOrgs = useMemo(() => {
-    return organizations.filter(o => {
-      const q = search.toLowerCase();
-      return !q || o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q) || o.contactEmail.toLowerCase().includes(q);
-    });
-  }, [organizations, search]);
+    if (focusedOrgId) return organizations.filter(o => o._id === focusedOrgId);
+    const q = search.trim().toLowerCase();
+    return organizations.filter(o =>
+      !q || o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q) || o.contactEmail.toLowerCase().includes(q)
+    );
+  }, [organizations, search, focusedOrgId]);
 
-  if (!currentUser || currentUser.role !== 'super_admin') return null;
+  const activeOrgs = organizations.filter(o => o.isActive && o.subscriptionStatus !== 'suspended' && o.subscriptionStatus !== 'cancelled');
+  const trialOrgs = organizations.filter(o => o.subscriptionStatus === 'trial');
+  const suspendedOrgs = organizations.filter(o => o.subscriptionStatus === 'suspended' || o.subscriptionStatus === 'cancelled' || !o.isActive);
 
   const openCreate = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, primaryColor: brandDefaults.primary, secondaryColor: brandDefaults.hover, accentColor: brandDefaults.primary });
+    setCreateAdmin(true);
+    // Fresh admin sub-form + freshly generated password every time the modal
+    // opens, so a password generated in one session (create or edit) can
+    // never leak into the next.
+    setAdminForm({ ...emptyOrgAdminForm, password: generateTempPassword() });
+    setShowAdminPassword(true);
+    setAdminError(null);
     setShowForm(true);
   };
 
@@ -110,9 +253,12 @@ export default function AdminOrganizationsPage() {
       orgType: org.orgType,
       contactEmail: org.contactEmail,
       country: org.country,
-      primaryColor: org.primaryColor,
-      secondaryColor: org.secondaryColor,
-      accentColor: org.accentColor || 'var(--color-warning)',
+      // Stored colours are normally already valid hex; coerce covers a
+      // legacy `var(--...)` string saved before this fix (or a missing
+      // accentColor) so the picker never renders black.
+      primaryColor: coerceStoredColorToHex(org.primaryColor, brandDefaults.primary),
+      secondaryColor: coerceStoredColorToHex(org.secondaryColor, brandDefaults.hover),
+      accentColor: coerceStoredColorToHex(org.accentColor, brandDefaults.warning),
       subscriptionPlan: org.subscriptionPlan,
       subscriptionStatus: org.subscriptionStatus,
       maxUsers: org.maxUsers,
@@ -124,11 +270,75 @@ export default function AdminOrganizationsPage() {
       communityHealth: org.featureFlags.communityHealth,
       facilityAssessments: org.featureFlags.facilityAssessments,
     });
+    // Administrator section defaults OFF on edit — see the createAdmin
+    // state comment. Reset the admin sub-form + generate a fresh password
+    // here too, so nothing from a prior create/edit session survives.
+    setCreateAdmin(false);
+    setAdminForm({ ...emptyOrgAdminForm, password: generateTempPassword() });
+    setShowAdminPassword(true);
+    setAdminError(null);
     setShowForm(true);
+  };
+
+  // Shared tail of both the create and edit paths once the organization
+  // write itself has succeeded: create the org_admin (scoped to `orgId` —
+  // the just-created org, or `editingId` on the edit path) via the same
+  // createUser() central-provisioning path every other admin-created account
+  // uses, then show the same one-time CredentialHandoffModal. A failure here
+  // is a PARTIAL failure — the organization write already committed, so this
+  // never rolls it back, and the toast is worded per `savedAs` so the admin
+  // knows exactly what did and didn't happen.
+  const provisionOrgAdmin = async (orgId: string, savedAs: 'created' | 'updated') => {
+    const savedToast = savedAs === 'created' ? `Organization "${form.name}" created.` : `Organization "${form.name}" updated.`;
+    try {
+      const { createUser } = await import('@/lib/services/user-service');
+      const created = await createUser(
+        buildOrgAdminUserPayload(adminForm, orgId),
+        currentUser?._id,
+        currentUser?.username
+      );
+      showToast(savedToast, 'success');
+      setShowForm(false);
+      // Hand the credentials to the admin exactly once — mirrors the
+      // /admin/users "Add user" flow. mustChangePassword was set server-side
+      // by createUser()'s POST /api/users path, not here.
+      setHandoff({ username: created.username, password: adminForm.password });
+    } catch (adminErr) {
+      setShowForm(false);
+      showToast(
+        t(savedAs === 'created' ? 'orgAdmin.adminCreationPartialError' : 'orgAdmin.adminCreationPartialErrorEdit', {
+          name: form.name,
+          reason: adminErr instanceof Error ? adminErr.message : 'Unknown error',
+        }),
+        'error',
+        {
+          durationMs: 15000,
+          action: { label: t('orgAdmin.goToUsers'), onClick: () => router.push('/admin/users') },
+        }
+      );
+    }
   };
 
   const handleSubmit = async () => {
     if (!form.name || !form.slug || !form.contactEmail) return;
+
+    // Applies on both paths now — the toggle already defaults appropriately
+    // per path (ON for create, OFF for edit; see openCreate/openEdit).
+    // Validate BEFORE any organization write starts — a bad admin field
+    // (empty username, short password) must never leave an org created or
+    // updated with no admin attempt at all.
+    const wantsAdmin = createAdmin;
+    if (wantsAdmin) {
+      const errorCode = validateOrgAdminForm(adminForm);
+      if (errorCode) {
+        setAdminError(errorCode === 'password-too-short'
+          ? t('orgAdmin.adminPasswordTooShortError', { min: ORG_ADMIN_MIN_PASSWORD_LENGTH })
+          : t('orgAdmin.adminRequiredError'));
+        return;
+      }
+    }
+
+    setAdminError(null);
     setFormLoading(true);
     try {
       const orgData = {
@@ -156,35 +366,66 @@ export default function AdminOrganizationsPage() {
       };
 
       if (editingId) {
-        await update(editingId, orgData, currentUser._id, currentUser.username);
-      } else {
-        await create(orgData as Omit<OrganizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, currentUser._id, currentUser.username);
+        await update(editingId, orgData, currentUser?._id, currentUser?.username);
+
+        if (!wantsAdmin) {
+          showToast(`Organization "${form.name}" updated.`, 'success');
+          setShowForm(false);
+          return;
+        }
+
+        await provisionOrgAdmin(editingId, 'updated');
+        return;
       }
-      setShowForm(false);
+
+      const newOrg = await create(orgData as Omit<OrganizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, currentUser?._id, currentUser?.username);
+
+      if (!wantsAdmin) {
+        showToast(`Organization "${form.name}" created.`, 'success');
+        setShowForm(false);
+        return;
+      }
+
+      await provisionOrgAdmin(newOrg._id, 'created');
     } catch (err) {
-      console.error(err);
+      showToast(err instanceof Error ? err.message : 'Failed to save organization.', 'error');
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDeactivate = async (org: OrganizationDoc) => {
-    if (!confirm(t('orgAdmin.confirmDeactivate', { name: org.name }))) return;
+  const confirmDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
     try {
-      await deactivate(org._id, currentUser._id, currentUser.username);
+      await deactivate(deactivateTarget._id, currentUser?._id, currentUser?.username);
+      showToast(`Organization "${deactivateTarget.name}" deactivated.`, 'success');
+      setDeactivateTarget(null);
     } catch (err) {
-      console.error(err);
+      showToast(err instanceof Error ? err.message : 'Failed to deactivate organization.', 'error');
+    } finally {
+      setDeactivating(false);
     }
   };
 
-  // Styles
+  const FEATURE_FLAGS: { key: FeatureFlagKey; label: string; sub: string }[] = [
+    { key: 'epidemicIntelligence', label: t('orgAdmin.featureEpidemicIntelligence'), sub: t('orgSettings.flagEpidemicIntelligenceDesc') },
+    { key: 'mchAnalytics', label: t('orgAdmin.featureMchAnalytics'), sub: t('orgSettings.flagMchAnalyticsDesc') },
+    { key: 'dhis2Export', label: t('orgAdmin.featureDhis2Export'), sub: t('orgSettings.flagDhis2ExportDesc') },
+    { key: 'aiClinicalSupport', label: t('orgAdmin.featureAiClinicalSupport'), sub: t('orgSettings.flagAiClinicalSupportDesc') },
+    { key: 'communityHealth', label: t('orgAdmin.featureCommunityHealth'), sub: t('orgSettings.flagCommunityHealthDesc') },
+    { key: 'facilityAssessments', label: t('orgAdmin.featureFacilityAssessments'), sub: t('orgSettings.flagFacilityAssessmentsDesc') },
+  ];
+
+  // Styles for the raw form fields (basic info / subscription / branding) —
+  // there's no shared "field" kit yet, so these stay hand-rolled, tokens only.
   const inputStyle: React.CSSProperties = {
     background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)',
     borderRadius: '4px', padding: '10px 14px', color: 'var(--text-primary)',
     fontSize: '14px', width: '100%', outline: 'none',
   };
   const selectStyle: React.CSSProperties = {
-    ...inputStyle, appearance: 'none' as const, paddingRight: '36px',
+    ...inputStyle, appearance: 'none' as const, paddingInlineEnd: '36px',
     backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238A9E9A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
   };
@@ -192,130 +433,107 @@ export default function AdminOrganizationsPage() {
     fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)',
     textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', display: 'block',
   };
+  const sectionTitleStyle: React.CSSProperties = { marginBottom: 10 };
+
+  // The Administrator section's toggle copy differs by path (see the
+  // createAdmin state comment) — create-specific wording must never leak
+  // onto the edit path, so each uses its own i18n key.
+  const adminToggleLabel = t(editingId ? 'orgAdmin.addAdminToggleLabel' : 'orgAdmin.createAdminToggleLabel');
+  const adminToggleSub = t(editingId ? 'orgAdmin.addAdminToggleSub' : 'orgAdmin.createAdminToggleSub');
 
   return (
-    <>
-      <main className="page-container page-enter admin-detail-page" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-
-        {/* Table */}
-        <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
-          <EhrListHeader
-            title={t('orgAdmin.title')}
-            search={{ value: search, onChange: setGlobalSearch, placeholder: t('orgAdmin.searchPlaceholder') }}
-            actions={
-              <button onClick={openCreate} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap' }}>
-                <Plus className="w-4 h-4" /> {t('orgAdmin.newOrganization')}
-              </button>
-            }
-          />
-          <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1, minHeight: 0 }}>
-            <table className="w-full" style={{ minWidth: 840 }}>
-              <thead>
-                <tr>
-                  {[
-                    { key: 'name', label: t('orgAdmin.colName') },
-                    { key: 'slug', label: t('orgAdmin.colSlug') },
-                    { key: 'type', label: t('orgAdmin.colType') },
-                    { key: 'plan', label: t('orgAdmin.colPlan') },
-                    { key: 'status', label: t('orgAdmin.colStatus') },
-                    { key: 'users', label: t('orgAdmin.colUsers') },
-                    { key: 'actions', label: t('orgAdmin.colActions') },
-                  ].map(h => (
-                    <th key={h.key} className="text-left px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>
-                      {h.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('orgAdmin.loading')}</td></tr>
-                ) : filteredOrgs.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('orgAdmin.empty')}</td></tr>
-                ) : filteredOrgs.map(org => (
-                  <tr key={org._id} style={{ borderBottom: '1px solid var(--border-light)' }} className="transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: org.primaryColor }}>
-                          {org.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium" style={{ color: org.isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}>{org.name}</p>
-                          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{org.contactEmail}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <code className="text-xs px-2 py-1 rounded" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)' }}>{org.slug}</code>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-1 rounded-full" style={{
-                        background: org.orgType === 'public' ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)',
-                        color: org.orgType === 'public' ? 'var(--color-success-text)' : 'var(--color-danger-text)',
-                      }}>{org.orgType}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{
-                        background: org.subscriptionPlan === 'enterprise' ? 'rgba(124,58,237,0.12)' : org.subscriptionPlan === 'professional' ? 'rgba(33, 145, 208, 0.12)' : 'rgba(107,114,128,0.12)',
-                        color: org.subscriptionPlan === 'enterprise' ? 'var(--accent-primary)' : org.subscriptionPlan === 'professional' ? 'var(--accent-primary)' : '#6B7280',
-                      }}>{org.subscriptionPlan}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="flex items-center gap-1.5 text-xs font-semibold">
-                        <span className="w-2 h-2 rounded-full" style={{
-                          background: org.subscriptionStatus === 'active' ? 'var(--color-success)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning)' : 'var(--color-danger)',
-                        }} />
-                        <span style={{
-                          color: org.subscriptionStatus === 'active' ? 'var(--color-success-text)' : org.subscriptionStatus === 'trial' ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
-                        }}>{org.subscriptionStatus}</span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {orgUserCounts[org._id] ?? '...'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center">
-                        <RowActionsMenu
-                          actions={[
-                            { key: 'edit', label: t('action.edit'), icon: <Edit3 className="w-4 h-4" />, onClick: () => openEdit(org) },
-                            ...(org.isActive ? [{ key: 'deactivate', label: t('orgAdmin.deactivate'), tone: 'danger' as const, icon: <Ban className="w-4 h-4" />, onClick: () => handleDeactivate(org) }] : []),
-                          ]}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <SadbPage>
+      <SadbCard
+        title={t('orgAdmin.title')}
+        action={
+          <div className="sadb-legend">
+            <span><i style={{ background: 'var(--text-muted)' }} />{t('orgAdmin.title')} ({organizations.length})</span>
+            <span><i style={{ background: 'var(--color-success-800)' }} />{t('orgAdmin.statusActive')} ({activeOrgs.length})</span>
+            <span><i style={{ background: 'var(--color-warning-600)' }} />{t('orgAdmin.statusTrial')} ({trialOrgs.length})</span>
+            <span><i style={{ background: 'var(--color-danger-500)' }} />{t('orgAdmin.statusSuspended')} ({suspendedOrgs.length})</span>
           </div>
+        }
+      >
+        <div className="sadb-search-row">
+          <SadbSearch value={search} onChange={setSearch} placeholder={t('orgAdmin.searchPlaceholder')} />
+          <button type="button" className="btn btn-primary btn-sm flex-shrink-0" onClick={openCreate}>
+            <Plus className="w-4 h-4" /> {t('orgAdmin.newOrganization')}
+          </button>
         </div>
-      </main>
+
+        {focusedOrgId && (
+          <div className="px-4 py-2.5 flex items-center justify-between gap-3" role="status" style={{ background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
+            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Showing the organization opened from the dashboard.
+            </span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFocusedOrgId(null)}>Show all organizations</button>
+          </div>
+        )}
+
+        <SadbGridList
+          template={GRID_TEMPLATE}
+          minWidth={820}
+          head={['Organization', 'Plan', 'Facilities', 'Users', 'Status', '']}
+          empty={loading ? t('orgAdmin.loading') : t('orgAdmin.empty')}
+        >
+          {filteredOrgs.map(org => {
+            const stats = orgStats[org._id];
+            const onboarded = onboardedLabel(org.createdAt);
+            const orgKind = org.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
+            return (
+              <SadbGridRow key={org._id} template={GRID_TEMPLATE}>
+                <span className="min-w-0">
+                  <span className="sadb-tenant-name truncate" style={{ color: org.isActive ? undefined : 'var(--text-muted)' }}>
+                    {org.name}
+                  </span>
+                  <span className="sadb-tenant-sub truncate">
+                    {orgKind}{onboarded ? ` · onboarded ${onboarded}` : ''}
+                  </span>
+                </span>
+                <span className="capitalize">{org.subscriptionPlan}</span>
+                <span className="sadb-tenant-num">{stats ? `${stats.hospitalCount} / ${org.maxHospitals}` : '…'}</span>
+                <span className="sadb-tenant-num">{stats ? `${stats.userCount} / ${org.maxUsers}` : '…'}</span>
+                <span>
+                  <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip>
+                </span>
+                <span className="flex items-center justify-center">
+                  <RowActionsMenu
+                    actions={[
+                      { key: 'edit', label: t('action.edit'), icon: <Edit3 className="w-4 h-4" />, onClick: () => openEdit(org) },
+                      ...(org.isActive ? [{ key: 'deactivate', label: t('orgAdmin.deactivate'), tone: 'danger' as const, icon: <Ban className="w-4 h-4" />, onClick: () => setDeactivateTarget(org) }] : []),
+                    ]}
+                  />
+                </span>
+              </SadbGridRow>
+            );
+          })}
+        </SadbGridList>
+      </SadbCard>
 
       {/* Create/Edit Modal */}
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-          zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
-        }} onClick={() => setShowForm(false)}>
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border-light)',
-            borderRadius: '6px', width: '100%', maxWidth: '680px', maxHeight: '90vh',
-            overflow: 'auto', padding: '28px',
-          }} onClick={e => e.stopPropagation()}>
-
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+        <Modal onClose={() => setShowForm(false)} width={640} labelledBy="org-form-title">
+          {/* The shared Modal's dialog box sets a max-height but overflow:
+              visible — fine for its short editor/confirm variants, but this
+              form is taller than the viewport on most screens. Without its
+              own scroll container here, content past that max-height paints
+              outside the white card, on the dark backdrop. min-height: 0 is
+              required alongside overflow-y for a flex child to actually
+              shrink to (and then scroll within) its flex parent's height. */}
+          <div className="sadb-modal" style={{ minHeight: 0, overflowY: 'auto' }}>
+            <div className="flex items-start justify-between gap-3 sadb-modal-copy">
+              <h2 id="org-form-title" className="sadb-modal-title">
                 {editingId ? t('orgAdmin.editOrganization') : t('orgAdmin.createOrganization')}
-              </h3>
-              <button onClick={() => setShowForm(false)} className="p-1 rounded-lg" style={{ color: 'var(--text-muted)' }}>
-                <X className="w-5 h-5" />
+              </h2>
+              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} aria-label="Close">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-5">
               {/* Basic Info */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionBasicInfo')}</h4>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionBasicInfo')}</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label style={labelStyle}>{t('orgAdmin.labelName')}</label>
@@ -350,7 +568,7 @@ export default function AdminOrganizationsPage() {
 
               {/* Subscription */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionSubscription')}</h4>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionSubscription')}</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label style={labelStyle}>{t('orgAdmin.labelPlan')}</label>
@@ -382,13 +600,13 @@ export default function AdminOrganizationsPage() {
 
               {/* Branding */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionBranding')}</h4>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionBranding')}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
+                  {([
                     { key: 'primaryColor' as const, label: t('orgAdmin.colorPrimary') },
                     { key: 'secondaryColor' as const, label: t('orgAdmin.colorSecondary') },
                     { key: 'accentColor' as const, label: t('orgAdmin.colorAccent') },
-                  ].map(c => (
+                  ]).map(c => (
                     <div key={c.key}>
                       <label style={labelStyle}>{c.label}</label>
                       <div className="flex items-center gap-2">
@@ -404,43 +622,120 @@ export default function AdminOrganizationsPage() {
 
               {/* Feature Flags */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-danger-text)' }}>{t('orgAdmin.sectionFeatureFlags')}</h4>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  {[
-                    { key: 'epidemicIntelligence' as const, label: t('orgAdmin.featureEpidemicIntelligence') },
-                    { key: 'mchAnalytics' as const, label: t('orgAdmin.featureMchAnalytics') },
-                    { key: 'dhis2Export' as const, label: t('orgAdmin.featureDhis2Export') },
-                    { key: 'aiClinicalSupport' as const, label: t('orgAdmin.featureAiClinicalSupport') },
-                    { key: 'communityHealth' as const, label: t('orgAdmin.featureCommunityHealth') },
-                    { key: 'facilityAssessments' as const, label: t('orgAdmin.featureFacilityAssessments') },
-                  ].map(ff => (
-                    <label key={ff.key} className="flex items-center gap-3 cursor-pointer text-sm" style={{ color: 'var(--text-primary)' }}>
-                      <button type="button" onClick={() => setForm(p => ({ ...p, [ff.key]: !p[ff.key] }))}
-                        className="flex-shrink-0">
-                        {form[ff.key] ? (
-                          <ToggleRight className="w-8 h-8" style={{ color: 'var(--color-danger)' }} />
-                        ) : (
-                          <ToggleLeft className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
-                        )}
-                      </button>
-                      {ff.label}
-                    </label>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionFeatureFlags')}</h4>
+                <div style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
+                  {FEATURE_FLAGS.map(ff => (
+                    <SadbSettingRow key={ff.key} label={ff.label} sub={ff.sub}>
+                      <SadbToggle
+                        checked={form[ff.key]}
+                        onChange={next => setForm(p => ({ ...p, [ff.key]: next }))}
+                        label={ff.label}
+                      />
+                    </SadbSettingRow>
                   ))}
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-                <button onClick={() => setShowForm(false)} className="px-5 py-2.5 rounded-xl text-sm font-medium" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}>
+              {/* Administrator — rendered on both create and edit, but with
+                  different defaults and copy (see createAdmin state comment):
+                  create defaults ON ("create the first administrator"), edit
+                  defaults OFF and reads as adding one to an org that may
+                  already have staff, never as re-creating the first one. */}
+              <div>
+                <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionAdministrator')}</h4>
+                <div style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
+                  <SadbSettingRow label={adminToggleLabel} sub={adminToggleSub}>
+                    <SadbToggle checked={createAdmin} onChange={setCreateAdmin} label={adminToggleLabel} />
+                  </SadbSettingRow>
+                </div>
+
+                  {createAdmin && (
+                    <div className="grid grid-cols-2 gap-3" style={{ marginTop: 12 }}>
+                      <div>
+                        <label style={labelStyle}>{t('orgAdmin.labelAdminName')}</label>
+                        <input type="text" value={adminForm.name} onChange={e => setAdminForm(p => ({ ...p, name: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{t('orgAdmin.labelAdminUsername')}</label>
+                        <input type="text" value={adminForm.username} onChange={e => setAdminForm(p => ({ ...p, username: e.target.value }))} style={inputStyle} autoComplete="off" />
+                      </div>
+                      <div className="col-span-2">
+                        <label style={labelStyle}>{t('orgAdmin.labelAdminEmail')}</label>
+                        <input type="email" value={adminForm.email} onChange={e => setAdminForm(p => ({ ...p, email: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div className="col-span-2">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label style={{ ...labelStyle, marginBottom: 0 }}>{t('orgAdmin.labelAdminPassword')}</label>
+                          <button
+                            type="button"
+                            onClick={() => { setAdminForm(p => ({ ...p, password: generateTempPassword() })); setShowAdminPassword(true); }}
+                            className="flex items-center gap-1 text-xs font-semibold"
+                            style={{ color: 'var(--accent-text)' }}
+                          >
+                            <RefreshCw className="w-3 h-3" /> {t('orgAdmin.generatePassword')}
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type={showAdminPassword ? 'text' : 'password'}
+                            value={adminForm.password}
+                            onChange={e => setAdminForm(p => ({ ...p, password: e.target.value }))}
+                            style={{ ...inputStyle, paddingInlineEnd: 40, fontFamily: showAdminPassword ? 'var(--font-mono, monospace)' : undefined }}
+                            autoComplete="new-password"
+                          />
+                          <button type="button" onClick={() => setShowAdminPassword(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2">
+                            {showAdminPassword
+                              ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                              : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+                          </button>
+                        </div>
+                        <p className="mt-1.5 text-[11px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                          <ShieldCheck className="w-3 h-3" /> {t('orgAdmin.adminPasswordHint')}
+                        </p>
+                      </div>
+                      {adminError && (
+                        <p className="col-span-2 text-xs" style={{ color: 'var(--color-danger-text)' }}>{adminError}</p>
+                      )}
+                    </div>
+                  )}
+              </div>
+
+              <div className="sadb-modal-actions" style={{ marginTop: 0, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>
                   {t('action.cancel')}
                 </button>
-                <button onClick={handleSubmit} disabled={formLoading} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--color-danger)', opacity: formLoading ? 0.6 : 1 }}>
+                <button type="button" className="btn btn-primary btn-sm" onClick={handleSubmit} disabled={formLoading}>
                   {formLoading ? t('orgAdmin.saving') : editingId ? t('orgAdmin.updateOrganization') : t('orgAdmin.createOrganization')}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
-    </>
+
+      {deactivateTarget && (
+        <SadbConfirmModal
+          title={t('orgAdmin.deactivate')}
+          body={t('orgAdmin.confirmDeactivate', { name: deactivateTarget.name })}
+          confirmLabel={t('orgAdmin.deactivate')}
+          onCancel={() => setDeactivateTarget(null)}
+          onConfirm={confirmDeactivate}
+          busy={deactivating}
+        />
+      )}
+
+      {/* Credential hand-off for the administrator just created — same
+          one-time panel as /admin/users. Only ever set after createUser()
+          has actually succeeded (see handleSubmit). */}
+      {handoff && (
+        <CredentialHandoffModal
+          title={t('orgAdmin.handoffTitle')}
+          description={t('orgAdmin.handoffDescription')}
+          username={handoff.username}
+          password={handoff.password}
+          onClose={() => setHandoff(null)}
+        />
+      )}
+    </SadbPage>
   );
 }

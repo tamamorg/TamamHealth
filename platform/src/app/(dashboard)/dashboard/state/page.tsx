@@ -15,6 +15,7 @@ import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { formatDateTitle, toIsoDate, parseIsoDate, addDays } from '@/components/ehr/EhrMiniCalendar';
 import { Download, Activity, TrendingUp, Table as TableIcon } from '@/components/icons/lucide';
 import { tooltipStyle, axisTick } from '@/components/ChartCard';
+import { formatClockTime } from '@/lib/format-utils';
 import {
   ResponsiveContainer, ComposedChart, LineChart, Bar, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine,
@@ -23,7 +24,7 @@ import {
 // Chart series colors — fixed palette per the surveillance/analytics spec
 // (not the --viz-* EHR tokens, which are reserved for the shared Day
 // statistics widget's inpatient/outpatient pair).
-const CHART_BLUE = '#2a78d6';
+const CHART_BLUE = 'var(--chart-1)';
 const CHART_GREEN = 'var(--color-success)';
 const CHART_RED = 'var(--color-danger)';
 const CHART_AMBER = 'var(--color-warning)';
@@ -51,8 +52,7 @@ function downloadCSV(data: Record<string, unknown>[], filename: string) {
 
 function clockTime(iso?: string): string | undefined {
   if (!iso) return undefined;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return formatClockTime(iso) || undefined;
 }
 
 function countByState(
@@ -369,6 +369,8 @@ export default function StateDashboardPage() {
                 : undefined,
               date: c.lastReportAt ? c.lastReportAt.slice(0, 10) : undefined,
               timeSecondary: c.lastReportAt ? c.lastReportAt.slice(0, 10) : 'No report',
+              detailHref: `/hospitals?state=${encodeURIComponent(stateName)}&county=${encodeURIComponent(c.county)}&returnTo=${encodeURIComponent('/dashboard/state')}`,
+              detailLabel: t('referrals.viewDetails'),
               popupDetail: renderCountyDetail(c),
             };
           })}

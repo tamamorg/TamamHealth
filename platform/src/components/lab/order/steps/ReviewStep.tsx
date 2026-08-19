@@ -146,7 +146,7 @@ export default function ReviewStep({
                 <div key={test.name} className="labord-aoe-block">
                   <div className="labord-aoe-title">{test.name}</div>
                   {questions.map(question => (
-                    <div key={question.id} className="labord-row" style={{ paddingLeft: 0 }}>
+                    <div key={question.id} className="labord-row" style={{ paddingInlineStart: 0 }}>
                       <span className="labord-pick-meta">{question.label}</span>
                       <span className="labord-field-value">{draft.aoe[aoeKey(test.name, question.id)] || '—'}</span>
                     </div>

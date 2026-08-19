@@ -398,7 +398,7 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
 
           {ctrl.criticalVerdict.isCriticalValue && (
             <p className="labord-help" style={{ color: 'var(--color-danger, #DC2626)', fontWeight: 600 }}>
-              <AlertTriangle className="w-3.5 h-3.5" aria-hidden style={{ display: 'inline', marginRight: 6 }} />
+              <AlertTriangle className="w-3.5 h-3.5" aria-hidden style={{ display: 'inline', marginInlineEnd: 6 }} />
               {t('lab.flagCriticalMsg')}
             </p>
           )}

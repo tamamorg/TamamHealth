@@ -311,25 +311,25 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
               <button className="p-1 rounded" disabled={busy} onClick={() => setEditing(null)} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="allergy-substance" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Allergen</label>
+              <label htmlFor="allergy-substance" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Allergen</label>
               <input id="allergy-substance" value={editForm.substance} onChange={e => setEditForm({ ...editForm, substance: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="allergy-class" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Classification</label>
+                <label htmlFor="allergy-class" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Classification</label>
                 <Select id="allergy-class" value={editForm.classification} onChange={e => setEditForm({ ...editForm, classification: e.target.value as AllergyEntry['classification'] })}>
                   {CLASSIFICATIONS.map(c => <option key={c} value={c}>{c}</option>)}
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="allergy-crit" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Severity</label>
+                <label htmlFor="allergy-crit" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Severity</label>
                 <Select id="allergy-crit" value={editForm.criticality} onChange={e => setEditForm({ ...editForm, criticality: e.target.value as NonNullable<AllergyEntry['criticality']> })}>
                   {CRITICALITIES.map(c => <option key={c} value={c}>{SEVERITY_LABEL[c]}</option>)}
                 </Select>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="allergy-reaction" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Reaction</label>
+              <label htmlFor="allergy-reaction" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reaction</label>
               <input id="allergy-reaction" value={editForm.reaction} onChange={e => setEditForm({ ...editForm, reaction: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
@@ -354,7 +354,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
               reason — allergies are never deleted outright.
             </p>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="retire-status" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Why</label>
+              <label htmlFor="retire-status" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Why</label>
               <Select id="retire-status" value={retireStatus} onChange={e => setRetireStatus(e.target.value as typeof retireStatus)}>
                 <option value="inactive">No longer active</option>
                 <option value="resolved">Resolved — retested and tolerated</option>
@@ -362,7 +362,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="retire-reason" className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Reason (required)</label>
+              <label htmlFor="retire-reason" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reason (required)</label>
               <input
                 id="retire-reason"
                 autoFocus

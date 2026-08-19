@@ -54,7 +54,7 @@ export default function PatientAvatar({ patient, size = 32, color: colorProp }: 
         height: size,
         borderRadius,
         background: colorProp ?? '#E7EDF2',
-        color: colorProp ? '#fff' : 'var(--ehr-blue, #2191D0)',
+        color: colorProp ? '#fff' : 'var(--ehr-blue, #144972)',
         fontSize,
         fontWeight: 800,
         letterSpacing: 0.3,

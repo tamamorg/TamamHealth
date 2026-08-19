@@ -24,6 +24,7 @@ import type {
   AdjustmentType,
 } from '@/lib/db-types-payments';
 import Select from '@/components/Select';
+import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 'denial', 'contractual', 'correction'];
 const BILLING_ROLES = ['cashier', 'biller', 'org_admin', 'medical_superintendent', 'super_admin'];
@@ -102,32 +103,33 @@ function buildStatementHTML(opts: {
   const generatedAt = new Date();
   const fmt = (n: number) => `${n.toLocaleString()} ${currency}`;
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const e = escapeHtml;
 
   const chargeRows = overview.charges.length === 0
     ? `<tr><td colspan="4" class="empty">No open bills on file</td></tr>`
     : overview.charges.map(c => `
       <tr>
-        <td>${fmtDate(c.serviceDate)}</td>
-        <td>${c.description}${c.category ? ` <span class="muted">· ${c.category}</span>` : ''}</td>
-        <td><span class="pill">${c.status}</span></td>
-        <td class="num">${fmt(c.billedAmount)}</td>
+        <td>${e(fmtDate(c.serviceDate))}</td>
+        <td>${e(c.description)}${c.category ? ` <span class="muted">· ${e(c.category)}</span>` : ''}</td>
+        <td><span class="pill">${e(c.status)}</span></td>
+        <td class="num">${e(fmt(c.billedAmount))}</td>
       </tr>`).join('');
 
   const paymentRows = overview.payments.length === 0
     ? `<tr><td colspan="4" class="empty">No payments recorded</td></tr>`
     : overview.payments.map(p => `
       <tr>
-        <td>${fmtDate(p.processedAt)}</td>
-        <td>${getMethodConfig(p.method).label}</td>
-        <td>${p.reference || '—'}</td>
-        <td class="num pos">${fmt(p.amount)}</td>
+        <td>${e(fmtDate(p.processedAt))}</td>
+        <td>${e(getMethodConfig(p.method).label)}</td>
+        <td>${e(p.reference || '—')}</td>
+        <td class="num pos">${e(fmt(p.amount))}</td>
       </tr>`).join('');
 
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Account Statement — ${patientName}</title>
+<title>Account Statement — ${e(patientName)}</title>
 <style>
   @page { margin: 14mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -161,22 +163,22 @@ function buildStatementHTML(opts: {
 <body>
   <div class="header">
     <div>
-      <h1>${facilityName || 'TamamHealth Health Facility'}</h1>
+      <h1>${e(facilityName || 'TamamHealth Health Facility')}</h1>
       <p>Digital Health Records — Powered by TamamHealth</p>
     </div>
     <div class="doc-title">
       <div class="label">Account Statement</div>
-      <div class="date">Generated ${generatedAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+      <div class="date">Generated ${e(generatedAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))}</div>
     </div>
   </div>
 
   <div class="patient-block">
-    <div class="field"><div class="label">Patient</div><div class="value">${patientName}</div></div>
-    <div class="field"><div class="label">Hospital #</div><div class="value">${hospitalNumber || '—'}</div></div>
-    <div class="field"><div class="label">Date of Birth</div><div class="value">${dateOfBirth ? fmtDate(dateOfBirth) : '—'}</div></div>
-    <div class="field"><div class="label">Gender</div><div class="value">${gender || '—'}</div></div>
-    <div class="field"><div class="label">Phone</div><div class="value">${phone || '—'}</div></div>
-    <div class="field"><div class="label">Prepared By</div><div class="value">${preparedBy || '—'}</div></div>
+    <div class="field"><div class="label">Patient</div><div class="value">${e(patientName)}</div></div>
+    <div class="field"><div class="label">Hospital #</div><div class="value">${e(hospitalNumber || '—')}</div></div>
+    <div class="field"><div class="label">Date of Birth</div><div class="value">${e(dateOfBirth ? fmtDate(dateOfBirth) : '—')}</div></div>
+    <div class="field"><div class="label">Gender</div><div class="value">${e(gender || '—')}</div></div>
+    <div class="field"><div class="label">Phone</div><div class="value">${e(phone || '—')}</div></div>
+    <div class="field"><div class="label">Prepared By</div><div class="value">${e(preparedBy || '—')}</div></div>
   </div>
 
   <h2 class="section">Open Bills</h2>
@@ -192,10 +194,10 @@ function buildStatementHTML(opts: {
   </table>
 
   <div class="summary">
-    <div class="row"><span>Total Charged</span><span>${fmt(overview.totalCharged)}</span></div>
-    <div class="row"><span>Insurance Paid</span><span>${fmt(overview.insurancePaid)}</span></div>
-    <div class="row"><span>Self Paid</span><span>${fmt(overview.selfPaid)}</span></div>
-    <div class="row total"><span>Balance Due</span><span>${fmt(balance)}</span></div>
+    <div class="row"><span>Total Charged</span><span>${e(fmt(overview.totalCharged))}</span></div>
+    <div class="row"><span>Insurance Paid</span><span>${e(fmt(overview.insurancePaid))}</span></div>
+    <div class="row"><span>Self Paid</span><span>${e(fmt(overview.selfPaid))}</span></div>
+    <div class="row total"><span>Balance Due</span><span>${e(fmt(balance))}</span></div>
   </div>
 
   <div class="footer">
@@ -401,13 +403,7 @@ export default function BillingTab({
       overview: data,
       balance: patientBalance,
     });
-    const printWindow = window.open('', '_blank', 'width=480,height=720');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => { printWindow.print(); }, 500);
-    }
+    openIsolatedHtmlWindow(html, 'width=480,height=720', true);
   };
 
   const loadAll = useCallback(async () => {
@@ -894,7 +890,7 @@ export default function BillingTab({
                 </dl>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 10px', borderRadius: 6, background: 'var(--ehr-page-bg, #F8FBFD)', border: '1px solid var(--ehr-border, #DDEAF3)',
+                  padding: '8px 10px', borderRadius: 6, background: 'var(--ehr-page-bg, #FFFFFF)', border: '1px solid var(--ehr-border, #DDEAF3)',
                 }}>
                   <ExternalLink size={14} className="bl-muted" style={{ flexShrink: 0 }} />
                   <span style={{ fontSize: 12, color: 'var(--ehr-text, #102634)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>

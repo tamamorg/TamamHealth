@@ -57,6 +57,10 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
   const [finger, setFinger] = useState<FingerPosition>('right_index');
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState('');
+  // A registration draft can hydrate captures after this controlled widget
+  // mounts. Existing captures could only have been made after consent, so the
+  // controlled value itself also restores that display state.
+  const consentActive = consented || value.length > 0;
 
   const refreshStatus = useCallback(async () => {
     setStatus(await getBridgeStatus());
@@ -101,7 +105,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
 
   return (
     <div className="border-t pt-4" style={{ borderColor: 'var(--border-light)' }}>
-      <h4 className="text-sm font-medium mb-1 flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+      <h4 className="text-sm font-semibold mb-1 flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
         <ScanLine className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
         {t('fingerprint.sectionTitle')}
       </h4>
@@ -116,7 +120,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
       ) : !ready ? (
         <div className="flex items-center gap-2 p-3 rounded-lg text-xs" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
           <span>{status?.available ? t('fingerprint.scannerDisconnected') : t('fingerprint.bridgeUnavailable')}</span>
-          <button type="button" onClick={refreshStatus} className="btn btn-secondary btn-sm ml-auto">
+          <button type="button" onClick={refreshStatus} className="btn btn-secondary btn-sm ms-auto">
             <RefreshCw className="w-3.5 h-3.5" /> {t('fingerprint.retry')}
           </button>
         </div>
@@ -125,7 +129,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
           <label className="flex items-start gap-2 mb-3 cursor-pointer">
             <input
               type="checkbox"
-              checked={consented}
+              checked={consentActive}
               onChange={e => handleConsentChange(e.target.checked)}
               className="mt-0.5"
               style={{ width: 'auto' }}
@@ -138,7 +142,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
           <div className="flex gap-2 items-end flex-wrap">
             <div className="w-44">
               <label htmlFor="fp-finger" className="text-xs">{t('fingerprint.selectFinger')}</label>
-              <Select id="fp-finger" value={finger} onChange={e => setFinger(e.target.value as FingerPosition)} disabled={!consented || capturing}>
+              <Select id="fp-finger" value={finger} onChange={e => setFinger(e.target.value as FingerPosition)} disabled={!consentActive || capturing}>
                 {FINGER_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
                 ))}
@@ -147,9 +151,9 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
             <button
               type="button"
               onClick={handleCapture}
-              disabled={!consented || capturing}
+              disabled={!consentActive || capturing}
               className="btn btn-primary btn-sm"
-              style={{ opacity: !consented || capturing ? 0.6 : 1 }}
+              style={{ opacity: !consentActive || capturing ? 0.6 : 1 }}
             >
               {capturing ? (
                 <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" /> {t('fingerprint.capturing')}</>
@@ -168,12 +172,12 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
               {value.map(c => (
                 <span
                   key={c.finger}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-md"
                   style={{ background: 'rgba(34,197,94,0.10)', color: '#15803d', border: '1px solid rgba(34,197,94,0.25)' }}
                 >
                   <Check className="w-3 h-3" />
                   {t(FINGER_OPTIONS.find(o => o.value === c.finger)?.labelKey || c.finger)}
-                  <span style={{ opacity: 0.75 }}>{t('fingerprint.qualityShort', { value: c.quality })}</span>
+                  <span>{t('fingerprint.qualityShort', { value: c.quality })}</span>
                   <button type="button" onClick={() => removeCapture(c.finger)} title={t('fingerprint.remove')} className="hover:opacity-70">
                     <X className="w-3 h-3" />
                   </button>

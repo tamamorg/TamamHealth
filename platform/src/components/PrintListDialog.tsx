@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { Printer, Download } from '@/components/icons/lucide';
+import { escapeHtml } from '@/lib/safe-html';
 
 /** One column of a printable list. `key` indexes into each row record. */
 export interface PrintListColumn {
@@ -21,9 +22,6 @@ export interface PrintListSection {
 }
 
 type OutputFormat = 'print' | 'csv';
-
-const escapeHtml = (value: string) =>
-  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
  * The printed page is a standalone document written into a hidden iframe —

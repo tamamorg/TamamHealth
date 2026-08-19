@@ -80,7 +80,7 @@ function ModalHeader({
       <div className="mb-4 p-2.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
         <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
           <span className="font-medium">{patientFullName(patient)}</span>
-          <span className="text-xs ml-2 font-mono" style={{ color: 'var(--text-muted)' }}>{patient.hospitalNumber || patient._id}</span>
+          <span className="text-xs ms-2 font-mono" style={{ color: 'var(--text-muted)' }}>{patient.hospitalNumber || patient._id}</span>
         </span>
       </div>
     </>
@@ -324,7 +324,7 @@ export function ReferModal({ isOpen, onClose, patient, currentUser }: BaseModalP
                     borderRadius: '4px',
                   }}
                 >
-                  {level === 'emergency' && <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />}
+                  {level === 'emergency' && <AlertTriangle className="w-3.5 h-3.5 inline me-1" />}
                   {t(`referrals.urgency_${level}`)}
                 </button>
               ))}

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Patient } from '@/data/mock';
-import { avatarTint, initials, patientFullName } from '@/lib/patient-utils';
+import { avatarTint, initials, patientDisplayName, shortenPersonName } from '@/lib/patient-utils';
 
 /** Minimal shape needed to render a patient's name. */
 export type PatientNameLike = Pick<Patient, 'firstName' | 'surname'> & {
@@ -42,7 +42,10 @@ export default function PatientName({
   nameClassName?: string;
   className?: string;
 }) {
-  const displayName = patient ? patientFullName(patient) : (name || 'Unknown');
+  // Two names everywhere a patient is LISTED — first and surname. The chart
+  // (and printed documents) keep the full legal name; this component is the
+  // list identity, so the rule lives here once for every consumer.
+  const displayName = patient ? patientDisplayName(patient) : (shortenPersonName(name) || 'Unknown');
   const avatarSize = size || 28;
   const nameLink = patientId ? (
     <Link

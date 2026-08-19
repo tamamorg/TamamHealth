@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
       getOnCallStaff, getWeeklyRoster, getStaffingGaps,
     } = await import('@/lib/services/staff-scheduling-service');
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     const url = new URL(request.url);
     const date = url.searchParams.get('date');
     const userId = url.searchParams.get('userId');
@@ -38,26 +39,25 @@ export async function GET(request: NextRequest) {
     const weekStart = url.searchParams.get('weekStart');
     const gaps = url.searchParams.get('gaps');
     if (gaps && date) {
-      const staffingGaps = await getStaffingGaps(date, facilityId);
+      const staffingGaps = await getStaffingGaps(date, facilityId, scope);
       return NextResponse.json({ gaps: staffingGaps, date });
     }
     if (onCall && date) {
-      const staff = await getOnCallStaff(date, facilityId);
+      const staff = await getOnCallStaff(date, facilityId, scope);
       return NextResponse.json({ schedules: staff, total: staff.length });
     }
     if (weekStart) {
-      const roster = await getWeeklyRoster(weekStart, facilityId);
+      const roster = await getWeeklyRoster(weekStart, facilityId, scope);
       return NextResponse.json({ schedules: roster, total: roster.length });
     }
     if (userId) {
-      const schedules = await getSchedulesByUser(userId);
+      const schedules = await getSchedulesByUser(userId, scope);
       return NextResponse.json({ schedules, total: schedules.length });
     }
     if (date) {
-      const schedules = await getSchedulesByDate(date, facilityId);
+      const schedules = await getSchedulesByDate(date, facilityId, scope);
       return NextResponse.json({ schedules, total: schedules.length });
     }
-    const scope = buildScopeFromAuth(auth);
     const schedules = await getAllSchedules(scope);
     return NextResponse.json({ schedules, total: schedules.length });
   } catch (err) {
@@ -126,7 +126,8 @@ async function patchHandler(request: NextRequest) {
     const { sanitizePayload } = await import('@/lib/validation');
     body = sanitizePayload(body);
     const { updateSchedule } = await import('@/lib/services/staff-scheduling-service');
-    const updated = await updateSchedule(id, body);
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const updated = await updateSchedule(id, body, buildScopeFromAuth(auth));
     if (!updated) return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
     return NextResponse.json({ schedule: updated });
   } catch (err) {
@@ -146,7 +147,8 @@ async function deleteHandler(request: NextRequest) {
     const id = url.searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id parameter' }, { status: 400 });
     const { deleteSchedule } = await import('@/lib/services/staff-scheduling-service');
-    const deleted = await deleteSchedule(id);
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const deleted = await deleteSchedule(id, buildScopeFromAuth(auth));
     if (!deleted) return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (err) {

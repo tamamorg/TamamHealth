@@ -172,7 +172,7 @@ export default function WardsPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+        <div className="card-elevated overflow-hidden flex flex-col" data-tour="ward-admissions" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title={t('ward.currentAdmissions')}
             stats={[
@@ -195,7 +195,7 @@ export default function WardsPage() {
                       )}
                     </EhrListHeaderButton>
                     {showWardFilter && (
-                      <div className="absolute left-0 mt-2 rounded-2xl overflow-hidden z-50"
+                      <div className="absolute start-0 mt-2 rounded-2xl overflow-hidden z-50"
                         style={{ width: 240, background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: '0 16px 48px rgba(0,0,0,0.15)' }}>
                         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
                           <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Filter by ward</span>
@@ -263,7 +263,7 @@ export default function WardsPage() {
                     {/* Patient */}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <PatientName patientId={a.patientId} name={a.patientName} nameClassName="!font-normal text-[12.5px]" />
+                        <PatientName patientId={a.patientId} name={a.patientName} nameClassName="text-[12.5px]" />
                         <button
                           type="button"
                           className="inline-flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--overlay-subtle)] flex-shrink-0"

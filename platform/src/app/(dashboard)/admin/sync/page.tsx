@@ -9,8 +9,11 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import { SaPage, SaCard, SaPill, SaTable, formatWhen } from '@/components/admin/sa-ui';
+import {
+  SadbPage, SadbCard, SadbChip, SadbKvRow, SadbHeadLink,
+  SadbSettingGroup, SadbSettingRow, SadbActionButton, type ChipTone,
+} from '@/components/admin/sadb-ui';
+import { SaTable, formatWhen } from '@/components/admin/sa-ui';
 import { useToast } from '@/components/Toast';
 import { apiFetch } from '@/lib/api-fetch';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -20,7 +23,6 @@ import {
   pushPendingToCountryNode,
 } from '@/lib/services/sync-event-service';
 import type { SyncEventDoc } from '@/lib/db-types';
-import { RefreshCw, Upload, Send, ArrowRight } from '@/components/icons/lucide';
 
 interface SyncStats {
   total: number;
@@ -32,11 +34,11 @@ interface SyncStats {
   newestEvent?: string;
 }
 
-const STATUS_TONE: Record<SyncEventDoc['syncStatus'], 'ok' | 'warn' | 'danger' | 'info'> = {
-  pending: 'warn',
-  syncing: 'info',
-  synced: 'ok',
-  failed: 'danger',
+const STATUS_CHIP: Record<SyncEventDoc['syncStatus'], ChipTone> = {
+  pending: 'yellow',
+  syncing: 'blue',
+  synced: 'green',
+  failed: 'red',
 };
 
 export default function AdminSyncPage() {
@@ -157,21 +159,23 @@ export default function AdminSyncPage() {
   const anyRunning = pushingCountryNode || syncPushing || dhis2Pushing;
 
   return (
-    <SaPage>
-      <SaCard>
-        <EhrListHeader
-          title="Sync &amp; Jobs"
-          stats={[
-            { label: 'Pending', value: loading ? '—' : stats?.pending ?? 0, color: stats && stats.pending > 0 ? LIST_STAT_COLORS.amber : LIST_STAT_COLORS.muted },
-            { label: 'Syncing', value: loading ? '—' : stats?.syncing ?? 0, color: LIST_STAT_COLORS.blue },
-            { label: 'Synced', value: loading ? '—' : stats?.synced ?? 0, color: LIST_STAT_COLORS.green },
-            { label: 'Failed', value: loading ? '—' : stats?.failed ?? 0, color: stats && stats.failed > 0 ? 'var(--color-danger)' : LIST_STAT_COLORS.muted },
-            { label: 'Oldest pending', value: loading ? '—' : formatWhen(stats?.oldestPending), color: LIST_STAT_COLORS.muted },
-          ]}
-        />
-        <div style={{ padding: '2px 16px 0', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
-          {!loading && `${events.length} shown${events.length === 100 ? ' (capped at 100)' : ''}`}
-        </div>
+    <SadbPage>
+      <SadbCard
+        title="Sync &amp; Jobs"
+        meta={(
+          <div className="sadb-legend">
+            <span><i style={{ background: 'var(--color-warning-600)' }} />Pending ({loading ? '—' : stats?.pending ?? 0})</span>
+            <span><i style={{ background: 'var(--accent-primary)' }} />Syncing ({loading ? '—' : stats?.syncing ?? 0})</span>
+            <span><i style={{ background: 'var(--color-success-800)' }} />Synced ({loading ? '—' : stats?.synced ?? 0})</span>
+            <span><i style={{ background: 'var(--color-danger-500)' }} />Failed ({loading ? '—' : stats?.failed ?? 0})</span>
+          </div>
+        )}
+      >
+        <p className="sadb-card-meta" style={{ padding: '2px 16px 10px' }}>
+          {loading
+            ? 'Loading…'
+            : `${events.length} shown${events.length === 100 ? ' (capped at 100)' : ''} · Oldest pending ${formatWhen(stats?.oldestPending)}`}
+        </p>
         <SaTable
           columns={['When', 'Resource', 'Operation', 'Facility', 'Status', 'Error']}
           empty={loading ? 'Loading…' : 'Queue is drained — all events synced.'}
@@ -183,55 +187,39 @@ export default function AdminSyncPage() {
               <td><strong>{ev.resourceType}</strong> <span style={{ color: 'var(--text-muted)' }}>{ev.resourceId.slice(0, 12)}</span></td>
               <td>{ev.operation}</td>
               <td>{(ev.hospitalId && hospitalNames.get(ev.hospitalId)) || ev.hospitalId || '—'}</td>
-              <td><SaPill tone={STATUS_TONE[ev.syncStatus]}>{ev.syncStatus}</SaPill></td>
+              <td><SadbChip tone={STATUS_CHIP[ev.syncStatus]}>{ev.syncStatus}</SadbChip></td>
               <td>{ev.syncError || '—'}</td>
             </tr>
           ))}
         </SaTable>
-      </SaCard>
+      </SadbCard>
 
-      <div className="sa-split">
-        <SaCard title="Job runners">
-          <div className="sa-kv">
-            <div className="sa-kv-row">
-              <span>Push pending to country node</span>
-              <button type="button" className="sa-btn" disabled={anyRunning} onClick={handlePushCountryNode}>
-                <Upload className="w-3.5 h-3.5" />
-                {pushingCountryNode ? 'Pushing…' : 'Run'}
-              </button>
-            </div>
-            <div className="sa-kv-row">
-              <span>Server sync push</span>
-              <button type="button" className="sa-btn" disabled={anyRunning} onClick={handleSyncPush}>
-                <RefreshCw className="w-3.5 h-3.5" />
-                {syncPushing ? 'Pushing…' : 'Run'}
-              </button>
-            </div>
-            <div className="sa-kv-row">
-              <span>DHIS2 export push</span>
-              <button type="button" className="sa-btn" disabled={anyRunning} onClick={handleDhis2Push}>
-                <Send className="w-3.5 h-3.5" />
-                {dhis2Pushing ? 'Pushing…' : 'Run'}
-              </button>
-            </div>
-          </div>
-        </SaCard>
+      <div className="sadb-row-3">
+        <SadbSettingGroup title="Job runners">
+          <SadbSettingRow label="Push pending to country node" sub="Pushes up to 50 queued events from this browser to the configured country node.">
+            <SadbActionButton onClick={handlePushCountryNode} disabled={anyRunning}>
+              {pushingCountryNode ? 'Running…' : 'Run now'}
+            </SadbActionButton>
+          </SadbSettingRow>
+          <SadbSettingRow label="Server sync push" sub="Server-side push of pending sync events to CouchDB.">
+            <SadbActionButton onClick={handleSyncPush} disabled={anyRunning}>
+              {syncPushing ? 'Running…' : 'Run now'}
+            </SadbActionButton>
+          </SadbSettingRow>
+          <SadbSettingRow label="DHIS2 export push" sub="Exports this reporting period's aggregate data values to DHIS2.">
+            <SadbActionButton onClick={handleDhis2Push} disabled={anyRunning}>
+              {dhis2Pushing ? 'Running…' : 'Run now'}
+            </SadbActionButton>
+          </SadbSettingRow>
+        </SadbSettingGroup>
 
-        <SaCard title="Conflicts">
-          <div className="sa-kv">
-            <div className="sa-kv-row">
-              <span>Pending reconciliation</span>
-              <span>{conflictsError ? '—' : pendingConflicts ?? '…'}</span>
-            </div>
-          </div>
-          <div style={{ padding: '0 14px 14px' }}>
-            <button type="button" className="sa-btn primary" onClick={() => router.push('/admin/conflicts')}>
-              Open reconciliation queue
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </SaCard>
+        <SadbCard
+          title="Conflicts"
+          action={<SadbHeadLink onClick={() => router.push('/admin/conflicts')}>Open</SadbHeadLink>}
+        >
+          <SadbKvRow label="Pending reconciliation" value={conflictsError ? '—' : pendingConflicts ?? '…'} />
+        </SadbCard>
       </div>
-    </SaPage>
+    </SadbPage>
   );
 }

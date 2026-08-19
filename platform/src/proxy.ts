@@ -8,11 +8,28 @@ import {
   verifyCsrfToken,
 } from './lib/csrf';
 import { addBreadcrumb } from './lib/observability';
+import { buildContentSecurityPolicy } from './lib/security/content-security-policy';
 import {
   getDefaultDashboard,
   hasRoleRouteConfig,
   isPathAllowed,
 } from './lib/role-routes';
+
+function nextWithCsp(request: NextRequest): NextResponse {
+  const nonce = crypto.randomUUID().replace(/-/g, '');
+  const policy = buildContentSecurityPolicy({
+    nonce,
+    isDev: process.env.NODE_ENV !== 'production',
+    couchdbUrl: process.env.NEXT_PUBLIC_COUCHDB_URL,
+    posthogHost: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+  });
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', policy);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set('Content-Security-Policy', policy);
+  return response;
+}
 
 // NOTE: The authoritative token-revocation check (lib/token-blacklist.ts)
 // uses node:fs and therefore can't run in this Edge-runtime proxy.
@@ -37,7 +54,10 @@ const CSRF_EXEMPT_API_PATHS = new Set<string>([
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/me',
-  '/api/demo-credentials',
+  // Public account request. Exempt for the same reason as login: the caller
+  // has no session, so there is none to ride. The route grants nothing and
+  // is rate-limited by IP.
+  '/api/account-requests',
 ]);
 
 /**
@@ -174,7 +194,7 @@ export async function proxy(request: NextRequest) {
     pathname === '/sw.js' ||
     pathname === '/favicon.ico'
   ) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Auth API routes — always public (needed for login/logout flow)
@@ -183,16 +203,22 @@ export async function proxy(request: NextRequest) {
     pathname === '/api/auth/logout' ||
     pathname === '/api/auth/me'
   ) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
-  // Seed-credentials route — public read so the unauthenticated browser-side
-  // PouchDB seed and the demo-accounts dropdown on /login can fetch the
-  // freshly generated demo passwords. The route itself self-gates: in
-  // production it returns only the bootstrap admin row, never the full
-  // demo roster.
-  if (pathname === '/api/demo-credentials') {
-    return NextResponse.next();
+  // Public account request — POST only. Someone who needs an account has no
+  // session yet, so the submission must reach the route; GET is the approver's
+  // queue and stays behind the session gate below. Scoping this by method
+  // rather than by path is the difference between a public form and a public
+  // list of everyone who has asked for access.
+  if (pathname === '/api/account-requests' && request.method.toUpperCase() === 'POST') {
+    return nextWithCsp(request);
+  }
+
+  // The organisation list the request form chooses from. Names only — see the
+  // route for what it withholds and why.
+  if (pathname === '/api/account-requests/options') {
+    return nextWithCsp(request);
   }
 
   // CSRF defence layer 1: Origin/Host check on state-changing API requests.
@@ -228,7 +254,7 @@ export async function proxy(request: NextRequest) {
   // Patient portal API — uses its own JWT auth (not staff auth). The Origin
   // check above still applies; only the cookie-based CSRF gate is skipped.
   if (pathname.startsWith('/api/patient-portal/')) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Public booking API. Unauthenticated by design — the caller is a patient on
@@ -236,43 +262,43 @@ export async function proxy(request: NextRequest) {
   // runs on the POSTs. These routes return free/busy only, and the write paths
   // are rate-limited and require a slot hold.
   if (pathname.startsWith('/api/booking/')) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // FHIR CapabilityStatement is intentionally public so external clients can
   // discover the API before authenticating. All other FHIR resource paths
   // still require a session token.
   if (pathname === '/api/fhir/metadata') {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Country metadata is static reference data (no PHI) — facility nodes
   // fetch it to sync code mappings without requiring a session.
   if (pathname === '/api/country/metadata') {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Liveness/readiness probe — intentionally unauthenticated (see health route).
   if (pathname === '/api/health') {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Terminology registry — shared CodeSystems / ValueSets. Reference data,
   // no PHI; public so external tooling can bind forms to our vocabularies.
   if (pathname.startsWith('/api/terminology/')) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Pay-by-link checkout helper — public so an unauthenticated payer can load
   // the link details (GET) and submit a pending payment (POST). The route
   // itself returns only payer-facing fields and never posts to the ledger.
   if (isCheckoutApiPath(pathname)) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Login page — always public
   if (pathname === '/login') {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Public pages — root (redirects to /login), public-stats, patient-portal, legal pages
@@ -281,9 +307,10 @@ export async function proxy(request: NextRequest) {
     pathname === '/public-stats' ||
     pathname === '/patient-portal' ||
     pathname === '/terms' ||
-    pathname === '/privacy'
+    pathname === '/privacy' ||
+    pathname === '/request-account'
   ) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Public booking — a patient following a link from an SMS, a QR code or the
@@ -291,13 +318,13 @@ export async function proxy(request: NextRequest) {
   // /login. The routes underneath return free/busy only; nothing here reaches
   // patient data without the unguessable booking reference.
   if (pathname === '/book' || pathname.startsWith('/book/')) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Pay-by-link checkout page — a patient/payer opens the link without a staff
   // session, so the public checkout route must not redirect to /login.
   if (pathname === '/checkout' || pathname.startsWith('/checkout/')) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Scheduled-job endpoints presenting their secret header. These have no
@@ -308,7 +335,7 @@ export async function proxy(request: NextRequest) {
   // that, falls back to `getAuthPayload` and returns 401 itself. A wrong or
   // guessed secret therefore gets exactly as far as a missing one.
   if (isMachineCallerRequest(pathname, request)) {
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // All other routes require authentication
@@ -391,7 +418,7 @@ export async function proxy(request: NextRequest) {
     return resp;
   }
 
-  const response = NextResponse.next();
+  const response = nextWithCsp(request);
 
   // Lazy-mint the CSRF cookie if a valid session is missing one (e.g. a user
   // upgraded across the deploy that introduced this defence, or their cookie

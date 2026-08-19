@@ -14,34 +14,50 @@
  * DHIS2 sync log). Missing data renders as an explicit empty state.
  */
 
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
-import ChartCard, { tooltipStyle, axisTick } from '@/components/ChartCard';
-import {
-  Siren, ClipboardPen, ChevronRight, ChevronDown, Check, Syringe, HeartPulse,
+  Siren, FileText, ChevronRight, ChevronDown, Check,
 } from '@/components/icons/lucide';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
-import { SOUTH_SUDAN_STATES, SOUTH_SUDAN_BBOX, type GeoState } from '@/data/south-sudan-geo';
+import { SOUTH_SUDAN_STATES } from '@/data/south-sudan-geo';
+import { makeProjector } from '@/lib/maps/south-sudan-projection';
 import { useHospitals } from '@/lib/hooks/useHospitals';
-import { useBirths } from '@/lib/hooks/useBirths';
-import { useDeaths } from '@/lib/hooks/useDeaths';
 import { getNationalDataQuality, type NationalDataQuality } from '@/lib/services/data-quality-service';
 import { getImmunizationStats } from '@/lib/services/immunization-service';
-import { getANCStats } from '@/lib/services/anc-service';
+import { isoWeek } from '@/lib/format-utils';
+import { CHART_SERIES, CHART_SERIES_HEX, DISEASE_COLOR } from '@/lib/chart-colors';
 
-// Restrained public-health palette.
-const BLUE = '#2a78d6';
+// recharts (~80-100KB) is deferred behind dynamic boundaries so it's fetched
+// only when a chart actually renders — same pattern as
+// FacilityManagementDashboard/_FacilityCharts.
+const FacilityTypeDonut = dynamic(
+  () => import('./_GovernmentCharts').then(m => m.FacilityTypeDonut),
+  { ssr: false, loading: () => <div style={{ width: '100%', height: '100%' }} /> },
+);
+const WeeklyCasesChart = dynamic(
+  () => import('./_GovernmentCharts').then(m => m.WeeklyCasesChart),
+  { ssr: false, loading: () => <div style={{ width: '100%', height: '100%' }} /> },
+);
+
+/* Two jobs, two forms — they were one set of constants doing both, which is
+   how the map turned black.
+
+   MAGNITUDE (the choropleth): `govHeatFill` interpolates a wash toward the
+   layer colour using `parseInt(hex.slice(…))`, so these must be literal hex.
+   They come from the chart scale, not from status. */
+const LAYER_ALERTS = CHART_SERIES_HEX[4];   // orange
+const LAYER_IMMUNIZATION = CHART_SERIES_HEX[5]; // green
+const LAYER_DEEP = '#013D6B';               // brand-800, the reporting layer
+
+/* STATUS (on target / follow-up / critical): handed straight to CSS, so these
+   stay tokens and keep tracking the semantic scale. */
 const GREEN = 'var(--color-success)';
-const RED = 'var(--color-danger)';
 const AMBER = 'var(--color-warning)';
-const DEEP = 'var(--accent-hover)';
+const RED = 'var(--color-danger)';
 
 type ImmunizationStats = Awaited<ReturnType<typeof getImmunizationStats>>;
-type ANCStats = Awaited<ReturnType<typeof getANCStats>>;
 
 // ── The ten states, with 3-letter codes for compact bar-chart axis labels ──
 const STATE_TILES: { name: string; abbr: string }[] = [
@@ -66,24 +82,20 @@ const MAP_LAYERS: { key: MapLayer; label: string; legend: string }[] = [
   { key: 'facilities', label: 'Facilities', legend: 'Registered facilities' },
 ];
 
+// Chart-label wrapper around the shared ISO-week calculator: the week number
+// comes from `isoWeek` (the same algorithm /surveillance uses), while the
+// Thursday-of-week date it also needs stays local — it's only used here to
+// format the display month and a chronological sort key, values `isoWeek`
+// doesn't expose.
 function isoWeekLabel(iso: string): { label: string; sortKey: string } {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { label: iso || '?', sortKey: iso || '' };
+  const w = isoWeek(iso);
+  if (Number.isNaN(d.getTime()) || !w) return { label: iso || '?', sortKey: iso || '' };
   const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
   const dayNum = (target.getUTCDay() + 6) % 7;
   target.setUTCDate(target.getUTCDate() - dayNum + 3);
-  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
-  const week = 1 + Math.round(((target.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
   const month = target.toLocaleString('en', { month: 'short', timeZone: 'UTC' });
-  return { label: `W${week} ${month}`, sortKey: target.toISOString().slice(0, 10) };
-}
-
-function monthLabel(iso: string): { label: string; sortKey: string } | null {
-  if (!iso || iso.length < 7) return null;
-  const key = iso.slice(0, 7);
-  const d = new Date(`${key}-01T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return null;
-  return { label: d.toLocaleString('en', { month: 'short', year: '2-digit', timeZone: 'UTC' }), sortKey: key };
+  return { label: `W${w.week} ${month}`, sortKey: target.toISOString().slice(0, 10) };
 }
 
 // Threshold tone for percentage indicators (WHO DQR-style traffic light).
@@ -100,31 +112,7 @@ const GOV_MAP_W = 600;
 const GOV_MAP_H = 440;
 const GOV_MAP_PAD = 12;
 
-function govProject(lat: number, lng: number): { x: number; y: number } {
-  const { minLng, maxLng, minLat, maxLat } = SOUTH_SUDAN_BBOX;
-  const scale = Math.min(
-    (GOV_MAP_W - 2 * GOV_MAP_PAD) / (maxLng - minLng),
-    (GOV_MAP_H - 2 * GOV_MAP_PAD) / (maxLat - minLat),
-  );
-  const ox = (GOV_MAP_W - (maxLng - minLng) * scale) / 2;
-  const oy = (GOV_MAP_H - (maxLat - minLat) * scale) / 2;
-  return { x: ox + (lng - minLng) * scale, y: oy + (maxLat - lat) * scale };
-}
-
-function govRingPath(ring: Array<[number, number]>): string {
-  return ring.map(([lng, lat], i) => {
-    const p = govProject(lat, lng);
-    return `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
-  }).join(' ') + ' Z';
-}
-
-function govCentroid(state: GeoState): { x: number; y: number } {
-  const ring = state.rings.reduce((a, b) => (b.length > a.length ? b : a), state.rings[0]);
-  return govProject(
-    ring.reduce((s, p) => s + p[1], 0) / ring.length,
-    ring.reduce((s, p) => s + p[0], 0) / ring.length,
-  );
-}
+const governmentProjector = makeProjector(GOV_MAP_W, GOV_MAP_H, GOV_MAP_PAD);
 
 /* Magnitude layers shade from a near-white wash toward the layer's brand
    color (sqrt ramp keeps mid-range states readable); zero/no-data states get
@@ -140,36 +128,16 @@ function govHeatFill(value: number | null, max: number, hex: string): string {
 
 // ── Small presentational pieces ──────────────────────────────────────
 
+/* The design's panel head: an h6-style condensed title on the left, the
+   period/geography note (and any controls) on the right, on a hairline. All
+   geometry lives in .gov-panel-head (globals.css). */
 function PanelHead({ title, meta, action }: { title: string; meta?: string; action?: React.ReactNode }) {
   return (
-    <div className="px-4 pt-3.5 pb-2.5 flex items-baseline justify-between gap-2 flex-wrap" style={{ borderBottom: '1px solid var(--border-light)' }}>
-      <h3 className="text-[13px] font-extrabold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+    <div className="gov-panel-head">
+      <h3>{title}</h3>
       <div className="flex items-center gap-3">
-        {meta && <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{meta}</span>}
+        {meta && <span className="gov-meta">{meta}</span>}
         {action}
-      </div>
-    </div>
-  );
-}
-
-/** Horizontal coverage bar for a single 0–100 indicator: value against the
- *  100% track, colour carrying the WHO-style threshold tone. Reads faster than
- *  a ring at small sizes and stacks in far less vertical space. */
-function CoverageBar({ value, label, sub, color }: {
-  value: number; label: string; sub?: string; color: string;
-}) {
-  const pct = Math.min(100, Math.max(0, value));
-  return (
-    <div className="py-1">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[12px] font-bold truncate" style={{ color: 'var(--text-primary)' }}>
-          {label}
-          {sub && <span className="font-medium" style={{ color: 'var(--text-muted)' }}> · {sub}</span>}
-        </span>
-        <span className="text-[13px] font-extrabold tabular-nums flex-none" style={{ color }}>{pct}%</span>
-      </div>
-      <div className="mt-1 rounded-full overflow-hidden" style={{ height: 7, background: 'var(--border-light)' }}>
-        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: color }} />
       </div>
     </div>
   );
@@ -179,53 +147,41 @@ function CoverageBar({ value, label, sub, color }: {
 // against each other); anything else draws the next *unused* fallback so no
 // two series ever share a color — cycling previously gave Kala-azar the same
 // red as Malaria.
+/**
+ * Disease colour, from the shared entity map — the same malaria blue this
+ * screen shows is the one /surveillance shows. They used to disagree on every
+ * disease (malaria red here, blue there; cholera blue here, red there), which
+ * made the colour meaningless the moment a reader moved between the two.
+ * Entries the shared map does not know keep their own hues below.
+ */
 const DISEASE_COLORS: Record<string, string> = {
-  malaria: 'var(--color-danger)',
-  cholera: '#2a78d6',
-  measles: '#7847EB',
-  pneumonia: 'var(--color-warning)',
-  diarrhea: '#0f9488',
-  'acute watery diarrhea': '#0f9488',
-  tuberculosis: 'var(--accent-hover)',
-  tb: 'var(--accent-hover)',
-  hiv: '#CA4D1C',
-  'hiv/aids': '#CA4D1C',
-  meningitis: '#a94a7f',
-  measles_rubella: '#7847EB',
+  ...DISEASE_COLOR,
+  'hiv/aids': DISEASE_COLOR.hiv,
+  measles_rubella: DISEASE_COLOR.measles,
+  meningitis: 'var(--chart-3)',
 };
-const DISEASE_FALLBACK = ['var(--color-success)', '#8f6a13', '#d6659b', '#5b67d8', '#64748B'];
+/** Anything unnamed walks the categorical slots in fixed order — never a
+ *  generated hue, and never a status colour. */
+const DISEASE_FALLBACK = [...CHART_SERIES];
 
 // Facility-type donut palette + labels (matches the hospital registry vocab).
 // PHCU was slate (#64748B) — it read as gray and was near-indistinguishable
 // from the referral blue; the warm orange step validates against every neighbor.
 const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
-  national_referral: { label: 'National Referral', color: '#2a78d6' },
-  state_hospital: { label: 'State Hospital', color: '#7847EB' },
+  national_referral: { label: 'National Referral', color: 'var(--chart-1)' },
+  state_hospital: { label: 'State Hospital', color: 'var(--chart-3)' },
   county_hospital: { label: 'County Hospital', color: 'var(--color-success-text)' },
   phcc: { label: 'PHCC', color: 'var(--color-warning-text)' },
   phcu: { label: 'PHCU', color: '#CA4D1C' },
-};
-
-// Recharts <Legend> restyled to spec: identity comes from the colored dot,
-// the text stays in neutral ink (series-colored legend text is illegible for
-// light hues and reads loud).
-const legendProps = {
-  iconType: 'circle' as const,
-  iconSize: 8,
-  wrapperStyle: { fontSize: 11, paddingTop: 4 },
-  formatter: (value: React.ReactNode) => <span style={{ color: 'var(--text-secondary)' }}>{value}</span>,
 };
 
 export default function GovernmentNationalDashboard() {
   const router = useRouter();
   const { alerts } = useSurveillance();
   const { hospitals } = useHospitals();
-  const { births } = useBirths();
-  const { deaths } = useDeaths();
 
   const [dq, setDq] = useState<NationalDataQuality | null>(null);
   const [imm, setImm] = useState<ImmunizationStats | null>(null);
-  const [anc, setAnc] = useState<ANCStats | null>(null);
   const [layer, setLayer] = useState<MapLayer>('alerts');
   const [selectedState, setSelectedState] = useState<string | null>(null);
   // Which diseases the weekly-trend chart plots. `null` = all; once the
@@ -235,13 +191,12 @@ export default function GovernmentNationalDashboard() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [dqRes, immRes, ancRes] = await Promise.all([
+      const [dqRes, immRes] = await Promise.all([
         getNationalDataQuality().catch(() => null),
         getImmunizationStats().catch(() => null),
-        getANCStats().catch(() => null),
       ]);
       if (cancelled) return;
-      setDq(dqRes); setImm(immRes); setAnc(ancRes);
+      setDq(dqRes); setImm(immRes);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -416,13 +371,13 @@ export default function GovernmentNationalDashboard() {
       </button>
       {diseaseMenuOpen && (
         <div
-          className="absolute right-0 z-30 mt-1 py-1 rounded-lg overflow-y-auto"
+          className="absolute end-0 z-30 mt-1 py-1 rounded-lg overflow-y-auto"
           style={{ top: '100%', minWidth: 210, maxHeight: 260, background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', boxShadow: 'var(--card-shadow-lg)' }}
         >
           <button
             type="button"
             onClick={() => setSelectedDiseases(null)}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--overlay-subtle)]"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-start hover:bg-[var(--overlay-subtle)]"
             style={{ fontSize: 11, fontWeight: 700, color: selectedDiseases === null ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
           >
             <span className="flex-1">All diseases</span>
@@ -436,7 +391,7 @@ export default function GovernmentNationalDashboard() {
                 key={d}
                 type="button"
                 onClick={() => toggleDisease(d)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--overlay-subtle)]"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-start hover:bg-[var(--overlay-subtle)]"
                 style={{ fontSize: 11, fontWeight: 600, color: on ? 'var(--text-primary)' : 'var(--text-muted)' }}
               >
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: on ? color : 'var(--border-medium)' }} />
@@ -450,33 +405,6 @@ export default function GovernmentNationalDashboard() {
     </div>
   ) : null;
 
-  const vitalMonthly = useMemo(() => {
-    const byMonth = new Map<string, { births: number; deaths: number }>();
-    const bump = (iso: string, key: 'births' | 'deaths') => {
-      const m = monthLabel(iso);
-      if (!m) return;
-      const cur = byMonth.get(m.sortKey) || { births: 0, deaths: 0 };
-      cur[key] += 1;
-      byMonth.set(m.sortKey, cur);
-    };
-    for (const b of births) bump(b.dateOfBirth || b.createdAt, 'births');
-    for (const d of deaths) bump(d.dateOfDeath || d.createdAt, 'deaths');
-    if (byMonth.size === 0) return [];
-    // Continuous 6-month axis ending at the latest registration month — months
-    // with no events plot as zero instead of vanishing, so gaps stay honest.
-    // Labels use “Jun ’26” (the bare "Jun 26" read as a day of the month).
-    const latest = Array.from(byMonth.keys()).sort().pop()!;
-    const [ly, lm] = latest.split('-').map(Number);
-    const out: { month: string; births: number; deaths: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(ly, lm - 1 - i, 1);
-      const sortKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const counts = byMonth.get(sortKey) || { births: 0, deaths: 0 };
-      out.push({ month: `${d.toLocaleString('en', { month: 'short' })} ’${String(d.getFullYear()).slice(2)}`, ...counts });
-    }
-    return out;
-  }, [births, deaths]);
-
   const now = new Date();
   const periodLabel = now.toLocaleString('en', { month: 'long', year: 'numeric' });
 
@@ -484,63 +412,50 @@ export default function GovernmentNationalDashboard() {
   const selected = selectedState ? stateAgg.get(selectedState) : null;
 
   return (
-    <main
-      className="page-container page-enter gov-dash"
-      style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
-    >
+    <main className="page-container page-enter gov-dash">
       {/* ── Header: what/where/when — no decorative hero ── */}
-      <div className="flex items-end justify-between gap-3 flex-wrap mb-3">
+      <div className="gov-page-head">
         <div>
-          <h1 style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: 1.1, color: '#000' }}>
-            National Dashboard
-          </h1>
-          <p className="text-[12px] mt-1" style={{ color: 'var(--text-muted)' }}>
-            South Sudan · National · {periodLabel} — computed live from facility-reported data
-          </p>
+          <h1>National Dashboard</h1>
+          <p>South Sudan · National · {periodLabel} — computed live from facility-reported data</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/government/briefing')}>
-            <ClipboardPen className="w-4 h-4" /> Executive briefing
+        <div className="flex items-center gap-2 flex-wrap">
+          <button type="button" className="btn btn-secondary" onClick={() => router.push('/government/briefing')}>
+            <FileText className="w-4 h-4" /> Executive briefing
           </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push('/government/alerts')}>
+          <button type="button" className="btn btn-primary btn-alerts" onClick={() => router.push('/government/alerts')}>
             <Siren className="w-4 h-4" /> Priority alerts
           </button>
         </div>
       </div>
 
-      {/* ── Row: national map + weekly disease trends ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mb-3 gov-row" style={{ flex: '1.9 1 0', minHeight: 0 }}>
-        <div className="dash-card overflow-hidden lg:col-span-3 flex flex-col">
-          <PanelHead
-            title="By state"
-            meta={`${MAP_LAYERS.find(l => l.key === layer)?.legend} · ranked · National`}
-            action={
-              <div className="flex gap-1">
-                {MAP_LAYERS.map(l => (
-                  <button
-                    key={l.key}
-                    type="button"
-                    onClick={() => setLayer(l.key)}
-                    className="text-[11px] font-bold px-2 py-1 rounded-full"
-                    style={{
-                      background: layer === l.key ? 'var(--accent-primary)' : 'var(--overlay-subtle)',
-                      color: layer === l.key ? '#fff' : 'var(--text-secondary)',
-                    }}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-            }
-          />
-          <div className="p-3 flex flex-col md:flex-row gap-3 flex-1 min-h-0">
+      {/* ── One viewport, no scrolling: the map fills the left 4/6 across
+          both rows; the right 2/6 stacks Facility types over Weekly cases,
+          the chart flexing to absorb the leftover height. ── */}
+      <div className="gov-grid">
+        <section className="gov-panel gov-span-4 gov-map-panel">
+          <PanelHead title="By state" meta="ranked · National" />
+          <div className="gov-map-layers">
+            {MAP_LAYERS.map(l => (
+              <button
+                key={l.key}
+                type="button"
+                onClick={() => setLayer(l.key)}
+                className={layer === l.key ? 'is-active' : undefined}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+          <div className="gov-map-body">
             {/* Real South Sudan choropleth: each state polygon shaded by the
                 active layer's value; click a state to drill down. The map
                 fills the card, with the legend + drill-down on a side rail. */}
             {(() => {
               const byName = new Map(barData.map(b => [b.name, b] as const));
               const maxValue = Math.max(0, ...barData.map(b => b.value ?? 0));
-              const layerHex = layer === 'alerts' ? RED : layer === 'immunization' ? GREEN : DEEP;
+              const layerHex = layer === 'alerts' ? LAYER_ALERTS
+                : layer === 'immunization' ? LAYER_IMMUNIZATION : LAYER_DEEP;
               const layerMeta = MAP_LAYERS.find(l => l.key === layer);
               const fillFor = (value: number | null): string => {
                 if (isPercentLayer) {
@@ -552,8 +467,8 @@ export default function GovernmentNationalDashboard() {
                 value === null || value === 0 ? '' : isPercentLayer ? `${value}%` : value.toLocaleString();
               return (
                 <>
-                  <div className="flex-1 min-w-0 min-h-0">
-                    <svg viewBox={`0 0 ${GOV_MAP_W} ${GOV_MAP_H}`} style={{ display: 'block', width: '100%', height: '100%' }}>
+                  <div className="gov-map-canvas flex-1 min-w-0">
+                    <svg viewBox={`0 0 ${GOV_MAP_W} ${GOV_MAP_H}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
                       {SOUTH_SUDAN_STATES.map(s => {
                         const entry = byName.get(s.name);
                         const value = entry?.value ?? null;
@@ -561,10 +476,10 @@ export default function GovernmentNationalDashboard() {
                         return s.rings.map((ring, i) => (
                           <path
                             key={`${s.name}-${i}`}
-                            d={govRingPath(ring)}
+                            d={governmentProjector.ringPath(ring)}
                             fill={fillFor(value)}
                             fillOpacity={isPercentLayer && value ? 0.55 : 1}
-                            stroke={isSelected ? DEEP : 'rgba(1, 86, 151, 0.25)'}
+                            stroke={isSelected ? 'var(--brand-800)' : 'rgba(1, 86, 151, 0.25)'}
                             strokeWidth={isSelected ? 2.5 : 1}
                             strokeLinejoin="round"
                             style={{ cursor: 'pointer' }}
@@ -575,7 +490,7 @@ export default function GovernmentNationalDashboard() {
                         ));
                       })}
                       {SOUTH_SUDAN_STATES.map(s => {
-                        const c = govCentroid(s);
+                        const c = governmentProjector.centroid(s);
                         const value = byName.get(s.name)?.value ?? null;
                         const heavy = !isPercentLayer && maxValue > 0 && (value ?? 0) / maxValue > 0.55;
                         return (
@@ -585,7 +500,7 @@ export default function GovernmentNationalDashboard() {
                               {s.name}
                             </text>
                             <text x={c.x} y={c.y + 9} textAnchor="middle" fontSize="9.5" fontWeight="800"
-                              fill={heavy ? '#fff' : DEEP} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                              fill={heavy ? '#fff' : 'var(--brand-800)'} style={{ fontVariantNumeric: 'tabular-nums' }}>
                               {formatValue(value)}
                             </text>
                           </g>
@@ -595,12 +510,10 @@ export default function GovernmentNationalDashboard() {
                   </div>
 
                   {/* Explanation rail: what the shading means + selected-state drill-down. */}
-                  <div className="w-full md:w-[218px] flex-shrink-0 flex flex-col gap-2.5 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-                    <div className="rounded-xl px-3 py-2.5" style={{ background: 'var(--overlay-subtle)' }}>
-                      <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                        {layerMeta?.label} shading
-                      </div>
-                      <p className="text-[11px] leading-snug mb-2" style={{ color: 'var(--text-muted)' }}>{layerMeta?.legend}.</p>
+                  <div className="gov-map-rail">
+                    <div className="gov-map-legend">
+                      <p className="gov-legend-title">{layerMeta?.label} shading</p>
+                      <p className="gov-legend-note">{layerMeta?.legend}.</p>
                       {isPercentLayer ? (
                         <div className="flex flex-col gap-1">
                           {[{ c: GREEN, t: '80%+ on target' }, { c: AMBER, t: '60–79% needs follow-up' }, { c: RED, t: 'Below 60% critical' }].map(row => (
@@ -612,33 +525,33 @@ export default function GovernmentNationalDashboard() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>0</span>
-                          <span aria-hidden="true" className="flex-1 rounded-full" style={{
+                          <span className="text-[10px]">0</span>
+                          {/* gov-scale-bar: opts out of the app-wide inline-gradient purge —
+                              this gradient IS the legend. */}
+                          <span aria-hidden="true" className="gov-scale-bar flex-1 rounded-full" style={{
                             height: 8,
                             background: `linear-gradient(90deg, rgb(247,250,252), ${layerHex})`,
-                            border: '1px solid var(--border-light)',
+                            border: '1px solid var(--ehr-border, #DDEAF3)',
                           }} />
-                          <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>{maxValue.toLocaleString()}</span>
+                          <span className="text-[10px] tabular-nums">{maxValue.toLocaleString()}</span>
                         </div>
                       )}
-                      <p className="text-[10.5px] mt-2 mb-0" style={{ color: 'var(--text-muted)' }}>
-                        Neutral states have no data on file.
-                      </p>
+                      <p className="gov-legend-foot">Neutral states have no data on file.</p>
                     </div>
 
                     {selected && selectedState ? (
-                      <div className="rounded-xl px-3 py-2.5 flex flex-col gap-1.5" style={{ border: '1px solid var(--border-light)' }}>
-                        <b className="text-[13px]" style={{ color: 'var(--text-primary)' }}>{selectedState}</b>
+                      <div className="gov-map-selected">
+                        <b>{selectedState}</b>
                         <span>{selected.facilities} facilities</span>
                         <span style={{ color: selected.alertCases > 0 ? RED : 'inherit' }}>{selected.alertCases.toLocaleString()} alert cases</span>
                         <span>{selected.immRecords.toLocaleString()} immunization records</span>
                         <span>{selected.completenessN > 0 ? `${Math.round(selected.completenessSum / selected.completenessN)}% reporting completeness` : 'No assessment on file'}</span>
-                        <button type="button" className="text-[11px] font-bold text-left mt-1" style={{ color: 'var(--accent-primary)' }} onClick={() => router.push('/hospitals')}>
+                        <button type="button" className="gov-open-link" onClick={() => router.push('/hospitals')}>
                           Open facilities <ChevronRight className="w-3 h-3 inline" />
                         </button>
                       </div>
                     ) : (
-                      <div className="rounded-xl px-3 py-2.5 text-[11px]" style={{ border: '1px dashed var(--border-light)', color: 'var(--text-muted)' }}>
+                      <div className="gov-map-hint">
                         Click a state on the map to see its facilities, alert cases, immunization records, and reporting completeness here.
                       </div>
                     )}
@@ -647,157 +560,46 @@ export default function GovernmentNationalDashboard() {
               );
             })()}
           </div>
-        </div>
+        </section>
 
-        {/* Weekly reported cases — fills the slot beside the map; the
-            100%-height chart stretches to match the map card's height. */}
-        <ChartCard
-          className="lg:col-span-2"
-          title="Weekly reported cases"
-          subtitle="Per disease · last 12 reporting weeks · National"
-          defaultType="line"
-          periods={[]}
-          extraControls={diseaseSelector}
-        >
-          {({ chartType }) => (
-            weeklyByDisease.length === 0 || diseaseList.length === 0 ? (
-              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No surveillance reports on file.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%" minHeight={0}>
-                {chartType === 'bar' ? (
-                  <BarChart data={weeklyByDisease} margin={{ top: 6, right: 8, left: -12, bottom: 0 }}>
-                    <CartesianGrid stroke="var(--border-light)" vertical={false} />
-                    <XAxis dataKey="week" tick={axisTick} tickLine={false} axisLine={false} />
-                    <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip {...tooltipStyle} />
-                    <Legend {...legendProps} />
-                    {shownDiseases.map(d => (
-                      <Bar key={d} dataKey={d} name={d} fill={diseaseColorMap.get(d)} radius={[4, 4, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-                    ))}
-                  </BarChart>
-                ) : chartType === 'area' ? (
-                  <AreaChart data={weeklyByDisease} margin={{ top: 6, right: 8, left: -12, bottom: 0 }}>
-                    <CartesianGrid stroke="var(--border-light)" vertical={false} />
-                    <XAxis dataKey="week" tick={axisTick} tickLine={false} axisLine={false} />
-                    <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip {...tooltipStyle} />
-                    <Legend {...legendProps} />
-                    {shownDiseases.map(d => {
-                      const c = diseaseColorMap.get(d)!;
-                      return <Area key={d} type="monotone" dataKey={d} name={d} stroke={c} fill={c} fillOpacity={0.12} strokeWidth={2} isAnimationActive={false} />;
-                    })}
-                  </AreaChart>
-                ) : (
-                  <LineChart data={weeklyByDisease} margin={{ top: 6, right: 8, left: -12, bottom: 0 }}>
-                    <CartesianGrid stroke="var(--border-light)" vertical={false} />
-                    <XAxis dataKey="week" tick={axisTick} tickLine={false} axisLine={false} />
-                    <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip {...tooltipStyle} />
-                    <Legend {...legendProps} />
-                    {shownDiseases.map(d => (
-                      <Line key={d} type="monotone" dataKey={d} name={d} stroke={diseaseColorMap.get(d)} strokeWidth={2} dot={false} isAnimationActive={false} />
-                    ))}
-                  </LineChart>
-                )}
-              </ResponsiveContainer>
-            )
-          )}
-        </ChartCard>
-      </div>
-
-      {/* ── Row: facility mix · vital events · programme coverage, one line ──
-          DOM keeps the vital card first for the mobile stack; lg:order-* puts
-          the on-screen order at Facility types · Vital events · Programme. */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 gov-row" style={{ flex: '1 1 0', minHeight: 0, maxHeight: 300 }}>
-          {/* Vital events per month */}
-          <div className="dash-card overflow-hidden flex flex-col lg:order-2">
-            <PanelHead title="Vital events per month" meta="Births vs deaths registered · last 6 months · National" action={
-              <span className="flex items-center gap-2">
-                <button type="button" className="text-[11px] font-bold" style={{ color: 'var(--accent-primary)' }} onClick={() => router.push('/births')}>Births</button>
-                <button type="button" className="text-[11px] font-bold" style={{ color: 'var(--accent-primary)' }} onClick={() => router.push('/deaths')}>Deaths</button>
-              </span>
-            } />
-            <div className="p-3 flex-1 min-h-0">
-              {vitalMonthly.length === 0 ? (
-                <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No birth/death registrations on file.</p>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%" minHeight={0}>
-                  <BarChart data={vitalMonthly} margin={{ top: 6, right: 8, left: -12, bottom: 0 }} barCategoryGap="24%">
-                    <CartesianGrid stroke="var(--border-light)" vertical={false} />
-                    <XAxis dataKey="month" tick={axisTick} tickLine={false} axisLine={false} />
-                    <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip {...tooltipStyle} cursor={{ fill: 'var(--overlay-subtle)' }} />
-                    <Legend {...legendProps} />
-                    <Bar dataKey="births" name="Births" fill={GREEN} radius={[4, 4, 0, 0]} maxBarSize={20} isAnimationActive={false} />
-                    <Bar dataKey="deaths" name="Deaths" fill={DEEP} radius={[4, 4, 0, 0]} maxBarSize={20} isAnimationActive={false} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-
-          {/* Facility-type mix */}
-          <div className="dash-card overflow-hidden flex flex-col lg:order-1">
-            <PanelHead title="Facility types" meta={`${hospitals.length} registered`} />
-            {facilityMix.length === 0 ? (
-              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No facilities on file.</p>
-            ) : (
-              <div className="flex items-center gap-6 p-4 flex-1">
-                <div className="relative flex-shrink-0" style={{ width: 120, height: 120 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={facilityMix} dataKey="value" nameKey="label" innerRadius={42} outerRadius={58} paddingAngle={2} stroke="none">
-                        {facilityMix.map(f => <Cell key={f.key} fill={f.color} />)}
-                      </Pie>
-                      <Tooltip {...tooltipStyle} formatter={(v: number | undefined, n) => [v ?? 0, String(n ?? '')]} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-[19px] font-extrabold leading-tight" style={{ color: 'var(--text-primary)' }}>{hospitals.length}</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>facilities</span>
-                  </div>
-                </div>
-                {/* Capped width so label and count stay adjacent instead of
-                    stretching to the card's far edge. */}
-                <div className="flex flex-col gap-1.5 min-w-0 w-full" style={{ maxWidth: 280 }}>
-                  {facilityMix.map(f => (
-                    <div key={f.key} className="flex items-center gap-2 text-[11px]">
-                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: f.color }} />
-                      <span className="truncate flex-1" style={{ color: 'var(--text-secondary)' }}>{f.label}</span>
-                      <b className="tabular-nums" style={{ color: 'var(--text-primary)' }}>{f.value}</b>
-                      <span className="tabular-nums text-right" style={{ color: 'var(--text-muted)', width: 32 }}>
-                        {Math.round((f.value / hospitals.length) * 100)}%
-                      </span>
-                    </div>
-                  ))}
+        {/* Facility-type mix — the design's 104px donut with a count legend. */}
+        <section className="gov-panel gov-span-2">
+          <PanelHead title="Facility types" meta={`${hospitals.length.toLocaleString()} registered`} />
+          {facilityMix.length === 0 ? (
+            <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No facilities on file.</p>
+          ) : (
+            <div className="gov-donut-body">
+              <div className="gov-donut-ring">
+                <FacilityTypeDonut data={facilityMix} />
+                <div className="gov-donut-hole">
+                  <b>{hospitals.length.toLocaleString()}</b>
                 </div>
               </div>
+              <div className="gov-donut-legend">
+                {facilityMix.map(f => (
+                  <div key={f.key}>
+                    <span><i style={{ background: f.color }} />{f.label}</span>
+                    <b>{f.value.toLocaleString()}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Weekly reported cases — the design's paired-bar panel; series stay
+            per-disease with the entity-stable palette and the selector. */}
+        <section className="gov-panel gov-span-2 gov-fill-panel">
+          <PanelHead title="Weekly reported cases" meta="Last 12 weeks · National" action={diseaseSelector} />
+          <div className="gov-chart-body gov-chart-fill" style={{ height: 208 }}>
+            {weeklyByDisease.length === 0 || diseaseList.length === 0 ? (
+              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No surveillance reports on file.</p>
+            ) : (
+              <WeeklyCasesChart data={weeklyByDisease} diseases={shownDiseases} colorMap={diseaseColorMap} />
             )}
           </div>
+        </section>
 
-          <div className="dash-card overflow-hidden lg:order-3">
-            <PanelHead title="Programme coverage" meta="vs national target" action={
-              <span className="flex items-center gap-2">
-                <button type="button" className="text-[11px] font-bold" style={{ color: 'var(--accent-primary)' }} onClick={() => router.push('/immunizations')}>
-                  <Syringe className="w-3 h-3 inline" /> EPI
-                </button>
-                <button type="button" className="text-[11px] font-bold" style={{ color: 'var(--accent-primary)' }} onClick={() => router.push('/anc')}>
-                  <HeartPulse className="w-3 h-3 inline" /> ANC
-                </button>
-              </span>
-            } />
-            {/* Birth/death certification lives with the Vital events chart —
-                only reporting + programme indicators here. */}
-            <div className="px-4 py-2">
-              <CoverageBar value={dq?.avgCompleteness ?? 0} label="Reporting" sub={`${dq?.facilitiesReporting ?? 0}/${dq?.totalFacilities ?? 0} facilities`} color={pctTone(dq?.avgCompleteness ?? 0, 80, 60)} />
-              <CoverageBar value={dq?.avgTimeliness ?? 0} label="Timeliness" sub="latest assessments" color={pctTone(dq?.avgTimeliness ?? 0, 80, 60)} />
-              <CoverageBar value={imm?.coverageRate ?? 0} label="Immunization" sub={`${imm?.totalChildren ?? 0} children`} color={pctTone(imm?.coverageRate ?? 0, 90, 60)} />
-              <CoverageBar value={anc?.anc4PlusRate ?? 0} label="ANC 4+" sub={`${anc?.totalMothers ?? 0} mothers`} color={pctTone(anc?.anc4PlusRate ?? 0, 80, 50)} />
-            </div>
-            <p className="text-[10px] px-4 pb-3" style={{ color: 'var(--text-muted)' }}>
-              Rates use facility-recorded denominators, not population estimates.
-            </p>
-          </div>
       </div>
 
     </main>

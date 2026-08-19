@@ -5,6 +5,14 @@ stack with [`docker-compose.ghcr.yml`](../../docker-compose.ghcr.yml) for GHCR p
 
 Tracking doc: [`docs/operations/jira-github-do-tracking.md`](../../docs/operations/jira-github-do-tracking.md).
 
+> **This is not the only production path.** These droplets are the `vps` target of
+> the **deploy-production** workflow (its default). The App Platform stack in
+> [`app-platform/`](app-platform/README.md) runs the platform app as a managed
+> service against the existing `tamamhealth-analytics` PostgreSQL cluster and the
+> data droplet, and `deploy-production` also offers an `aws` target
+> ([`infra/aws`](../aws/README.md), CloudFormation in `af-south-1`). Know which
+> target you are deploying before you run anything here.
+
 ---
 
 ## Quick start (Terraform + SSH bootstrap)
@@ -109,7 +117,7 @@ should move in-country or to `af-south-1` — see [`docs/AFRICA-HOSTING-STRATEGY
 
 ```bash
 ssh root@<reserved-ip>
-git clone https://github.com/makuachteny/TamamHealth.git /opt/tamamhealth
+git clone https://github.com/tamamorg/TamamHealth.git /opt/tamamhealth
 cd /opt/tamamhealth
 ./scripts/gen-secrets.sh
 # Edit platform/.env.production URLs for this environment (staging vs prod subdomains)

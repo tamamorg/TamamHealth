@@ -100,7 +100,13 @@ export default function ConsultationRedirectPage() {
         if (draft) { router.replace(`/notes/${draft._id}`); return; }
 
         const { getPatientById } = await import('@/lib/services/patient-service');
-        const patient = await getPatientById(resolvedPatientId).catch(() => null);
+        // `resolvedPatientId` can come straight from an unauthenticated-looking
+        // `?patientId=` query param (no encounter to have already scope-checked
+        // it), so this must not be an unscoped chart read. Org + role only (no
+        // hospitalId), matching the chart's own referred-in-patient fallback —
+        // this route is also how a clinician starts documentation for a
+        // same-org patient referred in from another facility.
+        const patient = await getPatientById(resolvedPatientId, { orgId: currentUser.orgId, role: currentUser.role }).catch(() => null);
         const patientName = patient
           ? [patient.firstName, patient.middleName, patient.surname].filter(Boolean).join(' ')
           : 'Patient';

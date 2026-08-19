@@ -31,8 +31,15 @@ name: backups-restore-drill
 
 on:
   schedule:
-    # 03:00 UTC on the first day of January, April, July, October.
-    - cron: '0 3 1 1,4,7,10 *'
+    # 03:00 UTC every Monday (dodging the 02:15 UTC nightly backup window).
+    #
+    # This was quarterly. A quarterly drill is not a safety net: it is a
+    # ~90-day window in which the backup pipeline can be broken with nobody
+    # knowing, and the first run of this workflow did fail — silently, for
+    # months, because nothing looked at it again until the next quarter.
+    # Weekly bounds that window to seven days at negligible cost (the drill is
+    # read-only and takes minutes).
+    - cron: '0 3 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -49,7 +56,28 @@ jobs:
     environment: production
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      # Checked together, before anything is installed or downloaded, so an
+      # unprovisioned environment says exactly which secrets are missing in one
+      # run instead of failing on the first one and hiding the rest.
+      - name: Verify the drill is provisioned
+        env:
+          BACKUP_BUCKET: ${{ secrets.BACKUP_BUCKET }}
+          BACKUP_PRIVKEY_GPG: ${{ secrets.BACKUP_PRIVKEY_GPG }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          missing=""
+          for name in BACKUP_BUCKET BACKUP_PRIVKEY_GPG AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            eval "value=\${$name:-}"
+            [ -n "$value" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Backups are not provisioned::Missing on the production environment:$missing. Until these are set there is no offsite backup to restore from — see docs/operations/backups.md."
+            exit 1
+          fi
+          echo "All drill secrets present."
 
       - name: Install drill prerequisites
         run: |

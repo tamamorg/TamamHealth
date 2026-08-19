@@ -11,6 +11,17 @@
 export type CoverageType = 'out-of-pocket' | 'program' | 'exemption' | 'ngo';
 
 export interface RegistrationForm {
+  /**
+   * The facility the patient is being registered at.
+   *
+   * Normally implied by the clerk's own posting and never asked for. It is
+   * asked — and required — only when the signed-in user carries no facility of
+   * their own (a platform super_admin, an org_admin between postings), because
+   * the facility is what resolves the patient's organisation, and a patient
+   * with no organisation cannot be saved: CouchDB's tenant validator refuses
+   * the document and every scoped role's list filters it out.
+   */
+  registrationFacility: string;
   firstName: string;
   middleName: string;
   surname: string;
@@ -59,6 +70,7 @@ export interface AdditionalNok {
 }
 
 export const EMPTY_REGISTRATION_FORM: RegistrationForm = {
+  registrationFacility: '',
   firstName: '', middleName: '', surname: '', maidenName: '',
   dateOfBirth: '', estimatedAge: '', gender: '', tribe: '', primaryLanguage: '',
   phone: '', altPhone: '', whatsapp: '', email: '',

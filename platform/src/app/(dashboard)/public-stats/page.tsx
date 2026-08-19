@@ -41,7 +41,7 @@ export default function PublicStatsPage() {
     <>
       <main className="page-container page-enter">
         <div className="dash-card mb-4" style={{ padding: '16px 20px' }}>
-          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', color: 'var(--text-primary)' }}>
+          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 800, fontSize: 24, lineHeight: '100%', color: 'var(--text-primary)' }}>
             {t('hospitalManager.publicStatistics')}
           </span>
         </div>
@@ -70,7 +70,7 @@ export default function PublicStatsPage() {
           <section style={{ flex: 1, minWidth: 0 }}>
             {/* National Overview */}
             {section === 'overview' && (
-              <div className="card-elevated p-5 mb-6" style={{ background: 'rgba(59, 130, 246,0.04)' }}>
+              <div data-tour="public-stats-overview" className="card-elevated p-5 mb-6" style={{ background: 'rgba(59, 130, 246,0.04)' }}>
                 <div className="flex items-center gap-2 mb-4">
                   <Shield className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
                   <h2 className="font-semibold text-sm">{t('publicStats.nationalOverview')}</h2>
@@ -138,7 +138,7 @@ export default function PublicStatsPage() {
                           <div className="flex-1 h-1.5 rounded-full" style={{ background: 'var(--overlay-light)' }}>
                             <div className="h-full rounded-full" style={{ width: `${birthStats.total ? (count / birthStats.total) * 100 : 0}%`, background: 'var(--accent-primary)' }} />
                           </div>
-                          <span className="text-[10px] font-bold w-6 text-right">{count}</span>
+                          <span className="text-[10px] font-bold w-6 text-end">{count}</span>
                         </div>
                       ))}
                     </div>

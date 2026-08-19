@@ -1,4 +1,4 @@
-import { validateProductionConfig, type ConfigEnv } from '@/lib/config-validation';
+import { productionConfigWarnings, validateProductionConfig, type ConfigEnv } from '@/lib/config-validation';
 
 function validEnvironment(): ConfigEnv {
   return {
@@ -87,5 +87,41 @@ describe('production configuration validation', () => {
     expect(errors).toMatch(/COUCHDB_ADMIN_PASSWORD/);
     expect(errors).toMatch(/COUCHDB_GATEWAY_SECRET/);
     expect(errors).toMatch(/AIRTEL_WEBHOOK_SECRET/);
+  });
+});
+
+/**
+ * Warnings are the deployment problems that must not refuse boot — a clinic
+ * losing its platform because a dashboard is unconfigured is worse than the
+ * gap itself. They are printed on every start instead, so the gap stays a
+ * decision someone keeps making rather than one nobody knows about.
+ */
+describe('production configuration warnings', () => {
+  it('warns when nothing is collecting server errors', () => {
+    const env = validEnvironment();
+    // Production ran for months with no error sink: a provisioning conflict
+    // that silently cost clinicians their replication was visible only to
+    // someone reading container logs by hand.
+    expect(productionConfigWarnings(env)).toEqual([expect.stringContaining('SENTRY_DSN')]);
+  });
+
+  it('is satisfied by either the server or the public DSN', () => {
+    expect(productionConfigWarnings({ ...validEnvironment(), SENTRY_DSN: 'https://x@sentry.invalid/1' })).toEqual([]);
+    expect(productionConfigWarnings({ ...validEnvironment(), NEXT_PUBLIC_SENTRY_DSN: 'https://x@sentry.invalid/1' })).toEqual([]);
+  });
+
+  it('says nothing about a demo deployment', () => {
+    // A demo has no real errors worth paging anyone about.
+    expect(productionConfigWarnings({ ...validEnvironment(), NEXT_PUBLIC_DEMO_MODE: 'true' })).toEqual([]);
+  });
+
+  it('never duplicates something validation already refuses boot over', () => {
+    // The shared-store gap is already a hard error unless SINGLE_REPLICA_ACK
+    // records the choice. Warning about it too would train operators to ignore
+    // the warning block.
+    const noRedis: ConfigEnv = { ...validEnvironment(), SINGLE_REPLICA_ACK: 'true' };
+    delete noRedis.UPSTASH_REDIS_REST_URL;
+    delete noRedis.UPSTASH_REDIS_REST_TOKEN;
+    expect(productionConfigWarnings(noRedis).join(' ')).not.toMatch(/redis/i);
   });
 });

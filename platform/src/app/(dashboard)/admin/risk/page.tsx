@@ -10,17 +10,17 @@ import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { apiFetch } from '@/lib/api-fetch';
 import type { AuditLogDoc, ConflictQueueDoc, SyncEventDoc } from '@/lib/db-types';
 import {
-  SaPage, SaCard, SaPill, SaTable,
-  classifyAuditRisk, SEVERITY_TONE, formatWhen,
+  SaTable, classifyAuditRisk, formatWhen,
   type SaSeverity,
 } from '@/components/admin/sa-ui';
+import { SadbPage, SadbCard, SadbSearch, SadbChip, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 
 type Source = 'Audit' | 'Sync' | 'Data' | 'Tenants' | 'Continuity' | 'Platform';
 
@@ -243,49 +243,50 @@ export default function RiskCenterPage() {
   const activeFilterCount = (severityFilter !== 'all' ? 1 : 0) + (sourceFilter !== 'all' ? 1 : 0);
 
   return (
-    <SaPage>
-      <SaCard>
-        <EhrListHeader
-          title="Risk Center"
-          stats={[
-            { label: 'Showing', value: `${filtered.length} of ${rows.length}`, color: LIST_STAT_COLORS.muted },
-            { label: 'Critical', value: counts.critical, color: 'var(--color-danger)' },
-            { label: 'High', value: counts.high, color: 'var(--color-danger)' },
-            { label: 'Medium', value: counts.medium, color: LIST_STAT_COLORS.amber },
-            { label: 'Low', value: counts.low, color: LIST_STAT_COLORS.muted },
-          ]}
-          search={{ value: search, onChange: setSearch, placeholder: 'Search signal or detail…', ariaLabel: 'Search risk signals' }}
-          actions={
-            <EhrListFilters
-              activeCount={activeFilterCount}
-              onClear={() => { setSeverityFilter('all'); setSourceFilter('all'); }}
-            >
-              <FilterSelect
-                label="Severity"
-                value={severityFilter}
-                onChange={value => setSeverityFilter(value as 'all' | SaSeverity)}
-                neutralValue="all"
-                size="sm"
-                options={[{ value: 'all', label: 'All severities' }, ...SEVERITIES.map(x => ({ value: x, label: x[0].toUpperCase() + x.slice(1) }))]}
-              />
-              <FilterSelect
-                label="Source"
-                value={sourceFilter}
-                onChange={value => setSourceFilter(value as 'all' | Source)}
-                neutralValue="all"
-                size="sm"
-                options={[{ value: 'all', label: 'All sources' }, ...SOURCES.map(x => ({ value: x, label: x }))]}
-              />
-            </EhrListFilters>
-          }
-        />
+    <SadbPage>
+      <SadbCard
+        title="Risk & incident queue"
+        action={
+          <div className="sadb-legend">
+            <span><i style={{ background: 'var(--text-muted)' }} />Open ({rows.length})</span>
+            <span><i style={{ background: 'var(--color-danger-500)' }} />Critical ({counts.critical})</span>
+            <span><i style={{ background: 'var(--color-danger-500)' }} />High ({counts.high})</span>
+            <span><i style={{ background: 'var(--color-warning-600)' }} />Medium ({counts.medium})</span>
+            <span><i style={{ background: 'var(--text-muted)' }} />Low ({counts.low})</span>
+          </div>
+        }
+      >
+        <div className="sadb-search-row">
+          <SadbSearch value={search} onChange={setSearch} placeholder="Search signal or detail…" ariaLabel="Search risk signals" />
+          <EhrListFilters
+            activeCount={activeFilterCount}
+            onClear={() => { setSeverityFilter('all'); setSourceFilter('all'); }}
+          >
+            <FilterSelect
+              label="Severity"
+              value={severityFilter}
+              onChange={value => setSeverityFilter(value as 'all' | SaSeverity)}
+              neutralValue="all"
+              size="sm"
+              options={[{ value: 'all', label: 'All severities' }, ...SEVERITIES.map(x => ({ value: x, label: x[0].toUpperCase() + x.slice(1) }))]}
+            />
+            <FilterSelect
+              label="Source"
+              value={sourceFilter}
+              onChange={value => setSourceFilter(value as 'all' | Source)}
+              neutralValue="all"
+              size="sm"
+              options={[{ value: 'all', label: 'All sources' }, ...SOURCES.map(x => ({ value: x, label: x }))]}
+            />
+          </EhrListFilters>
+        </div>
         <SaTable
           columns={['Severity', 'Signal', 'Source', 'Detail', 'Age', 'Status']}
           empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
         >
           {filtered.map(r => (
             <tr key={r.id} onClick={() => router.push(SOURCE_HREF[r.source])} style={{ cursor: 'pointer' }}>
-              <td><SaPill tone={SEVERITY_TONE[r.severity]}>{r.severity.toUpperCase()}</SaPill></td>
+              <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity.toUpperCase()}</SadbChip></td>
               <td><strong>{r.signal}</strong></td>
               <td>{r.source}</td>
               <td>{r.detail}</td>
@@ -294,7 +295,7 @@ export default function RiskCenterPage() {
             </tr>
           ))}
         </SaTable>
-      </SaCard>
-    </SaPage>
+      </SadbCard>
+    </SadbPage>
   );
 }

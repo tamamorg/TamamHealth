@@ -46,19 +46,16 @@ export function formatCompactDateTime(iso?: string | null): string {
  */
 export function formatClockTime(value?: string | Date | null): string {
   if (!value) return '';
+  // The design writes clock times as zero-padded 24-hour ("08:30", "14:15")
+  // everywhere — queue rows, chips, feeds — so the one shared formatter does.
   if (typeof value === 'string') {
     // Bare "HH:MM" / "HH:MM:SS" slot with no date component.
     const m = value.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-    if (m) {
-      let h = parseInt(m[1], 10);
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      h = h % 12 || 12;
-      return `${h}:${m[2]} ${ampm}`;
-    }
+    if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
   }
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return typeof value === 'string' ? value : '';
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 /**
@@ -69,6 +66,87 @@ export function formatDate(iso?: string | null): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Compact list-row date: "13 Aug" (day + short month), or "13 Aug 2026" with
+ * `{ year: true }`.
+ *
+ * Built from a fixed month table rather than `toLocaleDateString` on purpose:
+ * the per-file copies this replaces each picked a different locale ('en-GB',
+ * 'en-US', the runtime default), so one list read "13 Aug" and the next
+ * "Aug 13" for the same day.
+ *
+ * - '' for empty input; the raw string when it can't be parsed.
+ * - A leading `YYYY-MM-DD` is read literally, so a date-only value can't slip
+ *   a day across the UTC offset. Anything else resolves to its local
+ *   calendar day, the same convention as `toIsoDate`.
+ */
+export function formatShortDate(value?: string | Date | null, opts?: { year?: boolean }): string {
+  if (!value) return '';
+  let year: number;
+  let month: number;
+  let day: number;
+  if (typeof value === 'string') {
+    const parts = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (parts) {
+      year = Number(parts[1]);
+      month = Number(parts[2]);
+      day = Number(parts[3]);
+    } else {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return value;
+      year = d.getFullYear();
+      month = d.getMonth() + 1;
+      day = d.getDate();
+    }
+  } else {
+    if (Number.isNaN(value.getTime())) return '';
+    year = value.getFullYear();
+    month = value.getMonth() + 1;
+    day = value.getDate();
+  }
+  const mon = SHORT_MONTHS[month - 1];
+  if (!mon || !day) return typeof value === 'string' ? value : '';
+  return opts?.year ? `${day} ${mon} ${year}` : `${day} ${mon}`;
+}
+
+/**
+ * ISO-8601 week of a date — `{ year, week, label }`, label as "2026-W07".
+ *
+ * The ISO year is the year of that week's Thursday, so 29 Dec 2025 falls in
+ * 2026-W01. Epi-week reporting (IDSR, outbreak trends) buckets on this, and a
+ * second implementation that rounds the year boundary differently makes two
+ * screens label the same case with two different weeks — so every caller
+ * shares this one.
+ *
+ * Returns null for empty or unparseable input.
+ */
+export function isoWeek(
+  value?: string | Date | null,
+): { year: number; week: number; label: string } | null {
+  if (!value) return null;
+  // A string is UTC-anchored — a bare "2026-01-01" parses to UTC midnight, so
+  // its UTC parts are the day it names — while a Date carries a local
+  // calendar day (`toIsoDate`'s convention). Reading the wrong set shifts
+  // Mondays into the previous week anywhere the offset isn't zero.
+  let target: Date;
+  if (typeof value === 'string') {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  } else {
+    if (Number.isNaN(value.getTime())) return null;
+    target = new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
+  }
+  const dayNum = (target.getUTCDay() + 6) % 7;
+  target.setUTCDate(target.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const week = 1 + Math.round(((target.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+  const year = target.getUTCFullYear();
+  return { year, week, label: `${year}-W${String(week).padStart(2, '0')}` };
 }
 
 /**
@@ -198,6 +276,16 @@ export function humanizeStatus(status?: string | null): string {
   if (!status) return '—';
   const s = String(status).replace(/_/g, ' ').trim();
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+/**
+ * Label-case a raw identifier: "lab_tech" → "Lab Tech", "x-ray" → "X-Ray".
+ * Capitalizes only — casing already inside a word survives, so "ICU nurse"
+ * reads "ICU Nurse" instead of "Icu Nurse". For enum-shaped status values
+ * prefer `humanizeStatus`, which sentence-cases the whole label.
+ */
+export function titleCase(value: string): string {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

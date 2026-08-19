@@ -160,7 +160,7 @@ export default function LockScreen({ userName, hasPin, onVerifyPin, onSetPin, on
         {/* Switch user */}
         <button
           onClick={onLogout}
-          className="flex items-center gap-2 text-xs font-medium mt-1 px-4 py-2.5 rounded-lg transition-colors"
+          className="flex items-center gap-2 text-xs font-bold mt-1 px-4 py-2.5 rounded-lg transition-colors"
           style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)' }}
         >
           <LogOut className="w-3.5 h-3.5" />

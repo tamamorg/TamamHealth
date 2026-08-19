@@ -1,16 +1,22 @@
 'use client';
 
 import { Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { shortenPersonName, abbreviateProviderName } from '@/lib/patient-utils';
 import { ClipboardList, Printer, Search, Stethoscope, Video, X, type LucideIcon } from '@/components/icons/lucide';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
 import EhrMiniCalendar, { formatDateTitle, parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
+import EhrStageDonut from '@/components/ehr/EhrStageDonut';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import { initials, stateTint } from '@/lib/patient-utils';
-import { formatAppointmentTimeUntil } from '@/lib/format-utils';
+import { formatAppointmentTimeUntil, titleCase } from '@/lib/format-utils';
 import { useAppointments } from '@/lib/hooks/useAppointments';
+import { useAuth } from '@/lib/context';
+import { getRoleConfig } from '@/lib/permissions';
+import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/ehr-navigation';
 import {
   APPOINTMENT_STATUS_TONES, APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_GROUPS,
   APPOINTMENT_STATUS_DESCRIPTIONS, appointmentStatusGroup, appointmentStatusLabel,
@@ -18,6 +24,9 @@ import {
 } from '@/lib/appointment-status';
 import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import type { AppointmentStatus } from '@/lib/db-types';
+import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigation/care-dashboard-url';
+
+const EHR_CARE_PREVIEW_HISTORY_KEY = '__tamamEhrCarePreview';
 
 export type EhrCareDashboardAction = {
   label: string;
@@ -26,7 +35,7 @@ export type EhrCareDashboardAction = {
   /** Stable selector used by guided tours to reveal an action-owned panel. */
   tourTarget?: string;
   active?: boolean;
-  tone?: 'primary' | 'neutral' | 'warning' | 'success';
+  tone?: 'primary' | 'orange' | 'neutral' | 'warning' | 'success';
 };
 
 export type EhrCareDashboardTab = {
@@ -72,8 +81,8 @@ export type EhrCareDashboardRow = {
    *  "—". */
   time?: string;
   timeSecondary?: string;
-  /** Full ISO timestamp behind `time`. When set, the Wait column also shows a
-   *  live hours/minutes relative label under the time. */
+  /** Full ISO timestamp behind `time`. Drives the status-pill cue and lets a
+   *  visit on another day show its date instead of a bare clock time. */
   timeAt?: string;
   meta?: string;
   compactMeta?: string;
@@ -123,6 +132,13 @@ export type EhrCareDashboardRow = {
   /** Further row actions beyond the primary/secondary pair (e.g. the front
    *  desk's "Reschedule" / "No show"), rendered after them in the row popup. */
   extraActions?: { label: string; onClick: () => void; tone?: 'secondary' | 'danger' }[];
+  /** Destination for the complete record or workflow represented by this
+   *  preview. When supplied, every detail variant—including custom
+   *  `popupDetail` content—gets the same full-page action. */
+  detailHref?: string;
+  /** Visible label for `detailHref`. Callers may localize this label; the
+   *  shared fallback keeps the contract usable for existing English screens. */
+  detailLabel?: string;
   detail?: ReactNode;
   popupDetail?: ReactNode;
   date?: string;
@@ -131,10 +147,6 @@ export type EhrCareDashboardRow = {
    *  `statusTone` (done → second series, everything else → first). */
   chartSeries?: 0 | 1;
 };
-
-function titleCase(value: string): string {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
 
 /** Rows from a handful of consumers (front desk, nurse) carry a real triage
  *  acuity code on `priority`; everyone else uses `priority` as a free-text
@@ -199,6 +211,7 @@ function compareDashboardRows(a: EhrCareDashboardRow, b: EhrCareDashboardRow): n
 export default function EhrCareDashboard({
   title,
   greetingName,
+  greetingSubtitle,
   dateLabel,
   tabs,
   activeTab,
@@ -223,6 +236,7 @@ export default function EhrCareDashboard({
   chartSeriesNames = ['Open', 'Completed'],
   chartItems,
   showChart = true,
+  showStageDonut = true,
   calendarEventDates,
   metricsTitle = 'Today',
   missionTitle,
@@ -243,6 +257,8 @@ export default function EhrCareDashboard({
   title: string;
   eyebrow?: string;
   greetingName?: string;
+  /** Small-caps role line under the greeting ("Front Desk · Reception"). */
+  greetingSubtitle?: string;
   dateLabel: string;
   tabs: EhrCareDashboardTab[];
   activeTab: string;
@@ -300,6 +316,8 @@ export default function EhrCareDashboard({
    *  one day passes its whole week here instead. */
   chartItems?: DayStatsItem[];
   showChart?: boolean;
+  /** The rail donut. Off for stations whose tabs are not stages. */
+  showStageDonut?: boolean;
   calendarEventDates?: string[];
   metricsTitle?: string;
   missionTitle?: string;
@@ -326,6 +344,19 @@ export default function EhrCareDashboard({
   children?: ReactNode;
 }) {
   const router = useRouter();
+  const { currentUser } = useAuth();
+
+  // Navigations promoted into this station's header, the same rung the
+  // clinical dashboard promotes (see getPageHeaderNavItems). Every station
+  // renders through this shell, so pharmacy, lab, radiology, nutrition, HR,
+  // state, facility management and the front desk all gain the same row —
+  // and the module menu drops what the rail already shows.
+  const quickNavItems = useMemo(() => {
+    const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
+    if (!roleConfig) return [];
+    const navItems = uniqueAllowedNavItems(roleConfig.navItems || [], roleConfig.allowedRoutes || []);
+    return getPageHeaderNavItems(navItems, currentUser?.role, roleConfig.defaultDashboard || '/dashboard');
+  }, [currentUser]);
 
   // ── One status reading for every station ────────────────────────────────
   // Lab, pharmacy, radiology, nutrition and reception all render their rows
@@ -358,24 +389,79 @@ export default function EhrCareDashboard({
   // can rebuild its data for that day), internal state otherwise.
   const [internalSelectedDate, setInternalSelectedDate] = useState(todayIso);
   const selectedDate = controlledSelectedDate ?? internalSelectedDate;
-  const selectDate = useCallback((iso: string) => {
-    onSelectedDateChange?.(iso);
-    if (controlledSelectedDate === undefined) setInternalSelectedDate(iso);
-  }, [controlledSelectedDate, onSelectedDateChange]);
-  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
-  // Clicking a row opens a right-side detail slider where the actions live,
-  // keeping the row itself clean (avatar · time · name).
+  const [urlStateReady, setUrlStateReady] = useState(false);
   // Row details expand in place rather than opening a dialog: the queue stays
   // on screen, so a clinician can read one patient's visit without losing the
   // list they are working down.
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [urlPreviewId, setUrlPreviewId] = useState<string | null>(null);
+  const writeDashboardUrl = useCallback((
+    patch: Parameters<typeof updateCareDashboardSearch>[1],
+    mode: 'push' | 'replace',
+    previewMarker?: string | null,
+  ) => {
+    const search = updateCareDashboardSearch(window.location.search, patch);
+    const href = `${window.location.pathname}${search}${window.location.hash}`;
+    const currentState = window.history.state && typeof window.history.state === 'object'
+      ? window.history.state as Record<string, unknown>
+      : {};
+    const nextState = {
+      ...currentState,
+      [EHR_CARE_PREVIEW_HISTORY_KEY]: previewMarker === undefined
+        ? currentState[EHR_CARE_PREVIEW_HISTORY_KEY] ?? null
+        : previewMarker,
+    };
+    if (mode === 'push') window.history.pushState(nextState, '', href);
+    else window.history.replaceState(nextState, '', href);
+  }, []);
+  const selectDate = useCallback((iso: string) => {
+    onSelectedDateChange?.(iso);
+    if (controlledSelectedDate === undefined) setInternalSelectedDate(iso);
+    setExpandedRowId(null);
+    setUrlPreviewId(null);
+    writeDashboardUrl({ day: iso, preview: null }, 'replace', null);
+  }, [controlledSelectedDate, onSelectedDateChange, writeDashboardUrl]);
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+  // Clicking a row opens a right-side detail slider where the actions live,
+  // keeping the row itself clean (avatar · time · name).
   const [detailTab, setDetailTab] = useState<'visit' | 'financial'>('visit');
   const lastAutoOpenRowId = useRef<string | null>(null);
-  const openDetail = (row: EhrCareDashboardRow) => {
+  const closeDetail = useCallback((preserveHistory = false) => {
+    const currentPreview = readCareDashboardUrl(window.location.search).preview;
+    const historyPreview = window.history.state?.[EHR_CARE_PREVIEW_HISTORY_KEY];
+
+    setExpandedRowId(null);
+    setUrlPreviewId(null);
+    if (!currentPreview) return;
+
+    // A preview opened from this dashboard owns one history entry. Pop that
+    // entry so browser Back and the visible Close action have identical
+    // semantics. A directly loaded/deep-linked preview has no prior dashboard
+    // entry, so it is closed in place instead.
+    if (!preserveHistory && historyPreview === currentPreview) {
+      window.history.back();
+      return;
+    }
+    writeDashboardUrl({ preview: null }, 'replace', null);
+  }, [writeDashboardUrl]);
+  const openDetail = useCallback((row: EhrCareDashboardRow, mode?: 'push' | 'replace') => {
     if (row.onOpen) { row.onOpen(); return; }
+    if (expandedRowId === row.id || urlPreviewId === row.id) {
+      closeDetail();
+      return;
+    }
     setDetailTab('visit');
-    setExpandedRowId(current => (current === row.id ? null : row.id));
-  };
+    setExpandedRowId(row.id);
+    setUrlPreviewId(row.id);
+    const currentPreview = readCareDashboardUrl(window.location.search).preview;
+    const navigationMode = mode ?? (currentPreview ? 'replace' : 'push');
+    const ownedPreview = window.history.state?.[EHR_CARE_PREVIEW_HISTORY_KEY];
+    writeDashboardUrl(
+      { preview: row.id },
+      navigationMode,
+      navigationMode === 'push' || ownedPreview ? row.id : null,
+    );
+  }, [closeDetail, expandedRowId, urlPreviewId, writeDashboardUrl]);
   const rowEventDates = useMemo(() => rows.map(row => row.date).filter((date): date is string => Boolean(date)), [rows]);
   const eventDates = calendarEventDates || rowEventDates;
   // The left rail runs the same "Day statistics" widget as the Clinical Officer
@@ -407,6 +493,10 @@ export default function EhrCareDashboard({
       : rows.filter(row => row.date === selectedDate);
     return scopedRows.slice().sort(compareDashboardRows);
   }, [filterRowsByDate, rowEventDates.length, rows, selectedDate, showCalendar]);
+  // URL previews are derived while rows load: the query can arrive before the
+  // async worklist without requiring a state-setting synchronization effect.
+  const effectiveExpandedRowId = expandedRowId
+    ?? (urlPreviewId && visibleRows.some(row => row.id === urlPreviewId) ? urlPreviewId : null);
 
   // A row must sit in the lane its own status pill names. The front desk filed
   // by "does a triage record exist" instead of the visit's rung, so bookings
@@ -445,37 +535,84 @@ export default function EhrCareDashboard({
       );
     }
   }, [tabs, activeTab, visibleRows.length, rows.length, selectedDate]);
-  // Live clock for the time column's countdown. Starts null so the
-  // server-rendered markup and the first client render match, then ticks every
-  // second so imminent meetings can show accurate seconds.
+  // Live clock behind each row's time column: the status-pill cue and the
+  // same-day/other-day date choice read it. Starts null so the
+  // server-rendered markup and the first client
+  // render match. Ticks once a minute rather than every second — every
+  // reader is minute-scale in what it actually shows: the 30-minute
+  // "is-soon" tone threshold, the past/future flip, and the same-day/
+  // other-day date choice. The one sub-minute reader, formatAppointmentTimeUntil's
+  // "in Ns" text, only shows that precision inside a ≤60s window before/after
+  // `timeAt`, which isn't worth a second ticking clock (and the full row
+  // re-render it drives) across every station built on this shell.
   const hasCountdown = useMemo(() => visibleRows.some(row => !!row.timeAt), [visibleRows]);
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     if (!hasCountdown) { setNow(null); return; }
     setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 1000);
+    const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, [hasCountdown]);
+  // Read URL state after hydration and on browser Back/Forward. Keeping this
+  // out of the render initializer avoids server/client markup differences.
+  useEffect(() => {
+    const applyUrlState = () => {
+      const state = readCareDashboardUrl(window.location.search);
+      if (state.day && state.day !== selectedDate) {
+        onSelectedDateChange?.(state.day);
+        if (controlledSelectedDate === undefined) setInternalSelectedDate(state.day);
+        setCalendarMonth(startOfMonth(parseIsoDate(state.day)));
+      }
+      setUrlPreviewId(state.preview);
+      // Popstate may switch directly between two preview entries. The URL is
+      // authoritative after that navigation, so discard any event-owned row.
+      setExpandedRowId(null);
+      setUrlStateReady(true);
+    };
+
+    applyUrlState();
+    window.addEventListener('popstate', applyUrlState);
+    return () => window.removeEventListener('popstate', applyUrlState);
+  }, [controlledSelectedDate, onSelectedDateChange, selectedDate]);
+
+  // Controlled dashboards can change their clinical day outside the shared
+  // calendar. Mirror that change once URL hydration has completed; URL-driven
+  // changes are already equal and therefore do not loop.
+  useEffect(() => {
+    if (!urlStateReady) return;
+    if (readCareDashboardUrl(window.location.search).day === selectedDate) return;
+    writeDashboardUrl({ day: selectedDate }, 'replace');
+  }, [selectedDate, urlStateReady, writeDashboardUrl]);
+
   // An expanded row that scrolls out of the filtered list closes itself, so a
   // panel never lingers over a patient the list no longer shows.
   useEffect(() => {
     if (!expandedRowId) return;
-    if (!visibleRows.some(row => row.id === expandedRowId)) setExpandedRowId(null);
-  }, [expandedRowId, visibleRows]);
+    if (!visibleRows.some(row => row.id === expandedRowId)) closeDetail(true);
+  }, [closeDetail, expandedRowId, visibleRows]);
   useEffect(() => {
     if (!autoOpenRowId || lastAutoOpenRowId.current === autoOpenRowId) return;
     const row = visibleRows.find(item => item.id === autoOpenRowId);
     if (!row) return;
     lastAutoOpenRowId.current = autoOpenRowId;
-    openDetail(row);
-  }, [autoOpenRowId, visibleRows]);
+    openDetail(row, 'replace');
+  }, [autoOpenRowId, openDetail, visibleRows]);
   const selectedDateLabel = showCalendar ? formatDateTitle(selectedDate) : dateLabel;
+  /* Donut segments = the queue's own tabs, minus the "all" tab that is their
+     sum. Reading the tabs rather than counting rows again is what keeps the
+     ring honest: a tab and its slice can only ever show the same figure. */
+  const stageSegments = useMemo(
+    () => tabs
+      .filter(tab => typeof tab.count === 'number' && tab.key !== 'all' && tab.key !== 'everything')
+      .map(tab => ({ name: tab.label, value: tab.count as number })),
+    [tabs],
+  );
   // The dashboard's primary action (first entry) is promoted to the header's
   // top-left slot as the Clinical Officer-style "+" CTA; every other action
   // renders in the right-hand header row (wrapping when needed) — including
   // panel toggles that swap what occupies the center.
   const primaryAction = actions[0];
-  const headerTitle = greetingName ? `Welcome, ${greetingName}` : title;
+  const headerTitle = greetingName ? `Welcome, ${abbreviateProviderName(greetingName)}` : title;
 
   // Every station header carries a Print action: the shared choose-what /
   // choose-format dialog over the board's current rows, never window.print()'s
@@ -535,9 +672,10 @@ export default function EhrCareDashboard({
         <div className="ehr-schedule-primary-controls ehr-clinical-dashboard-header-main">
           <div className="ehr-greeting-row">
             <div className="ehr-care-header-copy">
-              {/* Only the "Welcome, {name}" greeting — no eyebrow/subtitle — so
-                  every role matches the Clinical Officer header exactly. */}
               <p className="ehr-care-greeting">{headerTitle}</p>
+              {/* The design's small-caps role line — "Front Desk · Reception".
+                  Stations that don't pass one keep the bare greeting. */}
+              {greetingSubtitle && <p className="ehr-care-greeting-sub">{greetingSubtitle}</p>}
             </div>
           </div>
         </div>
@@ -549,8 +687,16 @@ export default function EhrCareDashboard({
               header and was exiled to the left rail. Rendered first so it sits
               alongside Print rather than after it. */}
           {headerExtra}
+          {quickNavItems.map(item => {
+            const ItemIcon = item.icon;
+            return (
+              <button key={item.href} type="button" aria-label={item.label} onClick={() => router.push(item.href)}>
+                <ItemIcon className="w-4 h-4" />{item.label}
+              </button>
+            );
+          })}
           {headerActions.map(action => (
-            <button key={action.label} type="button" className={action.tone === 'primary' || action.active ? 'primary' : ''} data-tour={action.tourTarget} onClick={action.onClick}>
+            <button key={action.label} type="button" className={action.tone === 'orange' ? 'orange' : action.tone === 'primary' || action.active ? 'primary' : ''} data-tour={action.tourTarget} onClick={action.onClick}>
               <action.icon className="w-4 h-4" />{action.label}
             </button>
           ))}
@@ -569,30 +715,9 @@ export default function EhrCareDashboard({
               onDateSelect={selectDate}
             />
           )}
-          {/* Search sits below the calendar — the calendar anchors the rail;
-              the search filters the list for whichever day is picked. */}
-          {onSearchChange && (
-            <div className="ehr-rail-search" data-tour="rail-search">
-              <Search className="ehr-rail-search-icon w-4 h-4" />
-              <input
-                type="search"
-                value={searchValue || ''}
-                onChange={(event) => onSearchChange(event.target.value)}
-                placeholder={searchPlaceholder || 'Search'}
-                aria-label={searchPlaceholder || 'Search'}
-              />
-              {searchValue && (
-                <button
-                  type="button"
-                  className="ehr-rail-search-clear"
-                  aria-label="Clear search"
-                  onClick={() => onSearchChange('')}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          )}
+          {/* The design's rail runs chart, then donut: the week's shape, then
+              today's split. The donut's segments are the queue's own tab
+              counts, so the ring and the tabs are the same number twice. */}
           {showChart && (chart ?? (
             <EhrWeekActivityChart
               items={weekChartItems}
@@ -606,6 +731,9 @@ export default function EhrCareDashboard({
               }}
             />
           ))}
+          {showStageDonut && stageSegments.length > 0 && (
+            <EhrStageDonut segments={stageSegments} />
+          )}
           {railContent}
           {filters.length > 0 && (
             <div className="ehr-filter-group">
@@ -628,14 +756,39 @@ export default function EhrCareDashboard({
           <div className="ehr-daybar">
             <div>
               <h2>{centerTitle || selectedDateLabel}</h2>
-              {/* Pass an empty string to render no subtitle at all (the nurse
-                  station design carries only the h2 + tabs on this bar). */}
-              {centerSubtitle !== '' && (
-                <p className="ehr-care-subtitle">
-                  {centerSubtitle || `${visibleRows.length} active item${visibleRows.length === 1 ? '' : 's'}`}
-                </p>
-              )}
+              {/* Only a subtitle a station actually asked for. There used to be
+                  an "N active items" fallback here, which restated the count
+                  already on every tab beside it — the clinical dashboard
+                  dropped it and the rest of the stations follow. */}
+              {centerSubtitle && <p className="ehr-care-subtitle">{centerSubtitle}</p>}
             </div>
+            {/* The design puts the search over the table it filters, not in
+                the rail beside it: the field belongs to the queue, and a
+                search in the far column left the user hunting for what had
+                changed. Centre column of the header's `title | search | tabs`
+                row. */}
+            {onSearchChange && (
+              <div className="ehr-queue-search" data-tour="rail-search">
+                <Search className="ehr-queue-search-icon w-4 h-4" />
+                <input
+                  type="search"
+                  value={searchValue || ''}
+                  onChange={(event) => onSearchChange(event.target.value)}
+                  placeholder={searchPlaceholder || 'Search'}
+                  aria-label={searchPlaceholder || 'Search'}
+                />
+                {searchValue && (
+                  <button
+                    type="button"
+                    className="ehr-queue-search-clear"
+                    aria-label="Clear search"
+                    onClick={() => onSearchChange('')}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
             <div className="ehr-day-tabs" data-tour="station-tabs">
               {tabs.map(tab => (
                 <button
@@ -691,7 +844,7 @@ export default function EhrCareDashboard({
                     const contextSubtext = row.locationSecondary || row.locationLabel || (row.room ? 'Room' : 'Location');
                     const statusText = row.statusLabel || (row.status ? titleCase(row.status) : '');
                     const activate = () => openDetail(row);
-                    const isExpanded = expandedRowId === row.id;
+                    const isExpanded = effectiveExpandedRowId === row.id;
                     const countdown = (() => {
                       if (!now || !row.timeAt) return null;
                       const target = new Date(row.timeAt);
@@ -701,14 +854,19 @@ export default function EhrCareDashboard({
                       const minutesAway = (target.getTime() - now.getTime()) / 60000;
                       const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
                       const usesDate = dayKey(target) !== dayKey(now);
-                      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-                      const isPastDay = target.getTime() < startOfToday;
                       const tone = minutesAway < 0 ? 'is-past' : minutesAway <= 30 ? 'is-soon' : '';
-                      return { label, tone, usesDate, isPastDay };
+                      return { label, tone, usesDate };
                     })();
-                    const displayTime = countdown?.usesDate ? countdown.label : row.time || row.date || '—';
-                    const timeSubtext = countdown
-                      ? (countdown.usesDate ? (countdown.isPastDay ? '' : (row.time || '')) : countdown.label)
+                    // The Time column reads as one column: every row that has a
+                    // clock time shows that clock time on the first line, so a
+                    // day's list is scannable straight down the minute digits.
+                    // A date only takes the first line for a row that has no
+                    // time of day at all.
+                    const displayTime = row.time || (countdown?.usesDate ? countdown.label : row.date) || '—';
+                    // Second line: how far off the visit is — "in 45m", "2h ago"
+                    // — or, for another day's visit, that day's date.
+                    const timeSubtext = countdown && countdown.label !== displayTime
+                      ? countdown.label
                       : row.timeSecondary || '';
     // Status pill tone reuses the appointment pill classes.
                     //
@@ -777,6 +935,8 @@ export default function EhrCareDashboard({
                                 the same control. The row itself is the
                                 affordance — `aria-expanded` still tells
                                 assistive tech what it does. */}
+                            {/* Photo when the record has one (the acuity tint
+                                still rings it); tinted initials otherwise. */}
                             <div className="ehr-patient-icon" style={stateTint(avatarAcuity)}>
                               {row.photoUrl
                                 // eslint-disable-next-line @next/next/no-img-element
@@ -802,7 +962,8 @@ export default function EhrCareDashboard({
                                     else activate();
                                   }}
                                 >
-                                  {row.title}
+                                  {/* Two words on the row — first and last. */}
+                                  {shortenPersonName(row.title)}
                                 </button>
                                 {/* Marks a remote visit where the name is read,
                                     so the desk can see it without opening a row. */}
@@ -818,12 +979,13 @@ export default function EhrCareDashboard({
 
                           <div className="ehr-appointment-time">
                             <strong>{displayTime}</strong>
-                            <span className={countdown?.tone || ''}>{timeSubtext}</span>
+                            {timeSubtext && <span className={countdown?.tone || ''}>{timeSubtext}</span>}
                           </div>
 
                           <div className="appointment-card-provider">
-                            <strong>{sourceText || 'Unassigned'}</strong>
-                            <span>{sourceSubtext}</span>
+                            {/* Staff names show first + last (title kept). */}
+                            <strong>{abbreviateProviderName(sourceText) || 'Unassigned'}</strong>
+                            <span>{abbreviateProviderName(sourceSubtext)}</span>
                           </div>
 
                           <div className="ehr-appointment-department">
@@ -887,7 +1049,7 @@ export default function EhrCareDashboard({
                           <EhrRowDetail
                             row={row}
                             detailTab={detailTab}
-                            onCollapse={() => setExpandedRowId(null)}
+                            onCollapse={closeDetail}
                           />
                         )}
                       </div>
@@ -921,17 +1083,11 @@ export default function EhrCareDashboard({
               <h2>{metricsTitle}</h2>
             </div>
             {metrics.map(metric => (
-              <button
+              <EhrCareDashboardMetricItem
                 key={metric.label}
-                type="button"
-                // `success` was missing here, so a metric asking for it fell
-                // through to the neutral grey — a healthy count looked inert.
-                className={`${metric.tone && metric.tone !== 'neutral' ? metric.tone : ''} ${metric.active ? 'active' : ''}`.trim()}
-                onClick={metric.onClick || (metric.href ? () => router.push(metric.href as string) : undefined)}
-              >
-                <span>{metric.label}</span>
-                <b>{metric.value}</b>
-              </button>
+                metric={metric}
+                onNavigate={href => router.push(href)}
+              />
             ))}
             {metricsActions?.map(action => (
               <button
@@ -1008,7 +1164,7 @@ export function useRowCollapse(): () => void {
   return useContext(RowCollapseContext);
 }
 
-function EhrRowDetail({
+export function EhrRowDetail({
   row,
   detailTab,
   onCollapse,
@@ -1060,19 +1216,19 @@ function EhrRowDetail({
         </div>
       )}
 
-      {!row.popupDetail && (
+      {(!row.popupDetail || row.detailHref) && (
       <div className="ehr-row-detail__actions">
-        {row.actionLabel && row.onAction && (
+        {!row.popupDetail && row.actionLabel && row.onAction && (
           <button type="button" className="btn btn-primary btn-sm" onClick={() => { row.onAction?.(); onCollapse(); }}>
             {row.actionLabel}
           </button>
         )}
-        {row.secondaryActionLabel && row.onSecondaryAction && (
+        {!row.popupDetail && row.secondaryActionLabel && row.onSecondaryAction && (
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => { row.onSecondaryAction?.(); onCollapse(); }}>
             {row.secondaryActionLabel}
           </button>
         )}
-        {(row.extraActions ?? []).map(action => (
+        {!row.popupDetail && (row.extraActions ?? []).map(action => (
           <button
             key={action.label}
             type="button"
@@ -1083,8 +1239,42 @@ function EhrRowDetail({
             {action.label}
           </button>
         ))}
+        {row.detailHref && (
+          <Link href={row.detailHref} className="btn btn-secondary btn-sm">
+            {row.detailLabel || 'Open full page'}
+          </Link>
+        )}
       </div>
       )}
     </div>
+  );
+}
+
+/**
+ * A metric is only an enabled control when it has an action. Keeping an inert
+ * metric as a disabled button preserves the established rail geometry while
+ * removing it from keyboard navigation and the accessibility action model.
+ */
+export function EhrCareDashboardMetricItem({
+  metric,
+  onNavigate,
+}: {
+  metric: EhrCareDashboardMetric;
+  onNavigate: (href: string) => void;
+}) {
+  const onClick = metric.onClick || (metric.href ? () => onNavigate(metric.href as string) : undefined);
+
+  return (
+    <button
+      type="button"
+      disabled={!onClick}
+      // `success` was missing here, so a metric asking for it fell through to
+      // the neutral grey — a healthy count looked inert.
+      className={`${metric.tone && metric.tone !== 'neutral' ? metric.tone : ''} ${metric.active ? 'active' : ''}`.trim()}
+      onClick={onClick}
+    >
+      <span>{metric.label}</span>
+      <b>{metric.value}</b>
+    </button>
   );
 }

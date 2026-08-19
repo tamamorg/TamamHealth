@@ -46,7 +46,7 @@ export default function GetStartedCard() {
   if (collapsed) {
     return (
       <div
-        className="absolute bottom-4 left-4 z-30 flex items-center gap-0.5 rounded-full py-0.5 pl-1.5 pr-1 text-xs font-semibold text-white shadow-lg"
+        className="absolute bottom-4 start-4 z-30 flex items-center gap-0.5 rounded-full py-0.5 ps-1.5 pe-1 text-xs font-semibold text-white shadow-lg"
         style={{ background: 'var(--accent-primary)' }}
       >
         <button
@@ -193,7 +193,7 @@ function SectionCard({
       <button
         onClick={() => unlocked && setOpen(o => !o)}
         disabled={!unlocked}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-start"
         style={{ cursor: unlocked ? 'pointer' : 'default' }}
       >
         <div className="flex items-center gap-3">
@@ -253,7 +253,7 @@ function SectionCard({
                     }}
                   >
                     {step.title}
-                    <span className="ml-2 text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
+                    <span className="ms-2 text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
                       ({step.estMinutes}m)
                     </span>
                   </p>

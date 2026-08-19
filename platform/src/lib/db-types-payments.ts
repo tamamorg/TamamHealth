@@ -185,6 +185,12 @@ export interface PaymentDoc extends BaseDoc {
   amount: number;
   currency: string;
   reference?: string;           // Receipt #, M-Pesa txn ID, card auth code
+  /** External gateway that owns the callback for this payment. */
+  provider?: 'flutterwave' | 'airtel' | 'mpesa';
+  /** Gateway-issued immutable transaction/receipt id, used for replay detection. */
+  providerReference?: string;
+  /** Pay-by-link source, used to consume or release the link atomically. */
+  paymentLinkId?: string;
   mobileMoneyPhone?: string;    // Phone number used for mobile money
   cardLast4?: string;
   status: PaymentStatus;

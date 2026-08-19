@@ -3,8 +3,8 @@
  *
  * The mobile app is patient-facing. We talk to /api/patient-portal/login
  * (see platform/src/app/api/patient-portal/login/route.ts), which accepts
- * either {hospitalNumber, phone} or {firstName, surname, dateOfBirth, phone}
- * and returns `{ token, patient }`. The token is a JWT issued for the
+ * `{username, password}` and either returns `{ token, patient }` or an OTP
+ * challenge. The token is a JWT issued for the
  * "tamamhealth-patient" audience and is stored via expo-secure-store by
  * the api-client module.
  *
@@ -46,12 +46,13 @@ export type Session = {
 };
 
 export type SignInOptions = {
-  hospitalNumber?: string;
-  phone: string;
-  firstName?: string;
-  surname?: string;
-  dateOfBirth?: string;
+  username: string;
+  password: string;
 };
+
+export type SignInResult =
+  | { otpRequired: false }
+  | { otpRequired: true; challengeId: string; maskedPhone?: string };
 
 type AuthState = {
   /** True while the initial token hydration / login request is in flight. */
@@ -60,7 +61,8 @@ type AuthState = {
   session: Session | null;
   /** Convenience: the authenticated patient or null. */
   patient: PatientUser | null;
-  signIn: (opts: SignInOptions) => Promise<void>;
+  signIn: (opts: SignInOptions) => Promise<SignInResult>;
+  verifyOtp: (challengeId: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
   /** @deprecated retained as a no-op so the older Landing flow still type-checks. */
   setBypass: (enabled: boolean) => void;
@@ -73,7 +75,8 @@ const AuthContext = createContext<AuthState>({
   isAuthenticated: false,
   session: null,
   patient: null,
-  signIn: async () => {},
+  signIn: async () => ({ otpRequired: false }),
+  verifyOtp: async () => {},
   signOut: async () => {},
   setBypass: () => {},
   logout: () => {},
@@ -89,7 +92,7 @@ const PATIENT_CACHE_KEY = 'tamamhealth.session.patient';
  */
 function friendlyLoginError(status: number, raw: string | undefined): string {
   if (status === 401) {
-    return 'No matching patient found. Check your details and try again.';
+    return 'Invalid username, password, or verification code.';
   }
   if (status === 429) {
     return 'Too many attempts. Please wait a few minutes before trying again.';
@@ -198,7 +201,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(async (opts: SignInOptions) => {
+  const completeSignIn = useCallback(async (data: { token: string; patient: PatientUser }) => {
+    await setAuthToken(data.token);
+    configureSyncEngine({ apiBaseUrl: getApiBaseUrl(), authToken: data.token });
+    const patient = await fetchProfileInto(data.patient);
+    await SecureStore.setItemAsync(PATIENT_CACHE_KEY, JSON.stringify(patient));
+    setSession({ token: data.token, user: patient });
+  }, []);
+
+  const signIn = useCallback(async (opts: SignInOptions): Promise<SignInResult> => {
     setIsLoading(true);
     try {
       const response = await apiFetch('/api/patient-portal/login', {
@@ -219,34 +230,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(friendlyLoginError(response.status, serverMessage));
       }
 
-      const data = (await response.json()) as { token: string; patient: PatientUser };
+      const data = (await response.json()) as {
+        token?: string;
+        patient?: PatientUser;
+        otpRequired?: boolean;
+        challengeId?: string;
+        maskedPhone?: string;
+      };
+      if (data.otpRequired && data.challengeId) {
+        return { otpRequired: true, challengeId: data.challengeId, maskedPhone: data.maskedPhone };
+      }
       if (!data.token || !data.patient) {
         throw new Error('Login failed. Please try again.');
       }
-
-      await setAuthToken(data.token);
-      // Point the sync engine at the API with this session's credential.
-      // `configureSyncEngine` had zero call sites before this, so `_apiBaseUrl`
-      // stayed '' and every syncNow() exited at the disabled guard — queued
-      // patient writes never reached the platform.
-      configureSyncEngine({ apiBaseUrl: getApiBaseUrl(), authToken: data.token });
-
-      // The login response carries identity only, no PHI. Pull the rest from
-      // the authenticated profile endpoint so the profile screen has a DOB,
-      // phone and address to render. Best-effort: a failure here must not
-      // block a successful sign-in — the user is authenticated either way and
-      // the screens treat these fields as optional.
-      const patient = await fetchProfileInto(data.patient);
-
-      await SecureStore.setItemAsync(
-        PATIENT_CACHE_KEY,
-        JSON.stringify(patient)
-      );
-      setSession({ token: data.token, user: patient });
+      await completeSignIn({ token: data.token, patient: data.patient });
+      return { otpRequired: false };
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [completeSignIn]);
+
+  const verifyOtp = useCallback(async (challengeId: string, code: string): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const response = await apiFetch('/api/patient-portal/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ challengeId, code }),
+        skipAuth: true,
+        skipUnauthorizedHandler: true,
+      });
+      if (!response.ok) {
+        let serverMessage: string | undefined;
+        try {
+          serverMessage = ((await response.json()) as { error?: string }).error;
+        } catch { /* use the safe fallback below */ }
+        throw new Error(friendlyLoginError(response.status, serverMessage));
+      }
+      const data = (await response.json()) as { token?: string; patient?: PatientUser };
+      if (!data.token || !data.patient) throw new Error('Verification failed. Please sign in again.');
+      await completeSignIn({ token: data.token, patient: data.patient });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [completeSignIn]);
 
   const signOut = useCallback(async () => {
     // Capture the id BEFORE we null out session — otherwise we can't target
@@ -277,6 +303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       patient: session?.user ?? null,
       signIn,
+      verifyOtp,
       signOut,
       setBypass: () => {
         // Intentional no-op. Bypass mode was removed in favor of a real
@@ -289,7 +316,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void signOut();
       },
     }),
-    [isLoading, session, signIn, signOut]
+    [isLoading, session, signIn, signOut, verifyOtp]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

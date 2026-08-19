@@ -28,7 +28,7 @@ jobs:
     outputs:
       sha: ${{ steps.meta.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
@@ -73,8 +73,20 @@ jobs:
           # variable NEXT_PUBLIC_DEMO_MODE to "true" only while these droplets
           # are still serving the public demo described in
           # docs/DEMO-LAUNCH-tamamhealth-org.md.
+          #
+          # The same is true of every other NEXT_PUBLIC_* the Dockerfile
+          # declares: it passes each one explicitly on the `npm run build` line,
+          # so an arg omitted HERE overrides platform/.env.production rather
+          # than deferring to it. Omitting the two sync flags shipped images
+          # whose client bundle had `isSyncEnabled()` permanently false — every
+          # record stayed in the browser tab that typed it and never reached
+          # CouchDB, while the runtime env said sync was on.
           build-args: |
             NEXT_PUBLIC_DEMO_MODE=${{ vars.NEXT_PUBLIC_DEMO_MODE || 'false' }}
+            NEXT_PUBLIC_SYNC_ENABLED=${{ vars.NEXT_PUBLIC_SYNC_ENABLED || 'true' }}
+            NEXT_PUBLIC_COUCHDB_URL=${{ vars.NEXT_PUBLIC_COUCHDB_URL || 'https://couch.tamamhealth.org' }}
+            NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED || 'false' }}
+            NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED || 'false' }}
           cache-from: type=gha,scope=platform
           cache-to: type=gha,mode=max,scope=platform
 

@@ -240,7 +240,24 @@ export async function ensureCouchUser(input: {
   };
   if (existing?._rev) body._rev = existing._rev;
 
-  await couchFetch({ method: 'PUT', path, body });
+  try {
+    await couchFetch({ method: 'PUT', path, body });
+  } catch (err) {
+    // Read-then-write against `_users` races with itself. One sign-in provisions
+    // the account twice — /api/auth/login on the way in, then
+    // /api/sync/couch-session when the browser asks for a replication
+    // credential — and a reload or a second tab overlaps them again. The loser
+    // gets a 409 on a rev it read a moment earlier, which surfaced in
+    // production as `PUT /_users/org.couchdb.user:superadmin → 409` and a 500
+    // from the sync-session route, leaving that session with no replication at
+    // all. Re-read the current rev and write once more; a second conflict means
+    // real contention rather than our own two callers, so let it out.
+    if (!/\b409\b/.test(err instanceof Error ? err.message : '')) throw err;
+    const current = (await couchFetch({ method: 'GET', path, allow404: true })) as { _rev?: string } | null;
+    if (current?._rev) body._rev = current._rev;
+    else delete body._rev;
+    await couchFetch({ method: 'PUT', path, body });
+  }
 }
 
 const gatewayProvisioning = new Map<string, Promise<{ username: string; password: string }>>();

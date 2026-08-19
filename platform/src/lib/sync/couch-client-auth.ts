@@ -17,6 +17,40 @@ import { getCouchDBUrl } from './sync-config';
 
 const SESSION_PATH = '/_session';
 
+/**
+ * How long any single CouchDB auth call may take before it is abandoned.
+ *
+ * Every caller here is best-effort — a failure means "no sync this session",
+ * and offline-first PouchDB carries on regardless. But `loginCouch` is
+ * `await`ed inline by the sign-in handler, and a bare `fetch` to a host that
+ * drops packets does not fail: it hangs for the browser's own TCP timeout,
+ * which is tens of seconds. That turned a dead CouchDB into a sign-in button
+ * stuck on "Signing in…" long enough for people to reload the page.
+ *
+ * Three seconds is far longer than a reachable CouchDB needs (the production
+ * server answers `_session` in single-digit milliseconds) and short enough that
+ * an unreachable one costs a beat rather than a minute.
+ */
+const COUCH_AUTH_TIMEOUT_MS = 3000;
+
+/**
+ * `fetch` that gives up rather than hanging. Returns null on timeout or
+ * network failure, so callers treat "unreachable" exactly like "refused".
+ */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = COUCH_AUTH_TIMEOUT_MS,
+): Promise<Response | null> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  } catch {
+    // AbortError (timed out) and TypeError (DNS/refused/CORS) are the same
+    // answer to the only question the callers ask: is CouchDB usable now?
+    return null;
+  }
+}
+
 export interface CouchSessionResult {
   ok: boolean;
   /** CouchDB returns the user's roles in the session response */
@@ -46,26 +80,21 @@ export async function loginCouch(
   if (!couchUrl) {
     return { ok: false, status: 0, error: 'NEXT_PUBLIC_COUCHDB_URL is not set' };
   }
-  try {
-    const res = await fetch(`${couchUrl.replace(/\/+$/, '')}${SESSION_PATH}`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ name: username, password }).toString(),
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      return { ok: false, status: res.status, error: text || res.statusText };
-    }
-    const body = (await res.json().catch(() => ({}))) as { roles?: string[] };
-    return { ok: true, status: res.status, roles: body.roles ?? [] };
-  } catch (err) {
-    return {
-      ok: false,
-      status: 0,
-      error: err instanceof Error ? err.message : 'network error',
-    };
+  const res = await fetchWithTimeout(`${couchUrl.replace(/\/+$/, '')}${SESSION_PATH}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ name: username, password }).toString(),
+  });
+  if (!res) {
+    return { ok: false, status: 0, error: `unreachable within ${COUCH_AUTH_TIMEOUT_MS}ms` };
   }
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    return { ok: false, status: res.status, error: text || res.statusText };
+  }
+  const body = (await res.json().catch(() => ({}))) as { roles?: string[] };
+  return { ok: true, status: res.status, roles: body.roles ?? [] };
 }
 
 /**
@@ -135,10 +164,23 @@ export async function ensureCouchSession(): Promise<boolean> {
  * Without this, replication 401-loops for the rest of a restored session and
  * locally-entered data never pushes.
  */
-export async function refreshCouchSessionFromServer(): Promise<boolean> {
+export async function refreshCouchSessionFromServer(options: {
+  /** Skip reuse after an interactive platform login (shared-device safety). */
+  force?: boolean;
+  /** Reuse an existing Couch cookie only when it belongs to this user. */
+  expectedUsername?: string;
+} = {}): Promise<boolean> {
   if (typeof window === 'undefined') return false;
-  // If a valid cookie already survived the reload, nothing to do.
-  if (await whoamiCouch().then((w) => w.ok).catch(() => false)) return true;
+  // If a valid cookie already survived the reload, reuse it only for the same
+  // platform identity. A shared tablet may still hold the prior clinician's
+  // Couch cookie even though the TamamHealth session has changed.
+  if (!options.force) {
+    const existing: Awaited<ReturnType<typeof whoamiCouch>> = await whoamiCouch()
+      .catch(() => ({ ok: false }));
+    if (existing.ok && (!options.expectedUsername || existing.username === options.expectedUsername)) {
+      return true;
+    }
+  }
   try {
     const { apiFetch } = await import('../api-fetch');
     const res = await apiFetch('/api/sync/couch-session', { method: 'POST' });
@@ -180,12 +222,15 @@ export async function whoamiCouch(): Promise<{
   if (typeof window === 'undefined') return { ok: false };
   const couchUrl = getCouchDBUrl();
   if (!couchUrl) return { ok: false };
+  // Bounded for the same reason as loginCouch: this runs on every page load,
+  // ahead of restoring a session, so an unreachable CouchDB would stall the
+  // app's boot rather than just its replication.
+  const res = await fetchWithTimeout(`${couchUrl.replace(/\/+$/, '')}${SESSION_PATH}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res?.ok) return { ok: false };
   try {
-    const res = await fetch(`${couchUrl.replace(/\/+$/, '')}${SESSION_PATH}`, {
-      method: 'GET',
-      credentials: 'include',
-    });
-    if (!res.ok) return { ok: false };
     const body = (await res.json()) as {
       userCtx?: { name: string | null; roles: string[] };
     };

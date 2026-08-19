@@ -127,10 +127,10 @@ export default function TourCard({
               background: 'var(--bg-card)',
               border: '2px solid var(--accent-primary)',
               transform: 'rotate(45deg)',
-              ...(tail === 'top' ? { top: -7, left: '50%', marginLeft: -6, borderRight: 'none', borderBottom: 'none' } : {}),
-              ...(tail === 'bottom' ? { bottom: -7, left: '50%', marginLeft: -6, borderLeft: 'none', borderTop: 'none' } : {}),
-              ...(tail === 'left' ? { left: -7, top: '50%', marginTop: -6, borderRight: 'none', borderTop: 'none' } : {}),
-              ...(tail === 'right' ? { right: -7, top: '50%', marginTop: -6, borderLeft: 'none', borderBottom: 'none' } : {}),
+              ...(tail === 'top' ? { top: -7, left: '50%', marginInlineStart: -6, borderInlineEnd: 'none', borderBottom: 'none' } : {}),
+              ...(tail === 'bottom' ? { bottom: -7, left: '50%', marginInlineStart: -6, borderInlineStart: 'none', borderTop: 'none' } : {}),
+              ...(tail === 'left' ? { left: -7, top: '50%', marginTop: -6, borderInlineEnd: 'none', borderTop: 'none' } : {}),
+              ...(tail === 'right' ? { right: -7, top: '50%', marginTop: -6, borderInlineStart: 'none', borderBottom: 'none' } : {}),
             }}
           />
         )}
@@ -168,7 +168,7 @@ export default function TourCard({
           />
         </div>
 
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>{step.title}</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)', margin: '0 0 6px' }}>{step.title}</h3>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 10px' }}>{step.body}</p>
 
         {/* "All steps" overview — the whole journey at a glance, with the
@@ -199,7 +199,7 @@ export default function TourCard({
                         type="button"
                         onClick={() => onJumpTo?.(i)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+                          display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'start',
                           background: isCurrent ? 'var(--accent-light)' : 'transparent',
                           border: 'none', borderRadius: 6, padding: '4px 6px', cursor: onJumpTo ? 'pointer' : 'default',
                         }}

@@ -273,7 +273,7 @@ export default function DocumentsPanel({
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{d.title}</span>
+            <span className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{d.title}</span>
             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>{CATEGORY_LABELS[d.category]}</span>
           </div>
           <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
@@ -421,7 +421,7 @@ export default function DocumentsPanel({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                    <span className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                       {ref.fromHospital} → {ref.toHospital}
                     </span>
                     <span className={`badge urgency-${ref.urgency} text-[9px]`}>
@@ -473,7 +473,7 @@ export default function DocumentsPanel({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{m.subject || 'Patient education'}</span>
+                    <span className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{m.subject || 'Patient education'}</span>
                     <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>
                       Sent to patient
                     </span>
@@ -498,7 +498,7 @@ export default function DocumentsPanel({
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
               <div className="flex items-center gap-2">
                 {preview.mimeType.startsWith('image/') ? <ImageIcon className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} /> : <FileText className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />}
-                <span className="text-sm font-medium">{preview.title}</span>
+                <span className="text-sm font-semibold">{preview.title}</span>
               </div>
               <div className="flex items-center gap-2">
                 {/* Always reachable, whatever the type previews as. */}

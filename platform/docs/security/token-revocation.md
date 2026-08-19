@@ -5,15 +5,21 @@ its `exp` claim and where that check is enforced.
 
 ## Why a blacklist at all
 
-JWTs in this platform are HMAC-signed by `JWT_SECRET` and live for 8 hours.
-That window is too long for clinical contexts on shared devices: when a
-clinician logs out at the end of a shift, the next clinician on the same
-tablet must not be able to replay the previous session's cookie. Short
-expiries don't solve this — only an explicit revocation does.
+JWTs in this platform are HMAC-signed by `JWT_SECRET` and, by default,
+live for 30 days (`SESSION_TTL_SEC` in
+[`lib/session.ts`](../../src/lib/session.ts), overridable via
+`SESSION_TTL_HOURS` — this was a flat 8 hours until a 2026-08-13 change
+made it configurable). Either way, the session window is too long for
+clinical contexts on shared devices: when a clinician logs out at the end
+of a shift, the next clinician on the same tablet must not be able to
+replay the previous session's cookie. Short expiries don't solve this —
+only an explicit revocation does.
 
 ## Store
 
-`lib/token-blacklist.ts` keeps a `Map<jwt, { expSec }>`:
+`lib/token-blacklist.ts` keeps a **local file-backed store**, plus an
+**optional shared Upstash Redis tier** layered on top of it (KAN-34 — see
+below). The local tier is a `Map<jwt, { expSec }>`:
 
 - Persisted to `<platform>/.token-blacklist.json` (gitignored, mode 0600)
   so a server restart doesn't reset the revocation list.
@@ -26,6 +32,24 @@ expiries don't solve this — only an explicit revocation does.
   was a denial-of-revocation: an attacker could log in 1,000 times to
   empty the blacklist. The current store has no such cap; the only
   shrinking mechanism is exp-based eviction.
+
+### Shared backend (Upstash Redis) — no longer just a roadmap item
+
+When `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (or the
+Vercel-managed `KV_REST_API_URL` / `KV_REST_API_TOKEN` aliases) are
+configured, `revokeToken()` writes to **both** the shared Redis store and
+the local file, and `isTokenRevoked()` checks the shared store first,
+falling back to local only on an Upstash failure. This closes the
+horizontal-scaling gap described further down — a logout on one replica is
+now honoured by every other replica, not just the one that handled it.
+
+The raw JWT is never stored as the Redis key — it's hashed
+(`hashKey(token, 'tamam-revoked')`) first, specifically so a compromised
+Upstash dashboard doesn't hand an attacker a list of currently-valid
+session tokens (a revoked JWT is still cryptographically valid until its
+own `exp`; the blacklist is what makes it unusable, not the signature).
+The Redis key's own TTL is set to the token's remaining lifetime, so
+eviction there needs no sweep.
 
 ## Where the check runs
 
@@ -70,9 +94,15 @@ malformed, logout still succeeds with the cookie cleared.
 - **Process crash mid-write** can leave the file partially written. The
   loader catches JSON-parse failures and starts empty rather than
   refusing to boot — fail-open here is the lesser evil.
-- **Horizontal scaling**: the file-backed store is single-instance. A
-  rolling deploy across N instances doesn't share revocations. The next
-  ticket on the roadmap moves rate-limiting (and this) to Redis.
+- **Horizontal scaling — shipped.** The file-backed store alone is
+  single-instance, so a rolling deploy across N instances used not to
+  share revocations. That gap is closed when Upstash is configured (see
+  "Shared backend" above, KAN-34): `revokeToken`/`isTokenRevoked` check
+  the shared store first, and the local file becomes a warm fallback for
+  when Upstash itself is unreachable — at that point a revocation made on
+  one replica is genuinely local-only again until Upstash recovers.
+  Without Upstash configured, the single-instance limitation still applies
+  exactly as described.
 
 ## Operator notes
 
@@ -80,14 +110,25 @@ malformed, logout still succeeds with the cookie cleared.
   (`<cwd>/.token-blacklist.json`). Useful for tests and for operators who
   want to put the file on a faster volume.
 - The file is gitignored. Don't commit it.
+- Configure `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (shared
+  with [rate-limiting.md](./rate-limiting.md)'s Upstash backend) in any
+  horizontally-scaled deployment so revocation is honoured across all
+  replicas, not just the one that handled the logout.
 - A production audit of "who logged out and when" needs to combine this
   store with the audit log — the blacklist intentionally keeps no
   per-session metadata beyond `exp`.
 
 ## Tests
 
-- [`token-blacklist.test.ts`](../../src/__tests__/security/token-blacklist.test.ts)
-  — 10 tests covering: round-trip revoke/check, isolation between tokens,
-  persistence across an in-process restart, expired-entry lazy eviction,
-  expired entries don't survive a restart, the no-flush-at-N regression,
-  empty-token safety, malformed-JWT fallback expiry.
+There is currently no dedicated test file for this module —
+`token-blacklist.test.ts` (which covered round-trip revoke/check,
+isolation between tokens, persistence across an in-process restart,
+expired-entry lazy eviction, expired entries not surviving a restart, the
+no-flush-at-N regression, empty-token safety, and malformed-JWT fallback
+expiry) was deleted along with a large batch of other test files in an
+unrelated sync-refactor commit and never restored, nor updated for the
+Upstash tier added since. `src/__tests__/services/session-lifetime.test.ts`
+mocks `token-blacklist` entirely rather than exercising it, so it provides
+no coverage here. This is a real gap worth restoring — `revokeToken`,
+`isTokenRevoked`, and the Upstash/local dual-write path are currently
+unverified by any automated test.

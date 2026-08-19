@@ -88,7 +88,7 @@ export default function DiagnosisStep({ controller }: { controller: LabOrderCont
                   aria-label={t('labOrder.removeDiagnosis', { code: indication.code })}
                 />
                 <span>
-                  <code style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: 'var(--accent-primary)', marginRight: 6 }}>
+                  <code style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: 'var(--accent-primary)', marginInlineEnd: 6 }}>
                     {indication.code}
                   </code>
                   {indication.title}
@@ -120,7 +120,7 @@ export default function DiagnosisStep({ controller }: { controller: LabOrderCont
                 >
                   <input type="checkbox" checked={on} readOnly tabIndex={-1} style={{ pointerEvents: 'none' }} />
                   <span style={{ minWidth: 0 }}>
-                    <code style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: 'var(--accent-primary)', marginRight: 6 }}>
+                    <code style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: 'var(--accent-primary)', marginInlineEnd: 6 }}>
                       {entry.code}
                     </code>
                     {entry.title}

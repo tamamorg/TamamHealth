@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>TamamHealth link preview card</title>
+<!--
+  The 1200×630 card link previews show (opengraph-image.jpg / twitter-image.jpg).
+
+  It is the home hero, re-cut for a thumbnail: the same photograph, the same
+  blue scrim, the same white blueprint card with registration marks, the same
+  Barlow Condensed headline and amber chip. A share card is the site's first
+  frame — someone sees this before they see anything else — so it is drawn from
+  site-data's lead hero rather than invented alongside it.
+
+  Regenerate with scripts/make-og-card.mjs after the hero copy or photograph
+  changes; the alt text beside each JPG has to change with it.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Tokens lifted from src/app/globals.css — same values, so the card cannot
+     drift from the site it advertises. */
+  :root {
+    --color-text: #0e2a4a;
+    --color-divider: rgba(14, 42, 74, 0.3);
+    --color-accent-700: #015697;
+    --color-neutral-800: #3d5166;
+    --color-cta: #e8863a;
+    --font-heading: "Barlow Condensed", system-ui, sans-serif;
+    --font-body: "Barlow", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 1200px; height: 630px; overflow: hidden; font-family: var(--font-body); color: var(--color-text); }
+
+  .card { position: relative; width: 1200px; height: 630px; background: var(--color-accent-700); overflow: hidden; }
+  /* The hero anchors this photograph at 27%; a 1200×630 card is a far
+     shallower window and 27% cuts the doctor's head. 4% keeps both
+     clinicians and the paper file whole. */
+  .card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 4%; }
+  /* The hero's scrim, pulled a little heavier: a share card is read at a
+     third of this size in a feed, and the right edge has to stay quiet
+     behind the mark rather than merely tinted. */
+  .scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(1,86,151,0.62) 0%, rgba(1,86,151,0.24) 58%, rgba(1,86,151,0.34) 100%);
+  }
+
+  .wrap { position: relative; height: 100%; display: flex; align-items: center; padding: 0 52px; }
+
+  .panel {
+    position: relative; width: 668px; background: rgba(255,255,255,0.94);
+    border: 1px solid var(--color-divider); padding: 40px 46px 42px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  /* The blueprint frame's registration marks (globals.css `.blueprint > .corner`). */
+  .corner { position: absolute; width: 11px; height: 11px; color: rgba(14, 42, 74, 0.55); }
+  .corner::before, .corner::after { content: ""; position: absolute; background: currentColor; }
+  .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
+  .corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
+  .corner.tl { top: -6px; left: -6px; }
+  .corner.tr { top: -6px; right: -6px; }
+  .corner.bl { bottom: -6px; left: -6px; }
+  .corner.br { bottom: -6px; right: -6px; }
+
+  .logo { height: 30px; width: auto; display: block; align-self: flex-start; }
+
+  h1 {
+    font-family: var(--font-heading); font-weight: 600; font-size: 55px; line-height: 1.05;
+    letter-spacing: -0.02em; margin: 0;
+  }
+  .lede { font-size: 20px; line-height: 1.5; color: var(--color-neutral-800); max-width: 560px; }
+  .lede b { font-weight: 700; color: var(--color-text); }
+
+  .foot { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
+  .chip {
+    position: relative; display: inline-flex; align-items: center; background: var(--color-cta);
+    border: 1px solid var(--color-cta); color: var(--color-text);
+    font-family: var(--font-heading); font-weight: 600; font-size: 19px; letter-spacing: 0.01em;
+    padding: 11px 22px;
+  }
+  .foot-note { font-size: 15px; font-weight: 500; color: var(--color-neutral-800); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img src="../public/assets/doctor-nurse-consultation.jpg" alt="" />
+    <div class="scrim"></div>
+    <div class="wrap">
+      <div class="panel">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <img class="logo" src="../public/assets/tamam-logo-full.svg" alt="" />
+        <h1>Transforming fragmented records into connected care</h1>
+        <p class="lede">Offline-first health records for South&nbsp;Sudan — <b>so care never starts from zero.</b></p>
+        <div class="foot">
+          <span class="chip">tamamhealth.org</span>
+          <span class="foot-note">Works with power shortage, no signal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

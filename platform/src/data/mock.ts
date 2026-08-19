@@ -1,5 +1,11 @@
 // ============================================
-// TamamHealth - Mock Data for South Sudan Hospitals
+// TamamHealth — clinical base types, South Sudan reference data, and the
+// deterministic DEMO ROSTER generator. Despite the filename this module is
+// load-bearing, not throwaway: the *Doc types in db-types.ts extend the
+// interfaces defined here, and db-seed.ts + the patient-portal demo fallback
+// both build the same seeded roster from it. Import types/reference lists
+// via `@/lib/clinical-types` (the honestly-named path); only seeding code
+// should import the generated rosters directly from here.
 // ============================================
 
 // Deterministic PRNG (mulberry32) behind every "random" draw in this module.
@@ -28,6 +34,10 @@ export type {
   AllergyEntry, DirectiveType, DirectiveEntry,
   CareAlertCategory, CareAlertEntry, ScreeningEntry,
 } from '@/lib/types/patient-clinical';
+
+// The roster generator draws from these; the re-export further down is a
+// separate statement and creates no local binding.
+import { states, statesAndCounties, bloodTypes } from '@/lib/data/south-sudan-reference';
 
 export interface Hospital {
   id: string;
@@ -1613,34 +1623,12 @@ export const hospitals: Hospital[] = [
   },
 ];
 
-// South Sudan states and counties
-export const statesAndCounties: Record<string, string[]> = {
-  'Central Equatoria': ['Juba', 'Kajo-keji', 'Lainya', 'Morobo', 'Terekeka', 'Yei'],
-  'Eastern Equatoria': ['Torit', 'Budi', 'Ikotos', 'Kapoeta East', 'Kapoeta North', 'Kapoeta South', 'Lafon', 'Magwi'],
-  'Jonglei': ['Bor South', 'Akobo', 'Ayod', 'Duk', 'Fangak', 'Nyirol', 'Pibor', 'Pochalla', 'Twic East', 'Uror'],
-  'Lakes': ['Rumbek Centre', 'Rumbek East', 'Rumbek North', 'Awerial', 'Cueibet', 'Wulu', 'Yirol East', 'Yirol West'],
-  'Northern Bahr el Ghazal': ['Aweil Centre', 'Aweil East', 'Aweil North', 'Aweil South', 'Aweil West'],
-  'Unity': ['Rubkona', 'Abiemnhom', 'Guit', 'Koch', 'Leer', 'Mayendit', 'Mayom', 'Panyijiar', 'Pariang'],
-  'Upper Nile': ['Malakal', 'Baliet', 'Fashoda', 'Longochuk', 'Maban', 'Manyo', 'Melut', 'Panyikang', 'Renk', 'Ulang'],
-  'Warrap': ['Kuajok', 'Gogrial East', 'Gogrial West', 'Tonj East', 'Tonj North', 'Tonj South', 'Twic'],
-  'Western Bahr el Ghazal': ['Wau', 'Jur River', 'Raja'],
-  'Western Equatoria': ['Yambio', 'Ezo', 'Ibba', 'Maridi', 'Mundri East', 'Mundri West', 'Mvolo', 'Nagero', 'Nzara', 'Tambura'],
-};
-
-export const states = Object.keys(statesAndCounties);
-
-export const tribes = [
-  'Dinka', 'Nuer', 'Shilluk', 'Bari', 'Zande', 'Mundari', 'Madi', 'Acholi',
-  'Toposa', 'Didinga', 'Murle', 'Anuak', 'Lotuko', 'Kakwa', 'Pojulu', 'Kuku',
-  'Mandari', 'Balanda', 'Fertit', 'Luo', 'Moru', 'Avukaya', 'Logo', 'Other'
-];
-
-export const languages = [
-  'English', 'Arabic (Juba)', 'Dinka', 'Nuer', 'Bari', 'Zande', 'Shilluk',
-  'Mundari', 'Toposa', 'Acholi', 'Madi', 'Lotuko', 'Murle', 'Didinga', 'Other'
-];
-
-export const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
+// South Sudan states and counties, tribes, languages and blood types now live
+// in lib/data/south-sudan-reference.ts; re-exported here so existing
+// `from '@/data/mock'` imports keep working.
+export {
+  statesAndCounties, states, tribes, languages, bloodTypes,
+} from '@/lib/data/south-sudan-reference';
 
 // South Sudanese names
 const dinkaFirstNamesMale = ['Deng', 'Kuol', 'Garang', 'Makuei', 'Majok', 'Atem', 'Bior', 'Mabior', 'Akol', 'Bol', 'Malith', 'Mayen', 'Chol', 'Jok', 'Ayuel', 'Thiik', 'Akok', 'Dut', 'Mach', 'Wol'];
@@ -1693,8 +1681,8 @@ export interface Patient {
   altPhone?: string;
   whatsapp?: string;
   /**
-   * Patient's own email address, for things addressed TO the patient — the
-   * intake-form request being the first. Optional: most patients at these
+   * Patient's own email address, for things addressed TO the patient —
+   * booking confirmations and receipts. Optional: most patients at these
    * facilities are reachable by phone only, so every surface that uses it has
    * to handle its absence rather than assume it.
    */
@@ -2563,28 +2551,8 @@ export const diseaseAlerts: DiseaseAlert[] = [
   { id: 'alert-016', disease: 'HIV/AIDS', state: 'Western Bahr el Ghazal', county: 'Wau', cases: 634, deaths: 5, alertLevel: 'watch', reportDate: '2026-02-06', trend: 'increasing' },
 ];
 
-// Weekly disease stats for charts
-export const weeklyDiseaseData = [
-  { week: 'W1 Jan', malaria: 1200, cholera: 45, measles: 78, pneumonia: 234, diarrhea: 567 },
-  { week: 'W2 Jan', malaria: 1350, cholera: 52, measles: 82, pneumonia: 245, diarrhea: 589 },
-  { week: 'W3 Jan', malaria: 1100, cholera: 38, measles: 95, pneumonia: 210, diarrhea: 512 },
-  { week: 'W4 Jan', malaria: 1450, cholera: 67, measles: 110, pneumonia: 267, diarrhea: 623 },
-  { week: 'W1 Feb', malaria: 1580, cholera: 89, measles: 145, pneumonia: 289, diarrhea: 678 },
-  { week: 'W2 Feb', malaria: 1620, cholera: 102, measles: 156, pneumonia: 301, diarrhea: 645 },
-];
-
-export const casesByState = [
-  { state: 'Central Equatoria', malaria: 4520, cholera: 234, measles: 89, tb: 156, hiv: 890 },
-  { state: 'Jonglei', malaria: 3890, cholera: 67, measles: 145, tb: 98, hiv: 540 },
-  { state: 'Upper Nile', malaria: 2340, cholera: 187, measles: 78, tb: 120, hiv: 670 },
-  { state: 'Unity', malaria: 2780, cholera: 156, measles: 234, tb: 87, hiv: 430 },
-  { state: 'Lakes', malaria: 3210, cholera: 31, measles: 56, tb: 67, hiv: 380 },
-  { state: 'Warrap', malaria: 2890, cholera: 23, measles: 45, tb: 78, hiv: 290 },
-  { state: 'W. Bahr el Ghazal', malaria: 1890, cholera: 45, measles: 34, tb: 145, hiv: 560 },
-  { state: 'N. Bahr el Ghazal', malaria: 2120, cholera: 23, measles: 67, tb: 56, hiv: 340 },
-  { state: 'W. Equatoria', malaria: 1560, cholera: 12, measles: 23, tb: 89, hiv: 420 },
-  { state: 'E. Equatoria', malaria: 1980, cholera: 18, measles: 45, tb: 67, hiv: 310 },
-];
+// (The old `weeklyDiseaseData` / `casesByState` chart mocks are gone: the
+// surveillance page computes both live from disease-alert docs.)
 
 // Common medications for prescription
 // Medications are sourced from the bundled WHO EML formulary (single source of

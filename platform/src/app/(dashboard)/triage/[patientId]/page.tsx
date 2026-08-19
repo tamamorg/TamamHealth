@@ -26,6 +26,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { ArrowLeft } from '@/components/icons/lucide';
 import TriageWorkflow from '@/components/nurse/TriageWorkflow';
 import type { PatientDoc } from '@/lib/db-types';
+import { returnToFromSearch } from '@/lib/navigation/return-to';
 
 export default function PatientTriagePage() {
 
@@ -36,20 +37,14 @@ export default function PatientTriagePage() {
   const patientId = String(params?.patientId || '');
   const { patients, loading } = usePatients();
 
-  // Where "back" goes depends on who is here: the nurse's triage station is
-  // not in a doctor's route table, so a doctor following the chart's
-  // "Triage/ETAT" form landed on RoleGuard's Access Restricted screen.
-  const nurseStation = '/dashboard/nurse';
-  const backTarget = currentUser && getRoleConfig(currentUser.role)?.allowedRoutes?.some(
-    route => nurseStation === route || nurseStation.startsWith(`${route}/`),
-  )
-    ? '/dashboard/nurse?station=ward'
-      : currentUser
-        ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
-        : '/dashboard';
-  const stationDateLabel = useMemo(() => (
-    new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date())
-  ), []);
+  // Nurses and doctors both go back to their own role's default dashboard —
+  // the standalone nurse station was merged into the shared clinical
+  // workspace, so there's no separate station route left to special-case
+  // (both currently resolve to '/dashboard', but this stays role-driven so
+  // it keeps working if a role's default ever diverges again).
+  const backTarget = currentUser
+    ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
+    : '/dashboard';
 
   const scopedPatient = useMemo(
     () => patients.find(p => p._id === patientId) || null,
@@ -58,7 +53,16 @@ export default function PatientTriagePage() {
 
   // The nurse queue can contain a patient registered at another facility in
   // the same organisation (for example, a referral). The scoped list will not
-  // include that record, so resolve the exact id directly as a safe fallback.
+  // include that record, so resolve the exact id directly as a safe fallback,
+  // gated through the canonical `getPatientById(id, scope)` / `filterByScope`
+  // rather than a bespoke check.
+  //
+  // The scope passed is deliberately org + role only (no `hospitalId`) — see
+  // the identical fallback in PatientDetailPage.tsx for why: it keeps this
+  // limited to the org boundary (same as before) while now correctly
+  // rejecting a doc with no `orgId` at all, and folding the super_admin /
+  // government bypass into the one shared `filterByScope` check instead of a
+  // second "isNational" condition maintained here separately.
   const [fallbackPatient, setFallbackPatient] = useState<PatientDoc | null>(null);
   const [fallbackChecked, setFallbackChecked] = useState(false);
   useEffect(() => {
@@ -69,13 +73,17 @@ export default function PatientTriagePage() {
       setFallbackChecked(true);
       return () => { cancelled = true; };
     }
+    const role = currentUser?.role;
+    if (!role) {
+      setFallbackChecked(true);
+      return () => { cancelled = true; };
+    }
+    const orgId = currentUser?.orgId;
     (async () => {
       const { getPatientById } = await import('@/lib/services/patient-service');
-      const doc = await getPatientById(patientId);
+      const doc = await getPatientById(patientId, { orgId, role });
       if (cancelled) return;
-      const sameOrg = !doc?.orgId || !currentUser?.orgId || doc.orgId === currentUser.orgId;
-      const isNational = currentUser?.role === 'super_admin' || currentUser?.role === 'government';
-      setFallbackPatient(doc && (sameOrg || isNational) ? doc : null);
+      setFallbackPatient(doc);
       setFallbackChecked(true);
     })();
     return () => { cancelled = true; };
@@ -99,11 +107,11 @@ export default function PatientTriagePage() {
           to the chart, which has its own way back. */}
       <button
         type="button"
-        onClick={() => router.push(backTarget)}
+        onClick={() => router.push(returnToFromSearch(window.location.search, backTarget))}
         className="patient-registration-back no-print"
       >
         <ArrowLeft className="w-4 h-4" style={{ stroke: 'currentColor' }} />
-        {backTarget.startsWith('/dashboard/nurse') ? stationDateLabel : 'Back to dashboard'}
+        Back
       </button>
 
       <div className="triage-patient-workspace">

@@ -29,28 +29,27 @@ export async function GET(request: NextRequest) {
       getANCStats, getHighRiskPregnancies,
     } = await import('@/lib/services/anc-service');
     const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     const url = new URL(request.url);
     const motherId = url.searchParams.get('motherId');
     const facilityId = url.searchParams.get('facilityId');
     const view = url.searchParams.get('view');
     if (view === 'stats') {
-      const scope = buildScopeFromAuth(auth);
       const stats = await getANCStats(scope);
       return NextResponse.json(stats);
     }
     if (view === 'high-risk') {
-      const highRisk = await getHighRiskPregnancies();
+      const highRisk = await getHighRiskPregnancies(scope);
       return NextResponse.json({ visits: highRisk, total: highRisk.length });
     }
     let visits;
     if (motherId) {
       const rows = await getByMother(motherId);
-      visits = filterByScope(rows, buildScopeFromAuth(auth));
+      visits = filterByScope(rows, scope);
     } else if (facilityId) {
       const rows = await getByFacility(facilityId);
-      visits = filterByScope(rows, buildScopeFromAuth(auth));
+      visits = filterByScope(rows, scope);
     } else {
-      const scope = buildScopeFromAuth(auth);
       visits = await getAllANCVisits(scope);
     }
     return NextResponse.json({ visits, total: visits.length });

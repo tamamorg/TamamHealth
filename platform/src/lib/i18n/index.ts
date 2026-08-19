@@ -1,19 +1,22 @@
 /**
  * Lightweight i18n system for TamamHealth EMR.
  *
- * Design decisions (per pan-African research):
+ * Design decisions:
  *   - No heavy deps (next-i18next adds 40KB+). This is <2KB.
- *   - Translations are plain JSON objects loaded lazily per locale.
- *   - Supports RTL (Arabic, Amharic, Juba Arabic) via dir attribute on <html>.
+ *   - Translations are plain objects loaded lazily per locale.
+ *   - Supports RTL (Juba Arabic) via the dir attribute on <html>.
  *   - Medical terms live in a separate namespace so clinicians can validate them.
  *
- * Locale tiers:
- *   - Tier 1 (pan-African): en, fr, ar, sw
- *   - Tier 2 (East Africa): am (Amharic), ha (Hausa), so (Somali), pt (Portuguese)
- *   - Tier 3 (South Sudan): apd (Juba Arabic), din (Dinka), nus (Nuer)
+ * Supported locales — deliberately two, and both are carried end to end:
+ *   - en  English       (LTR) — the source of truth for every key
+ *   - apd Juba Arabic   (RTL) — the lingua franca of South Sudan
+ *
+ * Adding a locale means adding a file under ./locales that covers every key
+ * in en.ts. Half-translated locales were removed rather than shipped, because
+ * a partly translated screen reads worse than an English one.
  */
 
-export type Locale = 'en' | 'fr' | 'ar' | 'sw' | 'am' | 'ha' | 'so' | 'pt' | 'apd' | 'din' | 'nus';
+export type Locale = 'en' | 'apd';
 
 export interface LocaleConfig {
   code: Locale;
@@ -24,20 +27,8 @@ export interface LocaleConfig {
 }
 
 export const SUPPORTED_LOCALES: LocaleConfig[] = [
-  // Pan-African
   { code: 'en', name: 'English', nativeName: 'English', dir: 'ltr' },
-  { code: 'fr', name: 'French', nativeName: 'Français', dir: 'ltr', region: 'West & Central Africa' },
-  { code: 'ar', name: 'Arabic', nativeName: 'العربية', dir: 'rtl', region: 'North & East Africa' },
-  { code: 'sw', name: 'Swahili', nativeName: 'Kiswahili', dir: 'ltr', region: 'East Africa' },
-  // East African national languages
-  { code: 'am', name: 'Amharic', nativeName: 'አማርኛ', dir: 'ltr', region: 'Ethiopia' },
-  { code: 'ha', name: 'Hausa', nativeName: 'Hausa', dir: 'ltr', region: 'Nigeria & West Africa' },
-  { code: 'so', name: 'Somali', nativeName: 'Soomaali', dir: 'ltr', region: 'Somalia & Horn of Africa' },
-  { code: 'pt', name: 'Portuguese', nativeName: 'Português', dir: 'ltr', region: 'Mozambique & Angola' },
-  // South Sudan
-  { code: 'apd', name: 'Juba Arabic', nativeName: 'عربي جوبا', dir: 'rtl', region: 'South Sudan' },
-  { code: 'din', name: 'Dinka', nativeName: 'Thuɔŋjäŋ', dir: 'ltr', region: 'South Sudan' },
-  { code: 'nus', name: 'Nuer', nativeName: 'Thok Naath', dir: 'ltr', region: 'South Sudan' },
+  { code: 'apd', name: 'Arabic (Juba)', nativeName: 'عربي جوبا', dir: 'rtl', region: 'South Sudan' },
 ];
 
 export const DEFAULT_LOCALE: Locale = 'en';

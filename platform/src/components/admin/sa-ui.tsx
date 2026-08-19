@@ -70,28 +70,6 @@ export function SaCard({
   );
 }
 
-/* One metric in a stat strip: label over a tabular-numeral value, optional
-   semantic tone + footnote. */
-export function SaStat({
-  label,
-  value,
-  tone,
-  note,
-}: {
-  label: string;
-  value: ReactNode;
-  tone?: 'ok' | 'warn' | 'danger' | 'muted';
-  note?: string;
-}) {
-  return (
-    <div className="sa-stat" data-tone={tone}>
-      <span className="sa-stat-label">{label}</span>
-      <strong className="sa-stat-value">{value}</strong>
-      {note && <small className="sa-stat-note">{note}</small>}
-    </div>
-  );
-}
-
 /* Semantic status dot + label (online/failed/pending...). */
 export function SaStatusDot({ tone, label }: { tone: 'ok' | 'warn' | 'danger' | 'muted'; label: string }) {
   return (

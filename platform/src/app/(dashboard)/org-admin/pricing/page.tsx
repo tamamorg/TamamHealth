@@ -124,11 +124,11 @@ export default function ServicePricingPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+        <div className="dash-card overflow-hidden flex flex-col" data-tour="org-pricing-table" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title="Service Pricing"
             actions={
-              <button onClick={openAdd} className="btn btn-primary inline-flex items-center gap-2" style={{ marginLeft: 'auto' }}>
+              <button onClick={openAdd} className="btn btn-primary inline-flex items-center gap-2" style={{ marginInlineStart: 'auto' }}>
                 <Plus className="w-4 h-4" /> Add service
               </button>
             }
@@ -156,14 +156,14 @@ export default function ServicePricingPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
                   {['Service', 'Code', 'Category', 'Price', 'Status', ''].map(h => (
-                    <th key={h} className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                    <th key={h} className="px-4 py-2 text-start text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(fee => (
                   <tr key={fee._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td className="px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{fee.serviceName}</td>
+                    <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{fee.serviceName}</td>
                     <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>{fee.serviceCode || '—'}</td>
                     <td className="px-4 py-2.5 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{CATEGORIES.find(c => c.value === fee.category)?.label || fee.category}</td>
                     <td className="px-4 py-2.5 text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>{formatMoney(fee.unitPrice, { currency: fee.currency, decimals: 2 })}</td>
@@ -173,8 +173,8 @@ export default function ServicePricingPage() {
                         color: fee.isActive ? 'var(--accent-text)' : 'var(--text-muted)',
                       }}>{fee.isActive ? 'Active' : 'Inactive'}</span>
                     </td>
-                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                      <button onClick={() => openEdit(fee)} className="text-[12px] font-semibold mr-3" style={{ color: 'var(--accent-text)' }}>Edit</button>
+                    <td className="px-4 py-2.5 text-end whitespace-nowrap">
+                      <button onClick={() => openEdit(fee)} className="text-[12px] font-semibold me-3" style={{ color: 'var(--accent-text)' }}>Edit</button>
                       <button onClick={() => setRemovingFee(fee)} aria-label="Remove fee" title="Remove fee" className="p-1.5 rounded-lg transition-colors hover:bg-red-50" style={{ color: 'var(--color-danger-text)' }}><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>

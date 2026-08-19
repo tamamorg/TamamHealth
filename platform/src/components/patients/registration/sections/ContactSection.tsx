@@ -2,7 +2,7 @@
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
-import { statesAndCounties, states } from '@/data/mock';
+import { statesAndCounties, states } from '@/lib/data/south-sudan-reference';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
 
@@ -43,10 +43,10 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
               placeholder={t('patientNew.whatsappPlaceholder')} />
           )}
         </RegistrationField>
-        {/* The patient's OWN address, used for things sent to them — the
-            intake-form request first. Optional: most patients here are
-            reachable by phone only, so the send dialog has to handle its
-            absence rather than assume it. */}
+        {/* The patient's OWN address, used for things sent to them — booking
+            confirmations and receipts. Optional: most patients here are
+            reachable by phone only, so every surface that sends has to handle
+            its absence rather than assume it. */}
         <RegistrationField name="email" label={t('patientNew.email')} error={errors.email}>
           {field => (
             <input {...field} type="email" inputMode="email" autoComplete="email" value={form.email}

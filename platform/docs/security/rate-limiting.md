@@ -1,7 +1,20 @@
 # Login rate limiting
 
 This document describes how the platform throttles failed-login attempts and
-how an operator scales that defence across multiple Next.js instances.
+how an operator scales that defence across multiple Next.js instances. The
+underlying `rateLimit()` primitive isn't login-only any more — it's also
+called directly from `/api/receipts/email`, `/api/patient-portal/verify-otp`,
+`/api/patient-portal/refresh`, and `/api/account-requests`, and indirectly
+via the shared `checkRateLimit()` adapter in
+[`lib/api-security.ts`](../../src/lib/api-security.ts) (default 60
+requests/min per IP+endpoint) from roughly a dozen more route files
+(`organizations`, `pharmacy`, `auth/change-password`, `medical-records/[id]`,
+`emergency-plans`, `users`, `staff-schedules`, `blood-bank`, `prescriptions`,
+`appointment-reminders`, and others). An Upstash outage affects all of
+these, not just login — keep that in mind when reading "Operator guidance"
+below. This document keeps the login thresholds as its running example
+because they're the best-documented case, not because they're the only
+one.
 
 ## Why rate-limit logins at all
 
@@ -60,7 +73,8 @@ returns `{ result }` / `{ error }` entries — two commands' worth of
 integration code, against an extra package and its transitive deps, was
 not a worthwhile trade. Using `fetch` also means the module runs in both
 the Node and Edge runtimes, so we can hoist rate limiting into
-`middleware.ts` later without rewriting it.
+[`proxy.ts`](../../src/proxy.ts) (this repo's Edge middleware — Next.js 16
+renamed `middleware.ts` to `proxy.ts`) later without rewriting it.
 
 ### In-process Map (single-instance dev)
 
@@ -74,23 +88,37 @@ the env vars sees:
     deploys MUST set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
     so per-IP / per-user counters are shared across instances.
 
-## Fail-open posture
+## Degrade-on-failure posture
 
-If Upstash returns 5xx, throws, or times out, `rateLimit` returns
-`allowed: true` and logs the error. Two reasons:
+If Upstash returns 5xx, a non-2xx (including 4xx), or throws/times out,
+`rateLimit` no longer fails fully open — it **degrades to the same
+in-process counter used when Upstash isn't configured at all** and logs
+the error (`[rate-limit] Upstash failed — degrading to in-process
+counter`). This changed under ticket KAN-34; the previous behavior really
+was `allowed: true` unconditionally, which is why you may still see that
+description elsewhere.
+
+Why the change: a pure fail-open meant an attacker who could induce or
+simply wait out an Upstash blip got *unlimited* login attempts for its
+duration. The in-process fallback is weaker than the shared Upstash
+counter — on N replicas an attacker can still get `limit × N` attempts
+during the outage by round-robining — but it's bounded, where the old
+behavior was not. The rest of the reasoning for accepting a degraded (not
+denied) posture still holds:
 
 1. Rate limiting is defence-in-depth. Login already has CSRF, SameSite
-   cookies, and bcrypt verification; an attacker who beats Upstash for
-   a few minutes still has to beat those.
+   cookies, and bcrypt verification; an attacker who beats the in-process
+   counter for a few minutes still has to beat those.
 2. The alternative — denying all logins when Redis is down — turns a
    third-party outage into a self-inflicted DoS for legitimate
-   clinicians who need to chart on shift. We accept the worse failure
-   mode in exchange for the better availability.
+   clinicians who need to chart on shift.
 
-The retry policy is one round of 50ms exponential backoff before
-falling through. 4xx responses from Upstash (bad token, malformed
-command) are treated as programming errors and surface to the logs;
-they should never happen in steady state.
+The retry policy is a single flat 50ms-delayed retry (not exponential —
+one retry, one fixed delay) before falling through to the in-process
+counter. 4xx responses from Upstash (bad token, malformed command) go
+through the exact same retry-then-degrade path as 5xx/timeout — the
+request is still capped by the in-process fallback, not merely logged
+while sailing through unchecked.
 
 ## Privacy
 
@@ -110,9 +138,14 @@ list of currently-being-rate-limited usernames.
 |---|---|---|
 | `UPSTASH_REDIS_REST_URL` | Production / multi-instance | Switches backend to Upstash. Trailing `/` is stripped automatically. |
 | `UPSTASH_REDIS_REST_TOKEN` | Production / multi-instance | Bearer token for the Upstash REST endpoint. |
+| `KV_REST_API_URL` | Alternative to the above | Vercel-managed-Upstash convention; used as a fallback if `UPSTASH_REDIS_REST_URL` is unset. |
+| `KV_REST_API_TOKEN` | Alternative to the above | Same fallback pairing for the token. |
 
-If only one of the two is set, the module falls back to the in-memory
-backend (and warns) — both are required to engage Upstash.
+If neither URL var nor neither token var is set, the module falls back to
+the in-memory backend (and warns) — a URL and a token (from either
+naming pair) are both required to engage Upstash. This same
+`UPSTASH_*`/`KV_REST_API_*` fallback pattern is shared with
+[token-revocation.md](./token-revocation.md)'s Upstash tier.
 
 ## Operator guidance
 
@@ -155,14 +188,24 @@ move the constants behind env vars; this hasn't been needed yet.
 
 ## Tests
 
-- [`rate-limit.test.ts`](../../src/__tests__/security/rate-limit.test.ts)
-  — limit enforcement, window roll, reset, in-memory fallback, Upstash
-  pipeline shape, hashed-key privacy, 5xx fail-open.
+There is no `rate-limit.test.ts` under `src/__tests__/security/` — the
+real (and only) test file exercising this area is
+[`src/__tests__/api-rate-limit.test.ts`](../../src/__tests__/api-rate-limit.test.ts),
+which covers far less than the module's actual surface: exactly 2 tests,
+both against the in-memory backend (Upstash env vars are deleted in
+`beforeEach`), both exercising `checkRateLimit()` (the `api-security.ts`
+adapter) rather than `rateLimit`/`resetRateLimit` directly — (a) 429 after
+the per-IP allowance is exceeded, (b) endpoint/IP buckets stay
+independent. None of window-roll, reset-after-success, the in-memory
+fallback warning, the Upstash pipeline request/response shape, hashed-key
+privacy, or the 4xx/5xx degrade-to-in-process behavior described above are
+tested anywhere in the repo today. That's a real coverage gap, not fixed
+here.
 
 ## Future work
 
 - **Edge-runtime move**: the module is already `fetch`-only, so when we
-  decide to put rate limiting in `middleware.ts` (so a flood doesn't
+  decide to put rate limiting in `proxy.ts` (so a flood doesn't
   even reach the route handler), the only code change is to call
   `rateLimit` from there.
 - **Sliding-log instead of fixed-window**: fixed window has the

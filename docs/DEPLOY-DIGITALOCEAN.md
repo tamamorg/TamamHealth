@@ -2,9 +2,16 @@
 
 DigitalOcean-specific notes layered on top of the generic runbook
 (`docs/STEP-BY-STEP-PLAYBOOK.md` / `docs/DEPLOYMENT-AND-ROLLOUT.md`). Use a
-**Droplet** (a normal Ubuntu VM) — NOT App Platform, because the stack is a
-docker-compose bundle with stateful CouchDB + a Caddy reverse proxy, which App
-Platform doesn't host well.
+**Droplet** (a normal Ubuntu VM) — NOT App Platform, because this page's stack
+is a single docker-compose bundle with stateful CouchDB + a Caddy reverse
+proxy on one box, which App Platform doesn't host well.
+
+> **This is the self-hosted, single-box path.** The application layer has a
+> second, current production path — DigitalOcean **App Platform** with CouchDB
+> split onto its own data Droplet behind a private-VPC gateway — cut over
+> 2026-08-12. See [`DEPLOY-PRODUCTION.md`](DEPLOY-PRODUCTION.md) before
+> standing up a new production host; use this page for the data Droplet piece
+> either way, or for a fully self-hosted deployment (e.g. `docs/DEPLOY-SOUTH-SUDAN.md`).
 
 ---
 
@@ -55,6 +62,42 @@ Add three **A** records (delete GoDaddy's parked `@` record first):
 
 Verify: `dig +short app.tamamhealth.org` returns the IP.
 
+## What ships where
+
+Three droplets, three delivery paths. They are NOT one pipeline — knowing which
+is which is the difference between a deploy that lands and one that silently
+changes nothing:
+
+| Droplet | Serves | Ships via | Registry |
+|---|---|---|---|
+| `tamamhealth-production` | `app.tamamhealth.org` — the platform | `deploy-production` (promotes a staging-tested image) | GHCR |
+| `tamamhealth-data` | `couch.tamamhealth.org` | `docker-compose.data.yml` on the box | — |
+| `tamamhealth-website` | `tamamhealth.org` — the marketing site | **`deploy-website`** | GHCR for the record; the droplet gets the image over SSH |
+
+The website is the odd one out, and was the one that silently changed nothing:
+its droplet pulled from DigitalOcean's container registry while every workflow
+published to GHCR, so until Aug 2026 nothing CI built ever reached the public
+site and it drifted a generation behind `main`.
+
+Publishing to DigitalOcean's registry instead ran into what its free tier
+actually is — 500 MB and exactly one repository. Collecting garbage to stay
+under the size cap emptied the repository, and the tier then refused to let it
+be recreated, with the registry's own catalog reporting zero repositories while
+its auth endpoint counted one and denied every push. So that registry is out of
+the path entirely: `deploy-website` builds the image, publishes it to GHCR as
+the record of what shipped, and streams it to the droplet with `docker save`
+piped into `docker load` over the deploy key. The droplet holds no registry
+credentials, and no storage tier can block a release.
+
+Because the droplet no longer pulls, a **reboot cannot deliver a new build** —
+it only restarts whatever image is already loaded. See
+`infra/digitalocean-website/README.md`, which also carries a standing warning
+about that droplet's Terraform state.
+
+Merging to `main` does **not** release anything: staging deploys automatically,
+production and the website are both manual, gated on the `production`
+environment.
+
 ## 5. Deploy (same as the playbook)
 SSH in and run the standard flow:
 ```bash
@@ -63,6 +106,7 @@ apt-get update -y && apt-get install -y git
 git clone https://github.com/<you>/tamamhealth.git /opt/tamamhealth
 cd /opt/tamamhealth
 ./scripts/gen-secrets.sh
+touch website/.env.production   # no .example template ships for this one — see note below
 sed -i 's/REPLACE-DOMAIN/tamamhealth.org/g' platform/.env.production website/.env.production
 sed -i 's#^NEXT_PUBLIC_COUCHDB_URL=.*#NEXT_PUBLIC_COUCHDB_URL=https://couch.tamamhealth.org#' platform/.env.production
 
@@ -77,10 +121,28 @@ sed -i "s#^PHI_ENCRYPTION_KEY=.*#PHI_ENCRYPTION_KEY=$(openssl rand -base64 32)#"
 # Public demo only — seeds fictional patients, and exempts the boot guard
 # above. Skip both lines for any deployment that will hold real patient data.
 sed -i 's#^NEXT_PUBLIC_DEMO_MODE=.*#NEXT_PUBLIC_DEMO_MODE=true#' platform/.env.production   # demo
+
+# Bootstrap login for the seeded `superadmin` account. Not in the .example
+# template, and required — demo or not — because the template ships with
+# NEXT_PUBLIC_SYNC_ENABLED=true; lib/config-validation.ts refuses to boot
+# without a real value here (16+ chars, not the demo default "Superadmin!").
+grep -q '^SUPERADMIN_INITIAL_PASSWORD=' platform/.env.production \
+  || echo "SUPERADMIN_INITIAL_PASSWORD=$(openssl rand -base64 24 | tr -d '\n/+=')" >> platform/.env.production
+
 ./scripts/preflight.sh
 sudo bash deploy.sh
 ```
 Caddy auto-issues TLS for the three domains. Verify at https://app.tamamhealth.org.
+
+> **`website/.env.production` has no `.example` template.** `gen-secrets.sh`
+> only fills `.env` and `platform/.env.production` — it silently skips
+> `website/.env.production` because `website/.env.production.example` doesn't
+> exist in the repo. `deploy.sh` still hard-requires the file to be present
+> before it will run (it dies with "Missing .../website/.env.production"
+> otherwise). The website container reads no secrets from it today (its
+> `docker-compose.yml` service has no `env_file:` entry), so an **empty**
+> file is enough — `touch website/.env.production` before `deploy.sh`, as
+> shown above.
 
 > **`NEXT_PUBLIC_DEMO_MODE` is only half a runtime setting.** It is inlined
 > into the client bundle at *build* time, so on the `deploy.sh` path above
@@ -117,7 +179,7 @@ Then re-run `sudo bash deploy.sh`. (Or just use a 4 GB droplet.)
 Only if you accept DO as the host (residency caveat above):
 - Attach a **Block Storage Volume**, LUKS-encrypt it, mount at
   `/opt/tamamhealth-data`, and point Docker's data-root there (so PHI lands on
-  the encrypted volume) — see `docs/DEPLOYMENT-AND-ROLLOUT.md` §B3/B5.
+  the encrypted volume) — see `docs/STEP-BY-STEP-PLAYBOOK.md` Steps B3/B5.
 - Enable **DO weekly Droplet backups** AND ship the nightly CouchDB dump offsite
   (encrypted) — DO Spaces in the same region works as the offsite target.
 - Set `NEXT_PUBLIC_DEMO_MODE=false` (clean slate).
@@ -130,4 +192,6 @@ Only if you accept DO as the host (residency caveat above):
 - **Cloud Firewall** = network allowlist (22/80/443).
 - **Block Storage Volume** = the encrypted data disk for production PHI.
 - **Spaces** = S3-compatible object storage for offsite encrypted backups.
-- **App Platform** = not used (doesn't fit the docker-compose + CouchDB stack).
+- **App Platform** = not used *on this page's path* (the single-box docker-compose
+  + CouchDB stack doesn't fit it) — but it IS the current production host for
+  the platform app alone, split from CouchDB; see `DEPLOY-PRODUCTION.md`.

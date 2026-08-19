@@ -50,6 +50,7 @@ export const DEMO_USER_PROFILES: SeedUserProfile[] = [
   { username: 'pharma.wau',      name: 'Pharmacist John Bol Garang', role: 'pharmacist',             hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital',         orgId: PUBLIC_ORG_ID },
   { username: 'desk.wau',        name: 'Tabitha Nyandeng Kuol',      role: 'front_desk',             hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital',         orgId: PUBLIC_ORG_ID },
   { username: 'nurse.stella',    name: 'Nurse Stella Keji Lemi',     role: 'nurse',                  hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital',  orgId: PUBLIC_ORG_ID },
+  { username: 'dr.ochalla',      name: 'Dr. Peter Ochalla Diu',      role: 'doctor',                 hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital',  orgId: PUBLIC_ORG_ID },
   { username: 'lab.gatluak',     name: 'Lab Tech Gatluak Puok',      role: 'lab_tech',               hospitalId: 'hosp-004', hospitalName: 'Bentiu State Hospital',      orgId: PUBLIC_ORG_ID },
   { username: 'pharma.rose',     name: 'Pharmacist Rose Gbudue',     role: 'pharmacist',             hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
   { username: 'desk.amira',      name: 'Amira Juma Hassan',          role: 'front_desk',             hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },

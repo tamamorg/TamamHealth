@@ -12,7 +12,7 @@ import { hasLockPin, setLockPin, clearLockPin } from '@/lib/hooks/useAutoLock';
 import { getUserPrefs, setUserPrefs, DEFAULT_USER_PREFS, type UserPrefs } from '@/lib/user-prefs';
 import { useToast } from '@/components/Toast';
 import { getAvailableRoles, getRoleConfig } from '@/lib/permissions';
-import { statesAndCounties } from '@/data/mock';
+import { statesAndCounties } from '@/lib/data/south-sudan-reference';
 import type { UserRole } from '@/lib/db-types';
 import FilterBar from '@/components/filters/FilterBar';
 import FilterSelect from '@/components/filters/FilterSelect';
@@ -461,20 +461,22 @@ export default function SettingsPage() {
     fontSize: '14px', width: '100%', outline: 'none',
   };
   const selectStyle: React.CSSProperties = {
-    ...inputStyle, appearance: 'none' as const, paddingRight: '36px',
+    ...inputStyle, appearance: 'none' as const, paddingInlineEnd: '36px',
     backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238A9E9A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
   };
   const btnPrimary: React.CSSProperties = {
-    background: 'var(--accent-primary)', color: 'white',
-    border: '1px solid var(--accent-primary)', borderRadius: '999px', padding: '9px 16px',
-    fontSize: '13px', fontWeight: 800, cursor: 'pointer',
+    background: '#144972', color: 'white',
+    border: '1px solid #144972', borderRadius: '8px', padding: '9px 16px',
+    fontFamily: 'var(--font-condensed)', fontSize: '13.5px', fontWeight: 600,
+    letterSpacing: '0.02em', cursor: 'pointer',
     display: 'flex', alignItems: 'center', gap: '8px',
   };
   const btnSecondary: React.CSSProperties = {
-    background: '#fff', color: 'var(--text-primary)',
-    border: '1px solid var(--ehr-border)', borderRadius: '999px', padding: '9px 16px',
-    fontSize: '13px', fontWeight: 750, cursor: 'pointer',
+    background: '#fff', color: '#0E2A4A',
+    border: '1px solid #E3EBF2', borderRadius: '8px', padding: '9px 16px',
+    fontFamily: 'var(--font-condensed)', fontSize: '13.5px', fontWeight: 600,
+    letterSpacing: '0.02em', cursor: 'pointer',
   };
   const labelStyle: React.CSSProperties = {
     fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)',
@@ -512,6 +514,7 @@ export default function SettingsPage() {
               key={tab.key}
               onClick={() => { setActiveTab(tab.key); setSearch(''); setFilterFacilityType('all'); }}
               className={activeTab === tab.key ? 'active' : undefined}
+              data-tour={`settings-tab-${tab.key}`}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
@@ -548,7 +551,7 @@ export default function SettingsPage() {
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
                       {['Name', 'Username', 'Role', 'Hospital', 'Status', 'Created', 'Actions'].map(h => (
-                        <th key={h} className="text-left px-4 py-3" style={{
+                        <th key={h} className="text-start px-4 py-3" style={{
                           fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
                           textTransform: 'uppercase', letterSpacing: '0.05em',
                         }}>{h}</th>
@@ -634,7 +637,7 @@ export default function SettingsPage() {
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
                       {['Name', 'State', 'Type', 'Beds', 'Staff', 'Status'].map(h => (
-                        <th key={h} className="text-left px-4 py-3" style={{
+                        <th key={h} className="text-start px-4 py-3" style={{
                           fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
                           textTransform: 'uppercase', letterSpacing: '0.05em',
                         }}>{h}</th>
@@ -689,7 +692,7 @@ export default function SettingsPage() {
 
         {/* ═══════════════ FACILITY SYNC TAB ═══════════════ */}
         {activeTab === 'sync' && (
-          <div className="max-w-2xl space-y-5">
+          <div className="max-w-2xl space-y-5" data-tour="settings-sync-panel">
             {/* Header card */}
             <div className="card-elevated p-5">
               <div className="flex items-start justify-between gap-4">
@@ -777,7 +780,7 @@ export default function SettingsPage() {
                             <p style={{ fontSize: 11, color: 'var(--color-danger-text)', marginTop: 2 }}>{lastPush.message}</p>
                           )}
                         </div>
-                        <span className="flex-shrink-0 ml-3 text-[11px] font-semibold px-2.5 py-0.5 rounded-full" style={{ background: s.bg, color: s.fg }}>
+                        <span className="flex-shrink-0 ms-3 text-[11px] font-semibold px-2.5 py-0.5 rounded-full" style={{ background: s.bg, color: s.fg }}>
                           {s.label}
                         </span>
                       </div>
@@ -839,7 +842,7 @@ export default function SettingsPage() {
                         style={inputStyle}
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
+                        className="absolute end-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
@@ -911,7 +914,7 @@ export default function SettingsPage() {
                     style={inputStyle}
                   />
                   <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
+                    className="absolute end-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
                     {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -1081,7 +1084,7 @@ export default function SettingsPage() {
                         color: hospitalForm.services.includes(svc) ? 'var(--accent-primary)' : 'var(--text-muted)',
                         border: `1px solid ${hospitalForm.services.includes(svc) ? 'rgba(0,119,215,0.3)' : 'var(--border-light)'}`,
                       }}>
-                      {hospitalForm.services.includes(svc) && <Check className="w-3 h-3 inline mr-1" />}
+                      {hospitalForm.services.includes(svc) && <Check className="w-3 h-3 inline me-1" />}
                       {svc}
                     </button>
                   ))}

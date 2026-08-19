@@ -165,7 +165,7 @@ export default function OrgHospitalsPage() {
         )}
 
         {/* Hospitals Table */}
-        <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+        <div className="dash-card overflow-hidden flex flex-col" data-tour="org-hospitals-table" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title={t('orgHospitals.headerTitle')}
             stats={[{ label: 'Facilities', value: hospitals.length, color: LIST_STAT_COLORS.muted }]}
@@ -173,7 +173,8 @@ export default function OrgHospitalsPage() {
             actions={
               <button
                 onClick={() => { setError(''); setShowCreateModal(true); }}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+                data-tour="org-hospitals-add"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90"
                 style={{ background: brandColor, height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}
               >
                 <Plus className="w-4 h-4" />
@@ -185,12 +186,12 @@ export default function OrgHospitalsPage() {
           <table className="w-full" style={{ minWidth: 720 }}>
             <thead>
               <tr>
-                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.colName')}</th>
-                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.fieldState')}</th>
-                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.colType')}</th>
-                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.colBeds')}</th>
-                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.statPatients')}</th>
-                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('orgHospitals.colTodayVisits')}</th>
+                <th className="text-start px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.colName')}</th>
+                <th className="text-start px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.fieldState')}</th>
+                <th className="text-start px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.colType')}</th>
+                <th className="text-start px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.colBeds')}</th>
+                <th className="text-start px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('hospitals.statPatients')}</th>
+                <th className="text-start px-4 py-3 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{t('orgHospitals.colTodayVisits')}</th>
               </tr>
             </thead>
             <tbody>
@@ -212,7 +213,7 @@ export default function OrgHospitalsPage() {
                           <Building2 className="w-4 h-4" style={{ color: facilityColor(hospital.facilityType) }} />
                         </div>
                         <div>
-                          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{hospital.name}</p>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{hospital.name}</p>
                           <p className="text-xs flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
                             <MapPin className="w-3 h-3" />
                             {hospital.town || '-'}
@@ -225,7 +226,7 @@ export default function OrgHospitalsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className="text-xs font-medium px-2 py-0.5 rounded-full"
+                        className="text-xs font-semibold px-2 py-0.5 rounded-full"
                         style={{
                           background: `${facilityColor(hospital.facilityType)}15`,
                           color: facilityColor(hospital.facilityType),
@@ -240,7 +241,7 @@ export default function OrgHospitalsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                           {hospital.patientCount || 0}
                         </span>
                       </div>
@@ -286,7 +287,7 @@ export default function OrgHospitalsPage() {
             <div className="space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgHospitals.labelFacilityName')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgHospitals.labelFacilityName')}</label>
                 <input
                   type="text"
                   value={formName}
@@ -299,12 +300,12 @@ export default function OrgHospitalsPage() {
 
               {/* State */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgHospitals.labelState')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgHospitals.labelState')}</label>
                 <div className="relative">
                   <Select
                     value={formState}
                     onChange={e => setFormState(e.target.value)}
-                    className="w-full appearance-none px-3 py-2 pr-8 rounded-lg text-sm"
+                    className="w-full appearance-none px-3 py-2 pe-8 rounded-lg text-sm"
                     style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                   >
                     <option value="">{t('orgHospitals.selectState')}</option>
@@ -312,13 +313,13 @@ export default function OrgHospitalsPage() {
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </Select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 </div>
               </div>
 
               {/* Location / Town */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgHospitals.labelTown')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgHospitals.labelTown')}</label>
                 <input
                   type="text"
                   value={formTown}
@@ -331,25 +332,25 @@ export default function OrgHospitalsPage() {
 
               {/* Facility Type */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgHospitals.labelFacilityType')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgHospitals.labelFacilityType')}</label>
                 <div className="relative">
                   <Select
                     value={formType}
                     onChange={e => setFormType(e.target.value)}
-                    className="w-full appearance-none px-3 py-2 pr-8 rounded-lg text-sm"
+                    className="w-full appearance-none px-3 py-2 pe-8 rounded-lg text-sm"
                     style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                   >
                     {FACILITY_TYPES.map(ft => (
                       <option key={ft.value} value={ft.value}>{t(ft.labelKey)}</option>
                     ))}
                   </Select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 </div>
               </div>
 
               {/* Total Beds */}
               <div>
-                <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('hospitals.colTotalBeds')}</label>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('hospitals.colTotalBeds')}</label>
                 <input
                   type="number"
                   value={formBeds}
@@ -365,7 +366,7 @@ export default function OrgHospitalsPage() {
             <div className="flex items-center justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                 style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
               >
                 {t('action.cancel')}
@@ -373,7 +374,7 @@ export default function OrgHospitalsPage() {
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                 style={{ background: brandColor }}
               >
                 {creating ? (

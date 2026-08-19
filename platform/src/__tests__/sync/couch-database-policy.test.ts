@@ -6,6 +6,7 @@
  */
 import {
   databasePolicy,
+  resolveMemberRoles,
   READ_ONLY_DATABASES,
   ORG_SCOPE_DESIGN_DOC_ID,
   SERVER_ONLY_DESIGN_DOC_ID,
@@ -17,6 +18,49 @@ const afterCutover = { tenantDatabasesEnabled: true, memberOrgIds: ['org-a', 'or
 describe('CouchDB database policy', () => {
   it('keeps the two validators on separate design documents', () => {
     expect(ORG_SCOPE_DESIGN_DOC_ID).not.toBe(SERVER_ONLY_DESIGN_DOC_ID);
+  });
+
+  describe('an omitted member list means "unknown", not "nobody"', () => {
+    const unlisted = { tenantDatabasesEnabled: false, memberOrgIds: [] };
+    const live = ['org:org-moh-ss', 'org:org-mercy-hospital'];
+
+    it('marks a shared aggregate\'s membership as coming from the operator list', () => {
+      const policy = databasePolicy('tamamhealth_patients', beforeCutover);
+      expect(policy.membersFromOperatorList).toBe(true);
+    });
+
+    it('does not claim operator authorship for a tenant or server-only database', () => {
+      // These two know their own answer: the tenant from its name, the
+      // server-only database from being absent from the browser sync map.
+      expect(databasePolicy('tamamhealth_patients--org-a', afterCutover).membersFromOperatorList).toBe(false);
+      expect(databasePolicy('tamamhealth_slot_holds', beforeCutover).membersFromOperatorList).toBe(false);
+    });
+
+    it('keeps the members a live aggregate already has when the list is omitted', () => {
+      // The regression: running the deployment script without
+      // COUCHDB_MEMBER_ORG_IDS used to write members: [] over every shared
+      // aggregate, cutting off replication for every organization at once.
+      const policy = databasePolicy('tamamhealth_patients', unlisted);
+      expect(resolveMemberRoles(policy, live)).toEqual({ roles: live, preserved: true });
+    });
+
+    it('still clears them when the operator asks for it explicitly', () => {
+      const policy = databasePolicy('tamamhealth_patients', unlisted);
+      expect(resolveMemberRoles(policy, live, { revokeUnlisted: true }))
+        .toEqual({ roles: [], preserved: false });
+    });
+
+    it('writes an empty list for a server-only database, which genuinely has none', () => {
+      const policy = databasePolicy('tamamhealth_slot_holds', unlisted);
+      expect(resolveMemberRoles(policy, ['org:org-moh-ss']))
+        .toEqual({ roles: [], preserved: false });
+    });
+
+    it('grants exactly what the operator listed, replacing what was there', () => {
+      const policy = databasePolicy('tamamhealth_patients', beforeCutover);
+      expect(resolveMemberRoles(policy, live))
+        .toEqual({ roles: ['org:org-a', 'org:org-b'], preserved: false });
+    });
   });
 
   describe('tenant databases', () => {

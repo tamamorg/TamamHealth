@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { consumeShellHistoryEntry, recordShellHistoryEntry } from './shell-history';
 
 export type MobileShellTab = 'dashboard' | 'patients' | 'calendar' | 'inbox' | null;
 export type MobileShellOverlay = 'create' | 'modules' | null;
@@ -58,10 +59,32 @@ export function useMobileShellState() {
     [pathname, searchParams]
   );
 
-  const openChart = useCallback((patientId: string) => router.push(withParam('chart', patientId)), [router, withParam]);
-  const closeChart = useCallback(() => router.push(withParam('chart', null)), [router, withParam]);
-  const openSheet = useCallback((sheet: 'create' | 'modules') => router.push(withParam('sheet', sheet)), [router, withParam]);
-  const closeSheet = useCallback(() => router.push(withParam('sheet', null)), [router, withParam]);
+  const openChart = useCallback((patientId: string) => {
+    const target = withParam('chart', patientId);
+    recordShellHistoryEntry('chart', target);
+    router.push(target);
+  }, [router, withParam]);
+  const closeChart = useCallback(() => {
+    const current = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ''}`;
+    if (consumeShellHistoryEntry('chart', current)) {
+      router.back();
+      return;
+    }
+    router.replace(withParam('chart', null));
+  }, [pathname, router, searchParams, withParam]);
+  const openSheet = useCallback((sheet: 'create' | 'modules') => {
+    const target = withParam('sheet', sheet);
+    recordShellHistoryEntry('sheet', target);
+    router.push(target);
+  }, [router, withParam]);
+  const closeSheet = useCallback(() => {
+    const current = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ''}`;
+    if (consumeShellHistoryEntry('sheet', current)) {
+      router.back();
+      return;
+    }
+    router.replace(withParam('sheet', null));
+  }, [pathname, router, searchParams, withParam]);
   const setLane = useCallback((next: MobileShellLane) => router.replace(withParam('lane', next)), [router, withParam]);
   const setDay = useCallback((next: string) => router.replace(withParam('day', next)), [router, withParam]);
 

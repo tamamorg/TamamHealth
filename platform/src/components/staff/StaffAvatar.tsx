@@ -11,6 +11,7 @@
  */
 
 import { useState } from 'react';
+import { initials } from '@/lib/patient-utils';
 
 export interface StaffAvatarProps {
   name: string;
@@ -20,14 +21,6 @@ export interface StaffAvatarProps {
   /** Squared-off variant for profile headers. */
   rounded?: 'circle' | 'card';
   className?: string;
-}
-
-/** "Dr. Achol Mayen Deng" → "AM". Titles are dropped, not initialised. */
-export function staffMonogram(name: string): string {
-  const words = (name || '')
-    .replace(/^(Dr\.?|CO|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Sr\.?|Sister|Nurse|Midwife)\s+/i, '')
-    .trim().split(/\s+/).filter(Boolean);
-  return words.slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?';
 }
 
 /**
@@ -92,7 +85,7 @@ export default function StaffAvatar({
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         )
-        : staffMonogram(name)}
+        : initials(name)}
     </span>
   );
 }

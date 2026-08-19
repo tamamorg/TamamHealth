@@ -1,204 +1,643 @@
-html,
-body {
-  margin: 0;
-  padding: 0;
-  /* Matches the hero/footer navy rather than the page's cream sections, so
-     mobile Safari's elastic overscroll (or any Android rubber-band/bounce)
-     never flashes white above the hero or below the footer. */
-  background: #015697;
+/* ═══════════════════════════════════════════════════════════════════
+   TamamHealth website — ported 1:1 from the Claude Design project
+   "TamamHealth Website" (Industry design system, blueprint variant).
+
+   Structure:
+     1. Tokens + base elements  (from the DS styles.css + page overrides)
+     2. DS components           (.blueprint/.corner, .btn, .field, .tag)
+     3. Page classes            (tm-*)
+     4. Responsive layer        (the design's audited breakpoints; its
+        [style*=…] attribute selectors are re-expressed as classes here,
+        because React re-serialises inline styles and the attribute
+        strings would not survive hydration)
+     5. Print
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Tokens + base ── */
+
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f2f8fc;
+  --color-text: #0e2a4a;
+  --color-accent: #2191d0;
+  --color-divider: rgba(14, 42, 74, 0.3);
+  --color-accent-100: #f5fbfe;
+  --color-accent-200: #ddf2fb;
+  --color-accent-300: #7fc4ea;
+  --color-accent-400: #52adde;
+  --color-accent-500: #2191d0;
+  --color-accent-600: #1774a8;
+  --color-accent-700: #015697;
+  --color-accent-800: #013d6b;
+  --color-accent-900: #015697;
+  --color-neutral-300: #d4d4d7;
+  --color-neutral-600: #6c7c8e;
+  --color-neutral-700: #5b6b7e;
+  --color-neutral-800: #3d5166;
+  --color-neutral-900: #2b2b2d;
+  --font-heading: "Barlow Condensed", system-ui, sans-serif;
+  --font-heading-weight: 600;
+  --font-body: "Barlow", system-ui, sans-serif;
+  --radius-md: 4px;
+  --shadow-sm: 0 1px 2px rgba(43, 43, 45, 0.14);
+  --shadow-md: 0 3px 10px rgba(43, 43, 45, 0.16);
+  --shadow-lg: 0 12px 32px rgba(43, 43, 45, 0.22);
 }
 
-/* Respect users who prefer reduced motion: anchor jumps become instant. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto !important;
   }
 }
 
-html {
-  scroll-behavior: smooth;
-  /* html is the single scroll root. overflow-x: hidden here clips horizontal
-     overflow without turning <body> into its own scroll container. */
-  overflow-x: hidden;
-  /* Kill the elastic rubber-band/bounce so the page can't be dragged past the
-     top of the hero or the bottom of the footer to reveal the colour behind
-     them — normal in-page scrolling is unaffected. */
-  overscroll-behavior-y: none;
-}
-
 body {
-  /* clip (not hidden) hides horizontal overflow WITHOUT making <body> a scroll
-     container — that quirk was trapping vertical scroll. */
+  margin: 0;
+  background: #ffffff;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
   overflow-x: clip;
 }
 
-section[id] {
-  scroll-margin-top: 78px;
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  margin: 0 0 7px;
+}
+h1 { font-size: 42px; }
+h2 { font-size: 32px; }
+h3 { font-size: 25px; }
+h4 { font-size: 20px; }
+h5 { font-size: 16px; }
+h6 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+h1, h2, h3 { overflow-wrap: break-word; }
+
+p { margin: 0 0 10px; }
+
+a { color: var(--color-accent-700); text-underline-offset: 3px; }
+a:hover { color: var(--color-accent-800); }
+
+img { display: block; max-width: 100%; }
+figure { margin: 0; }
+
+.text-muted { color: rgba(14, 42, 74, 0.55); }
+
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+::selection { background: rgba(33, 145, 208, 0.3); }
+
+main section > div, footer > div, header > div { max-width: 100%; box-sizing: border-box; }
+main img, main iframe { max-width: 100%; }
+main [style*="display: grid"] > *, main [style*="display: flex"] > *,
+main [style*="display:grid"] > *, main [style*="display:flex"] > * { min-width: 0; }
+
+section[id] { scroll-margin-top: 130px; }
+
+/* ── 2. DS components (blueprint variant: square, hairline, transparent) ── */
+
+.blueprint {
+  position: relative;
+  border: 1px solid var(--color-divider);
+  border-radius: 0;
+}
+.blueprint > .corner {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  color: rgba(14, 42, 74, 0.55);
+}
+.blueprint > .corner::before,
+.blueprint > .corner::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+}
+.blueprint > .corner::before { inset-inline-start: 5px; top: 0; width: 1px; height: 100%; }
+.blueprint > .corner::after { top: 5px; inset-inline-start: 0; width: 100%; height: 1px; }
+.blueprint > .corner.tl { top: -6px; inset-inline-start: -6px; }
+.blueprint > .corner.tr { top: -6px; inset-inline-end: -6px; }
+.blueprint > .corner.bl { bottom: -6px; inset-inline-start: -6px; }
+.blueprint > .corner.br { bottom: -6px; inset-inline-end: -6px; }
+.corner-light { color: rgba(255, 255, 255, 0.5) !important; }
+
+/* Horizontal photo gallery — film strip: fixed height, natural aspect ratio,
+   one snap stop per frame, captions wrap to the width of their photo. */
+.tm-gallery {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 6px;
+}
+.tm-gallery::-webkit-scrollbar { display: none; }
+.tm-gallery > figure {
+  flex: 0 0 auto;
+  margin: 0;
+  scroll-snap-align: start;
+}
+.tm-gallery > figure > img {
+  display: block;
+  height: clamp(260px, 30vw, 420px);
+  width: auto;
+  max-width: none; /* frames keep their native aspect; the strip scrolls instead */
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+.tm-gallery > figure > figcaption {
+  width: 0;
+  min-width: 100%;
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.66);
+}
+/* The strip is drawn for navy bands; on a light ground the frame hairline and
+   the caption ink swap to the page's own neutrals. */
+.tm-gallery-light > figure > img { border-color: var(--color-divider); }
+.tm-gallery-light > figure > figcaption { color: var(--color-neutral-600); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-divider);
+  border-radius: 0;
+  padding: 7px 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* The primary call to action is amber on navy ink, per the design. Every blue
+   on this site is structural — links, headings, the navy grounds, the header
+   chrome — so a blue button dissolved into the page it sat on. Amber is the
+   only warm colour here and fills nothing else. */
+.btn-primary { background: #e8863a; border-color: #e8863a; color: #0e2a4a; }
+.btn-primary:hover { background: #d2712a !important; border-color: #d2712a !important; color: #0e2a4a; }
+.btn-secondary { border-color: var(--color-divider); }
+.btn-secondary:hover { background: rgba(14, 42, 74, 0.07); }
+.btn-secondary:active { background: rgba(14, 42, 74, 0.14); }
+.btn-icon { width: 36px; height: 36px; padding: 0; }
+
+.field > label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: rgba(14, 42, 74, 0.7);
+}
+.input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: 0;
+}
+.input:hover { border-color: rgba(14, 42, 74, 0.45); }
+.input:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
+textarea.input { min-height: 90px; resize: vertical; }
+
+/* On the navy contact/donate forms the inputs carry translucent-white inline
+   styles; keep their placeholder legible on both light and dark grounds. */
+.input::placeholder { color: rgba(14, 42, 74, 0.45); }
+.input-dark::placeholder { color: rgba(255, 255, 255, 0.55); }
+.input-dark:hover { border-color: rgba(255, 255, 255, 0.6); }
+select.input-dark option { color: #0e2a4a; background: #ffffff; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  border-radius: 0;
+}
+.tag-accent { background: #ddf2fb; color: #015697; }
+.tag-outline { border: 1px solid var(--color-accent); color: var(--color-accent); }
+
+/* ── Foldable step rows ──────────────────────────────────────────────
+   The "patient day" list, one <details> per step. Collapsed by default:
+   the numbered titles read as the shape of the day, and the paragraph is
+   there for anyone who wants it. `name="patient-day"` makes them an
+   exclusive accordion — opening one closes the rest — which is what keeps
+   the section scannable rather than turning into the wall it replaced. */
+.tm-steprow {
+  border-bottom: 1px solid var(--color-divider);
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: rgba(255, 255, 255, 0.6);
+.tm-steprow > summary {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 28px;
+  align-items: center;
+  padding: 22px 0;
+  cursor: pointer;
+  list-style: none;
 }
 
-.tm-compare-arrow-short {
-  display: none;
+/* Safari draws its own triangle without this. */
+.tm-steprow > summary::-webkit-details-marker { display: none; }
+
+.tm-steprow > summary:hover h3 { color: var(--color-accent-700); }
+
+.tm-steprow > summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
-/* ── Breakpoints: desktop ≥1024 · tablet 640–1023 · mobile ≤639 ── */
-@media (min-width: 1024px) {
-  .tm-nav-burger,
-  .tm-nav-drawer {
-    display: none !important;
-  }
+.tm-stepnum {
+  font-family: var(--font-heading);
+  font-size: 34px;
+  line-height: 1;
+  color: #015697;
 }
 
-@media (max-width: 1023px) {
-  .tm-nav-links {
-    display: none !important;
-  }
-  .tm-nav-burger {
-    display: inline-flex !important;
-  }
-  .tm-section {
-    padding-left: 24px !important;
-    padding-right: 24px !important;
-  }
-  .tm-shadow-plate {
-    box-shadow: none !important;
-  }
+.tm-steprow > summary h3 {
+  font-size: 22px;
+  margin: 0;
 }
 
-@media (min-width: 640px) and (max-width: 1023px) {
-  .tm-grid-products,
-  .tm-grid-insights,
-  .tm-grid-split,
-  .tm-grid-features {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-  .tm-grid-breakdown {
-    grid-template-columns: repeat(3, 1fr) !important;
-  }
-  .tm-grid-team {
-    grid-template-columns: repeat(3, 1fr) !important;
-  }
+/* A + that becomes a − when open: the state is legible without colour. */
+.tm-stepchev {
+  font-family: var(--font-body);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--color-accent-700);
+  transition: transform 0.18s ease;
 }
 
+.tm-steprow[open] > summary .tm-stepchev { transform: rotate(45deg); }
+
+.tm-steprow > p {
+  margin: 0;
+  padding: 0 0 26px 124px;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--color-neutral-800);
+  max-width: 900px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-stepchev { transition: none; }
+}
+
+/* ── 3. Page classes ── */
+
+.tm-navlink { position: relative; }
+.tm-navlink:hover { color: var(--color-accent-700) !important; }
+.tm-card:hover { background: rgba(33, 145, 208, 0.05); }
+.tm-tab:hover { color: #ffffff !important; }
+.tm-utilink:hover { color: #015697 !important; }
+
+.tm-products-band { background: linear-gradient(to right, #0e2a4a 0 50%, #eff5f9 50% 100%); }
+
+/* No scrollbar under the challenge rail — the ‹ › buttons above it are the
+   affordance, and the bar read as a stray rule across the navy band. */
+.tm-chal-rail { scrollbar-width: none; }
+.tm-chal-rail::-webkit-scrollbar { display: none; }
+.tm-flow-rail > div:last-child > div > span:last-child { display: none; }
+.tm-flow-rail::-webkit-scrollbar { height: 6px; }
+.tm-flow-rail::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.12); }
+.tm-flow-rail::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.42); }
+
+/* style-hover ports (inline styles carry the base state, so !important) */
+.tm-fact:hover { background: rgba(255, 255, 255, 0.07) !important; }
+.tm-chalcard:hover { background: rgba(255, 255, 255, 0.07) !important; }
+.tm-chalstep:hover { background: rgba(255, 255, 255, 0.12) !important; }
+.tm-chalstep-lit:hover { background: #ffffff !important; }
+.tm-cost:hover { background: var(--color-accent-100) !important; }
+.tm-prodcard:hover { background: #f2f8fc !important; }
+/* /products hero: the six acronym jump chips on the navy band. */
+.tm-prodchip:hover { background: rgba(255, 255, 255, 0.14) !important; border-color: rgba(255, 255, 255, 0.6) !important; }
+/* The whole failure/fix card is the link, so it lifts on hover like the rest. */
+.tm-solution-card:hover { background: #e8f2f9 !important; }
+.tm-handled:hover { background: #ffffff !important; }
+.tm-guard:hover { background: var(--color-accent-100) !important; }
+.tm-lvlbtn:hover { background: var(--color-accent-100) !important; }
+.tm-rolerow:hover { background: var(--color-accent-100) !important; }
+.tm-faq-row:hover { background: var(--color-accent-100); }
+
+/* ── 4. Responsive layer ── */
+
+/* utility grids (the design expressed these as [style*=…] selectors) */
+.tm-g3 { display: grid; grid-template-columns: repeat(3, 1fr); }
+.tm-g4 { display: grid; grid-template-columns: repeat(4, 1fr); }
+.tm-g6 { display: grid; grid-template-columns: repeat(6, 1fr); }
+/* two-column splits keep their own template inline; the class only collapses them */
+
+.fs11 { font-size: 11px; }
+.fs115 { font-size: 11.5px; }
+.fs12 { font-size: 12px; }
+.fs125 { font-size: 12.5px; }
+
+/* ── Responsive: desktop ≥1101 · tablet 640–1100 · mobile ≤639 ── */
+.tm-burger { display: none; }
+header > div { min-width: 0; }
+.tm-desktop-nav { min-width: 0; flex-wrap: nowrap; }
+
+@media (max-width: 1240px) {
+  .tm-prod-card { margin-inline-start: max(425px, 34%) !important; }
+}
+@media (max-width: 1320px) {
+  .tm-desktop-nav .tm-navlink { padding-inline-start: 9px !important; padding-inline-end: 9px !important; font-size: 15px !important; }
+  .tm-desktop-nav > a:last-child { margin-inline-start: 8px !important; padding-inline-start: 15px !important; padding-inline-end: 15px !important; }
+  .tm-navrow { gap: 20px !important; }
+}
+@media (max-width: 1180px) {
+  .tm-desktop-nav .tm-navlink { padding-inline-start: 7px !important; padding-inline-end: 7px !important; font-size: 14.5px !important; }
+  .tm-navrow, .tm-util { padding-inline-start: 24px !important; padding-inline-end: 24px !important; }
+}
+@media (max-width: 1100px) {
+  .tm-desktop-nav { display: none !important; }
+  .tm-burger { display: grid !important; }
+  .tm-g4, .tm-g3 { grid-template-columns: repeat(2, 1fr) !important; }
+  .tm-g6 { grid-template-columns: repeat(3, 1fr) !important; }
+  .tm-split { grid-template-columns: 1fr !important; }
+  /* Stacked, the home lead story's divider moves from the copy's left edge to
+     its top, and the figure drops to a banner height above it. */
+  .tm-news-lead > div:last-of-type { border-inline-start: 0 !important; border-top: 1px solid var(--color-divider) !important; padding: 34px 30px 38px !important; }
+  .tm-news-lead > .tm-figure { min-height: 260px !important; }
+  .tm-sticky { position: static !important; top: auto !important; }
+  .tm-prod-card { margin-top: 0 !important; margin-inline-start: 0 !important; }
+  .tm-prod-photo { min-height: 320px !important; }
+  .tm-products-band { background: #0e2a4a; }
+  .tm-prod-grid { grid-template-columns: 1fr !important; }
+  .tm-prod-card { grid-template-columns: 1fr !important; }
+  .tm-prod-card > div:first-of-type { min-height: 260px !important; }
+  .tm-problem-breaks { grid-template-columns: 1fr !important; gap: 26px !important; }
+  /* Stacked, the closing figures move under the argument rather than beside
+     it, and the divider between them turns with them. */
+  .tm-problem-close { grid-template-columns: 1fr !important; }
+  .tm-problem-figs { flex-direction: row !important; border-inline-start: 0 !important; border-top: 1px solid var(--color-divider); }
+  .tm-problem-figs > div + div { border-top: 0 !important; border-inline-start: 1px solid var(--color-divider); }
+  /* One column wide, the banner is the full measure of the panel — a taller
+     crop keeps it off the subjects' chins — and the plate no longer has three
+     numerals to line up with, so it drops its floor. */
+  .tm-break-fig { height: 232px !important; }
+  .tm-problem-plate { min-height: 0 !important; }
+  main section { padding-inline-start: 28px !important; padding-inline-end: 28px !important; }
+  /* Below 1100 the hero stops being a fixed-height band, and with the
+     photograph absolutely filling that box the picture took its height from
+     whichever slide was showing — a long body grew the image, a short one
+     shrank it, so navigating the carousel resized the photograph. Stack the
+     two instead: the image keeps one height on every slide, and the card
+     below it takes whatever height its own text needs. The ≤760 block further
+     down tightens the same layout for phones. */
+  .tm-hero { height: auto !important; min-height: 0 !important; overflow: visible !important; background: transparent !important; }
+  .tm-hero-img { position: relative !important; inset: auto !important; height: 360px; }
+  .tm-hero-scrim { height: 360px; bottom: auto !important; }
+  .tm-hero-wrap { height: auto !important; padding: 0 28px !important; margin-top: -72px !important; margin-bottom: 0 !important; }
+  .tm-hero-card { width: 100% !important; background: #ffffff !important; }
+  .tm-map iframe { height: 460px !important; margin-inline-start: 0 !important; }
+  /* touch targets: nothing tappable under 44px once the pointer is a finger */
+  main button, header button, footer button { min-height: 44px; min-width: 44px; }
+  /* …except the carousel dashes: the 44px-tall bar is the touch target, and a
+     44px floor per dash overflows the rail with 6 items on a phone. */
+  .tm-hero-nav button { min-width: 0; }
+  main a[href], footer a[href] { min-height: 36px; }
+  .fs11, .fs115 { font-size: 12px; }
+  main section a[href] { padding-top: 2px; padding-bottom: 2px; }
+  .tm-flow-step { flex: 1 0 230px !important; }
+}
+@media (max-width: 1000px) {
+  .tm-platform-split { grid-template-columns: 1fr !important; gap: 44px !important; }
+  .tm-pillars { grid-template-columns: 1fr !important; }
+  .tm-nat-hero { grid-template-columns: 1fr !important; gap: 36px !important; }
+  .tm-contact-hero, .tm-contact-body { grid-template-columns: 1fr !important; gap: 36px !important; }
+  .tm-dash-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 900px) {
+  .tm-donate-hero { grid-template-columns: 1fr !important; gap: 34px !important; }
+  .tm-goal-row { grid-template-columns: 1fr 1fr !important; }
+  .tm-login-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+  /* Four portals do not fit one row on a phone; wrap to a 2×2 block and let
+     each tab keep a tappable width rather than shrinking the labels. */
+  .tm-login-tabs { flex-wrap: wrap; }
+  .tm-login-tabs > button { flex: 1 0 45% !important; }
+  .tm-origin { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .tm-faq-row { grid-template-columns: 32px 1fr !important; gap: 8px 18px !important; }
+  .tm-faq-row > p { grid-column: 2 !important; }
+  .tm-about-card { grid-template-columns: 1fr !important; }
+  .tm-about-card > div:first-of-type { padding: 40px 28px 44px !important; }
+  /* Stacked, the photo leads and the copy follows — and it drops from the
+     desktop's 420px to a banner height so it doesn't dwarf the message. */
+  .tm-about-card .tm-about-fig { order: -1; min-height: 240px !important; height: 240px; }
+  .tm-util-contact { display: none !important; }
+}
+@media (max-width: 760px) {
+  .tm-award { grid-template-columns: 1fr !important; }
+  .tm-award > .tm-figure { border-inline-start: 0 !important; border-top: 1px solid rgba(255, 255, 255, 0.28) !important; min-height: 220px !important; }
+}
 @media (max-width: 639px) {
-  .tm-section {
-    padding: 64px 16px !important;
-  }
-  .tm-hero {
-    min-height: 100vh !important;
-    justify-content: flex-end !important;
-  }
-  .tm-hero-sub {
-    width: 100% !important;
-    align-self: flex-start !important;
-  }
-  .tm-btn-row {
-    width: 100% !important;
-    justify-content: flex-start !important;
-    margin-top: 14px !important;
-  }
-  .tm-grid-products,
-  .tm-grid-insights,
-  .tm-grid-split,
-  .tm-grid-breakdown,
-  .tm-grid-features {
-    grid-template-columns: 1fr !important;
-  }
-  .tm-grid-team {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-  .tm-breakdown-card {
-    min-height: 300px !important;
-  }
-  .tm-compare-strip {
-    flex-direction: column !important;
-  }
-  .tm-compare-col {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  .tm-compare-col-mid {
-    border-left: none !important;
-    border-right: none !important;
-    border-top: 1.5px solid #015697 !important;
-    border-bottom: 1.5px solid #015697 !important;
-  }
-  .tm-compare-arrow-full {
-    display: none;
-  }
-  .tm-compare-arrow-short {
-    display: inline;
-  }
-  .tm-form-pad {
-    padding: 24px 16px !important;
-  }
-  .tm-btn-row a {
-    flex: 0 0 auto;
-    text-align: center;
-    font-size: 13px !important;
-    padding: 10px 18px !important;
-  }
-  .tm-contact-h {
-    font-size: 30px !important;
-  }
-  .tm-footer-row {
-    flex-direction: column !important;
-    justify-content: center !important;
-    text-align: center;
-  }
-  .tm-footer-brand {
-    flex-direction: column !important;
-  }
-  .tm-footer-links {
-    justify-content: center !important;
-  }
+  .tm-g4, .tm-g3 { grid-template-columns: 1fr !important; }
+  /* Two story photos abreast are too small to read on a phone. */
+  .tm-news-pair { grid-template-columns: 1fr !important; gap: 22px !important; }
+  /* One card per row on a phone; the two-up grid is already tight enough that
+     it needs nothing else. */
+  .tm-solution-grid { grid-template-columns: 1fr !important; }
+  .tm-explain { grid-template-columns: 1fr !important; }
+  .tm-g6 { grid-template-columns: repeat(2, 1fr) !important; }
+  .tm-problem-breaks { grid-template-columns: 1fr !important; }
+  .tm-problem-figs { flex-direction: column !important; }
+  .tm-problem-figs > div + div { border-inline-start: 0 !important; border-top: 1px solid var(--color-divider) !important; }
+  /* One column wide, the break banner is the full page width — a taller crop
+     keeps it from reading as a letterbox strip. */
+  .tm-break-fig { height: 196px !important; }
+  main section { padding-inline-start: 18px !important; padding-inline-end: 18px !important; }
+  main section:not(.tm-hero):not(.tm-hero-nav) { padding-top: 42px !important; padding-bottom: 46px !important; }
+  .tm-hero { min-height: 480px; padding: 0 !important; }
+  .tm-h420 { height: 260px !important; }
+  .tm-minh280 { min-height: 196px !important; }
+  .tm-map iframe { height: 380px !important; }
+  .tm-rule { width: 100% !important; }
+  .tm-steprow > summary { grid-template-columns: 52px 1fr auto !important; gap: 16px !important; }
+  .tm-steprow > p { padding-inline-start: 68px !important; }
+  .fs11, .fs115 { font-size: 12.5px; }
+  .fs12, .fs125 { font-size: 13px; }
+  .tm-flow-step { flex: 1 0 250px !important; }
+  .tm-goal-line { flex-direction: column; gap: 6px !important; }
+  .tm-goal-line > span:first-child { min-width: 0 !important; }
+  main section a[href] { min-height: 30px; display: inline-flex; align-items: center; flex-wrap: wrap; }
+  footer { padding-top: 44px !important; padding-bottom: 34px !important; }
+}
+@media (max-width: 479px) {
+  main section { padding-inline-start: 14px !important; padding-inline-end: 14px !important; }
+  .tm-g6 { grid-template-columns: 1fr !important; }
+  .tm-steprow > summary { grid-template-columns: 34px 1fr auto !important; gap: 10px !important; }
+  .tm-steprow > p { padding-inline-start: 44px !important; }
+  .tm-pad-lg { padding: 22px 18px !important; }
 }
 
-/* ── Hover / focus states (expressed as style-hover / style-focus in the
-   source design; ported to real CSS since inline styles can't do pseudo-
-   states) ── */
-/* !important is required here: these elements also carry an inline
-   `style` (base state), which otherwise always wins over an external
-   stylesheet rule regardless of pseudo-class — so :hover/:focus would
-   never fire without it. */
-.tm-nav-link:hover {
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.14) !important;
+/* footer grid (audited layer — last in source, wins over the rules above) */
+@media (max-width: 1100px) { .tm-footer-grid { grid-template-columns: 1fr 1fr 1fr !important; gap: 36px !important; } }
+@media (max-width: 760px) { .tm-footer-grid { grid-template-columns: 1fr 1fr !important; gap: 30px !important; } }
+@media (max-width: 520px) {
+  .tm-footer-grid { grid-template-columns: 1fr !important; gap: 26px !important; }
+  .tm-footer-legal { flex-direction: column; align-items: flex-start !important; gap: 16px !important; }
 }
-.tm-nav-cta:hover {
-  background: #15699E !important;
+
+/* header utility row folds into the nav bar on phones */
+@media (max-width: 760px) {
+  /* Height of the BAR, not of the header: an open menu/search panel makes the
+     header hundreds of pixels tall, and a 100%-height overlay at z-index 72
+     then covers the panel — icons drawn across the search field, and clicks on
+     the results going to this row instead. --tm-bar is set on <header> and
+     follows the condensed state. */
+  .tm-util { position: absolute !important; top: 0 !important; inset-inline-end: 74px !important; height: var(--tm-bar, 76px) !important; padding: 0 !important; max-width: none !important; z-index: 72; }
+  .tm-navrow { padding: 0 18px !important; gap: 12px !important; }
+  .tm-navrow > button.tm-burger { width: 44px !important; height: 44px !important; }
+  .tm-util button { width: 40px !important; height: 40px !important; }
 }
-.tm-hero-btn-primary:hover {
-  background: #15699E !important;
+@media (max-width: 420px) {
+  .tm-util { inset-inline-end: 66px !important; gap: 0 !important; }
+  .tm-util button { width: 36px !important; height: 36px !important; }
+  .tm-navrow { padding: 0 14px !important; }
 }
-.tm-hero-btn-secondary:hover {
-  background: #eff8fd !important;
+
+/* footer columns: plain lists on desktop, accordions on phones */
+.tm-foot-col > summary { list-style: none; cursor: default; }
+.tm-foot-col > summary::-webkit-details-marker { display: none; }
+.tm-foot-sum { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--color-divider); padding-bottom: 7px; }
+.tm-foot-chev { display: none; flex-shrink: 0; transition: transform 0.18s ease; }
+.tm-foot-links { display: flex !important; flex-direction: column; gap: 12px; padding-top: 12px; }
+/* The columns ship closed so phones get real accordions. Above 520px the list
+   has to show anyway, and `display: flex` on the child is not enough on its
+   own: a closed <details> hides its subtree through ::details-content's
+   `content-visibility: hidden`, which no rule on a descendant can reach past.
+   Overriding it here is what lets one markup be a list on desktop and an
+   accordion on a phone — and the ≤520px block below re-hides the links there
+   by targeting .tm-foot-links, which this rule leaves reachable. */
+.tm-foot-col::details-content { content-visibility: visible !important; display: block; }
+@media (max-width: 520px) {
+  .tm-foot-col > summary { cursor: pointer; min-height: 46px; }
+  .tm-foot-sum { padding: 12px 0; border-bottom: 1px solid var(--color-divider); }
+  .tm-foot-chev { display: block; }
+  .tm-foot-col[open] .tm-foot-chev { transform: rotate(180deg); }
+  .tm-foot-col:not([open]) .tm-foot-links { display: none !important; }
+  .tm-foot-links { padding: 4px 0 14px; }
 }
-/* Shared card language: borderless cards defined by a soft edge shadow —
-   a tight hairline for definition plus a wider ambient lift. */
-.tm-product-card,
-.tm-feature-card,
-.tm-national-card,
-.tm-insight-card {
-  box-shadow:
-    0 0 0 1px rgba(1, 86, 151, 0.06),
-    0 2px 6px rgba(15, 42, 67, 0.06),
-    0 14px 32px -12px rgba(15, 42, 67, 0.18);
+
+.tm-head-spacer { height: 120px; }
+@media (max-width: 760px) { .tm-head-spacer { height: 59px !important; } }
+@media (max-width: 420px) { .tm-head-spacer { height: 55px !important; } }
+
+/* mobile hero: photo full-bleed, card sitting over its lower edge */
+@media (max-width: 760px) {
+  .tm-hero { height: auto !important; overflow: visible !important; background: transparent !important; }
+  .tm-hero-img { position: relative !important; inset: auto !important; height: 300px; }
+  .tm-hero-scrim { height: 300px; bottom: auto !important; }
+  .tm-hero-wrap { height: auto !important; padding: 0 16px !important; margin-top: -68px !important; margin-bottom: 0 !important; }
+  .tm-hero-card { width: 100% !important; padding: 26px 22px 28px !important; background: #ffffff !important; }
+  .tm-hero-btns { flex-direction: column; gap: 10px !important; }
+  .tm-hero-btns > a { width: 100%; text-align: center; padding: 15px 20px !important; }
 }
-.tm-form-input:focus {
-  border-color: #2191d0 !important;
+
+/* phones: the products card is copy + link only — the photo ate most of the
+   viewport before the text arrived. */
+@media (max-width: 760px) {
+  .tm-prod-photo { display: none !important; }
+  /* Same rule for the /products listing cards: text-only, so the six cards
+     fit a phone without six full-bleed photos between them. */
+  .tm-prodcard .tm-figure { display: none !important; }
 }
-/* The inline style sets outline: none (it clashed with the border-color
-   swap above with no offset room); restore a real focus indicator via
-   :focus-visible so keyboard users still get one. */
-.tm-form-input:focus-visible {
-  outline: 2px solid #98cfee !important;
-  outline-offset: 2px;
+
+/* mobile insight strip: one card at a time, dashes + steppers */
+@media (max-width: 760px) {
+  .tm-strip-rail { grid-template-columns: 100% !important; grid-auto-flow: column; grid-auto-columns: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding: 0 !important; }
+  .tm-strip-rail > button { scroll-snap-align: start; border-inline-start: 0 !important; padding: 18px 18px 20px !important; min-height: 0 !important; }
+  .tm-strip-rail::-webkit-scrollbar { display: none; }
+  .tm-strip-section { display: none !important; }
+  .tm-hero-nav { display: flex !important; }
+  .tm-desk-steppers { display: none !important; }
+
+  /* Same swap as the strip above: the desktop pickers go, HeroNav stays.
+     The product list is a 6-row column of uppercase labels that ate a whole
+     screen before the product it selects, and the site card stacked above the
+     map pushed the map itself out of view. Both are selectors, and HeroNav is
+     already the mobile selector — keeping them was showing the control twice
+     and the content not at all. */
+  .tm-prod-tabs { display: none !important; }
+  .tm-site-card { display: none !important; }
 }
-.tm-submit-btn:hover {
-  background: #15699E !important;
+
+/* ── One gutter: content columns align with the header logo at every width ── */
+@media (max-width: 1180px) {
+  main section { padding-inline-start: 24px !important; padding-inline-end: 24px !important; }
+  .tm-inset { padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  footer { padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  footer > div { padding-inline-start: 24px !important; padding-inline-end: 24px !important; }
+}
+@media (max-width: 639px) {
+  .tm-navrow, .tm-util { padding-inline-start: 18px !important; padding-inline-end: 18px !important; }
+  main section { padding-inline-start: 18px !important; padding-inline-end: 18px !important; }
+  footer { padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  footer > div { padding-inline-start: 18px !important; padding-inline-end: 18px !important; }
+}
+
+/* ── One content width (1320px): containers with their own 32px gutter get 1320+64 ── */
+.tm-util, .tm-navrow, .tm-inset, .tm-hero-wrap, .tm-strip-rail, .tm-login-grid { max-width: 1384px !important; }
+
+@media (max-width: 520px) { .tm-tier { grid-template-columns: 1fr !important; gap: 8px !important; } }
+
+/* ── Mobile density: shorter figures on phones ── */
+@media (max-width: 639px) {
+  main .tm-minh280 { height: 196px !important; min-height: 196px !important; }
+}
+
+/* ── 5. Print: one column on the sheet, no interactive chrome ── */
+@media print {
+  @page { size: A4 portrait; margin: 11mm; }
+  html, body { background: #ffffff !important; }
+  header { position: static !important; box-shadow: none !important; }
+  .tm-sticky { position: static !important; }
+  .tm-hero-nav, .tm-burger, .tm-desk-steppers, form [type="submit"] { display: none !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .tm-g3, .tm-g4, .tm-g6, .tm-split, .tm-footer-grid, .tm-prod-grid, .tm-problem-close,
+  .tm-origin, .tm-about-card, .tm-nat-hero, .tm-contact-hero, .tm-contact-body,
+  .tm-donate-hero, .tm-login-grid, .tm-dash-grid, .tm-platform-split { grid-template-columns: 1fr !important; gap: 22px !important; }
+  .tm-login-main { min-height: 0 !important; }
+  .tm-chal-rail, .tm-flow-rail { overflow: visible !important; flex-wrap: wrap !important; }
+  .tm-chal-rail > a, .tm-flow-step { flex: 1 1 100% !important; }
+  .tm-hero { height: auto !important; min-height: 0 !important; }
+  .tm-hero-img { position: relative !important; inset: auto !important; height: 260px !important; }
+  .tm-hero-wrap { height: auto !important; padding: 0 !important; }
+  .tm-hero-card { width: 100% !important; }
+  main section, footer { padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  header > div, .tm-util, .tm-navrow { max-width: 100% !important; padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  main section > div, footer > div { max-width: 100% !important; padding-inline-start: 0 !important; padding-inline-end: 0 !important; }
+  img, iframe { max-width: 100% !important; }
+  .tm-map iframe { height: 400px !important; margin-inline-start: 0 !important; }
+  .blueprint, .tm-figure { break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; }
+  a { text-decoration: none !important; }
 }

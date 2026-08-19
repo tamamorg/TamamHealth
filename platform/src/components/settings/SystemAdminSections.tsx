@@ -788,8 +788,8 @@ export function SystemAdminStyles() {
         background: var(--overlay-subtle);
       }
       .sysadm-sidebar-item.is-active {
-        background: var(--accent-primary);
-        color: #fff;
+        background: #EFF8FD;
+        color: #013D6B;
       }
       .sysadm-sidebar-item span {
         flex: 1;
@@ -799,16 +799,18 @@ export function SystemAdminStyles() {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 22px;
-        height: 20px;
-        padding: 0 6px;
+        min-width: 19px;
+        height: 17px;
+        padding: 0 5px;
         border-radius: 999px;
-        background: rgba(0,0,0,0.08);
-        font-size: 11px;
-        font-weight: 800;
+        background: #E7EDF2;
+        color: #144972;
+        font-family: var(--font-condensed);
+        font-size: 10px;
+        font-weight: 600;
       }
       .sysadm-sidebar-item.is-active b {
-        background: rgba(255,255,255,0.22);
+        background: #E7EDF2;
       }
       .sysadm-content {
         display: flex;
@@ -852,12 +854,15 @@ export function SystemAdminStyles() {
         display: flex;
         align-items: center;
         gap: 8px;
-        height: 38px;
+        height: 36px;
         padding: 0 12px;
-        border: 1px solid var(--border-light);
-        border-radius: 999px;
-        background: var(--bg-card-solid);
-        color: var(--text-muted);
+        border: 1px solid #E3EBF2;
+        border-radius: 8px;
+        background: #F7FAFC;
+        color: #5B6B7E;
+      }
+      .sysadm-search:focus-within {
+        border-color: #7FC4EA;
       }
       .sysadm-search input {
         flex: 1;
@@ -893,11 +898,12 @@ export function SystemAdminStyles() {
         align-items: center;
         gap: 8px;
         margin-bottom: 4px;
-        color: var(--text-muted);
+        color: #5B6B7E;
+        font-family: var(--font-condensed);
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.08em;
       }
       .sysadm-list {
         display: flex;
@@ -909,7 +915,10 @@ export function SystemAdminStyles() {
         justify-content: space-between;
         gap: 16px;
         padding: 12px 4px;
-        border-bottom: 1px solid var(--border-light);
+        border-bottom: 1px solid #EDF2F7;
+      }
+      .sysadm-row:hover {
+        background: #FBFDFE;
       }
       .sysadm-list .sysadm-row:last-child {
         border-bottom: 0;
@@ -920,15 +929,15 @@ export function SystemAdminStyles() {
       }
       .sysadm-row-main strong {
         display: block;
-        color: var(--text-primary);
-        font-size: 13px;
-        font-weight: 800;
+        color: #0E2A4A;
+        font-size: 13.5px;
+        font-weight: 600;
       }
       .sysadm-row-main p {
-        margin: 3px 0 0;
-        color: var(--text-secondary);
+        margin: 2px 0 0;
+        color: #5B6B7E;
         font-size: 12px;
-        line-height: 1.4;
+        line-height: 1.5;
       }
       .sysadm-row-main small {
         display: block;
@@ -956,28 +965,39 @@ export function SystemAdminStyles() {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        min-height: 24px;
+        min-height: 22px;
         padding: 0 9px;
+        border: 1px solid transparent;
         border-radius: 999px;
-        font-size: 11px;
-        font-weight: 800;
+        font-family: var(--font-condensed);
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        line-height: 1;
         white-space: nowrap;
       }
       .sysadm-action-btn {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        height: 30px;
-        padding: 0 12px;
-        border: 1px solid var(--accent-primary);
-        border-radius: 999px;
-        background: var(--accent-primary);
-        color: #fff;
-        font-size: 11.5px;
-        font-weight: 800;
+        height: 28px;
+        padding: 0 11px;
+        border: 1px solid #E3EBF2;
+        border-radius: 6px;
+        background: #FFFFFF;
+        color: #144972;
+        font-family: var(--font-condensed);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
         text-decoration: none;
         cursor: pointer;
         white-space: nowrap;
+      }
+      .sysadm-action-btn:hover {
+        background: #EFF8FD;
       }
       .sysadm-open-link {
         display: inline-flex;
@@ -995,17 +1015,16 @@ export function SystemAdminStyles() {
       .sysadm-toggle {
         position: relative;
         width: 38px;
-        height: 22px;
+        height: 21px;
         flex: 0 0 auto;
-        border: 1px solid var(--border-light);
+        border: 0;
         border-radius: 999px;
-        background: var(--overlay-medium);
+        background: #C7D5E0;
         cursor: pointer;
-        transition: background 0.15s ease, border-color 0.15s ease;
+        transition: background 0.15s ease;
       }
       .sysadm-toggle[data-on="true"] {
-        border-color: var(--accent-primary);
-        background: var(--accent-primary);
+        background: #144972;
       }
       .sysadm-toggle:disabled {
         opacity: 0.5;
@@ -1015,15 +1034,15 @@ export function SystemAdminStyles() {
         position: absolute;
         top: 2px;
         left: 2px;
-        width: 16px;
-        height: 16px;
+        width: 17px;
+        height: 17px;
         border-radius: 50%;
         background: #fff;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+        box-shadow: 0 1px 2px rgba(14,42,74,0.25);
         transition: transform 0.15s ease;
       }
       .sysadm-toggle[data-on="true"] .sysadm-toggle-thumb {
-        transform: translateX(16px);
+        transform: translateX(17px);
       }
       .sysadm-table {
         display: flex;
@@ -1039,11 +1058,12 @@ export function SystemAdminStyles() {
         border-bottom: 1px solid var(--border-light);
       }
       .sysadm-table-head {
-        color: var(--text-muted);
-        font-size: 10px;
-        font-weight: 800;
+        color: #5B6B7E;
+        font-family: var(--font-condensed);
+        font-size: 10.5px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.08em;
       }
       .sysadm-table-cell-main strong {
         display: block;

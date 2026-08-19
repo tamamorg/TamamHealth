@@ -25,7 +25,7 @@ export default function ClinicalNotePage() {
   if (!noteId) return null;
 
   return (
-    <div style={{ height: 'calc(100vh - var(--app-header-height, 64px))', minHeight: 520 }}>
+    <div style={{ height: '100%', minHeight: 0 }}>
       <ClinicalNoteEditor
         noteId={noteId}
         currentUser={currentUser}

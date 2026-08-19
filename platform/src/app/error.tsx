@@ -32,7 +32,7 @@ export default function Error({
           {t('error.description')}
         </p>
         {process.env.NODE_ENV !== 'production' && (
-          <div className="mb-6 p-3 rounded-xl text-left" style={{
+          <div className="mb-6 p-3 rounded-xl text-start" style={{
             background: 'var(--color-danger-bg)',
             border: '1px solid color-mix(in srgb, var(--color-danger) 12%, transparent)',
           }}>

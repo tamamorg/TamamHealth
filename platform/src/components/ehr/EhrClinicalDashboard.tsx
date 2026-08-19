@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, FollowUpDoc, LabResultDoc } from '@/lib/db-types';
 import {
   Calendar,
@@ -17,13 +16,13 @@ import {
   Plus,
   Printer,
   Search,
-  Send,
   Stethoscope,
   Video,
   X,
 } from '@/components/icons/lucide';
-import { initials, stateTint, AVATAR_TINT_NEUTRAL } from '@/lib/patient-utils';
+import { initials, stateTint, AVATAR_TINT_NEUTRAL, abbreviateProviderName, shortenPersonName } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
+import EhrStageDonut from '@/components/ehr/EhrStageDonut';
 import {
   APPOINTMENT_STATUS_TONES, appointmentStatusLabel,
   APPOINTMENT_STATUS_GROUPS, APPOINTMENT_STATUS_GROUP_LABELS,
@@ -47,7 +46,6 @@ import EhrVisitPopup, { EhrQueueMoveDialog, waitLabel } from '@/components/ehr/E
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';
 import PatientDispenseModal from '@/components/pharmacy/PatientDispenseModal';
 import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
-import SendIntakeFormsModal from '@/components/intake/SendIntakeFormsModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 import Select from '@/components/Select';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
@@ -57,11 +55,14 @@ import EhrWorkItemProgress from '@/components/ehr/EhrWorkItemProgress';
 import { useTriage } from '@/lib/hooks/useTriage';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useAuth } from '@/lib/context';
+import { getRoleConfig } from '@/lib/permissions';
+import { isPathAllowed } from '@/lib/role-routes';
+import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/ehr-navigation';
 import { buildQueueFromTriage, STAGE_LABELS, type QueueEntry } from '@/lib/services/patient-queue-service';
 import type { TriageDoc } from '@/lib/db-types';
 import { encountersDB, labResultsDB } from '@/lib/db';
 import { makeCoalescer } from '@/lib/hooks/live-reload';
-import { tooltipStyle, axisTick } from '@/components/ChartCard';
+import { withReturnTo } from '@/lib/navigation/return-to';
 
 export type WorklistPatient = {
   _id: string;
@@ -128,6 +129,42 @@ export type OutstandingItem = {
    vocabulary so this dropdown and the front desk's offer the same thing. */
 
 const statusLabel = appointmentStatusLabel;
+
+export type ClinicalDashboardQueryPatch = Partial<Record<'day' | 'lane' | 'outstanding' | 'appointment', string | null>>;
+
+/** Build a dashboard URL without dropping query state owned by other features. */
+export function buildClinicalDashboardHref(
+  pathname: string,
+  currentSearch: string,
+  patch: ClinicalDashboardQueryPatch,
+): string {
+  const params = new URLSearchParams(currentSearch.startsWith('?') ? currentSearch.slice(1) : currentSearch);
+  for (const [key, value] of Object.entries(patch)) {
+    if (value) params.set(key, value);
+    else params.delete(key);
+  }
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
+export function clinicalDashboardDay(currentSearch: string, todayIso: string): string {
+  const value = new URLSearchParams(currentSearch.startsWith('?') ? currentSearch.slice(1) : currentSearch).get('day');
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return todayIso;
+  const parsed = parseIsoDate(value);
+  return Number.isNaN(parsed.getTime()) || toIsoDate(parsed) !== value ? todayIso : value;
+}
+
+export function clinicalDashboardLane(currentSearch: string): AppointmentStatusGroup {
+  const value = new URLSearchParams(currentSearch.startsWith('?') ? currentSearch.slice(1) : currentSearch).get('lane');
+  return APPOINTMENT_STATUS_GROUPS.includes(value as AppointmentStatusGroup)
+    ? value as AppointmentStatusGroup
+    : 'scheduled';
+}
+
+export function buildClinicalAppointmentHref(appointmentId: string, dashboardHref: string): string {
+  const params = new URLSearchParams({ appointment: appointmentId });
+  return withReturnTo(`/appointments?${params.toString()}`, dashboardHref);
+}
 
 export function typeLabel(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -314,11 +351,27 @@ export function buildActiveTriageByPatient(
   nowMs: number | null,
   windowMs = 24 * 60 * 60 * 1000,
 ): Map<string, TriageDoc> {
-  const latest = new Map<string, TriageDoc>();
-  if (nowMs === null) return latest;
+  if (nowMs === null) return new Map();
   const cutoff = nowMs - windowMs;
+  return buildLatestTriageByPatient(
+    triages.filter(doc => new Date(doc.triagedAt).getTime() >= cutoff),
+  );
+}
+
+/**
+ * The most recent triage per patient at ANY age — the patient's last recorded
+ * ETAT, which is a different question from "who is waiting now".
+ *
+ * The worklist needs both: the 24h map above decides queue membership, while
+ * this one supplies vitals. An inpatient admitted three days ago WAS triaged,
+ * on arrival, and a ward row claiming "no triage vitals recorded" because that
+ * happened outside the queue window reports the opposite of the truth — which
+ * is why two beds on the same ward could show vitals for one patient and
+ * nothing for the next.
+ */
+export function buildLatestTriageByPatient(triages: TriageDoc[]): Map<string, TriageDoc> {
+  const latest = new Map<string, TriageDoc>();
   for (const doc of triages) {
-    if (new Date(doc.triagedAt).getTime() < cutoff) continue;
     const held = latest.get(doc.patientId);
     if (!held || doc.triagedAt > held.triagedAt) latest.set(doc.patientId, doc);
   }
@@ -349,6 +402,9 @@ export interface RowQueueColumns {
   waitSubtext: string;
   statusSubtext: string;
   overTarget: boolean;
+  /** The booked slot has already passed and the patient is not in the queue —
+   *  the row is running late, which the Time column shows in red. */
+  isPast: boolean;
   inService: boolean;
 }
 
@@ -405,6 +461,15 @@ export function computeRowQueueColumns(
           ? 'Routine'
           : row.patient?.assignmentNote || PRIORITY_META[row.triagePriority].label,
     overTarget: Boolean(entry?.flaggedForReassessment),
+    // A booked slot that has come and gone with the patient still not in the
+    // queue. Rows that ARE in the queue are excluded deliberately: their time
+    // is when they arrived, so "past" would be true of every one of them and
+    // the colour would stop meaning anything. Lateness for those is
+    // `overTarget`, which the wait clock already tracks.
+    isPast: Boolean(
+      !entry && appointmentAt && relativeNow && !Number.isNaN(appointmentAt.getTime())
+        && appointmentAt.getTime() < relativeNow.getTime(),
+    ),
     inService,
   };
 }
@@ -463,15 +528,27 @@ export default function EhrClinicalDashboard({
   patients,
   appointments: propAppointments,
   outstanding,
+  activityItems,
+  activitySeriesNames,
 }: {
   clinicianName: string;
   facilityName?: string;
   patients: WorklistPatient[];
   appointments: AppointmentDoc[];
   outstanding: OutstandingItem[];
+  /**
+   * Week bars for the day-activity chart, when the role's week isn't made of
+   * appointments. A nurse holds no schedule of their own, so deriving the
+   * chart from `appointments` leaves it permanently empty — their week is
+   * admissions and arrivals instead. Omit to keep the schedule-derived chart.
+   */
+  activityItems?: DayStatsItem[];
+  activitySeriesNames?: [string, string];
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const search = searchParams.toString();
   const { showToast } = useToast();
   // Gate the "Start consultation" action to roles that can actually consult,
   // and the "Dispense" action (header button, patient search, and the modal
@@ -514,10 +591,59 @@ export default function EhrClinicalDashboard({
     return propAppointments.map(a => liveById.get(a._id) || a);
   }, [propAppointments, liveAppointments]);
   const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const selectedDate = clinicalDashboardDay(search, todayIso);
+  const worklistFilter = clinicalDashboardLane(search);
+  const outstandingView = searchParams.get('outstanding');
+  const previewAppointmentId = searchParams.get('appointment');
+  const openAppointment = previewAppointmentId
+    ? appointments.find(appointment => appointment._id === previewAppointmentId) ?? null
+    : null;
   const [view, setView] = useState<'dashboard' | 'calendar'>('dashboard');
   const [railOpen, setRailOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(todayIso);
-  const [openAppointment, setOpenAppointment] = useState<AppointmentDoc | null>(null);
+  const previewHistoryIdRef = useRef<string | null>(null);
+
+  const navigateDashboardState = useCallback((
+    patch: ClinicalDashboardQueryPatch,
+    mode: 'push' | 'replace' = 'push',
+  ) => {
+    const href = buildClinicalDashboardHref(pathname, search, patch);
+    const currentHref = search ? `${pathname}?${search}` : pathname;
+    if (href === currentHref) return;
+    router[mode](href, { scroll: false });
+  }, [pathname, router, search]);
+
+  const selectDate = useCallback((day: string) => {
+    navigateDashboardState({ day });
+  }, [navigateDashboardState]);
+
+  const selectWorklistLane = useCallback((lane: AppointmentStatusGroup, mode: 'push' | 'replace' = 'push') => {
+    navigateDashboardState({ lane }, mode);
+  }, [navigateDashboardState]);
+
+  const openAppointmentPreview = useCallback((appointment: AppointmentDoc) => {
+    previewHistoryIdRef.current = appointment._id;
+    navigateDashboardState({ appointment: appointment._id });
+  }, [navigateDashboardState]);
+
+  const closeAppointmentPreview = useCallback(() => {
+    if (previewAppointmentId && previewHistoryIdRef.current === previewAppointmentId) {
+      previewHistoryIdRef.current = null;
+      router.back();
+      return;
+    }
+    navigateDashboardState({ appointment: null }, 'replace');
+  }, [navigateDashboardState, previewAppointmentId, router]);
+
+  // Keep even the default day/lane explicit so a copied URL and a returnTo
+  // retain the exact clinical worklist rather than recalculating "today".
+  useEffect(() => {
+    if (searchParams.get('day') === selectedDate && searchParams.get('lane') === worklistFilter) return;
+    navigateDashboardState({ day: selectedDate, lane: worklistFilter }, 'replace');
+  }, [navigateDashboardState, searchParams, selectedDate, worklistFilter]);
+
+  useEffect(() => {
+    if (!previewAppointmentId) previewHistoryIdRef.current = null;
+  }, [previewAppointmentId]);
   // Which action dropdown (if any) is open in the appointment detail popup.
   const [detailMenuOpen, setDetailMenuOpen] = useState<'note' | 'more' | null>(null);
   const noteMenuRef = useRef<HTMLDivElement>(null);
@@ -537,12 +663,12 @@ export default function EhrClinicalDashboard({
   // A fresh appointment (or none) shouldn't inherit the previous one's open menu.
   useEffect(() => { setDetailMenuOpen(null); }, [openAppointment?._id]);
 
-  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+  const [calendarMonthOverride, setCalendarMonthOverride] = useState<{ selectedDate: string; month: Date } | null>(null);
+  const calendarMonth = calendarMonthOverride?.selectedDate === selectedDate
+    ? calendarMonthOverride.month
+    : startOfMonth(parseIsoDate(selectedDate));
   const [locationFilter] = useState('all');
   const [providerFilter, setProviderFilter] = useState<string[]>([]);
-  // Which outstanding item's worklist occupies the centre panel (null = the
-  // normal schedule). Keyed by item label.
-  const [outstandingView, setOutstandingView] = useState<string | null>(null);
   const [followUpToComplete, setFollowUpToComplete] = useState<OutstandingEntry | null>(null);
   const [followUpOutcome, setFollowUpOutcome] = useState<NonNullable<FollowUpDoc['outcome']>>('under_treatment');
   const [followUpNotes, setFollowUpNotes] = useState('');
@@ -560,7 +686,6 @@ export default function EhrClinicalDashboard({
   // "Print" — choose which lanes and which output (paper/PDF or CSV) instead
   // of window.print()'s whole-dashboard dump.
   const [printOpen, setPrintOpen] = useState(false);
-  const [intakeOpen, setIntakeOpen] = useState(false);
   // Inline search under the mini-calendar that filters the day's appointment list.
   const [appointmentSearch, setAppointmentSearch] = useState('');
   const findPatientInputRef = useRef<HTMLInputElement>(null);
@@ -613,7 +738,7 @@ export default function EhrClinicalDashboard({
 
   const openOutstanding = (item: OutstandingItem) => {
     setView('dashboard');
-    setOutstandingView(current => (current === item.label ? null : item.label));
+    navigateDashboardState({ outstanding: outstandingView === item.label ? null : item.label });
     setRailOpen(false);
   };
 
@@ -640,13 +765,13 @@ export default function EhrClinicalDashboard({
   const openOutstandingEntry = (entry: OutstandingEntry) => {
     const appointment = appointments.find(a => a._id === entry.id);
     if (appointment && isTelehealth(appointment)) {
-      setOpenAppointment(appointment);
+      openAppointmentPreview(appointment);
       return;
     }
     if (entry.href) { router.push(entry.href); return; }
     // No href — never let the click dead-end: open the matching appointment,
     // else the patient's chart (resolved by name), else say so out loud.
-    if (appointment) { setOpenAppointment(appointment); return; }
+    if (appointment) { openAppointmentPreview(appointment); return; }
     const patientId = patients.find(patient => patient.name === entry.title)?._id;
     if (patientId) { router.push(`/patients/${patientId}`); return; }
     showToast(`Couldn't open “${entry.title}”`, 'error');
@@ -777,6 +902,27 @@ export default function EhrClinicalDashboard({
   // deduped to the newest record per patient.
   const { currentUser } = useAuth();
   const { triages, update: updateTriageDoc } = useTriage();
+  // Same gate the chart's forms panel uses: triage capture is a route grant,
+  // not a permission flag — doctors and the whole nurse family hold /triage.
+  const canTriage = isPathAllowed(currentUser?.role || '', '/triage');
+  // Nurse-family users read this worklist as ward admissions, rooming
+  // arrivals and triaged walk-ins — never "patients assigned to you" — so the
+  // empty state has to speak that language or an empty ward reads as a bug.
+  const isNurseFamily = currentUser?.role === 'nurse' || currentUser?.role === 'midwife'
+    || currentUser?.role === 'triage_nurse' || currentUser?.role === 'rooming_nurse';
+
+  // Quick links in the header strip.
+  // Deliberately the destinations the top rail does NOT already carry: the rail
+  // keeps four shortcuts, so repeating them here would spend the widest row on
+  // the page on buttons that already exist two centimetres above it. These are
+  // the next ones down the same priority order, which for a clinician is where
+  // Referrals/Wards land and for a nurse the ward-side pages.
+  const quickNavItems = useMemo(() => {
+    const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
+    if (!roleConfig) return [];
+    const navItems = uniqueAllowedNavItems(roleConfig.navItems || [], roleConfig.allowedRoutes || []);
+    return getPageHeaderNavItems(navItems, currentUser?.role, roleConfig.defaultDashboard || '/dashboard');
+  }, [currentUser]);
   // "Create clinical note" on a visit card — the appointment already carries
   // the patient, provider, date and telehealth mode the note header needs.
   const { createNote, creating: creatingNote } = useCreateNote(currentUser);
@@ -792,18 +938,47 @@ export default function EhrClinicalDashboard({
     currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  // Read outside the effect (like vizScope above) so the effect closes over a
+  // primitive rather than the whole `currentUser` object, which is what lets
+  // its dependency array stay [vizScope, clinicianId] instead of re-running
+  // on every unrelated currentUser field change.
+  const clinicianId = currentUser?._id;
   useEffect(() => {
     let cancelled = false;
     const loadClinicalViz = async () => {
       try {
-        const [{ getAllEncounters }, { getOverdueUnreviewedResults }] = await Promise.all([
-          import('@/lib/services/encounter-service'),
+        const [{ findByType }, { filterByScope }, { getOverdueUnreviewedResults }] = await Promise.all([
+          import('@/lib/services/db-query'),
+          import('@/lib/services/data-scope'),
           import('@/lib/services/lab-service'),
         ]);
-        const [encounters, overdue] = await Promise.all([
-          getAllEncounters(vizScope),
+        // Narrowed to exactly what consultationsPerDay plots below: THIS
+        // clinician's own encounters over the same trailing-14-day window
+        // (13 days back from local midnight through now). getAllEncounters()
+        // has no clinician/date filter — it pulls every clinical_encounter
+        // doc ever written, for every clinician, re-running on every
+        // encounter write — before this component discards all but a
+        // 14-day, single-clinician slice of it. Composed from the same
+        // findByType + filterByScope primitives getAllEncounters uses
+        // internally (encounter-service.ts:99-103), just with a selector
+        // narrow enough for a Mango index to do the filtering.
+        const cutoff = new Date();
+        cutoff.setHours(0, 0, 0, 0);
+        cutoff.setDate(cutoff.getDate() - 13);
+        const [rawEncounters, overdue] = await Promise.all([
+          clinicianId
+            ? findByType<EncounterDoc>(
+                encountersDB(), 'clinical_encounter',
+                { clinicianId, startedAt: { $gte: cutoff.toISOString() } },
+                { indexFields: ['type', 'clinicianId', 'startedAt'] },
+              )
+            : Promise.resolve([]),
           getOverdueUnreviewedResults(vizScope),
         ]);
+        // Same org/hospital barrier getAllEncounters(scope) applies via
+        // filterByScope internally — kept explicit since bypassing that
+        // helper means this call site owns applying it.
+        const encounters = vizScope ? filterByScope(rawEncounters, vizScope) : rawEncounters;
         if (!cancelled) {
           setAllEncounters(encounters);
           setOverdueLabResults(overdue);
@@ -824,7 +999,7 @@ export default function EhrClinicalDashboard({
       try { encChanges.cancel(); } catch { /* noop */ }
       try { labChanges.cancel(); } catch { /* noop */ }
     };
-  }, [vizScope]);
+  }, [vizScope, clinicianId]);
 
   // "My consultations per day" — encounters this clinician ran (clinicianId
   // match, the same identity the rest of this file uses for "mine"), bucketed
@@ -879,11 +1054,19 @@ export default function EhrClinicalDashboard({
       .sort((a, b) => b.hoursOverdue - a.hoursOverdue);
   }, [overdueLabResults, currentUser?.name]);
   // Wall-clock sampled in an effect (render stays pure) and refreshed once a
-  // minute so wait times and the time-aged scores keep aging on screen.
+  // minute so wait times and the time-aged scores keep aging on screen. Every
+  // consumer below (the 24h active-triage window, minutesWaiting/score via
+  // buildQueueFromTriage, and the appointment countdown text) is floor'd to
+  // minutes already, so a 60s tick keeps them accurate without re-rendering
+  // this ~2,100-line dashboard every second. The one sub-minute reader —
+  // formatAppointmentTimeUntil's "in Ns" text for a not-yet-arrived
+  // appointment inside its final minute — only shows that precision in a
+  // ≤60s window and isn't the queue's live-wait signal, so it ages on the
+  // same 60s tick rather than justifying a separate fast-ticking leaf.
   const [queueNowMs, setQueueNowMs] = useState<number | null>(null);
   useEffect(() => {
     setQueueNowMs(Date.now());
-    const timer = setInterval(() => setQueueNowMs(Date.now()), 1_000);
+    const timer = setInterval(() => setQueueNowMs(Date.now()), 60_000);
     return () => clearInterval(timer);
   }, []);
   const activeTriageByPatient = useMemo(
@@ -894,6 +1077,10 @@ export default function EhrClinicalDashboard({
     () => buildQueueEntryByPatient(activeTriageByPatient),
     [activeTriageByPatient],
   );
+  // Unwindowed: supplies the visit panel's vitals when the patient has no
+  // active triage (an inpatient's arrival ETAT, a returning patient's last
+  // visit). Never feeds the queue — see buildLatestTriageByPatient.
+  const latestTriageByPatient = useMemo(() => buildLatestTriageByPatient(triages), [triages]);
 
   // Worklist column values for one row, from its queue entry when the patient
   // has arrived and from the appointment alone when they haven't.
@@ -908,7 +1095,6 @@ export default function EhrClinicalDashboard({
   // dashboard uses: Scheduled (booked/assigned, patient not with us yet),
   // In Office (in the building: live queue entry, checked in, or in service),
   // Finished (visit closed — checked out, cancelled, no-show, rescheduled).
-  const [worklistFilter, setWorklistFilter] = useState<AppointmentStatusGroup>('scheduled');
   const rowStatusGroup = (row: UnifiedPatientRow): AppointmentStatusGroup => {
     // A live queue entry means the patient is physically here even when the
     // appointment rung still says scheduled/arrived (walk-ins, triage).
@@ -963,13 +1149,13 @@ export default function EhrClinicalDashboard({
     if (!visitRow || !visitRowGroup) { followedRowId.current = null; return; }
     if (followedRowId.current === visitRow.id) return;
     followedRowId.current = visitRow.id;
-    setWorklistFilter(visitRowGroup);
+    selectWorklistLane(visitRowGroup, 'replace');
     // Let the lane switch paint before scrolling to the row inside it.
     requestAnimationFrame(() => {
       document.getElementById(`worklist-row-${visitRow.id}`)
         ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
-  }, [visitRow, visitRowGroup]);
+  }, [selectWorklistLane, visitRow, visitRowGroup]);
 
   const [moveEntry, setMoveEntry] = useState<QueueEntry | null>(null);
   const [moveSaving, setMoveSaving] = useState(false);
@@ -1149,14 +1335,15 @@ export default function EhrClinicalDashboard({
       setMoveSaving(false);
     }
   };
+  const dashboardReturnTo = search ? `${pathname}?${search}` : pathname;
+  const openFullAppointmentHref = openAppointment
+    ? buildClinicalAppointmentHref(openAppointment._id, dashboardReturnTo)
+    : '/appointments';
   // Compact doctor-facing appointment popup. The scheduler owns the full
   // appointment record; clinicians need the clinical next step.
   const appointmentPanel = openAppointment ? (
     <div
       className="modal-panel modal-panel--md appointment-detail-panel appointment-detail-panel--clinical"
-      aria-label="Appointment details"
-      role="dialog"
-      aria-modal="true"
     >
       <div className="appointment-detail-modal__header">
         <div className="appointment-detail-modal__header-row">
@@ -1170,7 +1357,7 @@ export default function EhrClinicalDashboard({
             <span className={`appointment-status-pill ${APPOINTMENT_STATUS_TONES[openAppointment.status]}`}>
               {statusLabel(openAppointment.status)}
             </span>
-            <button type="button" className="appointment-detail-modal__close" onClick={() => setOpenAppointment(null)} aria-label="Close appointment details">
+            <button type="button" className="appointment-detail-modal__close" onClick={closeAppointmentPreview} aria-label="Close appointment details">
               <X size={16} />
             </button>
           </div>
@@ -1285,9 +1472,9 @@ export default function EhrClinicalDashboard({
             <div className="appointment-detail-modal__menu appointment-detail-modal__menu--right">
               <button
                 type="button"
-                onClick={() => { const id = openAppointment._id; setDetailMenuOpen(null); setOpenAppointment(null); router.push(`/appointments?appointment=${id}`); }}
+                onClick={() => { setDetailMenuOpen(null); router.push(openFullAppointmentHref); }}
               >
-                <Calendar size={14} /> Reschedule or cancel
+                <Calendar size={14} /> Open full page
               </button>
               <button type="button" onClick={() => { setDetailMenuOpen(null); window.print(); }}>
                 <Printer size={14} /> Print appointment
@@ -1313,7 +1500,18 @@ export default function EhrClinicalDashboard({
         </div>
         <div className="ehr-schedule-primary-controls ehr-clinical-dashboard-header-main">
           <div className="ehr-greeting-row">
-            <p className="ehr-care-greeting">Welcome, {clinicianName}</p>
+            <div className="ehr-care-header-copy">
+              {/* The design greets with the short name — "Welcome, Dr. Wani",
+                  never the full legal name — over a small-caps role line. */}
+              <p className="ehr-care-greeting">Welcome, {abbreviateProviderName(clinicianName)}</p>
+              {/* This shell is shared by every clinical role (doctors,
+                  clinicians and nurse-family roles alike) — the role line
+                  under the greeting has to name the signed-in user's actual
+                  role rather than assume "Doctor". */}
+              <p className="ehr-care-greeting-sub">
+                {currentUser ? `${getRoleConfig(currentUser.role).label} · Clinical workspace` : 'Clinical workspace'}
+              </p>
+            </div>
           </div>
         </div>
         <div className="ehr-schedule-actions">
@@ -1326,6 +1524,19 @@ export default function EhrClinicalDashboard({
               <Pill className="w-4 h-4" /> Dispense
             </button>
           )}
+          {quickNavItems.map(item => {
+            const ItemIcon = item.icon;
+            return (
+              <button
+                key={item.href}
+                type="button"
+                aria-label={item.label}
+                onClick={() => router.push(item.href)}
+              >
+                <ItemIcon className="w-4 h-4" /> {item.label}
+              </button>
+            );
+          })}
           <button
             type="button"
             aria-label="Print worklist"
@@ -1333,27 +1544,45 @@ export default function EhrClinicalDashboard({
           >
             <Printer className="w-4 h-4" /> Print
           </button>
-          <button
-            type="button"
-            className="primary"
-            aria-label="Intake Form"
-            onClick={() => setIntakeOpen(true)}
-          >
-            {/* Same intake glyph as the nav item and the front-desk strip. */}
-            <Send className="w-4 h-4" /> Intake Form
-          </button>
         </div>
       </section>
 
       <section className={`ehr-workspace-grid ${view === 'dashboard' ? 'is-dashboard' : 'is-calendar'}`}>
         <aside className="ehr-left-rail">
           <div className="ehr-mini-calendar">
+            {/* The design anchors the calendar card with a full-width "Go to
+                today" — one press home from any month the rail has wandered
+                to. */}
+            <button
+              type="button"
+              className="ehr-mini-calendar-goto"
+              onClick={() => {
+                selectDate(todayIso);
+                setCalendarMonthOverride(null);
+              }}
+            >
+              <Calendar size={15} /> Go to today
+            </button>
             <div className="ehr-mini-calendar-title">
-              <button type="button" onClick={() => setCalendarMonth(current => addMonths(current, -1))} aria-label="Previous month">
+              <button
+                type="button"
+                onClick={() => setCalendarMonthOverride(current => ({
+                  selectedDate,
+                  month: addMonths(current?.selectedDate === selectedDate ? current.month : startOfMonth(parseIsoDate(selectedDate)), -1),
+                }))}
+                aria-label="Previous month"
+              >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span>{formatMonthTitle(calendarMonth)}</span>
-              <button type="button" onClick={() => setCalendarMonth(current => addMonths(current, 1))} aria-label="Next month">
+              <button
+                type="button"
+                onClick={() => setCalendarMonthOverride(current => ({
+                  selectedDate,
+                  month: addMonths(current?.selectedDate === selectedDate ? current.month : startOfMonth(parseIsoDate(selectedDate)), 1),
+                }))}
+                aria-label="Next month"
+              >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -1371,8 +1600,8 @@ export default function EhrClinicalDashboard({
                     cell.count > 0 ? 'has-events' : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => {
-                    setSelectedDate(cell.iso);
-                    if (!cell.inMonth) setCalendarMonth(startOfMonth(parseIsoDate(cell.iso)));
+                    selectDate(cell.iso);
+                    setCalendarMonthOverride(null);
                   }}
                   aria-label={`${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(parseIsoDate(cell.iso))}${cell.count ? `, ${cell.count} appointment${cell.count === 1 ? '' : 's'}` : ''}`}
                   aria-pressed={cell.isSelected}
@@ -1383,33 +1612,31 @@ export default function EhrClinicalDashboard({
             </div>
           </div>
 
-          {/* Search sits below the calendar — the calendar anchors the rail;
-              the search filters the list for whichever day is picked. */}
-          <div className="ehr-rail-search">
-            <Search className="ehr-rail-search-icon w-4 h-4" />
-            <input
-              type="search"
-              placeholder="Search appointments"
-              aria-label="Search the day's appointments"
-              value={appointmentSearch}
-              onChange={event => setAppointmentSearch(event.target.value)}
-            />
-            {appointmentSearch && (
-              <button type="button" className="ehr-rail-search-clear" aria-label="Clear search" onClick={() => setAppointmentSearch('')}>
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
           <DayActivityChart
             appointments={filteredAppointments}
+            items={activityItems}
+            seriesNames={activitySeriesNames}
             selectedDate={selectedDate}
             todayIso={todayIso}
             admittedPatientIds={admittedPatientIds}
             onSelectDate={iso => {
-              setSelectedDate(iso);
-              setCalendarMonth(startOfMonth(parseIsoDate(iso)));
+              selectDate(iso);
+              setCalendarMonthOverride(null);
             }}
+          />
+
+          {/* The design's third rail card: the day's list split by acuity —
+              the same ring the reception rail draws by stage, fed here by the
+              triage colours of the doctor's own list, so the ring and the row
+              plates can never disagree. */}
+          <EhrStageDonut
+            title="Today by acuity"
+            centerLabel="on list"
+            segments={[
+              { name: 'Emergency', value: visiblePatientRows.filter(row => row.triagePriority === 'RED').length, color: '#8B2E24' },
+              { name: 'Urgent', value: visiblePatientRows.filter(row => row.triagePriority === 'YELLOW').length, color: '#9C5E16' },
+              { name: 'Routine', value: visiblePatientRows.filter(row => row.triagePriority !== 'RED' && row.triagePriority !== 'YELLOW').length, color: '#15795C' },
+            ]}
           />
         </aside>
 
@@ -1421,7 +1648,7 @@ export default function EhrClinicalDashboard({
                   <button
                     type="button"
                     className="ehr-outstanding-back"
-                    onClick={() => setOutstandingView(null)}
+                    onClick={() => navigateDashboardState({ outstanding: null })}
                   >
                     <ChevronLeft className="w-4 h-4" /> Schedule
                   </button>
@@ -1434,7 +1661,7 @@ export default function EhrClinicalDashboard({
                       : `${activeOutstanding.count} ${activeOutstanding.count === 1 ? 'item' : 'items'}`}
                   </button>
                   {activeOutstanding.href && (
-                    <button type="button" onClick={() => router.push(activeOutstanding.href!)}>
+                    <button type="button" onClick={() => router.push(withReturnTo(activeOutstanding.href!, dashboardReturnTo))}>
                       Open full page
                     </button>
                   )}
@@ -1453,7 +1680,7 @@ export default function EhrClinicalDashboard({
                     </span>
                     {appointmentQuery
                       ? <button type="button" onClick={() => setAppointmentSearch('')}>Clear search</button>
-                      : <button type="button" onClick={() => setOutstandingView(null)}>Back to schedule</button>}
+                      : <button type="button" onClick={() => navigateDashboardState({ outstanding: null })}>Back to schedule</button>}
                   </div>
                 )}
 
@@ -1574,8 +1801,30 @@ export default function EhrClinicalDashboard({
             </>
           ) : (
             <>
-	          <div className="ehr-daybar ehr-assigned-worklist-daybar">
-	            <h2>Patients assigned to you</h2>
+	          <div className="ehr-daybar">
+	            {/* The design's queue head: the day itself is the title
+	                ("Thursday, August 13"), the list is described under it, the
+	                search sits over the table it filters, the lanes hang right. */}
+	            <div>
+	              <h2>
+	                {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(parseIsoDate(selectedDate))}
+	              </h2>
+	            </div>
+	            <div className="ehr-queue-search">
+	              <Search className="ehr-queue-search-icon w-4 h-4" />
+	              <input
+	                type="search"
+	                placeholder="Search appointments"
+	                aria-label="Search the day's appointments"
+	                value={appointmentSearch}
+	                onChange={event => setAppointmentSearch(event.target.value)}
+	              />
+	              {appointmentSearch && (
+	                <button type="button" className="ehr-queue-search-clear" aria-label="Clear search" onClick={() => setAppointmentSearch('')}>
+	                  <X className="w-3.5 h-3.5" />
+	                </button>
+	              )}
+	            </div>
 	            <div className="ehr-day-tabs">
               {APPOINTMENT_STATUS_GROUPS.map(group => (
                 <button
@@ -1586,9 +1835,9 @@ export default function EhrClinicalDashboard({
                   // Collapse the expanded row: it belongs to the lane being
                   // left, so keeping it open would leave a panel hanging under
                   // a list that no longer contains its row.
-                  onClick={() => { setVisitRow(null); setWorklistFilter(group); }}
+                  onClick={() => { setVisitRow(null); selectWorklistLane(group); }}
                 >
-                  <strong>{groupCounts[group]}</strong> {APPOINTMENT_STATUS_GROUP_LABELS[group]}
+                  {APPOINTMENT_STATUS_GROUP_LABELS[group]} · {groupCounts[group]}
                 </button>
               ))}
 	            </div>
@@ -1613,11 +1862,23 @@ export default function EhrClinicalDashboard({
                   {visiblePatientRows.length === 0 && (
                     <div className="ehr-empty-state">
                       <ClipboardList className="w-8 h-8" />
-                      <strong>{appointmentQuery ? 'No assigned patients match your search' : 'No patients are assigned to you right now'}</strong>
-                      <span>{appointmentQuery ? `Nothing matches “${appointmentSearch.trim()}”.` : 'Assigned patients will appear here with appointment times when scheduled.'}</span>
+                      <strong>
+                        {appointmentQuery
+                          ? 'No assigned patients match your search'
+                          : isNurseFamily ? 'No patients on your worklist right now' : 'No patients are assigned to you right now'}
+                      </strong>
+                      <span>
+                        {appointmentQuery
+                          ? `Nothing matches “${appointmentSearch.trim()}”.`
+                          : isNurseFamily
+                            ? 'Ward admissions, rooming arrivals and triaged walk-ins appear here as they come in.'
+                            : 'Assigned patients will appear here with appointment times when scheduled.'}
+                      </span>
                       {appointmentQuery
                         ? <button type="button" onClick={() => setAppointmentSearch('')}>Clear search</button>
-                        : <button type="button" onClick={() => router.push('/patients')}>Open patient registry</button>}
+                        : isNurseFamily
+                          ? <button type="button" onClick={() => router.push('/wards')}>Open ward board</button>
+                          : <button type="button" onClick={() => router.push('/patients')}>Open patient registry</button>}
                     </div>
                   )}
                   {visiblePatientRows.length > 0 && filteredPatientRows.length === 0 && (
@@ -1633,7 +1894,7 @@ export default function EhrClinicalDashboard({
                     const isExpanded = visitRow?.id === row.id;
                     const openRow = () => {
                       if (row.patientId) setVisitRow(isExpanded ? null : row);
-                      else if (row.appointment) setOpenAppointment(row.appointment);
+                      else if (row.appointment) openAppointmentPreview(row.appointment);
                     };
                     return (
                       <div
@@ -1656,6 +1917,8 @@ export default function EhrClinicalDashboard({
                         }}
                       >
                         <div className="ehr-appointment-identity">
+                          {/* Photo when the record has one (the acuity tint
+                              still rings it); tinted initials otherwise. */}
                           <div className="ehr-patient-icon" style={stateTint(row.triagePriority)}>
                             {row.photoUrl
                               // eslint-disable-next-line @next/next/no-img-element
@@ -1675,12 +1938,13 @@ export default function EhrClinicalDashboard({
                                 else openRow();
                               }}
                             >
-                              {row.name}
+                              {/* Two words on the row — first and last; the
+                                  chart header keeps the full legal name. */}
+                              {shortenPersonName(row.name)}
                             </button>
-                            <p>
-                              {row.reason}
-                              {row.patient && <> · {row.patient.age ? `${row.patient.age}y` : 'Age unknown'} · {row.patient.gender || 'Not recorded'}</>}
-                            </p>
+                            {/* Chief complaint only — demographics live in
+                                the visit popup and the chart, not the row. */}
+                            <p>{row.reason}</p>
                           </div>
                         </div>
 
@@ -1694,15 +1958,17 @@ export default function EhrClinicalDashboard({
                         >
                           <strong style={columns.overTarget ? { color: 'var(--color-danger-text)' } : undefined}>{columns.waitText}</strong>
                           {columns.waitSubtext && (
-                            <span className={columns.overTarget ? 'is-soon' : ''}>
+                            <span className={columns.overTarget ? 'is-soon' : columns.isPast ? 'is-past' : ''}>
                               {columns.waitSubtext}
                             </span>
                           )}
                         </div>
 
                         <div className="appointment-card-provider">
-                          <strong>{columns.careTeamPrimary}</strong>
-                          <span>{columns.careTeamSecondary}</span>
+                          {/* Cell-width names — "Dr. J. Wani", not the full
+                              legal name; print keeps the long form. */}
+                          <strong>{abbreviateProviderName(columns.careTeamPrimary)}</strong>
+                          <span>{abbreviateProviderName(columns.careTeamSecondary)}</span>
                         </div>
 
                         <div className="ehr-appointment-department">
@@ -1754,6 +2020,7 @@ export default function EhrClinicalDashboard({
                             wait={columns.waitText}
                             appointment={row.appointment}
                             triage={columns.triage}
+                            lastTriage={row.patientId ? latestTriageByPatient.get(row.patientId) ?? null : null}
                             entry={columns.entry}
                             onClose={() => setVisitRow(null)}
                             onCall={() => { setVisitRow(null); void callPatient(row); }}
@@ -1762,6 +2029,9 @@ export default function EhrClinicalDashboard({
                               : undefined}
                             onMove={columns.entry ? () => { setVisitRow(null); setMoveEntry(columns.entry); } : undefined}
                             onOpenChart={row.patientId ? () => router.push(`/patients/${row.patientId}`) : undefined}
+                            onStartTriage={row.patientId && canTriage && (!columns.triage || columns.triage.status === 'pending' || columns.triage.status === 'seen')
+                              ? () => router.push(`/triage/${row.patientId}`)
+                              : undefined}
                             onEscalate={columns.triage?.encounterId && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               ? () => void escalateVisit(columns.triage!)
                               : undefined}
@@ -1793,7 +2063,7 @@ export default function EhrClinicalDashboard({
           )}
 
           {openAppointment && (
-            <Modal onClose={() => setOpenAppointment(null)} width={480} labelledBy="appointment-clinical-title">
+            <Modal onClose={closeAppointmentPreview} width={480} labelledBy="appointment-clinical-title">
               {appointmentPanel}
             </Modal>
           )}
@@ -1921,7 +2191,6 @@ export default function EhrClinicalDashboard({
             />
           )}
 
-          {intakeOpen && <SendIntakeFormsModal onClose={() => setIntakeOpen(false)} />}
         </main>
 
         {view === 'dashboard' && railOpen && (
@@ -1956,6 +2225,16 @@ export default function EhrClinicalDashboard({
               every station rail carries; it renders nothing when the feed is
               empty or the role has no configured slice. */}
           <ProgressFeedCard />
+          {/* The clinical mission card — the design closes the rail with the
+              day's one instruction, same treatment as reception's "Keep the
+              desk moving". */}
+          <div className="ehr-side-card ehr-mission-card">
+            <div className="ehr-side-card-head ehr-mission-head">
+              <Stethoscope className="w-5 h-5" />
+              <h2>Close the loop</h2>
+            </div>
+            <p>Sign what is waiting, answer the labs that came back, and finish the visits you started.</p>
+          </div>
         </aside>
         )}
       </section>
@@ -1971,11 +2250,15 @@ export default function EhrClinicalDashboard({
    excluded, so the bars stay a truthful picture of the doctor's week. */
 const CHART_HIDDEN_STATUSES: AppointmentStatus[] = ['cancelled', 'no_show'];
 
-function DayActivityChart({ appointments, selectedDate, todayIso, admittedPatientIds, onSelectDate }: {
+function DayActivityChart({ appointments, items: providedItems, seriesNames, selectedDate, todayIso, admittedPatientIds, onSelectDate }: {
   appointments: AppointmentDoc[]; selectedDate: string; todayIso: string; admittedPatientIds: Set<string>;
+  /** Pre-computed bars for roles whose week isn't a schedule (see the prop
+   *  of the same name on EhrClinicalDashboard). */
+  items?: DayStatsItem[];
+  seriesNames?: [string, string];
   onSelectDate?: (iso: string) => void;
 }) {
-  const items = useMemo<DayStatsItem[]>(() => appointments
+  const scheduleItems = useMemo<DayStatsItem[]>(() => appointments
     .filter(appointment => !CHART_HIDDEN_STATUSES.includes(appointment.status))
     .map(appointment => ({
       date: appointment.appointmentDate,
@@ -1985,8 +2268,8 @@ function DayActivityChart({ appointments, selectedDate, todayIso, admittedPatien
 
   return (
     <EhrWeekActivityChart
-      items={items}
-      seriesNames={['Inpatient', 'Outpatient']}
+      items={providedItems ?? scheduleItems}
+      seriesNames={seriesNames ?? ['Inpatient', 'Outpatient']}
       selectedDate={selectedDate}
       todayIso={todayIso}
       onSelectDate={onSelectDate}

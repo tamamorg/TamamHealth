@@ -61,10 +61,12 @@ export function usePatients() {
 
   const create = useCallback(async (data: Omit<PatientDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createPatient } = await import('../services/patient-service');
-    const patient = await createPatient(data);
+    // Scope so duplicate-detection and geocode assignment don't read/disclose
+    // across tenant boundaries (see createPatient's own docs).
+    const patient = await createPatient(data, scope);
     await loadPatients();
     return patient;
-  }, [loadPatients]);
+  }, [loadPatients, scope]);
 
   const update = useCallback(async (id: string, data: Partial<PatientDoc>) => {
     const { updatePatient } = await import('../services/patient-service');

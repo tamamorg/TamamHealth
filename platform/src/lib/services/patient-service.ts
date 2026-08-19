@@ -60,10 +60,30 @@ export async function getAllPatients(scope?: DataScope): Promise<PatientDoc[]> {
   return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getPatientById(id: string): Promise<PatientDoc | null> {
+/**
+ * Fetch one patient by id.
+ *
+ * `scope` is optional so every existing caller keeps working unscoped — but
+ * that is exactly the bug this parameter exists to let callers close (KAN
+ * tenancy audit, 2026-08): `/patients/[id]` and several API routes fetch a
+ * document straight out of `patientsDB()` with nothing checking whether the
+ * caller's org/facility may see it. A device can hold patient docs outside
+ * the viewer's own scope (a stale replica after a facility change, or a role
+ * whose replication entitlement is broader than its display scope — see
+ * `MULTI_FACILITY_ROLES` in `sync/facility-entitlements.ts`), so "the id is
+ * on my device" is not authorization to read it.
+ *
+ * When `scope` is supplied, the fetched doc is run through the SAME
+ * `filterByScope` every other read path uses, and an out-of-scope id comes
+ * back as `null` — indistinguishable from "doesn't exist", which is the
+ * correct response for both an IDOR probe and a genuine typo.
+ */
+export async function getPatientById(id: string, scope?: DataScope): Promise<PatientDoc | null> {
   try {
     const db = patientsDB();
-    return await db.get(id) as PatientDoc;
+    const doc = await db.get(id) as PatientDoc;
+    if (scope && filterByScope([doc], scope).length === 0) return null;
+    return doc;
   } catch {
     return null;
   }
@@ -323,10 +343,48 @@ async function generateHospitalNumber(hospitalId?: string): Promise<string> {
 }
 
 /**
+ * Message shown when a duplicate match falls OUTSIDE the caller's scope.
+ *
+ * A cross-facility/cross-org duplicate is still real and still has to block
+ * registration — silently dropping it would let the same person accumulate
+ * two disconnected charts (see the `claimIdentifier` doc comment below on why
+ * that's a clinical-safety problem, not a cosmetic one). But the caller is
+ * not authorized to see the record that matched, so the message may not name
+ * anything about it: no patient name, no hospital number, no facility. It
+ * discloses only the fact of a match on `descriptor`, which the caller
+ * already knows (it's the value they just typed).
+ */
+function outOfScopeDuplicateMessage(descriptor: string): string {
+  return `A patient with ${descriptor} is already registered at another facility. `
+    + 'Contact the records/MPI team before registering a new record.';
+}
+
+/**
  * Check for potential duplicate patients by name+DOB, phone, geocodeId, or nationalId.
+ *
+ * Duplicate detection itself always searches every patient this device
+ * knows about, regardless of `scope` — a genuine cross-facility duplicate
+ * (the same person registered at two facilities) is clinically meaningful
+ * and must still block registration; narrowing the SEARCH to the caller's
+ * scope would silently let it through. `scope` instead controls only how
+ * much of a match is DISCLOSED in the returned message: a match the caller
+ * is authorized to see (per `filterByScope`) is named in full, as before; a
+ * match outside their scope blocks registration but names nothing about the
+ * other record (see `outOfScopeDuplicateMessage`). Without this split, the
+ * error message itself was a PHI leak — a phone number typed into a
+ * registration form could return another facility's patient's name and
+ * hospital number even though the caller could never otherwise see that
+ * chart.
  */
 async function checkDuplicates(data: Record<string, unknown>, scope?: DataScope): Promise<string | null> {
-  const all = await getAllPatients(scope);
+  const all = await getAllPatients();
+  // `scope` undefined means "no scoping requested" (e.g. a caller that hasn't
+  // been migrated yet) — preserve the original fully-disclosed behaviour by
+  // treating every match as in-scope, rather than defaulting to the more
+  // restrictive branch.
+  const inScopeIds = scope ? new Set(filterByScope(all, scope).map((p) => p._id)) : null;
+  const isInScope = (p: PatientDoc) => !inScopeIds || inScopeIds.has(p._id);
+
   const firstName = ((data.firstName as string) || '').toLowerCase().trim();
   const surname = ((data.surname as string) || '').toLowerCase().trim();
   const dob = data.dateOfBirth as string | undefined;
@@ -340,22 +398,30 @@ async function checkDuplicates(data: Record<string, unknown>, scope?: DataScope)
         p.firstName.toLowerCase() === firstName &&
         p.surname.toLowerCase() === surname &&
         p.dateOfBirth === dob) {
-      return `A patient named "${p.firstName} ${p.surname}" with the same date of birth already exists (${p.hospitalNumber})`;
+      return isInScope(p)
+        ? `A patient named "${p.firstName} ${p.surname}" with the same date of birth already exists (${p.hospitalNumber})`
+        : outOfScopeDuplicateMessage('the same name and date of birth');
     }
     // Match by phone. Compared on digits only so "0912 345 678" and
     // "+211912345678" are recognised as the same number rather than as two
     // patients — sharing a household phone is normal here, but the same string
     // typed two ways is not a different person.
     if (phone && digitsOf(phone).length >= MIN_PHONE_DIGITS && digitsOf(p.phone) === digitsOf(phone)) {
-      return `A patient with phone number ${phone} already exists (${p.firstName} ${p.surname}, ${p.hospitalNumber})`;
+      return isInScope(p)
+        ? `A patient with phone number ${phone} already exists (${p.firstName} ${p.surname}, ${p.hospitalNumber})`
+        : outOfScopeDuplicateMessage('this phone number');
     }
     // Match by geocode ID
     if (geocodeId && p.geocodeId === geocodeId) {
-      return `A patient with Geocode ID ${geocodeId} already exists (${p.firstName} ${p.surname})`;
+      return isInScope(p)
+        ? `A patient with Geocode ID ${geocodeId} already exists (${p.firstName} ${p.surname})`
+        : outOfScopeDuplicateMessage('this Geocode ID');
     }
     // Match by national ID
     if (nationalId && nationalId.trim().length >= MIN_NATIONAL_ID_LENGTH && p.nationalId === nationalId) {
-      return `A patient with National ID ${nationalId} already exists (${p.firstName} ${p.surname})`;
+      return isInScope(p)
+        ? `A patient with National ID ${nationalId} already exists (${p.firstName} ${p.surname})`
+        : outOfScopeDuplicateMessage('this National ID');
     }
   }
   return null;
@@ -451,12 +517,17 @@ async function releaseIdentifier(kind: 'geocode' | 'national', value: string): P
   }
 }
 
-export async function createPatient(rawData: Omit<PatientDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<PatientDoc> {
+export async function createPatient(
+  rawData: Omit<PatientDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
+  scope?: DataScope,
+): Promise<PatientDoc> {
   const data = normalizePatientContact(rawData as unknown as Record<string, unknown>) as typeof rawData;
   const errors = validatePatientData(data as unknown as Record<string, unknown>);
 
-  // Check for duplicate patients
-  const duplicateMsg = await checkDuplicates(data as unknown as Record<string, unknown>);
+  // Check for duplicate patients. `scope` controls only how much of a match
+  // is disclosed (see `checkDuplicates`) — the search itself is always
+  // global, so a genuine cross-facility duplicate still blocks registration.
+  const duplicateMsg = await checkDuplicates(data as unknown as Record<string, unknown>, scope);
   if (duplicateMsg) {
     errors.duplicate = duplicateMsg;
   }
@@ -467,11 +538,50 @@ export async function createPatient(rawData: Omit<PatientDoc, '_id' | '_rev' | '
   const db = patientsDB();
   const now = new Date().toISOString();
   const id = `pat-${uuidv4().slice(0, 8)}`;
-  const hospitalNumber = data.hospitalNumber || await generateHospitalNumber(data.registrationHospital);
+  // Resolved BEFORE the hospital number so a patient that cannot be saved does
+  // not burn an MRN on the way to being refused.
   const orgId = data.orgId || await inferOrgIdFromHospital(data.registrationHospital);
+  // A patient with no organisation is not a saved patient, however cleanly the
+  // local write succeeds:
+  //   • CouchDB's tenant validator refuses every document without an orgId
+  //     ('orgId is required on this database'), so the record is written to the
+  //     device's replica, pushed, rejected, and never seen again — under a
+  //     "Registered" toast.
+  //   • `filterByScope` matches on orgId for every role except super_admin and
+  //     government, so even on that one device the front desk, the clinician
+  //     and the pharmacy cannot see the person who was just registered.
+  // It happened whenever the registering user carried no facility of their own
+  // (a platform super_admin, an org_admin between postings): registrationHospital
+  // came through empty, the org could not be inferred from it, and nothing
+  // checked. Refuse it here, keyed to the field the form asks for.
+  if (!orgId) {
+    throw new ValidationError({
+      registrationHospital:
+        'Select the facility this patient is being registered at — a patient cannot be saved without one.',
+    });
+  }
+  const hospitalNumber = data.hospitalNumber || await generateHospitalNumber(data.registrationHospital);
   const countryId = data.countryId || await inferCountryIdFromHospital(data.registrationHospital);
+  // Deliberately org-scoped only (hospitalId dropped), not the caller's full
+  // scope. `assignGeocodeId` counts existing siblings under the SAME boma +
+  // household to pick the next suffix, which must stay a global (org-wide)
+  // computation to avoid assigning the same geocodeId to two different
+  // households' members. Every non-admin CREATE role except
+  // `medical_superintendent` already only ever replicates its own facility's
+  // patients (see `MULTI_FACILITY_ROLES` in sync/facility-entitlements.ts),
+  // so full scoping and org-only scoping are equivalent for them in
+  // practice. `medical_superintendent` is the one CREATE role whose
+  // replication entitlement is org-wide but whose `filterByScope` treatment
+  // is facility-narrowed (it isn't in filterByScope's admin bypass) — passing
+  // their full scope here would artificially hide sibling records at the
+  // OTHER facilities they oversee and risk a real geocodeId collision, not
+  // just a display gap. Dropping hospitalId keeps the computation correct
+  // for that role while still not reading across org boundaries.
   const geocodeId = data.geocodeId
-    || await assignGeocodeId(data as unknown as Record<string, unknown>);
+    || await assignGeocodeId(
+      data as unknown as Record<string, unknown>,
+      scope ? { orgId: scope.orgId, role: scope.role } : undefined,
+    );
 
   // Close the TOCTOU window between checkDuplicates() above and db.put() below
   // (KAN-15). Claims are taken here, immediately before the write, so a

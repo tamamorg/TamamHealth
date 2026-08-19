@@ -26,14 +26,14 @@ export default function VitalStatisticsPage() {
     <>
       <main className="page-container page-enter">
         <div className="dash-card mb-4" style={{ padding: '16px 20px' }}>
-          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', color: 'var(--text-primary)' }}>
+          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 800, fontSize: 24, lineHeight: '100%', color: 'var(--text-primary)' }}>
             {t('vitalStats.topBarTitle')}
           </span>
         </div>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <aside style={{ width: 224, flexShrink: 0 }}>
-            <nav className="ehr-set-nav" aria-label="Vital statistics sections">
+            <nav className="ehr-set-nav" aria-label="Vital statistics sections" data-tour="vs-section-nav">
               {sections.map(item => {
                 const Icon = item.icon;
                 return (
@@ -89,7 +89,7 @@ export default function VitalStatisticsPage() {
                           <div className="flex-1 h-2 rounded-full" style={{ background: 'var(--overlay-light)' }}>
                             <div className="h-full rounded-full" style={{ width: `${birthStats.total > 0 ? (count / birthStats.total) * 100 : 0}%`, background: 'var(--accent-primary)' }} />
                           </div>
-                          <span className="text-sm font-bold w-8 text-right">{count}</span>
+                          <span className="text-sm font-bold w-8 text-end">{count}</span>
                         </div>
                       ))}
                     </div>

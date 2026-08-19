@@ -89,11 +89,16 @@ not DevOps engineers.
 suggestions:
 
 - **Push-only** (client → server, append-only): `audit_log`,
-  `controlled_substance_log`, `ledger`, `sync_events`. Clients can never
-  receive or rewrite history.
-- **Pull-only** (server → client, read-only on client): `users`,
-  `organizations`, `platform_config`, `fee_schedule`. Clients can never mint
-  accounts or alter pricing/config.
+  `controlled_substance_log`, `sync_events`. Clients can never receive or
+  rewrite history. (`ledger` is append-only in *content* but syncs `both`
+  ways — a charge raised at one station and a payment taken at another have
+  to converge live — so append-only and push-only are not the same thing.)
+- **Not synced at all**: `users` — a server-only control-plane database
+  (password/PIN hashes). Clients never receive user documents; the staff
+  directory goes through the redacted, tenant-scoped `/api/users`.
+- **Pull-only** (server → client, read-only on client): `organizations`,
+  `platform_config`, `fee_schedule`. Clients can never mint accounts or
+  alter pricing/config.
 - **Both**: everything else, scoped to the user's `orgId`.
 
 **Why:** In an offline-first system, the client is partially trusted. The

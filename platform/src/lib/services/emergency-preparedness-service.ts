@@ -40,18 +40,19 @@ export async function getAllPlans(scope?: DataScope): Promise<EmergencyPlanDoc[]
   return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getActivePlans(facilityId?: string): Promise<EmergencyPlanDoc[]> {
-  const all = await getAllPlans();
+export async function getActivePlans(facilityId?: string, scope?: DataScope): Promise<EmergencyPlanDoc[]> {
+  const all = await getAllPlans(scope);
   return all.filter(p =>
     (p.phase === 'alert' || p.phase === 'response') &&
     (!facilityId || p.facilityId === facilityId)
   );
 }
 
-export async function getPlanById(id: string): Promise<EmergencyPlanDoc | null> {
+export async function getPlanById(id: string, scope?: DataScope): Promise<EmergencyPlanDoc | null> {
   const db = emergencyPlansDB();
   try {
-    return await db.get(id) as EmergencyPlanDoc;
+    const plan = await db.get(id) as EmergencyPlanDoc;
+    return scope && filterByScope([plan], scope).length === 0 ? null : plan;
   } catch {
     return null;
   }
@@ -88,12 +89,20 @@ export async function createPlan(
 
 export async function updatePlan(
   id: string,
-  updates: Partial<EmergencyPlanDoc>
+  updates: Partial<EmergencyPlanDoc>,
+  scope?: DataScope,
 ): Promise<EmergencyPlanDoc | null> {
   const db = emergencyPlansDB();
   try {
     const existing = await db.get(id) as EmergencyPlanDoc;
-    const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+    if (scope && filterByScope([existing], scope).length === 0) return null;
+    const updated = {
+      ...existing,
+      ...updates,
+      orgId: existing.orgId,
+      facilityId: existing.facilityId,
+      updatedAt: new Date().toISOString(),
+    };
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     await logAuditSafe('UPDATE_EMERGENCY_PLAN', undefined, undefined, `Emergency plan ${id} updated`);
@@ -111,10 +120,11 @@ export async function updatePlan(
   }
 }
 
-export async function deletePlan(id: string): Promise<boolean> {
+export async function deletePlan(id: string, scope?: DataScope): Promise<boolean> {
   const db = emergencyPlansDB();
   try {
     const existing = await db.get(id);
+    if (scope && filterByScope([existing as EmergencyPlanDoc], scope).length === 0) return false;
     /* istanbul ignore next -- PouchDB always returns _rev on successful get() */
     if (!existing._rev) throw new Error('Missing revision');
     await db.remove(existing._id, existing._rev);
@@ -137,9 +147,10 @@ export async function deletePlan(id: string): Promise<boolean> {
 export async function activatePlan(
   id: string,
   activatedBy: string,
-  severity?: EmergencySeverity
+  severity?: EmergencySeverity,
+  scope?: DataScope,
 ): Promise<EmergencyPlanDoc | null> {
-  const plan = await getPlanById(id);
+  const plan = await getPlanById(id, scope);
   if (!plan) return null;
   if (plan.phase === 'response') return plan; // Already active
 
@@ -150,7 +161,7 @@ export async function activatePlan(
   };
   if (severity) updates.severity = severity;
 
-  const result = await updatePlan(id, updates);
+  const result = await updatePlan(id, updates, scope);
   /* istanbul ignore next -- updatePlan only returns null if doc is missing, already checked above */
   if (result) {
     await logAuditSafe('ACTIVATE_EMERGENCY', activatedBy, undefined,
@@ -162,16 +173,17 @@ export async function activatePlan(
 
 export async function deactivatePlan(
   id: string,
-  deactivatedBy: string
+  deactivatedBy: string,
+  scope?: DataScope,
 ): Promise<EmergencyPlanDoc | null> {
-  const plan = await getPlanById(id);
+  const plan = await getPlanById(id, scope);
   if (!plan) return null;
   if (plan.phase === 'closed') return plan; // Already closed
 
   const result = await updatePlan(id, {
     phase: 'recovery',
     deactivatedAt: new Date().toISOString(),
-  });
+  }, scope);
   /* istanbul ignore next -- updatePlan only returns null if doc is missing, already checked above */
   if (result) {
     await logAuditSafe('DEACTIVATE_EMERGENCY', deactivatedBy, undefined,
@@ -181,8 +193,8 @@ export async function deactivatePlan(
   return result;
 }
 
-export async function closePlan(id: string): Promise<EmergencyPlanDoc | null> {
-  return updatePlan(id, { phase: 'closed' });
+export async function closePlan(id: string, scope?: DataScope): Promise<EmergencyPlanDoc | null> {
+  return updatePlan(id, { phase: 'closed' }, scope);
 }
 
 // ===== Resource & Capacity Monitoring =====
@@ -198,8 +210,8 @@ export interface SurgeAlert {
   urgency: 'critical' | 'high' | 'medium';
 }
 
-export async function getSurgeAlerts(facilityId?: string): Promise<SurgeAlert[]> {
-  const active = await getActivePlans(facilityId);
+export async function getSurgeAlerts(facilityId?: string, scope?: DataScope): Promise<SurgeAlert[]> {
+  const active = await getActivePlans(facilityId, scope);
   const alerts: SurgeAlert[] = [];
 
   for (const plan of active) {
@@ -280,8 +292,8 @@ export interface EmergencyDashboard {
   surgeAlerts: SurgeAlert[];
 }
 
-export async function getEmergencyDashboard(facilityId?: string): Promise<EmergencyDashboard> {
-  const all = await getAllPlans();
+export async function getEmergencyDashboard(facilityId?: string, scope?: DataScope): Promise<EmergencyDashboard> {
+  const all = await getAllPlans(scope);
   const filtered = facilityId ? all.filter(p => p.facilityId === facilityId) : all;
 
   const byPhase = { preparedness: 0, alert: 0, response: 0, recovery: 0, closed: 0 };
@@ -300,7 +312,7 @@ export async function getEmergencyDashboard(facilityId?: string): Promise<Emerge
     totalReferrals += plan.totalReferralsOut || 0;
   }
 
-  const surgeAlerts = await getSurgeAlerts(facilityId);
+  const surgeAlerts = await getSurgeAlerts(facilityId, scope);
 
   return {
     activePlans: filtered.filter(p => p.phase === 'alert' || p.phase === 'response').length,

@@ -1,46 +1,118 @@
 'use client';
 
+/**
+ * Epidemic Intelligence — the surveillance arm of the Government App family.
+ *
+ * Restyled onto the same visual language as /government (`gov-panel` /
+ * `gov-panel-head` / `gov-page-head` / `gov-map-layers`, see globals.css
+ * "National Dashboard (Government App design)"), with page-specific pieces
+ * (the Rt meter, tonal chips, alert/list rows, stat tiles) in the `epi-*`
+ * section added alongside it. Six tabs, `?tab=` deep-linked: overview,
+ * epidemic curves, syndromic surveillance, geographic spread, the IDSR
+ * weekly report, and the full EWARS alert list.
+ */
+
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
 import { useEpidemicIntelligence } from '@/lib/hooks/useEpidemicIntelligence';
-import {
-  Activity, AlertTriangle, TrendingUp,
-  Shield, Zap, MapPin, FileText, Radio, BarChart3,
-  ChevronDown, ChevronRight, Thermometer, Bug, Eye,
-} from '@/components/icons/lucide';
-import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
-import Badge, { type BadgeTone } from '@/components/Badge';
-import { FilterBar, FilterTabs } from '@/components/filters';
+import { Activity, MapPin, ChevronDown, ChevronRight } from '@/components/icons/lucide';
+import { CHART_SERIES, DISEASE_COLOR } from '@/lib/chart-colors';
 
-// EWARS / IDSR severity → semantic Badge tone.
-const SEVERITY_TONE: Record<string, BadgeTone> = {
-  critical: 'danger',
-  high: 'warning',
-  medium: 'warning',
-  low: 'success',
-};
+// recharts (~80-100KB) is deferred behind a dynamic boundary so it's fetched
+// only when this chart renders — same pattern as
+// FacilityManagementDashboard/_FacilityCharts.
+const EpidemicCurveChart = dynamic(
+  () => import('./_EpidemicCharts').then(m => m.EpidemicCurveChart),
+  { ssr: false, loading: () => <div style={{ height: 260 }} /> },
+);
 
 type TabView = 'overview' | 'curves' | 'syndromic' | 'geographic' | 'idsr' | 'alerts';
 const VALID_TABS: TabView[] = ['overview', 'curves', 'syndromic', 'geographic', 'idsr', 'alerts'];
 
-// South Sudan states for mini heatmap
-const STATES_GRID = [
-  ['Northern Bahr el Ghazal', 'Unity', 'Upper Nile'],
-  ['Western Bahr el Ghazal', 'Warrap', 'Jonglei'],
-  ['Western Equatoria', 'Lakes', ''],
-  ['', 'Central Equatoria', 'Eastern Equatoria'],
-];
+// ── Shared tone system: one 4-step escalation (green → blue → yellow → red)
+// covers risk level, EWARS severity, and geographic risk score alike; the
+// 3-step confidence scale (green / yellow / neutral) is spec'd separately. ──
+type Tone = 'green' | 'blue' | 'yellow' | 'red' | 'neutral';
 
-if (process.env.NODE_ENV !== 'production') {
-  const flat = STATES_GRID.flat().filter(Boolean);
-  for (const name of flat) {
-    if (!SOUTH_SUDAN_STATES.includes(name)) {
-      throw new Error(`STATES_GRID contains unknown state "${name}" — not in SOUTH_SUDAN_STATES`);
-    }
-  }
+function severityTone(level: string): Tone {
+  if (level === 'critical') return 'red';
+  if (level === 'high') return 'yellow';
+  if (level === 'medium' || level === 'moderate') return 'blue';
+  return 'green'; // low
 }
+
+function confidenceTone(level: string): Tone {
+  if (level === 'high') return 'green';
+  if (level === 'medium') return 'yellow';
+  return 'neutral'; // low
+}
+
+function riskScoreTone(score: number): Tone {
+  if (score >= 70) return 'red';
+  if (score >= 50) return 'yellow';
+  if (score >= 30) return 'blue';
+  return 'green';
+}
+
+// The "same tone" fill used by meters and bare colored numbers sitting
+// directly on a white/tinted card (not inside a chip) — the base 500/600
+// tokens, per the design's explicit Rt-meter spec.
+const TONE_FILL: Record<Tone, string> = {
+  red: 'var(--color-danger-500)',
+  yellow: 'var(--color-warning-600)',
+  blue: 'var(--color-info)',
+  green: 'var(--color-success-600)',
+  neutral: 'var(--text-muted)',
+};
+/** Singular label when the count is exactly 1; otherwise the (already
+ *  correctly-pluralized) translated label. Fixes "1 Emergency States". */
+function pluralLabel(count: number, singular: string, plural: string): string {
+  return count === 1 ? singular : plural;
+}
+
+// Aliases the raw DISEASE_COLOR map doesn't carry — same additions as
+// /government (chart-colors.ts keys 'hiv', not the seed data's literal
+// "HIV/AIDS"; meningitis has no entry at all). Without these, both fall
+// through to the fallback slots and can collide with — or exhaust the
+// slots meant for — the named diseases.
+const DISEASE_COLORS: Record<string, string> = {
+  ...DISEASE_COLOR,
+  'hiv/aids': DISEASE_COLOR.hiv,
+  meningitis: 'var(--chart-3)',
+};
+
+// Per-disease colour, entity-stable and collision-free — same approach and
+// same shared map as /government, so a disease is the same colour on both
+// screens.
+function buildDiseaseColorMap(names: string[]): Map<string, string> {
+  const fallback = [...CHART_SERIES];
+  const used = new Set<string>();
+  const map = new Map<string, string>();
+  for (const name of names) {
+    const named = DISEASE_COLORS[name.trim().toLowerCase()];
+    const color = named && !used.has(named) ? named : fallback.find(c => !used.has(c)) || 'var(--text-muted)';
+    used.add(color);
+    map.set(name, color);
+  }
+  return map;
+}
+
+function PanelHead({ title, meta }: { title: string; meta?: string }) {
+  return (
+    <div className="gov-panel-head">
+      <h3>{title}</h3>
+      {meta && <span className="gov-meta">{meta}</span>}
+    </div>
+  );
+}
+
+function Chip({ tone, className = '', children }: { tone: Tone; className?: string; children: React.ReactNode }) {
+  return <span className={`epi-chip epi-chip--${tone} ${className}`}>{children}</span>;
+}
+
+const OVERVIEW_ALERT_LIMIT = 8;
 
 export default function EpidemicIntelligencePage() {
   const { t } = useTranslation();
@@ -61,389 +133,252 @@ export default function EpidemicIntelligencePage() {
 
   if (loading || !data) {
     return (
-      <>
-        <main className="page-container flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: 'transparent' }}>
-              <Activity className="w-8 h-8" style={{ color: 'var(--color-danger)' }} />
-            </div>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{t('epidemic.loading')}</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('epidemic.loadingSubtitle')}</p>
-          </div>
-        </main>
-      </>
+      <main className="page-container flex items-center justify-center">
+        <div className="text-center">
+          <Activity className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--color-danger)' }} />
+          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{t('epidemic.loading')}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('epidemic.loadingSubtitle')}</p>
+        </div>
+      </main>
     );
   }
 
   const { summary, epidemicCurves, rtEstimates, syndromicAlerts, idsrReport, geographicSpread, ewarsAlerts } = data;
 
-  const riskColors: Record<string, { bg: string; text: string; border: string }> = {
-    low: { bg: 'rgba(74,222,128,0.1)', text: 'var(--color-success-text)', border: 'rgba(74,222,128,0.2)' },
-    moderate: { bg: 'rgba(251,191,36,0.1)', text: 'var(--color-warning-text)', border: 'rgba(251,191,36,0.2)' },
-    high: { bg: 'rgba(251,146,60,0.1)', text: '#FB923C', border: 'rgba(251,146,60,0.2)' },
-    critical: { bg: 'rgba(248,113,113,0.1)', text: 'var(--color-danger-text)', border: 'rgba(248,113,113,0.2)' },
-  };
-
-  const severityColors: Record<string, { bg: string; text: string }> = {
-    low: { bg: 'rgba(74,222,128,0.12)', text: 'var(--color-success-text)' },
-    medium: { bg: 'rgba(251,191,36,0.12)', text: 'var(--color-warning-text)' },
-    high: { bg: 'rgba(251,146,60,0.12)', text: '#FB923C' },
-    critical: { bg: 'rgba(248,113,113,0.12)', text: 'var(--color-danger-text)' },
-  };
-
-  const risk = riskColors[summary.overallRiskLevel] || riskColors.low;
-
-  // Get unique diseases for filtering
-  const diseases = [...new Set((epidemicCurves || []).map(c => c.disease))];
-  const filteredCurves = selectedDisease
-    ? (epidemicCurves || []).filter(c => c.disease === selectedDisease)
-    : (epidemicCurves || []);
-
-  // Aggregate curve data by week (for multi-disease stacked view)
+  // Diseases present in the curve data, ranked by total case volume — same
+  // ordering /government uses for its disease selector and colour
+  // assignment. This matters for buildDiseaseColorMap below: it's a greedy
+  // assignment, so ranking by volume (not the seed data's incidental,
+  // near-alphabetical order) ensures the highest-burden diseases claim
+  // their canonical slot before a low-volume one can take it first.
+  const diseaseTotals = new Map<string, number>();
+  for (const c of epidemicCurves || []) diseaseTotals.set(c.disease, (diseaseTotals.get(c.disease) || 0) + c.cases);
+  const diseases = [...diseaseTotals.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+  // The palette has CHART_SERIES.length distinct slots; drawing more series
+  // than that guarantees two diseases collapse onto the same fallback
+  // colour (indistinguishable in the chart/legend). Cap "All diseases" to
+  // the top N by volume instead — same limit /government's chart observes.
+  const curveChartDiseases = selectedDisease ? [selectedDisease] : diseases.slice(0, CHART_SERIES.length);
+  const curveChartCapped = !selectedDisease && diseases.length > CHART_SERIES.length;
+  const diseaseColorMap = buildDiseaseColorMap(diseases);
   const weeks = [...new Set((epidemicCurves || []).map(c => c.week))];
-  const weekTotals = weeks.map(w => {
-    const weekData = filteredCurves.filter(c => c.week === w);
-    return weekData.reduce((s, c) => s + c.cases, 0);
+  const curveWeeksData = weeks.map(w => {
+    const rec: Record<string, number | string> = { week: w.split('-')[1] || w };
+    for (const d of curveChartDiseases) {
+      const point = epidemicCurves.find(c => c.week === w && c.disease === d);
+      rec[d] = point ? point.cases : 0;
+    }
+    return rec;
   });
-  const maxCases = weekTotals.length > 0 ? Math.max(...weekTotals, 1) : 1;
 
-  const tabs: { key: TabView; label: string; icon: typeof Activity }[] = [
-    { key: 'overview', label: t('epidemic.tabOverview'), icon: Eye },
-    { key: 'curves', label: t('epidemic.tabCurves'), icon: BarChart3 },
-    { key: 'syndromic', label: t('epidemic.tabSyndromic'), icon: Thermometer },
-    { key: 'geographic', label: t('epidemic.tabGeographic'), icon: MapPin },
-    { key: 'idsr', label: t('epidemic.tabIdsr'), icon: FileText },
-    { key: 'alerts', label: t('epidemic.tabAlerts'), icon: AlertTriangle },
+  const overviewAlerts = ewarsAlerts.slice(0, OVERVIEW_ALERT_LIMIT);
+  const moreAlertsCount = ewarsAlerts.length - overviewAlerts.length;
+
+  const riskTone = severityTone(summary.overallRiskLevel);
+
+  const statTiles: { label: string; value: string; tone?: Tone }[] = [
+    {
+      label: pluralLabel(summary.totalActiveDiseases, 'Active Disease', t('epidemic.kpiActiveDiseases')),
+      value: summary.totalActiveDiseases.toLocaleString(),
+    },
+    {
+      label: pluralLabel(summary.totalCasesThisWeek, 'Case This Week', t('epidemic.kpiCasesThisWeek')),
+      value: summary.totalCasesThisWeek.toLocaleString(),
+    },
+    {
+      label: pluralLabel(summary.totalDeathsThisWeek, 'Death This Week', t('epidemic.kpiDeathsThisWeek')),
+      value: summary.totalDeathsThisWeek.toLocaleString(),
+      tone: summary.totalDeathsThisWeek > 0 ? 'red' : undefined,
+    },
+    {
+      label: t('epidemic.kpiHighestRt'),
+      value: summary.highestRt ? summary.highestRt.value.toFixed(2) : t('epidemic.notAvailable'),
+      tone: summary.highestRt ? (summary.highestRt.value > 1 ? 'red' : 'green') : undefined,
+    },
+    {
+      label: pluralLabel(summary.statesWithEmergency.length, 'Emergency State', t('epidemic.kpiEmergencyStates')),
+      value: summary.statesWithEmergency.length.toLocaleString(),
+      tone: summary.statesWithEmergency.length > 0 ? 'red' : undefined,
+    },
+    {
+      label: pluralLabel(ewarsAlerts.length, 'EWARS Alert', t('epidemic.kpiEwarsAlerts')),
+      value: ewarsAlerts.length.toLocaleString(),
+    },
   ];
 
-  return (
-    <>
-      <main className="page-container page-enter">
+  const tabs: { key: TabView; label: string }[] = [
+    { key: 'overview', label: t('epidemic.tabOverview') },
+    { key: 'curves', label: t('epidemic.tabCurves') },
+    { key: 'syndromic', label: t('epidemic.tabSyndromic') },
+    { key: 'geographic', label: t('epidemic.tabGeographic') },
+    { key: 'idsr', label: t('epidemic.tabIdsr') },
+    { key: 'alerts', label: t('epidemic.tabAlerts') },
+  ];
 
-        <div className="dash-card mb-4">
-          <EhrListHeader
-            title={t('epidemic.pageTitle')}
-            actions={
-              <>
-                <div className="px-4 py-2 rounded-xl flex items-center gap-2" style={{
-                  background: risk.bg,
-                  border: `1px solid ${risk.border}`,
-                }}>
-                  <Shield className="w-4 h-4" style={{ color: risk.text }} />
-                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: risk.text }}>
-                    {t('epidemic.riskSuffix', { level: summary.overallRiskLevel })}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>{t('epidemic.idsrWeek')}</p>
-                  <p className="text-sm font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{idsrReport.reportingWeek}</p>
-                </div>
-              </>
-            }
-          />
-        </div>
-
-        {/* ═══ KPI STRIP ═══ */}
-        <div className="kpi-grid mb-4">
-          {[
-            { label: t('epidemic.kpiActiveDiseases'), value: summary.totalActiveDiseases, icon: Bug, color: 'var(--color-danger-text)', bg: 'rgba(239,68,68,0.12)' },
-            { label: t('epidemic.kpiCasesThisWeek'), value: summary.totalCasesThisWeek.toLocaleString(), icon: Activity, color: '#FB923C', bg: 'rgba(251,146,60,0.12)' },
-            { label: t('epidemic.kpiDeathsThisWeek'), value: summary.totalDeathsThisWeek, icon: AlertTriangle, color: 'var(--color-danger-text)', bg: 'rgba(248,113,113,0.12)' },
-            { label: t('epidemic.kpiHighestRt'), value: summary.highestRt ? `${summary.highestRt.value.toFixed(2)}` : t('epidemic.notAvailable'), icon: TrendingUp, color: summary.highestRt && summary.highestRt.value > 1 ? 'var(--color-danger-text)' : 'var(--color-success-text)', bg: summary.highestRt && summary.highestRt.value > 1 ? 'rgba(239,68,68,0.12)' : 'rgba(74,222,128,0.12)' },
-            { label: t('epidemic.kpiEmergencyStates'), value: summary.statesWithEmergency.length, icon: Zap, color: 'var(--color-danger-text)', bg: 'rgba(248,113,113,0.12)' },
-            { label: t('epidemic.kpiEwarsAlerts'), value: ewarsAlerts.length, icon: Radio, color: 'var(--color-warning-text)', bg: 'rgba(251,191,36,0.12)' },
-          ].map((kpi) => (
-            <div key={kpi.label} className="kpi">
-              <div className="kpi__icon">
-                <kpi.icon style={{ color: kpi.color }} />
-              </div>
-              <div className="kpi__body">
-                <div className="kpi__value">{kpi.value}</div>
-                <div className="kpi__label">{kpi.label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ═══ TAB NAVIGATION ═══ */}
-        <div className="flex gap-1 mb-4 p-1 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-          {tabs.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTabAndUrl(tab.key)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all"
-              style={{
-                background: activeTab === tab.key ? 'var(--bg-card)' : 'transparent',
-                color: activeTab === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
-                border: activeTab === tab.key ? '1px solid var(--border-light)' : '1px solid transparent',
-                boxShadow: activeTab === tab.key ? 'var(--card-shadow)' : 'none',
-              }}
-            >
-              <tab.icon className="w-3.5 h-3.5" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ═══ TAB CONTENT ═══ */}
-
-        {/* OVERVIEW TAB */}
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Rt Tracker */}
-            <div className="lg:col-span-2 card-elevated">
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <TrendingUp className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />
-                  {t('epidemic.rtTrackerTitle')}
-                </h3>
-                <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('epidemic.rtTrackerHint')}</p>
-              </div>
-              <div className="p-4 space-y-3">
-                {rtEstimates.map(rt => {
-                  const barWidth = rt.rt === null ? 0 : Math.min(100, (rt.rt / 3) * 100);
-                  const rtColor = rt.rt === null ? 'var(--text-muted)' : rt.rt > 1.5 ? 'var(--color-danger)' : rt.rt > 1.0 ? '#FB923C' : rt.rt > 0.8 ? 'var(--color-warning)' : 'var(--color-success)';
-                  return (
-                    <div key={rt.disease} className="p-3 rounded-xl" style={{
-                      background: 'var(--overlay-subtle)',
-                      border: '1px solid var(--border-light)',
-                    }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{rt.disease}</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{
-                            background: severityColors[rt.confidence === 'high' ? 'low' : rt.confidence === 'medium' ? 'medium' : 'high'].bg,
-                            color: severityColors[rt.confidence === 'high' ? 'low' : rt.confidence === 'medium' ? 'medium' : 'high'].text,
-                          }}>
-                            {t('epidemic.confidenceSuffix', { level: rt.confidence })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs font-medium" style={{
-                              color: rt.trend === 'growing' ? 'var(--color-danger-text)' : rt.trend === 'declining' ? 'var(--color-success-text)' : rt.trend === 'insufficient_data' ? 'var(--text-muted)' : 'var(--color-warning-text)',
-                            }}>
-                              {rt.trend === 'insufficient_data' ? t('epidemic.notAvailable') : `${rt.weeklyChange > 0 ? '+' : ''}${rt.weeklyChange}%`}
-                            </span>
-                          </div>
-                          <span className="text-xl font-bold font-mono" style={{ color: rtColor }}>
-                            {rt.rt === null ? '—' : rt.rt.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                      {/* Rt bar */}
-                      <div className="relative h-3 rounded-full" style={{ background: 'var(--overlay-light)' }}>
-                        <div className="h-full rounded-full transition-all" style={{
-                          width: `${barWidth}%`,
-                          background: `linear-gradient(90deg, #4ADE80, ${rtColor})`,
-                        }} />
-                        {/* Rt = 1 marker */}
-                        <div className="absolute top-0 bottom-0 w-0.5" style={{
-                          left: `${(1 / 3) * 100}%`,
-                          background: 'var(--text-muted)',
-                          opacity: 0.5,
-                        }} />
-                        <span className="absolute text-[8px] font-mono" style={{
-                          left: `${(1 / 3) * 100}%`,
-                          top: '-14px',
-                          transform: 'translateX(-50%)',
-                          color: 'var(--text-muted)',
-                        }}>Rt=1</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Top EWARS Alerts */}
-            <div className="card-elevated flex flex-col" style={{ maxHeight: '520px' }}>
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <AlertTriangle className="w-4 h-4" style={{ color: 'var(--color-danger-text)' }} />
-                  {t('epidemic.activeEwarsAlerts')}
-                </h3>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {ewarsAlerts.slice(0, 8).map((alert, i) => {
-                  const sev = severityColors[alert.severity] || severityColors.low;
-                  return (
-                    <div key={i} className="p-3 rounded-xl cursor-pointer transition-all"
-                      onClick={() => setExpandedAlert(expandedAlert === i ? null : i)}
-                      style={{
-                        background: sev.bg,
-                        border: `1px solid ${sev.text}20`,
-                      }}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Badge tone={SEVERITY_TONE[alert.severity] ?? 'neutral'} uppercase>
-                              {alert.severity.toUpperCase()}
-                            </Badge>
-                            <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{alert.alertType.replace(/_/g, ' ')}</span>
-                          </div>
-                          <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{alert.disease}</p>
-                          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{alert.state}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold" style={{ color: sev.text }}>{alert.cases}</p>
-                          <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{t('epidemic.cases')}</p>
-                        </div>
-                      </div>
-                      {expandedAlert === i && (
-                        <div className="mt-2 pt-2 border-t text-[11px]" style={{ borderColor: `${sev.text}20`, color: 'var(--text-secondary)' }}>
-                          {alert.message}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Geographic Heatmap Mini */}
-            <div className="lg:col-span-2 card-elevated">
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <MapPin className="w-4 h-4" style={{ color: '#FB923C' }} />
-                  {t('epidemic.geoHeatmapTitle')}
-                </h3>
-              </div>
-              <div className="p-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {STATES_GRID.flat().map((state, i) => {
-                    if (!state) return <div key={i} />;
-                    const spread = geographicSpread.find(g => g.state === state);
-                    const score = spread?.riskScore || 0;
-                    const color = score >= 70 ? 'var(--color-danger-text)' : score >= 50 ? '#FB923C' : score >= 30 ? 'var(--color-warning)' : 'var(--color-success)';
-                    return (
-                      <div key={state} className="p-3 rounded-xl text-center transition-all cursor-default" style={{
-                        background: `${color}10`,
-                        border: `1px solid ${color}25`,
-                      }}>
-                        <p className="text-[10px] font-medium mb-1 truncate" style={{ color: 'var(--text-secondary)' }}>{state.replace('Northern ', 'N. ').replace('Western ', 'W. ').replace('Eastern ', 'E. ').replace('Central ', 'C. ')}</p>
-                        <p className="text-lg font-bold" style={{ color }}>{score}</p>
-                        <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{t('epidemic.casesCount', { count: spread?.totalCases || 0 })}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center justify-center gap-3 mt-3">
-                  {[
-                    { label: t('epidemic.legendLow'), color: 'var(--color-success-text)' },
-                    { label: t('epidemic.legendModerate'), color: 'var(--color-warning-text)' },
-                    { label: t('epidemic.legendHigh'), color: '#FB923C' },
-                    { label: t('epidemic.legendCritical'), color: 'var(--color-danger-text)' },
-                  ].map(l => (
-                    <div key={l.label} className="flex items-center gap-1">
-                      <div className="w-2.5 h-2.5 rounded" style={{ background: l.color }} />
-                      <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{l.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* IDSR Quick Summary */}
-            <div className="card-elevated">
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <FileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  {t('epidemic.idsrSummary')}
-                </h3>
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="p-3 rounded-xl text-center" style={{ background: 'var(--overlay-subtle)' }}>
-                  <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>{t('epidemic.reportingCompleteness')}</p>
-                  <p className="text-2xl font-bold mt-1 stat-value" style={{
-                    color: idsrReport.completeness >= 80 ? 'var(--color-success-text)' : idsrReport.completeness >= 60 ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
-                  }}>{idsrReport.completeness}%</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('epidemic.facilitiesReporting', { count: idsrReport.totalFacilitiesReporting })}</p>
-                </div>
-                {idsrReport.diseases.slice(0, 4).map(d => (
-                  <div key={d.disease} className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                    <div>
-                      <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{d.disease}</p>
-                      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{d.states.length > 1 ? t('epidemic.statesCountPlural', { count: d.states.length }) : t('epidemic.statesCountSingular', { count: d.states.length })}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{d.cases}</p>
-                      <p className="text-[9px]" style={{ color: d.cfr > 5 ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>{t('epidemic.cfrValue', { value: d.cfr })}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+  // Shared alert-row renderer for both the overview preview and the full
+  // Alerts tab — same anatomy: severity chip, disease bold + state muted
+  // sub, cases condensed tabular right, click to expand the message.
+  const renderAlertRow = (alert: typeof ewarsAlerts[number], i: number) => {
+    const isExpanded = expandedAlert === i;
+    return (
+      <div key={i}>
+        <div className="epi-alert-row" onClick={() => setExpandedAlert(isExpanded ? null : i)}>
+          <div className="epi-alert-main">
+            <Chip tone={severityTone(alert.severity)}>{alert.severity}</Chip>
+            <div className="epi-alert-text">
+              <p className="epi-alert-disease">{alert.disease}</p>
+              <p className="epi-alert-state">
+                {alert.state} · {alert.alertType.replace(/_/g, ' ')}
+                {alert.deaths > 0 ? ` · ${t('epidemic.deathsCount', { count: alert.deaths })}` : ''}
+              </p>
             </div>
           </div>
-        )}
-
-        {/* EPIDEMIC CURVES TAB */}
-        {activeTab === 'curves' && (
-          <div className="space-y-4">
-            {/* Disease filter */}
-            <FilterBar>
-              <FilterTabs
-                ariaLabel={t('epidemic.allDiseases')}
-                active={selectedDisease ?? 'all'}
-                onChange={key => setSelectedDisease(key === 'all' ? null : key)}
-                tabs={[
-                  { key: 'all', label: t('epidemic.allDiseases') },
-                  ...diseases.map(d => ({ key: d, label: d })),
-                ]}
-              />
-            </FilterBar>
-
-            {/* Epidemic Curve Chart (CSS bar chart) */}
-            <div className="card-elevated">
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <BarChart3 className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />
-                  {t('epidemic.epidemicCurveTitle', { disease: selectedDisease || t('epidemic.allDiseases') })}
-                </h3>
-                <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('epidemic.weeklyCaseCounts')}</p>
-              </div>
-              <div className="p-4">
-                <div className="flex items-end gap-1.5" style={{ height: '220px' }}>
-                  {weeks.map(week => {
-                    const weekCurves = filteredCurves.filter(c => c.week === week);
-                    const totalCases = weekCurves.reduce((s, c) => s + c.cases, 0);
-                    const totalDeaths = weekCurves.reduce((s, c) => s + c.deaths, 0);
-                    const barHeight = maxCases > 0 ? (totalCases / maxCases) * 100 : 0;
-
-                    return (
-                      <div key={week} className="flex-1 flex flex-col items-center gap-1 group" style={{ minWidth: 0 }}>
-                        {/* Tooltip on hover */}
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity text-center mb-1">
-                          <p className="text-[10px] font-bold" style={{ color: 'var(--text-primary)' }}>{totalCases}</p>
-                          <p className="text-[8px]" style={{ color: 'var(--color-danger-text)' }}>{t('epidemic.deathsCount', { count: totalDeaths })}</p>
-                        </div>
-                        <div className="w-full flex flex-col justify-end" style={{ height: '180px' }}>
-                          <div
-                            className="w-full rounded-t-md transition-all"
-                            style={{
-                              height: `${barHeight}%`,
-                              minHeight: totalCases > 0 ? '4px' : '0',
-                              background: `linear-gradient(180deg, var(--color-danger), rgba(239,68,68,0.4))`,
-                            }}
-                          />
-                        </div>
-                        <span className="text-[8px] font-mono truncate w-full text-center" style={{ color: 'var(--text-muted)' }}>
-                          {week.split('-')[1] || week}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="epi-alert-right">
+              <span className="epi-alert-cases">{alert.cases.toLocaleString()}</span>
+              <span className="epi-alert-cases-label">{t('epidemic.cases')}</span>
             </div>
+            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} /> : <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />}
+          </div>
+        </div>
+        {isExpanded && <div className="epi-alert-detail">{alert.message}</div>}
+      </div>
+    );
+  };
 
-            {/* Per-disease breakdown table */}
-            <div className="card-elevated overflow-hidden">
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('epidemic.diseaseLevelBreakdown')}</h3>
+  return (
+    <main className="page-container page-enter">
+
+      {/* ── Header: condensed title, IDSR week subtitle, risk chip ── */}
+      <div className="gov-page-head">
+        <div>
+          <div className="epi-title-row">
+            <h1>{t('epidemic.pageTitle')}</h1>
+            <Chip tone={riskTone} className="epi-chip--lg">{t('epidemic.riskSuffix', { level: summary.overallRiskLevel })}</Chip>
+          </div>
+          <p>South Sudan · IDSR week {idsrReport.reportingWeek} · computed live from facility reports</p>
+        </div>
+      </div>
+
+      {/* ── Stat tile row ── */}
+      <div className="epi-stat-row">
+        {statTiles.map(tile => (
+          <div key={tile.label} className="epi-stat-tile">
+            <p className="epi-stat-label">{tile.label}</p>
+            <p className="epi-stat-value" style={tile.tone ? { color: TONE_FILL[tile.tone] } : undefined}>{tile.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Tab strip (gov-map-layers pill pattern) ── */}
+      <div className="gov-map-layers" style={{ padding: 0, marginBottom: 16 }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            type="button"
+            data-tour={`epi-tab-${tab.key}`}
+            onClick={() => setActiveTabAndUrl(tab.key)}
+            className={activeTab === tab.key ? 'is-active' : undefined}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* OVERVIEW TAB */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Rt Tracker */}
+          <section data-tour="epi-rt-panel" className="gov-panel lg:col-span-2">
+            <PanelHead title={t('epidemic.rtTrackerTitle')} meta={t('epidemic.rtTrackerHint')} />
+            {rtEstimates.length === 0 ? (
+              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.notAvailable')}</p>
+            ) : (
+              <div className="epi-rt-list">
+                {rtEstimates.map(rt => {
+                  const tone = rt.rt === null ? 'neutral' : rt.rt >= 1.2 ? 'red' : rt.rt >= 1.0 ? 'yellow' : 'green';
+                  const fill = TONE_FILL[tone];
+                  const fillWidth = rt.rt === null ? 0 : Math.min(1, rt.rt / 2) * 100;
+                  return (
+                    <div key={rt.disease} className="epi-rt-row">
+                      <div className="epi-rt-left">
+                        <span className="epi-rt-disease">{rt.disease}</span>
+                        <Chip tone={confidenceTone(rt.confidence)}>{t('epidemic.confidenceSuffix', { level: rt.confidence })}</Chip>
+                      </div>
+                      <div className="epi-rt-right">
+                        <div className="epi-meter">
+                          <div className="epi-meter-fill" style={{ width: `${fillWidth}%`, background: fill }} />
+                          <div className="epi-meter-tick" style={{ left: '50%' }} />
+                        </div>
+                        <span className="epi-rt-delta" style={{ color: fill }}>
+                          {rt.trend === 'insufficient_data' ? t('epidemic.notAvailable') : `${rt.weeklyChange > 0 ? '+' : ''}${rt.weeklyChange}%`}
+                        </span>
+                        <span className="epi-rt-value" style={{ color: fill }}>{rt.rt === null ? '—' : rt.rt.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="overflow-x-auto">
-              <table className="data-table" style={{ minWidth: 840 }}>
+            )}
+          </section>
+
+          {/* Active EWARS Alerts */}
+          <section className="gov-panel flex flex-col" style={{ maxHeight: 480 }}>
+            <PanelHead title={t('epidemic.activeEwarsAlerts')} meta={`${ewarsAlerts.length.toLocaleString()} active`} />
+            {overviewAlerts.length === 0 ? (
+              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
+            ) : (
+              <div className="epi-alert-list">
+                {overviewAlerts.map((alert, i) => renderAlertRow(alert, i))}
+              </div>
+            )}
+            {moreAlertsCount > 0 && (
+              <button type="button" className="epi-alert-more" onClick={() => setActiveTabAndUrl('alerts')}>
+                {moreAlertsCount} more {moreAlertsCount === 1 ? 'alert' : 'alerts'} — open the EWARS tab
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* EPIDEMIC CURVES TAB */}
+      {activeTab === 'curves' && (
+        <div className="space-y-4">
+          {/* Disease filter */}
+          <section className="gov-panel epi-filter-panel">
+            <div className="gov-map-layers">
+              <button type="button" onClick={() => setSelectedDisease(null)} className={selectedDisease === null ? 'is-active' : undefined}>
+                {t('epidemic.allDiseases')}
+              </button>
+              {diseases.map(d => (
+                <button key={d} type="button" onClick={() => setSelectedDisease(d)} className={selectedDisease === d ? 'is-active' : undefined}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Epidemic curve chart */}
+          <section data-tour="epi-curve-panel" className="gov-panel">
+            <PanelHead
+              title={t('epidemic.epidemicCurveTitle', { disease: selectedDisease || t('epidemic.allDiseases') })}
+              meta={curveChartCapped ? `${t('epidemic.weeklyCaseCounts')} · top ${curveChartDiseases.length} of ${diseases.length} by volume` : t('epidemic.weeklyCaseCounts')}
+            />
+            <div className="gov-chart-body">
+              {diseases.length === 0 ? (
+                <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
+              ) : (
+                <EpidemicCurveChart data={curveWeeksData} diseases={curveChartDiseases} colorMap={diseaseColorMap} />
+              )}
+            </div>
+          </section>
+
+          {/* Per-disease breakdown table */}
+          <section className="gov-panel">
+            <PanelHead title={t('epidemic.diseaseLevelBreakdown')} />
+            <div className="sa-table-scroll">
+              <table className="sa-table" style={{ minWidth: 840 }}>
                 <thead>
                   <tr>
                     <th>{t('epidemic.colDisease')}</th>
@@ -456,115 +391,94 @@ export default function EpidemicIntelligencePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rtEstimates.map(rt => {
+                  {rtEstimates.length === 0 ? (
+                    <tr><td colSpan={7} className="sa-empty">{t('epidemic.noActiveDiseaseAlerts')}</td></tr>
+                  ) : rtEstimates.map(rt => {
                     const diseaseCases = epidemicCurves.filter(c => c.disease === rt.disease);
                     const totalCases = diseaseCases.reduce((s, c) => s + c.cases, 0);
                     const totalDeaths = diseaseCases.reduce((s, c) => s + c.deaths, 0);
                     const cfr = totalCases > 0 ? ((totalDeaths / totalCases) * 100).toFixed(1) : '0';
-                    const rtColor = rt.rt === null ? 'var(--text-muted)' : rt.rt > 1.5 ? 'var(--color-danger)' : rt.rt > 1 ? '#FB923C' : 'var(--color-success)';
+                    const rtTone = rt.rt === null ? 'neutral' : rt.rt >= 1.2 ? 'red' : rt.rt >= 1.0 ? 'yellow' : 'green';
+                    const trendTone: Tone = rt.trend === 'growing' ? 'red' : rt.trend === 'declining' ? 'green' : rt.trend === 'insufficient_data' ? 'neutral' : 'yellow';
                     return (
                       <tr key={rt.disease}>
-                        <td className="font-medium text-sm">{rt.disease}</td>
-                        <td><span className="font-bold font-mono" style={{ color: rtColor }}>{rt.rt === null ? '—' : rt.rt.toFixed(2)}</span></td>
+                        <td><strong>{rt.disease}</strong></td>
+                        <td><span className="sa-num" style={{ fontWeight: 700, color: TONE_FILL[rtTone] }}>{rt.rt === null ? '—' : rt.rt.toFixed(2)}</span></td>
                         <td>
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs capitalize" style={{
-                              color: rt.trend === 'growing' ? 'var(--color-danger-text)' : rt.trend === 'declining' ? 'var(--color-success-text)' : rt.trend === 'insufficient_data' ? 'var(--text-muted)' : 'var(--color-warning-text)',
-                            }}>{rt.trend === 'insufficient_data' ? t('epidemic.notAvailable') : rt.trend}</span>
-                          </div>
+                          <span className="capitalize" style={{ color: TONE_FILL[trendTone] }}>
+                            {rt.trend === 'insufficient_data' ? t('epidemic.notAvailable') : rt.trend}
+                          </span>
                         </td>
-                        <td className="font-semibold">{totalCases.toLocaleString()}</td>
-                        <td style={{ color: 'var(--color-danger-text)' }}>{totalDeaths}</td>
-                        <td><span className="font-mono" style={{ color: parseFloat(cfr) > 5 ? 'var(--color-danger-text)' : 'var(--text-secondary)' }}>{cfr}%</span></td>
-                        <td>
-                          <Badge tone={rt.confidence === 'high' ? 'success' : rt.confidence === 'medium' ? 'warning' : 'danger'}>
-                            {rt.confidence}
-                          </Badge>
-                        </td>
+                        <td className="sa-num">{totalCases.toLocaleString()}</td>
+                        <td className="sa-num" style={{ color: totalDeaths > 0 ? 'var(--color-danger-text)' : undefined }}>{totalDeaths.toLocaleString()}</td>
+                        <td><span className="sa-num" style={{ color: parseFloat(cfr) > 5 ? 'var(--color-danger-text)' : undefined }}>{cfr}%</span></td>
+                        <td><Chip tone={confidenceTone(rt.confidence)}>{rt.confidence}</Chip></td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-              </div>
             </div>
-          </div>
-        )}
+          </section>
+        </div>
+      )}
 
-        {/* SYNDROMIC TAB */}
-        {activeTab === 'syndromic' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Exceeded thresholds */}
-              <div className="card-elevated">
-                <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                  <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    <Zap className="w-4 h-4" style={{ color: 'var(--color-danger-text)' }} />
-                    {t('epidemic.thresholdExceeded')}
-                  </h3>
-                </div>
-                <div className="p-3 space-y-2" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+      {/* SYNDROMIC TAB */}
+      {activeTab === 'syndromic' && (
+        <div className="space-y-4">
+          <div data-tour="epi-syndromic-panel" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Exceeded thresholds */}
+            <section className="gov-panel">
+              <PanelHead title={t('epidemic.thresholdExceeded')} />
+              {syndromicAlerts.filter(a => a.exceeded).length === 0 ? (
+                <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noThresholdsExceeded')}</p>
+              ) : (
+                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
                   {syndromicAlerts.filter(a => a.exceeded).map((alert, i) => (
-                    <div key={i} className="p-3 rounded-xl" style={{
-                      background: 'rgba(248,113,113,0.06)',
-                      border: '1px solid rgba(248,113,113,0.15)',
-                    }}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{alert.syndrome}</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--color-danger-text)' }}>
-                          {alert.percentChange > 0 ? '+' : ''}{alert.percentChange}%
-                        </span>
+                    <div key={i} className="epi-list-row" style={{ alignItems: 'flex-start' }}>
+                      <div className="epi-list-main" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+                        <span className="epi-list-title" style={{ fontSize: 13, fontWeight: 600 }}>{alert.syndrome}</span>
+                        <span className="epi-list-sub">{alert.state} · {t('epidemic.vsLastWeek', { count: alert.previousWeekCases })} · {t('epidemic.thresholdValue', { value: alert.threshold })}</span>
                       </div>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{alert.state}</p>
-                      <div className="flex items-center gap-3 mt-1.5 text-[11px]">
-                        <span style={{ color: 'var(--color-danger-text)' }}><strong>{alert.currentWeekCases}</strong> {t('epidemic.thisWeek')}</span>
-                        <span style={{ color: 'var(--text-muted)' }}>{t('epidemic.vsLastWeek', { count: alert.previousWeekCases })}</span>
-                        <span style={{ color: 'var(--text-muted)' }}>{t('epidemic.thresholdValue', { value: alert.threshold })}</span>
+                      <div className="epi-list-right" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <Chip tone="red">{alert.percentChange > 0 ? '+' : ''}{alert.percentChange}%</Chip>
+                        <span style={{ color: 'var(--color-danger-text)', fontWeight: 700 }}>{alert.currentWeekCases.toLocaleString()}</span>
                       </div>
                     </div>
                   ))}
-                  {syndromicAlerts.filter(a => a.exceeded).length === 0 && (
-                    <div className="text-center py-6">
-                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noThresholdsExceeded')}</p>
-                    </div>
-                  )}
                 </div>
-              </div>
+              )}
+            </section>
 
-              {/* Under watch */}
-              <div className="card-elevated">
-                <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                  <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    <Eye className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />
-                    {t('epidemic.underWatch')}
-                  </h3>
-                </div>
-                <div className="p-3 space-y-2" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            {/* Under watch */}
+            <section className="gov-panel">
+              <PanelHead title={t('epidemic.underWatch')} />
+              {syndromicAlerts.filter(a => !a.exceeded && a.percentChange > 0).length === 0 ? (
+                <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
+              ) : (
+                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
                   {syndromicAlerts.filter(a => !a.exceeded && a.percentChange > 0).slice(0, 10).map((alert, i) => (
-                    <div key={i} className="p-3 rounded-xl" style={{
-                      background: 'rgba(251,191,36,0.06)',
-                      border: '1px solid rgba(251,191,36,0.12)',
-                    }}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{alert.syndrome}</span>
-                        <span className="text-[10px]" style={{ color: 'var(--color-warning-text)' }}>+{alert.percentChange}%</span>
+                    <div key={i} className="epi-list-row">
+                      <div className="epi-list-main">
+                        <span className="epi-list-dot" style={{ background: 'var(--color-warning-600)' }} />
+                        <div>
+                          <div className="epi-list-title">{alert.syndrome}</div>
+                          <div className="epi-list-sub">{alert.state} · {t('epidemic.casesCount', { count: alert.currentWeekCases })} · {t('epidemic.percentOfThreshold', { percent: alert.threshold ? Math.round((alert.currentWeekCases / alert.threshold) * 100) : 0 })}</div>
+                        </div>
                       </div>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {alert.state} &middot; {t('epidemic.casesCount', { count: alert.currentWeekCases })} &middot; {t('epidemic.percentOfThreshold', { percent: alert.threshold ? Math.round((alert.currentWeekCases / alert.threshold) * 100) : 0 })}
-                      </p>
+                      <span style={{ color: 'var(--color-warning-text)', fontWeight: 600, fontSize: 12 }}>+{alert.percentChange}%</span>
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
+              )}
+            </section>
+          </div>
 
-            {/* Full syndromic table */}
-            <div className="card-elevated overflow-hidden">
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('epidemic.fullSyndromicMatrix')}</h3>
-              </div>
-              <div className="overflow-x-auto">
-              <table className="data-table" style={{ minWidth: 840 }}>
+          {/* Full syndromic table */}
+          <section className="gov-panel">
+            <PanelHead title={t('epidemic.fullSyndromicMatrix')} />
+            <div className="sa-table-scroll">
+              <table className="sa-table" style={{ minWidth: 840 }}>
                 <thead>
                   <tr>
                     <th>{t('epidemic.colSyndrome')}</th>
@@ -577,124 +491,107 @@ export default function EpidemicIntelligencePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {syndromicAlerts.slice(0, 15).map((alert, i) => (
+                  {syndromicAlerts.length === 0 ? (
+                    <tr><td colSpan={7} className="sa-empty">{t('epidemic.noActiveDiseaseAlerts')}</td></tr>
+                  ) : syndromicAlerts.slice(0, 15).map((alert, i) => (
                     <tr key={i}>
-                      <td className="font-medium text-sm">{alert.syndrome}</td>
-                      <td className="text-xs">{alert.state}</td>
-                      <td className="font-semibold">{alert.currentWeekCases}</td>
-                      <td className="text-xs">{alert.previousWeekCases}</td>
+                      <td><strong>{alert.syndrome}</strong></td>
+                      <td>{alert.state}</td>
+                      <td className="sa-num" style={{ fontWeight: 600 }}>{alert.currentWeekCases.toLocaleString()}</td>
+                      <td className="sa-num">{alert.previousWeekCases.toLocaleString()}</td>
                       <td>
-                        <span className="text-xs font-bold" style={{
+                        <span className="sa-num" style={{
+                          fontWeight: 700,
                           color: alert.percentChange > 20 ? 'var(--color-danger-text)' : alert.percentChange > 0 ? 'var(--color-warning-text)' : 'var(--color-success-text)',
                         }}>
                           {alert.percentChange > 0 ? '+' : ''}{alert.percentChange}%
                         </span>
                       </td>
-                      <td className="text-xs font-mono">{alert.threshold}</td>
-                      <td>
-                        {alert.exceeded ? (
-                          <Badge tone="danger">{t('epidemic.statusExceeded')}</Badge>
-                        ) : (
-                          <Badge tone="success">{t('epidemic.statusNormal')}</Badge>
-                        )}
-                      </td>
+                      <td className="sa-num">{alert.threshold}</td>
+                      <td>{alert.exceeded ? <Chip tone="red">{t('epidemic.statusExceeded')}</Chip> : <Chip tone="green">{t('epidemic.statusNormal')}</Chip>}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              </div>
             </div>
-          </div>
-        )}
+          </section>
+        </div>
+      )}
 
-        {/* GEOGRAPHIC TAB */}
-        {activeTab === 'geographic' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {geographicSpread.map(state => {
-                const color = state.riskScore >= 70 ? 'var(--color-danger-text)' : state.riskScore >= 50 ? '#FB923C' : state.riskScore >= 30 ? 'var(--color-warning)' : 'var(--color-success)';
-                return (
-                  <div key={state.state} className="card-elevated p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" style={{ color }} />
-                        <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{state.state}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('epidemic.totalCases', { count: state.totalCases })}</span>
-                        <div className="px-2 py-0.5 rounded-lg text-xs font-bold" style={{
-                          background: `${color}15`,
-                          color,
-                          border: `1px solid ${color}25`,
-                        }}>
-                          {t('epidemic.riskScore', { score: state.riskScore })}
-                        </div>
-                      </div>
-                    </div>
-                    {/* Risk bar */}
-                    <div className="h-2 rounded-full mb-3" style={{ background: 'var(--overlay-light)' }}>
-                      <div className="h-full rounded-full" style={{
-                        width: `${state.riskScore}%`,
-                        background: `linear-gradient(90deg, #4ADE80, ${color})`,
-                      }} />
-                    </div>
-                    {/* Diseases */}
-                    <div className="space-y-1.5">
+      {/* GEOGRAPHIC TAB */}
+      {activeTab === 'geographic' && (
+        <div data-tour="epi-geo-panel" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {geographicSpread.map(state => {
+            const tone = riskScoreTone(state.riskScore);
+            const fill = TONE_FILL[tone];
+            return (
+              <section key={state.state} className="gov-panel">
+                <div className="epi-state-head">
+                  <span className="epi-state-name">
+                    <MapPin className="w-3.5 h-3.5" style={{ color: fill }} />
+                    {state.state}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="gov-meta">{t('epidemic.totalCases', { count: state.totalCases })}</span>
+                    <Chip tone={tone}>{t('epidemic.riskScore', { score: state.riskScore })}</Chip>
+                  </div>
+                </div>
+                <div className="epi-state-body">
+                  <div className="epi-meter" style={{ width: '100%', marginBottom: 12 }}>
+                    <div className="epi-meter-fill" style={{ width: `${state.riskScore}%`, background: fill }} />
+                  </div>
+                  {state.diseases.length === 0 ? (
+                    <p className="text-[11px] text-center py-2" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
+                  ) : (
+                    <div>
                       {state.diseases.map((d, i) => (
-                        <div key={i} className="flex items-center justify-between p-2 rounded-lg text-xs" style={{ background: 'var(--overlay-subtle)' }}>
-                          <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full" style={{
-                              background: d.alertLevel === 'emergency' ? 'var(--color-danger)' : d.alertLevel === 'warning' ? 'var(--color-warning)' : 'var(--color-success)',
+                        <div key={i} className="epi-list-row" style={{ padding: '7px 0' }}>
+                          <div className="epi-list-main">
+                            <span className="epi-list-dot" style={{
+                              background: d.alertLevel === 'emergency' ? 'var(--color-danger-500)' : d.alertLevel === 'warning' ? 'var(--color-warning-600)' : 'var(--color-success-600)',
                             }} />
-                            <span style={{ color: 'var(--text-primary)' }}>{d.disease}</span>
+                            <span className="epi-list-title">{d.disease}</span>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-semibold">{t('epidemic.casesCount', { count: d.cases })}</span>
+                          <div className="epi-list-right">
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('epidemic.casesCount', { count: d.cases })}</span>
                             <span style={{ color: 'var(--color-danger-text)' }}>{t('epidemic.deathsCount', { count: d.deaths })}</span>
                           </div>
                         </div>
                       ))}
-                      {state.diseases.length === 0 && (
-                        <p className="text-[11px] text-center py-2" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
-                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {/* IDSR TAB */}
+      {activeTab === 'idsr' && (
+        <div className="space-y-4">
+          <div className="epi-stat-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+            <div className="epi-stat-tile">
+              <p className="epi-stat-label">{t('epidemic.reportingWeek')}</p>
+              <p className="epi-stat-value">{idsrReport.reportingWeek}</p>
+            </div>
+            <div className="epi-stat-tile">
+              <p className="epi-stat-label">{t('epidemic.facilitiesReportingLabel')}</p>
+              <p className="epi-stat-value" style={{ color: 'var(--accent-primary)' }}>{idsrReport.totalFacilitiesReporting.toLocaleString()}</p>
+            </div>
+            <div className="epi-stat-tile">
+              <p className="epi-stat-label">{t('epidemic.completeness')}</p>
+              <p className="epi-stat-value" style={{
+                color: idsrReport.completeness >= 80 ? 'var(--color-success-600)' : idsrReport.completeness >= 60 ? 'var(--color-warning-600)' : 'var(--color-danger-500)',
+              }}>{idsrReport.completeness}%</p>
+              <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('epidemic.whoTarget')}</p>
             </div>
           </div>
-        )}
 
-        {/* IDSR TAB */}
-        {activeTab === 'idsr' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="card-elevated p-4">
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('epidemic.reportingWeek')}</p>
-                <p className="text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{idsrReport.reportingWeek}</p>
-              </div>
-              <div className="card-elevated p-4">
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('epidemic.facilitiesReportingLabel')}</p>
-                <p className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>{idsrReport.totalFacilitiesReporting}</p>
-              </div>
-              <div className="card-elevated p-4">
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('epidemic.completeness')}</p>
-                <p className="text-2xl font-bold stat-value" style={{
-                  color: idsrReport.completeness >= 80 ? 'var(--color-success-text)' : idsrReport.completeness >= 60 ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
-                }}>{idsrReport.completeness}%</p>
-                <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('epidemic.whoTarget')}</p>
-              </div>
-            </div>
-
-            <div className="card-elevated overflow-hidden">
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <FileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  {t('epidemic.idsrWeeklyReport')}
-                </h3>
-              </div>
-              <div className="overflow-x-auto">
-              <table className="data-table" style={{ minWidth: 720 }}>
+          <section data-tour="epi-idsr-panel" className="gov-panel">
+            <PanelHead title={t('epidemic.idsrWeeklyReport')} />
+            <div className="sa-table-scroll">
+              <table className="sa-table" style={{ minWidth: 720 }}>
                 <thead>
                   <tr>
                     <th>{t('epidemic.colPriorityDisease')}</th>
@@ -706,120 +603,74 @@ export default function EpidemicIntelligencePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {idsrReport.diseases.map(d => (
+                  {idsrReport.diseases.length === 0 ? (
+                    <tr><td colSpan={6} className="sa-empty">{t('epidemic.noActiveDiseaseAlerts')}</td></tr>
+                  ) : idsrReport.diseases.map(d => (
                     <tr key={d.disease}>
-                      <td className="font-medium text-sm">{d.disease}</td>
-                      <td className="font-semibold">{d.cases.toLocaleString()}</td>
-                      <td style={{ color: d.deaths > 0 ? 'var(--color-danger-text)' : 'var(--text-secondary)' }}>{d.deaths}</td>
+                      <td><strong>{d.disease}</strong></td>
+                      <td className="sa-num" style={{ fontWeight: 600 }}>{d.cases.toLocaleString()}</td>
+                      <td className="sa-num" style={{ color: d.deaths > 0 ? 'var(--color-danger-text)' : undefined }}>{d.deaths.toLocaleString()}</td>
                       <td>
-                        <span className="font-mono text-sm" style={{
-                          color: d.cfr > 10 ? 'var(--color-danger-text)' : d.cfr > 5 ? '#FB923C' : 'var(--text-secondary)',
+                        <span className="sa-num" style={{
+                          color: d.cfr > 10 ? 'var(--color-danger-text)' : d.cfr > 5 ? 'var(--color-warning-text)' : undefined,
                         }}>{d.cfr}%</span>
                       </td>
                       <td>
                         <div className="flex flex-wrap gap-1">
                           {d.states.map(s => (
-                            <span key={s} className="text-[9px] px-1.5 py-0.5 rounded" style={{
-                              background: 'var(--overlay-medium)',
-                              color: 'var(--text-secondary)',
-                            }}>{s.replace('Northern ', 'N. ').replace('Western ', 'W. ').replace('Eastern ', 'E. ').replace('Central ', 'C. ')}</span>
+                            <span key={s} className="epi-chip epi-chip--neutral" style={{ textTransform: 'none' }}>
+                              {s.replace('Northern ', 'N. ').replace('Western ', 'W. ').replace('Eastern ', 'E. ').replace('Central ', 'C. ')}
+                            </span>
                           ))}
                         </div>
                       </td>
                       <td>
                         {d.cfr > 10 ? (
-                          <Badge tone="danger">{t('epidemic.severityCritical')}</Badge>
+                          <Chip tone="red">{t('epidemic.severityCritical')}</Chip>
                         ) : d.cfr > 5 ? (
-                          <Badge tone="warning">{t('epidemic.severityHigh')}</Badge>
+                          <Chip tone="yellow">{t('epidemic.severityHigh')}</Chip>
                         ) : d.cases > 50 ? (
-                          <Badge tone="info">{t('epidemic.severityWatch')}</Badge>
+                          <Chip tone="blue">{t('epidemic.severityWatch')}</Chip>
                         ) : (
-                          <Badge tone="success">{t('epidemic.severityLow')}</Badge>
+                          <Chip tone="green">{t('epidemic.severityLow')}</Chip>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* EWARS ALERTS TAB */}
+      {activeTab === 'alerts' && (
+        <div className="space-y-4">
+          <div className="epi-stat-row">
+            {(['critical', 'high', 'medium', 'low'] as const).map(sev => {
+              const count = ewarsAlerts.filter(a => a.severity === sev).length;
+              return (
+                <div key={sev} className="epi-stat-tile text-center">
+                  <p className="epi-stat-value" style={{ color: TONE_FILL[severityTone(sev)] }}>{count}</p>
+                  <p className="epi-stat-label">{sev}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <section className="gov-panel">
+            <PanelHead title={t('epidemic.tabAlerts')} meta={`${ewarsAlerts.length.toLocaleString()} total`} />
+            {ewarsAlerts.length === 0 ? (
+              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
+            ) : (
+              <div>
+                {ewarsAlerts.map((alert, i) => renderAlertRow(alert, i))}
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* EWARS ALERTS TAB */}
-        {activeTab === 'alerts' && (
-          <div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-              {['critical', 'high', 'medium', 'low'].map(sev => {
-                const count = ewarsAlerts.filter(a => a.severity === sev).length;
-                const colors = severityColors[sev];
-                return (
-                  <div key={sev} className="relative px-3 py-2.5 rounded-xl overflow-hidden text-center" style={{
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-light)',
-                    boxShadow: 'var(--card-shadow)',
-                  }}>
-                    <p className="text-2xl font-bold" style={{ color: colors.text }}>{count}</p>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{sev}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="space-y-2">
-              {ewarsAlerts.map((alert, i) => {
-                const sev = severityColors[alert.severity];
-                const isExpanded = expandedAlert === i;
-                return (
-                  <div key={i} className="card-elevated overflow-hidden">
-                    <div
-                      className="p-4 flex items-center justify-between cursor-pointer"
-                      onClick={() => setExpandedAlert(isExpanded ? null : i)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{
-                          background: 'transparent',
-                        }}>
-                          <AlertTriangle className="w-4 h-4" style={{ color: sev.text }} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{alert.disease}</span>
-                            <Badge tone={SEVERITY_TONE[alert.severity] ?? 'neutral'} uppercase>
-                              {alert.severity.toUpperCase()}
-                            </Badge>
-                            <Badge tone="neutral">
-                              {alert.alertType.replace(/_/g, ' ')}
-                            </Badge>
-                          </div>
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{alert.state}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <span className="text-lg font-bold" style={{ color: sev.text }}>{alert.cases}</span>
-                          <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>{t('epidemic.cases')}</span>
-                          {alert.deaths > 0 && (
-                            <span className="text-xs ml-2" style={{ color: 'var(--color-danger-text)' }}>{t('epidemic.deathsCount', { count: alert.deaths })}</span>
-                          )}
-                        </div>
-                        {isExpanded ? <ChevronDown className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /> : <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
-                      </div>
-                    </div>
-                    {isExpanded && (
-                      <div className="px-4 pb-4 pt-0 border-t" style={{ borderColor: 'var(--border-light)' }}>
-                        <div className="mt-3 p-3 rounded-lg text-sm" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)' }}>
-                          {alert.message}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </main>
-    </>
+            )}
+          </section>
+        </div>
+      )}
+    </main>
   );
 }

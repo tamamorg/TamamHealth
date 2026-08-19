@@ -60,6 +60,8 @@ async function postHandler(request: NextRequest) {
     }
     const { sanitizePayload } = await import('@/lib/validation');
     body = sanitizePayload(body);
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     const action = body.action as string;
     // Decrement stock (when dispensing)
     if (action === 'decrement') {
@@ -74,6 +76,7 @@ async function postHandler(request: NextRequest) {
         body.medicationName as string,
         auth.hospitalId,
         Number(body.quantity) || 1,
+        scope,
       );
       return NextResponse.json({ success: true });
     }
@@ -85,14 +88,14 @@ async function postHandler(request: NextRequest) {
         reorderLevel: body.reorderLevel !== undefined ? Number(body.reorderLevel) : undefined,
         expiryDate: body.expiryDate as string | undefined,
         batchNumber: body.batchNumber as string | undefined,
-      } as Parameters<typeof updateInventoryItem>[1]);
+      } as Parameters<typeof updateInventoryItem>[1], scope);
       if (!updated) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
       return NextResponse.json({ item: updated });
     }
     // Delete item
     if (action === 'delete' && body.itemId) {
       const { deleteInventoryItem } = await import('@/lib/services/pharmacy-inventory-service');
-      const deleted = await deleteInventoryItem(body.itemId as string);
+      const deleted = await deleteInventoryItem(body.itemId as string, scope);
       if (!deleted) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
       return NextResponse.json({ deleted: true });
     }

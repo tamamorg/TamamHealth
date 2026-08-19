@@ -23,18 +23,18 @@ export async function GET(request: NextRequest) {
     if (!hasRole(auth, READ_ROLES)) return forbidden();
     const { getAllHospitals, getHospitalById } = await import('@/lib/services/hospital-service');
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
     if (id) {
       // Get single hospital by ID
-      const hospital = await getHospitalById(id);
+      const hospital = await getHospitalById(id, scope);
       if (!hospital) {
         return NextResponse.json({ error: 'Hospital not found' }, { status: 404 });
       }
       return NextResponse.json({ hospital });
     }
     // default: all hospitals with scope
-    const scope = buildScopeFromAuth(auth);
     const hospitals = await getAllHospitals(scope);
     return NextResponse.json({ hospitals, total: hospitals.length });
   } catch (err) {
@@ -59,12 +59,13 @@ async function postHandler(request: NextRequest) {
     // Update hospital status
     if (action === 'update' && body.id) {
       const { updateHospitalStatus } = await import('@/lib/services/hospital-service');
+      const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
       const updated = await updateHospitalStatus(body.id as string, {
         status: body.status as string | undefined,
         syncStatus: body.syncStatus as string | undefined,
         patientCount: body.patientCount !== undefined ? Number(body.patientCount) : undefined,
         todayVisits: body.todayVisits !== undefined ? Number(body.todayVisits) : undefined,
-      } as Parameters<typeof updateHospitalStatus>[1]);
+      } as Parameters<typeof updateHospitalStatus>[1], buildScopeFromAuth(auth));
       if (!updated) return NextResponse.json({ error: 'Hospital not found' }, { status: 404 });
       return NextResponse.json({ hospital: updated });
     }

@@ -72,6 +72,7 @@ async function postHandler(request: NextRequest) {
     }
     const { createPatient } = await import('@/lib/services/patient-service');
     const { sanitizePayload } = await import('@/lib/validation');
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
     // Sanitize text fields to prevent stored XSS
     const sanitized = sanitizePayload(body);
     // Tenancy is stamped from the verified auth claim, never trusted from the
@@ -82,7 +83,10 @@ async function postHandler(request: NextRequest) {
       else delete sanitized.orgId;
     }
     sanitized.createdBy = auth.sub;
-    const patient = await createPatient(sanitized as Parameters<typeof createPatient>[0]);
+    // Scope so duplicate-detection and geocode assignment don't read/disclose
+    // across tenant boundaries (see createPatient's own docs).
+    const scope = buildScopeFromAuth(auth);
+    const patient = await createPatient(sanitized as Parameters<typeof createPatient>[0], scope);
     return NextResponse.json({ patient }, { status: 201 });
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'ValidationError') {

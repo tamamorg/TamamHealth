@@ -18,12 +18,18 @@ export interface RoleRouteConfig {
   readonly defaultDashboard: string;
 }
 
+// Nurse-family roles (nurse, triage_nurse, rooming_nurse) no longer have a
+// standalone station dashboard — they land on the shared clinical workspace
+// at /dashboard, Epic Hyperspace-style, role-adapted the same way doctors and
+// clinicians already do. The former /dashboard/nurse station pages (triage
+// board, ward roster, MAR, handoff) are retired in favour of /triage,
+// /wards, /wards/mar, and /wards/handoff below.
 const NURSE_MODULE_ROUTES = [
   // `/triage` is the per-patient triage page the station's queue rows open —
   // the same ETAT assessment, pinned to one patient.
-  '/dashboard/nurse', '/patients', '/triage', '/rooming', '/messages',
+  '/dashboard', '/patients', '/triage', '/rooming', '/messages',
   '/lab', '/immunizations', '/anc', '/births', '/deaths',
-  '/settings', '/appointments', '/patient-intake',
+  '/settings', '/appointments',
   // Nurses document their own encounters (the Nurse Visit note type), so the
   // notes module is part of the nursing station, not a clinician-only surface.
   '/notes',
@@ -86,7 +92,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
       '/settings',
-      '/appointments', '/telehealth', '/patient-intake',
+      '/appointments', '/telehealth',
       '/wards', '/alerts', '/blood-bank',
     ],
     defaultDashboard: '/dashboard',
@@ -100,7 +106,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
       '/settings',
-      '/appointments', '/telehealth', '/patient-intake',
+      '/appointments', '/telehealth',
       '/wards', '/alerts', '/blood-bank',
     ],
     defaultDashboard: '/dashboard',
@@ -108,24 +114,26 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
 
   nurse: {
     // Ward & bedside care, immunisation, ANC support, vital-event documentation.
-    // Not payment processing (cashier/biller).
+    // Not payment processing (cashier/biller). Lands on the shared clinical
+    // workspace (/dashboard), role-adapted for nursing.
     allowed: NURSE_MODULE_ROUTES,
-    defaultDashboard: '/dashboard/nurse',
+    defaultDashboard: '/dashboard',
   },
 
   midwife: {
     // ICM scope: antenatal care, conducting deliveries, postnatal & newborn
-    // care, obstetric referrals, and maternal/perinatal vital events. Reuses the
-    // nurse station dashboard. No general consultation/prescribing (clinician),
-    // no payment handling, and no laboratory operations page — ANC lab results
-    // are reviewed inside the patient/ANC record, not the lab orders queue.
+    // care, obstetric referrals, and maternal/perinatal vital events. Reuses
+    // the shared clinical workspace (/dashboard), role-adapted for maternity.
+    // No general consultation/prescribing (clinician), no payment handling,
+    // and no laboratory operations page — ANC lab results are reviewed inside
+    // the patient/ANC record, not the lab orders queue.
     allowed: [
-      '/dashboard/nurse', '/patients', '/triage', '/messages',
+      '/dashboard', '/patients', '/triage', '/messages',
       '/anc', '/births', '/deaths', '/immunizations',
-      '/wards', '/referrals', '/appointments', '/patient-intake',
+      '/wards', '/referrals', '/appointments',
       '/notes', '/settings',
     ],
-    defaultDashboard: '/dashboard/nurse',
+    defaultDashboard: '/dashboard',
   },
 
   lab_tech: {
@@ -152,9 +160,8 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
   },
 
   front_desk: {
-    // Reception: registration, appointment booking, referral intake, and
-    // reviewing patient-submitted intake forms before they're merged into
-    // a chart. Money handling moves to the dedicated cashier role; bed/ward
+    // Reception: registration, appointment booking, and referral intake.
+    // Money handling moves to the dedicated cashier role; bed/ward
     // management is a nursing function. Insurance claims belong to the
     // medical biller.
     allowed: [
@@ -162,7 +169,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // appointment, not a module of its own.
       '/dashboard/front-desk', '/patients', '/referrals', '/messages',
       '/settings',
-      '/appointments', '/patient-intake',
+      '/appointments',
 
     ],
     defaultDashboard: '/dashboard/front-desk',
@@ -224,7 +231,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/it', '/system-admin',
       '/epidemic-intelligence', '/mch-analytics', '/my-facility', '/facility-overview',
       '/appointments', '/telehealth', '/facility-assessments', '/data-quality',
-      '/billing', '/payments', '/payments/claims', '/patient-intake',
+      '/billing', '/payments', '/payments/claims',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       // The staff list. The HR module's own "Staff Roster" was the same roster
       // under another name, so the accounts page is now the only one.
@@ -326,15 +333,15 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
   },
 
   triage_nurse: {
-    // Specialized nurse login, same complete nurse station module.
+    // Specialized nurse login, same merged clinical workspace as nurse.
     allowed: NURSE_MODULE_ROUTES,
-    defaultDashboard: '/dashboard/nurse',
+    defaultDashboard: '/dashboard',
   },
 
   rooming_nurse: {
-    // Specialized nurse login, same complete nurse station module.
+    // Specialized nurse login, same merged clinical workspace as nurse.
     allowed: NURSE_MODULE_ROUTES,
-    defaultDashboard: '/dashboard/nurse',
+    defaultDashboard: '/dashboard',
   },
 
   clinician: {
@@ -342,7 +349,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
       '/appointments', '/telehealth', '/wards', '/alerts', '/settings',
-      '/blood-bank', '/patient-intake',
+      '/blood-bank',
     ],
     defaultDashboard: '/dashboard',
   },

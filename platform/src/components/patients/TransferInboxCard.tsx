@@ -110,7 +110,7 @@ export default function TransferInboxCard({ limit = 6 }: { limit?: number }) {
                     : <ArrowRightLeft className="w-4 h-4" style={{ color: 'var(--color-warning-text)' }} />}
                 </div>
                 <button
-                  className="flex-1 min-w-0 text-left"
+                  className="flex-1 min-w-0 text-start"
                   onClick={() => router.push(`/patients/${t.patientId}?tab=referrals`)}
                 >
                   <div className="text-sm font-semibold truncate"
@@ -158,7 +158,7 @@ export default function TransferInboxCard({ limit = 6 }: { limit?: number }) {
           <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Transfer flow</span>
           <span className="px-1.5 py-0.5 rounded" style={{ background: 'var(--gold-100, #fef3c7)' }}>{rows.length} awaiting you</span>
           <span className="px-1.5 py-0.5 rounded" style={{ background: 'var(--iris-100, #e0e7ff)' }}>{outgoing.length} sent and open</span>
-          <button className="underline ml-auto" onClick={() => router.push('/notifications?type=transfer')}>View all transfer alerts</button>
+          <button className="underline ms-auto" onClick={() => router.push('/notifications?type=transfer')}>View all transfer alerts</button>
         </div>
       )}
 

@@ -155,6 +155,9 @@ export async function createUser(
   }
 
   const ROLES_WITHOUT_HOSPITAL: UserRole[] = ['super_admin', 'org_admin', 'government', 'county_health_director'];
+  if (data.role === 'org_admin' && !data.orgId) {
+    throw new Error('Organization administrators must be assigned to an organization');
+  }
   if (!ROLES_WITHOUT_HOSPITAL.includes(data.role) && (!data.hospitalId || !data.hospitalName)) {
     throw new Error('Clinical users must be assigned to a hospital');
   }
@@ -220,6 +223,7 @@ interface UpdateUserData {
   photoUrl?: string | null;
   department?: string;
   specialty?: string;
+  orgId?: string;
 }
 
 export async function updateUser(
@@ -240,9 +244,15 @@ export async function updateUser(
     throw new Error(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
   }
 
+  // API callers intentionally omit fields on partial edits. Spreading those
+  // `undefined` values over the stored document erased role/name/scope data
+  // when an administrator changed just one field (for example orgId).
+  const definedChanges = Object.fromEntries(
+    Object.entries(data).filter(([, value]) => value !== undefined),
+  ) as UpdateUserData;
   const updated: UserDoc = {
     ...existing,
-    ...data,
+    ...definedChanges,
     // `null` is the caller asking to clear the photo. Spread as-is it would
     // persist a null the readers all have to special-case, so it becomes an
     // absent field — the same shape as an account that never had one.
@@ -251,6 +261,10 @@ export async function updateUser(
     _rev: existing._rev,
     updatedAt: new Date().toISOString(),
   };
+
+  if (updated.role === 'org_admin' && !updated.orgId) {
+    throw new Error('Organization administrators must be assigned to an organization');
+  }
 
   const resp = await db.put(updated);
   updated._rev = resp.rev;

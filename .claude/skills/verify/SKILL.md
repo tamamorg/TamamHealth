@@ -18,16 +18,19 @@ The app is the Next.js project in `platform/`.
 
 - The account-picker page was removed 2026-08-13: `/login` now goes straight to the
   sign-in form. Fill `#tl-name` (username, e.g. `desk.amira`, `clinician.peter`) and
-  `#tl-password`, then click `.tl-submit`. The Role combobox may stay empty ("Your
-  assigned role").
+  `#tl-password`, then submit with `button[type=submit].lg-btn` (the web-v3 login
+  rev renamed `.tl-submit` → `.lg-btn`; input ids are unchanged). The Role combobox
+  may stay empty ("Your assigned role"). `superadmin` / `Superadmin!` opens /admin.
 - Passwords: fetch `GET /api/demo-credentials` and read `profiles[].password` for the
   username (demo mode only). Fallback: `platform/.seed-credentials.json` (gitignored;
   JSON after a `#` comment line — strip up to the first `{` before parsing).
   Usernames/roles are defined in `platform/src/lib/db-seed.ts` (e.g. `co.deng` =
   clinical officer, `dr.wani` = doctor, `desk.amira` = receptionist).
 - Gotcha: the submit button is disabled until the browser-side PouchDB finishes seeding
-  ("Initializing offline database…") — wait for `.tl-submit:not([disabled])`, can take
-  tens of seconds on a fresh browser profile.
+  ("Initializing offline database…") — wait for `button[type=submit].lg-btn:not([disabled])`,
+  can take tens of seconds on a fresh browser profile.
+- A guided tour ("Step 1 of 8") can pop over role dashboards — dismiss with
+  `button[aria-label="Close tour"]` before screenshotting.
 
 ## Drive
 

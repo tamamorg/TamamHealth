@@ -45,6 +45,8 @@ interface CreateLedgerEntryInput {
   facilityId: string;
   orgId?: string;
   createdBy?: string;
+  /** Stable caller-owned key for retry-safe financial mutations. */
+  idempotencyKey?: string;
 }
 
 export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<LedgerEntryDoc> {
@@ -56,7 +58,9 @@ export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<
   const runningBalance = Math.round((currentBalance + input.amount) * 100) / 100;
 
   const doc: LedgerEntryDoc = {
-    _id: `ledger-${uuidv4().slice(0, 12)}`,
+    _id: input.idempotencyKey
+      ? `ledger-idem-${input.idempotencyKey.replace(/[^A-Za-z0-9._:-]/g, '').slice(0, 120)}`
+      : `ledger-${uuidv4().slice(0, 12)}`,
     type: 'ledger_entry',
     patientId: input.patientId,
     encounterId: input.encounterId,
@@ -75,7 +79,15 @@ export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<
     createdBy: input.createdBy,
   };
 
-  const resp = await db.put(doc);
+  let resp;
+  try {
+    resp = await db.put(doc);
+  } catch (error) {
+    if (input.idempotencyKey && (error as { status?: number }).status === 409) {
+      return await db.get(doc._id) as LedgerEntryDoc;
+    }
+    throw error;
+  }
   doc._rev = resp.rev;
   emitSyncEvent({
     resourceType: 'ledger_entry',

@@ -17,7 +17,7 @@ import {
 import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import { useTasks } from '@/lib/hooks/useTasks';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { patientFullName } from '@/lib/patient-utils';
+import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import type { ClinicianTaskDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 
@@ -232,7 +232,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                       placeholder="Link a patient (optional)"
                       aria-label="Link a patient"
                       className="text-[12px]"
-                      style={{ ...fieldStyle, paddingLeft: 30, width: '100%' }}
+                      style={{ ...fieldStyle, paddingInlineStart: 30, width: '100%' }}
                     />
                   </div>
                   <button
@@ -256,7 +256,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                           setShowPatientSearch(false);
                           titleRef.current?.focus();
                         }}
-                        className="w-full text-left px-3 py-2 text-[12px] flex items-center justify-between"
+                        className="w-full text-start px-3 py-2 text-[12px] flex items-center justify-between"
                         style={{ background: 'var(--bg-card-solid)', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-light)' }}
                       >
                         <span className="font-semibold">{patientFullName(p)}</span>
@@ -338,7 +338,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                           </button>
                         </div>
                       )}
-                      {task.patientName && <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>re: {task.patientName}</div>}
+                      {task.patientName && <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>re: {shortenPersonName(task.patientName)}</div>}
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         {(!d || d.overdue || d.text === 'Today') && (
                           <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: d?.overdue ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>
@@ -378,7 +378,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
 
           {completed.length > 0 && (
             <div>
-              <button onClick={() => setShowDone(s => !s)} aria-expanded={showDone} className="w-full text-left px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)' }}>
+              <button onClick={() => setShowDone(s => !s)} aria-expanded={showDone} className="w-full text-start px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)' }}>
                 {showDone ? '▾' : '▸'} Completed ({completed.length})
               </button>
               {showDone && completed.map(task => (

@@ -318,12 +318,12 @@ export default function BookingFlow({
             <label className="booking-check">
               <input type="checkbox" checked={draft.consentPrivacy}
                 onChange={e => set('consentPrivacy', e.target.checked)} />
-              <span style={{ fontWeight: 500 }}>{policy.consentTextPrivacy}</span>
+              <span style={{ fontWeight: 600 }}>{policy.consentTextPrivacy}</span>
             </label>
             <label className="booking-check">
               <input type="checkbox" checked={draft.consentSms}
                 onChange={e => set('consentSms', e.target.checked)} />
-              <span style={{ fontWeight: 500 }}>{policy.consentTextSms}</span>
+              <span style={{ fontWeight: 600 }}>{policy.consentTextSms}</span>
             </label>
             {/* The consent above names two documents; these are how the patient
                 actually reads them — in a new tab, without an account, and

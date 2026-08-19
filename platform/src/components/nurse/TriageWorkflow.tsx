@@ -12,12 +12,14 @@ import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
 import type { PatientDoc, TriageDisposition } from '@/lib/db-types';
 import { jubaDate } from '@/lib/time-juba';
 import { useToast } from '@/components/Toast';
-import { patientAge, patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
+import { patientAge, patientFullName, patientGenderAge, initials, shortenPersonName } from '@/lib/patient-utils';
 import {
   getTriageVitalWarnings,
   isLowerTriagePriority,
+  isVitalInRange,
   recommendTriagePriority,
   validateTriageVitals,
+  VITAL_RANGES,
   type TriageVitalField,
   type TriageVitalWarning,
 } from '@/lib/clinical/vitals';
@@ -672,12 +674,12 @@ export default function TriageWorkflow({
                   }}
                 />
                 {triagePatientMatches.length > 0 && (
-                  <div className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-10" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg)' }}>
+                  <div className="absolute start-0 end-0 mt-1 rounded-xl overflow-hidden z-10" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg)' }}>
                     {triagePatientMatches.map(p => (
                       <button
                         key={p._id}
                         onClick={() => { setTriagePatientId(p._id); setTriagePatientSearch(''); setOverrideVitalUrgency(false); setVitalUrgencyOverrideReason(''); }}
-                        className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--overlay-subtle)]"
+                        className="w-full text-start px-3 py-2 text-xs hover:bg-[var(--overlay-subtle)]"
                         style={{ borderBottom: '1px solid var(--border-light)' }}
                       >
                         <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{patientFullName(p)}</div>
@@ -813,7 +815,7 @@ export default function TriageWorkflow({
             {/* Breathing */}
             <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center gap-2 mb-2">
-                <Activity className="w-4 h-4" style={{ color: '#A855F7' }} />
+                <Activity className="w-4 h-4" style={{ color: 'var(--chart-3)' }} />
                 <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.breathing')}</span>
               </div>
               <div className="flex gap-2">
@@ -844,7 +846,7 @@ export default function TriageWorkflow({
             {/* Circulation */}
             <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center gap-2 mb-2">
-                <Heart className="w-4 h-4" style={{ color: '#EC4899' }} />
+                <Heart className="w-4 h-4" style={{ color: 'var(--chart-2)' }} />
                 <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.circulation')}</span>
               </div>
               <div className="flex gap-2">
@@ -1164,10 +1166,10 @@ export default function TriageWorkflow({
                             entry away. On that page itself the name is already
                             the subject, so it is plain text. */}
                         {lockedPatientId ? (
-                          <span className="ehr-queue-name">{ti.patientName}</span>
+                          <span className="ehr-queue-name">{shortenPersonName(ti.patientName)}</span>
                         ) : (
                           <button type="button" className="ehr-queue-name" onClick={() => router.push(`/triage/${ti.patientId}`)} title={`Triage ${ti.patientName}`}>
-                            {ti.patientName}
+                            {shortenPersonName(ti.patientName)}
                           </button>
                         )}
                         <p>{ti.chiefComplaint || t('nurse.noComplaintRecorded')}</p>

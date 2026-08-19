@@ -11,6 +11,7 @@
  */
 
 import { Video, MapPin } from '@/components/icons/lucide';
+import { initials } from '@/lib/patient-utils';
 import { to12Hour } from './SlotPicker';
 
 /** "2026-08-10" + "09:00" → "Monday, August 10, 9:00 AM". */
@@ -21,15 +22,6 @@ export function formatSlotMoment(date: string, startTime: string): string {
     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
   });
   return `${day}, ${to12Hour(startTime)}`;
-}
-
-function monogram(name: string): string {
-  const words = name
-    .replace(/^(Dr\.?|CO|Prof\.?|Mr\.?|Mrs\.?|Ms\.?)\s+/i, '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  return words.slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?';
 }
 
 export default function BookingSummaryHeader({
@@ -70,7 +62,7 @@ export default function BookingSummaryHeader({
           backgroundSize: 'cover', backgroundPosition: 'center',
         }}
       >
-        {!photoUrl && monogram(providerName || '?')}
+        {!photoUrl && initials(providerName || '?')}
       </div>
 
       <div style={{ minWidth: 0, flex: 1 }}>

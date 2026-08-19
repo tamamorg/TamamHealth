@@ -56,7 +56,7 @@ export async function createProblem(
     'PROBLEM_CREATED',
     undefined,
     data.recordedByName,
-    `Problem ${doc._id}: ${doc.name} for ${doc.patientName || doc.patientId} (${doc.status})`,
+    `Problem record ${doc._id} created; status=${doc.status}`,
   );
   emitSyncEvent({
     resourceType: 'problem',
@@ -104,7 +104,7 @@ export async function deleteProblem(id: string): Promise<boolean> {
     const doc = await db.get(id);
     const typed = doc as unknown as ProblemDoc;
     await db.remove(doc);
-    await logAuditSafe('DELETE_PROBLEM', undefined, undefined, `Problem ${id}: ${typed.name} for ${typed.patientName || typed.patientId}`);
+    await logAuditSafe('DELETE_PROBLEM', undefined, undefined, `Problem record ${id} deleted`);
     emitSyncEvent({
       resourceType: 'problem',
       resourceId: id,

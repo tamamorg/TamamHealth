@@ -13,7 +13,7 @@ import { usePharmacyInventory } from '@/lib/hooks/usePharmacyInventory';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
-import { medications } from '@/data/mock';
+import { medications } from '@/lib/data/formulary';
 import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
 import { medicationMatches } from '@/lib/services/dispensing-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -23,6 +23,7 @@ import { usePatientBalances } from '@/lib/hooks/usePatientBalances';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { prescription as rxLifecycle } from '@/lib/clinical-flow/order-lifecycles';
 import Select from '@/components/Select';
+import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 
 const UNITS = ['tablets', 'vials', 'bottles', 'sachets', 'tubes', 'ampoules', 'sachet', 'ml'];
 
@@ -48,7 +49,8 @@ function prescriptionSig(rx: { dose?: string; frequency?: string; duration?: str
 }
 
 export default function PharmacyPage() {
-  const [activeTab, setActiveTab] = useState<PharmacyTab>('queue');
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<PharmacyTab>(() => searchParams.get('panel') === 'stock' ? 'inventory' : 'queue');
   // Per-column filters: queue table (q*) + inventory table (medication name).
   // Category / stock-status filtering now lives in the shared header + table
   // toolbar (categoryFilter / statusFilter below) rather than per-column funnels.
@@ -68,7 +70,6 @@ export default function PharmacyPage() {
   // Patients tab — which patient's prescription view is open (patient _id)
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const { globalSearch, setGlobalSearch, currentUser } = useApp();
-  const searchParams = useSearchParams();
   // Deep link from a patient chart: /pharmacy?patient=<name> pre-filters via
   // the shared global search (combined with the table's own search below).
   useEffect(() => {
@@ -713,25 +714,22 @@ export default function PharmacyPage() {
 
   // Print a reorder / purchase order from the items currently needing restock.
   const handlePrintReorder = () => {
-    const w = window.open('', '_blank');
-    if (!w) return;
     const rows = reorderList.map(i =>
-      `<tr><td>${i.medicationName}</td><td>${i.category}</td><td>${i.stockLevel} ${i.unit}</td><td>${i.reorderLevel}</td><td>${orderQtyFor(i)}</td></tr>`
+      `<tr><td>${escapeHtml(i.medicationName)}</td><td>${escapeHtml(i.category)}</td><td>${escapeHtml(`${i.stockLevel} ${i.unit}`)}</td><td>${escapeHtml(i.reorderLevel)}</td><td>${escapeHtml(orderQtyFor(i))}</td></tr>`
     ).join('');
-    w.document.write(`<html><head><title>${t('pharmacy.purchaseOrder')}</title><style>
+    const html = `<html><head><title>${escapeHtml(t('pharmacy.purchaseOrder'))}</title><style>
       body{font-family:system-ui,sans-serif;padding:30px;} h1{font-size:18px;margin-bottom:4px;} h2{font-size:13px;color:#666;margin-bottom:18px;}
       table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:8px;text-align:left;font-size:13px;} th{background:#f3f4f6;}
       .footer{margin-top:36px;font-size:12px;color:#888;}
     </style></head><body>
-      <h1>${t('pharmacy.purchaseOrderRestock')}</h1>
-      <h2>${currentUser?.hospitalName || ''} · ${new Date().toLocaleDateString('en-GB')}</h2>
+      <h1>${escapeHtml(t('pharmacy.purchaseOrderRestock'))}</h1>
+      <h2>${escapeHtml(currentUser?.hospitalName || '')} · ${escapeHtml(new Date().toLocaleDateString('en-GB'))}</h2>
       <table><thead><tr>
-        <th>${t('pharmacy.medication')}</th><th>${t('pharmacy.category')}</th><th>${t('pharmacy.currentStock')}</th><th>${t('pharmacy.reorderLevel')}</th><th>${t('pharmacy.orderQty')}</th>
+        <th>${escapeHtml(t('pharmacy.medication'))}</th><th>${escapeHtml(t('pharmacy.category'))}</th><th>${escapeHtml(t('pharmacy.currentStock'))}</th><th>${escapeHtml(t('pharmacy.reorderLevel'))}</th><th>${escapeHtml(t('pharmacy.orderQty'))}</th>
       </tr></thead><tbody>${rows}</tbody></table>
-      <div class="footer">${t('pharmacy.authorizedBy')}: _____________________ &nbsp;&nbsp; ${t('pharmacy.dateLabel')}: _____________________</div>
-    </body></html>`);
-    w.document.close();
-    w.print();
+      <div class="footer">${escapeHtml(t('pharmacy.authorizedBy'))}: _____________________ &nbsp;&nbsp; ${escapeHtml(t('pharmacy.dateLabel'))}: _____________________</div>
+    </body></html>`;
+    openIsolatedHtmlWindow(html, '', true);
   };
 
   // Export the rows currently visible on the active tab to CSV — mirrors the
@@ -882,7 +880,7 @@ export default function PharmacyPage() {
                 </EhrListHeaderButton>
                 {showHeaderFilters && (
                   <div
-                    className="absolute right-0 mt-2 rounded-2xl overflow-hidden z-50"
+                    className="absolute end-0 mt-2 rounded-2xl overflow-hidden z-50"
                     style={{ width: 'min(92vw, 420px)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
                   >
                     <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
@@ -936,7 +934,7 @@ export default function PharmacyPage() {
                 </EhrListHeaderButton>
               )}
               {canDispense && (
-                <button onClick={() => setShowStockInModal(true)} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap' }}>
+                <button data-tour="pharmacy-receive-stock" onClick={() => setShowStockInModal(true)} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap' }}>
                   <Plus className="w-4 h-4" /> {t('pharmacy.receiveStock')}
                 </button>
               )}
@@ -1002,7 +1000,7 @@ export default function PharmacyPage() {
                             showAvatar
                             size={40}
                             secondaryText={patientById.get(rx.patientId)?.hospitalNumber || 'ID not recorded'}
-                            nameClassName="text-sm font-medium"
+                            nameClassName="text-sm"
                           />
                         </td>
                         <td className="text-sm">
@@ -1086,7 +1084,7 @@ export default function PharmacyPage() {
                   <tr key={item._id}>
                     {/* Icon dropped: stock state is already its own Status
                         column, so the glyph was a second, weaker copy of it. */}
-                    <td className="font-medium text-sm">{item.medicationName}</td>
+                    <td className="font-semibold text-sm">{item.medicationName}</td>
                     <td><span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-medium)', color: 'var(--text-secondary)' }}>{item.category}</span></td>
                     <td>
                       <div className="flex items-center gap-2">
@@ -1147,7 +1145,7 @@ export default function PharmacyPage() {
                   <tr><td colSpan={6} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.allStockAdequate')}</td></tr>
                 ) : reorderList.map(item => (
                   <tr key={item._id}>
-                    <td className="font-medium text-sm">
+                    <td className="font-semibold text-sm">
                       <div className="flex items-center gap-2">
                         <div className="icon-box-sm">
                           {item.status === 'critical'
@@ -1158,7 +1156,7 @@ export default function PharmacyPage() {
                       </div>
                     </td>
                     <td><span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-medium)', color: 'var(--text-secondary)' }}>{item.category}</span></td>
-                    <td className="font-semibold text-sm" style={{ color: item.status === 'critical' ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>{item.stockLevel} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
+                    <td className="font-semibold text-sm" style={{ color: item.status === 'critical' ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>{item.stockLevel} <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
                     <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.reorderLevel}</td>
                     <td className="font-semibold text-sm" style={{ color: 'var(--accent-primary)' }}>{orderQtyFor(item)} {item.unit}</td>
                     <td>
@@ -1195,7 +1193,7 @@ export default function PharmacyPage() {
                       {/* Icon dropped: the same calendar on every row said
                           nothing the Expiry and Status columns don't already
                           say, in colour, further right. */}
-                      <td className="font-medium text-sm">{item.medicationName}</td>
+                      <td className="font-semibold text-sm">{item.medicationName}</td>
                       <td className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{item.batchNumber}</td>
                       <td className="text-sm">{item.stockLevel} <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
                       <td className="text-xs" style={{ color: expired ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>{item.expiryDate}</td>
@@ -1231,7 +1229,7 @@ export default function PharmacyPage() {
                         color: okPct > 80 ? 'var(--color-success-text)' : okPct > 60 ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
                       }}>{okPct}%</span>
                     </div>
-                    <p className="text-lg font-bold mb-1.5">{cat.units.toLocaleString()} <span className="text-[10px] font-normal" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.stockLabel')}</span></p>
+                    <p className="text-lg font-bold mb-1.5">{cat.units.toLocaleString()} <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.stockLabel')}</span></p>
                     <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: 'var(--border-light)' }}>
                       <div className="h-full rounded-full" style={{ width: `${okPct}%`, background: okPct > 80 ? 'var(--color-success)' : okPct > 60 ? 'var(--color-warning)' : 'var(--color-danger)' }} />
                     </div>
@@ -1259,9 +1257,9 @@ export default function PharmacyPage() {
                   const pending = rxs.filter(r => isActivePharmacyStage(pharmacyStage(r)) && r.status !== 'discontinued').length;
                   return (
                     <button key={p._id} onClick={() => setSelectedPatient(p._id)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--table-row-hover)]">
+                      className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-[var(--table-row-hover)]">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{patientName(p)}</p>
+                        <p className="text-sm font-semibold truncate">{patientName(p)}</p>
                         <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
                           {p.hospitalNumber}{rxs.length ? ` · ${t('pharmacy.prescriptionsOnRecord', { count: rxs.length })}` : ''}
                         </p>
@@ -1317,7 +1315,7 @@ export default function PharmacyPage() {
                       const stage = pharmacyStage(rx);
                       return (
                         <tr key={rx._id}>
-                          <td className="font-medium text-sm">{rx.medication}</td>
+                          <td className="font-semibold text-sm">{rx.medication}</td>
                           <td className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{prescriptionSig(rx)}</td>
                           <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{rx.prescribedBy}</td>
                           <td className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{rx.createdAt ? new Date(rx.createdAt).toLocaleDateString('en-GB') : '—'}</td>

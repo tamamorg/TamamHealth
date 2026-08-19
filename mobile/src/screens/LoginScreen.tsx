@@ -2,11 +2,11 @@
  * Patient login screen.
  *
  * Authenticates the user against /api/patient-portal/login on the platform.
- * Two lookup modes are exposed: hospital number + phone, or
- * first/last name + DOB + phone. Either resolves to the same JWT.
+ * Uses the same portal username/password and optional SMS verification flow
+ * as the web patient portal.
  *
- * Demo accounts are rendered only when EXPO_PUBLIC_DEMO_MODE !== 'false'
- * so production builds can ship without the seed-data hint.
+ * The demo username hint is fail-closed: it is rendered only when
+ * EXPO_PUBLIC_DEMO_MODE is explicitly "true", and never embeds a password.
  *
  * TODO (v2): wire `expo-local-authentication` for biometric unlock once
  * the package is added to mobile/package.json. The scaffold is in
@@ -22,13 +22,9 @@ import { colors, spacing, radius, fontSize } from '../lib/theme';
 import { useAuth } from '../lib/auth';
 import TamamHealthLogo from '../components/TamamHealthLogo';
 
-const DEMO_MODE_ENABLED = process.env.EXPO_PUBLIC_DEMO_MODE !== 'false';
+const DEMO_MODE_ENABLED = process.env.EXPO_PUBLIC_DEMO_MODE === 'true';
 
-const DEMO_ACCOUNTS = [
-  { id: 'JTH-000001', phone: '0912345678', name: 'Deng Mabior Garang' },
-  { id: 'JTH-000002', phone: '0916111222', name: 'Nyabol Gatdet Koang' },
-  { id: 'JTH-000003', phone: '0921333444', name: 'Achol Mayen Deng' },
-];
+const DEMO_USERNAME = 'patient.mary';
 
 /**
  * Stub for biometric unlock. Returns true if biometric auth succeeded.
@@ -41,50 +37,27 @@ async function triggerBiometricUnlock(): Promise<boolean> {
 }
 
 export default function LoginScreen() {
-  const { signIn, isLoading } = useAuth();
-  const [tab, setTab] = useState<'id' | 'name'>('id');
-  const [hospitalNumber, setHospitalNumber] = useState('');
-  const [phone, setPhone] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [surname, setSurname] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
+  const { signIn, verifyOtp, isLoading } = useAuth();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpChallenge, setOtpChallenge] = useState<{ challengeId: string; maskedPhone?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const busy = submitting || isLoading;
 
   const handleLogin = async () => {
-    const phoneClean = phone.trim();
-    if (!phoneClean) {
-      Alert.alert('Required', 'Please enter your phone number.');
+    if (!username.trim() || !password) {
+      Alert.alert('Required', 'Please enter your username and password.');
       return;
-    }
-
-    if (tab === 'id') {
-      if (!hospitalNumber.trim()) {
-        Alert.alert('Required', 'Please enter your Hospital ID.');
-        return;
-      }
-    } else {
-      if (!firstName.trim() || !surname.trim() || !dateOfBirth.trim()) {
-        Alert.alert('Required', 'Please fill in all fields.');
-        return;
-      }
     }
 
     setSubmitting(true);
     try {
-      if (tab === 'id') {
-        await signIn({
-          hospitalNumber: hospitalNumber.trim().toUpperCase(),
-          phone: phoneClean,
-        });
-      } else {
-        await signIn({
-          firstName: firstName.trim(),
-          surname: surname.trim(),
-          dateOfBirth: dateOfBirth.trim(),
-          phone: phoneClean,
-        });
+      const result = await signIn({ username: username.trim(), password });
+      if (result.otpRequired) {
+        setOtpChallenge({ challengeId: result.challengeId, maskedPhone: result.maskedPhone });
+        setOtpCode('');
       }
       // On success, the AuthProvider flips isAuthenticated and the root
       // navigator routes us into the tab stack. Nothing to do here.
@@ -99,6 +72,21 @@ export default function LoginScreen() {
     }
   };
 
+  const handleVerifyOtp = async () => {
+    if (!otpChallenge || otpCode.length !== 6) {
+      Alert.alert('Required', 'Enter the 6-digit verification code.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await verifyOtp(otpChallenge.challengeId, otpCode);
+    } catch (err) {
+      Alert.alert('Verification Failed', err instanceof Error ? err.message : 'Please sign in again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleBiometric = async () => {
     const ok = await triggerBiometricUnlock();
     if (!ok) {
@@ -106,10 +94,8 @@ export default function LoginScreen() {
     }
   };
 
-  const fillDemo = (id: string, demoPhone: string) => {
-    setTab('id');
-    setHospitalNumber(id);
-    setPhone(demoPhone);
+  const fillDemo = () => {
+    setUsername(DEMO_USERNAME);
   };
 
   return (
@@ -125,118 +111,82 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
 
-        {/* Tab switcher */}
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, tab === 'id' && styles.tabActive]}
-            onPress={() => setTab('id')}
-            disabled={busy}
-          >
-            <Text style={[styles.tabText, tab === 'id' && styles.tabTextActive]}>Hospital ID</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, tab === 'name' && styles.tabActive]}
-            onPress={() => setTab('name')}
-            disabled={busy}
-          >
-            <Text style={[styles.tabText, tab === 'name' && styles.tabTextActive]}>Name Lookup</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Form */}
         <View style={styles.form}>
-          {tab === 'id' ? (
+          {otpChallenge ? (
             <>
-              <Text style={styles.label}>Hospital Number</Text>
+              <Text style={styles.instructions}>
+                {otpChallenge.maskedPhone
+                  ? `Enter the 6-digit code sent to ${otpChallenge.maskedPhone}.`
+                  : 'Enter the 6-digit code sent to the phone number on your record.'}
+              </Text>
+              <Text style={styles.label}>Verification Code</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g. JTH-000001"
+                placeholder="123456"
                 placeholderTextColor={colors.textTertiary}
-                value={hospitalNumber}
-                onChangeText={setHospitalNumber}
-                autoCapitalize="characters"
+                value={otpCode}
+                onChangeText={value => setOtpCode(value.replace(/\D/g, '').slice(0, 6))}
+                keyboardType="number-pad"
+                textContentType="oneTimeCode"
+                autoComplete="sms-otp"
                 editable={!busy}
               />
+              <TouchableOpacity style={[styles.button, busy && styles.buttonDisabled]}
+                onPress={handleVerifyOtp} disabled={busy || otpCode.length !== 6}>
+                {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Verify and Sign In</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.biometricButton} disabled={busy}
+                onPress={() => { setOtpChallenge(null); setOtpCode(''); }}>
+                <Text style={styles.biometricText}>Back to Sign In</Text>
+              </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={styles.label}>First Name</Text>
+              <Text style={styles.label}>Username</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter first name"
+                placeholder="Enter your portal username"
                 placeholderTextColor={colors.textTertiary}
-                value={firstName}
-                onChangeText={setFirstName}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="username"
+                autoComplete="username"
                 editable={!busy}
               />
-              <Text style={styles.label}>Surname</Text>
+              <Text style={styles.label}>Password</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter surname"
+                placeholder="Enter your password"
                 placeholderTextColor={colors.textTertiary}
-                value={surname}
-                onChangeText={setSurname}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                textContentType="password"
+                autoComplete="current-password"
                 editable={!busy}
               />
-              <Text style={styles.label}>Date of Birth</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.textTertiary}
-                value={dateOfBirth}
-                onChangeText={setDateOfBirth}
-                editable={!busy}
-              />
+              <TouchableOpacity style={[styles.button, busy && styles.buttonDisabled]}
+                onPress={handleLogin} disabled={busy}>
+                {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Sign In</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.biometricButton} onPress={handleBiometric} disabled={busy}>
+                <Text style={styles.biometricText}>Use Biometric Unlock</Text>
+              </TouchableOpacity>
             </>
           )}
-
-          <Text style={styles.label}>Phone Number</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 0912345678"
-            placeholderTextColor={colors.textTertiary}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            editable={!busy}
-          />
-
-          <TouchableOpacity
-            style={[styles.button, busy && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={busy}
-          >
-            {busy ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.biometricButton}
-            onPress={handleBiometric}
-            disabled={busy}
-          >
-            <Text style={styles.biometricText}>Use Biometric Unlock</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Demo accounts — gated on EXPO_PUBLIC_DEMO_MODE */}
         {DEMO_MODE_ENABLED && (
           <View style={styles.demoSection}>
             <Text style={styles.demoTitle}>DEMO ACCOUNTS</Text>
-            {DEMO_ACCOUNTS.map((demo) => (
-              <TouchableOpacity
-                key={demo.id}
-                style={styles.demoButton}
-                onPress={() => fillDemo(demo.id, demo.phone)}
-                disabled={busy}
-              >
-                <Text style={styles.demoName}>{demo.name}</Text>
-                <Text style={styles.demoId}>{demo.id}</Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity style={styles.demoButton} onPress={fillDemo} disabled={busy}>
+              <Text style={styles.demoName}>{DEMO_USERNAME}</Text>
+              <Text style={styles.demoId}>Tap to fill username</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -263,15 +213,8 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', marginTop: spacing.xxl, marginBottom: spacing.xl },
   title: { fontSize: fontSize.hero, fontWeight: '800', color: colors.navy, marginTop: spacing.md },
   subtitle: { fontSize: fontSize.lg, color: colors.textSecondary, marginTop: spacing.xs },
-  tabs: {
-    flexDirection: 'row', backgroundColor: colors.cream200,
-    borderRadius: radius.md, padding: 3, marginBottom: spacing.lg,
-  },
-  tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderRadius: radius.sm },
-  tabActive: { backgroundColor: colors.white },
-  tabText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.textSecondary },
-  tabTextActive: { color: colors.navy },
   form: {},
+  instructions: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.sm },
   label: {
     fontSize: fontSize.sm, fontWeight: '600', color: colors.textPrimary,
     marginBottom: spacing.xs, marginTop: spacing.md,

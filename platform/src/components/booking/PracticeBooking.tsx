@@ -172,7 +172,7 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
             <div style={{ minWidth: 240, flex: '0 1 320px' }}>
               <ModalityToggle value={modality} onChange={setModality} />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginInlineStart: 'auto' }}>
               <button
                 type="button" className="booking-round-btn" aria-label="Previous days"
                 disabled={weekStart <= today}

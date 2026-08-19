@@ -268,7 +268,7 @@ export default function LabOrderCreateDialog({
                 value={testQuery}
                 onChange={e => setTestQuery(e.target.value)}
                 placeholder={imaging ? t('labOrder.searchStudies') : t('labOrder.searchTests')}
-                style={{ paddingLeft: 32 }}
+                style={{ paddingInlineStart: 32 }}
                 aria-label={imaging ? t('labOrder.searchStudies') : t('labOrder.searchTests')}
               />
             </div>

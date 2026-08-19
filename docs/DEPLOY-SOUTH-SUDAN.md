@@ -71,6 +71,20 @@ Three env files have been created and are **gitignored** (never commit them):
 `NEXT_PUBLIC_DEMO_MODE=false` is set — so **no demo users/credentials are
 seeded**; production seeds only the bootstrap admin.
 
+> **Gotcha:** `gen-secrets.sh` fills `ADMIN_INITIAL_PASSWORD` automatically
+> (it's a `REPLACE-*` placeholder in the template), but the account you
+> actually log in with — `superadmin` — is controlled by a *different*
+> variable, `SUPERADMIN_INITIAL_PASSWORD`, which isn't in the template at
+> all. Add it yourself before first boot; `lib/config-validation.ts` refuses
+> to start once sync is enabled without a real (16+ char, non-default) value.
+
+> **Gotcha:** there is no `website/.env.production.example` template in the
+> repo, so `scripts/gen-secrets.sh` cannot generate `website/.env.production`
+> for you — it silently skips it. `deploy.sh` still requires the file to
+> exist before it will run. The website container needs no secrets today
+> (nothing in `docker-compose.yml` loads an env file for it), so
+> `touch website/.env.production` is sufficient before running `deploy.sh`.
+
 ## 5. DNS + TLS
 
 Create A records pointing at the server:
@@ -88,6 +102,8 @@ traffic — including CouchDB replication — is **encrypted in transit**.
 
 ```bash
 # On the server, after env files + DNS are in place:
+# REPO_URL only needs setting for a fork or mirror — deploy.sh defaults to
+# the canonical tamamorg/TamamHealth.
 export REPO_URL=https://github.com/<your-org>/tamamhealth.git
 export DOMAIN_ROOT=<domain> DOMAIN_APP=app.<domain> DOMAIN_COUCH=couch.<domain>
 sudo -E bash deploy.sh           # installs Docker + Caddy, builds, starts, TLS
@@ -98,11 +114,18 @@ docker compose --profile analytics up -d --build
 
 ## 7. First login (rotate the admin password immediately)
 
-- Sign in at `https://app.<domain>` as the system administrator using
-  `ADMIN_INITIAL_PASSWORD` from `platform/.env.production`.
-- **Immediately change it** in the UI. If you ever leave it unset, the platform
-  writes a generated one to `.seed-credentials.json` in the platform working
-  dir — read it once and rotate.
+- The platform's login-page demo role chips and `/api/demo-credentials` are
+  gone; the seeded `superadmin` account is the actual bootstrap path. Sign in
+  at `https://app.<domain>` as `superadmin` using `SUPERADMIN_INITIAL_PASSWORD`
+  from `platform/.env.production`. **Set this yourself before first boot** —
+  it isn't in `platform/.env.production.example`, and the platform refuses to
+  boot without it (or with the well-known demo default `Superadmin!`) whenever
+  `NEXT_PUBLIC_SYNC_ENABLED=true`.
+- `ADMIN_INITIAL_PASSWORD` is a separate, optional credential for the legacy
+  `admin` account. **Immediately change whichever password you used** in the
+  UI. If you leave `ADMIN_INITIAL_PASSWORD` unset, the platform writes a
+  generated one to `.seed-credentials.json` in the platform working dir — read
+  it once and rotate.
 
 ## 8. Backups (encrypted)
 

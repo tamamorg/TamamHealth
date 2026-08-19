@@ -10,8 +10,16 @@ TamamHealth records **product usage events** separately from compliance
 - `click` / `change` (full clickstream via event delegation)
 
 Events never include input values, passwords, cookies, or free-text clinical
-fields. Labels are truncated; keys matching the PHI patterns in
-`src/lib/observability.ts` / `src/lib/usage/sanitize.ts` are dropped.
+fields. Labels are truncated; keys matching a PHI-pattern list are dropped.
+That list lives in `src/lib/usage/sanitize.ts`'s own `PHI_KEY_PATTERNS` —
+it's hand-maintained to stay aligned with the Sentry-side list in
+`src/lib/observability.ts` (see
+[monitoring.md](./monitoring.md#pii-stripping-policy)), not literally
+shared or imported from it. The two currently differ slightly:
+`sanitize.ts` adds `/cookie/i` (observability.ts redacts the cookie header
+by name instead) and omits the redundant `/passwordhash/i` (already
+covered by `/password/i` in both). Keep both lists in sync by hand when
+either one changes.
 
 ## Storage
 
@@ -50,5 +58,10 @@ NEXT_PUBLIC_POSTHOG_KEY=phc_...
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
-Autocapture and session replay are **not** enabled. Only sanitized events from
-`src/lib/usage/tracker.ts` are forwarded via the HTTP capture API.
+There is no PostHog SDK dependency and no `posthog.init()` call — the
+integration (`src/lib/usage/posthog.ts`) is a hand-rolled `fetch` POST of
+already-sanitized events straight to PostHog's `/batch/` HTTP capture
+endpoint, with `$autocapture: false` stamped on every event. Autocapture
+and session replay are **not** enabled (there's no client-side SDK
+present to enable them with). Only sanitized events from
+`src/lib/usage/tracker.ts` are ever forwarded.

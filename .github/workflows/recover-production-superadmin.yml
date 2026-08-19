@@ -1,0 +1,62 @@
+name: recover-production-superadmin
+
+# Required protected production-environment secrets:
+#   PROD_SSH_HOST / PROD_SSH_USER / PROD_SSH_KEY / PROD_APP_DIR
+#   SUPERADMIN_RECOVERY_PASSWORD (16+ chars; handed to the operator out of band)
+# The recovery password travels in a mode-0600 temporary file over encrypted
+# SSH and is deleted before the reset starts. It never enters workflow inputs,
+# command arguments, the repository, or the persistent production environment.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type RESET to rotate the production superadmin back to its server bootstrap password.'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recover-production-superadmin
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Require explicit confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = RESET
+
+      - uses: actions/checkout@v7
+
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Reset and verify production superadmin
+        env:
+          HOST: ${{ secrets.PROD_SSH_HOST }}
+          USER: ${{ secrets.PROD_SSH_USER }}
+          APP_DIR: ${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}
+          RECOVERY_PASSWORD: ${{ secrets.SUPERADMIN_RECOVERY_PASSWORD }}
+        run: |
+          if [ -z "$RECOVERY_PASSWORD" ]; then
+            echo "::error title=Recovery credential missing::Set SUPERADMIN_RECOVERY_PASSWORD on the protected production environment."
+            exit 1
+          fi
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          SECRET_FILE="$RUNNER_TEMP/superadmin-recovery-password"
+          cleanup_local() { rm -f "$SECRET_FILE"; }
+          trap cleanup_local EXIT
+          install -m 0600 /dev/null "$SECRET_FILE"
+          printf '%s\n' "$RECOVERY_PASSWORD" > "$SECRET_FILE"
+          scp scripts/recover-production-superadmin.sh "$USER@$HOST:/tmp/recover-production-superadmin.sh"
+          scp -p "$SECRET_FILE" "$USER@$HOST:/tmp/.tamamhealth-superadmin-recovery-input"
+          cleanup_local
+          ssh "$USER@$HOST" \
+            "cleanup_remote() { rm -f /tmp/.tamamhealth-superadmin-recovery-input /tmp/recover-production-superadmin.sh; }; trap cleanup_remote EXIT; chmod 600 /tmp/.tamamhealth-superadmin-recovery-input; IFS= read -r SUPERADMIN_RECOVERY_PASSWORD < /tmp/.tamamhealth-superadmin-recovery-input; rm -f /tmp/.tamamhealth-superadmin-recovery-input; if [ \"\${#SUPERADMIN_RECOVERY_PASSWORD}\" -lt 16 ]; then echo 'Recovery credential was not received' >&2; exit 1; fi; export SUPERADMIN_RECOVERY_PASSWORD; chmod 700 /tmp/recover-production-superadmin.sh; GH_OWNER=tamamorg IMAGE_TAG=production /tmp/recover-production-superadmin.sh '$APP_DIR'"

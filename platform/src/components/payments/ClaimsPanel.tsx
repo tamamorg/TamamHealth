@@ -25,7 +25,7 @@ import { useApp } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { patientFullName } from '@/lib/patient-utils';
+import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import { computeAdjudicatedStatus } from '@/lib/services/payment-service';
 import type { ClaimDoc, ClaimStatus, PayerType, InsurancePolicyDoc } from '@/lib/db-types-payments';
 import type { BillingDoc } from '@/lib/db-types-billing';
@@ -349,7 +349,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   <td>
                     {claim.patientId && !claim.patientId.startsWith('demo-') && !claim.patientId.includes('_demo') ? (
                       <Link href={`/patients/${claim.patientId}?tab=billing`} onClick={e => e.stopPropagation()} className="bl-link">
-                        {claim.patientName}
+                        {shortenPersonName(claim.patientName)}
                       </Link>
                     ) : (
                       claim.patientName
@@ -521,7 +521,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '10px 12px', borderRadius: 6,
-                    border: '1px solid var(--ehr-border, #DDEAF3)', background: 'var(--ehr-page-bg, #F8FBFD)',
+                    border: '1px solid var(--ehr-border, #DDEAF3)', background: 'var(--ehr-page-bg, #FFFFFF)',
                   }}
                 >
                   <span className={`bl-chip ${CLAIM_STATUS_CHIP[adjPreview]}`}>{t(`claims.status_${adjPreview}`)}</span>
@@ -655,7 +655,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                           type="button"
                           className="bl-fee-row"
                           onClick={() => setNewClaim(f => ({ ...f, patientId: p._id }))}
-                          style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
+                          style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'start', font: 'inherit' }}
                         >
                           <div className="bl-fee-name">{patientFullName(p)}</div>
                           <span className="bl-fee-cat">{p.hospitalNumber || ''}</span>

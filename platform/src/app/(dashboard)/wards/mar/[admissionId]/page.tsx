@@ -28,6 +28,7 @@ import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PrescriptionDoc, MedicationAdministration } from '@/lib/db-types';
+import { returnToFromSearch } from '@/lib/navigation/return-to';
 
 /**
  * Parse a free-text frequency string into scheduled clock times for one
@@ -112,7 +113,7 @@ function MARCell({ rx, day, time, onRecord }: CellProps) {
     return (
       <button
         onClick={() => onRecord(rx, scheduledFor)}
-        className="w-full h-full p-1.5 text-left rounded-md transition-all"
+        className="w-full h-full p-1.5 text-start rounded-md transition-all"
         style={{
           background: tint.bg,
           color: tint.color,
@@ -255,7 +256,7 @@ export default function MARPage() {
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             {t('mar.admissionNotFound')}
           </p>
-          <button onClick={() => router.push('/wards')} className="btn btn-primary mt-3">
+          <button onClick={() => router.push(returnToFromSearch(window.location.search, '/wards'))} className="btn btn-primary mt-3">
             {t('mar.returnToWards')}
           </button>
         </div>
@@ -269,7 +270,7 @@ export default function MARPage() {
         <div className="card-elevated p-5 flex items-start justify-between flex-wrap gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push(returnToFromSearch(window.location.search, '/wards'))}
               aria-label={t('action.back')}
               className="mt-0.5 p-1.5 rounded hover:bg-gray-100 shrink-0"
             >
@@ -355,7 +356,7 @@ export default function MARPage() {
                   }}>
                     {t('mar.isolationRequired')}
                   </div>
-                  <div className="text-sm font-medium mt-0.5">
+                  <div className="text-sm font-semibold mt-0.5">
                     {admission.isolationReason || t('mar.ppeBeforeEntry')}
                   </div>
                 </div>
@@ -378,13 +379,13 @@ export default function MARPage() {
             </p>
           </div>
         ) : (
-          <div className="card-elevated overflow-hidden">
+          <div className="card-elevated overflow-hidden" data-tour="mar-grid">
             <div className="overflow-x-auto">
               <table className="w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 760 }}>
                 <thead>
                   <tr style={{ background: 'var(--overlay-subtle)' }}>
                     <th
-                      className="text-left px-4 py-3 font-bold sticky left-0 z-10"
+                      className="text-start px-4 py-3 font-bold sticky start-0 z-10"
                       style={{
                         minWidth: 280,
                         borderBottom: '1px solid var(--border-light)',
@@ -421,7 +422,7 @@ export default function MARPage() {
                       background: idx % 2 === 0 ? 'transparent' : 'var(--overlay-subtle)',
                     }}>
                       <td
-                        className="px-4 py-3 align-top sticky left-0 z-[5]"
+                        className="px-4 py-3 align-top sticky start-0 z-[5]"
                         style={{
                           background: idx % 2 === 0 ? 'var(--bg-card-solid)' : 'var(--overlay-subtle)',
                           borderBottom: '1px solid var(--border-light)',

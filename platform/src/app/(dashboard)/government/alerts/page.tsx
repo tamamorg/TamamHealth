@@ -11,13 +11,13 @@ import type { DiseaseAlertDoc } from '@/lib/db-types';
 
 // ── Shared "flat clinical" section chrome (matches the HR / patients pages) ──
 const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000',
+  fontFamily: 'var(--font-condensed)', fontWeight: 800, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
 };
 
 const LEVEL_COLORS: Record<string, string> = {
   emergency: 'var(--color-danger)',
   warning: 'var(--color-warning)',
-  watch: '#2a78d6',
+  watch: 'var(--chart-1)',
   normal: '#8a8f98',
 };
 
@@ -38,7 +38,7 @@ function StatDots({ stats }: { stats: { label: string; value: number | string; c
 
 function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
   return (
-    <th className={`${right ? 'text-right' : 'text-left'} px-4 py-2.5`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}>
+    <th className={`${right ? 'text-end' : 'text-start'} px-4 py-2.5`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}>
       <span className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">{children}</span>
     </th>
   );
@@ -47,10 +47,7 @@ function Th({ children, right }: { children?: React.ReactNode; right?: boolean }
 function LevelPill({ level }: { level: string }) {
   const color = LEVEL_COLORS[level] || LEVEL_COLORS.normal;
   return (
-    <span
-      className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md whitespace-nowrap"
-      style={{ background: `${color}1F`, color, border: `1px solid ${color}40` }}
-    >
+    <span className="gov-chip" style={{ background: `${color}1F`, color, border: `1px solid ${color}40` }}>
       {level}
     </span>
   );
@@ -108,7 +105,7 @@ export default function PriorityAlertsPage() {
 
   return (
     <main className="page-container page-enter">
-      <div className="dash-card overflow-hidden flex flex-col" style={{ minHeight: 0 }}>
+      <div data-tour="gov-alerts-list" className="dash-card overflow-hidden flex flex-col" style={{ minHeight: 0 }}>
         <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <div className="flex items-end justify-between gap-3 mb-1 flex-wrap">
             <div>
@@ -161,8 +158,8 @@ export default function PriorityAlertsPage() {
                   <tr key={a._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{a.disease}</td>
                     <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{a.county}, {a.state}</td>
-                    <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{a.cases.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-[13px] text-right font-mono" style={{ color: a.deaths > 0 ? LEVEL_COLORS.emergency : 'var(--ehr-muted, var(--text-secondary))' }}>{a.deaths}</td>
+                    <td className="px-4 py-2.5 text-[13px] text-end font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{a.cases.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-[13px] text-end font-mono" style={{ color: a.deaths > 0 ? LEVEL_COLORS.emergency : 'var(--ehr-muted, var(--text-secondary))' }}>{a.deaths}</td>
                     <td className="px-4 py-2.5"><LevelPill level={a.alertLevel} /></td>
                     <td className="px-4 py-2.5">
                       <span className="inline-flex items-center gap-1 text-[12px] capitalize" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>
@@ -190,7 +187,7 @@ export default function PriorityAlertsPage() {
       {/* Response guidance — top counties by active case load */}
       <div className="dash-card mt-3">
         <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <span className="text-[14px] font-bold" style={{ color: 'var(--text-primary)' }}>Response guidance</span>
+          <span style={{ fontFamily: 'var(--font-condensed)', fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>Response guidance</span>
         </div>
         <div className="px-4 py-3">
           {topCounties.length === 0 ? (

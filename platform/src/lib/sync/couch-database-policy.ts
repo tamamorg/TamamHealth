@@ -48,6 +48,20 @@ export interface DatabasePolicy {
   serverOnlyValidator: boolean;
   /** Exact `members.roles` to write into `_security`. */
   memberRoles: string[];
+  /**
+   * True when `memberRoles` was derived from the operator-supplied
+   * `memberOrgIds` list rather than from the database's own identity.
+   *
+   * This is the difference between "this database is meant to have no members"
+   * (a server-only database — the empty list IS the answer) and "nobody told us
+   * which organizations to grant" (a shared aggregate with the list omitted —
+   * the empty list is the ABSENCE of an answer). The deployment script has to
+   * tell those apart: writing an empty member list over a live shared aggregate
+   * revokes replication for every organization on it, which is exactly the
+   * "one idempotent re-run takes tenants offline" failure this module exists to
+   * prevent.
+   */
+  membersFromOperatorList: boolean;
 }
 
 export interface DatabasePolicyOptions {
@@ -82,7 +96,9 @@ export function databasePolicy(
       orgId: tenant.orgId,
       orgScopedValidator: ORG_SCOPED_DATABASES.has(tenant.baseName),
       serverOnlyValidator: READ_ONLY_DATABASES.includes(tenant.baseName),
+      // Read from the database's own name — never from the operator list.
       memberRoles: [`org:${tenant.orgId}`],
+      membersFromOperatorList: false,
     };
   }
 
@@ -94,6 +110,10 @@ export function databasePolicy(
       orgScopedValidator: ORG_SCOPED_DATABASES.has(databaseName),
       serverOnlyValidator: READ_ONLY_DATABASES.includes(databaseName),
       memberRoles: memberOrgIds.map(orgId => `org:${orgId}`),
+      // After cutover the aggregates are deliberately reachable by nobody;
+      // before it, the list is the operator's, and its absence means "unknown"
+      // rather than "none".
+      membersFromOperatorList: !options.tenantDatabasesEnabled,
     };
   }
 
@@ -106,5 +126,44 @@ export function databasePolicy(
     orgScopedValidator: false,
     serverOnlyValidator: true,
     memberRoles: [],
+    membersFromOperatorList: false,
   };
+}
+
+export interface ResolvedMembers {
+  /** The `members.roles` to write. */
+  roles: string[];
+  /** True when the database's existing roles were kept instead of the policy's. */
+  preserved: boolean;
+}
+
+/**
+ * The member roles to write, given what the policy computed and what the
+ * database already has.
+ *
+ * Only one case is ambiguous: a shared aggregate whose member list comes from
+ * the operator's `COUCHDB_MEMBER_ORG_IDS`, when that list is empty. That is
+ * "nobody said", not "grant nobody" — so the roles already on the database are
+ * kept. Every other case is an answer the policy is sure of, and is written
+ * as-is.
+ *
+ * This exists because the deployment script is documented as idempotent and is
+ * run as a routine step: forgetting one environment variable must not write
+ * `members: []` over every shared aggregate and cut every organization off from
+ * replication. `revokeUnlisted` is the explicit way to ask for exactly that —
+ * the intended end state once tenant databases are live.
+ */
+export function resolveMemberRoles(
+  policy: Pick<DatabasePolicy, 'memberRoles' | 'membersFromOperatorList'>,
+  currentRoles: readonly string[],
+  options: { revokeUnlisted?: boolean } = {},
+): ResolvedMembers {
+  const wouldRevoke =
+    policy.membersFromOperatorList &&
+    policy.memberRoles.length === 0 &&
+    currentRoles.length > 0;
+  if (wouldRevoke && !options.revokeUnlisted) {
+    return { roles: [...currentRoles], preserved: true };
+  }
+  return { roles: policy.memberRoles, preserved: false };
 }

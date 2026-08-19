@@ -32,7 +32,7 @@ export default function LabOrderPatientPicker({
       <div className="labord-row" style={{ border: '1px solid var(--labord-line)', borderRadius: 4 }}>
         <span>
           <span className="labord-pick-name">{patientFullName(selected)}</span>
-          <span className="labord-pick-meta" style={{ marginLeft: 8 }}>
+          <span className="labord-pick-meta" style={{ marginInlineStart: 8 }}>
             {selected.hospitalNumber} · {patientAgeLabel(selected)} · {selected.gender || '—'}
           </span>
         </span>
@@ -65,7 +65,7 @@ export default function LabOrderPatientPicker({
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder={t('labOrder.searchPatientPlaceholder')}
-          style={{ paddingLeft: 32 }}
+          style={{ paddingInlineStart: 32 }}
           autoFocus={autoFocus}
           aria-label={t('labOrder.patient')}
         />

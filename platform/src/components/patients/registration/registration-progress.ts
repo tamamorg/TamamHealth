@@ -49,6 +49,7 @@ export interface SectionProgress {
 
 /** The subset of the registration form the progress count depends on. */
 export interface RegistrationRequirementInput {
+  registrationFacility: string;
   firstName: string;
   surname: string;
   gender: string;
@@ -64,6 +65,17 @@ export interface RegistrationRequirementInput {
 
 const filled = (value: string) => Boolean(value && value.trim());
 
+export interface RequirementOptions {
+  /**
+   * True when the signed-in user carries no facility of their own and must
+   * therefore name the one they are registering at. Passed in rather than
+   * derived from the form because it is a fact about the user, not the patient
+   * — and the rail must not mark a field required that Register does not ask
+   * for, or the reverse.
+   */
+  facilityRequired?: boolean;
+}
+
 /**
  * What each section still needs, mirroring the form's `validateStep` exactly.
  *
@@ -72,10 +84,14 @@ const filled = (value: string) => Boolean(value && value.trim());
  * with nothing required (biometrics, coverage, review) report a total of 0 and
  * read as optional rather than as permanently unfinished.
  */
-export function sectionRequirementProgress(form: RegistrationRequirementInput): SectionProgress[] {
+export function sectionRequirementProgress(
+  form: RegistrationRequirementInput,
+  options: RequirementOptions = {},
+): SectionProgress[] {
   // One entry per SECTION_ANCHORS position, in that order.
   const requirements: boolean[][] = [
-    /* demographics */ [filled(form.firstName), filled(form.surname), filled(form.gender),
+    /* demographics */ [...(options.facilityRequired ? [filled(form.registrationFacility)] : []),
+      filled(form.firstName), filled(form.surname), filled(form.gender),
       filled(form.dateOfBirth) || filled(form.estimatedAge), filled(form.primaryLanguage)],
     /* biometrics   */ [],
     /* contact      */ [filled(form.state), filled(form.county)],

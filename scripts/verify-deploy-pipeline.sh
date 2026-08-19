@@ -61,7 +61,7 @@ check grep -q 'org.tamamhealth.demo-mode' .github/workflows/deploy-production.ym
 echo ""
 echo "=== Compose config render (staging tag) ==="
 if command -v docker >/dev/null 2>&1; then
-  export GH_OWNER=makuachteny IMAGE_TAG=staging
+  export GH_OWNER=tamamorg IMAGE_TAG=staging
   if docker compose -f docker-compose.yml -f docker-compose.ghcr.yml config >/dev/null 2>&1; then
     echo "  OK  docker compose config (staging)"
     ok=$((ok + 1))

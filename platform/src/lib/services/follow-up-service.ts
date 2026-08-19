@@ -61,16 +61,20 @@ export async function createFollowUp(
 
 export async function updateFollowUp(
   id: string,
-  data: Partial<FollowUpDoc>
+  data: Partial<FollowUpDoc>,
+  scope?: DataScope,
 ): Promise<FollowUpDoc | null> {
   const db = followUpsDB();
   try {
     const existing = await db.get(id) as FollowUpDoc;
+    if (scope && filterByScope([existing], scope).length === 0) return null;
     const updated = {
       ...existing,
       ...data,
       _id: existing._id,
       _rev: existing._rev,
+      orgId: existing.orgId,
+      hospitalId: existing.hospitalId,
       updatedAt: new Date().toISOString(),
     };
     const resp = await db.put(updated);

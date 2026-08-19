@@ -29,7 +29,7 @@ variable "droplet_size" {
 }
 
 variable "website_image" {
-  description = "Fully-qualified container image the droplet pulls and runs."
+  description = "Local image tag the droplet runs. Deliberately not a registry reference: deploy-website copies the image in over SSH, and a pullable name would invite docker to fetch it on every restart."
   type        = string
-  default     = "registry.digitalocean.com/tamamhealth/website:latest"
+  default     = "tamamhealth-website:current"
 }

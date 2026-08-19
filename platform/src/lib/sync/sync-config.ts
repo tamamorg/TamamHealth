@@ -103,7 +103,7 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_payment_plans',         direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_invoices',              direction: 'both', orgScoped: true },
 
-  // ----- Online booking & self-intake -----
+  // ----- Online booking -----
   // Config (reasons, policies, published profiles) is authored in the app but
   // read by public server routes, so it replicates both ways like any other
   // org data. Slot holds are deliberately absent: they live for ten minutes,
@@ -159,10 +159,6 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   //
   // Asserted by src/__tests__/services/ledger-conflict-policy.test.ts.
   { localName: 'tamamhealth_ledger',                direction: 'both', orgScoped: true },
-  // A form submitted at the patient portal (or by front desk on the
-  // patient's behalf) needs to reach whichever facility device reviews it,
-  // and a merge decision needs to sync back — bidirectional like referrals.
-  { localName: 'tamamhealth_intake_forms',          direction: 'both', orgScoped: true },
 ];
 
 /**
@@ -247,7 +243,6 @@ export const DATABASE_DOCUMENT_TYPES: Readonly<Record<string, readonly string[]>
   tamamhealth_audit_log: ['audit_log'],
   tamamhealth_controlled_substance_log: ['controlled_substance_log'],
   tamamhealth_ledger: ['ledger_entry'],
-  tamamhealth_intake_forms: ['patient_intake_form'],
 };
 
 /** Build the full CouchDB remote URL for a given database name */

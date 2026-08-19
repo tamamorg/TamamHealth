@@ -30,7 +30,7 @@ import {
   getPerformanceColor,
   METRIC_LABELS, type PerformanceMetricKey,
 } from '@/lib/performance-colors';
-import { states, statesAndCounties } from '@/data/mock';
+import { states, statesAndCounties } from '@/lib/data/south-sudan-reference';
 
 // ───────────────────────────── helpers ─────────────────────────────
 const TYPE_LABEL_KEYS: Record<string, string> = {
@@ -111,9 +111,11 @@ function HospitalsPageInner() {
   const { globalSearch, currentUser } = useApp();
   const canManage = !!currentUser && MANAGE_ROLES.includes(currentUser.role);
   const searchParams = useSearchParams();
+  const stateParam = searchParams.get('state');
+  const countyParam = searchParams.get('county');
   const [selectedHospital, setSelectedHospital] = useState<HospitalDoc | null>(null);
   const [search, setSearch] = useState('');
-  const [filterState, setFilterState] = useState('all');
+  const [filterState, setFilterState] = useState(() => stateParam || 'all');
 
   // Auto-select hospital from URL query param. Re-run whenever the param
   // changes — guarding on `!selectedHospital` previously froze the selection
@@ -125,7 +127,7 @@ function HospitalsPageInner() {
     const found = hospitals.find(h => h._id === facilityIdParam);
     if (found) setSelectedHospital(found);
   }, [facilityIdParam, hospitals]);
-  const [filterCounty, setFilterCounty] = useState('all');
+  const [filterCounty, setFilterCounty] = useState(() => countyParam || 'all');
   const [filterType, setFilterType] = useState('all');
   const [filterOwnership, setFilterOwnership] = useState('all');
   const [filterService, setFilterService] = useState('all');
@@ -138,8 +140,10 @@ function HospitalsPageInner() {
     return statesAndCounties[filterState] || [];
   }, [filterState]);
 
-  // Reset county when state changes
-  useEffect(() => { setFilterCounty('all'); }, [filterState]);
+  const changeFilterState = (nextState: string) => {
+    setFilterState(nextState);
+    setFilterCounty('all');
+  };
 
   // ── Filter ──
   const filteredHospitals = useMemo(() => {
@@ -264,7 +268,7 @@ function HospitalsPageInner() {
                       panelWidth={560}
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                        <FilterDropdown label={t('hospitals.filterState')} value={filterState} onChange={setFilterState} options={[{ value: 'all', label: t('hospitals.allStates') }, ...states.map(s => ({ value: s, label: s }))]} />
+                        <FilterDropdown label={t('hospitals.filterState')} value={filterState} onChange={changeFilterState} options={[{ value: 'all', label: t('hospitals.allStates') }, ...states.map(s => ({ value: s, label: s }))]} />
                         {availableCounties.length > 0 && (
                           <FilterDropdown label={t('hospitals.filterCounty')} value={filterCounty} onChange={setFilterCounty} options={[{ value: 'all', label: t('hospitals.allCounties') }, ...availableCounties.map(c => ({ value: c, label: c }))]} />
                         )}
@@ -520,7 +524,7 @@ function FacilityProfile({ hospital, onClose, canManage }: {
                   <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--overlay-subtle)', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(100, barWidth)}%`, height: '100%', borderRadius: 3, background: getPerformanceColor(norm), transition: 'width 0.3s' }} />
                   </div>
-                  <span className="stat-value" style={{ fontSize: 12, fontWeight: 700, color: getPerformanceColor(norm), minWidth: 40, textAlign: 'right' }}>
+                  <span className="stat-value" style={{ fontSize: 12, fontWeight: 700, color: getPerformanceColor(norm), minWidth: 40, textAlign: 'end' }}>
                     {formatMetricValue(key, val)}
                   </span>
                 </div>
@@ -561,7 +565,7 @@ function FacilityProfile({ hospital, onClose, canManage }: {
           <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
             {[
               { label: t('hospitals.bedsIcu'), value: hospital.icuBeds, color: 'var(--color-danger-text)' },
-              { label: t('hospitals.bedsMaternity'), value: hospital.maternityBeds, color: '#EC4899' },
+              { label: t('hospitals.bedsMaternity'), value: hospital.maternityBeds, color: 'var(--chart-2)' },
               { label: t('hospitals.bedsPediatric'), value: hospital.pediatricBeds, color: 'var(--accent-primary)' },
               { label: t('hospitals.bedsGeneral'), value: Math.max(0, hospital.totalBeds - hospital.icuBeds - hospital.maternityBeds - hospital.pediatricBeds), color: 'var(--text-muted)' },
             ].map(b => (
@@ -587,7 +591,7 @@ function FacilityProfile({ hospital, onClose, canManage }: {
             {[
               { label: t('hospitals.staffDoctors'), value: hospital.doctors, color: 'var(--accent-primary)' },
               { label: t('hospitals.staffClinicalOfficers'), value: hospital.clinicalOfficers, color: '#A78BFA' },
-              { label: t('hospitals.staffNurses'), value: hospital.nurses, color: '#EC4899' },
+              { label: t('hospitals.staffNurses'), value: hospital.nurses, color: 'var(--chart-2)' },
               { label: t('hospitals.staffLabTech'), value: hospital.labTechnicians, color: 'var(--color-warning-text)' },
               { label: t('hospitals.staffPharmacists'), value: hospital.pharmacists, color: 'var(--color-success-text)' },
             ].map(s => (

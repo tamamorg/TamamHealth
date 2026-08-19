@@ -7,14 +7,13 @@ import { useSigningInbox } from '@/lib/hooks/useSigningInbox';
 import { computeSignCount, type SigningInboxCounts } from '@/lib/hooks/signing-inbox-math';
 import { usePhoneNotesInbox } from '@/lib/hooks/usePhoneNotesInbox';
 import { useReferrals } from '@/lib/hooks/useReferrals';
-import { useIntakeForms } from '@/lib/hooks/useIntakeForms';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { useTelehealth } from '@/lib/hooks/useTelehealth';
 import { getRoleConfig } from '@/lib/permissions';
 import { isHrefAllowed } from '@/components/ehr/ehr-navigation';
-import type { AppointmentDoc, LabResultDoc, PatientIntakeFormDoc, PhoneNoteDoc, ReferralDoc, TelehealthSessionDoc } from '@/lib/db-types';
+import type { AppointmentDoc, LabResultDoc, PhoneNoteDoc, ReferralDoc, TelehealthSessionDoc } from '@/lib/db-types';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
-import { appointmentStatusGroup } from '@/lib/appointment-status';
+import { appointmentStatusGroup, APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 
 function todayIso(): string {
   // Local calendar date, not UTC — see identical helper + rationale in
@@ -27,12 +26,12 @@ function todayIso(): string {
 }
 
 /**
- * Today's appointments split into the shared three-lane vocabulary (Scheduled
- * / In Office / Finished — `appointmentStatusGroup`), the same grouping the
+ * Today's appointments split into the shared three-lane vocabulary (Upcoming
+ * / Checked In / Completed — `appointmentStatusGroup`), the same grouping the
  * desktop dashboards' lane tabs use, so mobile and desktop file the same
  * visit into the same lane — including closed slots (cancelled/no-show/
  * rescheduled), which used to fall out of every lane here while the desktop
- * board shows them under Finished.
+ * board shows them under Completed.
  *
  * Pure and exported so the lane split is directly testable without rendering
  * the mobile shell.
@@ -43,9 +42,9 @@ export function computeClinicalLanes(appointments: AppointmentDoc[], today: stri
   const inOffice = todays.filter((a) => appointmentStatusGroup(a.status) === 'in_office');
   const finished = todays.filter((a) => appointmentStatusGroup(a.status) === 'finished');
   return [
-    { key: 'scheduled', label: `${scheduled.length} Scheduled`, tone: 'info', items: scheduled },
-    { key: 'in_office', label: `${inOffice.length} In Office`, tone: 'warning', items: inOffice },
-    { key: 'finished', label: `${finished.length} Finished`, tone: 'success', items: finished },
+    { key: 'scheduled', label: `${scheduled.length} ${APPOINTMENT_STATUS_GROUP_LABELS.scheduled}`, tone: 'info', items: scheduled },
+    { key: 'in_office', label: `${inOffice.length} ${APPOINTMENT_STATUS_GROUP_LABELS.in_office}`, tone: 'warning', items: inOffice },
+    { key: 'finished', label: `${finished.length} ${APPOINTMENT_STATUS_GROUP_LABELS.finished}`, tone: 'success', items: finished },
   ];
 }
 
@@ -53,7 +52,6 @@ export interface ClinicalOutstandingInput extends SigningInboxCounts {
   currentUser: { _id?: string; name?: string } | null | undefined;
   phoneNotes: PhoneNoteDoc[];
   referrals: ReferralDoc[];
-  intakeForms: PatientIntakeFormDoc[];
   labResults: LabResultDoc[];
   telehealthSessions: TelehealthSessionDoc[];
   hasTelehealth: boolean;
@@ -71,10 +69,9 @@ export interface ClinicalOutstandingInput extends SigningInboxCounts {
  * the mobile shell or its half-dozen backing hooks.
  */
 export function computeClinicalOutstanding(input: ClinicalOutstandingInput): MobileOutstandingItem[] {
-  const { currentUser, phoneNotes, referrals, intakeForms, labResults, telehealthSessions, hasTelehealth, today } = input;
+  const { currentUser, phoneNotes, referrals, labResults, telehealthSessions, hasTelehealth, today } = input;
   const signCount = computeSignCount(input);
   const myReferralsCount = referrals.filter((r) => r.createdBy === currentUser?._id).length;
-  const pendingIntake = intakeForms.filter((f) => f.status === 'pending_review').length;
   const awaitingLabs = labResults.filter(
     (r) => (r.status === 'pending' || r.status === 'in_progress') && r.orderedBy === currentUser?.name
   ).length;
@@ -83,7 +80,6 @@ export function computeClinicalOutstanding(input: ClinicalOutstandingInput): Mob
     { key: 'documents', label: 'Documents to sign', count: signCount, href: '/dashboard' },
     { key: 'phone_notes', label: 'Phone notes', count: phoneNotes.length, href: '/dashboard' },
     { key: 'referrals', label: 'Open referrals', count: myReferralsCount, href: '/referrals' },
-    { key: 'intake', label: 'Patient intake', count: pendingIntake, href: '/patient-intake' },
     { key: 'labs', label: 'Awaiting labs', count: awaitingLabs, href: '/lab' },
   ];
 
@@ -113,7 +109,6 @@ export function useClinicalDashboardData(): MobileDashboardData {
   const { unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes, loading: signLoading } = useSigningInbox();
   const { notes: phoneNotes, loading: phoneLoading } = usePhoneNotesInbox();
   const { referrals, loading: referralsLoading } = useReferrals();
-  const { forms: intakeForms, loading: intakeLoading } = useIntakeForms();
   const { results: labResults, loading: labLoading } = useLabResults();
   const { sessions: telehealthSessions, loading: telehealthLoading } = useTelehealth();
 
@@ -131,10 +126,10 @@ export function useClinicalDashboardData(): MobileDashboardData {
 
   const outstanding = useMemo<MobileOutstandingItem[]>(() => computeClinicalOutstanding({
     currentUser, unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes,
-    phoneNotes, referrals, intakeForms, labResults, telehealthSessions, hasTelehealth, today,
-  }), [unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes, referrals, intakeForms, labResults, telehealthSessions, currentUser, hasTelehealth, today, phoneNotes]);
+    phoneNotes, referrals, labResults, telehealthSessions, hasTelehealth, today,
+  }), [unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes, referrals, labResults, telehealthSessions, currentUser, hasTelehealth, today, phoneNotes]);
 
-  const loading = apptLoading || signLoading || phoneLoading || referralsLoading || intakeLoading || labLoading || telehealthLoading;
+  const loading = apptLoading || signLoading || phoneLoading || referralsLoading || labLoading || telehealthLoading;
 
   return { lanes, outstanding, loading };
 }

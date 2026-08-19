@@ -62,7 +62,7 @@ const CHANNEL_LABELS: Record<MessageDoc['channel'], string> = {
 };
 
 /** Unique, sorted enquiry "types" (subject lines) present in the list — feeds the type filter. */
-export function buildTypeOptions(messages: MessageDoc[]): string[] {
+function buildTypeOptions(messages: MessageDoc[]): string[] {
   const set = new Set<string>();
   for (const m of messages) set.add(enquiryType(m));
   return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -70,10 +70,10 @@ export function buildTypeOptions(messages: MessageDoc[]): string[] {
 
 /** Assignment moves aren't triage states, so they ride the status pill under
  *  their own heading with these sentinel values. */
-export const ASSIGN_TO_ME = '__assign-me' as const;
-export const UNASSIGN = '__unassign' as const;
+const ASSIGN_TO_ME = '__assign-me' as const;
+const UNASSIGN = '__unassign' as const;
 
-export interface InquiryActionSpec {
+interface InquiryActionSpec {
   value: EnquiryStatus | typeof ASSIGN_TO_ME | typeof UNASSIGN;
   label: string;
   group?: string;
@@ -86,7 +86,7 @@ export interface InquiryActionSpec {
  * a native select's disabled options are still announced, and the pill already
  * displays the current state.
  */
-export function buildInquiryActions(
+function buildInquiryActions(
   message: Pick<MessageDoc, 'enquiryStatus' | 'enquiryAssignedToId'>,
   currentUserId?: string,
 ): InquiryActionSpec[] {
@@ -121,6 +121,7 @@ export default function InquiriesPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [assignedFilter, setAssignedFilter] = useState(searchParams?.get('assigned') || 'all');
+  const focusedInquiryId = searchParams?.get('inquiry') || null;
 
   const [addOpen, setAddOpen] = useState(false);
 
@@ -197,11 +198,20 @@ export default function InquiriesPage() {
   const summary = useMemo(() => summariseEnquiries(messages), [messages]);
 
   const filtered = useMemo(
-    () => filterEnquiries(messages, {
-      search, status: statusFilter, type: typeFilter, from: fromDate || undefined, to: toDate || undefined, assignedTo: assignedFilter,
-    }),
-    [messages, search, statusFilter, typeFilter, fromDate, toDate, assignedFilter],
+    () => focusedInquiryId
+      ? messages.filter(message => message._id === focusedInquiryId)
+      : filterEnquiries(messages, {
+          search, status: statusFilter, type: typeFilter, from: fromDate || undefined, to: toDate || undefined, assignedTo: assignedFilter,
+        }),
+    [messages, focusedInquiryId, search, statusFilter, typeFilter, fromDate, toDate, assignedFilter],
   );
+
+  useEffect(() => {
+    if (!focusedInquiryId || loading) return;
+    const row = document.getElementById(`inquiry-${focusedInquiryId}`);
+    row?.scrollIntoView({ block: 'nearest' });
+    row?.focus({ preventScroll: true });
+  }, [focusedInquiryId, loading, filtered.length]);
 
   const activeFilterCount = [
     statusFilter !== 'all', typeFilter !== 'all', !!fromDate, !!toDate, assignedFilter !== 'all',
@@ -258,7 +268,7 @@ export default function InquiriesPage() {
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="inquiries-list">
         <EhrListHeader
           title="Patient Inquiries"
           stats={[
@@ -354,7 +364,19 @@ export default function InquiriesPage() {
               const tok = STATUS_TOKENS[status];
               const assignee = enquiryAssignee(m);
               return (
-                <div key={m._id} className="ehr-appointment-row appointment-card-row" style={{ cursor: 'default' }}>
+                <div
+                  key={m._id}
+                  id={`inquiry-${m._id}`}
+                  tabIndex={focusedInquiryId === m._id ? 0 : undefined}
+                  aria-current={focusedInquiryId === m._id ? 'true' : undefined}
+                  className="ehr-appointment-row appointment-card-row"
+                  style={{
+                    cursor: 'default',
+                    background: focusedInquiryId === m._id ? 'var(--overlay-subtle)' : undefined,
+                    outline: focusedInquiryId === m._id ? '2px solid var(--accent-primary)' : undefined,
+                    outlineOffset: focusedInquiryId === m._id ? -2 : undefined,
+                  }}
+                >
                   <div className="ehr-appointment-identity">
                     <div className="ehr-patient-icon" style={avatarTint(m.patientName || m._id)}>
                       {initials(m.patientName)}

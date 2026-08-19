@@ -1,0 +1,352 @@
+name: deploy-website
+
+# The marketing site runs on its own droplet (infra/digitalocean-website), and
+# for a long time nothing CI built ever reached it: the droplet's systemd unit
+# pulled from DigitalOcean's container registry while every workflow here
+# published to GHCR, so the public site could only be updated by hand and
+# drifted a generation behind main.
+#
+# Closing that by publishing to DigitalOcean's registry instead ran into what
+# its free tier actually is — 500 MB and exactly one repository. Collecting
+# garbage to stay under the size cap emptied the repository, and the tier then
+# refused to let it be recreated, with the registry's own catalog reporting
+# zero repositories while the auth endpoint counted one. So the site is
+# delivered without that registry in the path at all: built here, published to
+# GHCR alongside every other image in this repo, and copied to the droplet over
+# the same SSH key the platform deploy uses. Nothing on the droplet needs
+# registry credentials, and no storage tier can block a release.
+#
+# Manual, and gated on the `production` environment, so shipping the public
+# site is a decision rather than a side effect of merging.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Git SHA to build and publish. Blank = current main HEAD.'
+        required: false
+        type: string
+      restart:
+        description: 'How to deliver the image. "ssh" copies it to the droplet and restarts (needs WEBSITE_SSH_* secrets). "reboot" only publishes to GHCR and reboots the droplet, which cannot pick up a new image on its own — use it only to recover an unresponsive box. "none" publishes only.'
+        required: true
+        type: choice
+        default: ssh
+        options:
+          - ssh
+          - reboot
+          - none
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-website
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: build website image + deliver to the droplet
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # checkout fetches its `ref` as a ref *pattern*, so a short SHA finds
+      # nothing (refs/heads/e45120ff* → exit 1 after three retries) — that is
+      # exactly how the 2026-08-18 dispatch failed. Only a full 40-char SHA is
+      # special-cased. The commits/{ref} API accepts a short SHA, a full SHA,
+      # a branch, or a tag, so expand the input there and hand checkout the
+      # one form it always honours.
+      - name: Resolve input to a full commit SHA
+        id: ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT: ${{ github.event.inputs.sha || 'main' }}
+        run: |
+          SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/$INPUT" --jq .sha)" \
+            || { echo "::error title=Unknown ref::'$INPUT' is not a commit, branch, or tag in $GITHUB_REPOSITORY."; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.ref.outputs.sha }}
+
+      - name: Resolve metadata
+        id: meta
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          SHA="$(git rev-parse HEAD)"
+          {
+            echo "sha=${SHA:0:7}"
+            echo "image=ghcr.io/$OWNER/tamamhealth-website"
+            # The tag the droplet's unit runs. Deliberately not a registry
+            # reference: the image arrives over SSH, and a name docker could
+            # try to pull would invite it to on every restart.
+            echo "local_tag=tamamhealth-website:current"
+          } >> "$GITHUB_OUTPUT"
+
+      # The droplet's website.service does not pull, so a publish alone never
+      # updates it — the image has to be copied in and the unit restarted.
+      # Opt-in, matching deploy-production's SSH gate.
+      #
+      # Checked before the build rather than after it: a key the droplet will
+      # not accept is a five-second answer, and finding out only once the image
+      # is already published leaves the registry a generation ahead of the
+      # running site.
+      - name: Check whether website SSH is configured
+        id: gate
+        env:
+          H: ${{ secrets.WEBSITE_SSH_HOST }}
+          U: ${{ secrets.WEBSITE_SSH_USER }}
+          K: ${{ secrets.WEBSITE_SSH_KEY }}
+        run: |
+          if [ "${{ github.event.inputs.restart }}" != "ssh" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ -n "$H" ] && [ -n "$U" ] && [ -n "$K" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Website droplet will not be updated::No WEBSITE_SSH_* secrets are set, so the image publishes to GHCR but the droplet keeps serving the old one."
+          fi
+
+      - name: Set up SSH agent
+        if: steps.gate.outputs.ready == 'true'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.WEBSITE_SSH_KEY }}
+
+      # `accept-new` rather than a prior ssh-keyscan: the keyscan was itself a
+      # connection that could fail, and when it did it left known_hosts empty,
+      # so the deploy died claiming the key was unauthorised when the truth was
+      # that the host had not answered. It still refuses a host key that
+      # CHANGES, which is the protection that matters.
+      - name: Configure the SSH client
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          cat >> ~/.ssh/config <<'EOF'
+          Host *
+            BatchMode yes
+            StrictHostKeyChecking accept-new
+            ConnectTimeout 20
+            ConnectionAttempts 5
+            ServerAliveInterval 15
+            ServerAliveCountMax 8
+          EOF
+
+          # sshd on this droplet hits MaxStartups under the background port-22
+          # scanning every public host gets, and drops connections during key
+          # exchange — including ours, mid-deploy. `ConnectionAttempts` does not
+          # help: the TCP connect succeeds and the reset comes after it.
+          #
+          # Every remote step here is idempotent, so retrying is safe. stdin is
+          # buffered first because a retry would otherwise replay an already
+          # consumed stream — which for the image transfer is the entire
+          # payload, and for the scripts is the script itself.
+          mkdir -p ~/.local/bin
+          cat > ~/.local/bin/ssh-retry <<'EOF'
+          #!/usr/bin/env bash
+          set -uo pipefail
+          IN="$(mktemp)"
+          trap 'rm -f "$IN"' EXIT
+          [ -t 0 ] || cat > "$IN"
+          for attempt in 1 2 3 4 5; do
+            if ssh "$@" < "$IN"; then exit 0; fi
+            echo "ssh attempt $attempt failed; retrying" >&2
+            sleep $((attempt * 15))
+          done
+          echo "ssh failed five times" >&2
+          exit 1
+          EOF
+          chmod +x ~/.local/bin/ssh-retry
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Fail with the fix, not with "Permission denied (publickey)". The
+      # deploy key is set in this environment, but it only works once its
+      # public half is in the droplet's authorized_keys — and that needs the
+      # DO console, because there is no API to add a key to a running droplet.
+      #
+      # A refused key and an unreachable host are different problems with
+      # different fixes, so this reports which one it saw rather than
+      # swallowing stderr and blaming the key for both.
+      - name: Check the deploy key is authorised on the droplet
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if OUT=$(ssh "$USER@$HOST" 'true' 2>&1); then
+              echo "deploy key accepted (attempt $attempt)"
+              exit 0
+            fi
+            echo "attempt $attempt: $OUT"
+            case "$OUT" in
+              *"Permission denied"*|*"Too many authentication failures"*)
+                echo "::error title=Deploy key not authorised::$USER@$HOST rejected the deploy key. Add the public half of WEBSITE_SSH_KEY to ~/.ssh/authorized_keys on the droplet (DigitalOcean → Droplets → tamamhealth-website → Console)."
+                exit 1 ;;
+            esac
+            sleep $((attempt * 10))
+          done
+          echo "::error title=Droplet unreachable over SSH::$USER@$HOST did not complete an SSH handshake in five attempts. The key was never rejected, so this is the host or the network, not authorisation."
+          exit 1
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # NEXT_PUBLIC_* is inlined into the client bundle at BUILD time, exactly
+      # as the platform image warns. Every login entry point on the site
+      # redirects through PLATFORM_URL, so if this is wrong the public site
+      # sends staff to the wrong deployment. The code default is production;
+      # the repo/environment variable overrides it when a deployment needs to
+      # point somewhere else.
+      #
+      # `load` rather than `push` so the built image lands in this runner's
+      # daemon, where it can be both pushed to GHCR and streamed to the
+      # droplet without being pulled back down. Attestations cannot be loaded,
+      # hence provenance off.
+      - name: Build website image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./website
+          file: ./website/Dockerfile
+          load: true
+          provenance: false
+          build-args: |
+            NEXT_PUBLIC_PLATFORM_URL=${{ vars.NEXT_PUBLIC_PLATFORM_URL || 'https://app.tamamhealth.org' }}
+          tags: ${{ steps.meta.outputs.local_tag }}
+          cache-from: type=gha,scope=website
+          cache-to: type=gha,mode=max,scope=website
+
+      # GHCR is the record of what shipped, and what a rollback rebuilds from.
+      # It is not what the droplet reads — that copy goes over SSH below — so a
+      # failure here must not silently leave the site un-updated.
+      - name: Publish to GHCR
+        run: |
+          docker tag "${{ steps.meta.outputs.local_tag }}" "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}"
+          docker tag "${{ steps.meta.outputs.local_tag }}" "${{ steps.meta.outputs.image }}:latest"
+          docker push "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}"
+          docker push "${{ steps.meta.outputs.image }}:latest"
+
+      # What the droplet has to work with. Printed before the transfer rather
+      # than after a failure, because a box short of memory or disk drops SSH
+      # connections during key exchange and the reset says nothing about why.
+      - name: Report droplet health
+        if: steps.gate.outputs.ready == 'true'
+        continue-on-error: true
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+        run: |
+          ssh "$USER@$HOST" 'bash -s' <<'REMOTE'
+            uptime
+            free -m | head -2
+            df -h / | tail -1
+            echo "images: $(docker images -q | wc -l), containers: $(docker ps -q | wc -l)"
+            # This box drops connections during key exchange often enough to
+            # cost a deploy, so record what sshd is actually turning away.
+            echo "sshd rejections in the last hour:"
+            journalctl -u ssh --since '1 hour ago' --no-pager 2>/dev/null \
+              | grep -iE 'error|maximum|refus|drop' | tail -6 || echo "(none)"
+            echo "unauthenticated-connection limit: $(grep -E '^MaxStartups' /etc/ssh/sshd_config || echo 'MaxStartups (default 10:30:100)')"
+          REMOTE
+
+      # `docker load` reads a gzipped stream directly, so this is one hop with
+      # no intermediate file on either end and no credentials on the droplet.
+      #
+      - name: Copy the image to the droplet
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+        run: |
+          docker save "${{ steps.meta.outputs.local_tag }}" \
+            | gzip -1 \
+            | ssh-retry "$USER@$HOST" 'docker load'
+
+      # The unit shipped pulling from DigitalOcean's registry. Point it at the
+      # tag delivered above and drop the pull, which would now fail on every
+      # start. Written as a patch rather than a fresh unit so nothing else the
+      # droplet carries is silently overwritten, and verified afterwards so a
+      # pattern that stops matching fails loudly instead of restarting the old
+      # image and reporting success.
+      - name: Point website.service at the delivered image
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+          TAG: ${{ steps.meta.outputs.local_tag }}
+        run: |
+          ssh-retry "$USER@$HOST" "TAG='$TAG' bash -s" <<'REMOTE'
+            set -euo pipefail
+            UNIT=/etc/systemd/system/website.service
+            sed -i "/ExecStartPre=.*docker pull/d" "$UNIT"
+            sed -i "s#\(ExecStart=/usr/bin/docker run .*\) [^ ]*website[^ ]*\$#\1 ${TAG}#" "$UNIT"
+            if ! grep -q "ExecStart=.*${TAG}\$" "$UNIT"; then
+              echo "website.service does not run ${TAG} after patching:" >&2
+              cat "$UNIT" >&2
+              exit 1
+            fi
+            if grep -q "registry.digitalocean.com" "$UNIT"; then
+              echo "website.service still references DigitalOcean's registry:" >&2
+              cat "$UNIT" >&2
+              exit 1
+            fi
+            systemctl daemon-reload
+            grep -E "ExecStart" "$UNIT"
+          REMOTE
+
+      - name: Restart website.service
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+          USER: ${{ secrets.WEBSITE_SSH_USER }}
+        run: |
+          ssh-retry "$USER@$HOST" 'bash -s' <<'REMOTE'
+            set -euo pipefail
+            systemctl restart website
+            sleep 5
+            systemctl is-active website
+            # Old generations pile up on a 2 GB droplet otherwise. Only
+            # untagged layers go: the running image keeps its tag.
+            docker image prune -f >/dev/null
+          REMOTE
+
+      # The droplet cannot fetch an image on its own any more, so a reboot only
+      # recovers an unresponsive box — it cannot deliver a new build. Kept for
+      # that case, and it restarts the unit with whatever image is loaded.
+      - name: Install doctl
+        if: ${{ github.event.inputs.restart == 'reboot' }}
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Reboot the website droplet
+        if: ${{ github.event.inputs.restart == 'reboot' }}
+        env:
+          DROPLET: tamamhealth-website
+        run: |
+          ID=$(doctl compute droplet list --format ID,Name --no-header \
+                | awk -v n="$DROPLET" '$2==n {print $1}' | head -1)
+          if [ -z "$ID" ]; then
+            echo "::error title=Droplet not found::No droplet named $DROPLET in this account."
+            exit 1
+          fi
+          echo "Rebooting $DROPLET (id=$ID)"
+          doctl compute droplet-action reboot "$ID" --wait
+
+      - name: Verify the live site
+        if: ${{ steps.gate.outputs.ready == 'true' || github.event.inputs.restart == 'reboot' }}
+        run: |
+          for i in $(seq 1 24); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 https://tamamhealth.org/health-system || true)
+            [ "$code" = "200" ] && echo "live: /health-system 200" && exit 0
+            sleep 10
+          done
+          echo "::error title=Site did not come up::/health-system never returned 200 after the restart."
+          exit 1

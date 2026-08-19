@@ -6,9 +6,17 @@ import { ArrowLeft } from '@/components/icons/lucide';
 import { type CapturedFingerprint } from '@/components/FingerprintCapture';
 import PhotoCaptureModal from '@/components/patients/PhotoCaptureModal';
 import { usePatients } from '@/lib/hooks/usePatients';
+import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { safeReturnTo } from '@/lib/navigation/return-to';
+import {
+  dropPatientRegistrationDraft,
+  loadPatientRegistrationDraft,
+  savePatientRegistrationDraft,
+  type PatientRegistrationDraft,
+} from '@/lib/patient-registration-draft';
 import { enrollFingerprint } from '@/lib/services/fingerprint-service';
 import { isValidPhone, isValidEmail, isValidNationalId } from '@/lib/field-formats';
 import { isPathAllowed } from '@/lib/role-routes';
@@ -35,9 +43,19 @@ interface PatientRegistrationFormProps {
   embedded?: boolean;
   onCancel?: () => void;
   onRegistered?: () => void;
+  draftId?: string;
+  returnTo?: string;
+  onDraftChange?: (draft: PatientRegistrationDraft) => void;
 }
 
-export function PatientRegistrationForm({ embedded = false, onCancel, onRegistered }: PatientRegistrationFormProps) {
+export function PatientRegistrationForm({
+  embedded = false,
+  onCancel,
+  onRegistered,
+  draftId,
+  returnTo,
+  onDraftChange,
+}: PatientRegistrationFormProps) {
   const { t } = useTranslation();
   // Section names, in SECTION_ANCHORS order — Biometrics second, under
   // Demographics. Memoized because the review read-back derives from it, and
@@ -57,6 +75,20 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
   // nutrition, radiology) would only land on Access Restricted, so they don't
   // get the button.
   const canCheckIn = isPathAllowed(currentUser?.role || '', '/appointments');
+  /**
+   * A user with no facility of their own — a platform super_admin, an org_admin
+   * between postings — has to say which facility they are registering at. The
+   * facility is what resolves the patient's organisation, and a patient with no
+   * organisation is not saved: the server's tenant validator refuses the
+   * document, and `filterByScope` hides it from every colleague who would go
+   * looking for it. It used to be taken as `hospitalId || ''` and never asked.
+   */
+  const facilityRequired = !currentUser?.hospitalId;
+  const { hospitals } = useHospitals();
+  const facilities = useMemo(
+    () => hospitals.map(h => ({ id: h._id, name: h.name })).sort((a, b) => a.name.localeCompare(b.name)),
+    [hospitals],
+  );
 
   const [form, setForm] = useState({ ...EMPTY_REGISTRATION_FORM });
   const [additionalNok, setAdditionalNok] = useState<AdditionalNok[]>([]);
@@ -75,8 +107,59 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
    * scrolling form from the moment the page opened, so the clerk scrolled past
    * a summary of fields they had not filled yet. It now replaces the form once
    * everything required is answered, and reads back every field.
-   */
+  */
   const [reviewMode, setReviewMode] = useState(false);
+  // Which section the clerk is currently looking at — a different question
+  // from how much is done, and the one the nav marks.
+  const [activeSection, setActiveSection] = useState(DEMOGRAPHICS_SECTION);
+  const [draftHydrated, setDraftHydrated] = useState(!draftId);
+
+  useEffect(() => {
+    if (!draftId) return;
+
+    let active = true;
+    void loadPatientRegistrationDraft(draftId).then(draft => {
+      if (!active) return;
+      if (draft) {
+        setForm(draft.form);
+        setAdditionalNok(draft.additionalNok);
+        setFingerprints(draft.fingerprints);
+        setPatientPhotoUrl(draft.patientPhotoUrl);
+        setReviewMode(draft.reviewMode);
+        if (draft.reviewMode) setActiveSection(REVIEW_SECTION);
+      } else {
+        showToast(t('patientNew.toastDraftLoadFailed'), 'error');
+      }
+      setDraftHydrated(true);
+    });
+
+    return () => { active = false; };
+  }, [draftId, showToast, t]);
+
+  const currentDraft = useMemo<PatientRegistrationDraft>(() => ({
+    version: 1,
+    form,
+    additionalNok,
+    fingerprints,
+    patientPhotoUrl,
+    reviewMode,
+  }), [form, additionalNok, fingerprints, patientPhotoUrl, reviewMode]);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    onDraftChange?.(currentDraft);
+  }, [currentDraft, draftHydrated, onDraftChange]);
+
+  // Once expanded, keep the encrypted hand-off current so a refresh does not
+  // restore the older modal snapshot. Never write the initial empty state over
+  // a draft while its asynchronous decryption is still in flight.
+  useEffect(() => {
+    if (!draftId || !draftHydrated) return;
+    const timer = window.setTimeout(() => {
+      void savePatientRegistrationDraft(draftId, currentDraft);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [currentDraft, draftHydrated, draftId]);
 
   const clearError = (key: string) => {
     if (!errors[key]) return;
@@ -126,13 +209,13 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
   // without, or it promises a section is finished and the submit bounces off
   // it. Sections with nothing required report a total of 0 and read as
   // optional rather than as permanently unfinished.
-  const sectionProgress = useMemo(() => sectionRequirementProgress(form), [form]);
+  const sectionProgress = useMemo(
+    () => sectionRequirementProgress(form, { facilityRequired }),
+    [form, facilityRequired],
+  );
   const requiredDone = sectionProgress.reduce((sum, s) => sum + s.done, 0);
   const requiredTotal = sectionProgress.reduce((sum, s) => sum + s.total, 0);
 
-  // Which section the clerk is currently looking at — a different question
-  // from how much is done, and the one the nav marks.
-  const [activeSection, setActiveSection] = useState(DEMOGRAPHICS_SECTION);
   useEffect(() => {
     const sections = SECTION_ANCHORS
       .map(anchor => document.getElementById(`reg-${anchor}`))
@@ -170,12 +253,20 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
     additionalNok,
     fingerprintCount: fingerprints.length,
     geocodeId,
-  }, t), [sectionLabels, form, additionalNok, fingerprints, geocodeId, t]);
+    // Named, not the raw id — the read-back is what the clerk confirms, and
+    // "hosp-004" is not a facility anyone recognises.
+    registrationFacilityName: facilityRequired
+      ? facilities.find(f => f.id === form.registrationFacility)?.name
+      : undefined,
+  }, t), [sectionLabels, form, additionalNok, fingerprints, geocodeId, facilityRequired, facilities, t]);
 
   /** The errors one section is carrying, keyed by form field. */
   const validateSection = (section: number): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (section === DEMOGRAPHICS_SECTION) {
+      if (facilityRequired && !form.registrationFacility) {
+        errs.registrationFacility = t('patientNew.errRegistrationFacilityRequired');
+      }
       if (!form.firstName.trim()) errs.firstName = t('patientNew.errFirstNameRequired');
       if (!form.surname.trim()) errs.surname = t('patientNew.errSurnameRequired');
       if (!form.gender) errs.gender = t('patientNew.errGenderRequired');
@@ -275,12 +366,13 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
     else window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    if (draftId) await dropPatientRegistrationDraft(draftId);
     if (onCancel) {
       onCancel();
       return;
     }
-    router.push('/patients');
+    router.push(safeReturnTo(returnTo, '/patients'));
   };
 
   const handleSubmit = async (nextAction: 'profile' | 'check-in' = 'profile') => {
@@ -294,7 +386,7 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
         additionalNok,
         geocodeId,
         photoUrl: patientPhotoUrl,
-        hospitalId: currentUser?.hospitalId || '',
+        hospitalId: currentUser?.hospitalId || form.registrationFacility,
         registeredBy: currentUser?.name || currentUser?.username || '',
         nowIso: new Date().toISOString(),
       }));
@@ -333,6 +425,7 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
         + `${result?.hospitalNumber ? t('patientNew.hospitalNumberSuffix', { number: result.hospitalNumber }) : ''}`,
         'success',
       );
+      if (draftId) await dropPatientRegistrationDraft(draftId);
       if (onRegistered) {
         onRegistered();
       } else if (nextAction === 'check-in' && result?._id) {
@@ -348,7 +441,16 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
       console.error('Failed to register patient:', err);
       if (err instanceof Error && 'fields' in err) {
         const validationErr = err as Error & { fields: Record<string, string> };
-        setErrors(validationErr.fields);
+        // The service keys its errors by the field on the patient DOCUMENT.
+        // Every one of those matches a form field except the registering
+        // facility, which the document calls `registrationHospital` — left
+        // unmapped, its message would render against no field and the scroll
+        // to the offending input would find nothing.
+        const { registrationHospital, ...rest } = validationErr.fields;
+        setErrors({
+          ...rest,
+          ...(registrationHospital ? { registrationFacility: registrationHospital } : {}),
+        });
         showToast(t('patientNew.toastValidationFailed', { errors: Object.values(validationErr.fields).join(', ') }), 'error');
       } else {
         showToast(t('patientNew.toastRegisterFailed'), 'error');
@@ -380,7 +482,7 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
       <main className={`page-container page-enter patient-registration-page${embedded ? ' patient-registration-page--embedded' : ''}`}>
         {!embedded && (
           <div className="patient-registration-toolbar">
-            <button onClick={() => router.push('/patients')} className="patient-registration-back">
+            <button onClick={() => void handleCancel()} className="patient-registration-back">
               <ArrowLeft className="w-4 h-4" /> {t('patientNew.backToPatients')}
             </button>
           </div>
@@ -441,7 +543,8 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
               {!reviewMode && (
                 <>
                   {renderSection(DEMOGRAPHICS_SECTION, 'demographics', (
-                    <DemographicsSection {...sectionProps} />
+                    <DemographicsSection {...sectionProps}
+                      facilities={facilities} facilityRequired={facilityRequired} />
                   ))}
                   {/* Biometrics sits directly under Demographics: the photo and
                       prints are taken while the patient is still being

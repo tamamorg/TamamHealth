@@ -156,7 +156,7 @@ export default function ControlledSubstancesPage() {
               { label: movements.length === 1 ? 'entry' : 'entries', value: movements.length, color: LIST_STAT_COLORS.muted },
             ]}
             actions={
-              <button onClick={openModal} className="btn btn-primary">
+              <button data-tour="csub-record-movement" onClick={openModal} className="btn btn-primary">
                 <Plus className="w-4 h-4" /> Record movement
               </button>
             }
@@ -199,7 +199,7 @@ export default function ControlledSubstancesPage() {
                 <tbody>
                   {movements.map(m => (
                     <tr key={m._id}>
-                      <td className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{m.medicationName}</td>
+                      <td className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{m.medicationName}</td>
                       <td>
                         <Badge tone="neutral" uppercase>Sch {m.schedule}</Badge>
                       </td>

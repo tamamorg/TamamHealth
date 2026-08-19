@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated, Platform,
 } from 'react-native';
@@ -10,9 +10,9 @@ type Props = {
 };
 
 export default function LandingScreen({ onGetStarted }: Props) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
-  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(20));
+  const [logoScale] = useState(() => new Animated.Value(0.85));
 
   useEffect(() => {
     Animated.parallel([
@@ -20,7 +20,7 @@ export default function LandingScreen({ onGetStarted }: Props) {
       Animated.timing(slideAnim, { toValue: 0, duration: 700, useNativeDriver: true }),
       Animated.spring(logoScale, { toValue: 1, friction: 6, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [fadeAnim, logoScale, slideAnim]);
 
   return (
     <View style={styles.container}>

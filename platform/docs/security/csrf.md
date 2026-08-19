@@ -61,20 +61,55 @@ token gives the attacker something that verifies.
 
 ## Exempt routes
 
-Some `/api/*` paths are intentionally exempt from layer 3:
+Some `/api/*` paths are intentionally exempt from layer 3. Two separate
+lists in `proxy.ts` implement this — `CSRF_EXEMPT_API_PATHS` (exact-match)
+and `isCsrfExemptApiPath()` (exact-match plus a few prefix rules):
 
 | Path | Why |
 |---|---|
 | `/api/auth/login`  | No session yet — there is nothing to bind a token to. |
 | `/api/auth/logout` | Idempotent; failure mode is "user stays logged in". |
 | `/api/auth/me`     | Read-only. |
-| `/api/demo-credentials` | Read-only and self-gates by demo flag. |
+| `/api/account-requests` | Public, no session to protect; rate-limited by IP. |
 | `/api/patient-portal/*` | Separate JWT scheme with its own anti-forgery flow. |
+| `/api/booking/*` | Public booking requests — no staff session cookie exists to protect; guarded instead by per-IP/per-phone rate limits and a required slot hold. |
 | `/api/fhir/metadata` | Public CapabilityStatement. |
 | `/api/country/metadata`, `/api/terminology/*` | Public reference data, no PHI. |
+| `/api/checkout`, `/api/checkout/*` | Public pay-by-link checkout — an unauthenticated payer has no session cookie to bind a token to; the Origin check still applies. |
+
+`/api/demo-credentials` used to be in this list; the route was removed
+(superseded by `/api/account-requests`).
 
 The exempt list lives in [`proxy.ts`](../../src/proxy.ts) — touch
 both there and the unit tests when adding to it.
+
+### A fourth, header-gated exemption: scheduled-job callers
+
+A small set of routes accept **two** kinds of caller — a staff user with a
+session (manual trigger from the UI), and a scheduled job holding a shared
+secret — and skip *both* the Origin/Host check and the CSRF gate when the
+request presents the route's designated secret header:
+
+| Route | Required header |
+|---|---|
+| `/api/sync` | `x-tamamhealth-signature` |
+| `/api/patient-reminders/dispatch` | `x-reminder-dispatch-secret` |
+| `/api/patient-transfers/sweep` | `x-transfer-sweep-secret` |
+| `/api/telehealth/maintenance` | `x-telehealth-maintenance-secret` |
+
+This is deliberately keyed on the *presence* of the header, not just the
+path — a cron `curl` has no session cookie, no CSRF token, and no `Origin`
+header, so without this exemption the job would 403 before its own secret
+check ever runs. A cross-site browser attacker can't set a custom header on
+a form/`<img>` request, and a `fetch` that tries triggers a CORS preflight
+the browser blocks — so the session-authenticated path keeps full CSRF
+protection; only a request already claiming to be a machine caller skips
+it. The header's *value* is still verified in the route with a
+constant-time compare (see
+[`sync-conflict-policy.md`](../architecture/sync-conflict-policy.md) for
+the `/api/sync` HMAC scheme specifically) — presence alone authorises
+nothing. Implemented as `MACHINE_CALLER_ROUTES` /
+`isMachineCallerRequest()` in [`proxy.ts`](../../src/proxy.ts).
 
 ## What this does *not* defend against
 
@@ -93,13 +128,19 @@ both there and the unit tests when adding to it.
 
 - A fresh token is minted on every login (so a leaked old token from a
   previous session doesn't survive a re-auth).
-- The cookie's `maxAge` matches the session JWT's 8-hour life.
+- The cookie's `maxAge` matches the session JWT's life —
+  `SESSION_TTL_SEC` in [`lib/session.ts`](../../src/lib/session.ts),
+  which defaults to 30 days and is overridable via `SESSION_TTL_HOURS`.
+  (This was a flat 8 hours until a 2026-08-13 change made it configurable;
+  update anything that still assumes "8 hours".)
 - Logout clears both cookies.
-- Lazy mint: if the middleware sees a valid session JWT but no CSRF cookie
-  (the user upgraded across the deploy that introduced this defence, or
-  they cleared cookies), it sets a fresh CSRF cookie on the next
-  authenticated GET response. The user's next mutation then succeeds without
-  forcing a re-login.
+- Lazy mint: if a valid session JWT is present but no CSRF cookie (the
+  user upgraded across the deploy that introduced this defence, or they
+  cleared cookies), a fresh CSRF cookie is set on the next authenticated
+  response. Two independent code paths do this today: the proxy sets it on
+  the next authenticated GET, and `/api/auth/me` does the same
+  independently in its own handler. The user's next mutation then succeeds
+  without forcing a re-login.
 
 ## What the operator must do
 
@@ -112,12 +153,15 @@ both there and the unit tests when adding to it.
 
 ## Tests
 
-- [`csrf.test.ts`](../../src/__tests__/security/csrf.test.ts) — mint/verify
-  unit tests (HMAC binding, nonce randomness, malformed-input handling).
-- The middleware enforcement path (missing token / mismatched token / lazy
-  mint on first authenticated GET) is exercised live against the dev server
-  during release verification; see the entries in the ticket history when
-  this defence was introduced.
+There is currently no dedicated CSRF test file — `csrf.test.ts` (mint/
+verify unit tests: HMAC binding, nonce randomness, malformed-input
+handling) was deleted along with a large batch of other test files in an
+unrelated sync-refactor commit and never restored. The only adjacent
+coverage today is `src/__tests__/services/session-lifetime.test.ts`, which
+touches `CSRF_COOKIE_NAME` as a constant but does not exercise mint/verify
+logic. This is a real coverage gap, not just a doc-freshness issue — the
+mint/verify functions in `lib/csrf.ts` are currently unverified by any
+automated test.
 
 ## See also
 

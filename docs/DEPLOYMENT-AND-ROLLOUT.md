@@ -138,8 +138,14 @@ CouchDB (5984) and Postgres (5432) stay bound to `127.0.0.1` only — reachable
 Copy the `.example` files and fill them in (strong random secrets; never commit):
 
 - `./.env` — compose-level: `COUCHDB_USER`, `COUCHDB_PASSWORD`, `COUCHDB_WEBHOOK_SECRET`, ports.
-- `./platform/.env.production` — `JWT_SECRET`, `ADMIN_INITIAL_PASSWORD`, sync + domain vars.
-- `./website/.env.production` — ops notify email / provider keys.
+- `./platform/.env.production` — `JWT_SECRET`, `SUPERADMIN_INITIAL_PASSWORD`
+  (the actual bootstrap-account credential — required whenever
+  `NEXT_PUBLIC_SYNC_ENABLED=true`, and not in the `.example` template; add it
+  yourself), `ADMIN_INITIAL_PASSWORD` (optional, legacy `admin` account), sync
+  + domain vars.
+- `./website/.env.production` — ops notify email / provider keys. No
+  `.example` template exists for this file yet; `touch` an empty one, since
+  the website container reads no env file from it today.
 
 **Critical build-time vars** (Next.js bakes `NEXT_PUBLIC_*` into the browser
 bundle at `docker compose build`, so set them BEFORE building):
@@ -159,9 +165,15 @@ host shell makes the compose entrypoint fetch them at boot) — see
 
 ### 3.5 Bring up the stack
 
+> **Deploying a fork or a mirror? Set `REPO_URL`.** `deploy.sh` now defaults to
+> the canonical `https://github.com/tamamorg/TamamHealth.git`, so the plain
+> invocation is correct for this repo. (It previously defaulted to a
+> pre-transfer `makuachteny/…` URL that only resolved via a GitHub 301; that
+> default was corrected on 2026-08-18.)
+
 ```bash
 # One-shot on a fresh VPS (installs Docker + Caddy + Let's Encrypt TLS, builds, starts):
-sudo REPO_URL=<your-git-url> DOMAIN_ROOT=tamamhealth.org \
+sudo REPO_URL=https://github.com/tamamorg/TamamHealth.git DOMAIN_ROOT=tamamhealth.org \
      DOMAIN_APP=app.tamamhealth.org DOMAIN_COUCH=couch.tamamhealth.org \
      bash deploy.sh
 
@@ -245,7 +257,7 @@ demo-only.
 3. [ ] Fill the 3 env files; set `NEXT_PUBLIC_DEMO_MODE=false`, `SYNC_ENABLED=true`,
        `NEXT_PUBLIC_COUCHDB_URL=https://couch.<domain>`.
 4. [ ] Run `deploy.sh` (or `docker compose build && up -d`); confirm TLS on all 3 domains.
-5. [ ] Log in as bootstrap admin; create the first hospital + facility admin.
+5. [ ] Log in as `superadmin` (via `SUPERADMIN_INITIAL_PASSWORD`); create the first hospital + facility admin.
 6. [ ] Configure offsite encrypted backup rotation; test a restore.
 7. [ ] Onboard one pilot facility: create users, train by role, run a real visit end to end.
 8. [ ] Verify a record syncs (browser → CouchDB) and the Facility Sync card shows green.

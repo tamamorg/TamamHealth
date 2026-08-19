@@ -1,0 +1,122 @@
+/**
+ * Site i18n.
+ *
+ * Two languages, both carried end to end:
+ *   en   English      (LTR)
+ *   apd  Arabic (Juba) (RTL) — the lingua franca of South Sudan
+ *
+ * The site's copy lives in `site-data.ts` as structured English content, not as
+ * key/value pairs, and it is read by ~25 components. Rewriting all of it into a
+ * keyed catalogue would mean touching every one of those call sites and keeping
+ * two parallel object trees in step forever.
+ *
+ * So translation is an *overlay* instead: `apd.ts` maps English source strings
+ * to their Juba Arabic equivalent, and `translateDeep` walks any content object
+ * swapping the strings it recognises. English stays the single source of truth
+ * for structure; a new language is one more dictionary file; and an untranslated
+ * string falls back to English rather than rendering a blank or a raw key.
+ *
+ * The cost of keying on English text is that editing a source string silently
+ * un-translates it. `npm run i18n:check` in this package exists to catch that —
+ * it reports every user-facing string with no entry in a locale dictionary.
+ */
+
+export type Locale = 'en' | 'apd';
+
+export interface LocaleConfig {
+  code: Locale;
+  /** English name, for the html lang/aria plumbing. */
+  name: string;
+  /** What the language calls itself — what the picker shows. */
+  nativeName: string;
+  dir: 'ltr' | 'rtl';
+}
+
+export const SUPPORTED_LOCALES: LocaleConfig[] = [
+  { code: 'en', name: 'English', nativeName: 'English', dir: 'ltr' },
+  { code: 'apd', name: 'Arabic (Juba)', nativeName: 'عربي جوبا', dir: 'rtl' },
+];
+
+export const DEFAULT_LOCALE: Locale = 'en';
+
+/**
+ * The cookie is the source of truth, not localStorage: every page on this site
+ * is a server component, so the server has to know the language before it can
+ * render a word of it. localStorage is written alongside it only so the
+ * platform app (which is client-rendered and reads the same key) picks up the
+ * same choice when a visitor crosses over.
+ */
+export const COOKIE_NAME = 'tamamhealth-locale';
+export const STORAGE_KEY = 'tamamhealth-locale';
+/** A language preference should outlive the session. One year, refreshed on set. */
+export const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+export const localeConfig = (code: Locale): LocaleConfig =>
+  SUPPORTED_LOCALES.find((l) => l.code === code) ?? SUPPORTED_LOCALES[0];
+
+export const isLocale = (value: unknown): value is Locale =>
+  typeof value === 'string' && SUPPORTED_LOCALES.some((l) => l.code === value);
+
+export type Dictionary = Record<string, string>;
+
+export type Vars = Record<string, string | number>;
+
+/** Replace {{name}} placeholders. */
+function interpolate(template: string, vars: Vars): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(vars[key] ?? `{{${key}}}`));
+}
+
+/**
+ * Translate one string. Whitespace either side is preserved, so copy that pads
+ * a value for layout ("  Juba ") still matches its trimmed dictionary entry.
+ *
+ * `vars` fills {{placeholders}}. Sentences that embed a value must be written
+ * as one template rather than concatenated around it — Arabic puts the number
+ * in a different place in the sentence than English does, and a fragment glued
+ * on at the call site cannot move.
+ */
+export function translate(text: string, dict: Dictionary, vars?: Vars): string {
+  const trimmed = text.trim();
+  if (!trimmed) return text;
+  const hit = dict[trimmed];
+  const resolved = hit === undefined ? text : text.replace(trimmed, hit);
+  return vars ? interpolate(resolved, vars) : resolved;
+}
+
+/**
+ * Walk a content value and translate every string in it.
+ *
+ * Keys that name a machine value rather than copy — slugs, hrefs, colours,
+ * image paths, ISO dates — are skipped: translating "/products/records" would
+ * break routing, and translating "#015697" would break the palette.
+ */
+const OPAQUE_KEYS = new Set([
+  'slug', 'href', 'src', 'image', 'accent', 'color', 'dateISO', 'id', 'key',
+  'icon', 'code', 'email', 'phone', 'url', 'name_en',
+  // `focus` is a CSS object-position ("center 27%"); `idPlaceholder` is a sample
+  // login id. Translating either would reframe an image or tell a reader to type
+  // Arabic into a username field. (`lifecycle` is deliberately NOT here: on this
+  // site those stage names are display copy on a product page, not stored state.)
+  'focus', 'idPlaceholder',
+  // `value` is NOT here: on the stat tiles it is the headline copy
+  // ("1 record", "Offline-first"), not a machine value.
+  // The Web3Forms submission key — a credential, not copy.
+  'WEB3FORMS_ACCESS_KEY',
+  // SVG path geometry on the challenge icons.
+  'd', 'd2', 'd3',
+  // `menu` names which mega-menu a nav item opens — a lookup into MENU_DATA.
+  'menu',
+]);
+
+export function translateDeep<T>(value: T, dict: Dictionary): T {
+  if (typeof value === 'string') return translate(value, dict) as unknown as T;
+  if (Array.isArray(value)) return value.map((v) => translateDeep(v, dict)) as unknown as T;
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = OPAQUE_KEYS.has(k) ? v : translateDeep(v, dict);
+    }
+    return out as T;
+  }
+  return value;
+}

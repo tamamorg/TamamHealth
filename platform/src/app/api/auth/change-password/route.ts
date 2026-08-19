@@ -33,12 +33,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    const currentPassword = (body.currentPassword || '').trim();
-    const newPassword = (body.newPassword || '').trim();
+    const currentPassword = body.currentPassword || '';
+    const newPassword = body.newPassword || '';
 
     if (!currentPassword || !newPassword) {
       return NextResponse.json(
         { error: 'currentPassword and newPassword are required' },
+        { status: 400 }
+      );
+    }
+    if (currentPassword !== currentPassword.trim() || newPassword !== newPassword.trim()) {
+      return NextResponse.json(
+        { error: 'Passwords cannot start or end with spaces' },
         { status: 400 }
       );
     }

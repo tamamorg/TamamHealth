@@ -183,7 +183,7 @@ function FacilityOverview() {
                 {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
               </button>
               {submitError && (
-                <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
+                <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
                   <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
                 </span>
               )}
@@ -193,7 +193,7 @@ function FacilityOverview() {
 
         {/* ═══ KEY METRICS — operational stats + vital events & care programs,
               wrapped in one background card with quick-action style tiles ═══ */}
-        <div className="dash-card p-4">
+        <div className="dash-card p-4" data-tour="facility-overview-metrics">
           <div className="flex items-center gap-2 mb-3">
             <Activity className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Key Metrics</h3>
@@ -209,7 +209,7 @@ function FacilityOverview() {
             <StatCard icon={CheckCircle} label="Data Quality" value={`${Math.round(dataQuality)}%`} tint={dataQuality >= 80 ? 'var(--color-success)' : dataQuality >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'} />
             <StatCard icon={Baby} label="Births Registered" value={String(births.length)} tint="var(--accent-primary)" />
             <StatCard icon={Skull} label="Deaths Registered" value={String(deaths.length)} tint="var(--text-muted)" />
-            <StatCard icon={HeartPulse} label="ANC Visits" value={String(ancVisits.length)} tint="#ec4899" />
+            <StatCard icon={HeartPulse} label="ANC Visits" value={String(ancVisits.length)} tint="var(--chart-2)" />
             <StatCard icon={Syringe} label="Immunizations" value={String(immunizations.length)} tint="var(--color-success)" />
           </div>
         </div>
@@ -248,7 +248,7 @@ function FacilityOverview() {
             }
             const visitSeries = [
               { key: 'OPD Visits', color: 'var(--accent-primary)' },
-              { key: 'ANC Visits', color: '#ec4899' },
+              { key: 'ANC Visits', color: 'var(--chart-2)' },
               { key: 'Immunizations', color: 'var(--color-success-text)' },
             ];
             const commonProps = { data: trend, margin: { top: 8, right: 16, left: -8, bottom: 0 } };
@@ -286,7 +286,7 @@ function FacilityOverview() {
                 <AreaChart {...commonProps}>
                   <defs>
                     <linearGradient id="gOpd" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0} /></linearGradient>
-                    <linearGradient id="gAnc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ec4899" stopOpacity={0.4} /><stop offset="95%" stopColor="#ec4899" stopOpacity={0} /></linearGradient>
+                    <linearGradient id="gAnc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} /></linearGradient>
                     <linearGradient id="gImm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--color-success)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--color-success)" stopOpacity={0} /></linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
@@ -295,7 +295,7 @@ function FacilityOverview() {
                   <Tooltip {...chartTooltipStyle} />
                   <Legend {...legendProps} />
                   <Area type="monotone" dataKey="OPD Visits" stroke="var(--accent-primary)" fill="url(#gOpd)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="ANC Visits" stroke="#ec4899" fill="url(#gAnc)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="ANC Visits" stroke="var(--chart-2)" fill="url(#gAnc)" strokeWidth={2} />
                   <Area type="monotone" dataKey="Immunizations" stroke="var(--color-success)" fill="url(#gImm)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>

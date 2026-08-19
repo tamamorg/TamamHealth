@@ -143,7 +143,7 @@ function TransferCard({
                 </span>
               )}
             </div>
-            <div className="text-[13px] font-medium mt-1.5 truncate">
+            <div className="text-[13px] font-semibold mt-1.5 truncate">
               {describeAssignment(transfer.from)} → {describeAssignment(transfer.to)}
             </div>
             {showClinicalDetail && (
@@ -574,7 +574,7 @@ export function TransferBanner({
         <span> · {describeAssignment(t.from)} → {describeAssignment(t.to)}</span>
         {t.expiresAt && <span> · ends {formatDateTime(t.expiresAt)}</span>}
         {onOpenHistory && (
-          <button className="ml-2 underline" onClick={onOpenHistory}>View</button>
+          <button className="ms-2 underline" onClick={onOpenHistory}>View</button>
         )}
       </div>
     </div>

@@ -289,7 +289,7 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
                     {['Test name', 'Tier', 'Specimen', ''].map(h => (
-                      <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                      <th key={h} className="px-3 py-2 text-start text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -322,7 +322,7 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
                           placeholder="e.g. Blood"
                         />
                       </td>
-                      <td className="px-3 py-2 text-right" style={{ width: 48 }}>
+                      <td className="px-3 py-2 text-end" style={{ width: 48 }}>
                         <button
                           type="button"
                           onClick={() => setDraft({ ...draft, labCatalog: draft.labCatalog.filter((_, idx) => idx !== i) })}
@@ -895,7 +895,7 @@ function TagListEditor({ label, placeholder, values, onChange }: {
         {values.map((v, i) => (
           <span
             key={`${v}-${i}`}
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full"
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1 rounded-full"
             style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
           >
             {v}

@@ -5,8 +5,10 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useToast } from '@/components/Toast';
+import Modal from '@/components/Modal';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { formatClockTime } from '@/lib/format-utils';
 import {
   ClipboardCheck, Baby, Skull, Syringe, HeartPulse,
   Database, Building2, ArrowRight, CheckCircle2, AlertTriangle,
@@ -85,8 +87,7 @@ type SavedCensusReport = CensusData & { _submittedAt?: string; _submittedBy?: st
 
 function formatTime(iso?: string): string | undefined {
   if (!iso) return undefined;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return formatClockTime(iso) || undefined;
 }
 
 const emptyCensus = (date: string): CensusData => ({
@@ -313,7 +314,7 @@ export default function DataEntryDashboard() {
           <div className="p-4 space-y-3">
             {[
               { label: t('dashboard.bedIcu'), occupied: r.icuOccupied, total: r.icuBeds, color: 'var(--color-danger-text)' },
-              { label: t('dashboard.bedMaternity'), occupied: r.maternityOccupied, total: r.maternityBeds, color: '#EC4899' },
+              { label: t('dashboard.bedMaternity'), occupied: r.maternityOccupied, total: r.maternityBeds, color: 'var(--chart-2)' },
               { label: t('dashboard.bedPediatric'), occupied: r.pediatricOccupied, total: r.pediatricBeds, color: 'var(--color-brand-500)' },
             ].map(bed => {
               const pct = bed.total > 0 ? Math.round((bed.occupied / bed.total) * 100) : 0;
@@ -431,7 +432,7 @@ export default function DataEntryDashboard() {
         onSearchChange={setReportSearch}
         filters={[]}
         actions={[
-          { label: t('dataEntry.newCensus'), icon: Plus, onClick: () => setShowForm(true), tone: 'primary' },
+          { label: t('dataEntry.newCensus'), icon: Plus, onClick: () => setShowForm(true), tone: 'primary', tourTarget: 'data-entry-new-census' },
           { label: t('dataEntry.facilityAssessment'), icon: Building2, onClick: () => router.push('/facility-assessments') },
           { label: t('dataEntry.dataQuality'), icon: Database, onClick: () => router.push('/data-quality') },
           { label: t('dataEntry.vitalStatistics'), icon: Heart, onClick: () => router.push('/vital-statistics') },
@@ -481,16 +482,15 @@ export default function DataEntryDashboard() {
       >
         {/* ═══ CENSUS FORM MODAL ═══ */}
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto" style={{ background: 'rgba(0,0,0,0.55)', padding: '24px 16px' }}
-            onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}>
+          <Modal onClose={() => setShowForm(false)} width={672} align="top" labelledBy="daily-census-title">
             <div className="w-full max-w-2xl rounded-lg" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-xl)' }}>
 
               {/* Form header */}
-              <div className="sticky top-0 z-10 flex items-center justify-between p-4 rounded-t-lg" style={{ background: 'var(--bg-card-solid)', borderBottom: '1px solid var(--border-medium)' }}>
+              <div data-tour="census-form-header" className="sticky top-0 z-10 flex items-center justify-between p-4 rounded-t-lg" style={{ background: 'var(--bg-card-solid)', borderBottom: '1px solid var(--border-medium)' }}>
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-5 h-5" style={{ color: ACCENT }} />
                   <div>
-                    <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dataEntry.dailyFacilityCensus')}</h3>
+                    <h3 id="daily-census-title" className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dataEntry.dailyFacilityCensus')}</h3>
                     <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{myHospital?.name || t('dataEntry.unknownFacility')}</p>
                   </div>
                 </div>
@@ -564,7 +564,7 @@ export default function DataEntryDashboard() {
                 {numField(t('dataEntry.electricityHoursToday'), 'electricityHoursToday', Zap)}
 
                 {/* 5. Pharmacy & Lab */}
-                {sectionHeader(Pill, t('dataEntry.pharmacyLaboratory'), '#EC4899')}
+                {sectionHeader(Pill, t('dataEntry.pharmacyLaboratory'), 'var(--chart-2)')}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {numField(t('dataEntry.tracerMedicinesInStock'), 'tracerMedicinesInStock', Pill)}
                   {numField(t('dataEntry.tracerMedicinesTotal'), 'tracerMedicinesTotal')}
@@ -601,7 +601,7 @@ export default function DataEntryDashboard() {
                 </button>
               </div>
             </div>
-          </div>
+          </Modal>
         )}
       </EhrCareDashboard>
     </main>

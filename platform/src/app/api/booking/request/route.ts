@@ -9,8 +9,8 @@
  *      A slot the front desk filled two minutes ago is caught here.
  *   3. Match against the patient index — but never *write* to it. An unmatched
  *      booking creates no `PatientDoc`; its identity lives on the appointment
- *      and the intake form until a human links or registers it. Public traffic
- *      must not be able to put rows into the patient registry.
+ *      until a human links or registers it. Public traffic must not be able
+ *      to put rows into the patient registry.
  *   4. Book through `createAppointment`, so `assertNoBookingConflicts` runs.
  *   5. Consume the hold, mint a reference, audit, notify best-effort.
  *
@@ -20,7 +20,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAppointment } from '@/lib/services/appointment-service';
-import { createIntakeForm } from '@/lib/services/intake-form-service';
 import { consumeHold, getLiveHold, verifySlotStillOpen } from '@/lib/services/booking-service';
 import { getVisitReasonById, getVisitReasonBySlug } from '@/lib/services/visit-reason-service';
 import { getProviderProfileByUserId } from '@/lib/services/provider-profile-service';
@@ -28,7 +27,7 @@ import { getHospitalById } from '@/lib/services/hospital-service';
 import { matchPatient } from '@/lib/services/mpi-service';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import { toHHMM, toMinutes } from '@/lib/booking/slot-engine';
-import type { AppointmentDoc, IntakeFormField } from '@/lib/db-types';
+import type { AppointmentDoc } from '@/lib/db-types';
 import type { PatientClass } from '@/lib/db-types-booking';
 import {
   resolvePractice, guardPublicRate, generateBookingReference,
@@ -240,65 +239,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message, code: 'SLOT_TAKEN' }, { status: 409 });
   }
 
-  // The answers go to the same review queue staff already work: /patient-intake.
-  const fields: IntakeFormField[] = [
-    { label: 'First name', value: firstName },
-    { label: 'Last name', value: lastName },
-    { label: 'Date of birth', value: dateOfBirth || '—' },
-    { label: 'Phone', value: phone || '—' },
-    { label: 'Email', value: email || '—' },
-    { label: 'New or returning', value: patientClass === 'new' ? 'New patient' : 'Returning patient' },
-    { label: 'Visit reason', value: visitReason.name },
-    { label: 'Requested time', value: `${hold.date} ${hold.startTime}` },
-    { label: 'Booking reference', value: reference },
-  ];
-  if (trimmed(body.insurance?.provider)) {
-    fields.push({ label: 'Insurance', value: trimmed(body.insurance?.provider) });
-    fields.push({ label: 'Member ID', value: trimmed(body.insurance?.memberId) || '—' });
-    if (trimmed(body.insurance?.groupId)) {
-      fields.push({ label: 'Group ID', value: trimmed(body.insurance?.groupId) });
-    }
-  }
-  if (trimmed(body.notes)) fields.push({ label: 'Notes for the practice', value: trimmed(body.notes) });
-  if (candidates.length && !linked) {
-    // Surfaces the near-misses to whoever reviews this, without deciding for
-    // them. The desk sees "possible match" and makes the call.
-    fields.push({
-      label: 'Possible existing charts',
-      value: candidates.slice(0, 3)
-        .map(c => `${c.patient.firstName} ${c.patient.surname} (${Math.round(c.score * 100)}%)`)
-        .join(', '),
-    });
-  }
-
-  let intakeFormId: string | undefined;
-  try {
-    const form = await createIntakeForm({
-      patientId: linked?._id,
-      patientName,
-      providerId: hold.providerId,
-      providerName: profile?.displayName,
-      status: 'pending_review',
-      requestedAt: nowIso,
-      receivedAt: nowIso,
-      fields,
-      hospitalId: facilityId,
-      orgId,
-    });
-    intakeFormId = form._id;
-  } catch {
-    // A missing intake form costs the desk some retyping; failing the booking
-    // over it would cost the patient their slot.
-  }
-
   await consumeHold(hold.holdToken);
+
+  // Everything the requester typed already lives on the appointment itself
+  // (`requester`, `insuranceSubmitted`, `patientNotes`, `visitReasonName`),
+  // so the desk reads it from the booking row rather than a parallel doc.
+  // The one fact with nowhere else to go is the near-miss match list — it is
+  // named in the audit detail so whoever links an unmatched booking can see
+  // what the matcher considered without it deciding for them.
+  const nearMisses = !linked && candidates.length
+    ? candidates.slice(0, 3)
+      .map(c => `${c.patient.firstName} ${c.patient.surname} (${Math.round(c.score * 100)}%)`)
+      .join(', ')
+    : '';
 
   await logAuditSafe(
     'PUBLIC_BOOKING_REQUEST',
     undefined,
     'Online booking',
     `${reference}: ${visitReason.name} on ${hold.date} ${hold.startTime}` +
-    ` at ${facility?.name || facilityId}${linked ? ' (matched existing chart)' : ' (unmatched)'}`,
+    ` at ${facility?.name || facilityId}${linked ? ' (matched existing chart)' : ' (unmatched)'}` +
+    (nearMisses ? ` — possible existing charts: ${nearMisses}` : ''),
   );
 
   return NextResponse.json({
@@ -310,6 +271,5 @@ export async function POST(request: NextRequest) {
     providerName: profile?.displayName || 'Assigned clinician',
     facilityName: facility?.name || 'Clinic',
     visitReasonName: visitReason.name,
-    intakeFormId: intakeFormId ? true : false,
   });
 }

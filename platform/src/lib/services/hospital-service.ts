@@ -11,10 +11,11 @@ export async function getAllHospitals(scope?: DataScope): Promise<HospitalDoc[]>
   return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getHospitalById(id: string): Promise<HospitalDoc | null> {
+export async function getHospitalById(id: string, scope?: DataScope): Promise<HospitalDoc | null> {
   try {
     const db = hospitalsDB();
-    return await db.get(id) as HospitalDoc;
+    const hospital = await db.get(id) as HospitalDoc;
+    return scope && filterByScope([hospital], scope).length === 0 ? null : hospital;
   } catch (err) {
     // Surface the real failure — a swallowed non-404 here once masqueraded
     // as "Hospital not found" on the manage page.
@@ -65,12 +66,21 @@ export async function createHospital(
 
 export async function updateHospitalStatus(
   id: string,
-  data: Partial<HospitalDoc>
+  data: Partial<HospitalDoc>,
+  scope?: DataScope,
 ): Promise<HospitalDoc | null> {
   const db = hospitalsDB();
   try {
     const existing = await db.get(id) as HospitalDoc;
-    const updated = { ...existing, ...data, _id: existing._id, _rev: existing._rev, updatedAt: new Date().toISOString() };
+    if (scope && filterByScope([existing], scope).length === 0) return null;
+    const updated = {
+      ...existing,
+      ...data,
+      _id: existing._id,
+      _rev: existing._rev,
+      orgId: existing.orgId,
+      updatedAt: new Date().toISOString(),
+    };
     const resp2 = await db.put(updated);
     updated._rev = resp2.rev;
     emitSyncEvent({

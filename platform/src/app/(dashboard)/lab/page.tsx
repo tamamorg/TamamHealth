@@ -295,7 +295,12 @@ export default function LabPage() {
               search={{ value: quickSearch, onChange: setQuickSearch, placeholder: 'Filter table', ariaLabel: 'Filter table' }}
               actions={
                 <>
-                  <div className="relative" ref={headerFilterRef}>
+                  {/* data-tour: the guided tour spotlights this filter trigger
+                      to introduce the registry's own worklists (draws due,
+                      scheduled, send-outs, overdue review) — EhrListHeaderButton
+                      doesn't forward a data-tour prop, so it's tagged here on
+                      its existing wrapper instead of adding a new element. */}
+                  <div className="relative" ref={headerFilterRef} data-tour="lab-registry-filters">
                     <EhrListHeaderButton
                       onClick={() => setShowHeaderFilters(s => !s)}
                       active={headerFilterCount > 0}
@@ -311,7 +316,7 @@ export default function LabPage() {
                     </EhrListHeaderButton>
                     {showHeaderFilters && (
                       <div
-                        className="absolute right-0 mt-2 rounded-2xl overflow-hidden z-50"
+                        className="absolute end-0 mt-2 rounded-2xl overflow-hidden z-50"
                         style={{ width: 'min(92vw, 420px)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
                       >
                         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
@@ -417,7 +422,7 @@ export default function LabPage() {
                         showAvatar
                         size={40}
                         secondaryText={order.hospitalNumber || 'ID not recorded'}
-                        nameClassName="font-medium text-sm"
+                        nameClassName="text-sm"
                       />
                       {overdue && (
                         <p className="text-[10px] font-semibold flex items-center gap-1 mt-0.5" style={{ color: 'var(--color-danger-text)' }}>
@@ -426,10 +431,10 @@ export default function LabPage() {
                         </p>
                       )}
                     </td>
-                    <td className="font-medium text-sm">
+                    <td className="font-semibold text-sm">
                       {order.testName}
                       {order.tier && (
-                        <Badge tone={order.tier === 'special' ? 'accent' : 'neutral'} uppercase className="ml-2 align-middle">{order.tier}</Badge>
+                        <Badge tone={order.tier === 'special' ? 'accent' : 'neutral'} uppercase className="ms-2 align-middle">{order.tier}</Badge>
                       )}
                     </td>
                     <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -576,8 +581,8 @@ export default function LabPage() {
                           const crit = evaluateCritical(p.testName, value);
                           return (
                             <tr key={`${p.testCode}-${i}`}>
-                              <td className="text-sm font-medium">{p.testName || p.testCode}</td>
-                              <td className="text-sm" style={{ color: crit.isCriticalValue ? 'var(--color-danger-text)' : 'inherit', fontWeight: crit.isCriticalValue ? 600 : 400 }}>{value}</td>
+                              <td className="text-sm font-semibold">{p.testName || p.testCode}</td>
+                              <td className="text-sm" style={{ color: crit.isCriticalValue ? 'var(--color-danger-text)' : 'inherit', fontWeight: crit.isCriticalValue ? 700 : 600 }}>{value}</td>
                               <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{p.unit || '—'}</td>
                               <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{p.referenceRange || '—'}</td>
                               <td>

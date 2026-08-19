@@ -192,68 +192,52 @@ The drill IAM (used by the GitHub Action) gets `s3:GetObject` + `s3:ListBucket`
 
 ### 3. Schedule the host-side cron jobs
 
-Use a systemd timer rather than crontab — easier to inspect, easier to alert
-on failure via `OnFailure=`.
+Don't hand-write systemd units for this — the repo already ships hardened
+ones (`infra/systemd/tamamhealth-offsite-backup.{service,timer}` and
+`tamamhealth-offsite-postgres-backup.{service,timer}`, sandboxed with
+`ProtectSystem=strict` and friends) and an installer that checks every
+prerequisite before touching `/etc/systemd/system`:
 
-`/etc/systemd/system/tamamhealth-backup-couchdb.service`:
-
-```ini
-[Unit]
-Description=TamamHealth offsite CouchDB backup
-After=docker.service network-online.target
-Requires=docker.service
-
-[Service]
-Type=oneshot
-EnvironmentFile=/etc/tamamhealth/backup.env
-WorkingDirectory=/opt/tamamhealth
-ExecStart=/opt/tamamhealth/scripts/backup-couchdb.sh
-StandardOutput=journal
-StandardError=journal
+```bash
+# As root, from the repo root on the host:
+sudo ./scripts/install-offsite-backup.sh
 ```
 
-`/etc/systemd/system/tamamhealth-backup-couchdb.timer`:
-
-```ini
-[Unit]
-Description=Daily TamamHealth offsite CouchDB backup
-
-[Timer]
-OnCalendar=*-*-* 02:30:00 UTC
-Persistent=true
-RandomizedDelaySec=300
-
-[Install]
-WantedBy=timers.target
-```
-
-Repeat for `tamamhealth-backup-postgres.{service,timer}` (`OnCalendar=*-*-*
-02:45:00 UTC` — staggered from CouchDB so they don't fight for upload
-bandwidth).
-
-`/etc/tamamhealth/backup.env` (mode 0600, root-owned):
+It checks for `gpg`, the AWS CLI (or `BACKUP_HTTP_PUT_URL` as a fallback),
+`/etc/tamamhealth/backup-pubkey.gpg`, and `/etc/tamamhealth/backup.env` before
+installing anything, and tells you exactly what's missing rather than failing
+partway through. Create `/etc/tamamhealth/backup.env` first (mode 0600,
+root-owned):
 
 ```sh
 BACKUP_BUCKET=tamamhealth-backups-prod
+DATABASE_URL=postgresql://backup-user:password@private-host:25060/tamamhealth?sslmode=require
 AWS_REGION=af-south-1
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
-DATABASE_URL=postgres://...?sslmode=require
-# Optional B2:
+# Backblaze B2 / MinIO only:
 # AWS_ENDPOINT_URL=https://s3.eu-central-003.backblazeb2.com
+BACKUP_PUBKEY_PATH=/etc/tamamhealth/backup-pubkey.gpg
 ```
 
-Enable:
+Timing is deliberately staggered so nothing races the in-container dump: the
+`couchdb-backup` service inside `docker-compose.yml` writes its local dump at
+02:15 UTC; `tamamhealth-offsite-backup.timer` ships it off-site at **03:30
+UTC**; `tamamhealth-offsite-postgres-backup.timer` runs at **04:15 UTC**. Both
+carry `RandomizedDelaySec=15min` (so a fleet of facility nodes doesn't hit the
+bucket in lockstep) and `Persistent=true` (a droplet that was powered off at
+fire-time runs the missed backup on next boot instead of skipping the night).
+
+`install-offsite-backup.sh` enables both timers for you; verify immediately
+rather than trusting it silently:
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now tamamhealth-backup-couchdb.timer
-sudo systemctl enable --now tamamhealth-backup-postgres.timer
-sudo systemctl list-timers | grep tamamhealth
+sudo systemctl list-timers tamamhealth-offsite-backup.timer tamamhealth-offsite-postgres-backup.timer
+sudo systemctl start tamamhealth-offsite-backup.service
+journalctl -u tamamhealth-offsite-backup.service -n 50 --no-pager
+sudo systemctl start tamamhealth-offsite-postgres-backup.service
+journalctl -u tamamhealth-offsite-postgres-backup.service -n 50 --no-pager
 ```
-
-Verify the next-fire time and that `journalctl -u tamamhealth-backup-couchdb`
-is clean after the first run.
 
 ### 4. Wire the quarterly drill
 

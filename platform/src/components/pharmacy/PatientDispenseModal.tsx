@@ -467,7 +467,7 @@ function DispenseConfirm({
         ].map(([label, value]) => (
           <div key={label} className="flex justify-between gap-3">
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
-            <span className="text-xs font-semibold text-right" style={{ color: 'var(--text-primary)' }}>{value}</span>
+            <span className="text-xs font-semibold text-end" style={{ color: 'var(--text-primary)' }}>{value}</span>
           </div>
         ))}
       </div>
@@ -496,7 +496,7 @@ function DispenseConfirm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-2 rounded-lg text-sm font-medium"
+          className="flex-1 py-2 rounded-lg text-sm font-bold"
           style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}
         >
           {t('action.cancel')}

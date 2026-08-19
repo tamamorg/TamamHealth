@@ -7,11 +7,12 @@ import {
   HelpCircle,
   LayoutDashboard,
   LogOut,
+  Menu,
   MessageSquare,
   Plus,
   Search,
-  Send,
   Settings,
+  UserPlus,
   Users,
   X,
 } from '@/components/icons/lucide';
@@ -102,8 +103,7 @@ export default function EhrTopRail() {
     return uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes);
   }, [allowedRoutes, currentUser, roleConfig]);
 
-  // Keep four high-frequency destinations visible in the header. They are
-  // removed from the module menu so each destination has one visible home.
+  // Keep four high-frequency destinations visible in the header as shortcuts.
   // `homeHref` is passed so the role's own dashboard never takes one of the
   // four — the module trigger to the left of this row already goes there.
   const headerShortcutItems = useMemo(
@@ -114,6 +114,12 @@ export default function EhrTopRail() {
     () => new Set(headerShortcutItems.map(item => item.href)),
     [headerShortcutItems],
   );
+  // The menu drops what the rail already shows. These four sit in the row
+  // immediately to the right of the trigger on every page, so listing them
+  // again inside the panel it opens made the list longer without making
+  // anywhere new reachable — and the dashboard header below now carries the
+  // next five (getPageHeaderNavItems), so the shortest path to most
+  // destinations is already on screen before the menu is opened.
   const navGroups = useMemo(
     () => groupNavItemsBySection(navItems.filter(item => !headerShortcutHrefs.has(item.href))),
     [headerShortcutHrefs, navItems],
@@ -141,7 +147,6 @@ export default function EhrTopRail() {
       '/telehealth': 'nav.telehealth',
       '/government': 'nav.government',
       '/facility-settings': 'nav.facilitySettings',
-      '/patient-intake': 'nav.patientIntake',
       '/payments': 'nav.payments',
       '/payments/claims': 'nav.claims',
       '/wards': 'nav.wards',
@@ -199,7 +204,7 @@ export default function EhrTopRail() {
   const userInitials = currentUser?.name ? initials(currentUser.name) : 'TH';
 
   const isRouteActive = (href: string) => pathname === href || (href !== '/' && pathname?.startsWith(href + '/'));
-  const primaryCreateHref = ['/patient-intake', '/consultation', '/patients/new'].find(href => isHrefAllowed(href, allowedRoutes));
+  const primaryCreateHref = ['/consultation', '/patients/new'].find(href => isHrefAllowed(href, allowedRoutes));
   const mobileTabs = [
     { href: homeHref, label: 'Dashboard', icon: LayoutDashboard },
     ...(canSearchPatients ? [{ href: '/patients', label: 'Patients', icon: Users }] : []),
@@ -227,14 +232,18 @@ export default function EhrTopRail() {
           title="Open module menu"
           data-track="nav.module_menu"
         >
-          {/* The dashboard glyph, fixed — not a hamburger (tried, reverted) and
-              not the current module's icon. It stays constant so the trigger is
-              always the same button in the same place (a changing glyph read as
-              a mystery button), and because it IS the way home, the shortcut row
-              beside it never spends a slot on the role's own dashboard —
-              `getPrimaryShortcutItems` drops that destination to its last
-              fallback tier. The open panel attaches directly below. */}
-          <LayoutDashboard className="w-5 h-5" />
+          {/* A hamburger, fixed — never the current module's icon. It stays
+              constant so the trigger is always the same button in the same
+              place (a changing glyph read as a mystery button), and it is the
+              platform's own `menu` glyph (Icon.tsx), so it carries the same
+              stroke and colour as every other icon on the rail.
+
+              It was the dashboard glyph until the menu became a full module
+              map: that glyph is also the Dashboard row's own icon inside the
+              panel, so the button and one of its items were drawn identically.
+              The hamburger says "everywhere you can go"; the dashboard glyph
+              still says "the dashboard", one row down. */}
+          <Menu className="w-5 h-5" />
         </button>
 
         {moduleOpen && (
@@ -350,11 +359,10 @@ export default function EhrTopRail() {
             title={t('frontDesk.registerNewPatient')}
             data-track="patient.create"
           >
-            {/* The intake form's kite, not a person-plus: starting a patient
-                here is the same act as the intake module's, so the header
-                wears the one glyph the intake form carries everywhere — nav
-                item, front-desk strip, clinical strip, intake page. */}
-            <Send className="w-4 h-4" />
+            {/* The same person-plus the front-desk strip's "Register new
+                patient" button wears, so the one act carries one glyph
+                wherever it is offered. */}
+            <UserPlus className="w-4 h-4" />
           </button>
         )}
         <QuickActions notificationCount={unreadCount} />

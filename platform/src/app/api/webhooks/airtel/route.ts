@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import { updatePaymentStatus } from '@/lib/services/payment-service';
+import { reconcileProviderPayment } from '@/lib/services/payment-service';
 import crypto from 'crypto';
 
 /**
@@ -85,6 +85,7 @@ async function postHandler(req: NextRequest) {
     // Airtel Money success status codes
     const successCodes = ['00', 'SUCCESS', 'success'];
     const isSuccessful = successCodes.includes(status_code);
+    const failureCodes = ['TF', 'FAILED', 'FAILURE', 'failed', 'CANCELLED', 'cancelled'];
 
     if (isSuccessful) {
       // Log only opaque transaction correlators — never the amount or payer
@@ -98,13 +99,18 @@ async function postHandler(req: NextRequest) {
       // Match the transaction id to the pending payment (stored as the
       // payment's `reference`) and mark it posted. Unknown match is logged but
       // still acked — never throw back at the gateway.
-      try {
-        const updated = await updatePaymentStatus(id, 'posted', { providerReference: airtel_money_id });
-        if (!updated) {
-          console.warn('[Airtel Webhook] No matching payment for reference:', id);
-        }
-      } catch (persistErr) {
-        console.error('[Airtel Webhook] Failed to persist payment status:', persistErr);
+      const reconciliation = await reconcileProviderPayment({
+        reference: id,
+        provider: 'airtel',
+        status: 'posted',
+        providerReference: airtel_money_id,
+        amount: transaction.transaction_amount,
+        currency: transaction.transaction_currency_code,
+      });
+      if (reconciliation.outcome === 'mismatch' || reconciliation.outcome === 'invalid_state') {
+        console.warn('[Airtel Webhook] Callback did not match pending payment:', {
+          transactionId: id, reason: reconciliation.reason,
+        });
       }
 
       return NextResponse.json({
@@ -112,7 +118,7 @@ async function postHandler(req: NextRequest) {
         resultDesc: 'Accepted',
         timestamp: new Date().toISOString(),
       });
-    } else {
+    } else if (failureCodes.includes(status_code)) {
       // Payment failed or cancelled
       console.log('[Airtel Webhook] Payment failed:', {
         transactionId: id,
@@ -122,18 +128,21 @@ async function postHandler(req: NextRequest) {
       });
 
       // Mark the matching payment failed; ack the gateway regardless.
-      try {
-        const updated = await updatePaymentStatus(id, 'failed', { reason: message });
-        if (!updated) {
-          console.warn('[Airtel Webhook] No matching payment for reference:', id);
-        }
-      } catch (persistErr) {
-        console.error('[Airtel Webhook] Failed to persist payment status:', persistErr);
-      }
+      await reconcileProviderPayment({
+        reference: id, provider: 'airtel', status: 'failed', reason: message,
+      });
 
       return NextResponse.json({
         resultCode: 0,
         resultDesc: 'Accepted',
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // Pending/unknown provider states are acknowledgements, not terminal
+      // failures. Leave the local payment pending for a later callback.
+      return NextResponse.json({
+        resultCode: 0,
+        resultDesc: 'Non-terminal status accepted',
         timestamp: new Date().toISOString(),
       });
     }

@@ -11,9 +11,14 @@ Every persisted message carries an explicit `direction` (see
 
 | `direction`         | sender → recipient                 | written by                                    |
 |---------------------|------------------------------------|-----------------------------------------------|
-| `patient_to_staff`  | patient (via portal) → facility    | `patient-portal/page.tsx` `handleSendChat`    |
-| `staff_to_patient`  | facility → patient                 | `SendMessageModal` (recipient.type=`patient`) |
-| `staff_to_staff`    | facility → another staff member    | `SendMessageModal` (recipient.type=`staff`)   |
+| `patient_to_staff`  | patient (via portal) → facility    | `POST /api/patient-portal/messages` (server-forced; client initiator is `patient-portal/page.tsx` `handleSendChat`) |
+| `staff_to_patient`  | facility → patient                 | `PatientDetailPage.tsx` `sendPatientMessage` (chart reply); `ClinicalNoteEditor.tsx` `handleSendEducation` (patient education); `appointment-reminder-service.ts` (automated reminders) |
+| `staff_to_staff`    | facility → another staff member    | `conversation-service.ts` `sendConversationMessage` (internal staff chat, `/messages` page) |
+
+There is no `SendMessageModal` component in the codebase — that name
+described an earlier design that never shipped under that name. The three
+real call sites above set `direction` directly when they call
+`createMessage`.
 
 The field is **optional** for backward compatibility: legacy docs written
 before the field existed are treated as `staff_to_patient`, with the
@@ -23,20 +28,29 @@ the directional field landed).
 
 ## Canonical fields
 
-Patient-originated messages set:
+Patient-originated messages are written server-side by
+[`POST /api/patient-portal/messages`](../../src/app/api/patient-portal/messages/route.ts),
+which forces the identity/direction fields from the patient's own verified
+JWT rather than trusting the client body — the patient-portal Chat tab
+(`handleSendChat` in `patient-portal/page.tsx`) only supplies the
+non-identity fields (phone, department, hospital, subject, body). This
+matters: a patient client can't spoof another patient's `patientId` or set
+`fromDoctorId` to impersonate a clinician, because the route ignores those
+fields if present in the request body and derives them from `auth` instead:
 
 ```ts
 {
-  direction: 'patient_to_staff',
   recipientType: 'staff',
-  patientId:           <the patient's _id>,
-  patientName:         "<First> <Surname>",
+  direction: 'patient_to_staff',
+  patientId:           auth.sub,              // from the verified patient JWT, not the request body
+  patientName:         auth.name,
   patientPhone:        <patient.phone || ''>,
   recipientHospitalId: <patient.registrationHospital>,
   recipientDepartment: <chatDepartment>, // e.g. "General / OPD"
   fromDoctorId:        'patient',                 // sentinel marker
-  fromDoctorName:      "<First> <Surname>",       // patient's own name
+  fromDoctorName:      auth.name,                 // patient's own name
   fromHospitalId:      <patient.registrationHospital>,
+  fromHospitalName:    <the hospital's name>,      // required on MessageDoc — omitted by an earlier version of this doc
   // ...subject / body / channel / sentAt as usual
 }
 ```
@@ -50,34 +64,54 @@ returns the full conversation.
 
 ## Sync topology
 
-The patient-portal runs in the patient's browser against a local PouchDB
-named `tamamhealth_messages`. In a synced deployment, that PouchDB has
-two-way replication configured against the facility's CouchDB (see
-`src/lib/db.ts` for the channel setup). The flow is:
+The two sides of this conversation reach CouchDB by genuinely different
+paths — this used to be documented as symmetric bi-sync on both ends, which
+is no longer (and may never have been) accurate. Read carefully before
+changing either side.
+
+**Patient side has no PouchDB and no live subscription.** The patient
+portal is an external client authenticated by its own JWT scheme
+(`verifyPatientToken`), not a staff PouchDB-sync session, so it never gets
+a local replica. The Chat tab POSTs to
+[`/api/patient-portal/messages`](../../src/app/api/patient-portal/messages/route.ts),
+which runs server-side and writes straight to CouchDB via `messagesDB()` —
+on the server, `messagesDB()` resolves to a `pouchdb-core` instance with
+only the `http` + `mapreduce` + `find` plugins (see `src/lib/db.ts`), i.e. a
+stateless HTTP write per request, not a replica. The Chat tab fetches
+messages once on mount; there is no polling or `.changes()` listener, so a
+patient sees a new staff reply only after reloading or reopening the page.
+
+**Staff side has a real local PouchDB with bi-directional replication.**
+`tamamhealth_messages` is configured for two-way sync in
+[`src/lib/sync/sync-config.ts`](../../src/lib/sync/sync-config.ts)
+(`{ localName: 'tamamhealth_messages', direction: 'both', orgScoped: true }`),
+wired up by `src/lib/sync/sync-manager.ts`. The `/messages` page and the
+patient-chart reply flow live-subscribe via
+[`useMessages`](../../src/lib/hooks/useMessages.ts), which calls
+`messagesDB().changes({ since: 'now', live: true })` — so an inbound
+patient message lights up the staff inbox without a manual refresh.
 
 ```
-[Patient browser]                [Facility CouchDB]              [Staff browser]
-PouchDB (messages)  --bi-sync--> CouchDB (messages)  --bi-sync--> PouchDB (messages)
-        ^                                                                 |
-        | createMessage(direction='patient_to_staff')                     |
-        |                                                                 v
-   patient-portal Chat tab                                          /messages page
-        ^                                                                 |
-        | createMessage(direction='staff_to_patient')                     |
-        +-----------------------------------------------------------------+
+[Patient browser]                                        [Staff browser]
+   |  POST /api/patient-portal/messages                        ^
+   v                                                            | db.changes({since:'now',live:true})
+[API route — server-side PouchDB http adapter]  -----> PouchDB (messages) <--bi-sync--> CouchDB (messages)
+   (direct write, no local persistence, no live read)
 ```
 
-Both ends live-subscribe to changes via `db.changes({ since: 'now',
-live: true })` so a delivered message lights up the other side without a
-manual refresh. In offline / local-only deployments the message still
-survives reloads on the device that wrote it; once a sync target comes
-online the existing replication picks the docs up.
+Net effect: an inbound patient message reaches staff instantly (live
+`.changes()`); a staff reply reaches the patient only on their next page
+load of the Chat tab. If the patient side ever needs near-real-time
+delivery, it needs its own polling or push mechanism — it can't piggyback
+on PouchDB replication the way the staff side does, because it was never
+given a local database to replicate into.
 
 ## Helpers (in [`message-service.ts`](../../src/lib/services/message-service.ts))
 
 - `getMessagesByPatient(patientId)` — full conversation for one patient,
-  newest-first. Used by both the patient portal Chat tab and the staff
-  reply path.
+  newest-first, excluding `staff_to_staff` messages that happen to carry
+  the same `patientId` for context. Used by both the patient-portal side
+  (via `/api/patient-portal/messages` GET) and the staff reply path.
 - `getInboundPatientMessages(scope?)` — the staff Inbox "From Patients"
   filter. Matches `direction === 'patient_to_staff'` _or_ the legacy
   `fromDoctorId === 'patient'` marker.

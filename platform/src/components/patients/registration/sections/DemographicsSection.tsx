@@ -2,16 +2,51 @@
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
-import { tribes, languages } from '@/data/mock';
+import { tribes, languages } from '@/lib/data/south-sudan-reference';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
 
+export interface DemographicsSectionProps extends RegistrationSectionProps {
+  /**
+   * The facilities the registering user may register at. Only supplied — and
+   * only asked about — when they carry no facility of their own; a clerk
+   * posted to one hospital never sees this field, because their own posting
+   * already answers it.
+   */
+  facilities?: { id: string; name: string }[];
+  facilityRequired?: boolean;
+}
+
 /** Who the patient is. The only section every other one depends on. */
-export default function DemographicsSection({ form, errors, update }: RegistrationSectionProps) {
+export default function DemographicsSection({
+  form, errors, update, facilities = [], facilityRequired = false,
+}: DemographicsSectionProps) {
   const { t } = useTranslation();
   const today = new Date().toISOString().slice(0, 10);
   return (
     <>
+      {/* Asked first, because it decides which organisation the record is
+          created in — and a record created in none is refused by the server
+          and invisible to every colleague who would go looking for it. */}
+      {facilityRequired && (
+        <div className="registration-field-grid">
+          <RegistrationField
+            name="registrationFacility"
+            label={t('patientNew.registrationFacility')}
+            error={errors.registrationFacility}
+            required
+          >
+            {field => (
+              <Select {...field} value={form.registrationFacility}
+                onChange={e => update('registrationFacility', e.target.value)}>
+                <option value="">{t('facilityAssessments.selectFacility')}</option>
+                {facilities.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </Select>
+            )}
+          </RegistrationField>
+        </div>
+      )}
+
       <div className="registration-field-grid registration-field-grid--three">
         <RegistrationField name="firstName" label={t('patientNew.firstName')} error={errors.firstName} required>
           {field => (
