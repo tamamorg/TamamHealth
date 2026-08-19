@@ -22,6 +22,19 @@ export interface EhrListHeaderStat {
   color?: string;
 }
 
+export interface EhrListHeaderTab {
+  /** Stable key, also used to build the tab/panel aria ids. */
+  key: string;
+  label: string;
+  /** Rendered as a small badge after the label. Omit (or pass 0) to hide it. */
+  count?: number;
+}
+
+/** The id a tab button carries — panels point back at it with aria-labelledby. */
+export const ehrTabId = (key: string) => `ehr-tab-${key}`;
+/** The id the matching panel must carry, so the tab can aria-control it. */
+export const ehrTabPanelId = (key: string) => `ehr-tabpanel-${key}`;
+
 /** Flat stat-dot palette shared with the patients registry header. */
 export const LIST_STAT_COLORS = {
   muted: 'var(--text-muted)',
@@ -39,6 +52,10 @@ export default function EhrListHeader({
   stats = [],
   search,
   actions,
+  tabs = [],
+  activeTab,
+  onTabChange,
+  tabsAriaLabel,
   className = '',
 }: {
   title: ReactNode;
@@ -52,12 +69,22 @@ export default function EhrListHeader({
   };
   /** Rendered to the right of the search input (filter buttons, download, etc.). */
   actions?: ReactNode;
+  /**
+   * Optional underline tab strip between the title row and the search row —
+   * for cards that hold more than one list (a roster and the requests to join
+   * it, say). The card keeps one title; the tabs switch what its body shows.
+   */
+  tabs?: EhrListHeaderTab[];
+  activeTab?: string;
+  onTabChange?: (key: string) => void;
+  tabsAriaLabel?: string;
   className?: string;
 }) {
   const hasSecondRow = Boolean(search || actions);
+  const hasTabs = tabs.length > 0;
   return (
     <div className={`px-4 pt-4 pb-3 flex-shrink-0 ${className}`}>
-      <div className={`flex items-end justify-between gap-3 flex-wrap ${hasSecondRow ? 'mb-3' : ''}`}>
+      <div className={`flex items-end justify-between gap-3 flex-wrap ${hasSecondRow || hasTabs ? 'mb-3' : ''}`}>
         {/* #000, not --text-primary: the registry's title is true black and
             this header exists to reproduce the registry. */}
         <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000' }}>
@@ -74,6 +101,53 @@ export default function EhrListHeader({
           </div>
         )}
       </div>
+      {hasTabs && (
+        <div
+          role="tablist"
+          aria-label={tabsAriaLabel}
+          className={hasSecondRow ? 'mb-3' : ''}
+          style={{ display: 'flex', alignItems: 'center', gap: 18, borderBottom: '1px solid var(--border-light)' }}
+        >
+          {tabs.map(tab => {
+            const on = tab.key === activeTab;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                id={ehrTabId(tab.key)}
+                aria-selected={on}
+                aria-controls={ehrTabPanelId(tab.key)}
+                onClick={() => onTabChange?.(tab.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '0 0 9px', background: 'transparent', border: 0,
+                  // -1px pulls the active underline onto the strip's own
+                  // hairline instead of stacking a second line beneath it.
+                  borderBottom: `2px solid ${on ? 'var(--accent-primary)' : 'transparent'}`,
+                  marginBottom: -1,
+                  fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
+                  color: on ? 'var(--text-primary)' : 'var(--text-muted)',
+                }}
+              >
+                {tab.label}
+                {tab.count ? (
+                  <span
+                    className="tabular-nums"
+                    style={{
+                      minWidth: 18, padding: '0 5px', borderRadius: 999, fontSize: 11, fontWeight: 700, lineHeight: '16px', textAlign: 'center',
+                      background: on ? 'var(--accent-light)' : 'var(--overlay-subtle)',
+                      color: on ? 'var(--accent-text)' : 'var(--text-muted)',
+                    }}
+                  >
+                    {tab.count}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {hasSecondRow && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {search && (

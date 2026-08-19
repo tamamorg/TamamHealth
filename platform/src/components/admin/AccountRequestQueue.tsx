@@ -12,7 +12,7 @@
  * always fails.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AccountRequestDoc, UserRole } from '@/lib/db-types';
 import { getRoleConfig } from '@/lib/permissions';
 import {
@@ -22,6 +22,18 @@ import {
 interface Props {
   /** The signed-in approver's role — decides which roles may be granted. */
   viewerRole: UserRole;
+  /**
+   * Rendered inside a host tab that already names it: drops the panel's own
+   * title and standfirst so the heading isn't said twice, and keeps only the
+   * Pending / Decided toggle.
+   */
+  embedded?: boolean;
+  /**
+   * Reports how many requests are waiting, so the host tab can badge the
+   * count without opening the panel — an unseen request is a person who
+   * never gets access.
+   */
+  onCountsChange?: (counts: { pending: number; decided: number }) => void;
 }
 
 interface Granted {
@@ -40,7 +52,7 @@ function roleLabel(role: UserRole): string {
   }
 }
 
-export default function AccountRequestQueue({ viewerRole }: Props) {
+export default function AccountRequestQueue({ viewerRole, embedded = false, onCountsChange }: Props) {
   const [requests, setRequests] = useState<AccountRequestDoc[]>([]);
   const [facilities, setFacilities] = useState<FacilityOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,17 +146,34 @@ export default function AccountRequestQueue({ viewerRole }: Props) {
   const decided = requests.filter(r => r.status !== 'pending');
   const shown = showDecided ? decided : pending;
 
+  // Held in a ref so an inline callback prop doesn't re-fire the effect on
+  // every parent render — it reports only when the requests themselves change.
+  const countsRef = useRef(onCountsChange);
+  useEffect(() => { countsRef.current = onCountsChange; });
+  useEffect(() => {
+    countsRef.current?.({
+      pending: requests.filter(r => r.status === 'pending').length,
+      decided: requests.filter(r => r.status !== 'pending').length,
+    });
+  }, [requests]);
+
   return (
-    <section className="arq" aria-labelledby="arq-title">
-      <header className="arq-head">
-        <div>
-          <h2 id="arq-title" className="arq-title">Account requests</h2>
-          <p className="arq-sub">
-            {viewerRole === 'super_admin'
-              ? 'Requests for platform and national roles, and any that named no organisation.'
-              : 'People asking to join your organisation.'}
-          </p>
-        </div>
+    <section
+      className={`arq${embedded ? ' arq--embedded' : ''}`}
+      aria-labelledby={embedded ? undefined : 'arq-title'}
+      aria-label={embedded ? 'Account requests' : undefined}
+    >
+      <header className={`arq-head${embedded ? ' arq-head--bare' : ''}`}>
+        {!embedded && (
+          <div>
+            <h2 id="arq-title" className="arq-title">Account requests</h2>
+            <p className="arq-sub">
+              {viewerRole === 'super_admin'
+                ? 'Requests for platform and national roles, and any that named no organisation.'
+                : 'People asking to join your organisation.'}
+            </p>
+          </div>
+        )}
         <div className="arq-tabs" role="tablist">
           <button role="tab" aria-selected={!showDecided} className={`arq-tab${!showDecided ? ' is-on' : ''}`}
             onClick={() => setShowDecided(false)}>
@@ -258,7 +287,11 @@ export default function AccountRequestQueue({ viewerRole }: Props) {
 
       <style jsx>{`
         .arq { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+        /* Inside a tab the card supplies the surrounding room, so the panel
+           stops reserving its own. */
+        .arq--embedded { margin-bottom: 0; }
         .arq-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .arq-head--bare { justify-content: flex-end; }
         .arq-title { margin: 0; font-size: 17px; color: var(--text-primary); }
         .arq-sub { margin: 2px 0 0; font-size: 13px; color: var(--text-muted); }
         .arq-tabs { display: flex; gap: 6px; }

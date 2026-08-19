@@ -18,7 +18,7 @@ import { generateTempPassword } from '@/lib/temp-password';
 import { avatarTint } from '@/lib/patient-utils';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
-import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbChip, SadbConfirmModal } from '@/components/admin/sadb-ui';
+import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbChip, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 
 // Column template for the user list header + rows:
@@ -86,6 +86,11 @@ export default function AdminUsersPage() {
   // pattern as every other destructive admin action.
   const [deactivateTarget, setDeactivateTarget] = useState<UserDoc | null>(null);
   const [deactivating, setDeactivating] = useState(false);
+  // Roster and account requests are two views of one card: approving a request
+  // IS creating a user, so it belongs where users are managed rather than in a
+  // panel of its own above the list.
+  const [activeTab, setActiveTab] = useState<'people' | 'requests'>('people');
+  const [requestCounts, setRequestCounts] = useState({ pending: 0, decided: 0 });
 
   // Deep-link support: /admin/users?q=<name> arrives pre-filtered (the audit
   // log's "View in User Management" action), while ?user=<id> isolates and
@@ -281,174 +286,189 @@ export default function AdminUsersPage() {
         {kpis.map(k => <SadbKpiTile key={k.label} label={k.label} value={k.value} />)}
       </div>
 
-      {/* ═══ Account requests ═══ */}
-      {/* Above the roster, not on a page of its own: approving a request IS
-          creating a user, so it belongs where users are managed. A separate
-          screen would be one nobody thinks to open, and a request that nobody
-          opens is a person who never gets access. */}
-      <SadbCard title="Requests">
-        <AccountRequestQueue viewerRole="super_admin" />
-      </SadbCard>
+      {/* ═══ Roster + account requests ═══ */}
+      {/* One card, two tabs, not a page of its own: a request that nobody
+          thinks to open is a person who never gets access. */}
+      <SadbCard
+        title={t('adminUsers.title')}
+        meta={activeTab === 'people' ? `${filteredUsers.length} of ${users.length}` : `${requestCounts.pending} pending`}
+        action={
+          <SadbTabs
+            tabs={[
+              { key: 'people', label: 'People', count: users.length },
+              { key: 'requests', label: 'Requests', count: requestCounts.pending },
+            ]}
+            active={activeTab}
+            onChange={key => setActiveTab(key as 'people' | 'requests')}
+            ariaLabel="User management views"
+          />
+        }
+      >
+        <div style={{ display: activeTab === 'people' ? undefined : 'none' }}>
+          <div className="sadb-search-row">
+            <SadbSearch value={search} onChange={setSearch} placeholder={t('adminUsers.searchPlaceholder')} />
+            <Select value={filterRole} onChange={e => setFilterRole(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 180, height: 38 }}>
+              <option value="all">{t('adminUsers.allRoles')}</option>
+              {ALL_ROLES.map(value => (
+                <option key={value} value={value}>{roleLabel(value)} ({roleCounts[value] || 0})</option>
+              ))}
+            </Select>
+            <Select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 200, height: 38 }}>
+              <option value="all">{t('adminUsers.allOrganizations')}</option>
+              {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
+            </Select>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm flex-shrink-0"
+              onClick={() => { setAddForm({ ...emptyAddForm, password: generateTempPassword() }); setShowAddUserPassword(true); setAddError(null); setShowAddUser(true); }}
+            >
+              <UserPlus className="w-4 h-4" /> Add user
+            </button>
+          </div>
 
-      {/* ═══ Roster ═══ */}
-      <SadbCard title={t('adminUsers.title')} meta={`${filteredUsers.length} of ${users.length}`}>
-        <div className="sadb-search-row">
-          <SadbSearch value={search} onChange={setSearch} placeholder={t('adminUsers.searchPlaceholder')} />
-          <Select value={filterRole} onChange={e => setFilterRole(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 180, height: 38 }}>
-            <option value="all">{t('adminUsers.allRoles')}</option>
-            {ALL_ROLES.map(value => (
-              <option key={value} value={value}>{roleLabel(value)} ({roleCounts[value] || 0})</option>
-            ))}
-          </Select>
-          <Select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 200, height: 38 }}>
-            <option value="all">{t('adminUsers.allOrganizations')}</option>
-            {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
-          </Select>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm flex-shrink-0"
-            onClick={() => { setAddForm({ ...emptyAddForm, password: generateTempPassword() }); setShowAddUserPassword(true); setAddError(null); setShowAddUser(true); }}
-          >
-            <UserPlus className="w-4 h-4" /> Add user
-          </button>
+          {/* Same list anatomy as the clinical worklist and patient registry:
+              card-list wrapper, compact column head, card rows. */}
+          <div className="appointment-card-list">
+            {/* The column head is the table's frame, not a label for the
+                rows that happen to be loaded: it stays put while users
+                load and when a filter matches nothing, so the list never
+                collapses into a bare message. */}
+            <div className="appointment-card-head" aria-hidden="true" style={{ gridTemplateColumns: USER_GRID }}>
+              <span>{t('adminUsers.colName')}</span>
+              <span>{t('adminUsers.colRole')}</span>
+              <span>{t('adminUsers.colOrganization')}</span>
+              <span>{t('adminUsers.colHospital')}</span>
+              {/* Status values right-align (shared .appointment-card-status),
+                  so its label right-aligns too — the last-child rule only
+                  covers the empty actions gutter here. */}
+              <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('adminUsers.colStatus')}</span>
+              <span />
+            </div>
+            {loading && (
+              <div className="appointment-card-empty">{t('adminUsers.loadingUsers')}</div>
+            )}
+            {!loading && filteredUsers.length === 0 && (
+              <div className="appointment-card-empty">{t('adminUsers.noUsersFound')}</div>
+            )}
+            {!loading && filteredUsers.map(u => {
+              const isExpanded = expandedId === u._id;
+              return (
+                <Fragment key={u._id}>
+                  <div
+                    id={`admin-user-${u._id}`}
+                    className="ehr-appointment-row appointment-card-row"
+                    style={{
+                      gridTemplateColumns: USER_GRID,
+                      background: focusedUserId === u._id ? 'var(--overlay-subtle)' : undefined,
+                      outline: focusedUserId === u._id ? '2px solid var(--accent-primary)' : undefined,
+                      outlineOffset: focusedUserId === u._id ? -2 : undefined,
+                    }}
+                    aria-current={focusedUserId === u._id ? 'true' : undefined}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setExpandedId(isExpanded ? null : u._id)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setExpandedId(isExpanded ? null : u._id);
+                      }
+                    }}
+                  >
+                    {/* User: square avatar + name/username */}
+                    <div className="ehr-appointment-identity">
+                      <div className="ehr-patient-icon" style={avatarTint(u.name)}>
+                        {u.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
+                      </div>
+                      <div className="ehr-appointment-main appointment-card-patient">
+                        <strong>{u.name}</strong>
+                        <p>{u.username}</p>
+                      </div>
+                    </div>
+
+                    {/* Role — value + scope, matching the shared row hierarchy. */}
+                    <div className="appointment-card-provider">
+                      <strong>{roleLabel(u.role)}</strong>
+                      <span>{u.department || u.specialty || 'Access role'}</span>
+                    </div>
+
+                    <div className="appointment-card-provider">
+                      <strong>{u.orgId ? (orgNameMap[u.orgId] || u.orgId) : 'Platform-level'}</strong>
+                      <span>{t('adminUsers.colOrganization')}</span>
+                    </div>
+
+                    <div className="appointment-card-provider">
+                      <strong>{u.hospitalName || 'Facility unassigned'}</strong>
+                      <span>{t('adminUsers.colHospital')}</span>
+                    </div>
+
+                    {/* Status pill — shared appointment pill metrics */}
+                    <div className="appointment-card-status">
+                      <span
+                        className="appointment-status-pill"
+                        style={u.isActive
+                          ? { borderColor: 'rgba(25,158,112,0.45)', background: 'rgba(25,158,112,0.10)', color: 'var(--color-success-text)' }
+                          : { borderColor: 'rgba(227,73,72,0.45)', background: 'rgba(227,73,72,0.10)', color: 'var(--color-danger-text)' }}
+                      >
+                        {u.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')}
+                      </span>
+                      <small>{u.mustChangePassword ? 'Password reset required' : 'Credentials current'}</small>
+                    </div>
+
+                    {/* Row actions */}
+                    <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+                      <RowActionsMenu
+                        ariaLabel={t('adminUsers.colActions')}
+                        actions={[
+                          {
+                            key: 'change-role',
+                            label: 'Change Role',
+                            icon: <Shield className="w-4 h-4" />,
+                            onClick: () => { setChangeRoleUser(u); setNewRole(u.role); },
+                          },
+                          {
+                            key: 'reset-password',
+                            label: 'Reset Password',
+                            icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
+                            onClick: () => { setResetUser(u); setResetPasswordValue(generateTempPassword()); setResetError(null); setShowResetPassword(true); },
+                          },
+                          {
+                            key: 'toggle',
+                            label: u.isActive ? t('adminUsers.deactivate') : t('adminUsers.activate'),
+                            tone: u.isActive ? 'danger' : 'success',
+                            icon: u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />,
+                            // Deactivating is destructive — route it through the
+                            // confirm modal. Reactivating is reversible with one
+                            // click, so it stays immediate as before.
+                            onClick: () => u.isActive ? setDeactivateTarget(u) : handleToggleActive(u._id, false, u.name),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="px-4 py-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-xs">
+                        <div><span style={{ color: 'var(--text-muted)' }}>{t('adminUsers.colRole')}: </span><span style={{ color: 'var(--text-primary)' }}>{roleLabel(u.role)}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>Department: </span><span style={{ color: 'var(--text-primary)' }}>{u.department || '--'}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>Specialty: </span><span style={{ color: 'var(--text-primary)' }}>{u.specialty || '--'}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>Phone: </span><span style={{ color: 'var(--text-primary)' }}>{u.phone || '--'}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>{t('adminUsers.colOrganization')}: </span><span style={{ color: 'var(--text-primary)' }}>{u.orgId ? (orgNameMap[u.orgId] || u.orgId) : '--'}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>{t('adminUsers.colHospital')}: </span><span style={{ color: 'var(--text-primary)' }}>{u.hospitalName || '--'}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>Created: </span><span style={{ color: 'var(--text-primary)' }}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '--'}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>User ID: </span><code style={{ color: 'var(--text-secondary)' }}>{u._id}</code></div>
+                      </div>
+                    </div>
+                  )}
+                </Fragment>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Same list anatomy as the clinical worklist and patient registry:
-            card-list wrapper, compact column head, card rows. */}
-        <div className="appointment-card-list">
-          {/* The column head is the table's frame, not a label for the
-              rows that happen to be loaded: it stays put while users
-              load and when a filter matches nothing, so the list never
-              collapses into a bare message. */}
-          <div className="appointment-card-head" aria-hidden="true" style={{ gridTemplateColumns: USER_GRID }}>
-            <span>{t('adminUsers.colName')}</span>
-            <span>{t('adminUsers.colRole')}</span>
-            <span>{t('adminUsers.colOrganization')}</span>
-            <span>{t('adminUsers.colHospital')}</span>
-            {/* Status values right-align (shared .appointment-card-status),
-                so its label right-aligns too — the last-child rule only
-                covers the empty actions gutter here. */}
-            <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('adminUsers.colStatus')}</span>
-            <span />
-          </div>
-          {loading && (
-            <div className="appointment-card-empty">{t('adminUsers.loadingUsers')}</div>
-          )}
-          {!loading && filteredUsers.length === 0 && (
-            <div className="appointment-card-empty">{t('adminUsers.noUsersFound')}</div>
-          )}
-          {!loading && filteredUsers.map(u => {
-            const isExpanded = expandedId === u._id;
-            return (
-              <Fragment key={u._id}>
-                <div
-                  id={`admin-user-${u._id}`}
-                  className="ehr-appointment-row appointment-card-row"
-                  style={{
-                    gridTemplateColumns: USER_GRID,
-                    background: focusedUserId === u._id ? 'var(--overlay-subtle)' : undefined,
-                    outline: focusedUserId === u._id ? '2px solid var(--accent-primary)' : undefined,
-                    outlineOffset: focusedUserId === u._id ? -2 : undefined,
-                  }}
-                  aria-current={focusedUserId === u._id ? 'true' : undefined}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setExpandedId(isExpanded ? null : u._id)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setExpandedId(isExpanded ? null : u._id);
-                    }
-                  }}
-                >
-                  {/* User: square avatar + name/username */}
-                  <div className="ehr-appointment-identity">
-                    <div className="ehr-patient-icon" style={avatarTint(u.name)}>
-                      {u.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
-                    </div>
-                    <div className="ehr-appointment-main appointment-card-patient">
-                      <strong>{u.name}</strong>
-                      <p>{u.username}</p>
-                    </div>
-                  </div>
-
-                  {/* Role — value + scope, matching the shared row hierarchy. */}
-                  <div className="appointment-card-provider">
-                    <strong>{roleLabel(u.role)}</strong>
-                    <span>{u.department || u.specialty || 'Access role'}</span>
-                  </div>
-
-                  <div className="appointment-card-provider">
-                    <strong>{u.orgId ? (orgNameMap[u.orgId] || u.orgId) : 'Platform-level'}</strong>
-                    <span>{t('adminUsers.colOrganization')}</span>
-                  </div>
-
-                  <div className="appointment-card-provider">
-                    <strong>{u.hospitalName || 'Facility unassigned'}</strong>
-                    <span>{t('adminUsers.colHospital')}</span>
-                  </div>
-
-                  {/* Status pill — shared appointment pill metrics */}
-                  <div className="appointment-card-status">
-                    <span
-                      className="appointment-status-pill"
-                      style={u.isActive
-                        ? { borderColor: 'rgba(25,158,112,0.45)', background: 'rgba(25,158,112,0.10)', color: 'var(--color-success-text)' }
-                        : { borderColor: 'rgba(227,73,72,0.45)', background: 'rgba(227,73,72,0.10)', color: 'var(--color-danger-text)' }}
-                    >
-                      {u.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')}
-                    </span>
-                    <small>{u.mustChangePassword ? 'Password reset required' : 'Credentials current'}</small>
-                  </div>
-
-                  {/* Row actions */}
-                  <div className="flex justify-end" onClick={e => e.stopPropagation()}>
-                    <RowActionsMenu
-                      ariaLabel={t('adminUsers.colActions')}
-                      actions={[
-                        {
-                          key: 'change-role',
-                          label: 'Change Role',
-                          icon: <Shield className="w-4 h-4" />,
-                          onClick: () => { setChangeRoleUser(u); setNewRole(u.role); },
-                        },
-                        {
-                          key: 'reset-password',
-                          label: 'Reset Password',
-                          icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
-                          onClick: () => { setResetUser(u); setResetPasswordValue(generateTempPassword()); setResetError(null); setShowResetPassword(true); },
-                        },
-                        {
-                          key: 'toggle',
-                          label: u.isActive ? t('adminUsers.deactivate') : t('adminUsers.activate'),
-                          tone: u.isActive ? 'danger' : 'success',
-                          icon: u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />,
-                          // Deactivating is destructive — route it through the
-                          // confirm modal. Reactivating is reversible with one
-                          // click, so it stays immediate as before.
-                          onClick: () => u.isActive ? setDeactivateTarget(u) : handleToggleActive(u._id, false, u.name),
-                        },
-                      ]}
-                    />
-                  </div>
-                </div>
-                {isExpanded && (
-                  <div className="px-4 py-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-xs">
-                      <div><span style={{ color: 'var(--text-muted)' }}>{t('adminUsers.colRole')}: </span><span style={{ color: 'var(--text-primary)' }}>{roleLabel(u.role)}</span></div>
-                      <div><span style={{ color: 'var(--text-muted)' }}>Department: </span><span style={{ color: 'var(--text-primary)' }}>{u.department || '--'}</span></div>
-                      <div><span style={{ color: 'var(--text-muted)' }}>Specialty: </span><span style={{ color: 'var(--text-primary)' }}>{u.specialty || '--'}</span></div>
-                      <div><span style={{ color: 'var(--text-muted)' }}>Phone: </span><span style={{ color: 'var(--text-primary)' }}>{u.phone || '--'}</span></div>
-                      <div><span style={{ color: 'var(--text-muted)' }}>{t('adminUsers.colOrganization')}: </span><span style={{ color: 'var(--text-primary)' }}>{u.orgId ? (orgNameMap[u.orgId] || u.orgId) : '--'}</span></div>
-                      <div><span style={{ color: 'var(--text-muted)' }}>{t('adminUsers.colHospital')}: </span><span style={{ color: 'var(--text-primary)' }}>{u.hospitalName || '--'}</span></div>
-                      <div><span style={{ color: 'var(--text-muted)' }}>Created: </span><span style={{ color: 'var(--text-primary)' }}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '--'}</span></div>
-                      <div><span style={{ color: 'var(--text-muted)' }}>User ID: </span><code style={{ color: 'var(--text-secondary)' }}>{u._id}</code></div>
-                    </div>
-                  </div>
-                )}
-              </Fragment>
-            );
-          })}
+        {/* Mounted on both tabs, so the Requests badge is honest before anyone
+            opens it. */}
+        <div style={{ display: activeTab === 'requests' ? 'block' : 'none', padding: '4px 14px 14px' }}>
+          <AccountRequestQueue viewerRole="super_admin" embedded onCountsChange={setRequestCounts} />
         </div>
       </SadbCard>
 

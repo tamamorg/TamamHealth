@@ -36,7 +36,6 @@ import dynamic from 'next/dynamic';
 import {
   Activity, UserCheck, Plus,
   AlertTriangle, RefreshCw, Phone, XCircle, Check, X, Loader2,
-  Building2, Users, Wallet, Receipt, BarChart3, DollarSign,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -45,7 +44,6 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
-import TransferInboxCard from '@/components/patients/TransferInboxCard';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -56,7 +54,6 @@ import AddPayrollEntryDialog from '@/components/create-dialogs/AddPayrollEntryDi
 import { formatMoney, titleCase } from '@/lib/format-utils';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import { getRoleConfig } from '@/lib/permissions';
-import { isPathAllowed } from '@/lib/role-routes';
 import { buildAddMenuEntries, usersHrefForRole } from '@/lib/people-nav';
 import { ROLE_LABEL } from '@/lib/role-display';
 import {
@@ -603,27 +600,6 @@ export default function FacilityManagementDashboard() {
 
   const metricPreview = overview.metrics.find(metric => metric.key === searchParams.get('preview')) || null;
 
-  // Quick Actions, inherited from the deleted Org Overview page and gated on
-  // the SAME allow-list the Edge proxy enforces — a link the proxy would 302
-  // away is worse than no link. `staffListHref` is used rather than a literal
-  // /org-admin/users so a super_admin lands on their own accounts page.
-  const quickActions = useMemo(() => {
-    const role = currentUser?.role;
-    if (!role) return [];
-    const entries: { label: string; icon: typeof Building2; href: string }[] = [
-      { label: 'Facilities', icon: Building2, href: '/hospitals' },
-      { label: 'Manage Users', icon: Users, href: staffListHref },
-      { label: 'Usage Analytics', icon: Activity, href: '/org-admin/analytics' },
-      { label: 'Billing & Payments', icon: Wallet, href: '/payments' },
-      { label: 'Claims', icon: Receipt, href: '/payments/claims' },
-      { label: 'Reports', icon: BarChart3, href: '/reports' },
-      { label: 'Service Pricing', icon: DollarSign, href: '/org-admin/pricing' },
-    ];
-    return entries
-      .filter(entry => isPathAllowed(role, entry.href))
-      .map(entry => ({ label: entry.label, icon: entry.icon, onClick: () => router.push(entry.href) }));
-  }, [currentUser?.role, staffListHref, router]);
-
   const openMetricPreview = useCallback((key: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('preview', key);
@@ -1009,11 +985,6 @@ export default function FacilityManagementDashboard() {
           onClick: () => openMetricPreview(metric.key),
         }))}
         metricsTitle="Facility Overview"
-        // The deleted Org Overview page's Quick Actions. Three of them
-        // (Analytics, Claims, Service Pricing) had NO other entry point in the
-        // org-admin nav, so dropping the page without rehoming these would have
-        // orphaned the routes outright.
-        metricsActions={quickActions}
         emptyTitle={emptyTitle}
         emptyActionLabel={emptyActionLabel}
         onEmptyAction={onEmptyAction}
@@ -1027,11 +998,6 @@ export default function FacilityManagementDashboard() {
             </div>
           </div>
         }
-        // Transfers addressed to the facility with no named receiver escalate
-        // to whoever runs it, so the inbox belongs under the work queue — not
-        // in the left rail, which is hidden entirely below the mobile
-        // breakpoint. Renders its own empty state when nothing is outstanding.
-        footerContent={<TransferInboxCard />}
         // Add sits in the header beside Print (EhrCareDashboard `headerExtra`),
         // not in the rail: `actions` only carries {label,icon,onClick}, so a
         // dropdown needs the component slot.

@@ -34,6 +34,10 @@ const NURSE_MODULE_ROUTES = [
   // notes module is part of the nursing station, not a clinician-only surface.
   '/notes',
   '/wards', '/wards/mar',
+  // Nurse-family roles raise the commonest transfer in the platform (the
+  // nurse→doctor hand-off) and may cancel their own, so the queue has rows for
+  // them even though they cannot accept one.
+  '/transfers',
 ] as const;
 
 export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
@@ -63,6 +67,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/billing', '/payments', '/payments/claims',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
+      '/transfers',
     ],
     // Platform admins land on the real admin console — the facility-style
     // dashboard's patient/bed stats are meaningless at platform level.
@@ -96,6 +101,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // supra-organisational and would cross the tenant boundary.
       '/dashboard/front-desk', '/dashboard/lab', '/dashboard/pharmacy',
       '/dashboard/radiology', '/dashboard/data-entry', '/dashboard/nutrition',
+      '/transfers',
     ],
     // Org admins land on the Facility Operations dashboard — the single home
     // since the separate /org-admin Org Overview page was deleted.
@@ -109,6 +115,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/settings',
       '/appointments', '/telehealth',
       '/wards', '/alerts', '/blood-bank',
+      '/transfers',
     ],
     defaultDashboard: '/dashboard',
   },
@@ -123,6 +130,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/settings',
       '/appointments', '/telehealth',
       '/wards', '/alerts', '/blood-bank',
+      '/transfers',
     ],
     defaultDashboard: '/dashboard',
   },
@@ -147,6 +155,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/anc', '/births', '/deaths', '/immunizations',
       '/wards', '/referrals', '/appointments',
       '/notes', '/settings',
+      '/transfers',
     ],
     defaultDashboard: '/dashboard',
   },
@@ -252,6 +261,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // under another name, so the accounts page is now the only one.
       '/org-admin/users',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
+      '/transfers',
     ],
     defaultDashboard: '/dashboard',
   },
@@ -280,6 +290,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     allowed: [
       '/dashboard/nutrition', '/patients', '/messages',
       '/mch-analytics', '/referrals', '/settings',
+      '/transfers',
     ],
     defaultDashboard: '/dashboard/nutrition',
   },
@@ -316,6 +327,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // the live work queues.
       '/patients', '/wards', '/referrals', '/appointments', '/messages',
       '/settings', '/settings/manage',
+      '/transfers',
     ],
     defaultDashboard: '/facility-management',
   },
@@ -365,6 +377,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
       '/appointments', '/telehealth', '/wards', '/alerts', '/settings',
       '/blood-bank',
+      '/transfers',
     ],
     defaultDashboard: '/dashboard',
   },

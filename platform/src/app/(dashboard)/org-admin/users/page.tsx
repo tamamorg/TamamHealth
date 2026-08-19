@@ -11,7 +11,7 @@ import {
 } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { avatarTint } from '@/lib/patient-utils';
-import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS, ehrTabId, ehrTabPanelId } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
@@ -48,6 +48,11 @@ export default function OrgUsersPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [focusedUserId, setFocusedUserId] = useState<string | null>(null);
+  // The roster and the requests to join it are one screen with two views:
+  // approving a request IS creating a user, so it belongs where users are
+  // managed rather than on a panel of its own that nobody thinks to open.
+  const [activeTab, setActiveTab] = useState<'people' | 'requests'>('people');
+  const [requestCounts, setRequestCounts] = useState({ pending: 0, decided: 0 });
 
   // Create form state
   const [formUsername, setFormUsername] = useState('');
@@ -313,6 +318,11 @@ export default function OrgUsersPage() {
     return true;
   });
 
+  // Deciding a request creates an account, so the tab only exists for the
+  // roles that may create one — everyone else would get a 403 panel.
+  const canReviewRequests = canCreateUsers(currentUser?.role || '');
+  const showRoster = activeTab === 'people' || !canReviewRequests;
+
   const activeUserCount = users.filter(u => u.isActive).length;
   const activeFilterCount = (filterRole !== 'all' ? 1 : 0) + (filterStatus !== 'all' ? 1 : 0);
   const clearUserFilters = () => { setFilterRole('all'); setFilterStatus('all'); };
@@ -340,22 +350,26 @@ export default function OrgUsersPage() {
           </div>
         )}
 
-        {/* Approving a request IS creating a user, so it sits with the roster
-            rather than on a screen of its own that nobody thinks to open. */}
-        <div className="dash-card" style={{ flexShrink: 0, padding: '16px 20px', marginBottom: 16 }}>
-          <AccountRequestQueue viewerRole="org_admin" />
-        </div>
-
         <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title={t('orgUsers.pageTitle')}
-            stats={[
+            tabs={canReviewRequests ? [
+              { key: 'people', label: 'People', count: users.length },
+              { key: 'requests', label: 'Account requests', count: requestCounts.pending },
+            ] : []}
+            activeTab={activeTab}
+            onTabChange={key => setActiveTab(key as 'people' | 'requests')}
+            tabsAriaLabel="User management views"
+            stats={showRoster ? [
               { label: 'Total', value: users.length, color: LIST_STAT_COLORS.muted },
               { label: t('orgUsers.statusActive'), value: activeUserCount, color: LIST_STAT_COLORS.blue },
               { label: t('orgUsers.statusInactive'), value: users.length - activeUserCount, color: LIST_STAT_COLORS.amber },
+            ] : [
+              { label: 'Pending', value: requestCounts.pending, color: LIST_STAT_COLORS.amber },
+              { label: 'Decided', value: requestCounts.decided, color: LIST_STAT_COLORS.muted },
             ]}
-            search={{ value: search, onChange: setSearch, placeholder: 'Search by name or username…' }}
-            actions={
+            search={showRoster ? { value: search, onChange: setSearch, placeholder: 'Search by name or username…' } : undefined}
+            actions={showRoster ? (
               <>
                 <EhrListFilters activeCount={activeFilterCount} onClear={clearUserFilters}>
                   <FilterSelect
@@ -392,12 +406,19 @@ export default function OrgUsersPage() {
                   </button>
                 )}
               </>
-            }
+            ) : undefined}
           />
 
           {/* Same list anatomy as the appointments page: card-list wrapper,
               compact column head, card rows. */}
-          <div className="appointment-card-list" data-tour="org-users-list">
+          <div
+            className="appointment-card-list"
+            data-tour="org-users-list"
+            role={canReviewRequests ? 'tabpanel' : undefined}
+            id={ehrTabPanelId('people')}
+            aria-labelledby={canReviewRequests ? ehrTabId('people') : undefined}
+            style={{ display: showRoster ? undefined : 'none' }}
+          >
                 {/* The column head is the table's frame, not a label for the
                     rows that happen to be loaded: it stays put when a filter
                     matches nothing, so the list never collapses into a bare
@@ -482,6 +503,19 @@ export default function OrgUsersPage() {
                     </div>
                 ))}
           </div>
+
+          {/* Mounted for approvers whichever tab is showing, so the tab's
+              pending badge is honest before anyone opens it. */}
+          {canReviewRequests && (
+            <div
+              role="tabpanel"
+              id={ehrTabPanelId('requests')}
+              aria-labelledby={ehrTabId('requests')}
+              style={{ display: showRoster ? 'none' : 'block', minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}
+            >
+              <AccountRequestQueue viewerRole="org_admin" embedded onCountsChange={setRequestCounts} />
+            </div>
+          )}
         </div>
       </main>
 

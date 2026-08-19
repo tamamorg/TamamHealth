@@ -86,6 +86,39 @@ export function SadbCard({ title, meta, action, children, className = '' }: {
   );
 }
 
+/**
+ * Card-head tab strip — for a card that holds more than one list (a roster and
+ * the requests to join it). Sits in SadbCard's `action` slot, so the card keeps
+ * one head and the tabs switch what its body shows.
+ */
+export function SadbTabs({ tabs, active, onChange, ariaLabel }: {
+  tabs: { key: string; label: string; count?: number }[];
+  active: string;
+  onChange: (key: string) => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <div className="sadb-tabs" role="tablist" aria-label={ariaLabel}>
+      {tabs.map(tab => {
+        const on = tab.key === active;
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            className={`sadb-tab${on ? ' is-active' : ''}`}
+            onClick={() => onChange(tab.key)}
+          >
+            {tab.label}
+            {tab.count ? <span className="sadb-tab-badge">{tab.count}</span> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Condensed-uppercase head link ("Billing ›"). */
 export function SadbHeadLink({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return <button type="button" className="sadb-head-link" onClick={onClick}>{children} ›</button>;
