@@ -26,6 +26,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { ArrowLeft } from '@/components/icons/lucide';
 import TriageWorkflow from '@/components/nurse/TriageWorkflow';
 import type { PatientDoc } from '@/lib/db-types';
+import { returnToFromSearch } from '@/lib/navigation/return-to';
 
 export default function PatientTriagePage() {
 
@@ -106,11 +107,11 @@ export default function PatientTriagePage() {
           to the chart, which has its own way back. */}
       <button
         type="button"
-        onClick={() => router.push(backTarget)}
+        onClick={() => router.push(returnToFromSearch(window.location.search, backTarget))}
         className="patient-registration-back no-print"
       >
         <ArrowLeft className="w-4 h-4" style={{ stroke: 'currentColor' }} />
-        Back to dashboard
+        Back
       </button>
 
       <div className="triage-patient-workspace">

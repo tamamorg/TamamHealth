@@ -1,6 +1,7 @@
 'use client';
 
 import { Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { shortenPersonName, abbreviateProviderName } from '@/lib/patient-utils';
 import { ClipboardList, Printer, Search, Stethoscope, Video, X, type LucideIcon } from '@/components/icons/lucide';
@@ -128,6 +129,13 @@ export type EhrCareDashboardRow = {
   /** Further row actions beyond the primary/secondary pair (e.g. the front
    *  desk's "Reschedule" / "No show"), rendered after them in the row popup. */
   extraActions?: { label: string; onClick: () => void; tone?: 'secondary' | 'danger' }[];
+  /** Destination for the complete record or workflow represented by this
+   *  preview. When supplied, every detail variant—including custom
+   *  `popupDetail` content—gets the same full-page action. */
+  detailHref?: string;
+  /** Visible label for `detailHref`. Callers may localize this label; the
+   *  shared fallback keeps the contract usable for existing English screens. */
+  detailLabel?: string;
   detail?: ReactNode;
   popupDetail?: ReactNode;
   date?: string;
@@ -982,17 +990,11 @@ export default function EhrCareDashboard({
               <h2>{metricsTitle}</h2>
             </div>
             {metrics.map(metric => (
-              <button
+              <EhrCareDashboardMetricItem
                 key={metric.label}
-                type="button"
-                // `success` was missing here, so a metric asking for it fell
-                // through to the neutral grey — a healthy count looked inert.
-                className={`${metric.tone && metric.tone !== 'neutral' ? metric.tone : ''} ${metric.active ? 'active' : ''}`.trim()}
-                onClick={metric.onClick || (metric.href ? () => router.push(metric.href as string) : undefined)}
-              >
-                <span>{metric.label}</span>
-                <b>{metric.value}</b>
-              </button>
+                metric={metric}
+                onNavigate={href => router.push(href)}
+              />
             ))}
             {metricsActions?.map(action => (
               <button
@@ -1069,7 +1071,7 @@ export function useRowCollapse(): () => void {
   return useContext(RowCollapseContext);
 }
 
-function EhrRowDetail({
+export function EhrRowDetail({
   row,
   detailTab,
   onCollapse,
@@ -1121,19 +1123,19 @@ function EhrRowDetail({
         </div>
       )}
 
-      {!row.popupDetail && (
+      {(!row.popupDetail || row.detailHref) && (
       <div className="ehr-row-detail__actions">
-        {row.actionLabel && row.onAction && (
+        {!row.popupDetail && row.actionLabel && row.onAction && (
           <button type="button" className="btn btn-primary btn-sm" onClick={() => { row.onAction?.(); onCollapse(); }}>
             {row.actionLabel}
           </button>
         )}
-        {row.secondaryActionLabel && row.onSecondaryAction && (
+        {!row.popupDetail && row.secondaryActionLabel && row.onSecondaryAction && (
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => { row.onSecondaryAction?.(); onCollapse(); }}>
             {row.secondaryActionLabel}
           </button>
         )}
-        {(row.extraActions ?? []).map(action => (
+        {!row.popupDetail && (row.extraActions ?? []).map(action => (
           <button
             key={action.label}
             type="button"
@@ -1144,8 +1146,42 @@ function EhrRowDetail({
             {action.label}
           </button>
         ))}
+        {row.detailHref && (
+          <Link href={row.detailHref} className="btn btn-secondary btn-sm">
+            {row.detailLabel || 'Open full page'}
+          </Link>
+        )}
       </div>
       )}
     </div>
+  );
+}
+
+/**
+ * A metric is only an enabled control when it has an action. Keeping an inert
+ * metric as a disabled button preserves the established rail geometry while
+ * removing it from keyboard navigation and the accessibility action model.
+ */
+export function EhrCareDashboardMetricItem({
+  metric,
+  onNavigate,
+}: {
+  metric: EhrCareDashboardMetric;
+  onNavigate: (href: string) => void;
+}) {
+  const onClick = metric.onClick || (metric.href ? () => onNavigate(metric.href as string) : undefined);
+
+  return (
+    <button
+      type="button"
+      disabled={!onClick}
+      // `success` was missing here, so a metric asking for it fell through to
+      // the neutral grey — a healthy count looked inert.
+      className={`${metric.tone && metric.tone !== 'neutral' ? metric.tone : ''} ${metric.active ? 'active' : ''}`.trim()}
+      onClick={onClick}
+    >
+      <span>{metric.label}</span>
+      <b>{metric.value}</b>
+    </button>
   );
 }

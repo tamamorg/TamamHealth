@@ -33,6 +33,7 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
 import { useToast } from '@/components/Toast';
+import Modal from '@/components/Modal';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -151,6 +152,46 @@ export interface FacilityOverviewMetric {
   value: number | string;
   href: string;
   tone?: 'neutral' | 'warning' | 'danger' | 'success';
+}
+
+function withFocus(href: string, key: string, value: string): string {
+  const [path, query = ''] = href.split('?');
+  const params = new URLSearchParams(query);
+  params.set(key, value);
+  return `${path}?${params.toString()}`;
+}
+
+function FacilityMetricPreviewDialog({ metric, onClose, onOpen }: {
+  metric: FacilityOverviewMetric;
+  onClose: () => void;
+  onOpen: () => void;
+}) {
+  const titleId = 'facility-metric-preview-title';
+  return (
+    <Modal onClose={onClose} width={460} labelledBy={titleId}>
+      <div className="modal-panel">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Facility overview</p>
+            <h2 id={titleId} className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{metric.label}</h2>
+          </div>
+          <button type="button" className="p-2 rounded-lg flex-shrink-0" onClick={onClose} aria-label="Close preview">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="py-5">
+          <p className="stat-value text-3xl" style={{ color: 'var(--text-primary)' }}>{metric.value}</p>
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            This is the current scope-visible total. Open the full page to review and manage the underlying records.
+          </p>
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-primary" onClick={onOpen}>Open full page</button>
+        </div>
+      </div>
+    </Modal>
+  );
 }
 
 export interface FacilityInquiryRow {
@@ -402,6 +443,7 @@ export default function FacilityManagementDashboard() {
   // text so switching tabs never leaves a stale, unrelated filter in place.
   const [queueSearch, setQueueSearch] = useState('');
   const [activeTab, setActiveTab] = useState<QueueTab>('inquiries');
+  const [metricPreview, setMetricPreview] = useState<FacilityOverviewMetric | null>(null);
 
   const today = jubaDate();
   const facilityId = currentUser?.hospitalId;
@@ -640,6 +682,11 @@ export default function FacilityManagementDashboard() {
           <div><p>{row.reason || 'No reason given'}</p></div>
         </div>
       </div>
+      <div className="flex justify-end px-4 py-3" style={{ borderTop: '1px solid var(--border-light)' }}>
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push(`/hr/leave?request=${encodeURIComponent(row.id)}`)}>
+          Open full page
+        </button>
+      </div>
     </div>
   );
 
@@ -680,6 +727,11 @@ export default function FacilityManagementDashboard() {
           <span className="ehr-visit-pop-label">Assigned to</span>
           <div><p>{row.assignee || 'Unassigned'}</p></div>
         </div>
+      </div>
+      <div className="flex justify-end px-4 py-3" style={{ borderTop: '1px solid var(--border-light)' }}>
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push(`/inquiries?inquiry=${encodeURIComponent(row.id)}`)}>
+          Open full page
+        </button>
       </div>
     </div>
   );
@@ -780,6 +832,21 @@ export default function FacilityManagementDashboard() {
               location: r.department,
               locationLabel: 'Department',
               locationSecondary: r.shift || undefined,
+              popupDetail: (
+                <div className="ehr-visit-pop ehr-visit-pop--inline">
+                  <div className="ehr-visit-pop-body">
+                    <div className="ehr-visit-pop-row">
+                      <span className="ehr-visit-pop-label">Availability</span>
+                      <div><p>{r.shift || 'Available without a scheduled shift'}</p></div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end px-4 py-3" style={{ borderTop: '1px solid var(--border-light)' }}>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push(withFocus(staffListHref, 'user', r.id))}>
+                      Open full page
+                    </button>
+                  </div>
+                </div>
+              ),
             }))
           : activeTab === 'inquiries'
           ? overview.inquiryRows.map((r): EhrCareDashboardRow => ({
@@ -831,7 +898,10 @@ export default function FacilityManagementDashboard() {
               locationLabel: 'Facility',
               popupDetail: renderLeaveDetail(r),
             }))}
-        metrics={overview.metrics}
+        metrics={overview.metrics.map(metric => ({
+          ...metric,
+          onClick: () => setMetricPreview(metric),
+        }))}
         metricsTitle="Facility Overview"
         emptyTitle={emptyTitle}
         emptyActionLabel={emptyActionLabel}
@@ -853,6 +923,17 @@ export default function FacilityManagementDashboard() {
           <EhrRailMenu variant="primary" label="Add" icon={Plus} hideChevron ariaLabel="Add a new record" items={addMenuItems} />
         ) : undefined}
       />
+
+      {metricPreview && (
+        <FacilityMetricPreviewDialog
+          metric={metricPreview}
+          onClose={() => setMetricPreview(null)}
+          onOpen={() => {
+            setMetricPreview(null);
+            router.push(metricPreview.href);
+          }}
+        />
+      )}
 
       {/* Create-in-place, then go. Each dialog writes the record from here and
           only then routes to the page that owns it, so the user never lands on

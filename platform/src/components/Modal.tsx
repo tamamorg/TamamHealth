@@ -38,8 +38,9 @@ interface ModalProps {
  * stacking context (which previously left the sidebar "popping" above the dim).
  * Use this for every popup so behaviour is consistent everywhere.
  *
- * Handles: Esc-to-close, backdrop-click-to-close, body scroll lock, focus,
- * and the shared fade/slide animations defined in globals.css.
+ * Handles: Esc-to-close, backdrop-click-to-close, body scroll lock, a trapped
+ * keyboard focus cycle, trigger-focus restoration, and the shared fade/slide
+ * animations defined in globals.css.
  */
 export default function Modal({
   onClose,
@@ -56,6 +57,7 @@ export default function Modal({
   const offset = isDrawer ? '0px' : typeof topOffset === 'number' ? `${topOffset}px` : topOffset;
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // Portals require the DOM — only render after mount (also keeps SSR happy).
   useEffect(() => { setMounted(true); }, []);
@@ -67,15 +69,58 @@ export default function Modal({
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // Esc closes.
+  // Esc closes and Tab stays inside the active dialog.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter(element => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true');
+
+      if (focusable.length === 0) {
+        e.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Move focus into the dialog for keyboard users.
-  useEffect(() => { if (mounted) dialogRef.current?.focus(); }, [mounted]);
+  // Move focus into the dialog, then return it to the control that opened the
+  // popup. This preserves a user's place in dense clinical worklists.
+  useEffect(() => {
+    if (!mounted) return;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const dialog = dialogRef.current;
+    const initialFocus = dialog?.querySelector<HTMLElement>('[autofocus], [data-modal-initial-focus]');
+    (initialFocus ?? dialog)?.focus();
+
+    return () => {
+      const returnTarget = returnFocusRef.current;
+      if (returnTarget?.isConnected) returnTarget.focus();
+    };
+  }, [mounted]);
 
   if (!mounted) return null;
 

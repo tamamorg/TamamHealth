@@ -330,7 +330,7 @@ export default function LoginPage() {
 
       <footer className="lg-footer">
         <a href="/terms">{t('login.termsAndConditions')}</a>
-        <a href="/terms">{t('login.privacyPolicy')}</a>
+        <a href="/privacy">{t('login.privacyPolicy')}</a>
         <a href="https://tamamhealth.org">{t('login.backToSite')}</a>
       </footer>
 

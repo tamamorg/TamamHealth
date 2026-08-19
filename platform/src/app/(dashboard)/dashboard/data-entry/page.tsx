@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useToast } from '@/components/Toast';
+import Modal from '@/components/Modal';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import { formatClockTime } from '@/lib/format-utils';
@@ -481,8 +482,7 @@ export default function DataEntryDashboard() {
       >
         {/* ═══ CENSUS FORM MODAL ═══ */}
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto" style={{ background: 'rgba(0,0,0,0.55)', padding: '24px 16px' }}
-            onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}>
+          <Modal onClose={() => setShowForm(false)} width={672} align="top" labelledBy="daily-census-title">
             <div className="w-full max-w-2xl rounded-lg" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-xl)' }}>
 
               {/* Form header */}
@@ -490,7 +490,7 @@ export default function DataEntryDashboard() {
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-5 h-5" style={{ color: ACCENT }} />
                   <div>
-                    <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dataEntry.dailyFacilityCensus')}</h3>
+                    <h3 id="daily-census-title" className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dataEntry.dailyFacilityCensus')}</h3>
                     <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{myHospital?.name || t('dataEntry.unknownFacility')}</p>
                   </div>
                 </div>
@@ -601,7 +601,7 @@ export default function DataEntryDashboard() {
                 </button>
               </div>
             </div>
-          </div>
+          </Modal>
         )}
       </EhrCareDashboard>
     </main>

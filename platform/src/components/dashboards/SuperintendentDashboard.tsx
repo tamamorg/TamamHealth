@@ -13,7 +13,7 @@ import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHea
 import {
   Users, Stethoscope, HeartPulse, BedDouble,
   ClipboardCheck, Activity, AlertTriangle, SendHorizontal,
-  ChevronRight, ArrowRight,
+  ChevronRight, ArrowRight, X,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import TransferInboxCard from '@/components/patients/TransferInboxCard';
@@ -22,8 +22,49 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
+import Modal from '@/components/Modal';
 
 const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+
+interface SuperintendentPreview {
+  title: string;
+  value: string | number;
+  detail: string;
+  href: string;
+  context: string;
+}
+
+function SuperintendentPreviewDialog({ preview, closeLabel, onClose, onOpen }: {
+  preview: SuperintendentPreview;
+  closeLabel: string;
+  onClose: () => void;
+  onOpen: () => void;
+}) {
+  const titleId = 'superintendent-dashboard-preview-title';
+  return (
+    <Modal onClose={onClose} width={480} labelledBy={titleId}>
+      <div className="modal-panel">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{preview.context}</p>
+            <h2 id={titleId} className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{preview.title}</h2>
+          </div>
+          <button type="button" className="p-2 rounded-lg flex-shrink-0" onClick={onClose} aria-label={closeLabel}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="py-5">
+          <p className="stat-value text-3xl" style={{ color: 'var(--text-primary)' }}>{preview.value}</p>
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{preview.detail}</p>
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{closeLabel}</button>
+          <button type="button" className="btn btn-primary" onClick={onOpen}>Open full page</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 export default function SuperintendentDashboard() {
   const { t } = useTranslation();
@@ -33,6 +74,7 @@ export default function SuperintendentDashboard() {
   const { referrals } = useReferrals();
   const { alerts: diseaseAlerts } = useSurveillance();
   const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
+  const [preview, setPreview] = useState<SuperintendentPreview | null>(null);
 
   const facilityId = currentUser?.hospitalId;
   const today = new Date().toISOString().slice(0, 10);
@@ -90,7 +132,7 @@ export default function SuperintendentDashboard() {
             <button
               key={k.id}
               type="button"
-              onClick={() => router.push(k.href)}
+              onClick={() => setPreview({ title: k.label, value: k.value, detail: k.sub, href: k.href, context: 'Facility overview' })}
               className="dash-card text-start transition-colors"
               style={{ padding: '14px 16px', position: 'relative', cursor: 'pointer' }}
             >
@@ -132,7 +174,13 @@ export default function SuperintendentDashboard() {
                 {activeAlerts.slice(0, 6).map((a, i) => (
                   <button
                     key={a._id || i}
-                    onClick={() => router.push('/surveillance')}
+                    onClick={() => setPreview({
+                      title: a.disease || t('superintendent.alertFallback'),
+                      value: t('dashboard.casesCount', { count: a.cases }),
+                      detail: `${a.alertLevel} · ${[a.county, a.state].filter(Boolean).join(', ') || t('superintendent.locationFallback')}`,
+                      href: a._id ? `/surveillance?alert=${encodeURIComponent(a._id)}` : '/surveillance',
+                      context: t('superintendent.surveillanceSignal'),
+                    })}
                     className="data-row data-row--warning w-full"
                     style={{ textAlign: 'start' }}
                   >
@@ -160,7 +208,13 @@ export default function SuperintendentDashboard() {
             { Icon: HeartPulse, label: t('dataEntry.nurses'), value: totalNurses, href: '/hr' },
             { Icon: SendHorizontal, label: t('dashboard.pendingReferrals'), value: pendingReferrals.length, href: '/referrals' },
           ].map(s => (
-            <button key={s.label} onClick={() => router.push(s.href)} className="dash-card flex items-center gap-3" style={{ padding: '14px 16px', textAlign: 'start' }}>
+            <button key={s.label} onClick={() => setPreview({
+              title: s.label,
+              value: s.value,
+              detail: s.label,
+              href: s.href,
+              context: 'Facility staffing',
+            })} className="dash-card flex items-center gap-3" style={{ padding: '14px 16px', textAlign: 'start' }}>
               <div className="icon-box-sm">
                 <s.Icon className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
               </div>
@@ -170,6 +224,17 @@ export default function SuperintendentDashboard() {
           ))}
         </div>
       </main>
+      {preview && (
+        <SuperintendentPreviewDialog
+          preview={preview}
+          closeLabel={t('action.close')}
+          onClose={() => setPreview(null)}
+          onOpen={() => {
+            setPreview(null);
+            router.push(preview.href);
+          }}
+        />
+      )}
     </>
   );
 }

@@ -91,6 +91,7 @@ import DirectivesSection from '@/components/ehr/chart/sections/DirectivesSection
 import AssignDoctorModal, { type AssignDoctorTarget } from '@/components/AssignDoctorModal';
 import NurseVitalsModal from '@/components/nurse/NurseVitalsModal';
 import Select from '@/components/Select';
+import { safeReturnTo } from '@/lib/navigation/return-to';
 
 // Administrative tabs are the only ones a non-clinical role (e.g. Medical
 // Receptionist) may see — the "minimum necessary" rule: contact details,
@@ -1417,7 +1418,11 @@ export default function PatientDetailPage() {
             </Modal>
           )}
 
-          <button onClick={() => router.push('/patients')} className="ehr-chart-back flex items-center gap-1.5 text-sm mb-4 no-print" style={{ color: 'var(--tamamhealth-blue)' }}>
+          <button
+            onClick={() => router.push(safeReturnTo(searchParams.get('returnTo'), '/patients'))}
+            className="ehr-chart-back flex items-center gap-1.5 text-sm mb-4 no-print"
+            style={{ color: 'var(--tamamhealth-blue)' }}
+          >
             <ArrowLeft className="w-4 h-4" /> {t('action.back')}
           </button>
 

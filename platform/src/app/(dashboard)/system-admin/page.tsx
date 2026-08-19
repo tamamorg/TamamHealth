@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * System Administration moved into the personal Settings page
  * (Settings → System administration). The console's sections were always the
@@ -9,12 +7,9 @@
  * links and bookmarks keep working — same pattern as /org-admin/settings.
  */
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 export default function SystemAdminRedirect() {
-  const router = useRouter();
   // Land on Manage Apps, which is what the console opened on.
-  useEffect(() => { router.replace('/settings?panel=sysadmin-apps'); }, [router]);
-  return null;
+  redirect('/settings?panel=sysadmin-apps');
 }

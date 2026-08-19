@@ -28,6 +28,7 @@ import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PrescriptionDoc, MedicationAdministration } from '@/lib/db-types';
+import { returnToFromSearch } from '@/lib/navigation/return-to';
 
 /**
  * Parse a free-text frequency string into scheduled clock times for one
@@ -255,7 +256,7 @@ export default function MARPage() {
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             {t('mar.admissionNotFound')}
           </p>
-          <button onClick={() => router.push('/wards')} className="btn btn-primary mt-3">
+          <button onClick={() => router.push(returnToFromSearch(window.location.search, '/wards'))} className="btn btn-primary mt-3">
             {t('mar.returnToWards')}
           </button>
         </div>
@@ -269,7 +270,7 @@ export default function MARPage() {
         <div className="card-elevated p-5 flex items-start justify-between flex-wrap gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push(returnToFromSearch(window.location.search, '/wards'))}
               aria-label={t('action.back')}
               className="mt-0.5 p-1.5 rounded hover:bg-gray-100 shrink-0"
             >

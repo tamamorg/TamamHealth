@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { returnToFromSearch } from '@/lib/navigation/return-to';
 import { useApp } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -411,8 +412,8 @@ export default function BillDetailPage() {
             </div>
           </div>
           <div className="bl-banner-actions no-print">
-            <button type="button" className="bl-btn bl-btn--link" onClick={() => router.push('/billing')}>
-              <ChevronLeft size={15} /> Bill list
+            <button type="button" className="bl-btn bl-btn--link" onClick={() => router.push(returnToFromSearch(window.location.search, '/billing'))}>
+              <ChevronLeft size={15} /> Back
             </button>
           </div>
         </div>

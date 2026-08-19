@@ -26,11 +26,12 @@ import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHea
 import { tooltipStyle, axisTick } from '@/components/ChartCard';
 import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
+import Modal from '@/components/Modal';
 import {
   Area, Bar, CartesianGrid, ComposedChart, Legend, Line,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
-import { ChevronRight, Search } from '@/components/icons/lucide';
+import { ChevronRight, Search, X } from '@/components/icons/lucide';
 import type { AuditLogDoc, EncounterDoc, OrganizationDoc, UserDoc } from '@/lib/db-types';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
@@ -84,6 +85,50 @@ interface RiskRow {
   href: string;
 }
 
+interface DashboardPreview {
+  title: string;
+  context: string;
+  details: Array<{ label: string; value: ReactNode }>;
+  href: string;
+}
+
+function PreviewDialog({ preview, onClose, onOpen }: {
+  preview: DashboardPreview;
+  onClose: () => void;
+  onOpen: () => void;
+}) {
+  const titleId = 'admin-dashboard-preview-title';
+  return (
+    <Modal onClose={onClose} width={520} labelledBy={titleId}>
+      <div className="modal-panel">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="sadb-card-meta">{preview.context}</p>
+            <h2 id={titleId} className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{preview.title}</h2>
+          </div>
+          <button type="button" className="p-2 rounded-lg flex-shrink-0" onClick={onClose} aria-label="Close preview">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="py-5">
+          <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
+            {preview.details.map(detail => (
+              <div key={detail.label} className="sadb-kv" style={{ padding: '12px 14px' }}>
+                <span>{detail.label}</span>
+                <span className="sadb-kv-value">{detail.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-primary" onClick={onOpen}>Open full page</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function CardHead({ title, meta, action }: { title: string; meta?: string; action?: ReactNode }) {
   return (
     <div className="sadb-card-head">
@@ -128,6 +173,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [tenantSearch, setTenantSearch] = useState('');
   const [chartMode, setChartMode] = useState<'line' | 'area' | 'bar'>('area');
+  const [preview, setPreview] = useState<DashboardPreview | null>(null);
 
   // Defense in depth on top of the Edge proxy check (SaPage used to own this).
   useEffect(() => {
@@ -264,7 +310,7 @@ export default function AdminDashboardPage() {
         title: `Audit failure — ${log.action}`,
         detail: log.username ? `${log.username} · ${log.details}` : log.details,
         when: log.createdAt,
-        href: '/admin/audit',
+        href: `/admin/audit?log=${encodeURIComponent(log._id)}`,
       });
     }
     if (syncStats.failed > 0) {
@@ -274,7 +320,7 @@ export default function AdminDashboardPage() {
       rows.push({ severity: 'medium', title: `${conflictCount} unresolved data conflict${conflictCount === 1 ? '' : 's'}`, detail: 'Reconciliation queue', href: '/admin/conflicts' });
     }
     for (const org of suspendedOrgs) {
-      rows.push({ severity: 'medium', title: `Tenant ${org.subscriptionStatus === 'cancelled' ? 'cancelled' : 'suspended'} — ${org.name}`, detail: `${org.subscriptionPlan} plan`, href: '/admin/organizations' });
+      rows.push({ severity: 'medium', title: `Tenant ${org.subscriptionStatus === 'cancelled' ? 'cancelled' : 'suspended'} — ${org.name}`, detail: `${org.subscriptionPlan} plan`, href: `/admin/organizations?org=${encodeURIComponent(org._id)}` });
     }
     if (backupOverdue) {
       rows.push({
@@ -299,7 +345,7 @@ export default function AdminDashboardPage() {
       rows.push({ severity: 'medium', title: 'Maintenance mode is ON', detail: 'Tenant access is restricted', href: '/admin/config' });
     }
     for (const org of trialOrgs) {
-      rows.push({ severity: 'low', title: `Trial tenant — ${org.name}`, detail: `${org.maxUsers} seat limit`, href: '/admin/billing' });
+      rows.push({ severity: 'low', title: `Trial tenant — ${org.name}`, detail: `${org.maxUsers} seat limit`, href: `/admin/billing?org=${encodeURIComponent(org._id)}` });
     }
     const order: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
     return rows.sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity)).slice(0, 8);
@@ -415,6 +461,11 @@ export default function AdminDashboardPage() {
 
   if (!currentUser || currentUser.role !== 'super_admin') return null;
 
+  const openFullPage = (target: DashboardPreview) => {
+    setPreview(null);
+    router.push(target.href);
+  };
+
   return (
     <main className="page-container page-enter sadb-scope">
       <DashboardGreetingHeader
@@ -440,7 +491,15 @@ export default function AdminDashboardPage() {
               </>
             );
             return k.href
-              ? <button key={k.label} type="button" className="sadb-kpi" onClick={() => router.push(k.href!)}>{body}</button>
+              ? <button key={k.label} type="button" className="sadb-kpi" onClick={() => setPreview({
+                  title: k.label,
+                  context: 'Platform metric',
+                  details: [
+                    { label: 'Current value', value: k.value },
+                    { label: 'Context', value: k.delta },
+                  ],
+                  href: k.href!,
+                })}>{body}</button>
               : <div key={k.label} className="sadb-kpi">{body}</div>;
           })}
         </div>
@@ -471,7 +530,15 @@ export default function AdminDashboardPage() {
                 <text x={46} y={59} textAnchor="middle" fontSize={8.5} letterSpacing={1} fill="var(--text-muted)">READINESS</text>
               </svg>
               <div className="sadb-readiness-signals">
-                <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => router.push('/admin/risk')}>
+                <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => setPreview({
+                  title: 'Platform risk',
+                  context: 'Readiness signal',
+                  details: [
+                    { label: 'Open risks', value: riskQueue.length },
+                    { label: 'Audit failures', value: `${failedAudits.length} in the last 7 days` },
+                  ],
+                  href: '/admin/risk',
+                })}>
                   <b>{riskQueue.length ? `${riskQueue.length} open risk${riskQueue.length === 1 ? '' : 's'}` : 'No open risks'}</b>
                   <span>{failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days</span>
                 </button>
@@ -583,7 +650,18 @@ export default function AdminDashboardPage() {
                     key={row.org._id}
                     type="button"
                     className="sadb-tenant-grid sadb-tenant-row"
-                    onClick={() => router.push('/admin/organizations')}
+                    onClick={() => setPreview({
+                      title: row.org.name,
+                      context: 'Tenant health',
+                      details: [
+                        { label: 'Plan', value: row.org.subscriptionPlan },
+                        { label: 'Status', value: row.org.subscriptionStatus },
+                        { label: 'Facilities', value: `${row.facilities} / ${row.org.maxHospitals}` },
+                        { label: 'Users', value: `${row.users} / ${row.org.maxUsers}` },
+                        { label: 'Sync', value: sync.label },
+                      ],
+                      href: `/admin/organizations?org=${encodeURIComponent(row.org._id)}`,
+                    })}
                   >
                     <span className="min-w-0">
                       <span className="sadb-tenant-name truncate">{row.org.name}</span>
@@ -618,7 +696,15 @@ export default function AdminDashboardPage() {
             {riskQueue.length === 0 ? (
               <p className="sadb-empty">No open risk signals — platform steady.</p>
             ) : riskQueue.map((row, i) => (
-              <button key={`${row.title}-${i}`} type="button" className="sadb-queue-row" onClick={() => router.push(row.href)}>
+              <button key={`${row.title}-${i}`} type="button" className="sadb-queue-row" onClick={() => setPreview({
+                title: row.title,
+                context: `${row.severity} risk`,
+                details: [
+                  { label: 'Details', value: row.detail },
+                  ...(row.when ? [{ label: 'Recorded', value: formatWhen(row.when) }] : []),
+                ],
+                href: row.href,
+              })}>
                 <span className={`sadb-chip ${TONE_CHIP[SEVERITY_TONE[row.severity]]}`}>{row.severity}</span>
                 <span className="sadb-queue-copy">
                   <span className="sadb-queue-title">{row.title}</span>
@@ -634,7 +720,16 @@ export default function AdminDashboardPage() {
             {highRiskAudits.length === 0 ? (
               <p className="sadb-empty">No high-risk actions recorded this week.</p>
             ) : highRiskAudits.map(log => (
-              <button key={log._id} type="button" className="sadb-queue-row" onClick={() => router.push('/admin/audit')}>
+              <button key={log._id} type="button" className="sadb-queue-row" onClick={() => setPreview({
+                title: log.action,
+                context: 'Security watchlist',
+                details: [
+                  { label: 'Actor', value: log.username || 'system' },
+                  { label: 'Details', value: log.details },
+                  { label: 'Recorded', value: formatWhen(log.createdAt) },
+                ],
+                href: `/admin/audit?log=${encodeURIComponent(log._id)}`,
+              })}>
                 <span className="sadb-queue-copy">
                   <span className="sadb-queue-title">{log.action}</span>
                   <span className="sadb-queue-sub">{log.username || 'system'} · {log.details}</span>
@@ -664,6 +759,9 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+      {preview && (
+        <PreviewDialog preview={preview} onClose={() => setPreview(null)} onOpen={() => openFullPage(preview)} />
+      )}
     </main>
   );
 }

@@ -11,10 +11,49 @@ import { useWards } from '@/lib/hooks/useWards';
 import { formatMoney } from '@/lib/format-utils';
 import {
   Building2, Users, CalendarClock, BedDouble, DollarSign,
-  Wallet, Package, Receipt, BarChart3, ChevronRight, Activity,
+  Wallet, Package, Receipt, BarChart3, ChevronRight, Activity, X,
 } from '@/components/icons/lucide';
 import type { ClaimDoc } from '@/lib/db-types-payments';
 import TransferInboxCard from '@/components/patients/TransferInboxCard';
+import Modal from '@/components/Modal';
+
+interface OperationalPreview {
+  title: string;
+  value: string | number;
+  detail: string;
+  href: string;
+}
+
+function OperationalPreviewDialog({ preview, onClose, onOpen }: {
+  preview: OperationalPreview;
+  onClose: () => void;
+  onOpen: () => void;
+}) {
+  const titleId = 'org-dashboard-preview-title';
+  return (
+    <Modal onClose={onClose} width={480} labelledBy={titleId}>
+      <div className="modal-panel">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Operational status</p>
+            <h2 id={titleId} className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{preview.title}</h2>
+          </div>
+          <button type="button" className="p-2 rounded-lg flex-shrink-0" onClick={onClose} aria-label="Close preview">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="py-5">
+          <p className="stat-value text-3xl" style={{ color: 'var(--text-primary)' }}>{preview.value}</p>
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{preview.detail}</p>
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-primary" onClick={onOpen}>Open full page</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 /** Local-calendar-day ISO string (YYYY-MM-DD) — matches how appointmentDate
  *  is entered/stored (a calendar day, not a UTC instant). */
@@ -112,6 +151,7 @@ export default function OrgAdminDashboard() {
   const [claims, setClaims] = useState<ClaimDoc[]>([]);
   const [stockAlerts, setStockAlerts] = useState({ low: 0, critical: 0, expired: 0 });
   const [financialsLoading, setFinancialsLoading] = useState(true);
+  const [preview, setPreview] = useState<OperationalPreview | null>(null);
 
   useEffect(() => {
     if (!scope) return;
@@ -299,7 +339,7 @@ export default function OrgAdminDashboard() {
   // spells out every count, so color never carries the data alone.
   const riskTiles: {
     key: string; label: string; value: string | number; detail: string;
-    icon: typeof Package; tone: 'ok' | 'warning' | 'danger'; onClick: () => void;
+    icon: typeof Package; tone: 'ok' | 'warning' | 'danger'; href: string;
     segments?: { value: number; color: string }[];
     meterPct?: number;
   }[] = [
@@ -310,7 +350,7 @@ export default function OrgAdminDashboard() {
       detail: `${stockAlerts.critical} critical · ${stockAlerts.low} low · ${stockAlerts.expired} expired`,
       icon: Package,
       tone: totalStockAlerts > 0 ? 'warning' : 'ok',
-      onClick: () => router.push('/pharmacy'),
+      href: '/pharmacy',
       segments: [
         { value: stockAlerts.critical, color: 'var(--color-danger)' },
         { value: stockAlerts.low, color: 'var(--color-warning)' },
@@ -324,7 +364,7 @@ export default function OrgAdminDashboard() {
       detail: `${claims.length} total claims submitted`,
       icon: Receipt,
       tone: pendingClaims.length > 0 ? 'warning' : 'ok',
-      onClick: () => router.push('/payments/claims'),
+      href: '/payments/claims',
       meterPct: claims.length > 0 ? (pendingClaims.length / claims.length) * 100 : 0,
     },
     {
@@ -334,7 +374,7 @@ export default function OrgAdminDashboard() {
       detail: `${billing?.pendingCount ?? 0} of ${billing?.billCount ?? 0} bills pending or partial`,
       icon: Wallet,
       tone: (billing?.totalOutstanding ?? 0) > 0 ? 'warning' : 'ok',
-      onClick: () => router.push('/payments'),
+      href: '/payments',
       meterPct: billing && billing.billCount > 0 ? (billing.pendingCount / billing.billCount) * 100 : 0,
     },
     {
@@ -344,7 +384,7 @@ export default function OrgAdminDashboard() {
       detail: `${availableBeds} available of ${totalBeds} beds`,
       icon: BedDouble,
       tone: occupancyRate >= 90 ? 'danger' : occupancyRate >= 75 ? 'warning' : 'ok',
-      onClick: () => router.push('/wards'),
+      href: '/wards',
       meterPct: occupancyRate,
     },
   ];
@@ -429,7 +469,7 @@ export default function OrgAdminDashboard() {
               return (
                 <button
                   key={tile.key}
-                  onClick={tile.onClick}
+                  onClick={() => setPreview({ title: tile.label, value: tile.value, detail: tile.detail, href: tile.href })}
                   className="text-start rounded-xl p-3 transition-all hover:opacity-90"
                   style={{ background: toneBg, border: `1px solid ${toneColor}33` }}
                 >
@@ -479,6 +519,16 @@ export default function OrgAdminDashboard() {
           </div>
         </div>
       </div>
+      {preview && (
+        <OperationalPreviewDialog
+          preview={preview}
+          onClose={() => setPreview(null)}
+          onOpen={() => {
+            setPreview(null);
+            router.push(preview.href);
+          }}
+        />
+      )}
     </div>
   );
 }

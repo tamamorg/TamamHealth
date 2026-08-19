@@ -266,7 +266,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
 
       <footer className="lg-footer">
         <a href="/terms">Terms &amp; Conditions</a>
-        <a href="/terms">Privacy Policy</a>
+        <a href="/privacy">Privacy Policy</a>
         <a href="https://tamamhealth.org">Back to tamamhealth.org</a>
       </footer>
 

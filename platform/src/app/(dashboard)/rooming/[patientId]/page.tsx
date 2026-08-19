@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/context';
 import { getRoleConfig } from '@/lib/permissions';
 import { patientFullName, patientGenderAge, initials, stateTint } from '@/lib/patient-utils';
 import RoomingWorkflow from '@/components/nurse/RoomingWorkflow';
+import { returnToFromSearch, withReturnTo } from '@/lib/navigation/return-to';
 
 /** Focused rooming page opened from a patient row's visit details. */
 export default function PatientRoomingPage() {
@@ -38,11 +39,11 @@ export default function PatientRoomingPage() {
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <button
         type="button"
-        onClick={() => router.push(backTarget)}
+        onClick={() => router.push(returnToFromSearch(window.location.search, backTarget))}
         className="flex items-center gap-1.5 text-[12px] font-bold mb-2 no-print"
         style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
       >
-        <ArrowLeft className="w-4 h-4" /> Back to rooming
+        <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
       <div className="card-elevated flex items-center gap-3 px-4 py-3 mb-3 flex-shrink-0" style={{ borderRadius: 12 }}>
@@ -53,7 +54,7 @@ export default function PatientRoomingPage() {
           <h1 className="text-base font-bold truncate" style={{ color: 'var(--text-primary)' }}>{name}</h1>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{[patient.hospitalNumber, patientGenderAge(patient)].filter(Boolean).join(' · ')}</p>
         </div>
-        <button type="button" onClick={() => router.push(`/patients/${patient._id}`)} className="flex items-center gap-1.5 px-3 h-[32px] rounded-lg text-[12px] font-semibold flex-shrink-0" style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-secondary)' }}>
+        <button type="button" onClick={() => router.push(withReturnTo(`/patients/${patient._id}`, `${window.location.pathname}${window.location.search}`))} className="flex items-center gap-1.5 px-3 h-[32px] rounded-lg text-[12px] font-semibold flex-shrink-0" style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-secondary)' }}>
           <FileText className="w-4 h-4" /> Open chart
         </button>
       </div>

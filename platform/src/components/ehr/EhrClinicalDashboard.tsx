@@ -1253,9 +1253,6 @@ export default function EhrClinicalDashboard({
   const appointmentPanel = openAppointment ? (
     <div
       className="modal-panel modal-panel--md appointment-detail-panel appointment-detail-panel--clinical"
-      aria-label="Appointment details"
-      role="dialog"
-      aria-modal="true"
     >
       <div className="appointment-detail-modal__header">
         <div className="appointment-detail-modal__header-row">
