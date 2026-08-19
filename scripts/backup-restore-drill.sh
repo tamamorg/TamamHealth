@@ -86,14 +86,42 @@ fi
 
 FAILED=0
 
+# How old the newest snapshot may be before the drill treats it as a failure.
+# The drill restores whatever is NEWEST in the bucket, which means a pipeline
+# that stopped uploading months ago still passes every structural check — the
+# drill goes green on a stale snapshot and reports that backups are healthy
+# while the recovery point silently ages. Freshness is the property that
+# actually matters, so it is checked as its own assertion.
+: "${BACKUP_MAX_AGE_HOURS:=48}"
+
+# Fail when $1 (an ISO-8601 LastModified from S3) is older than the limit.
+check_freshness() {
+  label=$1; modified=$2
+  [ -n "$modified" ] && [ "$modified" != "None" ] || { fail "$label: no LastModified on the newest object"; return; }
+  # GNU date and BSD date disagree on parsing flags; try GNU first (the CI
+  # runner), then BSD (a macOS operator running the drill by hand).
+  epoch=$(date -u -d "$modified" +%s 2>/dev/null \
+          || date -u -j -f '%Y-%m-%dT%H:%M:%S' "${modified%%.*}" +%s 2>/dev/null \
+          || echo '')
+  [ -n "$epoch" ] || { log "  $label: could not parse LastModified '$modified' — skipping age check"; return; }
+  age_hours=$(( ( $(date -u +%s) - epoch ) / 3600 ))
+  log "  $label age: ${age_hours}h (limit ${BACKUP_MAX_AGE_HOURS}h)"
+  if [ "$age_hours" -gt "$BACKUP_MAX_AGE_HOURS" ]; then
+    fail "$label is ${age_hours}h old — older than ${BACKUP_MAX_AGE_HOURS}h. The backup pipeline has stopped uploading; the newest recoverable snapshot is from $modified."
+  fi
+}
+
 # ------- locate latest CouchDB snapshot --------------------------------------
 log "scanning bucket for latest couchdb snapshot"
-COUCH_KEY=$(aws "${AWS_ARGS[@]}" s3api list-objects-v2 \
+COUCH_ENTRY=$(aws "${AWS_ARGS[@]}" s3api list-objects-v2 \
               --bucket "$BACKUP_BUCKET" \
               --prefix "" \
-              --query 'reverse(sort_by(Contents,&LastModified))[?contains(Key,`couchdb-`)].Key | [0]' \
+              --query 'reverse(sort_by(Contents,&LastModified))[?contains(Key,`couchdb-`)].[Key,LastModified] | [0]' \
               --output text 2>/dev/null \
               | tr -d '\r')
+COUCH_KEY=$(printf '%s' "$COUCH_ENTRY" | awk '{print $1}')
+COUCH_MODIFIED=$(printf '%s' "$COUCH_ENTRY" | awk '{print $2}')
+check_freshness "couchdb snapshot" "$COUCH_MODIFIED"
 if [ -z "$COUCH_KEY" ] || [ "$COUCH_KEY" = "None" ]; then
   fail "no couchdb-*.tar.gz.gpg objects found in bucket $BACKUP_BUCKET"
 else
@@ -122,12 +150,14 @@ if [ "${DRILL_SKIP_POSTGRES:-}" = "1" ]; then
   log "skipping postgres drill (DRILL_SKIP_POSTGRES=1)"
 else
   log "scanning bucket for latest postgres snapshot"
-  PG_KEY=$(aws "${AWS_ARGS[@]}" s3api list-objects-v2 \
+  PG_ENTRY=$(aws "${AWS_ARGS[@]}" s3api list-objects-v2 \
               --bucket "$BACKUP_BUCKET" \
               --prefix "" \
-              --query 'reverse(sort_by(Contents,&LastModified))[?contains(Key,`postgres-`)].Key | [0]' \
+              --query 'reverse(sort_by(Contents,&LastModified))[?contains(Key,`postgres-`)].[Key,LastModified] | [0]' \
               --output text 2>/dev/null \
               | tr -d '\r')
+  PG_KEY=$(printf '%s' "$PG_ENTRY" | awk '{print $1}')
+  check_freshness "postgres snapshot" "$(printf '%s' "$PG_ENTRY" | awk '{print $2}')"
   if [ -z "$PG_KEY" ] || [ "$PG_KEY" = "None" ]; then
     fail "no postgres-*.dump.gpg objects found in bucket $BACKUP_BUCKET"
   else
