@@ -546,6 +546,10 @@ export default function RadiologyDashboard() {
             // study.priority is a real urgency, not free text — it maps onto the
             // same acuity codes, and the same words, every other worklist uses.
             priority: appointmentTriage(study.priority),
+            detailHref: study.patientId
+              ? `/patients/${encodeURIComponent(study.patientId)}?tab=labs&focus=${encodeURIComponent(study.id)}&returnTo=${encodeURIComponent('/dashboard/radiology')}`
+              : undefined,
+            detailLabel: study.patientId ? t('dashboard.viewPatientRecord') : undefined,
             // Pending/In Progress/Complete IS the imaging worklist — a same-day
             // visit must not paint over it with the appointment ladder. The
             // shared shell still surfaces the visit status on the line under

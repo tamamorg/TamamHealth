@@ -163,6 +163,11 @@ export default function AdminOrganizationsPage() {
   const [orgStats, setOrgStats] = useState<Record<string, { userCount: number; hospitalCount: number }>>({});
   const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
   const [deactivating, setDeactivating] = useState(false);
+  const [focusedOrgId, setFocusedOrgId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFocusedOrgId(new URLSearchParams(window.location.search).get('org'));
+  }, []);
 
   // The "Administrator" section's toggle. On create it defaults ON — the
   // whole point is to collapse "create org" + "go create its admin at
@@ -216,11 +221,12 @@ export default function AdminOrganizationsPage() {
   }, [organizations, getStats]);
 
   const filteredOrgs = useMemo(() => {
+    if (focusedOrgId) return organizations.filter(o => o._id === focusedOrgId);
     const q = search.trim().toLowerCase();
     return organizations.filter(o =>
       !q || o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q) || o.contactEmail.toLowerCase().includes(q)
     );
-  }, [organizations, search]);
+  }, [organizations, search, focusedOrgId]);
 
   const activeOrgs = organizations.filter(o => o.isActive && o.subscriptionStatus !== 'suspended' && o.subscriptionStatus !== 'cancelled');
   const trialOrgs = organizations.filter(o => o.subscriptionStatus === 'trial');
@@ -454,6 +460,15 @@ export default function AdminOrganizationsPage() {
             <Plus className="w-4 h-4" /> {t('orgAdmin.newOrganization')}
           </button>
         </div>
+
+        {focusedOrgId && (
+          <div className="px-4 py-2.5 flex items-center justify-between gap-3" role="status" style={{ background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
+            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Showing the organization opened from the dashboard.
+            </span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFocusedOrgId(null)}>Show all organizations</button>
+          </div>
+        )}
 
         <SadbGridList
           template={GRID_TEMPLATE}

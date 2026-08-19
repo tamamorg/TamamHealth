@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -49,6 +49,11 @@ import { FrontDeskDetailActions, FrontDeskDetailFacts } from '@/components/front
 import { StaffAssignmentControl, RoomAssignmentControl } from '@/components/front-desk/AssignmentControls';
 import CheckoutModal from '@/components/front-desk/CheckoutModal';
 import CheckInModal from '@/components/front-desk/CheckInModal';
+import {
+  createPatientRegistrationDraftId,
+  savePatientRegistrationDraft,
+  type PatientRegistrationDraft,
+} from '@/lib/patient-registration-draft';
 
 /**
  * Front-desk operations workspace.
@@ -107,6 +112,7 @@ export default function FrontDeskDashboardPage() {
   const [cancelTarget, setCancelTarget] = useState<{ appt: AppointmentDoc; triage?: TriageDoc } | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [registerOpen, setRegisterOpen] = useState(false);
+  const registrationDraftRef = useRef<PatientRegistrationDraft | null>(null);
   // "Find availability" — the same booking dialog the doctor module opens.
   const [bookingOpen, setBookingOpen] = useState(false);
   const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
@@ -953,10 +959,23 @@ export default function FrontDeskDashboardPage() {
     setPanelView('all');
   }, []);
 
-  const openFullRegistration = useCallback(() => {
+  const captureRegistrationDraft = useCallback((draft: PatientRegistrationDraft) => {
+    registrationDraftRef.current = draft;
+  }, []);
+
+  const openFullRegistration = useCallback(async () => {
+    const draft = registrationDraftRef.current;
+    if (!draft) return;
+    const draftId = createPatientRegistrationDraftId();
+    const saved = await savePatientRegistrationDraft(draftId, draft);
+    if (!saved) {
+      showToast(t('patientNew.toastDraftSaveFailed'), 'error');
+      return;
+    }
+    const returnTo = `/dashboard/front-desk${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`;
     setRegisterOpen(false);
-    router.push('/patients/new');
-  }, [router]);
+    router.push(`/patients/new?draft=${encodeURIComponent(draftId)}&returnTo=${encodeURIComponent(returnTo)}`);
+  }, [router, searchParams, showToast, t]);
 
   const visiblePendingAppointments = useMemo(() => {
     // Pending bookings are the Scheduled lane; the tile views that list
@@ -1056,6 +1075,8 @@ export default function FrontDeskDashboardPage() {
         priority: appointmentTriage(appointment.priority),
         date: isoDateKey(appointment.appointmentDate),
         patientId: appointment.patientId,
+        detailHref: `/appointments?appointment=${encodeURIComponent(appointment._id)}&returnTo=${encodeURIComponent('/dashboard/front-desk')}`,
+        detailLabel: t('appointments.review'),
         // The row drops down into the appointment itself, the way the doctor
         // dashboard's rows drop down into a visit — no pop-up over the list, and
         // nothing restating what the row already shows.
@@ -1222,6 +1243,10 @@ export default function FrontDeskDashboardPage() {
         locationLabel: entry.stage ? 'Stage' : entry.type === 'appointment' ? 'Department' : 'Location',
         date: entry.calendarDate,
         patientId: entry.patientId,
+        detailHref: queueAppointment
+          ? `/appointments?appointment=${encodeURIComponent(queueAppointment._id)}&returnTo=${encodeURIComponent('/dashboard/front-desk')}`
+          : `/patients/${encodeURIComponent(entry.patientId)}?returnTo=${encodeURIComponent('/dashboard/front-desk')}`,
+        detailLabel: queueAppointment ? t('appointments.review') : t('dashboard.viewPatientRecord'),
         // The same panel a Scheduled row opens — tabs for the appointment,
         // provider & staff, and status & billing — so a patient's row looks
         // and behaves the same wherever they are in the day. Decided by the
@@ -1325,6 +1350,8 @@ export default function FrontDeskDashboardPage() {
         statusTone: 'ready',
         date: isoDateKey(patientRegisteredAt(patient)),
         patientId: patient._id,
+        detailHref: `/patients/${encodeURIComponent(patient._id)}?returnTo=${encodeURIComponent('/dashboard/front-desk')}`,
+        detailLabel: t('dashboard.viewPatientRecord'),
         popupDetail: (
           <>
             <FrontDeskDetailActions actions={[
@@ -1575,6 +1602,7 @@ export default function FrontDeskDashboardPage() {
               <div className="ehr-checkin-dialog-body">
                 <PatientRegistrationForm
                   embedded
+                  onDraftChange={captureRegistrationDraft}
                   onCancel={() => setRegisterOpen(false)}
                   onRegistered={() => {
                     setRegisterOpen(false);

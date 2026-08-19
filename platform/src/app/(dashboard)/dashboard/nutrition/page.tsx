@@ -467,6 +467,10 @@ export default function NutritionDashboard() {
               : s.status === 'MAM' ? 'warning'
               : (s.status === 'At Risk' || s.status === 'Underweight') ? 'warning'
               : 'done',
+            detailHref: s.patientId
+              ? `/patients/${encodeURIComponent(s.patientId)}?returnTo=${encodeURIComponent('/dashboard/nutrition')}`
+              : undefined,
+            detailLabel: s.patientId ? t('dashboard.viewPatientRecord') : undefined,
             // SAM/MAM/At Risk IS this screen's whole point — a same-day visit
             // must not paint over the classification with the appointment
             // ladder. The shared shell still surfaces the visit status on the

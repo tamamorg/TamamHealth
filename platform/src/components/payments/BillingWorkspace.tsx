@@ -427,8 +427,13 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   useEffect(() => {
     if (typeof window === 'undefined' || tabParamRef.current) return;
     tabParamRef.current = true;
-    const requested = new URLSearchParams(window.location.search).get('tab');
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get('tab');
     if (requested === 'claims' || requested === 'accounts') setTab(requested);
+    const requestedStatus = params.get('status');
+    if (requestedStatus && ['draft', 'submitted', 'accepted', 'partial', 'paid', 'denied', 'appealed'].includes(requestedStatus)) {
+      setClaimStatusFilter(requestedStatus);
+    }
   }, []);
 
   // Export whatever the toolbar is currently showing — the rows on screen, not

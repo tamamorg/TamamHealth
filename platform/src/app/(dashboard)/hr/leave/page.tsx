@@ -37,6 +37,7 @@ export default function HrLeavePage() {
     () => parseLeaveStatusFromParams(searchParams ?? new URLSearchParams()),
   );
   const [open, setOpen] = useState(false);
+  const focusedRequestId = searchParams?.get('request') || null;
 
   const reload = useCallback(async () => {
     const { getAllLeaveRequests } = await import('@/lib/services/leave-service');
@@ -81,10 +82,18 @@ export default function HrLeavePage() {
 
   const q = search.trim().toLowerCase();
   const visibleLeave = leave.filter(r => {
+    if (focusedRequestId) return r._id === focusedRequestId;
     if (statusFilter !== 'all' && r.status !== statusFilter) return false;
     if (!q) return true;
     return `${r.userName} ${r.role} ${r.leaveType} ${r.status}`.toLowerCase().includes(q);
   });
+
+  useEffect(() => {
+    if (!focusedRequestId || leave.length === 0) return;
+    const row = document.getElementById(`leave-request-${focusedRequestId}`);
+    row?.scrollIntoView({ block: 'nearest' });
+    row?.focus({ preventScroll: true });
+  }, [focusedRequestId, leave.length]);
 
   return (
     <HrPageShell>
@@ -159,7 +168,19 @@ export default function HrLeavePage() {
             {visibleLeave.map(r => {
               const tok = STATUS_TOKENS[r.status];
               return (
-                <div key={r._id} className="ehr-appointment-row appointment-card-row" style={{ cursor: 'default' }}>
+                <div
+                  key={r._id}
+                  id={`leave-request-${r._id}`}
+                  tabIndex={focusedRequestId === r._id ? 0 : undefined}
+                  aria-current={focusedRequestId === r._id ? 'true' : undefined}
+                  className="ehr-appointment-row appointment-card-row"
+                  style={{
+                    cursor: 'default',
+                    background: focusedRequestId === r._id ? 'var(--overlay-subtle)' : undefined,
+                    outline: focusedRequestId === r._id ? '2px solid var(--accent-primary)' : undefined,
+                    outlineOffset: focusedRequestId === r._id ? -2 : undefined,
+                  }}
+                >
                   <StaffIdentity name={r.userName} sub={r.role.replace(/_/g, ' ')} capitalizeSub />
 
                   {/* Leave type — value + the requester's own words. */}

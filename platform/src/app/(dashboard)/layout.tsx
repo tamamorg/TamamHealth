@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import EhrTopRail from '@/components/ehr/EhrTopRail';
@@ -22,6 +22,7 @@ import { getMobileShellArchetype } from '@/lib/mobile-shell/dashboard-strategy';
 import MobileAppShell from '@/components/mobile/MobileAppShell';
 import UsageTracker from '@/components/UsageTracker';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
+import RouteContextBar from '@/components/navigation/RouteContextBar';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -87,6 +88,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10 transition-all duration-300 ease-in-out tamam-ehr-content-frame"
           >
             <div className="dashboard-content-area flex-1 flex flex-col min-w-0 overflow-hidden">
+              <Suspense fallback={null}>
+                <RouteContextBar />
+              </Suspense>
               <main id="main-content" className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
                 <RoleGuard>{children}</RoleGuard>
                 <GetStartedCard />

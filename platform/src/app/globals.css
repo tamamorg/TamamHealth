@@ -2531,6 +2531,99 @@ html:has(.ehr-top-rail) {
   padding-top: var(--ehr-top-rail-height);
 }
 
+/* Compact route context for desktop workflow/detail pages. It is part of the
+   content flow so it never covers page controls or changes a page's scroll
+   container. The mobile shell supplies its own title and back affordance. */
+.route-context-bar {
+  min-height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-inline: 20px;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.route-context-back,
+.route-context-crumbs,
+.route-context-crumb,
+.route-context-crumb a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.route-context-back {
+  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 28px;
+  color: var(--accent-primary);
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.route-context-back svg,
+.route-context-chevron {
+  width: 14px;
+  height: 14px;
+}
+
+.route-context-back:hover,
+.route-context-crumb a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.route-context-back:focus-visible,
+.route-context-crumb a:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+
+.route-context-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-light);
+}
+
+.route-context-crumbs {
+  min-width: 0;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.route-context-crumb {
+  min-width: 0;
+  gap: 6px;
+}
+
+.route-context-crumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.route-context-crumb [aria-current='page'] {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+
+.route-context-chevron {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+[dir='rtl'] .route-context-back svg,
+[dir='rtl'] .route-context-chevron {
+  transform: scaleX(-1);
+}
+
 .ehr-mobile-tabbar {
   display: none;
 }

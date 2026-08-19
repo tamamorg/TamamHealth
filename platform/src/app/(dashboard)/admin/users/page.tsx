@@ -53,22 +53,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  // Deep-link support: /admin/users?q=<name> arrives pre-filtered (the audit
-  // log's "View in User Management" action). window.location instead of
-  // useSearchParams so the page needs no Suspense boundary.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get('q');
-    if (q) setSearch(q);
-    // ?new=1 — the facility dashboards' "Add user" buttons deep-link straight
-    // into the create form with a temporary password already generated.
-    if (params.has('new')) {
-      setAddForm({ ...emptyAddForm, password: generateTempPassword() });
-      setShowAddUserPassword(true);
-      setShowAddUser(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [focusedUserId, setFocusedUserId] = useState<string | null>(null);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterOrg, setFilterOrg] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -102,6 +87,29 @@ export default function AdminUsersPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<UserDoc | null>(null);
   const [deactivating, setDeactivating] = useState(false);
 
+  // Deep-link support: /admin/users?q=<name> arrives pre-filtered (the audit
+  // log's "View in User Management" action), while ?user=<id> isolates and
+  // expands the exact account opened from a dashboard preview. window.location
+  // keeps this page out of a Suspense boundary.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    if (q) setSearch(q);
+    const user = params.get('user');
+    if (user) {
+      setFocusedUserId(user);
+      setExpandedId(user);
+    }
+    // ?new=1 — the facility dashboards' "Add user" buttons deep-link straight
+    // into the create form with a temporary password already generated.
+    if (params.has('new')) {
+      setAddForm({ ...emptyAddForm, password: generateTempPassword() });
+      setShowAddUserPassword(true);
+      setShowAddUser(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Load all users
   useEffect(() => {
     const loadUsers = async () => {
@@ -119,6 +127,7 @@ export default function AdminUsersPage() {
   }, []);
 
   const filteredUsers = useMemo(() => {
+    if (focusedUserId) return users.filter(u => u._id === focusedUserId);
     return users.filter(u => {
       const q = search.toLowerCase();
       const matchSearch = !q || u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (u.hospitalName || '').toLowerCase().includes(q);
@@ -126,7 +135,7 @@ export default function AdminUsersPage() {
       const matchOrg = filterOrg === 'all' || u.orgId === filterOrg;
       return matchSearch && matchRole && matchOrg;
     });
-  }, [users, search, filterRole, filterOrg]);
+  }, [users, search, filterRole, filterOrg, focusedUserId]);
 
   const handleChangeRole = async () => {
     if (!changeRoleUser || !currentUser) return;
@@ -333,8 +342,15 @@ export default function AdminUsersPage() {
             return (
               <Fragment key={u._id}>
                 <div
+                  id={`admin-user-${u._id}`}
                   className="ehr-appointment-row appointment-card-row"
-                  style={{ gridTemplateColumns: USER_GRID }}
+                  style={{
+                    gridTemplateColumns: USER_GRID,
+                    background: focusedUserId === u._id ? 'var(--overlay-subtle)' : undefined,
+                    outline: focusedUserId === u._id ? '2px solid var(--accent-primary)' : undefined,
+                    outlineOffset: focusedUserId === u._id ? -2 : undefined,
+                  }}
+                  aria-current={focusedUserId === u._id ? 'true' : undefined}
                   role="button"
                   tabIndex={0}
                   onClick={() => setExpandedId(isExpanded ? null : u._id)}

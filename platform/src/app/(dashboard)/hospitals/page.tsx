@@ -111,9 +111,11 @@ function HospitalsPageInner() {
   const { globalSearch, currentUser } = useApp();
   const canManage = !!currentUser && MANAGE_ROLES.includes(currentUser.role);
   const searchParams = useSearchParams();
+  const stateParam = searchParams.get('state');
+  const countyParam = searchParams.get('county');
   const [selectedHospital, setSelectedHospital] = useState<HospitalDoc | null>(null);
   const [search, setSearch] = useState('');
-  const [filterState, setFilterState] = useState('all');
+  const [filterState, setFilterState] = useState(() => stateParam || 'all');
 
   // Auto-select hospital from URL query param. Re-run whenever the param
   // changes — guarding on `!selectedHospital` previously froze the selection
@@ -125,7 +127,7 @@ function HospitalsPageInner() {
     const found = hospitals.find(h => h._id === facilityIdParam);
     if (found) setSelectedHospital(found);
   }, [facilityIdParam, hospitals]);
-  const [filterCounty, setFilterCounty] = useState('all');
+  const [filterCounty, setFilterCounty] = useState(() => countyParam || 'all');
   const [filterType, setFilterType] = useState('all');
   const [filterOwnership, setFilterOwnership] = useState('all');
   const [filterService, setFilterService] = useState('all');
@@ -138,8 +140,10 @@ function HospitalsPageInner() {
     return statesAndCounties[filterState] || [];
   }, [filterState]);
 
-  // Reset county when state changes
-  useEffect(() => { setFilterCounty('all'); }, [filterState]);
+  const changeFilterState = (nextState: string) => {
+    setFilterState(nextState);
+    setFilterCounty('all');
+  };
 
   // ── Filter ──
   const filteredHospitals = useMemo(() => {
@@ -264,7 +268,7 @@ function HospitalsPageInner() {
                       panelWidth={560}
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                        <FilterDropdown label={t('hospitals.filterState')} value={filterState} onChange={setFilterState} options={[{ value: 'all', label: t('hospitals.allStates') }, ...states.map(s => ({ value: s, label: s }))]} />
+                        <FilterDropdown label={t('hospitals.filterState')} value={filterState} onChange={changeFilterState} options={[{ value: 'all', label: t('hospitals.allStates') }, ...states.map(s => ({ value: s, label: s }))]} />
                         {availableCounties.length > 0 && (
                           <FilterDropdown label={t('hospitals.filterCounty')} value={filterCounty} onChange={setFilterCounty} options={[{ value: 'all', label: t('hospitals.allCounties') }, ...availableCounties.map(c => ({ value: c, label: c }))]} />
                         )}

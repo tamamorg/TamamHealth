@@ -9,7 +9,19 @@
  * the URL.
  */
 import { PatientRegistrationForm } from '@/components/patients/registration/PatientRegistrationForm';
+import { safeReturnTo } from '@/lib/navigation/return-to';
 
-export default function NewPatientPage() {
-  return <PatientRegistrationForm />;
+interface NewPatientPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function NewPatientPage({ searchParams }: NewPatientPageProps) {
+  const params = await searchParams;
+  const draftId = typeof params.draft === 'string' ? params.draft : undefined;
+  const returnTo = safeReturnTo(
+    typeof params.returnTo === 'string' ? params.returnTo : undefined,
+    '/patients',
+  );
+
+  return <PatientRegistrationForm draftId={draftId} returnTo={returnTo} />;
 }

@@ -345,7 +345,9 @@ export default function AdminDashboardPage() {
       rows.push({ severity: 'medium', title: 'Maintenance mode is ON', detail: 'Tenant access is restricted', href: '/admin/config' });
     }
     for (const org of trialOrgs) {
-      rows.push({ severity: 'low', title: `Trial tenant — ${org.name}`, detail: `${org.maxUsers} seat limit`, href: `/admin/billing?org=${encodeURIComponent(org._id)}` });
+      // Billing has no tenant-focus contract yet, so this remains a broad
+      // aggregate destination rather than carrying a query param it ignores.
+      rows.push({ severity: 'low', title: `Trial tenant — ${org.name}`, detail: `${org.maxUsers} seat limit`, href: '/admin/billing' });
     }
     const order: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
     return rows.sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity)).slice(0, 8);

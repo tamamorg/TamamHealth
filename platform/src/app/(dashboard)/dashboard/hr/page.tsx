@@ -232,6 +232,8 @@ export default function HRDashboardPage() {
             statusLabel: titleCase(r.leaveType),
             statusSecondary: `${r.days} day${r.days === 1 ? '' : 's'}`,
             statusTone: 'warning',
+            detailHref: `/hr/leave?status=pending&returnTo=${encodeURIComponent('/dashboard/hr')}`,
+            detailLabel: t('referrals.viewDetails'),
             popupDetail: renderLeaveDetail(r),
           };
         })}

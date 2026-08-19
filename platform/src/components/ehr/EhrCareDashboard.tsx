@@ -24,6 +24,9 @@ import {
 } from '@/lib/appointment-status';
 import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import type { AppointmentStatus } from '@/lib/db-types';
+import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigation/care-dashboard-url';
+
+const EHR_CARE_PREVIEW_HISTORY_KEY = '__tamamEhrCarePreview';
 
 export type EhrCareDashboardAction = {
   label: string;
@@ -386,24 +389,79 @@ export default function EhrCareDashboard({
   // can rebuild its data for that day), internal state otherwise.
   const [internalSelectedDate, setInternalSelectedDate] = useState(todayIso);
   const selectedDate = controlledSelectedDate ?? internalSelectedDate;
-  const selectDate = useCallback((iso: string) => {
-    onSelectedDateChange?.(iso);
-    if (controlledSelectedDate === undefined) setInternalSelectedDate(iso);
-  }, [controlledSelectedDate, onSelectedDateChange]);
-  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
-  // Clicking a row opens a right-side detail slider where the actions live,
-  // keeping the row itself clean (avatar · time · name).
+  const [urlStateReady, setUrlStateReady] = useState(false);
   // Row details expand in place rather than opening a dialog: the queue stays
   // on screen, so a clinician can read one patient's visit without losing the
   // list they are working down.
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [urlPreviewId, setUrlPreviewId] = useState<string | null>(null);
+  const writeDashboardUrl = useCallback((
+    patch: Parameters<typeof updateCareDashboardSearch>[1],
+    mode: 'push' | 'replace',
+    previewMarker?: string | null,
+  ) => {
+    const search = updateCareDashboardSearch(window.location.search, patch);
+    const href = `${window.location.pathname}${search}${window.location.hash}`;
+    const currentState = window.history.state && typeof window.history.state === 'object'
+      ? window.history.state as Record<string, unknown>
+      : {};
+    const nextState = {
+      ...currentState,
+      [EHR_CARE_PREVIEW_HISTORY_KEY]: previewMarker === undefined
+        ? currentState[EHR_CARE_PREVIEW_HISTORY_KEY] ?? null
+        : previewMarker,
+    };
+    if (mode === 'push') window.history.pushState(nextState, '', href);
+    else window.history.replaceState(nextState, '', href);
+  }, []);
+  const selectDate = useCallback((iso: string) => {
+    onSelectedDateChange?.(iso);
+    if (controlledSelectedDate === undefined) setInternalSelectedDate(iso);
+    setExpandedRowId(null);
+    setUrlPreviewId(null);
+    writeDashboardUrl({ day: iso, preview: null }, 'replace', null);
+  }, [controlledSelectedDate, onSelectedDateChange, writeDashboardUrl]);
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+  // Clicking a row opens a right-side detail slider where the actions live,
+  // keeping the row itself clean (avatar · time · name).
   const [detailTab, setDetailTab] = useState<'visit' | 'financial'>('visit');
   const lastAutoOpenRowId = useRef<string | null>(null);
-  const openDetail = (row: EhrCareDashboardRow) => {
+  const closeDetail = useCallback((preserveHistory = false) => {
+    const currentPreview = readCareDashboardUrl(window.location.search).preview;
+    const historyPreview = window.history.state?.[EHR_CARE_PREVIEW_HISTORY_KEY];
+
+    setExpandedRowId(null);
+    setUrlPreviewId(null);
+    if (!currentPreview) return;
+
+    // A preview opened from this dashboard owns one history entry. Pop that
+    // entry so browser Back and the visible Close action have identical
+    // semantics. A directly loaded/deep-linked preview has no prior dashboard
+    // entry, so it is closed in place instead.
+    if (!preserveHistory && historyPreview === currentPreview) {
+      window.history.back();
+      return;
+    }
+    writeDashboardUrl({ preview: null }, 'replace', null);
+  }, [writeDashboardUrl]);
+  const openDetail = useCallback((row: EhrCareDashboardRow, mode?: 'push' | 'replace') => {
     if (row.onOpen) { row.onOpen(); return; }
+    if (expandedRowId === row.id || urlPreviewId === row.id) {
+      closeDetail();
+      return;
+    }
     setDetailTab('visit');
-    setExpandedRowId(current => (current === row.id ? null : row.id));
-  };
+    setExpandedRowId(row.id);
+    setUrlPreviewId(row.id);
+    const currentPreview = readCareDashboardUrl(window.location.search).preview;
+    const navigationMode = mode ?? (currentPreview ? 'replace' : 'push');
+    const ownedPreview = window.history.state?.[EHR_CARE_PREVIEW_HISTORY_KEY];
+    writeDashboardUrl(
+      { preview: row.id },
+      navigationMode,
+      navigationMode === 'push' || ownedPreview ? row.id : null,
+    );
+  }, [closeDetail, expandedRowId, urlPreviewId, writeDashboardUrl]);
   const rowEventDates = useMemo(() => rows.map(row => row.date).filter((date): date is string => Boolean(date)), [rows]);
   const eventDates = calendarEventDates || rowEventDates;
   // The left rail runs the same "Day statistics" widget as the Clinical Officer
@@ -435,6 +493,10 @@ export default function EhrCareDashboard({
       : rows.filter(row => row.date === selectedDate);
     return scopedRows.slice().sort(compareDashboardRows);
   }, [filterRowsByDate, rowEventDates.length, rows, selectedDate, showCalendar]);
+  // URL previews are derived while rows load: the query can arrive before the
+  // async worklist without requiring a state-setting synchronization effect.
+  const effectiveExpandedRowId = expandedRowId
+    ?? (urlPreviewId && visibleRows.some(row => row.id === urlPreviewId) ? urlPreviewId : null);
 
   // A row must sit in the lane its own status pill names. The front desk filed
   // by "does a triage record exist" instead of the visit's rung, so bookings
@@ -491,19 +553,50 @@ export default function EhrCareDashboard({
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, [hasCountdown]);
+  // Read URL state after hydration and on browser Back/Forward. Keeping this
+  // out of the render initializer avoids server/client markup differences.
+  useEffect(() => {
+    const applyUrlState = () => {
+      const state = readCareDashboardUrl(window.location.search);
+      if (state.day && state.day !== selectedDate) {
+        onSelectedDateChange?.(state.day);
+        if (controlledSelectedDate === undefined) setInternalSelectedDate(state.day);
+        setCalendarMonth(startOfMonth(parseIsoDate(state.day)));
+      }
+      setUrlPreviewId(state.preview);
+      // Popstate may switch directly between two preview entries. The URL is
+      // authoritative after that navigation, so discard any event-owned row.
+      setExpandedRowId(null);
+      setUrlStateReady(true);
+    };
+
+    applyUrlState();
+    window.addEventListener('popstate', applyUrlState);
+    return () => window.removeEventListener('popstate', applyUrlState);
+  }, [controlledSelectedDate, onSelectedDateChange, selectedDate]);
+
+  // Controlled dashboards can change their clinical day outside the shared
+  // calendar. Mirror that change once URL hydration has completed; URL-driven
+  // changes are already equal and therefore do not loop.
+  useEffect(() => {
+    if (!urlStateReady) return;
+    if (readCareDashboardUrl(window.location.search).day === selectedDate) return;
+    writeDashboardUrl({ day: selectedDate }, 'replace');
+  }, [selectedDate, urlStateReady, writeDashboardUrl]);
+
   // An expanded row that scrolls out of the filtered list closes itself, so a
   // panel never lingers over a patient the list no longer shows.
   useEffect(() => {
     if (!expandedRowId) return;
-    if (!visibleRows.some(row => row.id === expandedRowId)) setExpandedRowId(null);
-  }, [expandedRowId, visibleRows]);
+    if (!visibleRows.some(row => row.id === expandedRowId)) closeDetail(true);
+  }, [closeDetail, expandedRowId, visibleRows]);
   useEffect(() => {
     if (!autoOpenRowId || lastAutoOpenRowId.current === autoOpenRowId) return;
     const row = visibleRows.find(item => item.id === autoOpenRowId);
     if (!row) return;
     lastAutoOpenRowId.current = autoOpenRowId;
-    openDetail(row);
-  }, [autoOpenRowId, visibleRows]);
+    openDetail(row, 'replace');
+  }, [autoOpenRowId, openDetail, visibleRows]);
   const selectedDateLabel = showCalendar ? formatDateTitle(selectedDate) : dateLabel;
   /* Donut segments = the queue's own tabs, minus the "all" tab that is their
      sum. Reading the tabs rather than counting rows again is what keeps the
@@ -751,7 +844,7 @@ export default function EhrCareDashboard({
                     const contextSubtext = row.locationSecondary || row.locationLabel || (row.room ? 'Room' : 'Location');
                     const statusText = row.statusLabel || (row.status ? titleCase(row.status) : '');
                     const activate = () => openDetail(row);
-                    const isExpanded = expandedRowId === row.id;
+                    const isExpanded = effectiveExpandedRowId === row.id;
                     const countdown = (() => {
                       if (!now || !row.timeAt) return null;
                       const target = new Date(row.timeAt);
@@ -956,7 +1049,7 @@ export default function EhrCareDashboard({
                           <EhrRowDetail
                             row={row}
                             detailTab={detailTab}
-                            onCollapse={() => setExpandedRowId(null)}
+                            onCollapse={closeDetail}
                           />
                         )}
                       </div>

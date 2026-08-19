@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Activity, UserCheck, Plus,
@@ -422,6 +422,9 @@ const LEAVE_APPROVER_ROLES = new Set(['org_admin', 'medical_superintendent', 'ho
 export default function FacilityManagementDashboard() {
   const { currentUser } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const previewOpenedHere = useRef(false);
   const scope = useDataScope();
   const { showToast } = useToast();
 
@@ -443,7 +446,6 @@ export default function FacilityManagementDashboard() {
   // text so switching tabs never leaves a stale, unrelated filter in place.
   const [queueSearch, setQueueSearch] = useState('');
   const [activeTab, setActiveTab] = useState<QueueTab>('inquiries');
-  const [metricPreview, setMetricPreview] = useState<FacilityOverviewMetric | null>(null);
 
   const today = jubaDate();
   const facilityId = currentUser?.hospitalId;
@@ -549,6 +551,27 @@ export default function FacilityManagementDashboard() {
     usersHref: staffListHref,
     availableBeds,
   }), [today, queueSearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, staffListHref, availableBeds]);
+
+  const metricPreview = overview.metrics.find(metric => metric.key === searchParams.get('preview')) || null;
+
+  const openMetricPreview = useCallback((key: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('preview', key);
+    previewOpenedHere.current = true;
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const closeMetricPreview = useCallback(() => {
+    if (previewOpenedHere.current) {
+      previewOpenedHere.current = false;
+      router.back();
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('preview');
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   // This week's cash, Monday-first. Days are matched on the local calendar date
   // string rather than by parsing to Date: `encounterDate` is date-only, and
@@ -900,7 +923,7 @@ export default function FacilityManagementDashboard() {
             }))}
         metrics={overview.metrics.map(metric => ({
           ...metric,
-          onClick: () => setMetricPreview(metric),
+          onClick: () => openMetricPreview(metric.key),
         }))}
         metricsTitle="Facility Overview"
         emptyTitle={emptyTitle}
@@ -927,9 +950,9 @@ export default function FacilityManagementDashboard() {
       {metricPreview && (
         <FacilityMetricPreviewDialog
           metric={metricPreview}
-          onClose={() => setMetricPreview(null)}
+          onClose={closeMetricPreview}
           onOpen={() => {
-            setMetricPreview(null);
+            previewOpenedHere.current = false;
             router.push(metricPreview.href);
           }}
         />

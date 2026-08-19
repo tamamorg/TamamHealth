@@ -923,6 +923,8 @@ export default function PharmacyDashboardPage() {
               location: location || rx.medication,
               locationSecondary: location ? (controlled && !paymentDue ? 'Substance' : 'Payment') : 'Medication',
               locationLabel: location ? (controlled && !paymentDue ? 'Substance' : 'Payment') : undefined,
+              detailHref: `/patients/${encodeURIComponent(rx.patientId)}?tab=prescriptions&focus=${encodeURIComponent(rx._id)}&returnTo=${encodeURIComponent('/dashboard/pharmacy')}`,
+              detailLabel: t('dashboard.viewPatientRecord'),
               popupDetail: renderWorkflowPopup(rx),
               // New order/Ready/Dispensed (plus payment-due/discontinued) IS
               // this screen's whole point — a same-day visit must not paint

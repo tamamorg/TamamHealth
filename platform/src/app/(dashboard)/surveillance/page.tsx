@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import {
   AlertTriangle, Shield, TrendingUp, TrendingDown,
@@ -154,6 +154,11 @@ export default function SurveillancePage() {
   const [alertSubmitting, setAlertSubmitting] = useState(false);
   const [chartType, setChartType] = useState<ChartType>('line');
   const [period, setPeriod] = useState<ChartPeriod>('month');
+  const [focusedAlertId, setFocusedAlertId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFocusedAlertId(new URLSearchParams(window.location.search).get('alert'));
+  }, []);
 
   const { currentUser } = useAuth();
   const { canRecordVitalEvents, isGovernment, isSuperAdmin } = usePermissions();
@@ -204,6 +209,13 @@ export default function SurveillancePage() {
   }
 
   const filteredAlerts = [...(diseaseAlerts || [])].sort((a, b) => (severityOrder[a.alertLevel] ?? 3) - (severityOrder[b.alertLevel] ?? 3));
+
+  useEffect(() => {
+    if (!focusedAlertId || filteredAlerts.length === 0) return;
+    const row = document.getElementById(`surveillance-alert-${focusedAlertId}`);
+    row?.scrollIntoView({ block: 'nearest' });
+    row?.focus({ preventScroll: true });
+  }, [focusedAlertId, filteredAlerts.length]);
 
   const totalAlerts = (diseaseAlerts || []).length;
   const totalCases = (diseaseAlerts || []).reduce((sum, a) => sum + (a.cases || 0), 0);
@@ -578,8 +590,16 @@ export default function SurveillancePage() {
                 {filteredAlerts.map((alert, idx) => (
                   <div
                     key={alert._id}
+                    id={`surveillance-alert-${alert._id}`}
+                    tabIndex={focusedAlertId === alert._id ? 0 : undefined}
+                    aria-current={focusedAlertId === alert._id ? 'true' : undefined}
                     className="px-3.5 py-3"
-                    style={{ borderBottom: idx < filteredAlerts.length - 1 ? '1px solid var(--border-light)' : 'none' }}
+                    style={{
+                      borderBottom: idx < filteredAlerts.length - 1 ? '1px solid var(--border-light)' : 'none',
+                      background: focusedAlertId === alert._id ? 'var(--overlay-subtle)' : undefined,
+                      outline: focusedAlertId === alert._id ? '2px solid var(--accent-primary)' : undefined,
+                      outlineOffset: focusedAlertId === alert._id ? -2 : undefined,
+                    }}
                   >
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <div className="flex items-center gap-2 min-w-0">

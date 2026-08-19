@@ -49,7 +49,8 @@ function prescriptionSig(rx: { dose?: string; frequency?: string; duration?: str
 }
 
 export default function PharmacyPage() {
-  const [activeTab, setActiveTab] = useState<PharmacyTab>('queue');
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<PharmacyTab>(() => searchParams.get('panel') === 'stock' ? 'inventory' : 'queue');
   // Per-column filters: queue table (q*) + inventory table (medication name).
   // Category / stock-status filtering now lives in the shared header + table
   // toolbar (categoryFilter / statusFilter below) rather than per-column funnels.
@@ -69,7 +70,6 @@ export default function PharmacyPage() {
   // Patients tab — which patient's prescription view is open (patient _id)
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const { globalSearch, setGlobalSearch, currentUser } = useApp();
-  const searchParams = useSearchParams();
   // Deep link from a patient chart: /pharmacy?patient=<name> pre-filters via
   // the shared global search (combined with the table's own search below).
   useEffect(() => {

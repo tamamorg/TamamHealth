@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useLabResults } from '@/lib/hooks/useLabResults';
@@ -180,7 +179,6 @@ interface BatchEntry {
 
 export default function LabDashboardPage() {
   const { t } = useTranslation();
-  const router = useRouter();
   const { currentUser } = useAuth();
   const { results: allResults, loading, update } = useLabResults();
   const { patients } = usePatients();
@@ -366,18 +364,6 @@ export default function LabDashboardPage() {
     );
   }
 
-  // Open the single-entry result modal pre-selected on a specific pending order.
-
-
-  // A lab row's work does not live on this screen: opening one takes the
-  // technician to the bench workflow in the patient's chart, where the six
-  // steps (collect → receive → process → result → report) actually run. The
-  // dashboard stays a queue, not a second place to enter results.
-  const openBenchWorkflow = (order: { _id: string; patientId?: string }) => {
-    if (!order.patientId) return;
-    router.push(`/patients/${order.patientId}?tab=labs&focus=${order._id}`);
-  };
-
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -441,10 +427,11 @@ export default function LabDashboardPage() {
               // A critical result is a true acuity — same RED pill the rest
               // of the app uses for "needs attention now", not free text.
               priority: row.severity === 'critical' ? 'RED' : undefined,
-              // The name goes to the chart; the row goes to the bench workflow
-              // for this specific order.
+              // The row opens a compact dashboard preview first; its full-page
+              // action enters the bench workflow for this specific order.
               patientId: lab.patientId,
-              onOpen: () => openBenchWorkflow(lab),
+              detailHref: `/patients/${encodeURIComponent(lab.patientId)}?tab=labs&focus=${encodeURIComponent(lab._id)}&returnTo=${encodeURIComponent('/dashboard/lab')}`,
+              detailLabel: t('dashboard.viewPatientRecord'),
               // Complete/Abnormal/Critical IS this screen's whole point — a
               // same-day visit must not paint over a CRITICAL result's red
               // pill with the visit's own tone. The shared shell still
@@ -480,7 +467,8 @@ export default function LabDashboardPage() {
               // of the app uses for "needs attention now", not free text.
               priority: order.critical ? 'RED' : undefined,
               patientId: order.patientId,
-              onOpen: () => openBenchWorkflow(order),
+              detailHref: `/patients/${encodeURIComponent(order.patientId)}?tab=labs&focus=${encodeURIComponent(order._id)}&returnTo=${encodeURIComponent('/dashboard/lab')}`,
+              detailLabel: t('dashboard.viewPatientRecord'),
               // Pending/In Progress/Complete (and a CRITICAL flag) IS the
               // bench queue's whole point — a same-day visit must not paint
               // over it. The shared shell still surfaces the visit status on

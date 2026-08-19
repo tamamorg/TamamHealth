@@ -121,6 +121,7 @@ export default function InquiriesPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [assignedFilter, setAssignedFilter] = useState(searchParams?.get('assigned') || 'all');
+  const focusedInquiryId = searchParams?.get('inquiry') || null;
 
   const [addOpen, setAddOpen] = useState(false);
 
@@ -197,11 +198,20 @@ export default function InquiriesPage() {
   const summary = useMemo(() => summariseEnquiries(messages), [messages]);
 
   const filtered = useMemo(
-    () => filterEnquiries(messages, {
-      search, status: statusFilter, type: typeFilter, from: fromDate || undefined, to: toDate || undefined, assignedTo: assignedFilter,
-    }),
-    [messages, search, statusFilter, typeFilter, fromDate, toDate, assignedFilter],
+    () => focusedInquiryId
+      ? messages.filter(message => message._id === focusedInquiryId)
+      : filterEnquiries(messages, {
+          search, status: statusFilter, type: typeFilter, from: fromDate || undefined, to: toDate || undefined, assignedTo: assignedFilter,
+        }),
+    [messages, focusedInquiryId, search, statusFilter, typeFilter, fromDate, toDate, assignedFilter],
   );
+
+  useEffect(() => {
+    if (!focusedInquiryId || loading) return;
+    const row = document.getElementById(`inquiry-${focusedInquiryId}`);
+    row?.scrollIntoView({ block: 'nearest' });
+    row?.focus({ preventScroll: true });
+  }, [focusedInquiryId, loading, filtered.length]);
 
   const activeFilterCount = [
     statusFilter !== 'all', typeFilter !== 'all', !!fromDate, !!toDate, assignedFilter !== 'all',
@@ -354,7 +364,19 @@ export default function InquiriesPage() {
               const tok = STATUS_TOKENS[status];
               const assignee = enquiryAssignee(m);
               return (
-                <div key={m._id} className="ehr-appointment-row appointment-card-row" style={{ cursor: 'default' }}>
+                <div
+                  key={m._id}
+                  id={`inquiry-${m._id}`}
+                  tabIndex={focusedInquiryId === m._id ? 0 : undefined}
+                  aria-current={focusedInquiryId === m._id ? 'true' : undefined}
+                  className="ehr-appointment-row appointment-card-row"
+                  style={{
+                    cursor: 'default',
+                    background: focusedInquiryId === m._id ? 'var(--overlay-subtle)' : undefined,
+                    outline: focusedInquiryId === m._id ? '2px solid var(--accent-primary)' : undefined,
+                    outlineOffset: focusedInquiryId === m._id ? -2 : undefined,
+                  }}
+                >
                   <div className="ehr-appointment-identity">
                     <div className="ehr-patient-icon" style={avatarTint(m.patientName || m._id)}>
                       {initials(m.patientName)}

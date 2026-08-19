@@ -46,6 +46,7 @@ export default function OrgUsersPage() {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [focusedUserId, setFocusedUserId] = useState<string | null>(null);
 
   // Create form state
   const [formUsername, setFormUsername] = useState('');
@@ -123,7 +124,9 @@ export default function OrgUsersPage() {
   // Deep link: /org-admin/users?new=1 opens the create-user modal directly
   // (used by the facility dashboard's Add-user button).
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has('new')) {
+    const params = new URLSearchParams(window.location.search);
+    setFocusedUserId(params.get('user'));
+    if (params.has('new')) {
       setFormPassword(generateTempPassword());
       setShowPassword(true);
       setShowCreateModal(true);
@@ -264,6 +267,7 @@ export default function OrgUsersPage() {
   // the header's own search box combined with any lingering platform-wide
   // search (same merge pattern as the hospitals list).
   const filteredUsers = users.filter(u => {
+    if (focusedUserId) return u._id === focusedUserId;
     if (filterRole !== 'all' && u.role !== filterRole) return false;
     if (filterStatus === 'active' && !u.isActive) return false;
     if (filterStatus === 'inactive' && u.isActive) return false;
@@ -381,8 +385,17 @@ export default function OrgUsersPage() {
                 {filteredUsers.map(user => (
                     <div
                       key={user._id}
+                      id={`org-user-${user._id}`}
+                      tabIndex={focusedUserId === user._id ? 0 : undefined}
+                      aria-current={focusedUserId === user._id ? 'true' : undefined}
                       className="ehr-appointment-row appointment-card-row"
-                      style={{ gridTemplateColumns: USER_GRID, cursor: 'default' }}
+                      style={{
+                        gridTemplateColumns: USER_GRID,
+                        cursor: 'default',
+                        background: focusedUserId === user._id ? 'var(--overlay-subtle)' : undefined,
+                        outline: focusedUserId === user._id ? '2px solid var(--accent-primary)' : undefined,
+                        outlineOffset: focusedUserId === user._id ? -2 : undefined,
+                      }}
                     >
                       {/* User: square avatar + name/username, on the shared
                           identity classes so type and spacing match the other

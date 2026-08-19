@@ -10,6 +10,13 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { safeReturnTo } from '@/lib/navigation/return-to';
+import {
+  dropPatientRegistrationDraft,
+  loadPatientRegistrationDraft,
+  savePatientRegistrationDraft,
+  type PatientRegistrationDraft,
+} from '@/lib/patient-registration-draft';
 import { enrollFingerprint } from '@/lib/services/fingerprint-service';
 import { isValidPhone, isValidEmail, isValidNationalId } from '@/lib/field-formats';
 import { isPathAllowed } from '@/lib/role-routes';
@@ -36,9 +43,19 @@ interface PatientRegistrationFormProps {
   embedded?: boolean;
   onCancel?: () => void;
   onRegistered?: () => void;
+  draftId?: string;
+  returnTo?: string;
+  onDraftChange?: (draft: PatientRegistrationDraft) => void;
 }
 
-export function PatientRegistrationForm({ embedded = false, onCancel, onRegistered }: PatientRegistrationFormProps) {
+export function PatientRegistrationForm({
+  embedded = false,
+  onCancel,
+  onRegistered,
+  draftId,
+  returnTo,
+  onDraftChange,
+}: PatientRegistrationFormProps) {
   const { t } = useTranslation();
   // Section names, in SECTION_ANCHORS order — Biometrics second, under
   // Demographics. Memoized because the review read-back derives from it, and
@@ -90,8 +107,59 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
    * scrolling form from the moment the page opened, so the clerk scrolled past
    * a summary of fields they had not filled yet. It now replaces the form once
    * everything required is answered, and reads back every field.
-   */
+  */
   const [reviewMode, setReviewMode] = useState(false);
+  // Which section the clerk is currently looking at — a different question
+  // from how much is done, and the one the nav marks.
+  const [activeSection, setActiveSection] = useState(DEMOGRAPHICS_SECTION);
+  const [draftHydrated, setDraftHydrated] = useState(!draftId);
+
+  useEffect(() => {
+    if (!draftId) return;
+
+    let active = true;
+    void loadPatientRegistrationDraft(draftId).then(draft => {
+      if (!active) return;
+      if (draft) {
+        setForm(draft.form);
+        setAdditionalNok(draft.additionalNok);
+        setFingerprints(draft.fingerprints);
+        setPatientPhotoUrl(draft.patientPhotoUrl);
+        setReviewMode(draft.reviewMode);
+        if (draft.reviewMode) setActiveSection(REVIEW_SECTION);
+      } else {
+        showToast(t('patientNew.toastDraftLoadFailed'), 'error');
+      }
+      setDraftHydrated(true);
+    });
+
+    return () => { active = false; };
+  }, [draftId, showToast, t]);
+
+  const currentDraft = useMemo<PatientRegistrationDraft>(() => ({
+    version: 1,
+    form,
+    additionalNok,
+    fingerprints,
+    patientPhotoUrl,
+    reviewMode,
+  }), [form, additionalNok, fingerprints, patientPhotoUrl, reviewMode]);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    onDraftChange?.(currentDraft);
+  }, [currentDraft, draftHydrated, onDraftChange]);
+
+  // Once expanded, keep the encrypted hand-off current so a refresh does not
+  // restore the older modal snapshot. Never write the initial empty state over
+  // a draft while its asynchronous decryption is still in flight.
+  useEffect(() => {
+    if (!draftId || !draftHydrated) return;
+    const timer = window.setTimeout(() => {
+      void savePatientRegistrationDraft(draftId, currentDraft);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [currentDraft, draftHydrated, draftId]);
 
   const clearError = (key: string) => {
     if (!errors[key]) return;
@@ -148,9 +216,6 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
   const requiredDone = sectionProgress.reduce((sum, s) => sum + s.done, 0);
   const requiredTotal = sectionProgress.reduce((sum, s) => sum + s.total, 0);
 
-  // Which section the clerk is currently looking at — a different question
-  // from how much is done, and the one the nav marks.
-  const [activeSection, setActiveSection] = useState(DEMOGRAPHICS_SECTION);
   useEffect(() => {
     const sections = SECTION_ANCHORS
       .map(anchor => document.getElementById(`reg-${anchor}`))
@@ -301,12 +366,13 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
     else window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    if (draftId) await dropPatientRegistrationDraft(draftId);
     if (onCancel) {
       onCancel();
       return;
     }
-    router.push('/patients');
+    router.push(safeReturnTo(returnTo, '/patients'));
   };
 
   const handleSubmit = async (nextAction: 'profile' | 'check-in' = 'profile') => {
@@ -359,6 +425,7 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
         + `${result?.hospitalNumber ? t('patientNew.hospitalNumberSuffix', { number: result.hospitalNumber }) : ''}`,
         'success',
       );
+      if (draftId) await dropPatientRegistrationDraft(draftId);
       if (onRegistered) {
         onRegistered();
       } else if (nextAction === 'check-in' && result?._id) {
@@ -415,7 +482,7 @@ export function PatientRegistrationForm({ embedded = false, onCancel, onRegister
       <main className={`page-container page-enter patient-registration-page${embedded ? ' patient-registration-page--embedded' : ''}`}>
         {!embedded && (
           <div className="patient-registration-toolbar">
-            <button onClick={() => router.push('/patients')} className="patient-registration-back">
+            <button onClick={() => void handleCancel()} className="patient-registration-back">
               <ArrowLeft className="w-4 h-4" /> {t('patientNew.backToPatients')}
             </button>
           </div>

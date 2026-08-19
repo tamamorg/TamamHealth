@@ -57,6 +57,10 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
   const [finger, setFinger] = useState<FingerPosition>('right_index');
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState('');
+  // A registration draft can hydrate captures after this controlled widget
+  // mounts. Existing captures could only have been made after consent, so the
+  // controlled value itself also restores that display state.
+  const consentActive = consented || value.length > 0;
 
   const refreshStatus = useCallback(async () => {
     setStatus(await getBridgeStatus());
@@ -125,7 +129,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
           <label className="flex items-start gap-2 mb-3 cursor-pointer">
             <input
               type="checkbox"
-              checked={consented}
+              checked={consentActive}
               onChange={e => handleConsentChange(e.target.checked)}
               className="mt-0.5"
               style={{ width: 'auto' }}
@@ -138,7 +142,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
           <div className="flex gap-2 items-end flex-wrap">
             <div className="w-44">
               <label htmlFor="fp-finger" className="text-xs">{t('fingerprint.selectFinger')}</label>
-              <Select id="fp-finger" value={finger} onChange={e => setFinger(e.target.value as FingerPosition)} disabled={!consented || capturing}>
+              <Select id="fp-finger" value={finger} onChange={e => setFinger(e.target.value as FingerPosition)} disabled={!consentActive || capturing}>
                 {FINGER_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
                 ))}
@@ -147,9 +151,9 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
             <button
               type="button"
               onClick={handleCapture}
-              disabled={!consented || capturing}
+              disabled={!consentActive || capturing}
               className="btn btn-primary btn-sm"
-              style={{ opacity: !consented || capturing ? 0.6 : 1 }}
+              style={{ opacity: !consentActive || capturing ? 0.6 : 1 }}
             >
               {capturing ? (
                 <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" /> {t('fingerprint.capturing')}</>

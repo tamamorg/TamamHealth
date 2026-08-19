@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -130,6 +130,9 @@ function SegmentBar({ segments, height = 6 }: { segments: { value: number; color
 export default function OrgAdminDashboard() {
   const { currentUser } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const previewOpenedHere = useRef(false);
   const scope = useDataScope();
 
   const brandColor = currentUser?.branding?.primaryColor || 'var(--accent-primary)';
@@ -151,7 +154,6 @@ export default function OrgAdminDashboard() {
   const [claims, setClaims] = useState<ClaimDoc[]>([]);
   const [stockAlerts, setStockAlerts] = useState({ low: 0, critical: 0, expired: 0 });
   const [financialsLoading, setFinancialsLoading] = useState(true);
-  const [preview, setPreview] = useState<OperationalPreview | null>(null);
 
   useEffect(() => {
     if (!scope) return;
@@ -350,7 +352,7 @@ export default function OrgAdminDashboard() {
       detail: `${stockAlerts.critical} critical · ${stockAlerts.low} low · ${stockAlerts.expired} expired`,
       icon: Package,
       tone: totalStockAlerts > 0 ? 'warning' : 'ok',
-      href: '/pharmacy',
+      href: '/pharmacy?panel=stock',
       segments: [
         { value: stockAlerts.critical, color: 'var(--color-danger)' },
         { value: stockAlerts.low, color: 'var(--color-warning)' },
@@ -364,7 +366,7 @@ export default function OrgAdminDashboard() {
       detail: `${claims.length} total claims submitted`,
       icon: Receipt,
       tone: pendingClaims.length > 0 ? 'warning' : 'ok',
-      href: '/payments/claims',
+      href: '/payments/claims?status=submitted',
       meterPct: claims.length > 0 ? (pendingClaims.length / claims.length) * 100 : 0,
     },
     {
@@ -388,6 +390,34 @@ export default function OrgAdminDashboard() {
       meterPct: occupancyRate,
     },
   ];
+
+  const previewKey = searchParams.get('preview');
+  const previewTile = riskTiles.find(tile => tile.key === previewKey);
+  const preview: OperationalPreview | null = previewTile ? {
+    title: previewTile.label,
+    value: previewTile.value,
+    detail: previewTile.detail,
+    href: previewTile.href,
+  } : null;
+
+  const openPreview = (key: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('preview', key);
+    previewOpenedHere.current = true;
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const closePreview = () => {
+    if (previewOpenedHere.current) {
+      previewOpenedHere.current = false;
+      router.back();
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('preview');
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
+  };
 
   const shortcuts = [
     { label: 'Facilities', desc: 'Manage hospitals & clinics', icon: Building2, path: '/hospitals' },
@@ -469,7 +499,7 @@ export default function OrgAdminDashboard() {
               return (
                 <button
                   key={tile.key}
-                  onClick={() => setPreview({ title: tile.label, value: tile.value, detail: tile.detail, href: tile.href })}
+                  onClick={() => openPreview(tile.key)}
                   className="text-start rounded-xl p-3 transition-all hover:opacity-90"
                   style={{ background: toneBg, border: `1px solid ${toneColor}33` }}
                 >
@@ -522,9 +552,9 @@ export default function OrgAdminDashboard() {
       {preview && (
         <OperationalPreviewDialog
           preview={preview}
-          onClose={() => setPreview(null)}
+          onClose={closePreview}
           onOpen={() => {
-            setPreview(null);
+            previewOpenedHere.current = false;
             router.push(preview.href);
           }}
         />

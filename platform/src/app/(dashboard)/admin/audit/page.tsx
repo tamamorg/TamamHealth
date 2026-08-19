@@ -10,7 +10,7 @@
  * structured field (IP, route, resource, patient, query) plus the next
  * steps an investigation actually takes from a log line.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useToast } from '@/components/Toast';
@@ -46,6 +46,7 @@ export default function AuditLogsPage() {
   const [loading, setLoading] = useState(true);
   // The row the reviewer opened — the dialog shows the full entry.
   const [selected, setSelected] = useState<{ log: AuditLogDoc; risk: SaSeverity } | null>(null);
+  const focusHandledRef = useRef(false);
 
   const [range, setRange] = useState<RangeFilter>('7d');
   const [successFilter, setSuccessFilter] = useState<SuccessFilter>('all');
@@ -68,6 +69,15 @@ export default function AuditLogsPage() {
     })();
     return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    if (logs.length === 0 || focusHandledRef.current) return;
+    const focusId = new URLSearchParams(window.location.search).get('log');
+    focusHandledRef.current = true;
+    if (!focusId) return;
+    const log = logs.find(entry => entry._id === focusId);
+    if (log) setSelected({ log, risk: classifyAuditRisk(log.action, log.success) });
+  }, [logs]);
 
   const orgNameById = useMemo(() => {
     const m = new Map<string, string>();
