@@ -1,5 +1,11 @@
 name: recover-production-superadmin
 
+# Required protected production-environment secrets:
+#   PROD_SSH_HOST / PROD_SSH_USER / PROD_SSH_KEY / PROD_APP_DIR
+#   SUPERADMIN_RECOVERY_PASSWORD (16+ chars; handed to the operator out of band)
+# The recovery password travels to the host on SSH stdin and is never written
+# to the repository, workflow inputs, command arguments, or the production env.
+
 on:
   workflow_dispatch:
     inputs:
@@ -36,8 +42,17 @@ jobs:
           HOST: ${{ secrets.PROD_SSH_HOST }}
           USER: ${{ secrets.PROD_SSH_USER }}
           APP_DIR: ${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}
+          RECOVERY_PASSWORD: ${{ secrets.SUPERADMIN_RECOVERY_PASSWORD }}
         run: |
+          if [ -z "$RECOVERY_PASSWORD" ]; then
+            echo "::error title=Recovery credential missing::Set SUPERADMIN_RECOVERY_PASSWORD on the protected production environment."
+            exit 1
+          fi
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           scp scripts/recover-production-superadmin.sh "$USER@$HOST:/tmp/recover-production-superadmin.sh"
-          ssh "$USER@$HOST" \
-            "chmod 700 /tmp/recover-production-superadmin.sh && GH_OWNER=tamamorg IMAGE_TAG=production /tmp/recover-production-superadmin.sh '$APP_DIR'; status=\$?; rm -f /tmp/recover-production-superadmin.sh; exit \$status"
+          # Send the protected secret on stdin, not in argv (where process
+          # listings and SSH logs can expose it). The remote shell reads one
+          # line, exports it only for the recovery process, then removes the
+          # uploaded script regardless of success.
+          printf '%s\n' "$RECOVERY_PASSWORD" | ssh "$USER@$HOST" \
+            "IFS= read -r SUPERADMIN_RECOVERY_PASSWORD; export SUPERADMIN_RECOVERY_PASSWORD; chmod 700 /tmp/recover-production-superadmin.sh && GH_OWNER=tamamorg IMAGE_TAG=production /tmp/recover-production-superadmin.sh '$APP_DIR'; status=\$?; rm -f /tmp/recover-production-superadmin.sh; exit \$status"

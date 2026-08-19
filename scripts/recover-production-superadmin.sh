@@ -10,9 +10,12 @@ compose() {
     docker compose -f docker-compose.yml -f docker-compose.ghcr.yml "$@"
 }
 
-PASSWORD_READY=$(compose exec -T platform node -e 'process.stdout.write(String((process.env.SUPERADMIN_INITIAL_PASSWORD || "").length >= 16))')
+PASSWORD_READY=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
+  const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD || "";
+  process.stdout.write(String(password.length >= 16));
+')
 if [ "$PASSWORD_READY" != true ]; then
-  echo "SUPERADMIN_INITIAL_PASSWORD is missing or shorter than 16 characters" >&2
+  echo "SUPERADMIN_RECOVERY_PASSWORD / SUPERADMIN_INITIAL_PASSWORD is missing or shorter than 16 characters" >&2
   exit 1
 fi
 
@@ -29,8 +32,9 @@ TMP_UPDATED=$(mktemp)
 trap 'rm -f "$TMP_DOC" "$TMP_UPDATED"' EXIT
 
 STATUS=$(curl -sS -u "$COUCHDB_USER:$COUCHDB_PASSWORD" -o "$TMP_DOC" -w '%{http_code}' "$DOC_URL")
-PASSWORD_HASH=$(compose exec -T platform node -e '
-  require("bcryptjs").hash(process.env.SUPERADMIN_INITIAL_PASSWORD, 12)
+PASSWORD_HASH=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
+  const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD;
+  require("bcryptjs").hash(password, 12)
     .then(hash => process.stdout.write(hash))
     .catch(error => { console.error(error.message); process.exit(1); });
 ')
@@ -74,7 +78,7 @@ else
   exit 1
 fi
 
-VERIFY=$(compose exec -T platform node -e '
+VERIFY=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
   const bcrypt = require("bcryptjs");
   const base = process.env.COUCHDB_URL.replace(/\/$/, "");
   const user = process.env.COUCHDB_ADMIN_USER;
@@ -83,7 +87,8 @@ VERIFY=$(compose exec -T platform node -e '
   fetch(`${base}/tamamhealth_users/user-superadmin`, { headers: { authorization: `Basic ${auth}` } })
     .then(response => response.json())
     .then(async doc => {
-      const matches = await bcrypt.compare(process.env.SUPERADMIN_INITIAL_PASSWORD, doc.passwordHash || "");
+      const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD;
+      const matches = await bcrypt.compare(password, doc.passwordHash || "");
       console.log(JSON.stringify({ username: doc.username, role: doc.role, active: doc.isActive, mustChangePassword: doc.mustChangePassword, passwordMatches: matches }));
       if (doc.username !== "superadmin" || doc.role !== "super_admin" || !doc.isActive || !matches) process.exitCode = 1;
     }).catch(error => { console.error(error.message); process.exit(1); });
@@ -130,7 +135,8 @@ else
   echo 'in-memory login rate limits cleared by single-replica restart'
 fi
 
-LOGIN_VERIFY=$(compose exec -T platform node -e '
+LOGIN_VERIFY=$(compose exec -T -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
+  const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD;
   fetch("http://127.0.0.1:3000/api/auth/login", {
     method: "POST",
     headers: {
@@ -139,7 +145,7 @@ LOGIN_VERIFY=$(compose exec -T platform node -e '
     },
     body: JSON.stringify({
       username: "superadmin",
-      password: process.env.SUPERADMIN_INITIAL_PASSWORD
+      password
     })
   }).then(async response => {
     const body = await response.json().catch(() => ({}));
@@ -155,8 +161,9 @@ LOGIN_VERIFY=$(compose exec -T platform node -e '
 ')
 echo "login=$LOGIN_VERIFY"
 
-PUBLIC_LOGIN_VERIFY=$(compose exec -T -e PUBLIC_BASE_URL="$PUBLIC_BASE_URL" platform node -e '
+PUBLIC_LOGIN_VERIFY=$(compose exec -T -e PUBLIC_BASE_URL="$PUBLIC_BASE_URL" -e SUPERADMIN_RECOVERY_PASSWORD platform node -e '
   const endpoint = `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}/api/auth/login`;
+  const password = process.env.SUPERADMIN_RECOVERY_PASSWORD || process.env.SUPERADMIN_INITIAL_PASSWORD;
   fetch(endpoint, {
     method: "POST",
     headers: {
@@ -165,7 +172,7 @@ PUBLIC_LOGIN_VERIFY=$(compose exec -T -e PUBLIC_BASE_URL="$PUBLIC_BASE_URL" plat
     },
     body: JSON.stringify({
       username: "superadmin",
-      password: process.env.SUPERADMIN_INITIAL_PASSWORD
+      password
     })
   }).then(async response => {
     const body = await response.json().catch(() => ({}));
