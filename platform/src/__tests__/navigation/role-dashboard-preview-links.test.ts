@@ -40,6 +40,7 @@ describe('role dashboard preview links', () => {
   });
 
   it.each([
+    'app/(dashboard)/admin/page.tsx',
     'components/dashboards/SuperintendentDashboard.tsx',
     'components/dashboards/OrgAdminDashboard.tsx',
     'components/dashboards/FacilityManagementDashboard.tsx',
@@ -48,5 +49,13 @@ describe('role dashboard preview links', () => {
     expect(dashboardSource).toContain("params.set('preview'");
     expect(dashboardSource).toContain('router.back()');
     expect(dashboardSource).toContain("params.delete('preview')");
+  });
+
+  it('keeps admin preview URLs limited to validated opaque tokens', () => {
+    const dashboard = source('app/(dashboard)/admin/page.tsx');
+    expect(dashboard).toContain("openPreview(`tenant:${row.org._id}`)");
+    expect(dashboard).toContain("openPreview(`audit:${log._id}`)");
+    expect(dashboard).toContain("riskQueue.find(item => item.token === previewToken)");
+    expect(dashboard).not.toContain('setPreview(');
   });
 });

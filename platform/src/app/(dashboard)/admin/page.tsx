@@ -15,8 +15,8 @@
  * platform/tenant user split, today's peak encounter hour).
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { apiFetch } from '@/lib/api-fetch';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
@@ -78,6 +78,7 @@ function onboardedLabel(iso?: string): string | null {
 }
 
 interface RiskRow {
+  token: string;
   severity: SaSeverity;
   title: string;
   detail: string;
@@ -158,6 +159,9 @@ function KvRow({ label, value, valueClass, chip, chipClass }: {
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const previewOpenedHere = useRef(false);
   const { currentUser } = useAuth();
   const { organizations } = useOrganizations();
   const { hospitals } = useHospitals();
@@ -173,7 +177,6 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [tenantSearch, setTenantSearch] = useState('');
   const [chartMode, setChartMode] = useState<'line' | 'area' | 'bar'>('area');
-  const [preview, setPreview] = useState<DashboardPreview | null>(null);
 
   // Defense in depth on top of the Edge proxy check (SaPage used to own this).
   useEffect(() => {
@@ -306,6 +309,7 @@ export default function AdminDashboardPage() {
     const rows: RiskRow[] = [];
     for (const log of failedAudits.slice(0, 3)) {
       rows.push({
+        token: `risk:audit:${log._id}`,
         severity: classifyAuditRisk(log.action, log.success),
         title: `Audit failure — ${log.action}`,
         detail: log.username ? `${log.username} · ${log.details}` : log.details,
@@ -314,16 +318,17 @@ export default function AdminDashboardPage() {
       });
     }
     if (syncStats.failed > 0) {
-      rows.push({ severity: 'high', title: `${syncStats.failed} sync job${syncStats.failed === 1 ? '' : 's'} failed`, detail: 'Replication to country node', href: '/admin/sync' });
+      rows.push({ token: 'risk:sync', severity: 'high', title: `${syncStats.failed} sync job${syncStats.failed === 1 ? '' : 's'} failed`, detail: 'Replication to country node', href: '/admin/sync' });
     }
     if (conflictCount > 0) {
-      rows.push({ severity: 'medium', title: `${conflictCount} unresolved data conflict${conflictCount === 1 ? '' : 's'}`, detail: 'Reconciliation queue', href: '/admin/conflicts' });
+      rows.push({ token: 'risk:conflicts', severity: 'medium', title: `${conflictCount} unresolved data conflict${conflictCount === 1 ? '' : 's'}`, detail: 'Reconciliation queue', href: '/admin/conflicts' });
     }
     for (const org of suspendedOrgs) {
-      rows.push({ severity: 'medium', title: `Tenant ${org.subscriptionStatus === 'cancelled' ? 'cancelled' : 'suspended'} — ${org.name}`, detail: `${org.subscriptionPlan} plan`, href: `/admin/organizations?org=${encodeURIComponent(org._id)}` });
+      rows.push({ token: `risk:org:${org._id}`, severity: 'medium', title: `Tenant ${org.subscriptionStatus === 'cancelled' ? 'cancelled' : 'suspended'} — ${org.name}`, detail: `${org.subscriptionPlan} plan`, href: `/admin/organizations?org=${encodeURIComponent(org._id)}` });
     }
     if (backupOverdue) {
       rows.push({
+        token: 'risk:backup',
         severity: 'high',
         title: 'Backup overdue',
         detail: `Last backup ${formatWhen(backupStatus!.lastBackupAt!)} · RPO ${rpoHours}h`,
@@ -335,6 +340,7 @@ export default function AdminDashboardPage() {
       // administrator's attention — it is just not the same problem as a
       // backup that is known to be late.
       rows.push({
+        token: 'risk:backup',
         severity: 'medium',
         title: 'Backup status unknown',
         detail: `Nothing has reported a backup · RPO ${rpoHours}h`,
@@ -342,12 +348,12 @@ export default function AdminDashboardPage() {
       });
     }
     if (config?.maintenanceMode) {
-      rows.push({ severity: 'medium', title: 'Maintenance mode is ON', detail: 'Tenant access is restricted', href: '/admin/config' });
+      rows.push({ token: 'risk:maintenance', severity: 'medium', title: 'Maintenance mode is ON', detail: 'Tenant access is restricted', href: '/admin/config' });
     }
     for (const org of trialOrgs) {
       // Billing has no tenant-focus contract yet, so this remains a broad
       // aggregate destination rather than carrying a query param it ignores.
-      rows.push({ severity: 'low', title: `Trial tenant — ${org.name}`, detail: `${org.maxUsers} seat limit`, href: '/admin/billing' });
+      rows.push({ token: `risk:trial:${org._id}`, severity: 'low', title: `Trial tenant — ${org.name}`, detail: `${org.maxUsers} seat limit`, href: '/admin/billing' });
     }
     const order: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
     return rows.sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity)).slice(0, 8);
@@ -415,8 +421,9 @@ export default function AdminDashboardPage() {
     return { label: `${pct}%`, color: pct < 95 ? 'var(--color-warning-700)' : 'var(--color-success-800)' };
   };
 
-  const kpis: Array<{ label: string; value: string; delta: string; deltaClass?: string; href?: string }> = [
+  const kpis: Array<{ key: string; label: string; value: string; delta: string; deltaClass?: string; href?: string }> = [
     {
+      key: 'organizations',
       label: 'Organizations',
       value: String(organizations.length),
       delta: newOrgsQuarter > 0 ? `+${newOrgsQuarter} this quarter` : `${activeOrgs.length} active · ${trialOrgs.length} trial`,
@@ -424,6 +431,7 @@ export default function AdminDashboardPage() {
       href: '/admin/organizations',
     },
     {
+      key: 'facilities',
       label: 'Facilities',
       value: String(hospitals.length),
       delta: offlineFacilities > 0 ? `${offlineFacilities} offline` : newFacilitiesQuarter > 0 ? `+${newFacilitiesQuarter} this quarter` : `across ${organizations.length} organizations`,
@@ -431,12 +439,14 @@ export default function AdminDashboardPage() {
       href: '/admin/organizations',
     },
     {
+      key: 'users',
       label: 'Users',
       value: loading ? '…' : users.length.toLocaleString(),
       delta: `${platformUsers} platform · ${users.length - platformUsers} tenant`,
       href: '/admin/users',
     },
     {
+      key: 'patients',
       label: 'Patients',
       value: loading ? '…' : patientAgg.total.toLocaleString(),
       delta: patientAgg.newThisWeek > 0 ? `+${patientAgg.newThisWeek} this week` : 'Tenant-scoped registry',
@@ -444,12 +454,115 @@ export default function AdminDashboardPage() {
       // No platform-level patient registry to open — the registry is tenant-scoped.
     },
     {
+      key: 'encounters',
       label: 'Encounters today',
       value: loading ? '…' : encountersToday.toLocaleString(),
       delta: encounterPeak ? `peak ${String(encounterPeak.hour).padStart(2, '0')}:00 · ${encounterPeak.perHour}/h` : 'None recorded yet',
       href: '/admin/analytics',
     },
   ];
+
+  // The URL carries only stable, non-sensitive identifiers. All display copy
+  // is resolved again from the current scoped dashboard data, so stale or
+  // fabricated tokens cannot manufacture a preview.
+  const previewToken = searchParams.get('preview');
+  const preview: DashboardPreview | null = (() => {
+    if (!previewToken) return null;
+    if (previewToken.startsWith('kpi:')) {
+      const kpi = kpis.find(item => `kpi:${item.key}` === previewToken && item.href);
+      return kpi ? {
+        title: kpi.label,
+        context: 'Platform metric',
+        details: [
+          { label: 'Current value', value: kpi.value },
+          { label: 'Context', value: kpi.delta },
+        ],
+        href: kpi.href!,
+      } : null;
+    }
+    if (previewToken === 'signal:risk') {
+      return {
+        title: 'Platform risk',
+        context: 'Readiness signal',
+        details: [
+          { label: 'Open risks', value: riskQueue.length },
+          { label: 'Audit failures', value: `${failedAudits.length} in the last 7 days` },
+        ],
+        href: '/admin/risk',
+      };
+    }
+    if (previewToken.startsWith('tenant:')) {
+      const orgId = previewToken.slice('tenant:'.length);
+      const org = organizations.find(item => item._id === orgId);
+      if (!org) return null;
+      const orgFacilities = hospitals.filter(item => item.orgId === orgId);
+      const row = {
+        org,
+        users: users.filter(item => item.orgId === orgId).length,
+        facilities: orgFacilities.length,
+        offline: orgFacilities.filter(item => item.syncStatus === 'offline').length,
+      };
+      const sync = tenantSync(row);
+      return {
+        title: org.name,
+        context: 'Tenant health',
+        details: [
+          { label: 'Plan', value: org.subscriptionPlan },
+          { label: 'Status', value: org.subscriptionStatus },
+          { label: 'Facilities', value: `${row.facilities} / ${org.maxHospitals}` },
+          { label: 'Users', value: `${row.users} / ${org.maxUsers}` },
+          { label: 'Sync', value: sync.label },
+        ],
+        href: `/admin/organizations?org=${encodeURIComponent(org._id)}`,
+      };
+    }
+    if (previewToken.startsWith('risk:')) {
+      const row = riskQueue.find(item => item.token === previewToken);
+      return row ? {
+        title: row.title,
+        context: `${row.severity} risk`,
+        details: [
+          { label: 'Details', value: row.detail },
+          ...(row.when ? [{ label: 'Recorded', value: formatWhen(row.when) }] : []),
+        ],
+        href: row.href,
+      } : null;
+    }
+    if (previewToken.startsWith('audit:')) {
+      const auditId = previewToken.slice('audit:'.length);
+      const log = highRiskAudits.find(item => item._id === auditId);
+      return log ? {
+        title: log.action,
+        context: 'Security watchlist',
+        details: [
+          { label: 'Actor', value: log.username || 'system' },
+          { label: 'Details', value: log.details },
+          { label: 'Recorded', value: formatWhen(log.createdAt) },
+        ],
+        href: `/admin/audit?log=${encodeURIComponent(log._id)}`,
+      } : null;
+    }
+    return null;
+  })();
+
+  const openPreview = (token: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('preview', token);
+    previewOpenedHere.current = true;
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const closePreview = () => {
+    if (previewOpenedHere.current) {
+      previewOpenedHere.current = false;
+      router.back();
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('preview');
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
+  };
 
   const CIRC = 2 * Math.PI * 38;
   const todayLong = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -464,7 +577,7 @@ export default function AdminDashboardPage() {
   if (!currentUser || currentUser.role !== 'super_admin') return null;
 
   const openFullPage = (target: DashboardPreview) => {
-    setPreview(null);
+    previewOpenedHere.current = false;
     router.push(target.href);
   };
 
@@ -493,15 +606,7 @@ export default function AdminDashboardPage() {
               </>
             );
             return k.href
-              ? <button key={k.label} type="button" className="sadb-kpi" onClick={() => setPreview({
-                  title: k.label,
-                  context: 'Platform metric',
-                  details: [
-                    { label: 'Current value', value: k.value },
-                    { label: 'Context', value: k.delta },
-                  ],
-                  href: k.href!,
-                })}>{body}</button>
+              ? <button key={k.key} type="button" className="sadb-kpi" onClick={() => openPreview(`kpi:${k.key}`)}>{body}</button>
               : <div key={k.label} className="sadb-kpi">{body}</div>;
           })}
         </div>
@@ -532,15 +637,7 @@ export default function AdminDashboardPage() {
                 <text x={46} y={59} textAnchor="middle" fontSize={8.5} letterSpacing={1} fill="var(--text-muted)">READINESS</text>
               </svg>
               <div className="sadb-readiness-signals">
-                <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => setPreview({
-                  title: 'Platform risk',
-                  context: 'Readiness signal',
-                  details: [
-                    { label: 'Open risks', value: riskQueue.length },
-                    { label: 'Audit failures', value: `${failedAudits.length} in the last 7 days` },
-                  ],
-                  href: '/admin/risk',
-                })}>
+                <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => openPreview('signal:risk')}>
                   <b>{riskQueue.length ? `${riskQueue.length} open risk${riskQueue.length === 1 ? '' : 's'}` : 'No open risks'}</b>
                   <span>{failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days</span>
                 </button>
@@ -652,18 +749,7 @@ export default function AdminDashboardPage() {
                     key={row.org._id}
                     type="button"
                     className="sadb-tenant-grid sadb-tenant-row"
-                    onClick={() => setPreview({
-                      title: row.org.name,
-                      context: 'Tenant health',
-                      details: [
-                        { label: 'Plan', value: row.org.subscriptionPlan },
-                        { label: 'Status', value: row.org.subscriptionStatus },
-                        { label: 'Facilities', value: `${row.facilities} / ${row.org.maxHospitals}` },
-                        { label: 'Users', value: `${row.users} / ${row.org.maxUsers}` },
-                        { label: 'Sync', value: sync.label },
-                      ],
-                      href: `/admin/organizations?org=${encodeURIComponent(row.org._id)}`,
-                    })}
+                    onClick={() => openPreview(`tenant:${row.org._id}`)}
                   >
                     <span className="min-w-0">
                       <span className="sadb-tenant-name truncate">{row.org.name}</span>
@@ -697,16 +783,8 @@ export default function AdminDashboardPage() {
             <CardHead title="Risk & incident queue" meta={`${riskQueue.length} open`} />
             {riskQueue.length === 0 ? (
               <p className="sadb-empty">No open risk signals — platform steady.</p>
-            ) : riskQueue.map((row, i) => (
-              <button key={`${row.title}-${i}`} type="button" className="sadb-queue-row" onClick={() => setPreview({
-                title: row.title,
-                context: `${row.severity} risk`,
-                details: [
-                  { label: 'Details', value: row.detail },
-                  ...(row.when ? [{ label: 'Recorded', value: formatWhen(row.when) }] : []),
-                ],
-                href: row.href,
-              })}>
+            ) : riskQueue.map(row => (
+              <button key={row.token} type="button" className="sadb-queue-row" onClick={() => openPreview(row.token)}>
                 <span className={`sadb-chip ${TONE_CHIP[SEVERITY_TONE[row.severity]]}`}>{row.severity}</span>
                 <span className="sadb-queue-copy">
                   <span className="sadb-queue-title">{row.title}</span>
@@ -722,16 +800,7 @@ export default function AdminDashboardPage() {
             {highRiskAudits.length === 0 ? (
               <p className="sadb-empty">No high-risk actions recorded this week.</p>
             ) : highRiskAudits.map(log => (
-              <button key={log._id} type="button" className="sadb-queue-row" onClick={() => setPreview({
-                title: log.action,
-                context: 'Security watchlist',
-                details: [
-                  { label: 'Actor', value: log.username || 'system' },
-                  { label: 'Details', value: log.details },
-                  { label: 'Recorded', value: formatWhen(log.createdAt) },
-                ],
-                href: `/admin/audit?log=${encodeURIComponent(log._id)}`,
-              })}>
+              <button key={log._id} type="button" className="sadb-queue-row" onClick={() => openPreview(`audit:${log._id}`)}>
                 <span className="sadb-queue-copy">
                   <span className="sadb-queue-title">{log.action}</span>
                   <span className="sadb-queue-sub">{log.username || 'system'} · {log.details}</span>
@@ -762,7 +831,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
       {preview && (
-        <PreviewDialog preview={preview} onClose={() => setPreview(null)} onOpen={() => openFullPage(preview)} />
+        <PreviewDialog preview={preview} onClose={closePreview} onOpen={() => openFullPage(preview)} />
       )}
     </main>
   );
