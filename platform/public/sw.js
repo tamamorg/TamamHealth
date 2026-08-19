@@ -134,6 +134,10 @@ self.addEventListener('install', (event) => {
         return cache.addAll(['/']);
       });
     })
+    // Precaching is an optimisation, not a precondition. Letting it reject
+    // fails the whole installation, so a single route that 503s mid-deploy
+    // would leave the browser with no worker at all.
+    .catch(() => { /* no offline shell this time; the app still works online */ })
   );
   self.skipWaiting();
 });
@@ -141,9 +145,12 @@ self.addEventListener('install', (event) => {
 // Activate: clean old caches and flush sync queue
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => flushSyncQueue())
+    caches.keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k).catch(() => false)))
+      )
+      .catch(() => [])
+      .then(() => flushSyncQueue())
   );
   self.clients.claim();
 });
@@ -210,16 +217,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Writing to the cache is best-effort and must never affect the response.
+  //
+  // `activate` deletes the previous deploy's cache, so a request in flight
+  // during that window can be putting into a cache that no longer exists. As a
+  // bare `.then()` that rejection was unhandled; worse, any rejection inside a
+  // promise passed to `respondWith` becomes a NETWORK ERROR for the request —
+  // which for a script tag is indistinguishable from the asset being missing,
+  // and is exactly what BootIntegrityGuard reloads the page over. A cache miss
+  // must degrade to "fetch it from the network", never to "this asset failed".
+  const cacheQuietly = (req, response) => {
+    if (response.status !== 200) return;
+    const clone = response.clone();
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.put(req, clone))
+      .catch(() => { /* cache evicted or storage full — the response still stands */ });
+  };
+  const matchQuietly = (req) => caches.match(req).catch(() => undefined);
+
   // For Next.js static assets: cache-first (they have content hashes)
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      caches.match(request).then((cached) => {
+      matchQuietly(request).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((response) => {
-          if (response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
+          cacheQuietly(request, response);
           return response;
         });
       })
@@ -231,18 +253,15 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
+        cacheQuietly(request, response);
         return response;
       })
       .catch(() => {
-        return caches.match(request).then((cached) => {
+        return matchQuietly(request).then((cached) => {
           if (cached) return cached;
           // For navigation requests, return cached app shell
           if (request.mode === 'navigate') {
-            return caches.match('/');
+            return matchQuietly('/').then((shell) => shell || new Response('Offline', { status: 503 }));
           }
           return new Response('Offline', { status: 503 });
         });
