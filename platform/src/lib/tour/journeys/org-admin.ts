@@ -26,15 +26,16 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
     placement: 'bottom',
   },
   {
-    // Was a stop on the standalone /org-admin page; that dashboard was merged
-    // into this one (and deleted) on 2026-08-19, so the step points at the band
-    // it became rather than a route that now just redirects here.
+    // Replaces the old /org-admin "Org Overview" stop. That page was merged
+    // into this dashboard and deleted on 2026-08-19, and the KPI band it
+    // brought with it was removed the same day, so the tour points at the rail
+    // that actually carries this dashboard's numbers.
     id: 'org-overview',
     route: '/facility-management',
-    target: '[data-tour="org-overview-band"]',
-    title: 'Org Overview',
-    body: 'The org-wide command view, right above your work queue: facilities, visits, inpatients, staff, and revenue across every hospital and clinic you run, plus stock, claims, balances and bed capacity. You see only your own organization here — the local device holds every organization’s data, but every screen is filtered down to yours.',
-    placement: 'bottom',
+    target: '[data-tour="side-cards"]',
+    title: 'Your facility at a glance',
+    body: 'Staff, doctors, nurses, patients, beds, open inquiries, pending leave and today’s shifts — every figure opens a preview, and from there the page that owns it. You see only your own organization here: the local device holds every organization’s data, but every screen is filtered down to yours.',
+    placement: 'left',
   },
   {
     id: 'hospitals',

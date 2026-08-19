@@ -23,8 +23,6 @@ describe('role dashboard preview links', () => {
     ['components/dashboards/SuperintendentDashboard.tsx', 'alert=', 'app/(dashboard)/surveillance/page.tsx', "get('alert')"],
     ['components/dashboards/FacilityManagementDashboard.tsx', 'inquiry=', 'app/(dashboard)/inquiries/page.tsx', "get('inquiry')"],
     ['components/dashboards/FacilityManagementDashboard.tsx', 'request=', 'app/(dashboard)/hr/leave/page.tsx', "get('request')"],
-    ['components/dashboards/FacilityOverviewBand.tsx', 'panel=stock', 'app/(dashboard)/pharmacy/page.tsx', "get('panel')"],
-    ['components/dashboards/FacilityOverviewBand.tsx', 'status=submitted', 'components/payments/BillingWorkspace.tsx', "get('status')"],
     ['app/(dashboard)/dashboard/state/page.tsx', 'county=', 'app/(dashboard)/hospitals/page.tsx', "get('county')"],
   ])('pairs the %s deep link with a consuming target', (producer, emittedParam, consumer, consumedParam) => {
     expect(source(producer)).toContain(emittedParam);
@@ -47,21 +45,6 @@ describe('role dashboard preview links', () => {
     expect(dashboardSource).toContain("params.set('preview'");
     expect(dashboardSource).toContain('router.back()');
     expect(dashboardSource).toContain("params.delete('preview')");
-  });
-
-  it('routes the merged org-overview band through the host dashboard preview', () => {
-    // The Org Overview page (/org-admin) was merged into Facility Management.
-    // Its tiles must open the SAME `?preview=` dialog the rail metrics use —
-    // a tile that called router.push directly would reintroduce the
-    // navigate-on-click behaviour the rest of the suite forbids.
-    const band = source('components/dashboards/FacilityOverviewBand.tsx');
-    expect(band).toContain('onPreview(card.key)');
-    expect(band).toContain('onPreview(tile.key)');
-    expect(band).not.toContain('router.push');
-
-    const host = source('components/dashboards/FacilityManagementDashboard.tsx');
-    expect(host).toContain('overviewBandPreviewItems(band)');
-    expect(host).toContain('onPreview={openMetricPreview}');
   });
 
   it('keeps admin preview URLs limited to validated opaque tokens', () => {
