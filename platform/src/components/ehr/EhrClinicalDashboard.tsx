@@ -1741,7 +1741,10 @@ export default function EhrClinicalDashboard({
                   // a list that no longer contains its row.
                   onClick={() => { setVisitRow(null); selectWorklistLane(group); }}
                 >
-                  {APPOINTMENT_STATUS_GROUP_LABELS[group]} · {groupCounts[group]}
+                  {/* The count is its own fixed-width cell: a lane going 7 → 24
+                      would otherwise widen the whole tab row, and the row's
+                      width is what positions the search field beside it. */}
+                  {APPOINTMENT_STATUS_GROUP_LABELS[group]} · <span className="ehr-day-tab-count">{groupCounts[group]}</span>
                 </button>
               ))}
 	            </div>

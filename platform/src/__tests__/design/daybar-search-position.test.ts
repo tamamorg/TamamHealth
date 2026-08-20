@@ -20,8 +20,25 @@
  * This regressed once already: the base `.ehr-daybar` rule fixed it and a
  * `.ehr-center-panel .ehr-daybar` override ~21,000 lines later silently put
  * `auto` back at higher specificity. A comment did not survive that; this test
- * does. It asserts the LAST rule to set the columns — the one that actually
- * wins — keeps both side tracks flexible.
+ * does.
+ *
+ * ── Revised 2026-08-20 ─────────────────────────────────────────────────────
+ * The original fix made BOTH side tracks flexible, and that turned out to cause
+ * a worse bug than the one it cured. The lane row is ~406px of buttons that
+ * cannot shrink; `1fr` sized its track from leftover space, which in an 806px
+ * card is 222px. The buttons overflowed the track and `justify-self: end` sent
+ * that overflow LEFTWARD, laying "UPCOMING · 0" across the right-hand end of
+ * the search field — 149px of overlap at a 1440px viewport.
+ *
+ * So the invariant this file guards is unchanged — the field must not move when
+ * the day changes — but it is now enforced at the source instead of the track:
+ * the counts render into `.ehr-day-tab-count`, a fixed-width cell, so 7 -> 24 is
+ * the same number of pixels and the lane row simply does not change size. That
+ * makes `max-content` safe on the lane track, and `max-content` is what stops
+ * the track being squeezed under its own contents.
+ *
+ * The TITLE track stays flexible: the date is free-form text with no such cell,
+ * so content-sizing it would still drag the field.
  */
 
 import fs from 'fs';
@@ -60,23 +77,46 @@ function daybarColumnRules(): { selector: string; columns: string }[] {
 }
 
 describe('the daybar search field cannot be moved by the day it is showing', () => {
-  test('a three-track daybar never sizes a side track to its own content', () => {
-    // A two-track daybar (no search box) may end `auto` — there is no centre
-    // column for a content-sized side to push around.
+  test('a three-track daybar never sizes its TITLE track to its own content', () => {
+    // The date is free-form text with no fixed-width cell behind it, so a
+    // content-sized title track still drags the field when the day changes.
     const threeTrack = daybarColumnRules().filter(r => tracks(r.columns).length >= 3);
     expect(threeTrack.length).toBeGreaterThan(0);
 
-    // `auto`, `min-content`, `max-content` and `fit-content` all measure the
-    // track's own content — which is what lets a changing count drag the
-    // centre column sideways.
     const CONTENT_SIZED = /^(auto|min-content|max-content|fit-content)/;
-    const offenders = threeTrack.flatMap(({ selector, columns }) => {
-      const t = tracks(columns);
-      return [t[0], t[t.length - 1]]
-        .filter(track => CONTENT_SIZED.test(track))
-        .map(track => `${selector} -> ${track}`);
-    });
+    const offenders = threeTrack
+      .filter(({ columns }) => CONTENT_SIZED.test(tracks(columns)[0]))
+      .map(({ selector, columns }) => `${selector} -> ${tracks(columns)[0]}`);
     expect(offenders).toEqual([]);
+  });
+
+  test('the LANE track is max-content, so the tabs can never cover the field', () => {
+    // `1fr` sized this track from leftover space and the tabs overflowed it
+    // onto the search box. `auto` is not enough either — an `auto` track still
+    // shrinks below its contents when the row is short of room, which
+    // reproduced the same overlap at a smaller size.
+    const threeTrack = daybarColumnRules().filter(r => tracks(r.columns).length >= 3);
+    const lanes = threeTrack.map(({ selector, columns }) => {
+      const t = tracks(columns);
+      return `${selector} -> ${t[t.length - 1]}`;
+    });
+    expect(lanes.every(l => l.endsWith('-> max-content'))).toBe(true);
+  });
+
+  test('the lane counts render into a fixed-width cell', () => {
+    // This is what makes `max-content` safe on the lane track: the row's width
+    // stops depending on how many digits a count happens to have.
+    const cell = /\.ehr-day-tab-count\s*\{([^}]*)\}/.exec(CSS)?.[1] || '';
+    expect(/min-width:\s*\d/.test(cell)).toBe(true);
+
+    // Both daybars must actually use it, or their row resizes on every count.
+    for (const file of [
+      'src/components/ehr/EhrClinicalDashboard.tsx',
+      'src/components/ehr/EhrCareDashboard.tsx',
+    ]) {
+      const src = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
+      expect(src).toContain('ehr-day-tab-count');
+    }
   });
 
   test('the winning rule for a daybar WITH a search box pins the centre track', () => {
@@ -87,10 +127,20 @@ describe('the daybar search field cannot be moved by the day it is showing', () 
     expect(withSearch).not.toHaveLength(0);
 
     const winner = withSearch[withSearch.length - 1];
-    // Sides absorb the slack; the centre is the field's own documented width.
+    // Title absorbs the slack, the centre is the field's own documented width,
+    // and the lanes take exactly what they need and no less.
     expect(tracks(winner.columns)).toEqual([
-      'minmax(0, 1fr)', 'minmax(0, 330px)', 'minmax(0, 1fr)',
+      'minmax(148px, 1fr)', 'minmax(0, 330px)', 'max-content',
     ]);
+  });
+
+  test('the stacking breakpoint is a container query, not a viewport one', () => {
+    // The daybar's width is `.ehr-center-panel`'s — a workspace-grid track that
+    // is 806px inside a 1440px viewport. A `@media` breakpoint measures the
+    // wrong box and fires at the wrong time.
+    expect(/\.ehr-center-panel\s*\{[^}]*container-type:\s*inline-size/.test(CSS)).toBe(true);
+    const stacking = /@container[^{]*\{[^]*?\.ehr-daybar[^]*?grid-template-columns:\s*minmax\(0, 1fr\);/.test(CSS);
+    expect(stacking).toBe(true);
   });
 
   test('the field width and its grid track agree', () => {

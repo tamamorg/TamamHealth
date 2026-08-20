@@ -797,7 +797,13 @@ export default function EhrCareDashboard({
                   className={activeTab === tab.key ? 'active' : ''}
                   onClick={() => onTabChange(tab.key)}
                 >
-                  {tab.label}{typeof tab.count === 'number' ? ` · ${tab.count}` : ''}
+                  {/* Count in its own fixed-width cell — see `.ehr-day-tab-count`:
+                      a changing count must not resize the tab row, because the
+                      row's width positions the search field next to it. */}
+                  {tab.label}
+                  {typeof tab.count === 'number' && (
+                    <> · <span className="ehr-day-tab-count">{tab.count}</span></>
+                  )}
                 </button>
               ))}
             </div>
