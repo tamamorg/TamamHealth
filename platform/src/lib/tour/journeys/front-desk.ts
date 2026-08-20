@@ -40,10 +40,10 @@ export const FRONT_DESK_STEPS: TourStep[] = [
   {
     id: 'views',
     route: '/appointments',
-    target: 'button[title="Appointments calendar"]',
+    target: '.rbc-tamam',
     placement: 'bottom',
-    title: 'List or calendar',
-    body: 'The list is the day-by-day worklist with status pills and stat cards; this icon opens the same bookings as a full month/week/day calendar — same filters, same search, just a different shape.',
+    title: 'The appointments calendar',
+    body: 'Every booking for the facility, laid out month, week or day — filtered by status and search from the bar above. Click a slot to book into it, click an appointment to open it. The day-by-day worklist lives on your dashboard.',
   },
   {
     id: 'lifecycle',
@@ -63,7 +63,7 @@ export const FRONT_DESK_STEPS: TourStep[] = [
     preClickSelector: 'button[title="Create new appointment"]',
     placement: 'bottom',
     title: 'Book an appointment',
-    body: 'Find availability opens booking as four short steps — Visit (reason, duration, in-person or telehealth, clinician), Time (a live clinician-by-day grid narrowed to who’s needed), Patient, then Insurance — so a slot is only offered once the people it needs are actually free.',
+    body: 'Book appointment opens booking as four short steps — Visit (reason, duration, in-person or telehealth, clinician), Time (a live clinician-by-day grid narrowed to who’s needed), Patient, then Insurance — so a slot is only offered once the people it needs are actually free.',
   },
   {
     id: 'check-in',
@@ -71,7 +71,7 @@ export const FRONT_DESK_STEPS: TourStep[] = [
     target: '[data-tour="station-body"]',
     placement: 'right',
     title: 'Check in an arrival',
-    body: 'Pick Checked In on a Scheduled row’s status pill — here or on the Appointments list — to open the check-in dialog: confirm new visit or re-attendance, and the patient’s visit opens for triage, rooming, and the clinician to pick up. Caught a mis-click? Undo sends it straight back to Scheduled.',
+    body: 'Pick Checked In on a Scheduled row’s status pill — here, or on the appointment itself in the Appointments calendar — to open the check-in dialog: confirm new visit or re-attendance, and the patient’s visit opens for triage, rooming, and the clinician to pick up. Caught a mis-click? Undo sends it straight back to Scheduled.',
   },
   {
     id: 'assign',

@@ -65,6 +65,13 @@ export default function EhrTopRail() {
   // Only a second line when it would say something the main line doesn't.
   const centerSubLabel = facilityName && orgName && orgName !== facilityName ? orgName : undefined;
   const { canRegisterPatients } = usePermissions();
+  // Reception already carries "Register new patient" as a header action on its
+  // own dashboard, so the rail's person-plus was the same act offered twice on
+  // one screen. Roles whose workspace does NOT offer it keep the rail button —
+  // for them it is the only way in.
+  const receptionRole = currentUser?.role === 'front_desk'
+    || currentUser?.role === 'central_registration_clerk'
+    || currentUser?.role === 'clinic_clerk';
   const { available: tourAvailable, start: startTour } = useTourContext();
   const { patients } = usePatients();
   const { items: notifications, unreadCount } = useNotifications();
@@ -364,7 +371,7 @@ export default function EhrTopRail() {
             <Search className="w-4 h-4" />
           </button>
         )}
-        {canRegisterPatients && (
+        {canRegisterPatients && !receptionRole && (
           <button
             type="button"
             onClick={() => router.push('/patients/new')}

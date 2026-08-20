@@ -113,7 +113,7 @@ export default function FrontDeskDashboardPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [registerOpen, setRegisterOpen] = useState(false);
   const registrationDraftRef = useRef<PatientRegistrationDraft | null>(null);
-  // "Find availability" — the same booking dialog the doctor module opens.
+  // "Book appointment" — the same booking dialog the doctor module opens.
   const [bookingOpen, setBookingOpen] = useState(false);
   const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
 
@@ -999,7 +999,7 @@ export default function FrontDeskDashboardPage() {
     return items.sort((a, b) => (a.appointmentTime || '').localeCompare(b.appointmentTime || ''));
   }, [panelView, patients, pendingAppointments, queueFilter, queueSearch]);
 
-  // First entry is promoted to the header's primary pill — "Find availability",
+  // First entry is promoted to the header's primary pill — "Book appointment",
   // matching the doctor module's CTA and opening the same booking dialog.
   //
   // There is no "Check in" action here any more: a patient is checked in from
@@ -1007,7 +1007,7 @@ export default function FrontDeskDashboardPage() {
   // dialog), so the booking is the one place a visit is started from rather
   // than a second, parallel front door.
   const actions = useMemo<EhrCareDashboardAction[]>(() => ([
-    { label: 'Find availability', icon: Plus, onClick: () => setBookingOpen(true), tone: 'primary' as const },
+    { label: 'Book appointment', icon: Plus, onClick: () => setBookingOpen(true), tone: 'primary' as const },
     ...(canUseRoute('/patients') ? [{ label: t('frontDesk.registerNewPatient'), icon: UserPlus, onClick: () => setRegisterOpen(true) }] : []),
   ]), [canUseRoute, t]);
 
@@ -1075,11 +1075,12 @@ export default function FrontDeskDashboardPage() {
         priority: appointmentTriage(appointment.priority),
         date: isoDateKey(appointment.appointmentDate),
         patientId: appointment.patientId,
-        detailHref: `/appointments?appointment=${encodeURIComponent(appointment._id)}&returnTo=${encodeURIComponent('/dashboard/front-desk')}`,
-        detailLabel: t('appointments.review'),
         // The row drops down into the appointment itself, the way the doctor
         // dashboard's rows drop down into a visit — no pop-up over the list, and
-        // nothing restating what the row already shows.
+        // nothing restating what the row already shows. It carries no link out
+        // to the Appointments page either: the drop-down IS the review, and
+        // sending the desk to the calendar to read a booking it already has
+        // open costs them the queue they were working.
         popupDetail: (
           <RowAppointmentEditor
             appointment={appointment}
@@ -1243,10 +1244,13 @@ export default function FrontDeskDashboardPage() {
         locationLabel: entry.stage ? 'Stage' : entry.type === 'appointment' ? 'Department' : 'Location',
         date: entry.calendarDate,
         patientId: entry.patientId,
+        // A row with a booking opens the appointment editor in the drop-down
+        // below, so it needs no link out. A row without one has no booking to
+        // read — its full-page view is the patient's record.
         detailHref: queueAppointment
-          ? `/appointments?appointment=${encodeURIComponent(queueAppointment._id)}&returnTo=${encodeURIComponent('/dashboard/front-desk')}`
+          ? undefined
           : `/patients/${encodeURIComponent(entry.patientId)}?returnTo=${encodeURIComponent('/dashboard/front-desk')}`,
-        detailLabel: queueAppointment ? t('appointments.review') : t('dashboard.viewPatientRecord'),
+        detailLabel: queueAppointment ? undefined : t('dashboard.viewPatientRecord'),
         // The same panel a Scheduled row opens — tabs for the appointment,
         // provider & staff, and status & billing — so a patient's row looks
         // and behaves the same wherever they are in the day. Decided by the

@@ -188,11 +188,33 @@ export default function AppointmentEditModal({
         recurrencePattern: detail.recurrence || undefined,
       });
       if (status !== appointment.status) {
-        await updateAppointmentStatus(appointment._id, status, {
-          actorId: currentUser?._id,
-          actorName: currentUser?.name || currentUser?.username,
-          actorRole: currentUser?.role,
-        });
+        if (status === 'checked_in') {
+          // Checking in is the one rung that is more than a status: it opens
+          // the visit encounter triage, rooming, the clinician's note and the
+          // checkout gate all join. `checkInAppointment` stamps the status
+          // itself and is idempotent about the encounter, so this is the same
+          // write plus the thread the desk needs. Writing the status alone
+          // left a patient standing at the window with no visit to be seen on.
+          const { checkInAppointment } = await import('@/lib/services/check-in-service');
+          await checkInAppointment({
+            appointmentId: appointment._id,
+            patientId: appointment.patientId,
+            patientName: appointment.patientName,
+            hospitalNumber: patient?.hospitalNumber,
+            facilityId: appointment.facilityId || currentUser?.hospitalId,
+            facilityName: appointment.facilityName || currentUser?.hospitalName,
+            orgId: appointment.orgId || currentUser?.orgId,
+            actorId: currentUser?._id,
+            actorName: currentUser?.name || currentUser?.username,
+            actorRole: currentUser?.role,
+          });
+        } else {
+          await updateAppointmentStatus(appointment._id, status, {
+            actorId: currentUser?._id,
+            actorName: currentUser?.name || currentUser?.username,
+            actorRole: currentUser?.role,
+          });
+        }
       }
       showToast(`${appointment.patientName}'s appointment updated`, 'success');
       onSaved?.();

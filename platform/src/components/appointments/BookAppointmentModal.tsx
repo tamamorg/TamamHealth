@@ -446,18 +446,24 @@ export default function BookAppointmentModal({
                 </Select>
               </div>
 
-              {visitReason && (
-                <>
+              {/* The whole visit is one view. This block used to be hidden until
+                  a reason was chosen, so the step opened as a single lonely
+                  select and grew a form underneath it — the desk could not see
+                  what booking a visit would ask for until it had already
+                  started answering. Everything renders from the outset;
+                  choosing a reason seeds duration, department and modality
+                  rather than revealing the fields that hold them. */}
+              <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                     <div>
                       <label>{t('appointments.labelDuration')}</label>
                       <Select value={duration} onChange={e => { setDuration(Number(e.target.value)); setTime(''); }}>
-                        {[...new Set([visitReason.durationMinutes, 10, 15, 20, 30, 40, 45, 60, 90])]
+                        {[...new Set([...(visitReason ? [visitReason.durationMinutes] : []), 10, 15, 20, 30, 40, 45, 60, 90])]
                           .sort((a, b) => a - b)
                           .map(d => (
                             <option key={d} value={d}>
                               {t('appointments.durationMin', { count: d })}
-                              {d === visitReason.durationMinutes ? ' (standard)' : ''}
+                              {visitReason && d === visitReason.durationMinutes ? ' (standard)' : ''}
                             </option>
                           ))}
                       </Select>
@@ -478,9 +484,9 @@ export default function BookAppointmentModal({
                     <ModalityToggle
                       value={modality}
                       onChange={next => { setModality(next); setTime(''); }}
-                      disabled={visitReason.modality !== 'both'}
+                      disabled={visitReason ? visitReason.modality !== 'both' : false}
                     />
-                    {visitReason.modality !== 'both' && (
+                    {visitReason && visitReason.modality !== 'both' && (
                       <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
                         {visitReason.modality === 'telehealth'
                           ? `${visitReason.name} is offered as a virtual visit only.`
@@ -530,8 +536,7 @@ export default function BookAppointmentModal({
                       ? `Next you will see times when ${providerFilter ? 'the clinician' : 'a clinician'} and ${staffName || 'the second staff member'} are both free.`
                       : 'Next you will see when each clinician is free. Naming a nurse here narrows those times to when they are free too.'}
                   </p>
-                </>
-              )}
+              </>
             </>
           )}
 
@@ -773,10 +778,12 @@ function ModalityToggle({
   ];
   return (
     <div
+      role="group"
+      aria-label="Visit type"
       style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4,
         borderRadius: 999, background: 'var(--overlay-subtle)',
-        border: '1px solid var(--border-light)',
+        border: '1px solid var(--border-medium)',
         opacity: disabled ? 0.55 : 1,
         maxWidth: 320,
       }}
@@ -788,14 +795,22 @@ function ModalityToggle({
             key={option.key}
             type="button"
             disabled={disabled}
+            // Which visit type is chosen changes what gets booked, so the
+            // selection is announced, not left to colour alone.
+            aria-pressed={active}
             onClick={() => onChange(option.key)}
             style={{
               padding: '7px 10px', borderRadius: 999, border: 'none',
-              background: active ? 'var(--bg-card-solid)' : 'transparent',
-              color: active ? 'var(--accent-primary)' : 'var(--text-muted)',
-              fontSize: 13, fontWeight: 600,
+              // Selected reads as the platform's segmented control does
+              // everywhere else (.ehr-segmented button.active): filled accent,
+              // white label. A white tile carrying accent-coloured text on a
+              // near-white track left the choice barely legible — the two
+              // states differed by about a shade of grey.
+              background: active ? 'var(--accent-primary)' : 'transparent',
+              color: active ? '#FFFFFF' : 'var(--text-secondary)',
+              fontSize: 13, fontWeight: active ? 700 : 600,
               cursor: disabled ? 'not-allowed' : 'pointer',
-              boxShadow: active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              boxShadow: active ? '0 1px 2px rgba(14, 42, 74, 0.18)' : 'none',
             }}
           >
             {option.label}

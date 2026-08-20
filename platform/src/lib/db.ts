@@ -378,7 +378,7 @@ export const patientTransfersDB = () => getDB('tamamhealth_patient_transfers');
 // instead of an empty shell — nurse.stella and midwife.nyakong previously had
 // no doctor, no provider availability, no wards/beds/admissions and no
 // handoffs/rooming activity there, so the merged nurse dashboard and the
-// "Find availability" booking wizard were both empty for the canonical nurse
+// "Book appointment" booking wizard were both empty for the canonical nurse
 // demo login. Added: a Malakal doctor (dr.ochalla) with recurring clinic
 // hours; one ward (4 beds, 3 occupied) with three active admissions attended
 // by him and nursed by nurse.stella; MAR-ready scheduled prescriptions for

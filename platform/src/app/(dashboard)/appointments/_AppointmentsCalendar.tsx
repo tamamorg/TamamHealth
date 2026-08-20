@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { ChevronLeft, ChevronRight } from '@/components/icons/lucide';
-import type { AppointmentStatus, AppointmentDoc } from '@/lib/db-types';
-import { Calendar as BigCalendar, dateFnsLocalizer, type View, type ToolbarProps } from 'react-big-calendar';
+import type { AppointmentStatus, AppointmentPriority, AppointmentDoc } from '@/lib/db-types';
+import { Calendar as BigCalendar, dateFnsLocalizer, type View, type ToolbarProps, type DateLocalizer } from 'react-big-calendar';
+import TimeGrid from 'react-big-calendar/lib/TimeGrid';
 import { format as dfFormat, parse as dfParse, startOfWeek as dfStartOfWeek, getDay as dfGetDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -22,44 +23,55 @@ const calendarLocalizer = dateFnsLocalizer({
 export type CalEvent = { id: string; title: string; start: Date; end: Date; resource: AppointmentDoc };
 
 /**
- * Full width when a booking is alone at its time; equal columns when it is not.
+ * How far a blocked booking runs *under* the one to its right, as a share of a
+ * column. It is what makes two overlapping bookings read as two shapes at
+ * different depths rather than two columns of a table.
+ */
+const COLUMN_OVERLAP = 0.7;
+
+type SlotMetrics = {
+  getRange: (start: Date, end: Date) => { top: number; height: number };
+};
+
+type Accessors = { start: (e: CalEvent) => Date; end: (e: CalEvent) => Date };
+
+type Placed = { event: CalEvent; start: number; end: number; column: number };
+
+/**
+ * The day laid out the way Google Calendar lays it out.
  *
- * The day used to be drawn as a single stack, one appointment per row, because
- * the schedule refused two bookings in the same slot anywhere in the facility.
- * That rule is gone: two clinicians genuinely do see two patients at 09:00, so
- * the column has to divide.
+ * A booking alone at its time takes the whole column. Where bookings collide
+ * they are packed into columns — first-fit, so a 7pm visit reuses the column a
+ * 4pm visit has finished with — and then each block widens to the right
+ * through every column that has nothing overlapping it. What is left is a set
+ * of DIFFERENT shapes: the 4pm half-width, the 4:30 offset and running to the
+ * edge, the 7pm back at the left and wide again. That difference is the point.
+ * Equal columns (what this used to draw) made every collision look identical,
+ * and a plain cascade made them look like one block with a shadow.
  *
- * Neither built-in algorithm is right here. `overlap` cascades events on top of
- * each other, and `no-overlap` narrows an event whenever anything *anywhere in
- * the day* chains into it, which is what produced the ragged half/third/full
- * mix where some names were readable and others were a sliver.
- *
- * This splits by CONCURRENCY CLUSTER instead: events are grouped into runs that
- * actually overlap in time, and each cluster divides its width evenly. A 09:00
- * on its own still takes the full column; two at 09:00 take half each and stay
- * equal — the eye can compare them without working out which width means what.
+ * A block that could not widen still runs `COLUMN_OVERLAP` of a column under
+ * its right-hand neighbour, which is what gives the stack its depth. Nothing is
+ * hidden by it: the neighbour starts where the block's own column ends, so the
+ * text of every booking has its full column to be read in.
  *
  * Signature is react-big-calendar's `dayLayoutAlgorithm` contract — it hands us
  * the events plus the `slotMetrics` that convert a time range into the column's
  * top/height percentages, and expects styled events back.
  */
-type SlotMetrics = {
-  getRange: (start: Date, end: Date) => { top: number; height: number };
-};
-
 export function stackedDayLayout({
   events, slotMetrics, accessors,
 }: {
   events: CalEvent[];
   slotMetrics: SlotMetrics;
-  accessors: { start: (e: CalEvent) => Date; end: (e: CalEvent) => Date };
+  accessors: Accessors;
 }) {
   const sorted = [...events].sort((a, b) => (
     +accessors.start(a) - +accessors.start(b) || +accessors.end(a) - +accessors.end(b)
   ));
 
   // Walk the day once, breaking a cluster whenever a booking starts at or after
-  // everything before it has finished.
+  // everything before it has finished. Clusters are independent: a busy morning
+  // never narrows a lone afternoon visit.
   const clusters: CalEvent[][] = [];
   let current: CalEvent[] = [];
   let clusterEnd = -Infinity;
@@ -77,16 +89,51 @@ export function stackedDayLayout({
   }
   if (current.length) clusters.push(current);
 
-  return clusters.flatMap(cluster => {
-    const width = 100 / cluster.length;
-    return cluster.map((event, index) => {
-      const { top, height } = slotMetrics.getRange(accessors.start(event), accessors.end(event));
-      return {
-        event,
-        style: { top, height, width, xOffset: width * index },
-      };
-    });
+  return clusters.flatMap(cluster => layoutCluster(cluster, slotMetrics, accessors));
+}
+
+function layoutCluster(cluster: CalEvent[], slotMetrics: SlotMetrics, accessors: Accessors) {
+  // First-fit column packing: reuse the earliest column whose last booking has
+  // already finished, otherwise open a new one.
+  const columnEnds: number[] = [];
+  const placed: Placed[] = cluster.map(event => {
+    const start = +accessors.start(event);
+    const end = +accessors.end(event);
+    let column = columnEnds.findIndex(columnEnd => columnEnd <= start);
+    if (column === -1) {
+      columnEnds.push(end);
+      column = columnEnds.length - 1;
+    } else {
+      columnEnds[column] = end;
+    }
+    return { event, start, end, column };
   });
+
+  const columns = columnEnds.length;
+  const unit = 100 / columns;
+
+  return placed
+    .slice()
+    // Painted left to right, so a later column lands ON TOP of the block it
+    // overlaps — the depth cue only reads in that order.
+    .sort((a, b) => a.column - b.column || a.start - b.start)
+    .map(item => {
+      let span = 1;
+      while (
+        item.column + span < columns
+        && !placed.some(other => (
+          other.column === item.column + span && other.start < item.end && other.end > item.start
+        ))
+      ) span += 1;
+
+      const xOffset = item.column * unit;
+      const blocked = item.column + span < columns;
+      const width = blocked
+        ? Math.min((span + COLUMN_OVERLAP) * unit, 100 - xOffset)
+        : 100 - xOffset;
+      const { top, height } = slotMetrics.getRange(accessors.start(item.event), accessors.end(item.event));
+      return { event: item.event, style: { top, height, width, xOffset } };
+    });
 }
 
 /**
@@ -128,6 +175,13 @@ export function calendarRange(start: Date, end: Date): string {
  */
 const TWO_LINE_MINUTES = 45;
 
+/**
+ * And below this a third line would be clipped, so the room / department is
+ * only printed on a block with the height to hold it — an hour and a quarter
+ * at the current 96px hour.
+ */
+const THREE_LINE_MINUTES = 75;
+
 // Calendar toolbar: icon prev/next + the period label on the left, and the
 // day/week/month view switcher docked on the right (mirrors the same filter
 // that lives beside the search bar — both drive the calendar granularity).
@@ -144,12 +198,9 @@ const rbcNavBtn: React.CSSProperties = {
   color: 'var(--text-secondary)',
   transition: 'background 0.15s',
 };
-const CAL_VIEWS: ('day' | 'week' | 'month')[] = ['day', 'week', 'month'];
-
-function CalToolbar({ label, onNavigate, onView, view }: ToolbarProps<CalEvent, object>) {
+function CalToolbar({ onNavigate }: ToolbarProps<CalEvent, object>) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-      {/* Today */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
       <button
         type="button"
         onClick={() => onNavigate('TODAY')}
@@ -165,40 +216,51 @@ function CalToolbar({ label, onNavigate, onView, view }: ToolbarProps<CalEvent, 
       >
         Today
       </button>
-      {/* Prev / Next */}
       <button type="button" onClick={() => onNavigate('PREV')} aria-label="Previous" style={rbcNavBtn}>
         <ChevronLeft size={16} />
       </button>
       <button type="button" onClick={() => onNavigate('NEXT')} aria-label="Next" style={rbcNavBtn}>
         <ChevronRight size={16} />
       </button>
-      {/* Period label */}
-      <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>{label}</h3>
-      {/* View switcher */}
-      <div style={{ marginInlineStart: 'auto', display: 'flex', height: 32, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--glass-border)', background: 'var(--bg-card-solid)' }}>
-        {CAL_VIEWS.map((v, i) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => onView(v as View)}
-            style={{
-              display: 'flex', alignItems: 'center', padding: '0 14px',
-              borderInlineStart: i === 0 ? 'none' : '1px solid var(--glass-border)',
-              cursor: 'pointer', fontSize: 12, fontWeight: 600,
-              textTransform: 'capitalize',
-              fontFamily: "var(--font-platform)",
-              background: view === v ? 'var(--accent-primary)' : 'transparent',
-              color: view === v ? '#fff' : 'var(--text-secondary)',
-              transition: 'background 0.15s, color 0.15s',
-            }}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
+
+/* ─── The day view is two days ────────────────────────────────────────────
+   A clinic reads forward: what is left of today, and what is waiting
+   tomorrow. react-big-calendar's own `day` view draws exactly one column, so
+   this is a custom view over its `TimeGrid` — the same grid the week view is
+   built from, given a two-day range. The statics are the view contract:
+   `range` is what it draws, `navigate` is what the arrows step by (two days,
+   so paging never lands mid-pair), and `title` is what the toolbar would say
+   if we were still letting it say anything. */
+const TWO_DAY_SPAN = 2;
+
+type TwoDayContext = { localizer: DateLocalizer };
+
+const TwoDayView = Object.assign(
+  function TwoDayGrid(props: { date: Date; localizer: DateLocalizer } & Record<string, unknown>) {
+    const { date, localizer } = props;
+    const range = TwoDayView.range(date, { localizer });
+    return <TimeGrid {...props} range={range} eventOffset={15} />;
+  },
+  {
+    range: (date: Date, { localizer }: TwoDayContext) => {
+      const start = localizer.startOf(date, 'day');
+      return Array.from({ length: TWO_DAY_SPAN }, (_, i) => localizer.add(start, i, 'day'));
+    },
+    navigate: (date: Date, action: string, { localizer }: TwoDayContext) => {
+      if (action === 'PREV') return localizer.add(date, -TWO_DAY_SPAN, 'day');
+      if (action === 'NEXT') return localizer.add(date, TWO_DAY_SPAN, 'day');
+      return date;
+    },
+    title: (date: Date, { localizer }: TwoDayContext) => {
+      const range = TwoDayView.range(date, { localizer });
+      const last = range[range.length - 1];
+      return `${localizer.format(range[0], 'MMM d')} – ${localizer.format(last, 'MMM d, yyyy')}`;
+    },
+  },
+);
 
 /**
  * A week/day block: who it is, then when.
@@ -222,10 +284,17 @@ function SlotEvent({ event }: { event: CalEvent }) {
       </span>
     );
   }
+  // Where the visit happens — the room if one is assigned, else the
+  // department. It is the third thing a clerk looks for after who and when,
+  // and on a long block it was empty space.
+  const where = event.resource.room || event.resource.department;
   return (
     <span className="gcal-slot">
       <span className="gcal-slot-title">{event.title}</span>
       <span className="gcal-slot-time">{calendarRange(event.start, event.end)}</span>
+      {minutes >= THREE_LINE_MINUTES && where && (
+        <span className="gcal-slot-where">{where}</span>
+      )}
     </span>
   );
 }
@@ -258,6 +327,8 @@ type AppointmentsCalendarProps = {
   calDate: Date;
   today: string;
   statusConfig: Record<AppointmentStatus, { color: string; bg: string; label: string }>;
+  /** Acuity colours for the block's leading edge — see `eventPropGetter`. */
+  priorityConfig: Record<AppointmentPriority, { color: string; label: string }>;
   onNavigate: (d: Date) => void;
   onView: (v: 'month' | 'week' | 'day') => void;
   onSelectEvent: (apt: AppointmentDoc) => void;
@@ -265,7 +336,7 @@ type AppointmentsCalendarProps = {
 };
 
 export default function AppointmentsCalendar({
-  events, calView, calDate, today, statusConfig,
+  events, calView, calDate, today, statusConfig, priorityConfig,
   onNavigate, onView, onSelectEvent, onSelectSlot,
 }: AppointmentsCalendarProps) {
   const isMonth = calView === 'month';
@@ -302,7 +373,10 @@ export default function AppointmentsCalendar({
       toolbar: CalToolbar,
       month: { event: MonthEvent },
       week: { event: SlotEvent, header: SlotHeader },
-      day: { event: SlotEvent },
+      // Two columns now, so the day view needs the same weekday-over-date
+      // header the week view has — otherwise there is nothing above the
+      // divider saying which column is today and which is tomorrow.
+      day: { event: SlotEvent, header: SlotHeader },
     }),
     [MonthEvent],
   );
@@ -318,7 +392,8 @@ export default function AppointmentsCalendar({
       onNavigate={(d: Date) => onNavigate(d)}
       view={calView as View}
       onView={(v: View) => onView(v as 'month' | 'week' | 'day')}
-      views={['month', 'week', 'day']}
+      // `day` is the two-day grid above; month and week stay built-in.
+      views={{ month: true, week: true, day: TwoDayView as never }}
       popup
       style={{ height: '100%' }}
       scrollToTime={new Date(1970, 0, 1, 7, 0, 0)}
@@ -349,17 +424,21 @@ export default function AppointmentsCalendar({
             style: { backgroundColor: 'transparent', color: 'var(--text-primary)', border: 'none' },
           };
         }
+        // Two facts, two channels: the fill is the rung the booking is on, the
+        // stripe down its leading edge is how urgent it is. They used to be one
+        // colour doing both jobs badly — an emergency and a routine visit at the
+        // same status were indistinguishable until the block was opened.
         return {
+          className: 'gcal-block',
           style: {
             backgroundColor: statusColor,
             borderColor: statusColor,
+            ['--gcal-accent' as string]: priorityConfig[a.priority]?.color || statusColor,
             color: '#fff',
-            borderRadius: 6,
             border: 'none',
             fontSize: 12,
             fontFamily: "var(--font-platform)",
             fontWeight: 600,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
           },
         };
       }}

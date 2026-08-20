@@ -680,7 +680,7 @@ export default function EhrClinicalDashboard({
   const [findPatientOpen, setFindPatientOpen] = useState(false);
   const [findPatientQuery, setFindPatientQuery] = useState('');
   const [dispensePatient, setDispensePatient] = useState<{ id: string; name: string } | null>(null);
-  // "Find availability" — the booking form as a dialog; it used to route to
+  // "Book appointment" — the booking form as a dialog; it used to route to
   // /appointments?new=1 and leave the clinician on the schedule module.
   const [bookingOpen, setBookingOpen] = useState(false);
   // "Print" — choose which lanes and which output (paper/PDF or CSV) instead
@@ -1492,8 +1492,8 @@ export default function EhrClinicalDashboard({
         <div className="ehr-clinical-dashboard-tabs">
           {canBookAppointments && (
             <div className="ehr-segmented ehr-segmented-single">
-              <button type="button" className="active" aria-label="Find availability" onClick={() => setBookingOpen(true)}>
-                <Plus className="w-4 h-4" /> Find availability
+              <button type="button" className="active" aria-label="Book appointment" onClick={() => setBookingOpen(true)}>
+                <Plus className="w-4 h-4" /> Book appointment
               </button>
             </div>
           )}

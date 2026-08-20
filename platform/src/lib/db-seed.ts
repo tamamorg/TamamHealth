@@ -1035,7 +1035,7 @@ const availabilityRows: AvailabilitySeedRow[] = [
     daysOfWeek: [1, 2, 3, 4, 5, 6], startTime: '09:00', endTime: '16:00', modality: 'both',
   },
   // Malakal Teaching Hospital (hosp-003) — without this, the facility had no
-  // provider clinic hours at all, so nurse.stella's "Find availability"
+  // provider clinic hours at all, so nurse.stella's "Book appointment"
   // booking wizard had no slots to offer for any Malakal clinician.
   {
     providerId: 'user-dr.ochalla', providerName: 'Dr. Peter Ochalla Diu',

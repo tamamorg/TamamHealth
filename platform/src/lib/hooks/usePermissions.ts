@@ -64,7 +64,7 @@ export function usePermissions() {
   // by duty: reception schedules/checks in, clinicians advance visits, HMIS
   // and management can export operational lists.
   // Triage/rooming nurses book too: since the nurse station merged into the
-  // shared clinical dashboard, "Find availability" is their path for sending a
+  // shared clinical dashboard, "Book appointment" is their path for sending a
   // routine walk-in to a clinic slot instead of holding them in the queue.
   const canBookAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
   const canConfirmAppointments = isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isOrgAdmin || isSuperAdmin;

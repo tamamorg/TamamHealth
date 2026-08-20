@@ -39,9 +39,8 @@ export default async function PlatformPage() {
             </div>
             {/* The platform itself, opposite the claim about it — the front
                 desk, which is where the sentence to the left starts. The
-                doctor's workspace is further down the page under "The clinical
-                dashboard", so the hero and that section show different rooms
-                rather than the same screenshot twice. */}
+                patient record is the hero on /products, so the two pages show
+                different rooms rather than the same screenshot twice. */}
             <div className="blueprint tm-figure" style={{ position: "relative", background: "#FFFFFF", padding: 8, borderColor: "rgba(255,255,255,0.28)" }}>
               <Corners light />
               {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}

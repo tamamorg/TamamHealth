@@ -51,7 +51,7 @@ export default async function ProductsPage() {
           <div className="blueprint tm-figure" style={{ position: "relative", background: "#FFFFFF", padding: 8, borderColor: "rgba(255,255,255,0.28)" }}>
             <Corners light />
             {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-            <img src="/assets/platform-doctor.png" alt={t("The TamamHealth clinical workspace: a doctor's patient list for the day with acuity, care team and outstanding items")} style={{ width: "100%", display: "block" }} />
+            <img src="/assets/platform-patient-chart.png" alt={t("A TamamHealth patient record: allergies and current vitals across the top, with medications, safety alerts, latest observations and next care actions below")} style={{ width: "100%", display: "block" }} />
           </div>
         </div>
       </section>

@@ -1254,6 +1254,68 @@ input:focus, select:focus, textarea:focus {
   background: var(--bg-card-solid);
 }
 
+/* ── Field shells: the box is the wrapper, not the input ─────────────────
+   A search field is a wrapper (border + background + icon + clear button)
+   with a bare <input> inside it. The rule above still matched that inner
+   input, so focusing one drew a 3px glow AROUND THE TEXT AREA — a second
+   rounded rectangle floating inside the field and spilling past its right
+   edge, which read as the control having grown an outer ring. The wrapper
+   owns the focus state instead, drawn inset so the field never changes
+   footprint when it gains focus. */
+.assign-doctor-search input,
+.checkin-patient-search input,
+.ehr-care-search input,
+.ehr-find-patient-input input,
+.ehr-queue-search input,
+.ehr-top-search input,
+.ehr-worklist-search input,
+.listpage-table-search input,
+.mobile-patients-search input,
+.msgs-search input,
+.popup-select-search input,
+.pp-search input,
+.sadb-search input,
+.tsel-search input {
+  border: 0;
+  box-shadow: none !important;
+}
+
+.assign-doctor-search:focus-within,
+.checkin-patient-search:focus-within,
+.ehr-care-search:focus-within,
+.ehr-find-patient-input:focus-within,
+.ehr-queue-search:focus-within,
+.ehr-top-search:focus-within,
+.ehr-worklist-search:focus-within,
+.listpage-table-search:focus-within,
+.mobile-patients-search:focus-within,
+.msgs-search:focus-within,
+.popup-select-search:focus-within,
+.sadb-search:focus-within,
+.tsel-search:focus-within {
+  border-color: var(--accent-primary);
+  /* Inset, so the ring is part of the field rather than a halo around it. */
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+
+/* Hover reads on the shell too — a border a shade darker, no ring, no size
+   change. Skipped while focused so the focus ring isn't muddied. */
+.assign-doctor-search:hover:not(:focus-within),
+.checkin-patient-search:hover:not(:focus-within),
+.ehr-care-search:hover:not(:focus-within),
+.ehr-find-patient-input:hover:not(:focus-within),
+.ehr-queue-search:hover:not(:focus-within),
+.ehr-top-search:hover:not(:focus-within),
+.ehr-worklist-search:hover:not(:focus-within),
+.listpage-table-search:hover:not(:focus-within),
+.mobile-patients-search:hover:not(:focus-within),
+.msgs-search:hover:not(:focus-within),
+.popup-select-search:hover:not(:focus-within),
+.sadb-search:hover:not(:focus-within),
+.tsel-search:hover:not(:focus-within) {
+  border-color: var(--border-medium);
+}
+
 input::placeholder, textarea::placeholder {
   color: var(--text-muted);
 }
@@ -4859,12 +4921,28 @@ html:has(.ehr-top-rail) {
 .ehr-daybar {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: auto minmax(180px, 1fr) auto;
+  /* Fixed side columns, fixed field. With `auto` on the title the whole row
+     was measured from the date's own width, so "Thursday, August 20" and
+     "Wednesday, September 10" pushed the search box to different places —
+     the field jumped sideways every time the day changed. The centre track
+     is now the field's own width and the sides share what is left, so the
+     search sits still whatever the date says. */
+  grid-template-columns: minmax(0, 1fr) 330px minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   min-height: 0;
   padding: 14px 16px 11px;
   border-bottom: 1px solid var(--ehr-border);
+}
+
+/* Lane tabs stay hard right; the title keeps the left. */
+.ehr-daybar > .ehr-day-tabs { justify-self: end; }
+
+/* Narrow cards can't hold a 330px centre track beside both sides — the row
+   stacks instead of squeezing the field. */
+@media (max-width: 900px) {
+  .ehr-daybar { grid-template-columns: minmax(0, 1fr); }
+  .ehr-daybar > .ehr-day-tabs { justify-self: start; }
 }
 
 /* One column short when the dashboard passes no search handler — the title
@@ -12686,6 +12764,15 @@ span:has(> svg:only-child) {
   background: var(--glass-bg-strong);
 }
 
+/* Inside a workspace panel the grid IS the card — a second border and radius
+   just draws a box inside a box. */
+.ehr-center-panel > .rbc-tamam .rbc-month-view,
+.ehr-center-panel > .rbc-tamam .rbc-time-view {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 /* ── Day name headers (week / day view) ── */
 .rbc-tamam .rbc-header {
   padding: 10px 6px 8px;
@@ -12829,16 +12916,44 @@ span:has(> svg:only-child) {
 .rbc-tamam .rbc-day-slot + .rbc-day-slot { border-inline-start: 1px solid var(--glass-border); }
 .rbc-tamam .rbc-time-header-content + .rbc-time-header-content { border-inline-start: 1px solid var(--glass-border); }
 
+/* ── The day view is two days, and the line between them says so ──
+   A single hairline is the grid's own vocabulary for "next hour, next
+   column"; the boundary between today and tomorrow is a different kind of
+   edge, so it is drawn as one. */
+.rbc-tamam.is-twoday .rbc-time-content > .rbc-day-slot + .rbc-day-slot,
+.rbc-tamam.is-twoday .rbc-header + .rbc-header {
+  border-inline-start: 2px solid var(--border-medium);
+}
+
 /* ── Events: week / day slots ── */
 .rbc-tamam .rbc-day-slot .rbc-event {
-  padding: 3px 7px 3px 9px;
-  border-radius: 6px !important;
+  padding: 5px 8px 5px 13px;
+  border-radius: 8px !important;
   border: none !important;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  box-shadow: none;
+  /* The hairline is what keeps two cascaded blocks legible where they overlap:
+     the one in front carries a rim of the page behind it, so its edge reads as
+     an edge and not as a colour change inside one block. */
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.18), 0 0 0 1.5px var(--bg-card-solid);
+  transition: filter 0.12s;
+}
+.rbc-tamam .rbc-day-slot .rbc-event:hover { filter: brightness(1.06); }
+
+/* Status fills the block; acuity runs down its leading edge. `--gcal-accent`
+   is set per event in `eventPropGetter`. */
+.rbc-tamam .rbc-day-slot .rbc-event.gcal-block::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--gcal-accent, rgba(255, 255, 255, 0.55));
+  border-start-start-radius: 8px;
+  border-end-start-radius: 8px;
 }
 /* RBC's own time label is hidden — the block renders its own, so that the
    short-visit case can fold the time onto the title's line. */
@@ -12870,6 +12985,17 @@ span:has(> svg:only-child) {
 .gcal-slot-title {
   min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Where the visit happens — third line, quietest of the three. */
+.gcal-slot-where {
+  flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  opacity: 0.78;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -16943,6 +17069,8 @@ textarea.ehr-handoff-input {
   display: flex;
   align-items: center;
   gap: 9px;
+  /* One size, always: the grid gives it a 330px track, and `flex: 1 1 220px`
+     is only for the flex parents that also use this field. */
   width: 100%;
   max-width: 330px;
   height: 38px;
@@ -16953,6 +17081,7 @@ textarea.ehr-handoff-input {
   background: var(--ehr-panel, #FFFFFF);
   flex: 1 1 220px;
   margin-top: 0;
+  box-sizing: border-box;
 }
 
 .ehr-queue-add {
