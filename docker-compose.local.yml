@@ -1,0 +1,41 @@
+# Local-only overrides for the compose stack. NOT for any real deployment.
+#
+# Bring the stack up with BOTH files, every time:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+#
+# ---------------------------------------------------------------------------
+# What this does NOT need to override, and why — this cost an afternoon once.
+#
+# `NEXT_PUBLIC_COUCHDB_URL` looks like it needs pinning to localhost here,
+# because `platform/.env.production` sets it to https://couch.tamamhealth.org
+# and that file is the platform service's env_file. It does not, and setting it
+# here BREAKS BOOT. Two separate values wear the same name:
+#
+#   - The BROWSER's replication target is inlined into the client bundle at
+#     BUILD time, from the `build.args` block in docker-compose.yml. That arg
+#     already defaults to http://localhost:${COUCHDB_PORT:-5984}, so a locally
+#     built image is local. Verify with:
+#       docker exec tamamhealth-platform grep -rl localhost:5984 .next/static
+#
+#   - The RUNTIME value, from .env.production, is read only by server-side code
+#     — chiefly `lib/config-validation.ts`, which refuses to boot a production
+#     build whose CouchDB URL is http:// or points at localhost. Override it to
+#     http://localhost:5984 and instrumentation throws on startup:
+#       "NEXT_PUBLIC_COUCHDB_URL must use https:// in production"
+#
+# So the https:// value satisfies the boot check while the browser uses the
+# baked localhost one. Confusing, but correct — leave it alone.
+# ---------------------------------------------------------------------------
+
+services:
+  platform:
+    environment:
+      # This one IS worth overriding. It is empty in build.args, so the client
+      # bundle carries "", and server-side reads fall through to .env.production
+      # — meaning absolute links the SERVER builds for itself point at
+      # app.tamamhealth.org even on a laptop. That reaches the FHIR
+      # CapabilityStatement's implementation.url, payment links, booking
+      # references. No validator rule forbids
+      # http://localhost here, so it is safe to pin.
+      NEXT_PUBLIC_APP_URL: http://localhost:3000

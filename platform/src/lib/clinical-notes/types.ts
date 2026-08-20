@@ -101,8 +101,6 @@ export interface ClinicalNoteDoc extends BaseDoc {
   /** Appointment this note documents, when created from one. */
   appointmentId?: string;
   encounterId?: string;
-  /** Set for telehealth note types or a telehealth appointment. */
-  telehealth?: boolean;
 
   status: NoteStatus;
   signedBy?: string;

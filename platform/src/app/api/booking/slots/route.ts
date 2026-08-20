@@ -54,11 +54,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ slots: [], notOfferedToPatientClass: true, from: '', to: '' });
   }
 
-  const modality = q.get('modality') === 'telehealth' ? 'telehealth' : 'in_person';
-  if (visitReason.modality !== 'both' && visitReason.modality !== modality) {
-    return NextResponse.json({ slots: [], notOfferedInModality: true, from: '', to: '' });
-  }
-
   const today = facilityNow().date;
   const requestedFrom = q.get('from') || today;
   // Never look backwards, whatever the caller asks for.
@@ -81,7 +76,6 @@ export async function GET(request: NextRequest) {
     orgId,
     visitReason,
     patientClass,
-    modality,
     // Always the strict channel here: a window must have opted into online
     // booking, and every policy rule (lead time, horizon, buffers) applies.
     channel: 'public',

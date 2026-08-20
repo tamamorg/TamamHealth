@@ -37,7 +37,7 @@ export function usePermissions() {
 
   // Clinical work — only clinical staff. super_admin is a SaaS platform
   // operator: it keeps clinical *read* (canViewClinical) for support/QA but
-  // not clinical *write* (consult/prescribe/order/dispense/results/telehealth).
+  // not clinical *write* (consult/prescribe/order/dispense/results).
   const isMedSupt = role === 'medical_superintendent';
   const canEditClinical = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
   // Midwives provide clinical maternity care, so they can view clinical records.
@@ -55,7 +55,6 @@ export function usePermissions() {
   // Specialized roles
   const canDispense = role === 'pharmacist';
   const canEnterLabResults = role === 'lab_tech';
-  const canDoTelehealth = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
 
   // Referrals — clinical staff + front desk + supervisors + midwife (obstetric)
   const canManageReferrals = role === 'doctor' || role === 'clinical_officer' || isClinician || isMidwife || isRegistrationClerk || role === 'front_desk' || isSuperAdmin;
@@ -130,7 +129,6 @@ export function usePermissions() {
     canRegisterPatients,
     canDispense,
     canEnterLabResults,
-    canDoTelehealth,
     canManageReferrals,
     canBookAppointments,
     canConfirmAppointments,

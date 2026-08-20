@@ -49,7 +49,6 @@ const appointmentTypes: { value: AppointmentType; label: string; icon: typeof Ca
   { value: 'anc',          label: 'Antenatal Care',       icon: HeartPulse,    color: 'var(--color-success-text)', bg: 'rgba(4,120,87,0.10)' },
   { value: 'immunization', label: 'Immunization',         icon: Syringe,       color: 'var(--color-success-text)', bg: 'rgba(5,150,105,0.10)' },
   { value: 'lab',          label: 'Laboratory',           icon: FlaskConical,  color: 'var(--accent-primary)', bg: 'rgba(8,145,178,0.10)' },
-  { value: 'telehealth',   label: 'Telehealth',           icon: Video,         color: 'var(--accent-hover)', bg: 'rgba(14,116,144,0.10)' },
   { value: 'surgical',     label: 'Surgical',             icon: Stethoscope,   color: 'var(--color-danger-text)', bg: 'rgba(220,38,38,0.10)' },
   { value: 'dental',       label: 'Dental',               icon: Stethoscope,   color: 'var(--accent-hover)', bg: 'rgba(29,78,216,0.10)' },
   { value: 'mental_health',label: 'Mental Health',        icon: HeartPulse,    color: 'var(--color-warning-text)', bg: 'rgba(217,119,6,0.10)' },

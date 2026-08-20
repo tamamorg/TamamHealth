@@ -40,6 +40,13 @@ x-logging: &default-logging
 services:
   platform:
     logging: *default-logging
+    # Pinned so the container is `tamamhealth-platform`, not the
+    # `<project>-<service>-<index>` default `tamamhealth-platform-1`. The stack
+    # is single-replica by design (see lib/token-blacklist.ts — revocation
+    # state is per-instance), so the index this drops was never going to be
+    # anything but 1. Trade-off: `docker compose up --scale` no longer works
+    # for these services, and two copies of the stack cannot share a host.
+    container_name: tamamhealth-platform
     build:
       context: ./platform
       dockerfile: Dockerfile
@@ -65,11 +72,6 @@ services:
         NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: ${NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED:-false}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}
         NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE: ${NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE:-false}
-        # Telehealth: the browser dials LiveKit directly, and the CSP that
-        # permits it is inlined at build time. A deployment that sets only the
-        # runtime LIVEKIT_URL builds a policy with no LiveKit in it and every
-        # call is blocked — config-validation refuses to boot in that state.
-        NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-}
         NEXT_PUBLIC_BUILD_ID: ${NEXT_PUBLIC_BUILD_ID:-}
     # Legacy env_file path — kept as the default so deploys without a
     # DOPPLER_TOKEN keep working unchanged. Doppler-mode (below) overrides
@@ -151,6 +153,7 @@ services:
 
   website:
     logging: *default-logging
+    container_name: tamamhealth-website
     build:
       context: ./website
       dockerfile: Dockerfile
@@ -178,6 +181,7 @@ services:
   # or an additional rclone/rsync sidecar for full DR.
   couchdb-backup:
     logging: *default-logging
+    container_name: tamamhealth-couchdb-backup
     image: alpine:3.19
     depends_on:
       couchdb:
@@ -201,6 +205,7 @@ services:
 
   couchdb:
     logging: *default-logging
+    container_name: tamamhealth-couchdb
     image: couchdb:3
     environment:
       COUCHDB_USER: ${COUCHDB_USER:?COUCHDB_USER must be set in .env}
@@ -227,6 +232,7 @@ services:
   #   docker compose --profile analytics up -d
   sync-worker:
     logging: *default-logging
+    container_name: tamamhealth-sync-worker
     image: ghcr.io/${GH_OWNER:-tamamhealth}/tamamhealth-sync-worker:latest
     profiles: ["analytics"]
     build:
@@ -259,6 +265,7 @@ services:
   # Start with:  docker compose --profile analytics up -d
   postgres:
     logging: *default-logging
+    container_name: tamamhealth-postgres
     image: postgres:16-alpine
     profiles: ["analytics"]
     environment:

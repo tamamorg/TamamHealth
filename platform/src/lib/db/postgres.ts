@@ -84,7 +84,6 @@ const ALLOWED_TABLES = new Set<string>([
   'messages',
   'controlled_substance_log',
   'pharmacy_inventory',
-  'telehealth_sessions',
   'wards',
   // Ward inpatient writeback (see migrations/0006_ward_inpatient_writeback.sql).
   // The FIELD_MAPPERS + migration existed but these were never allowlisted, so
@@ -163,7 +162,6 @@ const ALLOWED_COLUMNS = new Set<string>([
   'reorder_level', 'batch_number', 'expiry_date', 'last_received',
   'last_dispensed', 'dispensed_today', 'controlled_schedule',
   'requires_witness',
-  'appointment_id', 'session_type', 'scheduled_time',                // telehealth_sessions
   'actual_start_time', 'actual_end_time', 'follow_up_required',
   'referral_required', 'session_quality', 'connection_drops',
   'patient_consent_given', 'session_recorded', 'patient_rating',
@@ -349,11 +347,9 @@ export const TABLE_CONFLICT_POLICY: Record<string, ConflictPolicy> = {
   // Pharmacy inventory: a stock-level snapshot per SKU; the latest push wins.
   pharmacy_inventory: ConflictPolicy.LAST_WRITE_WINS,
 
-  // Telehealth: status moves scheduled → in_session → completed/cancelled/no_show.
   // Once finalized do not allow rollback. The terminal-status vocabulary doesn't
   // match TERMINAL_STATUSES exactly, so we rely on the updated_at monotonicity
   // guard alone — same approach as triage_events / appointments.
-  telehealth_sessions: ConflictPolicy.CLINICAL_FINALIZED,
 
   // Wards / blood_bank / assets / staff_schedules / leave_requests /
   // payroll_entries / patient_feedback / emergency_plans / fee_schedule /

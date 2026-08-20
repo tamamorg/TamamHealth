@@ -1,6 +1,14 @@
 # ADR 0002 — Telehealth video provider
 
-- **Status:** Accepted (implementation landed 2026-07-28)
+- **Status:** **Withdrawn (2026-08-20)** — telehealth was removed from the
+  product entirely. Every visit is now in person, and the appointment model no
+  longer carries a mode. The decision below is kept as a record of what was
+  built and why, and of the constraint that shaped it: PHI-bearing media had to
+  stay on infrastructure we control, which is what ruled out every hosted SFU.
+  Anyone reviving remote visits should start from that constraint rather than
+  from this choice — the product reasons for dropping it are not recorded here.
+- **Superseded by:** removal (no replacement)
+- **Status when accepted:** Accepted (implementation landed 2026-07-28)
 - **Ticket:** KAN-123 (TH-1)
 - **Supersedes:** the simulated visit room that shipped in `TelehealthVisitRoom.tsx`
 - **Interacts with:** KAN-138/KAN-139 (room authorization), KAN-131 (connection

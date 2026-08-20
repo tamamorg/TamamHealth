@@ -104,7 +104,6 @@ export interface CreateNoteInput {
   assignedToName?: string;
   appointmentId?: string;
   encounterId?: string;
-  telehealth?: boolean;
   authorId?: string;
   authorName?: string;
   hospitalId?: string;
@@ -145,7 +144,6 @@ export async function createClinicalNote(input: CreateNoteInput): Promise<Clinic
     assignedToName: input.assignedToName,
     appointmentId: input.appointmentId,
     encounterId: input.encounterId,
-    telehealth: input.telehealth ?? def.telehealth ?? false,
     status: 'draft',
     authorId: input.authorId,
     authorName: input.authorName,
@@ -352,7 +350,6 @@ export async function changeNoteType(
     noteType,
     addedSections,
     sections,
-    telehealth: existing.telehealth || def.telehealth || false,
   });
 }
 

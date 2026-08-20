@@ -110,7 +110,6 @@ const DYNAMIC_ROUTES: DynamicRoute[] = [
   dynamic(segments => segments.length === 2 && segments[0] === 'notes', '/notes', 'routeContext.notes', 'routeContext.noteDetails'),
   dynamic(segments => segments.length === 2 && segments[0] === 'billing', '/billing', 'routeContext.billing', 'routeContext.billDetails'),
   dynamic(segments => segments.length === 3 && segments[0] === 'hospitals' && segments[2] === 'manage', '/hospitals', 'nav.hospitals', 'routeContext.manageFacility'),
-  dynamic(segments => segments.length === 3 && segments[0] === 'telehealth' && segments[1] === 'visit', '/appointments', 'routeContext.appointments', 'routeContext.telehealthVisit'),
   dynamic(segments => segments.length === 2 && segments[0] === 'rooming', '/dashboard', 'breadcrumb.dashboard', 'routeContext.rooming'),
   dynamic(segments => segments.length === 2 && segments[0] === 'triage', '/dashboard', 'breadcrumb.dashboard', 'routeContext.triage'),
   dynamic(segments => segments.length === 3 && segments[0] === 'wards' && segments[1] === 'mar', '/wards', 'routeContext.wards', 'routeContext.medicationAdministration'),

@@ -63,7 +63,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/epidemic-intelligence', '/mch-analytics', '/government',
       '/vital-statistics', '/facility-assessments', '/data-quality',
       '/dhis2-export', '/public-stats',
-      '/appointments', '/telehealth',
+      '/appointments',
       '/billing', '/payments', '/payments/claims',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
@@ -113,7 +113,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
       '/settings',
-      '/appointments', '/telehealth',
+      '/appointments',
       '/wards', '/alerts', '/blood-bank',
       '/transfers',
     ],
@@ -121,14 +121,14 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
   },
 
   clinical_officer: {
-    // Diagnoses, treats, prescribes, orders labs, refers, runs telehealth
+    // Diagnoses, treats, prescribes, orders labs, refers
     // visits. Clinical scope only — payment processing belongs to
     // cashier/biller, not clinicians.
     allowed: [
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
       '/settings',
-      '/appointments', '/telehealth',
+      '/appointments',
       '/wards', '/alerts', '/blood-bank',
       '/transfers',
     ],
@@ -254,7 +254,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/facility-settings',
       '/it', '/system-admin',
       '/epidemic-intelligence', '/mch-analytics', '/my-facility', '/facility-overview',
-      '/appointments', '/telehealth', '/facility-assessments', '/data-quality',
+      '/appointments', '/facility-assessments', '/data-quality',
       '/billing', '/payments', '/payments/claims',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       // The staff list. The HR module's own "Staff Roster" was the same roster
@@ -375,7 +375,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     allowed: [
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
-      '/appointments', '/telehealth', '/wards', '/alerts', '/settings',
+      '/appointments', '/wards', '/alerts', '/settings',
       '/blood-bank',
       '/transfers',
     ],

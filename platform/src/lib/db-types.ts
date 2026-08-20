@@ -1386,7 +1386,7 @@ export interface EncounterDoc extends BaseDoc {
    */
   attendanceType?: 'new' | 'repeat';
   /** How the patient arrived — the encounter's front door. */
-  arrivalChannel?: 'appointment' | 'walk_in' | 'referral' | 'telehealth';
+  arrivalChannel?: 'appointment' | 'walk_in' | 'referral';
   /**
    * The scheduled appointment this visit matched at check-in, when one
    * existed. Previously computed and discarded by check-in-service.ts.
@@ -1698,7 +1698,7 @@ export interface ANCVisitDoc extends BaseDoc {
 // Captures the WHO ETAT ABCC assessment plus vitals taken at triage.
 // One record per triage encounter; a patient may have many over time.
 export type TriagePriority = 'RED' | 'YELLOW' | 'GREEN';
-export type TriageDisposition = 'emergency' | 'general_clinic' | 'specialty_clinic' | 'telehealth' | 'home_care';
+export type TriageDisposition = 'emergency' | 'general_clinic' | 'specialty_clinic' | 'home_care';
 export type TriageHandoffStatus = 'awaiting_room' | 'awaiting_provider' | 'assigned' | 'acknowledged' | 'in_consultation' | 'completed';
 
 export interface TriageDoc extends BaseDoc {
@@ -2058,8 +2058,13 @@ export interface StaffScheduleDoc extends BaseDoc {
   orgId?: string;
 }
 
-// ===== Provider Availability (bookable windows for appointments/telehealth) =====
-export type AvailabilityModality = 'in_person' | 'telehealth' | 'both';
+// ===== Provider Availability (bookable windows for appointments) =====
+/**
+ * Kept as a single-member union rather than deleted outright: availability rows
+ * already carry a modality, and widening a stored value to nothing would make
+ * every existing document fail validation. Every visit is in person now.
+ */
+export type AvailabilityModality = 'in_person';
 export type AvailabilityStatus = 'open' | 'partially_booked' | 'full' | 'cancelled';
 
 export interface AvailabilityDoc extends BaseDoc {
@@ -2227,7 +2232,7 @@ export type AppointmentStatus =
   // not tell who had been assessed from who was still waiting for a nurse.
   | 'checked_in' | 'triaged' | 'in_progress' | 'completed'
   | 'cancelled' | 'no_show' | 'rescheduled';
-export type AppointmentType = 'general' | 'follow_up' | 'specialist' | 'anc' | 'immunization' | 'lab' | 'telehealth' | 'surgical' | 'dental' | 'mental_health' | 'walk_in';
+export type AppointmentType = 'general' | 'follow_up' | 'specialist' | 'anc' | 'immunization' | 'lab' | 'surgical' | 'dental' | 'mental_health' | 'walk_in';
 export type AppointmentPriority = 'routine' | 'urgent' | 'emergency';
 /**
  * Which door the booking came in through. Absent on rows written before online
@@ -2255,12 +2260,6 @@ export interface AppointmentDoc extends BaseDoc {
   endTime?: string;           // HH:MM estimated end
   duration: number;           // minutes
   appointmentType: AppointmentType;
-  /**
-   * How the visit happens, independent of what kind of visit it is. Legacy rows
-   * carry no mode and are read as in-office unless `appointmentType` is
-   * 'telehealth', which is how a remote visit used to be recorded.
-   */
-  appointmentMode?: 'in_office' | 'telehealth';
   priority: AppointmentPriority;
   /** Second staff member on the visit (rooming nurse, interpreter, scribe). */
   staffId?: string;
@@ -2359,171 +2358,6 @@ export interface AppointmentDoc extends BaseDoc {
   /** Short public reference shown on the confirmation screen (e.g. TMH-8F3K2).
    *  Also the key for the unauthenticated status/cancel links. */
   bookingReference?: string;
-}
-
-// ===== Telehealth Services (Private Sector) =====
-export type TelehealthStatus = 'scheduled' | 'waiting_room' | 'in_session' | 'completed' | 'cancelled' | 'failed' | 'no_show';
-export type TelehealthType = 'video' | 'audio' | 'chat';
-/** Why a telehealth session reached a terminal state (KAN-127). */
-export type TelehealthTerminationReason =
-  | 'provider_ended'
-  | 'patient_left'
-  | 'connection_failed'
-  | 'abandoned'
-  | 'no_show'
-  | 'cancelled';
-export type SessionQuality = 'excellent' | 'good' | 'fair' | 'poor' | 'failed';
-
-export interface TelehealthSessionDoc extends BaseDoc {
-  type: 'telehealth_session';
-  // Linked appointment
-  appointmentId?: string;
-  // Participants
-  patientId: string;
-  patientName: string;
-  patientPhone?: string;
-  patientEmail?: string;
-  providerId: string;
-  providerName: string;
-  providerRole: string;
-  facilityId: string;
-  facilityName: string;
-  // Session details
-  sessionType: TelehealthType;
-  scheduledDate: string;
-  scheduledTime: string;
-  actualStartTime?: string;
-  actualEndTime?: string;
-  duration?: number;          // actual minutes — DERIVED server-side from the
-                              // timestamps above, never taken from a client's
-                              // elapsed timer (KAN-127)
-  status: TelehealthStatus;
-  /**
-   * Why the session ended. Recorded on every terminal transition so a short or
-   * missing visit can be told apart from a clean one after the fact — a
-   * completed session and one the patient dropped out of otherwise look
-   * identical in the record.
-   */
-  terminationReason?: TelehealthTerminationReason;
-  /**
-   * Waiting room (KAN-128). The patient's arrival and the clinician's decision
-   * on it, recorded rather than inferred.
-   *
-   * `waitingSince` is what makes an honest wait time possible — before it, the
-   * patient's screen could only count from when their own page loaded, which
-   * resets on every reconnect and understates the wait exactly when it is
-   * longest.
-   *
-   * It also separates two situations the `status` field alone conflates: a
-   * patient who never arrived, and one who waited and was never let in. Those
-   * are the same `no_show` without it, and only one of them is the patient's
-   * doing.
-   */
-  waitingSince?: string;
-  admittedAt?: string;
-  admittedBy?: string;
-  admittedByName?: string;
-  rejectedAt?: string;
-  rejectedBy?: string;
-  rejectedByName?: string;
-  /** Why the clinician turned the patient away. Shown to the patient. */
-  rejectionReason?: string;
-  // Connection
-  roomId: string;             // Unique room identifier for joining
-  joinUrl?: string;           // URL for patient to join
-  providerJoinUrl?: string;
-  // Clinical
-  chiefComplaint: string;
-  clinicalNotes?: string;
-  diagnosis?: string;
-  icd10Code?: string;
-  prescriptionsIssued?: string[];
-  labOrdersIssued?: string[];
-  followUpRequired: boolean;
-  followUpDate?: string;
-  referralRequired: boolean;
-  referralFacility?: string;
-  // Quality & compliance (ISO 13131 alignment)
-  sessionQuality?: SessionQuality;
-  connectionDrops: number;
-  patientConsentGiven: boolean;
-  consentTimestamp?: string;
-  /**
-   * HOW consent was obtained. Required whenever `patientConsentGiven` is true —
-   * a bare boolean says a patient consented but not who recorded it or on what
-   * basis, which is not a defensible record.
-   *
-   *  - `patient_portal`          the patient themselves ticked consent before
-   *                              joining. The only form that is truly
-   *                              first-party.
-   *  - `provider_attested_verbal` the clinician asked the patient (in the room,
-   *                              by phone) and is attesting to it. Carries
-   *                              `consentAttestedBy` so the attestation is
-   *                              attributable to a named user.
-   *  - `written`                 a signed paper/scanned form exists on file.
-   *
-   * Historical documents may lack this field; treat absent as "unknown
-   * provenance", NOT as patient-given.
-   */
-  consentMethod?: 'patient_portal' | 'provider_attested_verbal' | 'written';
-  /** User id of the clinician attesting, when consentMethod is provider-attested. */
-  consentAttestedBy?: string;
-  /** Display name of that clinician, denormalised for audit readability. */
-  consentAttestedByName?: string;
-  /**
-   * Patient portal user id, when the patient consented themselves. The
-   * counterpart to `consentAttestedBy` — between them, every consent record
-   * names the person who performed the act rather than only its method.
-   */
-  consentedBy?: string;
-  /**
-   * Version of the consent policy the patient was actually shown.
-   *
-   * Without this a consent record proves someone ticked a box but not what
-   * they agreed to, and an audit cannot reproduce the text — which is the
-   * whole evidentiary value of the record. Recorded from the server's current
-   * policy, never from a client-supplied string.
-   */
-  consentPolicyVersion?: string;
-  /**
-   * Withdrawal is recorded, not erased. Clearing `patientConsentGiven` alone
-   * would make a withdrawn consent indistinguishable from one never given,
-   * losing the fact that the patient made a decision and when.
-   */
-  consentWithdrawnAt?: string;
-  consentWithdrawnReason?: string;
-  // Recording & documentation
-  sessionRecorded: boolean;
-  recordingUrl?: string;
-  attachments?: { name: string; type: string; url: string }[];
-  // Patient satisfaction
-  patientRating?: number;     // 1-5 — the patient's SATISFACTION with the visit
-  patientFeedback?: string;
-  /**
-   * The provider's rating of technical quality — "was the connection usable?"
-   *
-   * Deliberately a separate field from `patientRating` (KAN-132). They answer
-   * different questions: a clinically excellent visit over a terrible line
-   * should score high on one and low on the other, and averaging them together
-   * would hide exactly the operational problem the technical score exists to
-   * surface.
-   */
-  providerTechnicalRating?: number;  // 1-5
-  providerFeedback?: string;
-  /** When each rating was captured, so response rate can be reported. */
-  patientRatedAt?: string;
-  providerRatedAt?: string;
-  // Billing (private sector)
-  consultationFee?: number;
-  currency?: string;
-  paymentStatus?: 'pending' | 'paid' | 'waived' | 'insurance';
-  insuranceProvider?: string;
-  // Administrative
-  cancelledReason?: string;
-  cancelledBy?: string;
-  state: string;
-  county?: string;
-  orgId?: string;
 }
 
 // ===== Emergency Preparedness =====

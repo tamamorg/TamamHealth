@@ -1021,7 +1021,6 @@ export default function TriageWorkflow({
                   <option value="emergency">Emergency care</option>
                   <option value="general_clinic">General clinic</option>
                   <option value="specialty_clinic">Specialty clinic</option>
-                  <option value="telehealth">Telehealth</option>
                   <option value="home_care">Discharge / home care</option>
                 </Select>
               </div>

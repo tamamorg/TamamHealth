@@ -52,7 +52,6 @@ export function publicReasonView(r: VisitReasonDoc) {
     slug: r.slug,
     name: r.name,
     durationMinutes: r.durationMinutes,
-    modality: r.modality,
     availableToNewPatients: r.availableToNewPatients,
     availableToReturningPatients: r.availableToReturningPatients,
     requiresInsurance: r.requiresInsurance,
@@ -91,7 +90,6 @@ export function publicSlotView(s: Slot) {
     startTime: s.startTime,
     endTime: s.endTime,
     durationMinutes: s.durationMinutes,
-    modality: s.modality,
   };
 }
 

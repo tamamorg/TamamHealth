@@ -120,7 +120,7 @@ export default function EhrVisitPopup({
   onLwbs?: () => void;
   /**
    * Start a clinical note for this visit. Offered here because the appointment
-   * card already carries the patient, provider, date and telehealth mode the
+   * card already carries the patient, provider and date the
    * note header needs — creating from the chart makes the clinician re-select
    * all of it.
    */
@@ -245,7 +245,6 @@ export default function EhrVisitPopup({
               <CreateNoteButton
                 tone="primary"
                 defaultType={defaultNoteTypeFor({
-                  telehealth: appointment?.appointmentType === 'telehealth',
                   reason: appointment?.reason || triage?.chiefComplaint,
                 })}
                 disabled={creatingNote}

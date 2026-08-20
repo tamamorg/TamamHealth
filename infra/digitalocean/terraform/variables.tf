@@ -42,24 +42,6 @@ variable "data_residency_acknowledged" {
   }
 }
 
-variable "enable_telehealth_video" {
-  description = <<-EOT
-    Open the firewall ports a self-hosted LiveKit SFU needs (UDP 50000-60000
-    for RTC media, TCP 7881 as the UDP-blocked fallback, UDP 3478 for
-    TURN/STUN). Off by default — an open UDP range serving nothing is attack
-    surface for free.
-
-    DATA RESIDENCY WARNING: enabling this on DigitalOcean means live
-    consultation media — the patient's face, voice and the clinical discussion
-    itself — is relayed through a droplet OUTSIDE South Sudan (DO has no Africa
-    region). That is arguably more sensitive than the stored records this
-    module already warns about above. Confirm the MoH position covers
-    real-time media before turning it on for anything but synthetic testing.
-  EOT
-  type        = bool
-  default     = false
-}
-
 variable "do_token" {
   description = "DigitalOcean API token. Prefer: export DIGITALOCEAN_TOKEN=..."
   type        = string

@@ -271,7 +271,7 @@ export async function createAppointment(
  * Fetch one appointment by id, or null when it does not exist.
  *
  * Returns null rather than throwing so callers can branch on absence — the
- * telehealth status sync needs to ask "is this appointment cancelled?" without
+ * status sync needs to ask "is this appointment cancelled?" without
  * a missing appointment aborting a completed consultation.
  */
 export async function getAppointmentById(id: string): Promise<AppointmentDoc | null> {

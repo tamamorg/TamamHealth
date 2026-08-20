@@ -2,21 +2,15 @@
 
 /**
  * Quick "Add availability" modal — lets a provider publish a bookable window
- * (date + time range + slot length + modality) that appointments can be booked
+ * (date + time range + slot length) that appointments can be booked
  * into. Opened from the TopBar quick-actions menu.
  */
 import { useState } from 'react';
 import { useAuth } from '@/lib/context';
-import type { AvailabilityModality } from '@/lib/db-types';
 import { Calendar, Clock, X, Loader2, Check, AlertCircle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 
 const SLOT_OPTIONS = [15, 20, 30, 45, 60];
-const MODALITIES: { value: AvailabilityModality; label: string }[] = [
-  { value: 'in_person', label: 'In-person' },
-  { value: 'telehealth', label: 'Telehealth' },
-  { value: 'both', label: 'Both' },
-];
 
 function nowTimePlus(hours: number): string {
   // Round to the next quarter hour, then add `hours`.
@@ -33,7 +27,6 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
   const [startTime, setStartTime] = useState(nowTimePlus(0));
   const [endTime, setEndTime] = useState(nowTimePlus(3));
   const [slotMinutes, setSlotMinutes] = useState(30);
-  const [modality, setModality] = useState<AvailabilityModality>('in_person');
   const [department, setDepartment] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
@@ -55,7 +48,7 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
           startTime,
           endTime,
           slotMinutes,
-          modality,
+          modality: 'in_person' as const,
           department: department.trim() || undefined,
           notes: notes.trim() || undefined,
           orgId: currentUser.orgId,
@@ -114,11 +107,6 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
             <Field label="Slot length">
               <Select value={slotMinutes} onChange={e => setSlotMinutes(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle}>
                 {SLOT_OPTIONS.map(s => <option key={s} value={s}>{s} min</option>)}
-              </Select>
-            </Field>
-            <Field label="Modality">
-              <Select value={modality} onChange={e => setModality(e.target.value as AvailabilityModality)} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle}>
-                {MODALITIES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
               </Select>
             </Field>
           </div>

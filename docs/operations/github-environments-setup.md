@@ -9,7 +9,7 @@ DigitalOcean droplets.
 > declares `environment: production` shares this same reviewer gate and
 > secret store: `deploy-production.yml`, `deploy-app-platform.yml`,
 > `deploy-website.yml`, `backups-cron.yml`, `reminders-cron.yml`,
-> `telehealth-maintenance-cron.yml`, and `transfers-sweep-cron.yml`. See
+> and `transfers-sweep-cron.yml`. See
 > [Everything else gated on `production`](#everything-else-gated-on-production)
 > below for the full secret list. `mobile-beta.yml` uses its own separate
 > `mobile-beta` environment, not `production`.
@@ -79,7 +79,6 @@ approval as `deploy-production.yml`.
 | [`deploy-website.yml`](../../.github/workflows/deploy-website.yml) | `WEBSITE_SSH_HOST`, `WEBSITE_SSH_USER`, `WEBSITE_SSH_KEY` (only checked when `restart: ssh`, the default); `DIGITALOCEAN_ACCESS_TOKEN` (only for `restart: reboot`) |
 | [`backups-cron.yml`](../../.github/workflows/backups-cron.yml) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `BACKUP_BUCKET`, `BACKUP_PRIVKEY_GPG`, `BACKUP_PRIVKEY_PASSPHRASE`; optional `AWS_REGION` (default `af-south-1`), `AWS_ENDPOINT_URL`, repo/env var `DRILL_SKIP_POSTGRES` — see [`backups.md`](backups.md) |
 | [`reminders-cron.yml`](../../.github/workflows/reminders-cron.yml) | `PLATFORM_BASE_URL`, `REMINDER_DISPATCH_SECRET` |
-| [`telehealth-maintenance-cron.yml`](../../.github/workflows/telehealth-maintenance-cron.yml) | `PLATFORM_BASE_URL`, `TELEHEALTH_MAINTENANCE_SECRET` |
 | [`transfers-sweep-cron.yml`](../../.github/workflows/transfers-sweep-cron.yml) | `PLATFORM_BASE_URL`, `TRANSFER_SWEEP_SECRET` |
 
 `PLATFORM_BASE_URL` and `DIGITALOCEAN_ACCESS_TOKEN` are each shared across

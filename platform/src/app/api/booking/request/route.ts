@@ -43,7 +43,6 @@ interface RequestBody {
   reason?: string;
   holdToken?: string;
   patientClass?: PatientClass;
-  modality?: 'in_person' | 'telehealth';
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -127,7 +126,6 @@ export async function POST(request: NextRequest) {
   }
 
   const patientClass: PatientClass = body.patientClass === 'returning' ? 'returning' : 'new';
-  const modality = body.modality === 'telehealth' ? 'telehealth' : 'in_person';
 
   // The recompute. Everything above was preparation; this is what stops a
   // double booking.
@@ -136,7 +134,6 @@ export async function POST(request: NextRequest) {
     orgId,
     visitReason,
     patientClass,
-    modality,
     channel: 'public',
     providerId: hold.providerId,
     date: hold.date,
@@ -184,7 +181,6 @@ export async function POST(request: NextRequest) {
     endTime: toHHMM(toMinutes(hold.startTime) + visitReason.durationMinutes),
     duration: visitReason.durationMinutes,
     appointmentType: visitReason.appointmentType,
-    appointmentMode: modality === 'telehealth' ? 'telehealth' : 'in_office',
     priority: 'routine',
     department: visitReason.department,
     reason: visitReason.name,

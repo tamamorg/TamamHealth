@@ -186,7 +186,6 @@ function ProviderRow({
   // Expansion is per cell, not per row: opening Wednesday should not stretch
   // every other day of the same doctor.
   const [expanded, setExpanded] = useState<string | null>(null);
-  const isTelehealth = [...slotsByDate.values()].flat().some(s => s.modality === 'telehealth');
 
   // Collapsed line count of the row's busiest day. Empty days print this many
   // dashes on the same line rhythm as the chips, so each rank of times rules
@@ -232,17 +231,6 @@ function ProviderRow({
             <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.35 }}>
               {provider.subtitle}
             </div>
-          )}
-          {isTelehealth && (
-            <span
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 3,
-                padding: '2px 8px', fontSize: 11, fontWeight: 600,
-                background: 'var(--accent-light)', color: 'var(--accent-primary)',
-              }}
-            >
-              <Video className="w-3 h-3" /> Virtual visit
-            </span>
           )}
         </div>
       </div>

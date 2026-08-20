@@ -18,7 +18,6 @@ export interface UseBookingSlotsOptions {
   orgId?: string;
   visitReason?: VisitReasonDoc | null;
   patientClass?: PatientClass;
-  modality?: 'in_person' | 'telehealth';
   channel?: SlotChannel;
   /** First day to search. Defaults to the facility's today. */
   from?: string;
@@ -35,7 +34,6 @@ export function useBookingSlots(options: UseBookingSlotsOptions) {
   const {
     facilityId, orgId, visitReason,
     patientClass = 'returning',
-    modality = 'in_person',
     channel = 'staff',
     from, days = 30, providerIds, secondaryStaffId,
     enabled = true,
@@ -70,7 +68,6 @@ export function useBookingSlots(options: UseBookingSlotsOptions) {
         orgId,
         visitReason,
         patientClass,
-        modality,
         channel,
         from: start,
         to: addDays(start, days),
@@ -88,7 +85,7 @@ export function useBookingSlots(options: UseBookingSlotsOptions) {
     } finally {
       if (seq === requestSeq.current) setLoading(false);
     }
-  }, [enabled, facilityId, orgId, visitReason, patientClass, modality, channel, from, days, providerKey, secondaryStaffId]);
+  }, [enabled, facilityId, orgId, visitReason, patientClass, channel, from, days, providerKey, secondaryStaffId]);
 
   useEffect(() => { load(); }, [load]);
 

@@ -160,7 +160,6 @@ export default function EhrTopRail() {
       '/reports': 'nav.reports',
       '/messages': 'nav.messages',
       '/settings': 'nav.settings',
-      '/telehealth': 'nav.telehealth',
       '/government': 'nav.government',
       '/facility-settings': 'nav.facilitySettings',
       '/payments': 'nav.payments',

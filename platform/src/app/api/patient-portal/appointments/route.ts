@@ -15,34 +15,7 @@ export async function GET(req: NextRequest) {
     const { getAppointmentsByPatient } = await import('@/lib/services/appointment-service');
     const appointments = await getAppointmentsByPatient(auth.sub);
 
-    // KAN-124: a telehealth appointment is only reachable if the patient is
-    // told where to join — attach the session's join path for live telehealth
-    // appointments. The link carries only an opaque session id; the join page
-    // and token route re-authorize ownership + join window on every request,
-    // so it grants nothing by itself.
-    const JOINABLE_APPOINTMENT = new Set(['scheduled', 'confirmed', 'checked_in', 'in_progress']);
-    const DEAD_SESSION = new Set(['completed', 'cancelled', 'failed', 'no_show']);
-    const enriched = await Promise.all(appointments.map(async (appointment) => {
-      if (appointment.appointmentType !== 'telehealth' || !JOINABLE_APPOINTMENT.has(appointment.status)) {
-        return appointment;
-      }
-      try {
-        const { getSessionByAppointmentId } = await import('@/lib/services/telehealth-service');
-        const session = await getSessionByAppointmentId(appointment._id);
-        if (!session || DEAD_SESSION.has(session.status)) return appointment;
-        return {
-          ...appointment,
-          telehealth: {
-            sessionId: session._id,
-            joinPath: `/telehealth/join/${encodeURIComponent(session._id)}`,
-          },
-        };
-      } catch {
-        return appointment; // enrichment is best-effort; the list still renders
-      }
-    }));
-
-    return NextResponse.json({ appointments: enriched });
+    return NextResponse.json({ appointments });
   } catch (err) {
     if (demoFallbackEnabled()) {
       logDemoFallback('appointments', err);

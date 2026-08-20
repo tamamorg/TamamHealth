@@ -369,7 +369,7 @@ export default function PatientPortalPage() {
                             <td className="bl-num bl-right">{formatMoney(bill.amount)}</td>
                             <td>
                               <span className={`bl-chip bl-chip--${bill.status}`}>
-                                {isPaid ? t('telehealth.payment_paid') : bill.status === 'partial' ? t('claims.status_partial') : t('portal.unpaid')}
+                                {isPaid ? t('portal.paid') : bill.status === 'partial' ? t('claims.status_partial') : t('portal.unpaid')}
                               </span>
                               {bill.status === 'partial' && (
                                 <div className="bl-muted" style={{ fontSize: 11, marginTop: 3 }}>

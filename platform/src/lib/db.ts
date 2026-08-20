@@ -193,7 +193,6 @@ export const appointmentsDB = () => getDB('tamamhealth_appointments');
 export const availabilityDB = () => getDB('tamamhealth_availability');
 export const announcementsDB = () => getDB('tamamhealth_announcements');
 export const accountRequestsDB = () => getDB('tamamhealth_account_requests');
-export const telehealthDB = () => getDB('tamamhealth_telehealth');
 export const pharmacyInventoryDB = () => getDB('tamamhealth_pharmacy_inventory');
 export const triageDB = () => getDB('tamamhealth_triage');
 export const billingDB = () => getDB('tamamhealth_billing');
@@ -393,7 +392,14 @@ export const patientTransfersDB = () => getDB('tamamhealth_patient_transfers');
 // token form, API and DB). The four seeded intake docs and the
 // tamamhealth_intake_forms database go with it; the bump purges the orphaned
 // local DB from browsers seeded while the feature existed.
-export const SEED_VERSION = 73;
+// Bumped to 74: operator-requested full reset. The server-side CouchDB volume
+// was destroyed and recreated empty, so a browser still holding the version-73
+// stores would have replicated its old documents straight back into the fresh
+// database — the wipe would have undone itself on the first page load. The
+// bump is what makes the two halves agree: `resetAllDatabases()` destroys the
+// local stores (destroy, not delete, so no tombstones propagate) and the seed
+// re-runs against the empty server.
+export const SEED_VERSION = 74;
 
 export async function isSeeded(): Promise<boolean> {
   try {
@@ -476,7 +482,7 @@ export const LOCAL_DATABASE_NAMES: readonly string[] = [
     'tamamhealth_births', 'tamamhealth_deaths', 'tamamhealth_facility_assessments',
     'tamamhealth_immunizations', 'tamamhealth_anc', 'tamamhealth_follow_ups',
     'tamamhealth_organizations', 'tamamhealth_platform_config',
-    'tamamhealth_appointments', 'tamamhealth_telehealth', 'tamamhealth_pharmacy_inventory',
+    'tamamhealth_appointments', 'tamamhealth_pharmacy_inventory',
     'tamamhealth_triage',
     'tamamhealth_billing', 'tamamhealth_fee_schedule', 'tamamhealth_wards',
     'tamamhealth_staff_schedules', 'tamamhealth_blood_bank',

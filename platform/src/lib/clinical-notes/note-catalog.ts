@@ -58,7 +58,6 @@ export type NoteSectionId =
   | 'preop_diagnosis'
   | 'postop_diagnosis'
   | 'estimated_blood_loss'
-  | 'telehealth_attestation'
   | 'admission_reason'
   | 'discharge_diagnosis'
   | 'discharge_condition'
@@ -159,17 +158,6 @@ export const NOTE_SECTIONS: Readonly<Record<NoteSectionId, NoteSectionDef>> = {
     placeholder: 'e.g. 150 mL, or “minimal”…',
   },
 
-  /**
-   * Telehealth attestation. A remote encounter has to record that the patient
-   * consented and where both parties were: without it the note does not
-   * evidence a billable, lawful telehealth visit, and in a referral network
-   * spanning states the originating site decides which rules applied.
-   */
-  telehealth_attestation: {
-    id: 'telehealth_attestation', label: 'Telehealth Attestation', kind: 'narrative',
-    placeholder: 'Modality (video/phone), patient location, provider location, consent obtained…',
-  },
-
   // Discharge-summary elements. These are the parts a receiving clinician reads
   // first and the parts an auditor checks for.
   admission_reason: {
@@ -193,9 +181,7 @@ export const NOTE_SECTIONS: Readonly<Record<NoteSectionId, NoteSectionDef>> = {
 
 export type NoteTypeId =
   | 'soap'
-  | 'telehealth_soap'
   | 'hp'
-  | 'telehealth_hp'
   | 'consultation'
   | 'procedure'
   | 'discharge_summary'
@@ -215,8 +201,6 @@ export interface NoteTypeDef {
   optionalSections: readonly NoteSectionId[];
   /** Shown in the type picker to explain when to reach for it. */
   description: string;
-  /** Telehealth types prefill the note's encounter mode. */
-  telehealth?: boolean;
 }
 
 /** Sections almost every clinical note carries, in their conventional order. */
@@ -238,17 +222,6 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
     sections: CORE_SOAP,
     optionalSections: COMMON_OPTIONAL,
   },
-  telehealth_soap: {
-    id: 'telehealth_soap',
-    label: 'Telehealth SOAP',
-    description: 'SOAP note for a video or phone visit, with the telehealth attestation.',
-    // The attestation is a default section, not an optional one: a remote
-    // encounter without recorded consent and both parties' locations does not
-    // evidence a lawful, billable telehealth visit.
-    sections: [...CORE_SOAP, 'telehealth_attestation'],
-    optionalSections: COMMON_OPTIONAL,
-    telehealth: true,
-  },
   hp: {
     id: 'hp',
     label: 'H&P',
@@ -259,21 +232,6 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
       'assessment', 'plan',
     ],
     optionalSections: ['subjective', 'objective', 'mental_functional', 'patient_education', 'follow_up'],
-  },
-  telehealth_hp: {
-    id: 'telehealth_hp',
-    label: 'Telehealth H&P',
-    description: 'History and physical conducted over a telehealth connection.',
-    // No physical_exam by default: what can be examined remotely is limited to
-    // observation, and pre-printing an exam section invites a normal-exam
-    // shortcut for findings nobody could have elicited down a video link.
-    sections: [
-      'cc', 'hpi', 'past_medical_history', 'family_history', 'social_history',
-      'medications', 'allergies', 'ros', 'vitals', 'assessment', 'plan',
-      'telehealth_attestation',
-    ],
-    optionalSections: ['subjective', 'objective', 'physical_exam', 'mental_functional', 'follow_up'],
-    telehealth: true,
   },
   consultation: {
     id: 'consultation',
@@ -413,7 +371,6 @@ const SECTION_RANK: Readonly<Record<NoteSectionId, number>> = {
   plan: 23,
   interventions: 24,
   response_to_care: 24.5,
-  telehealth_attestation: 25.5,
   discharge_condition: 26.5,
   advice_given: 25,
   discharge_medications: 26,
@@ -430,7 +387,7 @@ const SECTION_RANK: Readonly<Record<NoteSectionId, number>> = {
 
 /** Stable display order for the note type picker. */
 export const NOTE_TYPE_ORDER: readonly NoteTypeId[] = [
-  'soap', 'telehealth_soap', 'hp', 'telehealth_hp', 'consultation',
+  'soap', 'hp', 'consultation',
   'procedure', 'discharge_summary', 'nurse_visit', 'ob_evaluation', 'phone',
   'memo_to_record', 'office_form', 'amendment',
 ];

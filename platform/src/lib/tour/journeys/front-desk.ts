@@ -63,7 +63,7 @@ export const FRONT_DESK_STEPS: TourStep[] = [
     preClickSelector: 'button[title="Create new appointment"]',
     placement: 'bottom',
     title: 'Book an appointment',
-    body: 'Book appointment opens booking as four short steps — Visit (reason, duration, in-person or telehealth, clinician), Time (a live clinician-by-day grid narrowed to who’s needed), Patient, then Insurance — so a slot is only offered once the people it needs are actually free.',
+    body: 'Book appointment opens booking as four short steps — Visit (reason, duration, clinician), Time (a live clinician-by-day grid narrowed to who’s needed), Patient, then Insurance — so a slot is only offered once the people it needs are actually free.',
   },
   {
     id: 'check-in',

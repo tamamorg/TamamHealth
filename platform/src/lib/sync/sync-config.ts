@@ -73,7 +73,6 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_patient_reminders',      direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_nutrition_screenings',   direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_nutrition_supplies',     direction: 'both', orgScoped: true },
-  { localName: 'tamamhealth_telehealth',            direction: 'both', orgScoped: true },
   // Fingerprint templates — synced so identification works at any facility in
   // the org, scoped to the org like other patient-identifying data.
   { localName: 'tamamhealth_biometric_templates',   direction: 'both', orgScoped: true },
@@ -209,7 +208,6 @@ export const DATABASE_DOCUMENT_TYPES: Readonly<Record<string, readonly string[]>
   tamamhealth_patient_reminders: ['patient_reminder'],
   tamamhealth_nutrition_screenings: ['nutrition_screening'],
   tamamhealth_nutrition_supplies: ['nutrition_supply'],
-  tamamhealth_telehealth: ['telehealth_session'],
   tamamhealth_biometric_templates: ['biometric_template'],
   tamamhealth_pharmacy_inventory: ['pharmacy_inventory'],
   tamamhealth_wards: ['ward', 'bed', 'admission'],

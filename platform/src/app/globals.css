@@ -622,7 +622,6 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-set-rail,
 .ehr-set-main,
 .modal-content,
-.th-chat-body,
 .mobile-shell-body,
 .mobile-patients-list,
 .mobile-calendar-list,
@@ -644,7 +643,6 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-set-rail::-webkit-scrollbar,
 .ehr-set-main::-webkit-scrollbar,
 .modal-content::-webkit-scrollbar,
-.th-chat-body::-webkit-scrollbar,
 .mobile-shell-body::-webkit-scrollbar,
 .mobile-patients-list::-webkit-scrollbar,
 .mobile-calendar-list::-webkit-scrollbar,
@@ -667,7 +665,6 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-set-rail::-webkit-scrollbar-track,
 .ehr-set-main::-webkit-scrollbar-track,
 .modal-content::-webkit-scrollbar-track,
-.th-chat-body::-webkit-scrollbar-track,
 .mobile-shell-body::-webkit-scrollbar-track,
 .mobile-patients-list::-webkit-scrollbar-track,
 .mobile-calendar-list::-webkit-scrollbar-track,
@@ -688,7 +685,6 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-set-rail::-webkit-scrollbar-thumb,
 .ehr-set-main::-webkit-scrollbar-thumb,
 .modal-content::-webkit-scrollbar-thumb,
-.th-chat-body::-webkit-scrollbar-thumb,
 .mobile-shell-body::-webkit-scrollbar-thumb,
 .mobile-patients-list::-webkit-scrollbar-thumb,
 .mobile-calendar-list::-webkit-scrollbar-thumb,
@@ -749,7 +745,6 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .ehr-set-rail::-webkit-scrollbar-thumb:hover,
 .ehr-set-main::-webkit-scrollbar-thumb:hover,
 .modal-content::-webkit-scrollbar-thumb:hover,
-.th-chat-body::-webkit-scrollbar-thumb:hover,
 .mobile-shell-body::-webkit-scrollbar-thumb:hover,
 .mobile-patients-list::-webkit-scrollbar-thumb:hover,
 .mobile-calendar-list::-webkit-scrollbar-thumb:hover,
@@ -5257,7 +5252,7 @@ html:has(.ehr-top-rail) {
 /* The name and any mark that belongs to it, on one line.
    `.ehr-appointment-main span` above turns every span in this cell into a
    right-aligned pill in the second column — written for the status badge, but
-   it also caught the telehealth icon, which is why the icon sat at the far
+   it also caught the trailing icon, which is why the icon sat at the far
    right of the row looking like a button rather than beside the patient. These
    two rules take the name group and the mark back out of that treatment; two
    classes outrank the class+element selector above, so no !important. */
@@ -5292,19 +5287,6 @@ html:has(.ehr-top-rail) {
   min-width: 0;
 }
 
-.ehr-appointment-main .ehr-row-name .ehr-row-telehealth {
-  grid-column: auto;
-  grid-row: auto;
-  flex: 0 0 auto;
-  justify-self: auto;
-  align-self: center;
-  width: auto;
-  margin-inline-start: 0;
-  padding: 0;
-  border-radius: 0;
-  background: none;
-  color: var(--ehr-blue, var(--accent-primary));
-}
 
 .ehr-appointment-main .ehr-row-meta {
   display: none;
@@ -11801,10 +11783,6 @@ span:has(> svg:only-child) {
   padding: 0;
   gap: 2px;
 }
-/* Telehealth "Join" (when present) stays a full-width row above the pair. */
-.ehr-right-rail-overlay .appointment-detail-join-btn {
-  flex: 1 1 100%;
-}
 
 /* The lucide icons default to a hard-coded brand-blue stroke; on the blue
    primary button that renders invisible, so force it white for this action. */
@@ -12241,11 +12219,6 @@ span:has(> svg:only-child) {
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
-}
-
-/* Telehealth "Join" stays a full-width row of its own above the pair. */
-.appointment-detail-modal__actions .appointment-detail-join-btn {
-  flex: 1 1 100%;
 }
 
 .appointment-detail-modal__split {
@@ -16399,9 +16372,8 @@ textarea.ehr-handoff-input {
   background: var(--ehr-blue-light);
 }
 
-/* Non-telehealth outstanding entries render as compact queue-card rows
-   (see `.ehr-queue-card--compact` near the queue-card rules below);
-   telehealth entries stay full appointment-row cards. */
+/* Outstanding entries render as compact queue-card rows
+   (see `.ehr-queue-card--compact` near the queue-card rules below). */
 .ehr-outstanding-title {
   display: flex;
   align-items: center;
@@ -16556,209 +16528,6 @@ textarea.ehr-handoff-input {
 .ehr-chart-content .data-table tbody tr:hover td,
 .ehr-chart-content table:not(.omrs-table) tbody tr:hover td {
   background: var(--ehr-blue-light) !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   Telehealth — Join affordances + video visit room (Tebra-style)
-   ═══════════════════════════════════════════════════════════════════ */
-
-/* Join buttons on the clinical dashboard */
-.appointment-detail-join-pill {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px; border-radius: 999px; border: none; cursor: pointer;
-  background: #F8593E; color: #fff; font-size: 11px; font-weight: 700;
-  line-height: 1;
-}
-.appointment-detail-join-pill:hover { filter: brightness(1.05); }
-
-.appointment-detail-join-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: #00A95D !important; color: #fff !important; border: none !important;
-  font-weight: 700;
-}
-.appointment-detail-join-btn:hover { filter: brightness(1.05); }
-
-/* Non-interactive "Telehealth" mode tag on the appointment card. Clicking the
-   card opens the detail popover; Join lives inside that popover (Tebra flow). */
-.ehr-appointment-telehealth-tag {
-  display: inline-flex; align-items: center; gap: 4px;
-  margin-top: 4px; padding: 2px 9px; border-radius: 999px;
-  background: rgba(46,124,246,0.12); color: var(--accent-primary);
-  font-size: 10.5px; font-weight: 700; line-height: 1; width: fit-content;
-}
-
-/* Visit room */
-.th-room {
-  display: flex; flex-direction: column;
-  height: calc(100dvh - 96px); min-height: 520px;
-  border-radius: 14px; overflow: hidden;
-  background: #0E1420; color: #E8EDF4;
-  border: 1px solid rgba(255,255,255,0.06);
-}
-.th-room--loading {
-  align-items: center; justify-content: center; gap: 14px; text-align: center;
-}
-.th-room--loading p { color: #C4CDDA; }
-
-.th-room-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px; background: #131B2A; border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.th-room-head-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.th-room-head-left strong { font-size: 15px; }
-.th-room-sub { color: #AEB8C8; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.th-live-dot { width: 9px; height: 9px; border-radius: 50%; background: #46506A; flex-shrink: 0; }
-.th-live-dot[data-live="true"] { background: #00A95D; box-shadow: 0 0 0 3px rgba(0,169,93,0.25); animation: thpulse 2s infinite; }
-@keyframes thpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
-.th-room-head-right { display: flex; align-items: center; gap: 10px; }
-.th-timer { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; font-size: 13px; color: #C4CDDA; }
-.th-icon-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer;
-  background: rgba(255,255,255,0.08); color: #E8EDF4;
-}
-.th-icon-btn:hover { background: rgba(255,255,255,0.16); }
-
-.th-stage { flex: 1; display: flex; min-height: 0; padding: 16px; gap: 16px; }
-
-.th-remote {
-  position: relative; flex: 1; min-width: 0;
-  border-radius: 14px; overflow: hidden;
-  background: radial-gradient(circle at 50% 35%, #1C2740, #0B1017);
-  display: flex; align-items: center; justify-content: center;
-}
-.th-share-video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-.th-remote-connected { text-align: center; }
-.th-avatar-lg {
-  width: 108px; height: 108px; border-radius: 50%; margin: 0 auto 14px;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #2E7CF6, #1D4FD8); color: #fff;
-  font-size: 38px; font-weight: 700;
-}
-.th-remote-name { font-size: 17px; font-weight: 600; }
-.th-remote-meta { color: #AEB8C8; font-size: 12.5px; margin-top: 3px; }
-
-.th-waiting { text-align: center; color: #C4CDDA; padding: 24px; }
-.th-waiting svg { color: #8FA3FF; margin: 0 auto 12px; }
-.th-waiting-title { font-size: 17px; font-weight: 700; color: #E8EDF4; }
-.th-waiting-sub { color: #AEB8C8; font-size: 13px; margin-top: 6px; }
-.th-admit-btn {
-  margin-top: 16px; display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer;
-  background: #00A95D; color: #fff; font-weight: 700; font-size: 14px;
-}
-.th-admit-btn:hover:not(:disabled) { filter: brightness(1.06); }
-.th-admit-btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
-
-/* Consent gate in the virtual waiting room. Sits above the Admit button and
-   disables it until the clinician attests — the visit must not start without
-   a consent record behind it. */
-.th-consent {
-  margin-top: 18px; display: flex; align-items: flex-start; gap: 10px;
-  max-width: 420px; text-align: start; cursor: pointer;
-  padding: 12px 14px; border-radius: 10px;
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
-  color: #E6ECF4; font-size: 13px; line-height: 1.45;
-}
-.th-consent input[type="checkbox"] {
-  margin-top: 2px; width: 16px; height: 16px; flex: 0 0 auto;
-  accent-color: #00A95D; cursor: pointer;
-}
-.th-consent strong { font-weight: 700; }
-.th-consent-help {
-  margin-top: 6px; max-width: 420px; text-align: start;
-  color: #93A2B5; font-size: 11px;
-}
-
-/* Admit / turn-away pair. The destructive action is deliberately quieter than
-   the primary one — turning a waiting patient away should take a moment's
-   thought, not be the easiest button to hit. */
-.th-waiting-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
-.th-reject-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-height: 40px; padding: 0 16px; border-radius: 9px;
-  background: transparent; color: #C7D2E0; font-size: 13.5px; font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.22); cursor: pointer;
-}
-.th-reject-btn:hover { border-color: rgba(252, 165, 165, 0.6); color: #FCA5A5; }
-
-/* Consent state in the waiting room. Colour carries the same meaning as the
-   text — never only the colour, since it also has to read in greyscale and to
-   anyone with a colour vision deficiency. */
-.th-consent-state {
-  margin-top: 10px; max-width: 420px; text-align: start;
-  font-size: 12.5px; line-height: 1.5; font-weight: 600;
-  padding: 9px 12px; border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06); color: #C7D2E0;
-}
-.th-consent-state[data-kind="patient"] {
-  border-color: rgba(0, 169, 93, 0.45); color: #6EE7A8;
-}
-.th-consent-state[data-kind="attested"],
-.th-consent-state[data-kind="written"] {
-  border-color: rgba(214, 158, 46, 0.45); color: #F0C674;
-}
-.th-consent-state[data-kind="withdrawn"] {
-  border-color: rgba(190, 49, 68, 0.55); color: #FCA5A5;
-}
-
-.th-self {
-  position: absolute; inset-inline-end: 16px; bottom: 16px;
-  width: 190px; height: 120px; border-radius: 12px; overflow: hidden;
-  background: #060A12; border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-}
-.th-self-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: none; }
-.th-self-video[data-on="true"] { display: block; }
-.th-self-off {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px;
-  color: #C4CDDA; font-size: 12px;
-}
-.th-self-name {
-  position: absolute; inset-inline-start: 8px; bottom: 6px; font-size: 11px; font-weight: 600;
-  color: #fff; background: rgba(0,0,0,0.45); padding: 2px 7px; border-radius: 6px;
-}
-
-.th-chat {
-  width: 300px; flex-shrink: 0; display: flex; flex-direction: column;
-  background: #131B2A; border-radius: 12px; overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.06);
-}
-.th-chat-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.th-chat-body { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
-.th-chat-empty { color: #6E7C93; font-size: 13px; text-align: center; margin-top: 20px; }
-.th-chat-msg { max-width: 85%; padding: 7px 11px; border-radius: 12px; font-size: 13px; background: rgba(255,255,255,0.08); align-self: flex-start; }
-.th-chat-msg.me { align-self: flex-end; background: #1D4FD8; color: #fff; }
-.th-chat-input { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
-.th-chat-input input {
-  flex: 1; min-width: 0; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
-  background: #0E1420; color: #E8EDF4; padding: 8px 12px; font-size: 13px; outline: none;
-}
-
-.th-controls {
-  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
-  padding: 14px; background: #131B2A; border-top: 1px solid rgba(255,255,255,0.06);
-}
-.th-ctrl {
-  display: inline-flex; flex-direction: column; align-items: center; gap: 4px;
-  min-width: 66px; padding: 8px 12px; border-radius: 12px; border: none; cursor: pointer;
-  background: rgba(255,255,255,0.08); color: #E8EDF4; font-size: 11px; font-weight: 600;
-}
-.th-ctrl:hover { background: rgba(255,255,255,0.16); }
-.th-ctrl.off { background: rgba(248,89,62,0.9); color: #fff; }
-.th-ctrl.active { background: #1D4FD8; color: #fff; }
-.th-ctrl-static { background: transparent; cursor: default; color: #C4CDDA; }
-.th-ctrl-static:hover { background: transparent; }
-.th-ctrl.leave { background: #E5342A; color: #fff; }
-.th-ctrl.leave:hover { background: #cf2d24; }
-
-@media (max-width: 900px) {
-  .th-chat { position: absolute; inset-inline-end: 12px; top: 64px; bottom: 90px; z-index: 5; }
-  .th-self { width: 132px; height: 88px; }
 }
 
 /* ── Align the schedule cards with the assigned-patients worklist ──
@@ -22748,128 +22517,6 @@ table.patient-data-table.patient-data-table {
   stroke: currentColor;
 }
 
-/* Telehealth: connection-problem banner. Shown when LiveKit is unconfigured or
-   unreachable, so a dead room never masquerades as a patient who hasn't joined. */
-.th-media-banner {
-  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-  z-index: 5; max-width: min(560px, 92%);
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 10px 16px; border-radius: 10px;
-  background: rgba(190, 49, 68, 0.94); color: #fff;
-  font-size: 12px; line-height: 1.45; text-align: center;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-}
-.th-media-banner strong { font-size: 13px; font-weight: 700; }
-
-/* Remote participant video. Sits above the fallback avatar and is revealed only
-   once a track is actually flowing. */
-.th-remote-video {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; display: none; z-index: 1;
-}
-.th-remote-video[data-on="true"] { display: block; }
-
-/* ---------------------------------------------------------------------------
-   Patient telehealth join (/telehealth/join/[sessionId])
-   Patient-facing, outside the staff shell. Deliberately large-target and
-   high-contrast: this is used on a phone, often on a poor connection, by
-   someone who is unwell and may be using the platform for the first time.
-   --------------------------------------------------------------------------- */
-.th-join {
-  min-height: 100dvh; display: flex; align-items: center; justify-content: center;
-  padding: 20px; background: var(--bg-page, #F4F7FA);
-}
-.th-join-card {
-  width: 100%; max-width: 460px; padding: 28px 24px;
-  background: var(--bg-card-solid, #FFFFFF); border-radius: 14px;
-  box-shadow: 0 10px 32px rgba(15, 31, 29, 0.12);
-}
-.th-join-title { font-size: 20px; font-weight: 700; color: var(--text-strong); margin-bottom: 10px; }
-.th-join-body { font-size: 14px; font-weight: 600; line-height: 1.55; color: var(--text-secondary); margin-bottom: 12px; }
-.th-join-consent {
-  display: flex; gap: 10px; align-items: flex-start; margin: 18px 0 6px;
-  padding: 14px; border-radius: 10px; cursor: pointer;
-  background: var(--overlay-subtle); border: 1px solid var(--border-light);
-  font-size: 14px; line-height: 1.5; color: var(--text-primary);
-}
-.th-join-consent input { margin-top: 3px; width: 18px; height: 18px; accent-color: #00A95D; }
-.th-join-error { margin-top: 10px; font-size: 13px; color: var(--rose-700, #b91c1c); }
-/* The failure block carries a remedy under the cause, so it stacks. */
-.th-join-error strong { display: block; margin-bottom: 4px; }
-.th-join-error span { display: block; color: var(--text-secondary); font-weight: 600; line-height: 1.5; }
-
-/* A shared screen is letterboxed, never cropped — `cover` would cut the edges
-   off a document, which is exactly where a lab value or a date tends to sit. */
-.th-join-remote--share { object-fit: contain; background: #05080F; }
-/* Clinician's camera, demoted while they share. Sits opposite the patient's
-   own self-view so the two never overlap. */
-.th-join-pip {
-  position: absolute; inset-inline-start: 16px; bottom: 16px;
-  width: 132px; height: 84px; border-radius: 10px; object-fit: cover;
-  background: #0B1220; border: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-/* Consent policy version, shown under the acceptance checkbox. */
-.th-join-policy-version { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
-
-/* Pre-visit summary: label/value rows, read before consenting. */
-.th-join-summary { margin: 4px 0 16px; font-size: 14px; }
-.th-join-summary > div {
-  display: flex; gap: 12px; padding: 9px 0;
-  border-bottom: 1px solid var(--border-light);
-}
-.th-join-summary > div:last-child { border-bottom: none; }
-.th-join-summary dt { flex: 0 0 92px; color: var(--text-secondary); font-weight: 700; }
-.th-join-summary dd { flex: 1; margin: 0; color: var(--text-strong); font-weight: 600; }
-
-/* Device-check self preview. Mirrored, because an un-mirrored self-view reads
-   as someone else's camera to most people. */
-.th-join-preview {
-  width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; margin-bottom: 12px;
-  background: #0B1220; object-fit: cover; transform: scaleX(-1);
-}
-
-.th-join-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
-.th-join-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-height: 46px; padding: 0 20px; border-radius: 10px; border: none;
-  background: #1A7FC1; color: #fff; font-size: 15px; font-weight: 700;
-  cursor: pointer; text-decoration: none;
-}
-.th-join-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.th-join-btn--ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-medium); }
-
-/* Live visit */
-.th-join--live { flex-direction: column; padding: 0; background: #0B1220; }
-.th-join-stage { position: relative; flex: 1; width: 100%; overflow: hidden; }
-.th-join-remote { width: 100%; height: 100%; object-fit: cover; background: #0B1220; }
-.th-join-self {
-  position: absolute; inset-inline-end: 14px; bottom: 14px; width: 116px; height: 156px;
-  object-fit: cover; border-radius: 10px; background: #060A12;
-  border: 1px solid rgba(255,255,255,0.16); transform: scaleX(-1);
-}
-.th-join-waiting {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; text-align: center; padding: 24px;
-}
-.th-join-waiting .th-join-title, .th-join-waiting .th-join-body { color: #E6ECF4; }
-.th-join-banner {
-  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-  max-width: min(520px, 92%); display: flex; flex-direction: column; gap: 2px;
-  padding: 12px 16px; border-radius: 10px; text-align: center;
-  background: rgba(190, 49, 68, 0.94); color: #fff; font-size: 13px; line-height: 1.45;
-}
-.th-join-controls {
-  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-  padding: 14px; background: #111A2B;
-}
-.th-join-ctl {
-  min-height: 46px; padding: 0 16px; border-radius: 10px; cursor: pointer;
-  background: rgba(255,255,255,0.10); color: #E6ECF4;
-  border: 1px solid rgba(255,255,255,0.16); font-size: 14px; font-weight: 600;
-}
-.th-join-ctl--leave { background: #BE3144; border-color: #BE3144; color: #fff; }
-
 /* ============ Transfer patient modal (xfer-) ============
    Scoped namespace so (a) the global uppercase `label` rule stops shouting
    every field name back at the user, and (b) each decision carries its own
@@ -24207,45 +23854,9 @@ table.patient-data-table.patient-data-table {
   border-radius: 999px;
 }
 
-/* Telehealth marker beside a patient's name in a worklist row, and the "Get
-   started" button the edit form shows once a visit is set to telehealth. */
-.ehr-row-telehealth {
-  display: inline-flex;
-  align-items: center;
-  margin-inline-start: 6px;
-  color: var(--ehr-blue, var(--accent-primary));
-  vertical-align: middle;
-}
 
-/* Icon only, and sized to itself — as a text button it inherited the panel's
-   full-width control rule and ran the whole row. */
-.appt-telehealth-join {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 0;
-  border-radius: 9px;
-  background: var(--ehr-blue, var(--accent-primary));
-  color: #fff;
-  cursor: pointer;
-}
 
-/* The icon set hardcodes a `stroke` attribute, so on a blue fill the glyph was
-   blue-on-blue and invisible — the colour has to be forced on the property. */
-.appt-telehealth-join svg,
-.appt-telehealth-join svg * {
-  stroke: #fff;
-  color: #fff;
-  fill: none;
-}
 
-.appt-telehealth-join:hover {
-  filter: brightness(1.06);
-}
 
 /* Label side matches "Open chart" inset for inset; the caret is a glyph's worth
    of room past the divider. Both carry `.cn-btn` in the selector to outrank the

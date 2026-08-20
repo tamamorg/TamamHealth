@@ -200,7 +200,7 @@ export const apd: Dictionary = {
   "Critical Result Alerts": "تنبيهات النتائج الخطيرة",
   "Critical values require two-eyes confirmation and notify the ordering clinician directly; results left unreviewed breach a visible turnaround SLA.": "القيم الخطيرة محتاجة تأكيد من زولين وبتنبه الطبيب الطالب مباشرة؛ والنتائج الما اتراجعت بتخرق مهلة إنجاز ظاهرة.",
   "Data-quality checks flag missing fields, impossible values and gaps in reporting ahead of submission.": "فحوصات جودة البيانات بتعلم الخانات الناقصة والقيم المستحيلة والفجوات في التقارير قبل التقديم.",
-  "Date, morning or afternoon, department, reason, and in-person or telehealth. The request arrives as requested for facility staff to confirm.": "التاريخ، والصباح أو بعد الضهر، والقسم، والسبب، وحضوري أو عن بعد. الطلب بيوصل كمطلوب عشان موظفي المنشأة يأكدوهو.",
+  "Date, morning or afternoon, department, and reason. The request arrives as requested for facility staff to confirm.": "التاريخ، والصباح أو بعد الضهر، والقسم، والسبب. الطلب بيوصل كمطلوب عشان موظفي المنشأة يأكدوهو.",
   "Deliveries are entered by batch number and expiry date, so the shelf has a ledger behind it.": "التوريدات بتتدخل برقم الدفعة وتاريخ الانتهاء، عشان يكون ورا الرف دفتر.",
   "Demoing the record system between sessions.": "بنعرض نظام السجلات بين الجلسات.",
   "Department panels": "لوحات الأقسام",

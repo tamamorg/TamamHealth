@@ -24,7 +24,13 @@
 import type { AppointmentType, BaseDoc } from './db-types';
 
 /** How a visit can be attended. Mirrors `AvailabilityModality`. */
-export type BookingModality = 'in_person' | 'telehealth' | 'both';
+/**
+ * Kept as a single-member union rather than deleted: visit-reason documents
+ * already store a modality, and narrowing a stored value to nothing would make
+ * every existing row fail validation. Every visit happens in person now, so
+ * the booking UI no longer offers a choice.
+ */
+export type BookingModality = 'in_person';
 
 /** Whether the booker has been seen at this practice before. */
 export type PatientClass = 'new' | 'returning';

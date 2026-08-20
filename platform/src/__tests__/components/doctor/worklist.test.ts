@@ -261,54 +261,6 @@ describe('assembleDoctorWorklist — appointments', () => {
     expect(result.appointments.map(a => a._id).sort()).toEqual(['appt-cancelled', 'appt-completed', 'appt-noshow']);
   });
 
-  test('closed appointments are excluded from telehealth entries even when telehealth-typed and today', () => {
-    const live = makeAppointment({
-      _id: 'appt-tele-live', providerId: 'doctor-1', appointmentType: 'telehealth',
-      appointmentDate: '2026-08-04', appointmentTime: '10:00', status: 'scheduled',
-    });
-    const cancelled = makeAppointment({
-      _id: 'appt-tele-cancelled', providerId: 'doctor-1', appointmentType: 'telehealth',
-      appointmentDate: '2026-08-04', appointmentTime: '11:00', status: 'cancelled',
-    });
-    const completed = makeAppointment({
-      _id: 'appt-tele-completed', providerId: 'doctor-1', appointmentType: 'telehealth',
-      appointmentDate: '2026-08-04', appointmentTime: '12:00', status: 'completed',
-    });
-    const noShow = makeAppointment({
-      _id: 'appt-tele-noshow', providerId: 'doctor-1', appointmentType: 'telehealth',
-      appointmentDate: '2026-08-04', appointmentTime: '13:00', status: 'no_show',
-    });
-
-    const result = assembleDoctorWorklist(baseInput({ appointments: [live, cancelled, completed, noShow] }));
-
-    // All four remain in the flat appointments list...
-    expect(result.appointments).toHaveLength(4);
-    // ...but only the still-live one becomes a telehealth entry.
-    const telehealthItem = result.outstanding.find(o => o.label === 'Telehealth visits');
-    expect(telehealthItem?.count).toBe(1);
-    expect(telehealthItem?.entries?.map(e => e.id)).toEqual(['appt-tele-live']);
-  });
-
-  test('telehealth entries only include today\'s telehealth-type appointments', () => {
-    const todayTele = makeAppointment({
-      _id: 'appt-today-tele', providerId: 'doctor-1', appointmentType: 'telehealth',
-      appointmentDate: '2026-08-04', status: 'scheduled',
-    });
-    const futureTele = makeAppointment({
-      _id: 'appt-future-tele', providerId: 'doctor-1', appointmentType: 'telehealth',
-      appointmentDate: '2026-08-05', status: 'scheduled',
-    });
-    const todayInPerson = makeAppointment({
-      _id: 'appt-today-general', providerId: 'doctor-1', appointmentType: 'general',
-      appointmentDate: '2026-08-04', status: 'scheduled',
-    });
-
-    const result = assembleDoctorWorklist(baseInput({ appointments: [todayTele, futureTele, todayInPerson] }));
-
-    const telehealthItem = result.outstanding.find(o => o.label === 'Telehealth visits');
-    expect(telehealthItem?.entries?.map(e => e.id)).toEqual(['appt-today-tele']);
-    expect(telehealthItem?.entries?.[0].href).toBe(`/telehealth/visit/${encodeURIComponent('appt-today-tele')}`);
-  });
 });
 
 describe('assembleDoctorWorklist — outstanding: documents to sign', () => {

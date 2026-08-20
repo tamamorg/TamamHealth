@@ -127,26 +127,6 @@ export interface FacilitySettings {
   /** Idle minutes before the screen auto-locks. */
   lockTimeoutMinutes: number;
 
-  /**
-   * How long either side of a scheduled telehealth slot a patient may join.
-   *
-   * Not a UI convenience — it is enforced server-side before a media token is
-   * minted (KAN-124), so widening it here genuinely widens access. `before`
-   * covers the patient who arrives early and should wait in the room rather
-   * than be turned away; `after` covers the clinic running late, which is the
-   * common case and the reason it is the larger of the two.
-   */
-  telehealthJoinWindow: { beforeMinutes: number; afterMinutes: number };
-
-  /**
-   * The telehealth consent policy a patient is shown before joining.
-   *
-   * Versioned so an audit can reproduce exactly what a given patient agreed
-   * to. Editing `text` without bumping `version` silently rewrites history for
-   * every consent already recorded against the old version — so the version is
-   * part of the record, not a display detail.
-   */
-  telehealthConsent: { policyVersion: string; policyText: string[] };
 }
 
 /** Persisted document shape (one per hospital). */
@@ -270,16 +250,6 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
   collectionStageDays: { followUp: 30, warning: 60, preWriteOff: 90 },
   taxRatePercent: 0,
   lockTimeoutMinutes: 2,
-  telehealthJoinWindow: { beforeMinutes: 15, afterMinutes: 30 },
-  telehealthConsent: {
-    policyVersion: '2026-07-01',
-    policyText: [
-      'This is a video consultation with a clinician. Your camera and microphone will be shared with them for the duration of the visit.',
-      'The visit is not recorded. Notes your clinician writes are added to your medical record in the same way as an in-person visit.',
-      'Video calls can be affected by poor network conditions. If the connection fails, your clinic may call you by phone instead.',
-      'You can leave the visit at any time, and you can ask for an in-person appointment instead. Refusing a video visit will not affect your care.',
-    ],
-  },
 };
 
 /**
@@ -327,14 +297,6 @@ export function mergeFacilitySettings(partial?: Partial<FacilitySettings> | null
     collectionStageDays: { ...d.collectionStageDays, ...(partial.collectionStageDays ?? {}) },
     taxRatePercent: partial.taxRatePercent ?? d.taxRatePercent,
     lockTimeoutMinutes: partial.lockTimeoutMinutes ?? d.lockTimeoutMinutes,
-    telehealthJoinWindow: { ...d.telehealthJoinWindow, ...(partial.telehealthJoinWindow ?? {}) },
-    telehealthConsent: {
-      ...d.telehealthConsent,
-      ...(partial.telehealthConsent ?? {}),
-      policyText: partial.telehealthConsent?.policyText?.length
-        ? partial.telehealthConsent.policyText
-        : [...d.telehealthConsent.policyText],
-    },
   };
 }
 

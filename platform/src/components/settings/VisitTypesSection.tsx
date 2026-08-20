@@ -19,17 +19,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import Select from '@/components/Select';
-import { Plus, Trash2, ClipboardCheck, Video } from '@/components/icons/lucide';
-import type { VisitReasonDoc, BookingModality } from '@/lib/db-types-booking';
+import { Plus, Trash2, ClipboardCheck } from '@/components/icons/lucide';
+import type { VisitReasonDoc } from '@/lib/db-types-booking';
 import type { AppointmentType } from '@/lib/db-types';
 
 const DURATIONS = [10, 15, 20, 30, 40, 45, 60, 90];
 
-const MODALITY_LABELS: Record<BookingModality, string> = {
-  in_person: 'In person',
-  telehealth: 'Virtual only',
-  both: 'Either',
-};
 
 const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
   { value: 'general', label: 'General consultation' },
@@ -38,7 +33,6 @@ const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
   { value: 'anc', label: 'Antenatal' },
   { value: 'immunization', label: 'Immunization' },
   { value: 'lab', label: 'Laboratory' },
-  { value: 'telehealth', label: 'Telehealth' },
   { value: 'surgical', label: 'Surgical' },
   { value: 'dental', label: 'Dental' },
   { value: 'mental_health', label: 'Mental health' },
@@ -185,9 +179,6 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
               <div style={{ minWidth: 160, flex: '1 1 200px' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                   {reason.name}
-                  {reason.modality === 'telehealth' && (
-                    <Video className="w-3 h-3" style={{ display: 'inline', marginInlineStart: 6, verticalAlign: '-1px' }} />
-                  )}
                 </div>
                 {reason.description && (
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{reason.description}</div>
@@ -204,20 +195,6 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
                 style={{ width: 'auto', minWidth: 104 }}
               >
                 {DURATIONS.map(d => <option key={d} value={d}>{d} min</option>)}
-              </Select>
-
-              <label className="sr-only" htmlFor={`mod-${reason._id}`}>Attendance for {reason.name}</label>
-              <Select
-                id={`mod-${reason._id}`}
-                className="fs-input"
-                value={reason.modality}
-                disabled={busyId === reason._id}
-                onChange={e => patch(reason._id, { modality: e.target.value as BookingModality })}
-                style={{ width: 'auto', minWidth: 118 }}
-              >
-                {(Object.keys(MODALITY_LABELS) as BookingModality[]).map(m => (
-                  <option key={m} value={m}>{MODALITY_LABELS[m]}</option>
-                ))}
               </Select>
 
               <label className="sr-only" htmlFor={`type-${reason._id}`}>Recorded as, for {reason.name}</label>

@@ -11,7 +11,6 @@ import {
   Wallet,
   CheckCircle2,
   UserCircle,
-  Video,
 } from '@/components/icons/lucide';
 import type { PatientDoc, AppointmentDoc, LabResultDoc, MedicalRecordDoc, PrescriptionDoc, ImmunizationDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -135,7 +134,6 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
   const [bookingTime, setBookingTime] = useState<'morning' | 'afternoon' | 'any'>('any');
   const [bookingDepartment, setBookingDepartment] = useState('General / OPD');
   const [bookingReason, setBookingReason] = useState('');
-  const [bookingVisitType, setBookingVisitType] = useState<'in_person' | 'telehealth_video' | 'telehealth_audio'>('in_person');
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
@@ -144,7 +142,6 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
     setBookingTime('any');
     setBookingDepartment('General / OPD');
     setBookingReason('');
-    setBookingVisitType('in_person');
     setBookingError(null);
   };
 
@@ -169,7 +166,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
             appointmentTime: timeOfDay[bookingTime],
             department: bookingDepartment,
             reason: bookingReason,
-            appointmentType: bookingVisitType === 'in_person' ? 'general' : 'telehealth',
+            appointmentType: 'general',
             state: patient.state || '',
           }),
         }
@@ -705,23 +702,13 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           ) : (
             <div className="pp-card">
               {appointments.slice().sort((a, b) => b.appointmentDate.localeCompare(a.appointmentDate)).map(apt => {
-                const isPast = apt.status === 'completed' || apt.status === 'cancelled' || apt.status === 'no_show';
                 const chip = aptChip(apt.status);
-                // KAN-124: the server attaches a join path only for live
-                // telehealth appointments with a usable session — this
-                // button is the patient's entry point to the video visit.
-                const joinPath = (apt as AppointmentDoc & { telehealth?: { joinPath: string } }).telehealth?.joinPath;
                 return (
                   <div key={apt._id} className="pp-row">
                     <div className="pp-row-main">
                       <b>{apt.reason || apt.appointmentType}{apt.providerName ? ` — ${/^dr\.?\s/i.test(apt.providerName) ? apt.providerName : `${t('patientPortal.drPrefix')} ${apt.providerName}`}` : ''}</b>
                       <span>{shortDate(apt.appointmentDate)}{apt.appointmentTime ? ` · ${formatClockTime(apt.appointmentTime)}` : ''} · {apt.department}</span>
                     </div>
-                    {joinPath && !isPast && (
-                      <a href={joinPath} className="pp-row-pay" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
-                        <Video size={13} /> {t('patientPortal.joinVideoVisit')}
-                      </a>
-                    )}
                     <span className={`pp-chip pp-chip--${chip.tone}`}>{chip.label}</span>
                   </div>
                 );
@@ -1063,13 +1050,6 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                 </Select>
               </div>
               <div><label>{t('patientPortal.reason')}</label><textarea rows={3} placeholder={t('patientPortal.reasonPlaceholder')} value={bookingReason} onChange={e => setBookingReason(e.target.value)} /></div>
-              <div><label>{t('patientPortal.visitType')}</label>
-                <Select value={bookingVisitType} onChange={e => setBookingVisitType(e.target.value as typeof bookingVisitType)}>
-                  <option value="in_person">{t('patientPortal.visitInPerson')}</option>
-                  <option value="telehealth_video">{t('patientPortal.visitTelehealthVideo')}</option>
-                  <option value="telehealth_audio">{t('patientPortal.visitTelehealthAudio')}</option>
-                </Select>
-              </div>
               {bookingError && <p style={{ fontSize: 12, color: 'var(--color-danger-text)' }}>{bookingError}</p>}
               <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                 <button onClick={() => { setShowBooking(false); resetBookingForm(); }} className="btn btn-secondary" style={{ flex: 1 }} disabled={bookingSubmitting}>{t('action.cancel')}</button>

@@ -90,7 +90,7 @@
   border-radius: 3px;
 }
 
-/* Widths sized to their longest real value — "Telehealth SOAP", a date, a
+/* Widths sized to their longest real value — "OB Evaluation", a date, a
    time, a provider's full name — so nothing truncates and the row keeps a
    steady rhythm instead of five arbitrary lengths.
 
@@ -132,7 +132,7 @@
 
 /* Scoped so globals.css does not uppercase these — they are sentence-case
    field names, not the shouty section headers that rule was written for.
-   Quieter than the value they label: the clinician reads "Telehealth SOAP",
+   Quieter than the value they label: the clinician reads "OB Evaluation",
    not the word "Note type", so the label sits back. */
 .cn-field > .cn-label {
   font-size: 11.5px;

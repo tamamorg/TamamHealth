@@ -217,68 +217,6 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
     }
   }
 
-  // --- Telehealth video (LiveKit) -------------------------------------------
-  // Video is OPTIONAL: a deployment with no LiveKit server is a legitimate
-  // configuration, and the platform degrades honestly for it — the token route
-  // returns 503 and the visit room says video is unconfigured.
-  //
-  // What must not be reachable is a PARTIAL configuration. An operator who set
-  // two of the three keys clearly intended working video, and the omission
-  // surfaces as a 503 the first time a clinician opens a consultation — the
-  // worst possible moment to discover it. So: all three, or none.
-  const lkUrl = env.LIVEKIT_URL || env.NEXT_PUBLIC_LIVEKIT_URL || '';
-  const lkKey = env.LIVEKIT_API_KEY || '';
-  const lkSecret = env.LIVEKIT_API_SECRET || '';
-  const lkSet = [lkUrl, lkKey, lkSecret].filter(Boolean).length;
-
-  if (lkSet > 0 && lkSet < 3) {
-    const missing = [
-      lkUrl ? null : 'LIVEKIT_URL',
-      lkKey ? null : 'LIVEKIT_API_KEY',
-      lkSecret ? null : 'LIVEKIT_API_SECRET',
-    ].filter(Boolean).join(', ');
-    errors.push(
-      `Telehealth video is partially configured — ${missing} unset. Set all three, ` +
-      'or none at all (video then reports itself unavailable instead of failing mid-visit).',
-    );
-  }
-
-  if (lkSecret && PLACEHOLDER.test(lkSecret)) {
-    errors.push('LIVEKIT_API_SECRET still contains a placeholder — it signs join tokens, so treat it like JWT_SECRET.');
-  }
-
-  // The API key/secret sign tokens that grant entry to any consultation. A
-  // NEXT_PUBLIC_ copy is compiled into the browser bundle and served to every
-  // visitor — same failure shape as NEXT_PUBLIC_ADMIN_PASSWORD above.
-  for (const leaked of ['NEXT_PUBLIC_LIVEKIT_API_KEY', 'NEXT_PUBLIC_LIVEKIT_API_SECRET']) {
-    if (env[leaked]) {
-      errors.push(`${leaked} is set — it would ship in the client bundle and lets anyone mint a token for any visit. Use the server-only variable.`);
-    }
-  }
-
-  // The browser dials LiveKit directly, so its origin has to be in the page's
-  // Content-Security-Policy — and the policy is built in middleware, where
-  // Next inlines `process.env` at BUILD time. A server-only LIVEKIT_URL
-  // supplied at runtime is therefore invisible to it: the socket is refused by
-  // CSP and the visit room waits for a connection that never had permission to
-  // open, with only a console violation to say why. NEXT_PUBLIC_LIVEKIT_URL is
-  // the copy that survives into the bundle, so a configured deployment must
-  // carry it. It is a URL, not a credential — unlike the key and secret above,
-  // publishing it costs nothing.
-  if (lkSet === 3 && !env.NEXT_PUBLIC_LIVEKIT_URL) {
-    errors.push(
-      'Telehealth video is configured but NEXT_PUBLIC_LIVEKIT_URL is unset — the Content-Security-Policy '
-      + 'is built at build time and would omit the LiveKit origin, so every call would be blocked by the '
-      + 'browser. Set it to the same URL as LIVEKIT_URL.',
-    );
-  }
-
-  // PHI-bearing media must not cross the network in the clear. `ws://` is
-  // acceptable for a local dev server only.
-  if (lkUrl && !isDemo && /^ws:\/\//i.test(lkUrl) && !/^ws:\/\/(localhost|127\.0\.0\.1)/i.test(lkUrl)) {
-    errors.push('LIVEKIT_URL uses ws:// — telehealth media carries PHI and must use wss:// in production.');
-  }
-
   // --- Payment webhooks ------------------------------------------------------
   // Public money-movement callbacks must not run unsigned in production. The
   // individual routes keep a non-production fallback for local gateway testing.
