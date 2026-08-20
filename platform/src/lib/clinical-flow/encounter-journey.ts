@@ -140,7 +140,16 @@ export const ENCOUNTER_TRANSITIONS: Readonly<Record<EncounterStatus, readonly En
   // clinician's in-visit loops resolve the encounter returns toward checkout.
   awaiting_labs: ['with_clinician', 'ready_for_clinic_checkout', 'escalated_to_emergency'],
   awaiting_imaging: ['with_clinician', 'ready_for_clinic_checkout', 'escalated_to_emergency'],
-  awaiting_pharmacy: ['with_clinician', 'ready_for_clinic_checkout', 'escalated_to_emergency'],
+  // `awaiting_labs`/`awaiting_imaging` are reachable from here because the
+  // order lifecycles genuinely run in PARALLEL while the encounter carries one
+  // status, and a consultation that both prescribes and orders tests is the
+  // ordinary case rather than an edge one. Where a visit is waiting on two
+  // loops at once, the status reports the loop that blocks the CLINICIAN:
+  // results have to be reviewed before the visit can close, whereas pharmacy
+  // blocks only collection. That is why this is deliberately one-way — there is
+  // no `awaiting_labs → awaiting_pharmacy` edge, so a prescription written
+  // after tests were ordered leaves the visit reading `awaiting_labs`.
+  awaiting_pharmacy: ['with_clinician', 'awaiting_labs', 'awaiting_imaging', 'ready_for_clinic_checkout', 'escalated_to_emergency'],
   awaiting_procedure: ['with_clinician', 'ready_for_clinic_checkout', 'escalated_to_emergency'],
   consultation_paused_draft: ['with_clinician'],
   referred_out: ['ready_for_clinic_checkout', 'awaiting_facility_checkout'],

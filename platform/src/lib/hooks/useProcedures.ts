@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { makeCoalescer } from './live-reload';
 import type { ProcedureDoc } from '../db-types';
+import type { ProcedureStatus } from '../clinical-flow/order-lifecycles';
 import { proceduresDB } from '../db';
 import { useDataScope } from './useDataScope';
 
@@ -56,6 +57,22 @@ export function useProcedures(patientId?: string) {
     return doc;
   }, [load]);
 
+  /**
+   * Move a procedure along its Stage 7 lifecycle. Distinct from `update`
+   * because the service validates the move against `PROCEDURE_TRANSITIONS` and
+   * throws on an illegal one — a status must never be set by a blind patch.
+   */
+  const advance = useCallback(async (
+    id: string,
+    to: ProcedureStatus,
+    opts?: { actorId?: string; actorName?: string; reason?: string },
+  ) => {
+    const { advanceProcedure } = await import('../services/procedure-service');
+    const doc = await advanceProcedure(id, to, opts);
+    await load();
+    return doc;
+  }, [load]);
+
   const remove = useCallback(async (id: string) => {
     const { deleteProcedure } = await import('../services/procedure-service');
     const ok = await deleteProcedure(id);
@@ -69,5 +86,5 @@ export function useProcedures(patientId?: string) {
     return [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [allProcedures, patientId]);
 
-  return { procedures, allProcedures, loading, error, create, update, remove, reload: load };
+  return { procedures, allProcedures, loading, error, create, update, advance, remove, reload: load };
 }
