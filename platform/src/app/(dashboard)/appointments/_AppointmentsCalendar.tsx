@@ -432,53 +432,9 @@ export default function AppointmentsCalendar({
    */
   const shellRef = React.useRef<HTMLDivElement>(null);
   const rowRef = React.useRef<HTMLElement | null>(null);
+  const anchorRef = React.useRef<HTMLElement | null>(null);
   const triggerRef = React.useRef<HTMLElement | null>(null);
   const [expanded, setExpanded] = React.useState<ExpandedDay | null>(null);
-
-  const closeExpanded = React.useCallback(() => {
-    setExpanded(null);
-    // Focus returns to the "+N more" that opened the day, not to the document.
-    triggerRef.current?.focus();
-    triggerRef.current = null;
-  }, []);
-
-  const captureShowMore = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const button = (e.target as HTMLElement).closest?.('.rbc-show-more') as HTMLElement | null;
-    rowRef.current = button?.closest('.rbc-month-row') ?? null;
-    triggerRef.current = button;
-  }, []);
-
-  const handleShowMore = React.useCallback((dayEvents: CalEvent[], date: Date, slot: number) => {
-    // Clicking the open day again closes it, the way the link reads.
-    if (expanded && expanded.date.getTime() === date.getTime()) { closeExpanded(); return; }
-
-    const shell = shellRef.current;
-    const cell = rowRef.current?.querySelector('.rbc-row-bg')?.children[slot - 1] as HTMLElement | undefined;
-    if (!shell || !cell) return;
-
-    const shellBox = shell.getBoundingClientRect();
-    const cellBox = cell.getBoundingClientRect();
-    // A month column is ~150px wide, which truncates every name to a first
-    // word. The panel keeps the column's left edge and widens only as far as
-    // the names need, then stays inside the calendar.
-    const width = Math.min(Math.max(cellBox.width, DAY_PANEL_MIN_WIDTH), shellBox.width);
-    const left = Math.max(0, Math.min(cellBox.left - shellBox.left, shellBox.width - width));
-    // A day in the last week has nothing under it to open into, so the panel
-    // slides up to sit on the bottom of the grid rather than off it.
-    const top = Math.max(0, Math.min(
-      cellBox.top - shellBox.top,
-      shellBox.height - Math.min(DAY_PANEL_MIN_HEIGHT, shellBox.height),
-    ));
-
-    setExpanded({
-      date,
-      events: [...dayEvents].sort((a, b) => a.start.getTime() - b.start.getTime()),
-      left,
-      top,
-      width,
-      maxHeight: shellBox.height - top,
-    });
-  }, [expanded, closeExpanded]);
 
   // Any change of what is on screen invalidates both the day and the measured
   // geometry. Adjusted during render rather than in an effect, so the panel is
@@ -491,6 +447,58 @@ export default function AppointmentsCalendar({
     if (expanded) setExpanded(null);
   }
 
+  const closeExpanded = React.useCallback(() => {
+    setExpanded(null);
+    anchorRef.current = null;
+    // Focus returns to the "+N more" that opened the day, not to the document.
+    triggerRef.current?.focus();
+    triggerRef.current = null;
+  }, []);
+
+  /** Where the opened day sits: measured off its background cell, every time. */
+  const measureAnchor = React.useCallback((): Omit<ExpandedDay, 'date' | 'events'> | null => {
+    const shell = shellRef.current;
+    const cell = anchorRef.current;
+    if (!shell || !cell) return null;
+    const shellBox = shell.getBoundingClientRect();
+    const cellBox = cell.getBoundingClientRect();
+    // A month column is ~150px wide, which cuts every name to its first word.
+    // The panel keeps the column's left edge and widens only as far as the
+    // names need, then stays inside the calendar.
+    const width = Math.min(Math.max(cellBox.width, DAY_PANEL_MIN_WIDTH), shellBox.width);
+    const left = Math.max(0, Math.min(cellBox.left - shellBox.left, shellBox.width - width));
+    // A day in the last week has nothing under it to open into, so the panel
+    // slides up to sit on the bottom of the grid rather than off it.
+    const top = Math.max(0, Math.min(
+      cellBox.top - shellBox.top,
+      shellBox.height - Math.min(DAY_PANEL_MIN_HEIGHT, shellBox.height),
+    ));
+    return { left, top, width, maxHeight: shellBox.height - top };
+  }, []);
+
+  const captureShowMore = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const button = (e.target as HTMLElement).closest?.('.rbc-show-more') as HTMLElement | null;
+    rowRef.current = button?.closest('.rbc-month-row') ?? null;
+    triggerRef.current = button;
+  }, []);
+
+  const handleShowMore = React.useCallback((dayEvents: CalEvent[], date: Date, slot: number) => {
+    // Clicking the open day again closes it, the way the link reads.
+    if (expanded && expanded.date.getTime() === date.getTime()) { closeExpanded(); return; }
+
+    const cell = rowRef.current?.querySelector('.rbc-row-bg')?.children[slot - 1] as HTMLElement | undefined;
+    if (!cell) return;
+    anchorRef.current = cell;
+    const geometry = measureAnchor();
+    if (!geometry) return;
+
+    setExpanded({
+      date,
+      events: [...dayEvents].sort((a, b) => a.start.getTime() - b.start.getTime()),
+      ...geometry,
+    });
+  }, [expanded, closeExpanded, measureAnchor]);
+
   React.useEffect(() => {
     if (!expanded) return;
     const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') closeExpanded(); };
@@ -499,22 +507,28 @@ export default function AppointmentsCalendar({
       // The show-more link is the toggle; let its own handler decide.
       if (target.closest?.('.gcal-daypop') || target.closest?.('.rbc-show-more')) return;
       setExpanded(null);
+      anchorRef.current = null;
     };
-    // The panel is placed from a measurement, so anything that moves the grid
-    // under it collapses it rather than leaving it hanging over the wrong day.
-    const onReflow = () => setExpanded(null);
+    // The panel is placed from a measurement, so it is re-measured rather than
+    // dismissed when the grid moves under it — the month view scrolls, and the
+    // browser scrolls it by itself when the show-more link takes focus, so
+    // closing on scroll shut the panel in the same frame it opened.
+    const reposition = () => {
+      const geometry = measureAnchor();
+      setExpanded(prev => (prev && geometry ? { ...prev, ...geometry } : prev));
+    };
     const scroller = shellRef.current?.querySelector('.rbc-month-view');
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('pointerdown', onPointerDown, true);
-    window.addEventListener('resize', onReflow);
-    scroller?.addEventListener('scroll', onReflow);
+    window.addEventListener('resize', reposition);
+    scroller?.addEventListener('scroll', reposition, { passive: true });
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('pointerdown', onPointerDown, true);
-      window.removeEventListener('resize', onReflow);
-      scroller?.removeEventListener('scroll', onReflow);
+      window.removeEventListener('resize', reposition);
+      scroller?.removeEventListener('scroll', reposition);
     };
-  }, [expanded, closeExpanded]);
+  }, [expanded, closeExpanded, measureAnchor]);
 
   const calendarComponents = React.useMemo(
     () => ({
