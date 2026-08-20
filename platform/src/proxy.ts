@@ -283,6 +283,15 @@ export async function proxy(request: NextRequest) {
     return nextWithCsp(request);
   }
 
+  // Seeded demo roster for the sign-in picker — GET only. The route answers
+  // an empty list unless the deployment is a standalone demo (no users
+  // database AND NEXT_PUBLIC_DEMO_MODE exactly 'true'), so there is nothing
+  // here for a real server to disclose. Public because the picker lives on
+  // the sign-in page, where there is no session yet by definition.
+  if (pathname === '/api/demo-credentials' && request.method.toUpperCase() === 'GET') {
+    return nextWithCsp(request);
+  }
+
   // Terminology registry — shared CodeSystems / ValueSets. Reference data,
   // no PHI; public so external tooling can bind forms to our vocabularies.
   if (pathname.startsWith('/api/terminology/')) {

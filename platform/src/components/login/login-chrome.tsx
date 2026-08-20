@@ -161,8 +161,10 @@ export const loginStyles = (
 
     /* Demo roster — fills the right column on demo deployments (the aside's
        surface language) so the whole roster sits beside the form instead of
-       below the fold. Compact paddings are deliberate: 21 accounts across 7
-       facilities should fit a 900px-tall laptop viewport. */
+       below the fold. Compact paddings are deliberate: the full seeded roster
+       is every account the demo has, grouped by facility, and it should read
+       as one panel beside the form on a 900px-tall laptop rather than pushing
+       the footer down a screen and a half. */
     .lg-demo { background: var(--lg-surface); padding: 16px 20px 18px; align-self: start; }
     .lg-demo h2 { font-size: 19px; margin: 0; }
     .lg-demo > p { margin: 2px 0 8px; font-size: 13px; color: var(--lg-neutral-600); }
@@ -180,6 +182,13 @@ export const loginStyles = (
     .lg-demo-row:disabled { opacity: 0.5; cursor: not-allowed; }
     .lg-demo-role { font-size: 13px; line-height: 1.25; font-weight: 600; color: var(--lg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .lg-demo-user { font-size: 10.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--lg-neutral-600); }
+    /* Who the account belongs to. The role says what the workspace will be;
+       the name is what tells two doctors at the same hospital apart. */
+    .lg-demo-name { font-size: 11px; line-height: 1.3; color: var(--lg-neutral-800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* The roster is longer than the form is tall, so it scrolls inside the
+       panel — the sign-in form must never be pushed off screen by a list of
+       demo logins. */
+    .lg-demo-scroll { max-height: min(64vh, 640px); overflow-y: auto; padding-right: 4px; }
 
     .lg-aside { background: var(--lg-surface); padding: 30px 32px 32px; display: flex; flex-direction: column; gap: 14px; }
     .lg-eyebrow { font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lg-accent-700); }

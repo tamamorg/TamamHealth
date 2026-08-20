@@ -14,7 +14,7 @@
  * and loading) keeps working.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
@@ -43,6 +43,31 @@ const ROLE_OPTIONS = (() => {
     .sort((a, b) => a.label.localeCompare(b.label));
 })();
 
+/**
+ * One seeded demo account, as `/api/demo-credentials` returns it. The roster
+ * and its passwords are per-deployment state fetched at runtime — nothing
+ * here is hard-coded, and the route answers only on a standalone demo (see
+ * `isStandaloneDemo` in lib/server-users.ts), so a real deployment renders
+ * the product panel instead.
+ */
+interface DemoAccount {
+  username: string;
+  password: string;
+  name: string;
+  role: string;
+  facility?: string;
+  orgId?: string;
+}
+
+/** The heading an account is filed under: its facility, or the body it works
+ *  for when it has none (org admins, the ministry, the platform operator). */
+function demoGroupName(account: DemoAccount): string {
+  if (account.facility) return account.facility;
+  if (account.orgId === 'org-mercy-hospital') return 'Mercy Hospital Group';
+  if (account.orgId === 'org-moh-ss') return 'Ministry of Health';
+  return 'Platform';
+}
+
 export default function LoginPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -60,6 +85,11 @@ export default function LoginPage() {
   // open, the chosen role's label once picked) and whether the menu shows.
   const [roleQuery, setRoleQuery] = useState('');
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  // Demo-only account picker. The build-time flag decides whether to ASK;
+  // the answer decides whether to show anything, so a deployment where the
+  // route declines (it has a users database) keeps the product panel.
+  const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+  const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
 
   // Username handed over from the marketing site's login (?u=). Read from
   // window rather than useSearchParams — the same pattern the patients and
@@ -96,6 +126,37 @@ export default function LoginPage() {
     window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
   }, []);
 
+  // Passwords are minted per deployment; pull them once per load rather than
+  // shipping any in the bundle.
+  useEffect(() => {
+    if (!demoEnabled) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/demo-credentials', { cache: 'no-store' });
+        if (!res.ok) return;
+        const body = await res.json() as { profiles?: DemoAccount[] };
+        if (!cancelled) setDemoAccounts(body.profiles ?? []);
+      } catch {
+        // The picker is a convenience — the manual form still signs in.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [demoEnabled]);
+
+  // Grouped by facility, in the order the roster lists them, so every seeded
+  // account is on screen and each facility's staff stay together.
+  const demoGroups = useMemo(() => {
+    const order: string[] = [];
+    const byGroup = new Map<string, DemoAccount[]>();
+    for (const account of demoAccounts) {
+      const group = demoGroupName(account);
+      if (!byGroup.has(group)) { byGroup.set(group, []); order.push(group); }
+      byGroup.get(group)!.push(account);
+    }
+    return order.map(name => ({ name, accounts: byGroup.get(name)! }));
+  }, [demoAccounts]);
+
   const roleLabelFor = (value: UserRole | '') =>
     value ? (ROLE_OPTIONS.find(r => r.value === value)?.label || '') : '';
 
@@ -116,6 +177,21 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated && currentUser) router.push(resolveLandingPage(currentUser.role));
   }, [isAuthenticated, currentUser, router]);
+
+  /** One tap = filled form + signed in, so a demo never stalls on a password. */
+  const signInAsDemo = async (account: DemoAccount) => {
+    setUsername(account.username);
+    setPassword(account.password);
+    setRoleChoice('');
+    setRoleQuery('');
+    setError('');
+    setLoading(true);
+    try {
+      const result = await login(account.username, account.password);
+      if (result) router.push(resolveLandingPage(result));
+      else { setError('That demo account could not sign in.'); setLoading(false); }
+    } catch { setError('Login failed. Please try again.'); setLoading(false); }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,11 +383,43 @@ export default function LoginPage() {
 
         </div>
 
-        {/* ── Right: what the platform is. This column used to hold a
-              one-tap roster of seeded accounts on demo deployments. Accounts
-              are issued by an administrator now — there is no roster to
-              choose from, and a sign-in page that offers working credentials
-              to anyone who loads it is not something to keep behind a flag. */}
+        {/* ── Right: the seeded roster on a standalone demo, the product
+              panel everywhere else. A sign-in page does not offer working
+              credentials to whoever loads it — but the demo deployment has no
+              users database, no CouchDB and no real patients, and its whole
+              purpose is to be walked through without asking anyone for a
+              login. `/api/demo-credentials` decides which deployment this is;
+              a server that could authenticate a real account returns nothing
+              and this column stays a product panel. */}
+        {demoGroups.length > 0 ? (
+          <aside className="lg-demo blueprint" aria-labelledby="lg-demo-title">
+            <Corners />
+            <h2 id="lg-demo-title">Choose a demo account</h2>
+            <p>One tap signs you in — seeded data, no real patients.</p>
+            <div className="lg-demo-scroll">
+              {demoGroups.map(group => (
+                <div className="lg-demo-group" key={group.name}>
+                  <p className="lg-demo-group-name">{group.name}</p>
+                  <div className="lg-demo-rows">
+                    {group.accounts.map(account => (
+                      <button
+                        key={account.username}
+                        type="button"
+                        className="lg-demo-row"
+                        disabled={loading || !dbReady}
+                        onClick={() => signInAsDemo(account)}
+                      >
+                        <span className="lg-demo-role">{getRoleConfig(account.role as UserRole).label}</span>
+                        <span className="lg-demo-name">{account.name}</span>
+                        <span className="lg-demo-user">{account.username}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
+        ) : (
         <aside className="lg-aside blueprint">
           <Corners />
           <span className="lg-eyebrow">{t('login.tagline')}</span>
@@ -326,6 +434,7 @@ export default function LoginPage() {
             <img src="/assets/doctor-at-workstation.jpg" alt="A doctor at a workstation, reading a patient's record on screen" />
           </div>
         </aside>
+        )}
       </div>
 
       <footer className="lg-footer">
