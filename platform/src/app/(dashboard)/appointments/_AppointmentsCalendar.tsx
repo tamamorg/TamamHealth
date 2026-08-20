@@ -481,9 +481,15 @@ export default function AppointmentsCalendar({
   }, [expanded, closeExpanded]);
 
   // Any change of what is on screen invalidates both the day and the measured
-  // geometry. `setExpanded` rather than `closeExpanded`: nothing was dismissed,
-  // so nothing should pull focus back to a link that may no longer be there.
-  React.useEffect(() => { setExpanded(null); }, [calView, calDate, events]);
+  // geometry. Adjusted during render rather than in an effect, so the panel is
+  // never painted over the wrong month for a frame first; `setExpanded` rather
+  // than `closeExpanded` because nothing was dismissed, so nothing should pull
+  // focus back to a link that may no longer be there.
+  const [shownFor, setShownFor] = React.useState<[string, Date, CalEvent[]]>([calView, calDate, events]);
+  if (shownFor[0] !== calView || shownFor[1] !== calDate || shownFor[2] !== events) {
+    setShownFor([calView, calDate, events]);
+    if (expanded) setExpanded(null);
+  }
 
   React.useEffect(() => {
     if (!expanded) return;
@@ -539,6 +545,9 @@ export default function AppointmentsCalendar({
       views={{ month: true, week: true, day: TwoDayView as never }}
       // See `handleShowMore`: the overflowing day opens in the grid, not in a
       // floating card (`popup`) and not by navigating away (the drill-down).
+      // Cast because @types/react-big-calendar declares `(events, date)` while
+      // the runtime also passes the column index, which is how the panel finds
+      // the cell to anchor to.
       doShowMoreDrillDown={false}
       onShowMore={handleShowMore as never}
       style={{ height: '100%' }}
