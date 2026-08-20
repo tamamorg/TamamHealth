@@ -87,6 +87,24 @@ jobs:
             NEXT_PUBLIC_COUCHDB_URL=${{ vars.NEXT_PUBLIC_COUCHDB_URL || 'https://couch.tamamhealth.org' }}
             NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED || 'false' }}
             NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED || 'false' }}
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://app.tamamhealth.org' }}
+            NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=${{ vars.NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE || 'false' }}
+            NEXT_PUBLIC_BUILD_ID=${{ steps.meta.outputs.sha }}
+            # Telehealth's LiveKit origin. The key and secret are runtime-only,
+            # but this one is needed HERE: the CSP is built in middleware, where
+            # Next inlines env at build time, so an image built without it ships
+            # a policy with no LiveKit origin and the browser blocks the call's
+            # signalling socket — a call that never connects, with only a console
+            # violation to say why.
+            #
+            # Deliberately has NO fallback. An invented URL would widen the CSP
+            # to a host that is not the deployment's LiveKit server. Left unset,
+            # telehealth degrades cleanly: /api/telehealth/token answers 503 and
+            # the UI says video is not configured. Set the repository variable
+            # NEXT_PUBLIC_LIVEKIT_URL (same value as the runtime LIVEKIT_URL) to
+            # turn it on — and note that setting the three runtime LiveKit vars
+            # WITHOUT this one makes config-validation refuse to boot.
+            NEXT_PUBLIC_LIVEKIT_URL=${{ vars.NEXT_PUBLIC_LIVEKIT_URL }}
           cache-from: type=gha,scope=platform
           cache-to: type=gha,mode=max,scope=platform
 
