@@ -242,6 +242,80 @@ async function getHash(username: string, plaintext: string): Promise<string> {
 }
 
 /**
+ * Whether this server has a CouchDB users database at all.
+ *
+ * `db.ts` refuses to build a server-side database handle without admin
+ * credentials, so their absence is not a misconfiguration to route around —
+ * it IS the standalone demo deployment, where the roster lives only in each
+ * browser's PouchDB and no server-side user store exists to consult.
+ */
+function couchIsConfigured(): boolean {
+  const user = process.env.COUCHDB_ADMIN_USER || process.env.COUCHDB_USER;
+  const pass = process.env.COUCHDB_ADMIN_PASSWORD || process.env.COUCHDB_PASSWORD;
+  return Boolean(user && pass);
+}
+
+/**
+ * The standalone demo deployment: demo mode explicitly on AND no users
+ * database to authenticate against.
+ *
+ * Both halves are load-bearing. The demo branch that used to live in
+ * `authenticateUser` keyed on `NEXT_PUBLIC_DEMO_MODE` alone and failed OPEN —
+ * a container that never promoted the build argument to an `ENV` would have
+ * accepted three dozen seeded credentials on a production server, which is
+ * why it was removed. This gate fails closed twice over: the flag must be
+ * exactly the string 'true', AND the deployment must have no users database.
+ * A real server always has one, so a mis-set flag there changes nothing.
+ */
+export function isStandaloneDemo(): boolean {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && !couchIsConfigured();
+}
+
+/**
+ * Verify a seeded demo account with no users database behind it.
+ *
+ * Only the canned roster (DEMO_USER_PROFILES) and only against the seed
+ * credentials — deterministic per username from `SEED_CREDENTIALS_SECRET`,
+ * or the operator-pinned initial password for `admin` / `superadmin`. The
+ * plaintexts are computed server-side and never leave it; the browser is
+ * given a session cookie, not a credential.
+ */
+async function authenticateStandaloneDemoUser(
+  username: string,
+  password: string,
+): Promise<ServerUser | null> {
+  const profile = profileByUsername.get(username);
+  if (!profile) return null;
+
+  let expected: string | undefined;
+  try {
+    const credentials = await getOrCreateSeedCredentials();
+    expected = credentials.passwords[username];
+  } catch {
+    // A demo whose credential source cannot be read signs nobody in.
+    return null;
+  }
+  if (!expected) return null;
+  if (!(await bcrypt.compare(password, await getHash(username, expected)))) return null;
+
+  return {
+    _id: `user-${username}`,
+    username,
+    passwordHash: '',
+    name: profile.name,
+    role: profile.role,
+    hospitalId: profile.hospitalId,
+    hospitalName: profile.hospitalName,
+    orgId: profile.orgId,
+    isActive: true,
+    // Nothing can persist a password change on a deployment with no users
+    // database, so forcing one would dead-end the first sign-in rather than
+    // protect anything. The bootstrap path keeps its `true` — that one writes.
+    mustChangePassword: false,
+  };
+}
+
+/**
  * Look up a user by username and verify the password — server-safe.
  */
 export async function authenticateUser(
@@ -260,6 +334,19 @@ export async function authenticateUser(
   //
   // Accounts are now created exactly one way: by an administrator, or by
   // approving an account request, which calls the same `createUser`.
+  //
+  // The one exception is a deployment that HAS no users database: the
+  // standalone demo. There is no document to read and no administrator to
+  // create one, so the seeded credentials are the only way in. It returns
+  // rather than falling through, because the lookup below would only raise
+  // UsersDbUnavailableError and the login route would answer 503.
+  if (isStandaloneDemo()) {
+    const demoUser = await authenticateStandaloneDemoUser(username, password);
+    if (demoUser) return demoUser;
+    await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+    return null;
+  }
+
   const lookup = await authenticateFromUsersDb(username, password);
   if (lookup.user) return lookup.user;
 
