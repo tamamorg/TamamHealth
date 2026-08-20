@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronLeft, ChevronRight } from '@/components/icons/lucide';
+import { ChevronLeft, ChevronRight, X } from '@/components/icons/lucide';
 import type { AppointmentStatus, AppointmentPriority, AppointmentDoc } from '@/lib/db-types';
 import { Calendar as BigCalendar, dateFnsLocalizer, type View, type ToolbarProps, type DateLocalizer } from 'react-big-calendar';
 import TimeGrid from 'react-big-calendar/lib/TimeGrid';
@@ -346,6 +346,20 @@ function SlotHeader({ date }: { date: Date }) {
   );
 }
 
+/** How wide and how tall an opened day is allowed to get, in px. */
+const DAY_PANEL_MIN_WIDTH = 260;
+const DAY_PANEL_MIN_HEIGHT = 220;
+
+/** An opened day: which day, everything on it, and where to draw it. */
+type ExpandedDay = {
+  date: Date;
+  events: CalEvent[];
+  left: number;
+  top: number;
+  width: number;
+  maxHeight: number;
+};
+
 type AppointmentsCalendarProps = {
   events: CalEvent[];
   calView: 'month' | 'week' | 'day';
@@ -393,6 +407,109 @@ export default function AppointmentsCalendar({
     return MonthEventRow;
   }, [statusConfig]);
 
+  /**
+   * "+28 more", opened in place instead of in a floating card.
+   *
+   * react-big-calendar's own answer to an overflowing day is `popup`: a card
+   * floated over the grid by an overlay that measures itself against the page.
+   * Inside this dashboard's scrolling panel that lands nowhere near the day
+   * that was clicked — on a busy Thursday it opens up by the top rail. What
+   * the day actually needs is the column it is already in, opened downwards
+   * over the weeks below: same left edge, same width, every appointment on it.
+   *
+   * So `popup` is off, and `doShowMoreDrillDown` with it — without that second
+   * flag the click falls through to react-big-calendar's other behaviour and
+   * navigates to the day view, which is the one thing a "show me the rest of
+   * this day" click must not do.
+   *
+   * `onShowMore` hands over the day and ALL of its events. It does not hand
+   * over the cell to anchor to: the show-more button lives in the events layer
+   * (`.rbc-row-content`), whose segments are offset per event, so the geometry
+   * has to come off the matching background cell in `.rbc-row-bg` — index
+   * `slot - 1`, the same lookup react-big-calendar does for its own overlay.
+   * The click is caught in the capture phase first, purely to keep hold of the
+   * week row it happened in before React hands us the callback.
+   */
+  const shellRef = React.useRef<HTMLDivElement>(null);
+  const rowRef = React.useRef<HTMLElement | null>(null);
+  const triggerRef = React.useRef<HTMLElement | null>(null);
+  const [expanded, setExpanded] = React.useState<ExpandedDay | null>(null);
+
+  const closeExpanded = React.useCallback(() => {
+    setExpanded(null);
+    // Focus returns to the "+N more" that opened the day, not to the document.
+    triggerRef.current?.focus();
+    triggerRef.current = null;
+  }, []);
+
+  const captureShowMore = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const button = (e.target as HTMLElement).closest?.('.rbc-show-more') as HTMLElement | null;
+    rowRef.current = button?.closest('.rbc-month-row') ?? null;
+    triggerRef.current = button;
+  }, []);
+
+  const handleShowMore = React.useCallback((dayEvents: CalEvent[], date: Date, slot: number) => {
+    // Clicking the open day again closes it, the way the link reads.
+    if (expanded && expanded.date.getTime() === date.getTime()) { closeExpanded(); return; }
+
+    const shell = shellRef.current;
+    const cell = rowRef.current?.querySelector('.rbc-row-bg')?.children[slot - 1] as HTMLElement | undefined;
+    if (!shell || !cell) return;
+
+    const shellBox = shell.getBoundingClientRect();
+    const cellBox = cell.getBoundingClientRect();
+    // A month column is ~150px wide, which truncates every name to a first
+    // word. The panel keeps the column's left edge and widens only as far as
+    // the names need, then stays inside the calendar.
+    const width = Math.min(Math.max(cellBox.width, DAY_PANEL_MIN_WIDTH), shellBox.width);
+    const left = Math.max(0, Math.min(cellBox.left - shellBox.left, shellBox.width - width));
+    // A day in the last week has nothing under it to open into, so the panel
+    // slides up to sit on the bottom of the grid rather than off it.
+    const top = Math.max(0, Math.min(
+      cellBox.top - shellBox.top,
+      shellBox.height - Math.min(DAY_PANEL_MIN_HEIGHT, shellBox.height),
+    ));
+
+    setExpanded({
+      date,
+      events: [...dayEvents].sort((a, b) => a.start.getTime() - b.start.getTime()),
+      left,
+      top,
+      width,
+      maxHeight: shellBox.height - top,
+    });
+  }, [expanded, closeExpanded]);
+
+  // Any change of what is on screen invalidates both the day and the measured
+  // geometry. `setExpanded` rather than `closeExpanded`: nothing was dismissed,
+  // so nothing should pull focus back to a link that may no longer be there.
+  React.useEffect(() => { setExpanded(null); }, [calView, calDate, events]);
+
+  React.useEffect(() => {
+    if (!expanded) return;
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') closeExpanded(); };
+    const onPointerDown = (e: Event) => {
+      const target = e.target as HTMLElement;
+      // The show-more link is the toggle; let its own handler decide.
+      if (target.closest?.('.gcal-daypop') || target.closest?.('.rbc-show-more')) return;
+      setExpanded(null);
+    };
+    // The panel is placed from a measurement, so anything that moves the grid
+    // under it collapses it rather than leaving it hanging over the wrong day.
+    const onReflow = () => setExpanded(null);
+    const scroller = shellRef.current?.querySelector('.rbc-month-view');
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('resize', onReflow);
+    scroller?.addEventListener('scroll', onReflow);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('resize', onReflow);
+      scroller?.removeEventListener('scroll', onReflow);
+    };
+  }, [expanded, closeExpanded]);
+
   const calendarComponents = React.useMemo(
     () => ({
       toolbar: CalToolbar,
@@ -407,6 +524,7 @@ export default function AppointmentsCalendar({
   );
 
   return (
+    <div ref={shellRef} className="gcal-shell" onClickCapture={captureShowMore}>
     <BigCalendar<CalEvent, object>
       localizer={calendarLocalizer}
       events={events}
@@ -419,7 +537,10 @@ export default function AppointmentsCalendar({
       onView={(v: View) => onView(v as 'month' | 'week' | 'day')}
       // `day` is the two-day grid above; month and week stay built-in.
       views={{ month: true, week: true, day: TwoDayView as never }}
-      popup
+      // See `handleShowMore`: the overflowing day opens in the grid, not in a
+      // floating card (`popup`) and not by navigating away (the drill-down).
+      doShowMoreDrillDown={false}
+      onShowMore={handleShowMore as never}
       style={{ height: '100%' }}
       scrollToTime={new Date(1970, 0, 1, 7, 0, 0)}
       // Full width alone, equal columns when concurrent — see
@@ -472,5 +593,53 @@ export default function AppointmentsCalendar({
         return iso === today ? { style: { backgroundColor: 'var(--accent-light)' } } : {};
       }}
     />
+
+      {/* The opened day. Same column, same left edge, running down over the
+          weeks below — and scrolling inside itself once a day carries more
+          appointments than the grid is tall. */}
+      {expanded && (
+        <div
+          className="gcal-daypop"
+          style={{ left: expanded.left, top: expanded.top, width: expanded.width, maxHeight: expanded.maxHeight }}
+          role="group"
+          aria-label={`${expanded.events.length} appointments on ${dfFormat(expanded.date, 'EEEE d MMMM')}`}
+        >
+          <div className="gcal-daypop-head">
+            <span className="gcal-daypop-day">{dfFormat(expanded.date, 'EEE').toUpperCase()}</span>
+            <span className="gcal-daypop-date">{expanded.date.getDate()}</span>
+            <span className="gcal-daypop-count">{expanded.events.length}</span>
+            <button
+              type="button"
+              className="gcal-daypop-close"
+              aria-label="Collapse day"
+              onClick={closeExpanded}
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <div className="gcal-daypop-list">
+            {expanded.events.map(ev => (
+              <button
+                key={ev.id}
+                type="button"
+                className="gcal-daypop-row"
+                title={ev.title}
+                onClick={() => { setExpanded(null); onSelectEvent(ev.resource); }}
+              >
+                <span className="gcal-event">
+                  <span
+                    className="gcal-event-dot"
+                    style={{ background: statusConfig[ev.resource.status]?.color || 'var(--accent-primary)' }}
+                    aria-hidden
+                  />
+                  <span className="gcal-event-time">{calendarClock(ev.start)}</span>
+                  <span className="gcal-event-title">{ev.title}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
