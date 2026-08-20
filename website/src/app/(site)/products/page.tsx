@@ -48,11 +48,15 @@ export default async function ProductsPage() {
               </div>
             </div>
           </div>
-          <div className="blueprint tm-figure" style={{ position: "relative", background: "#FFFFFF", padding: 8, borderColor: "rgba(255,255,255,0.28)" }}>
+          <figure className="blueprint tm-figure" style={{ margin: 0, position: "relative", background: "#FFFFFF", padding: 8, borderColor: "rgba(255,255,255,0.28)" }}>
             <Corners light />
             {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-            <img src="/assets/platform-patient-chart.png" alt={t("A TamamHealth patient record: allergies and current vitals across the top, with medications, safety alerts, latest observations and next care actions below")} style={{ width: "100%", display: "block" }} />
-          </div>
+            <img src="/assets/platform-front-desk.png" alt={t("The TamamHealth front desk: the day's arrivals with times, care team and triage status, beside the reception queue and patient flow")} style={{ width: "100%", display: "block" }} />
+            {/* Same line as the figure on /platform, naming the other room. */}
+            <figcaption className="fs125" style={{ padding: "9px 5px 2px", lineHeight: 1.5, color: "var(--color-neutral-600)" }}>
+              {t("The front desk — the day's arrivals with their times, care team and triage status.")}
+            </figcaption>
+          </figure>
         </div>
       </section>
 
