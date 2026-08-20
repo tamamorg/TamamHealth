@@ -30,7 +30,6 @@ export default function BookingSummaryHeader({
   startTime,
   durationMinutes,
   facilityName,
-  modality = 'in_person',
   photoUrl,
   onChange,
 }: {
@@ -39,7 +38,6 @@ export default function BookingSummaryHeader({
   startTime: string;
   durationMinutes?: number;
   facilityName?: string;
-  modality?: 'in_person' | 'telehealth';
   photoUrl?: string;
   /** Jump back to the slot step. Omit to render the header as plain text. */
   onChange?: () => void;
@@ -75,9 +73,7 @@ export default function BookingSummaryHeader({
         >
           {providerName || 'Unassigned'}
           {durationMinutes ? ` · ${durationMinutes} min` : ''}
-          {modality === 'telehealth' ? (
-            <><Video className="w-3 h-3" /> Virtual</>
-          ) : facilityName ? (
+          {facilityName ? (
             <><MapPin className="w-3 h-3" /> {facilityName}</>
           ) : null}
         </div>

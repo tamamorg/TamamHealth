@@ -11,7 +11,7 @@ import {
   appointmentsDB, wardDB, pharmacyInventoryDB, triageDB, availabilityDB, encountersDB,
   handoffsDB,
   assetsDB, leaveRequestsDB, payrollEntriesDB,
-  problemsDB, telehealthDB, patientNotesDB, orderSetsDB,
+  problemsDB, patientNotesDB, orderSetsDB,
   phoneNotesDB, assessmentsDB, bloodBankDB, patientDocumentsDB,
   bookingPoliciesDB, visitReasonsDB, providerProfilesDB,
   isSeeded, markSeeded, resetAllDatabases, getDB,
@@ -36,7 +36,7 @@ import type {
 import type { BillingDoc, ChargeCategory } from './db-types-billing';
 import type {
   AppointmentDoc, TriageDoc, PharmacyInventoryDoc, ProblemDoc,
-  TelehealthSessionDoc, ShiftHandoffDoc, EncounterDoc
+  ShiftHandoffDoc, EncounterDoc
 } from './db-types';
 import type { WardDoc, BedDoc, AdmissionDoc } from './db-types-ward';
 import type { AssetDoc } from './db-types-asset';
@@ -1026,8 +1026,8 @@ const availabilityRows: AvailabilitySeedRow[] = [
   },
   {
     providerId: 'user-dr.achol', providerName: 'Dr. Achol Mayen Deng',
-    // Tue/Thu afternoons, remote follow-ups.
-    daysOfWeek: [2, 4], startTime: '14:00', endTime: '16:30', modality: 'telehealth',
+    // Tue/Thu afternoons, follow-ups.
+    daysOfWeek: [2, 4], startTime: '14:00', endTime: '16:30', modality: 'in_person',
   },
   {
     providerId: 'user-co.deng', providerName: 'CO Deng Mabior Kuol',
@@ -1147,12 +1147,6 @@ const seedVisitReasons: Record<string, unknown>[] = [
     description: 'Routine vaccination for a child under five.',
     newPatients: true, returningPatients: true, modality: 'in_person',
     department: 'Pediatrics', appointmentType: 'immunization',
-  },
-  {
-    name: 'Telehealth Consultation', slug: 'telehealth-consultation', durationMinutes: 20,
-    description: 'Speak to a clinician by video without travelling.',
-    newPatients: false, returningPatients: true, modality: 'telehealth',
-    department: 'Outpatient', appointmentType: 'telehealth',
   },
 ].map((r, i) => ({
   _id: `visit-reason-demo-${i + 1}`,
@@ -1607,12 +1601,6 @@ const seedProblems: Omit<ProblemDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'problem-7', type: 'problem', patientId: 'pat-00030', patientName: 'Achol Mayen Ring', name: 'Burns >30% TBSA', icd11Code: 'NE00', status: 'active', onsetDate: dateAgo(2), severity: 'severe', notes: 'ICU admission, isolation for infection control.', recordedBy: 'user-dr.wani', recordedByName: 'Dr. James Wani Igga', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(0) },
 ];
 
-// ═══ Telehealth session seed data ═════════════════════════════════
-const seedTelehealth: Omit<TelehealthSessionDoc, '_rev' | 'createdBy'>[] = [
-  { _id: 'telehealth-1', type: 'telehealth_session', appointmentId: 'appointment-3', patientId: 'pat-00012', patientName: 'Gatluak Ruot Nyuon', patientPhone: '+211912555012', providerId: 'user-dr.mercy', providerName: 'Dr. Grace Lado', providerRole: 'doctor', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', sessionType: 'video', scheduledDate: dateFromNow(2), scheduledTime: '14:00', status: 'scheduled', roomId: 'room-th-001', joinUrl: 'https://telehealth.tamamhealth.org/join/room-th-001', chiefComplaint: 'HIV follow-up consultation', followUpRequired: false, referralRequired: false, connectionDrops: 0, patientConsentGiven: true, consentTimestamp: daysAgo(1), sessionRecorded: false, consultationFee: 5000, currency: 'SSP', paymentStatus: 'pending', state: 'Central Equatoria', county: 'Juba', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
-  { _id: 'telehealth-2', type: 'telehealth_session', patientId: 'pat-00018', patientName: 'Rose Tombura Gbudue', patientPhone: '+211912555018', providerId: 'user-dr.mercy', providerName: 'Dr. Grace Lado', providerRole: 'doctor', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', sessionType: 'video', scheduledDate: dateAgo(3), scheduledTime: '10:00', actualStartTime: daysAgo(3), actualEndTime: daysAgo(3), duration: 22, status: 'completed', roomId: 'room-th-002', chiefComplaint: 'Diabetes management review', clinicalNotes: 'Reviewed glucose logs, adjusted metformin dose.', diagnosis: 'Type 2 diabetes mellitus', icd10Code: 'E11', followUpRequired: true, followUpDate: dateFromNow(14), referralRequired: false, sessionQuality: 'good', connectionDrops: 1, patientConsentGiven: true, consentTimestamp: daysAgo(3), sessionRecorded: false, patientRating: 5, patientFeedback: 'Very convenient.', consultationFee: 5000, currency: 'SSP', paymentStatus: 'paid', state: 'Western Bahr el Ghazal', county: 'Wau', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(4), updatedAt: daysAgo(3) },
-  { _id: 'telehealth-3', type: 'telehealth_session', patientId: 'pat-00001', patientName: 'Deng Mabior Garang', patientPhone: '+211912345678', providerId: 'user-dr.mercy', providerName: 'Dr. Grace Lado', providerRole: 'doctor', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', sessionType: 'audio', scheduledDate: dateAgo(0), scheduledTime: '16:00', status: 'waiting_room', roomId: 'room-th-003', chiefComplaint: 'Hypertension medication review', followUpRequired: false, referralRequired: false, connectionDrops: 0, patientConsentGiven: true, consentTimestamp: daysAgo(0), sessionRecorded: false, consultationFee: 3000, currency: 'SSP', paymentStatus: 'paid', state: 'Central Equatoria', county: 'Juba', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) },
-];
 
 const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
 
@@ -1855,7 +1843,7 @@ async function clearSeededClinicalDataOnce(): Promise<void> {
     'tamamhealth_messages', 'tamamhealth_conversations', 'tamamhealth_patient_notes',
     'tamamhealth_births', 'tamamhealth_deaths', 'tamamhealth_facility_assessments',
     'tamamhealth_immunizations', 'tamamhealth_anc', 'tamamhealth_follow_ups',
-    'tamamhealth_appointments', 'tamamhealth_telehealth', 'tamamhealth_pharmacy_inventory',
+    'tamamhealth_appointments', 'tamamhealth_pharmacy_inventory',
     'tamamhealth_triage', 'tamamhealth_billing', 'tamamhealth_charges',
     'tamamhealth_claims', 'tamamhealth_adjustments', 'tamamhealth_payments',
     'tamamhealth_refunds', 'tamamhealth_saved_payment_methods', 'tamamhealth_payment_plans',
@@ -2863,7 +2851,7 @@ async function seedDatabaseExclusive(): Promise<void> {
 
     // Per-facility slot allocator for TODAY. A clinic front desk never
     // double-books a slot, so every generated booking below (today's
-    // appointments, telehealth visits, and the scheduled-lane fill) draws
+    // appointments and the scheduled-lane fill) draws
     // its time from here. The taken list is primed with the static
     // seedAppointments rows for the same facility so generated bookings
     // slot around them instead of on top of them. Returns null when the
@@ -3007,33 +2995,6 @@ async function seedDatabaseExclusive(): Promise<void> {
           bookedBy: fac.desk.id, bookedByName: fac.desk.name,
           state: p.state, county: p.county, orgId: fac.org,
           createdAt: daysAgo((i % 5) + 1), updatedAt: daysAgo(0),
-        } as unknown as Record<string, unknown>);
-      }
-
-      // Telehealth visits today — a couple per facility so every clinician has
-      // a video visit to Join from the dashboard (appointmentType 'telehealth'
-      // drives the Join button + the telehealth visit room).
-      const thCount = 2;
-      for (let i = 0; i < thCount; i++) {
-        const p = drawTodayPatient();
-        if (!p) break;
-        const prov = fac.providers[i % fac.providers.length];
-        const slot = takeTodaySlot(fac.fid, 30);
-        if (!slot) break;
-        const name = patName(p);
-        await safePut(visApptDB, {
-          _id: `appt-vis-${fac.fid}-${fac.org === PRIVATE_ORG_ID ? 'priv-' : ''}th-${i}`,
-          type: 'appointment', patientId: p.id, patientName: name, patientPhone: p.phone || '',
-          providerId: prov.id, providerName: prov.name,
-          facilityId: fac.fid, facilityName: fac.fname, facilityLevel: fac.level,
-          appointmentDate: dateAgo(0), appointmentTime: slot.t, endTime: slot.e, duration: 30,
-          appointmentType: 'telehealth', priority: 'routine',
-          department: 'Telemedicine', reason: 'Telehealth follow-up consultation',
-          status: i % 2 === 0 ? 'confirmed' : 'scheduled',
-          reminderSent: true, reminderChannel: 'sms', isRecurring: false,
-          bookedBy: fac.desk.id, bookedByName: fac.desk.name,
-          state: p.state, county: p.county, orgId: fac.org,
-          createdAt: daysAgo(1), updatedAt: daysAgo(0),
         } as unknown as Record<string, unknown>);
       }
 
@@ -4192,12 +4153,6 @@ async function seedDatabaseExclusive(): Promise<void> {
         hospitalId, hospitalName, createdAt: created, updatedAt: created, orgId: PUBLIC_ORG_ID,
       } as unknown as Record<string, unknown>);
     }
-  }
-
-  // Seed telehealth sessions
-  const thDB = telehealthDB();
-  for (const th of seedTelehealth) {
-    await safePut(thDB, th as unknown as Record<string, unknown>);
   }
 
   // Seed order sets / clinical protocols (WHO/IMCI/ETAT/South Sudan STG).

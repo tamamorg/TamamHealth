@@ -3,7 +3,7 @@ import type { TourStep } from './types';
 // Walks a clinician through a full day end to end: the dashboard they land on
 // after login, the patient registry, a patient's chart (the OpenMRS O3-style
 // shell in src/components/ehr/chart/, scoped `omrs-` classes), writing a
-// clinical note, and the telehealth and alerts entry points.
+// clinical note, and the alerts entry point.
 //
 // `/consultation` is a retired route now — it only redirects into a clinical
 // note (see its own file header) — so this tour documents the note-based
@@ -186,7 +186,7 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     target: '.cn-split-main',
     preClickSelector: '.cn-split-main',
     title: 'Start a note',
-    body: "The main button starts the note type you'll use most, SOAP; the caret next to it opens the full list — Telehealth SOAP, OB Evaluation, Nursing visit, and more.",
+    body: "The main button starts the note type you'll use most, SOAP; the caret next to it opens the full list — OB Evaluation, Nursing visit, and more.",
     placement: 'bottom',
   },
 
@@ -198,15 +198,6 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     title: 'Write the visit',
     body: 'Jump between sections — a filled dot means it already has content. Assign the note to a colleague or pull in a lab from the sidebar, then Sign to lock it into the record.',
     placement: 'right',
-  },
-
-  // ── Telehealth ───────────────────────────────────────────────────────
-  {
-    id: 'telehealth-entry',
-    route: '/telehealth',
-    target: '',
-    title: 'Telehealth visits',
-    body: 'Video visits live on your Appointments calendar now — book a Video call appointment, and “Join call” opens the live visit room with vitals, chat, and a note ready to go.',
   },
 
   // ── Alerts ───────────────────────────────────────────────────────────

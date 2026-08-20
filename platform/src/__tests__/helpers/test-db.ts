@@ -67,7 +67,6 @@ export function createDBMock() {
     organizationsDB: () => getTestDB('test_tamamhealth_organizations'),
     platformConfigDB: () => getTestDB('test_tamamhealth_platform_config'),
     appointmentsDB: () => getTestDB('test_tamamhealth_appointments'),
-    telehealthDB: () => getTestDB('test_tamamhealth_telehealth'),
     pharmacyInventoryDB: () => getTestDB('test_tamamhealth_pharmacy_inventory'),
     triageDB: () => getTestDB('test_tamamhealth_triage'),
     billingDB: () => getTestDB('test_tamamhealth_billing'),

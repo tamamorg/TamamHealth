@@ -125,39 +125,3 @@ describe('production configuration warnings', () => {
     expect(productionConfigWarnings(noRedis).join(' ')).not.toMatch(/redis/i);
   });
 });
-
-describe('telehealth video configuration', () => {
-  const withLiveKit = (extra: Partial<ConfigEnv> = {}): ConfigEnv => ({
-    ...validEnvironment(),
-    LIVEKIT_URL: 'wss://livekit.example.invalid',
-    LIVEKIT_API_KEY: 'lk-key-0123456789',
-    LIVEKIT_API_SECRET: 'lk-secret-0123456789-abcdefghijklmnop',
-    NEXT_PUBLIC_LIVEKIT_URL: 'wss://livekit.example.invalid',
-    ...extra,
-  });
-
-  it('accepts a deployment with no telehealth at all', () => {
-    // Video absent is a supported shape: the token route reports 503 and the
-    // room says so, rather than failing mid-visit.
-    expect(validateProductionConfig(validEnvironment())).toEqual([]);
-  });
-
-  it('accepts a fully configured one', () => {
-    expect(validateProductionConfig(withLiveKit())).toEqual([]);
-  });
-
-  it('refuses a configured server the browser would never be allowed to reach', () => {
-    // The CSP is built at build time from NEXT_PUBLIC_LIVEKIT_URL; without it
-    // the policy omits LiveKit and every call is blocked in the browser.
-    const noPublicUrl = withLiveKit();
-    delete noPublicUrl.NEXT_PUBLIC_LIVEKIT_URL;
-
-    expect(validateProductionConfig(noPublicUrl).join(' ')).toMatch(/NEXT_PUBLIC_LIVEKIT_URL/);
-  });
-
-  it('still refuses a partial configuration', () => {
-    const partial = withLiveKit();
-    delete partial.LIVEKIT_API_SECRET;
-    expect(validateProductionConfig(partial).join(' ')).toMatch(/partially configured/);
-  });
-});

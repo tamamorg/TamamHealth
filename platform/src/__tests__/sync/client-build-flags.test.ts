@@ -70,13 +70,12 @@ describe('client build flags reach every builder', () => {
 
   it('the deploy workflow passes every declared flag as a build arg', () => {
     // Was a hand-picked subset of three, on the reasoning that the rest were
-    // "cosmetic". NEXT_PUBLIC_LIVEKIT_URL was then added to the Dockerfile and
-    // not here, and telehealth shipped with a Content-Security-Policy that had
-    // no LiveKit origin in it — every call blocked in the browser, server-side
-    // config perfectly valid, nothing in any log. That is the same silent
-    // failure the sync flags produced, so this now asserts the WHOLE list: the
-    // Dockerfile and compose checks above already do, and the builder that
-    // actually ships production was the one exception.
+    // "cosmetic". A later flag was then added to the Dockerfile and not here,
+    // and shipped a client bundle configured differently from the running
+    // container — server-side config perfectly valid, nothing in any log. That
+    // is the same silent failure the sync flags produced, so this asserts the
+    // WHOLE list: the Dockerfile and compose checks above already do, and the
+    // builder that actually ships production was the one exception.
     const workflow = read(REPO_ROOT, '.github', 'workflows', 'deploy-staging.yml');
     const platformBuild = workflow.slice(0, workflow.indexOf('Build + push website image'));
     for (const name of declared) {

@@ -64,7 +64,7 @@ export const DEFAULT_VISIT_REASONS: ReadonlyArray<
     name: 'Follow-up Review', slug: 'follow-up-review',
     description: 'Review of an ongoing problem or recent results.',
     durationMinutes: 20, availableToNewPatients: false, availableToReturningPatients: true,
-    modality: 'both', department: 'Outpatient', appointmentType: 'follow_up',
+    modality: 'in_person', department: 'Outpatient', appointmentType: 'follow_up',
   },
   {
     name: 'Antenatal Visit', slug: 'antenatal-visit',
@@ -77,12 +77,6 @@ export const DEFAULT_VISIT_REASONS: ReadonlyArray<
     description: 'Routine vaccination for a child under five.',
     durationMinutes: 15, availableToNewPatients: true, availableToReturningPatients: true,
     modality: 'in_person', department: 'Pediatrics', appointmentType: 'immunization',
-  },
-  {
-    name: 'Telehealth Consultation', slug: 'telehealth-consultation',
-    description: 'Speak to a clinician by video without travelling.',
-    durationMinutes: 20, availableToNewPatients: false, availableToReturningPatients: true,
-    modality: 'telehealth', department: 'Outpatient', appointmentType: 'telehealth',
   },
 ];
 

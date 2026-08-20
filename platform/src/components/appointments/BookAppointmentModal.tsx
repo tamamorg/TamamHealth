@@ -65,7 +65,6 @@ const TYPE_OPTIONS: { value: AppointmentType; labelKey: string }[] = [
   { value: 'anc', labelKey: 'appointments.typeAnc' },
   { value: 'immunization', labelKey: 'appointments.typeImmunization' },
   { value: 'lab', labelKey: 'appointments.typeLab' },
-  { value: 'telehealth', labelKey: 'appointments.typeTelehealth' },
   { value: 'surgical', labelKey: 'appointments.typeSurgical' },
   { value: 'dental', labelKey: 'appointments.typeDental' },
   { value: 'mental_health', labelKey: 'appointments.typeMentalHealth' },
@@ -150,7 +149,6 @@ export default function BookAppointmentModal({
   );
 
   // Step 1 controls
-  const [modality, setModality] = useState<'in_person' | 'telehealth'>('in_person');
   const [providerFilter, setProviderFilter] = useState('');
   // The second person the visit needs — rooming nurse, interpreter, scribe.
   // Optional, and when set the grid only offers times they are free too.
@@ -203,7 +201,6 @@ export default function BookAppointmentModal({
     orgId: currentUser?.orgId,
     visitReason,
     patientClass: 'returning',
-    modality,
     channel: 'staff',
     from: today,
     days: 90,
@@ -245,8 +242,6 @@ export default function BookAppointmentModal({
     setDepartment(picked.department);
     setType(picked.appointmentType);
     if (!reason.trim()) setReason(picked.name);
-    if (picked.modality === 'telehealth') setModality('telehealth');
-    else if (picked.modality === 'in_person') setModality('in_person');
     setTime('');   // the previous time belonged to the previous duration
   };
 
@@ -305,7 +300,6 @@ export default function BookAppointmentModal({
         appointmentTime: time,
         duration,
         appointmentType: type,
-        appointmentMode: modality === 'telehealth' ? 'telehealth' : 'in_office',
         priority,
         department,
         reason,
@@ -451,7 +445,7 @@ export default function BookAppointmentModal({
                   select and grew a form underneath it — the desk could not see
                   what booking a visit would ask for until it had already
                   started answering. Everything renders from the outset;
-                  choosing a reason seeds duration, department and modality
+                  choosing a reason seeds duration and department
                   rather than revealing the fields that hold them. */}
               <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
@@ -474,25 +468,6 @@ export default function BookAppointmentModal({
                         {departments.map(d => <option key={d} value={d}>{d}</option>)}
                       </Select>
                     </div>
-                  </div>
-
-                  {/* In-person / Virtual. A reason that supports only one way of
-                      being seen locks the control — an immunization cannot be
-                      given over video — but it says so rather than reading as a
-                      dead toggle. */}
-                  <div style={{ display: 'grid', gap: 5 }}>
-                    <ModalityToggle
-                      value={modality}
-                      onChange={next => { setModality(next); setTime(''); }}
-                      disabled={visitReason ? visitReason.modality !== 'both' : false}
-                    />
-                    {visitReason && visitReason.modality !== 'both' && (
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-                        {visitReason.modality === 'telehealth'
-                          ? `${visitReason.name} is offered as a virtual visit only.`
-                          : `${visitReason.name} has to be seen in person.`}
-                      </p>
-                    )}
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
@@ -552,7 +527,6 @@ export default function BookAppointmentModal({
                 >
                   <strong style={{ color: 'var(--text-primary)', fontSize: 13 }}>{visitReason.name}</strong>
                   <span>· {t('appointments.durationMin', { count: duration })}</span>
-                  <span>· {modality === 'telehealth' ? 'Virtual visit' : 'In-person'}</span>
                   {staffName && <span>· with {staffName}</span>}
                 </div>
               )}
@@ -607,7 +581,6 @@ export default function BookAppointmentModal({
                   startTime={time}
                   durationMinutes={duration}
                   facilityName={currentUser?.hospitalName}
-                  modality={modality}
                 />
               )}
             </>
@@ -622,7 +595,6 @@ export default function BookAppointmentModal({
                 startTime={time}
                 durationMinutes={duration}
                 facilityName={currentUser?.hospitalName}
-                modality={modality}
                 onChange={() => setStep(1)}
               />
 
@@ -691,7 +663,6 @@ export default function BookAppointmentModal({
                 startTime={time}
                 durationMinutes={duration}
                 facilityName={currentUser?.hospitalName}
-                modality={modality}
                 onChange={() => setStep(1)}
               />
               <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
@@ -764,62 +735,6 @@ export default function BookAppointmentModal({
   );
 }
 
-/** In-person / Virtual visit, the segmented control from the reference. */
-function ModalityToggle({
-  value, onChange, disabled = false,
-}: {
-  value: 'in_person' | 'telehealth';
-  onChange: (next: 'in_person' | 'telehealth') => void;
-  disabled?: boolean;
-}) {
-  const options: { key: 'in_person' | 'telehealth'; label: string }[] = [
-    { key: 'in_person', label: 'In-person' },
-    { key: 'telehealth', label: 'Virtual visit' },
-  ];
-  return (
-    <div
-      role="group"
-      aria-label="Visit type"
-      style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4,
-        borderRadius: 999, background: 'var(--overlay-subtle)',
-        border: '1px solid var(--border-medium)',
-        opacity: disabled ? 0.55 : 1,
-        maxWidth: 320,
-      }}
-    >
-      {options.map(option => {
-        const active = value === option.key;
-        return (
-          <button
-            key={option.key}
-            type="button"
-            disabled={disabled}
-            // Which visit type is chosen changes what gets booked, so the
-            // selection is announced, not left to colour alone.
-            aria-pressed={active}
-            onClick={() => onChange(option.key)}
-            style={{
-              padding: '7px 10px', borderRadius: 999, border: 'none',
-              // Selected reads as the platform's segmented control does
-              // everywhere else (.ehr-segmented button.active): filled accent,
-              // white label. A white tile carrying accent-coloured text on a
-              // near-white track left the choice barely legible — the two
-              // states differed by about a shade of grey.
-              background: active ? 'var(--accent-primary)' : 'transparent',
-              color: active ? '#FFFFFF' : 'var(--text-secondary)',
-              fontSize: 13, fontWeight: active ? 700 : 600,
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              boxShadow: active ? '0 1px 2px rgba(14, 42, 74, 0.18)' : 'none',
-            }}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 /**
  * Booking by hand, when no clinician has clinic hours recorded yet.

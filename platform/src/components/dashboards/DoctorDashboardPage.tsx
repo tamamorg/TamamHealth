@@ -82,7 +82,7 @@ export interface DoctorWorklistResult {
  * assigned patients, PLUS any active-triage walk-in nobody has claimed yet
  * (previously invisible to every doctor at the facility — see
  * `unclaimedTriaged` below), their schedule, and the "outstanding items" rail
- * (documents to sign, phone notes, referrals, labs, telehealth, transfers).
+ * (documents to sign, phone notes, referrals, labs, transfers).
  *
  * Pure: every input is already the resolved output of a scoped hook
  * (`usePatients`, `useTriage`, … — tenancy is enforced there, by
@@ -212,7 +212,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   const myAppts = (appointments || [])
     .filter(a => a.providerId === currentUser._id)
     .sort((x, y) => apptKey(x).localeCompare(apptKey(y)));
-  // Still-live bookings only — feeds the telehealth tile, where a completed or
+  // Still-live bookings only — where a completed or
   // cancelled visit is no longer something to join.
   const myUpcomingAppts = myAppts
     .filter(a => a.status !== 'cancelled' && a.status !== 'completed' && a.status !== 'no_show');
@@ -317,19 +317,6 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
       : `/referrals?patient=${encodeURIComponent(r.patientId)}`,
   }));
 
-  // Today's telehealth visits for this clinician — each row opens the visit room.
-  const telehealthToday = myUpcomingAppts.filter(a => a.appointmentType === 'telehealth' && a.appointmentDate === todayIso);
-  const telehealthEntries = telehealthToday.map(a => ({
-    id: a._id,
-    title: shortenPersonName(a.patientName),
-    subtitle: `Telehealth · ${formatClockTime(a.appointmentTime)}${a.reason ? ` · ${a.reason}` : ''}`,
-    meta: a.status ? String(a.status).replace(/_/g, ' ') : '',
-    tone: 'warning' as const,
-    href: `/telehealth/visit/${encodeURIComponent(a._id)}`,
-    actionLabel: 'Join visit',
-    actionHref: `/telehealth/visit/${encodeURIComponent(a._id)}`,
-  }));
-
   const labEntries = resumableEncounters.map(e => ({
     id: e._id,
     title: shortenPersonName(e.patientName),
@@ -347,7 +334,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   // hospital. `followUpsDue` (useFollowUpsDue) already scopes and pre-filters
   // for the live app, but the window check is re-applied here against the
   // injected `now` so this stays a pure, deterministic function of its
-  // inputs — same reasoning as the triage 24h cutoff and telehealth's
+  // inputs — same reasoning as the triage 24h cutoff and the
   // "today" filter above, both computed in the assembler rather than a hook.
   const dueCutoffMs = nowMs + FOLLOW_UP_DUE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
   const dueFollowUps = followUpsDue.filter(f => {
@@ -398,7 +385,6 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     { label: 'Phone notes', count: phoneNotesInbox.length, tone: phoneNotesInbox.length > 0 ? 'warning' as const : 'neutral' as const, entries: phoneNoteEntries },
     { label: 'Open referrals', count: myOpenReferrals.length, href: '/referrals', entries: referralEntries },
     { label: 'Awaiting labs', count: resumableEncounters.length, tone: resumableEncounters.length > 0 ? 'danger' as const : 'neutral' as const, href: '/lab', entries: labEntries },
-    { label: 'Telehealth visits', count: telehealthToday.length, tone: telehealthToday.length > 0 ? 'warning' as const : 'neutral' as const, href: '/appointments', entries: telehealthEntries },
     { label: 'Follow-ups due', count: dueFollowUps.length, tone: dueFollowUps.length > 0 ? 'warning' as const : 'neutral' as const, entries: followUpEntries },
   ];
 

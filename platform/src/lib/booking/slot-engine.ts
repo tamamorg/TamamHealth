@@ -41,7 +41,6 @@ export interface Slot {
   startTime: string;     // HH:MM
   endTime: string;       // HH:MM
   durationMinutes: number;
-  modality: 'in_person' | 'telehealth';
   /** How many more bookings this slot can still take. Always ≥ 1. */
   capacityLeft: number;
   roomId?: string;
@@ -65,7 +64,6 @@ export interface SlotQuery {
   now: { date: string; time: string };
   visitReason: VisitReasonDoc;
   patientClass: PatientClass;
-  modality: 'in_person' | 'telehealth';
   channel: SlotChannel;
   /** Narrow to specific facilities. Empty/unset = all in the input. */
   facilityIds?: string[];
@@ -191,14 +189,6 @@ export function expandWindows(
 // Step 2 — window eligibility
 // ═══════════════════════════════════════════════════════════════════════════
 
-function modalityAccepts(windowModality: AvailabilityDoc['modality'], wanted: 'in_person' | 'telehealth'): boolean {
-  return windowModality === 'both' || windowModality === wanted;
-}
-
-function reasonModalityAccepts(reason: VisitReasonDoc, wanted: 'in_person' | 'telehealth'): boolean {
-  return reason.modality === 'both' || reason.modality === wanted;
-}
-
 /** Whether a window may be offered for this query at all. */
 export function windowIsEligible(window: AvailabilityDoc, query: SlotQuery): boolean {
   if (window.status === 'cancelled') return false;
@@ -208,8 +198,6 @@ export function windowIsEligible(window: AvailabilityDoc, query: SlotQuery): boo
 
   if (query.facilityIds?.length && !query.facilityIds.includes(window.facilityId)) return false;
   if (query.providerIds?.length && !query.providerIds.includes(window.providerId)) return false;
-
-  if (!modalityAccepts(window.modality, query.modality)) return false;
 
   // A window reserved for new patients is not shown to a returning one, and
   // vice versa. Unset means the window takes anybody.
@@ -231,7 +219,6 @@ export function windowIsEligible(window: AvailabilityDoc, query: SlotQuery): boo
 export function reasonIsBookable(query: SlotQuery): boolean {
   const reason = query.visitReason;
   if (!reason.isActive) return false;
-  if (!reasonModalityAccepts(reason, query.modality)) return false;
   if (query.channel === 'staff') return true;
   return query.patientClass === 'new'
     ? reason.availableToNewPatients
@@ -413,7 +400,6 @@ export function computeSlots(
         startTime,
         endTime: toHHMM(end),
         durationMinutes: duration,
-        modality: query.modality,
         capacityLeft,
         roomId: window.roomId,
       });

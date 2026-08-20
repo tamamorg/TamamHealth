@@ -118,8 +118,6 @@ export type EhrCareDashboardRow = {
    * both readings stay visible.
    */
   lockStatus?: boolean;
-  /** Remote visit — the row shows a telehealth mark beside the patient's name. */
-  telehealth?: boolean;
   priority?: string;
   room?: string;
   // No row-level `onClick`: the shell owns what a row click does (expand, or
@@ -944,11 +942,6 @@ export default function EhrCareDashboard({
                                 : initials(row.title)}
                             </div>
                             <div className="ehr-appointment-main appointment-card-patient">
-                              {/* Name and its telehealth mark share one line, so
-                                  the icon reads as a property of the patient.
-                                  Loose in the grid it auto-placed into the
-                                  second column and drifted to the row's far
-                                  right, where it looked like an action. */}
                               <span className="ehr-row-name">
                                 {/* The name is the way into the chart; the rest of
                                     the row expands the details underneath. */}
@@ -965,13 +958,6 @@ export default function EhrCareDashboard({
                                   {/* Two words on the row — first and last. */}
                                   {shortenPersonName(row.title)}
                                 </button>
-                                {/* Marks a remote visit where the name is read,
-                                    so the desk can see it without opening a row. */}
-                                {row.telehealth && (
-                                  <span className="ehr-row-telehealth" title="Telehealth visit" aria-label="Telehealth visit">
-                                    <Video className="w-3.5 h-3.5" aria-hidden />
-                                  </span>
-                                )}
                               </span>
                               <p>{row.subtitle}</p>
                             </div>

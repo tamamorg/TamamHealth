@@ -96,7 +96,6 @@ here for brevity — `sync-config.ts` is the authoritative full list.
 | `tamamhealth_hospitals` | `hospital` | orgId; `facilityLevel`: boma/payam/county/state/national | both | yes | `hospitals` |
 | `tamamhealth_appointments` | `appointment` | patientId; providerId → users; referralId; previousAppointmentId (follow-up chain) | both | yes | `appointments` |
 | `tamamhealth_availability` | `availability` | providerId → users; facilityId | both | yes | — |
-| `tamamhealth_telehealth` | `telehealth_session` | appointmentId; patientId; providerId | both | yes | `telehealth_sessions` |
 | `tamamhealth_messages` | `message` | patient or staff recipient; fromDoctorId → users | both | yes | `messages` |
 | `tamamhealth_announcements` | `announcement` | authorId → users; targetRoles[] | both | yes | — |
 | `tamamhealth_biometric_templates` | `biometric_template` | patientId; consent-gated; minutiae templates only (no images); captured/matched via local `fingerprint-bridge` | both | yes | — |

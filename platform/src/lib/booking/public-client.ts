@@ -48,7 +48,6 @@ export interface PublicReason {
   slug: string;
   name: string;
   durationMinutes: number;
-  modality: 'in_person' | 'telehealth' | 'both';
   availableToNewPatients: boolean;
   availableToReturningPatients: boolean;
   requiresInsurance: boolean;
@@ -61,7 +60,6 @@ export interface PublicSlot {
   startTime: string;
   endTime: string;
   durationMinutes: number;
-  modality: 'in_person' | 'telehealth';
 }
 
 export interface PracticePayload {
@@ -130,7 +128,6 @@ export interface SlotQueryParams {
   practice: string;
   reason: string;
   patientClass: 'new' | 'returning';
-  modality: 'in_person' | 'telehealth';
   from: string;
   to: string;
   provider?: string;
@@ -141,7 +138,6 @@ export async function fetchSlots(params: SlotQueryParams, signal?: AbortSignal):
     practice: params.practice,
     reason: params.reason,
     patientClass: params.patientClass,
-    modality: params.modality,
     from: params.from,
     to: params.to,
   });
@@ -164,7 +160,6 @@ export interface SubmitBookingInput {
   reason: string;
   holdToken: string;
   patientClass: 'new' | 'returning';
-  modality: 'in_person' | 'telehealth';
   firstName: string;
   lastName: string;
   email?: string;

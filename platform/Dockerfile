@@ -28,11 +28,6 @@ ARG NEXT_PUBLIC_COUCHDB_URL=
 ARG NEXT_PUBLIC_APP_URL=
 ARG NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=false
 ARG NEXT_PUBLIC_BUILD_ID=
-# Telehealth's LiveKit origin. Needed at BUILD time even though the key and
-# secret are runtime-only: the Content-Security-Policy is built in middleware,
-# where Next inlines env at build, and a policy without this origin blocks the
-# call's signalling socket in the browser. See lib/security/content-security-policy.ts.
-ARG NEXT_PUBLIC_LIVEKIT_URL=
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN JWT_SECRET="docker-build-time-placeholder-not-used-at-runtime" \
     NEXT_PUBLIC_DEMO_MODE="$NEXT_PUBLIC_DEMO_MODE" \
@@ -42,7 +37,6 @@ RUN JWT_SECRET="docker-build-time-placeholder-not-used-at-runtime" \
     NEXT_PUBLIC_COUCHDB_URL="$NEXT_PUBLIC_COUCHDB_URL" \
     NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
     NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE="$NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE" \
-    NEXT_PUBLIC_LIVEKIT_URL="$NEXT_PUBLIC_LIVEKIT_URL" \
     NEXT_PUBLIC_BUILD_ID="$NEXT_PUBLIC_BUILD_ID" \
     npm run build
 
@@ -61,7 +55,6 @@ ARG NEXT_PUBLIC_COUCHDB_URL=
 ARG NEXT_PUBLIC_APP_URL=
 ARG NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=false
 ARG NEXT_PUBLIC_BUILD_ID=
-ARG NEXT_PUBLIC_LIVEKIT_URL=
 LABEL org.tamamhealth.demo-mode="${NEXT_PUBLIC_DEMO_MODE}"
 LABEL org.tamamhealth.tenant-databases="${NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED}"
 LABEL org.tamamhealth.sync-gateway="${NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED}"

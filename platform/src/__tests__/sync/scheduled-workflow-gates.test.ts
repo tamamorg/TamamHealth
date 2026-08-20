@@ -5,7 +5,7 @@
  * a DEPLOYMENT. A cron cannot answer that: the run waits for approval, the
  * next scheduled run supersedes it in the concurrency group, and it is
  * cancelled. Adding reviewers to `production` on 2026-08-18 silently stopped
- * the hourly transfer sweep, telehealth maintenance and the daily reminder
+ * the hourly transfer sweep and the daily reminder
  * dispatch — every run cancelled, no alert, because a cancelled run is not a
  * failed one.
  *
@@ -43,7 +43,6 @@ describe('scheduled workflows are not gated on human approval', () => {
     const names = scheduled().map(w => w.name);
     expect(names).toEqual(expect.arrayContaining([
       'transfers-sweep-cron.yml',
-      'telehealth-maintenance-cron.yml',
       'reminders-cron.yml',
     ]));
   });
@@ -77,7 +76,7 @@ describe('scheduled workflows are not gated on human approval', () => {
     // Each of these reported success for weeks while doing nothing, because an
     // unset secret only emitted a ::notice. A green tick on a job that no-ops
     // is how that went unnoticed.
-    for (const name of ['transfers-sweep-cron.yml', 'telehealth-maintenance-cron.yml', 'reminders-cron.yml']) {
+    for (const name of ['transfers-sweep-cron.yml', 'reminders-cron.yml']) {
       const text = readFileSync(join(WORKFLOWS, name), 'utf8');
       expect(text).toMatch(/::error title=[^:]*not configured/);
       expect(text).not.toMatch(/::notice title=[^:]*not configured/);

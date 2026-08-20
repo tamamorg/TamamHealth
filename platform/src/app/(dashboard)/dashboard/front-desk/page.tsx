@@ -1060,7 +1060,6 @@ export default function FrontDeskDashboardPage() {
         onStatusChange: canSetAppointmentStatus
           ? value => handleAppointmentStatusChange(appointment, value as AppointmentStatus)
           : undefined,
-        telehealth: appointment.appointmentMode === 'telehealth' || appointment.appointmentType === 'telehealth',
         // The line under the pill states the booking's urgency in the shared
         // Emergency/Urgent/Routine words. It used to write 'Appointment' for
         // anything routine — the row's type, not its priority — so the column

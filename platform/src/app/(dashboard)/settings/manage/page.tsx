@@ -12,6 +12,7 @@ import { hasLockPin, setLockPin, clearLockPin } from '@/lib/hooks/useAutoLock';
 import { getUserPrefs, setUserPrefs, DEFAULT_USER_PREFS, type UserPrefs } from '@/lib/user-prefs';
 import { useToast } from '@/components/Toast';
 import { getAvailableRoles, getRoleConfig } from '@/lib/permissions';
+import { generateTempPassword } from '@/lib/temp-password';
 import { statesAndCounties } from '@/lib/data/south-sudan-reference';
 import type { UserRole } from '@/lib/db-types';
 import FilterBar from '@/components/filters/FilterBar';
@@ -46,15 +47,12 @@ const ALL_SERVICES = [
 
 const states = Object.keys(statesAndCounties);
 
-function generatePassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const specials = '!@#$%&*';
-  let pw = '';
-  for (let i = 0; i < 10; i++) pw += chars[Math.floor(Math.random() * chars.length)];
-  pw += specials[Math.floor(Math.random() * specials.length)];
-  pw += Math.floor(Math.random() * 90 + 10);
-  return pw;
-}
+// Temporary passwords come from `lib/temp-password.ts`, the one CSPRNG-backed
+// generator every other admin surface already uses (/admin/users,
+// /org-admin/users, /admin/organizations, and the account-request approval
+// API). This page used to carry its own `Math.random()` version — a
+// non-cryptographic PRNG whose internal state is recoverable from a short run
+// of outputs — for exactly the credentials a facility admin hands to new staff.
 
 export default function SettingsPage() {
   const { currentUser, isOnline, syncPaused, toggleOnline, syncNow, lastSync } = useApp();
@@ -328,7 +326,7 @@ export default function SettingsPage() {
   // ─── User Handlers ────────────────────────────────────────
   const openCreateUser = () => {
     setEditingUser(null);
-    const pw = generatePassword();
+    const pw = generateTempPassword();
     setUserForm({ name: '', username: '', password: pw, role: 'doctor', hospitalId: '', hospitalName: '' });
     setShowPassword(true);
     setShowUserForm(true);
@@ -606,7 +604,7 @@ export default function SettingsPage() {
                             <RowActionsMenu
                               actions={[
                                 { key: 'edit', label: 'Edit', icon: <Edit3 className="w-4 h-4" />, onClick: () => openEditUser(u._id) },
-                                { key: 'reset', label: 'Reset Password', icon: <KeyRound className="w-4 h-4" />, onClick: () => { setResetUserId(u._id); setNewPassword(generatePassword()); setShowNewPassword(true); } },
+                                { key: 'reset', label: 'Reset Password', icon: <KeyRound className="w-4 h-4" />, onClick: () => { setResetUserId(u._id); setNewPassword(generateTempPassword()); setShowNewPassword(true); } },
                                 { key: 'toggle', label: u.isActive ? 'Deactivate' : 'Activate', tone: u.isActive ? 'danger' : 'default', icon: u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />, onClick: () => handleToggleActive(u._id, u.isActive) },
                               ]}
                             />
@@ -857,7 +855,7 @@ export default function SettingsPage() {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                    <button type="button" onClick={() => setUserForm(p => ({ ...p, password: generatePassword() }))}
+                    <button type="button" onClick={() => setUserForm(p => ({ ...p, password: generateTempPassword() }))}
                       style={btnSecondary} className="flex items-center gap-1.5 whitespace-nowrap">
                       <RefreshCw className="w-3.5 h-3.5" /> Generate
                     </button>
@@ -929,7 +927,7 @@ export default function SettingsPage() {
                     {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <button type="button" onClick={() => setNewPassword(generatePassword())}
+                <button type="button" onClick={() => setNewPassword(generateTempPassword())}
                   style={btnSecondary} className="flex items-center gap-1.5 whitespace-nowrap">
                   <RefreshCw className="w-3.5 h-3.5" /> Generate
                 </button>

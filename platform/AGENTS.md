@@ -34,7 +34,7 @@ Never rewrite `package-lock.json` casually; the repo regenerates lockfiles with 
 ## Layout
 
 - `src/app/(dashboard)/**` — ~45 protected modules (patients, consultation, notes, triage, rooming, wards, lab, pharmacy, blood-bank, controlled-substances, anc, births, deaths, immunizations, surveillance, epidemic-intelligence, billing, payments, hr, it, equipment, facility-*, government, admin, org-admin, system-admin, …).
-- `src/app/` also holds `(booking)/book`, `patient-portal/`, `telehealth/join`, `checkout/[linkId]`, `request-account/`, `login/`, `privacy/`, `terms/`, and `api/`.
+- `src/app/` also holds `(booking)/book`, `patient-portal/`, `checkout/[linkId]`, `request-account/`, `login/`, `privacy/`, `terms/`, and `api/`.
 - `src/proxy.ts` — Edge middleware (auth gate, role routing, CSRF). Next 16 name for `middleware.ts`. Only import Edge-safe modules from it.
 - `src/instrumentation.ts` — server boot: fail-closed config validation, Sentry, Postgres migrations.
 - `src/lib/services/**` (100+) — all business logic and DB access. `src/lib/hooks/**` (60+) — one hook per service area.
@@ -71,7 +71,7 @@ Escape both with a scoped namespace rather than fighting specificity. Existing n
 
 **Sync.** Push is live; pull **polls** (~15 s) because ~76 concurrent longpolls saturate the browser connection limit and starve push. Per-DB `_security` uses `org:` / `role:` / `facility:` role prefixes, and the push filter plus the `validate_doc_update` validator are load-bearing — changing one without the others silently breaks replication. CouchDB 3 `_replicator` docs need absolute URLs and `auth.basic`; `/_replicate` still accepts bare names, which hides the bug.
 
-**Config.** `lib/config-validation.ts` refuses production boot on unsafe config (JWT secret, superadmin default password, PHI-at-rest declaration, shared Redis, sync/CouchDB URLs, partial LiveKit). Add new required secrets there, and document them in `.env.example`.
+**Config.** `lib/config-validation.ts` refuses production boot on unsafe config (JWT secret, superadmin default password, PHI-at-rest declaration, shared Redis, sync/CouchDB URLs). Add new required secrets there, and document them in `.env.example`.
 
 ## Before you call it done
 

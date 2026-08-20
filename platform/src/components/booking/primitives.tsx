@@ -95,33 +95,6 @@ export function PatientClassToggle({
   );
 }
 
-// ── In-person / virtual ────────────────────────────────────────────────────
-
-export function ModalityToggle({
-  value, onChange, disabled = false,
-}: {
-  value: 'in_person' | 'telehealth';
-  onChange: (next: 'in_person' | 'telehealth') => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="booking-segmented" role="group" aria-label="Visit type">
-      {(['in_person', 'telehealth'] as const).map(k => (
-        <button
-          key={k}
-          type="button"
-          disabled={disabled}
-          aria-pressed={value === k}
-          className={value === k ? 'is-active' : undefined}
-          onClick={() => onChange(k)}
-        >
-          {k === 'in_person' ? 'In-person' : 'Virtual visit'}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // ── Fields ─────────────────────────────────────────────────────────────────
 
 export function Field({

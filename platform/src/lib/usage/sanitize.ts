@@ -26,7 +26,7 @@ const STATIC_SEGMENTS = new Set([
   'settings', 'login', 'dashboard', 'admin', 'org-admin', 'analytics',
   'reports', 'calendar', 'front-desk', 'consultation', 'lab', 'pharmacy',
   'wards', 'appointments', 'referrals', 'messages', 'billing', 'payments',
-  'telehealth', 'immunizations', 'anc', 'births', 'deaths', 'surveillance',
+  'immunizations', 'anc', 'births', 'deaths', 'surveillance',
   'government', 'hr', 'equipment', 'blood-bank', 'controlled-substances',
   'emergency-preparedness', 'facility-management', 'facility-settings',
   'branding', 'pricing', 'organizations', 'system', 'control', 'audit',

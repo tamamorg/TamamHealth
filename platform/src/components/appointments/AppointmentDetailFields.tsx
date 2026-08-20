@@ -26,7 +26,6 @@ import { AlertTriangle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 
 export interface AppointmentDetailFieldValues {
-  mode: 'in_office' | 'telehealth';
   recurrence: '' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
   staffId: string;
   staffName: string;
@@ -35,7 +34,7 @@ export interface AppointmentDetailFieldValues {
 
 export default function AppointmentDetailFields({
   section,
-  modeSlot,
+  locationSlot,
   onAssignStaff,
   staffAssignDisabled,
   patient,
@@ -62,10 +61,10 @@ export default function AppointmentDetailFields({
   values: AppointmentDetailFieldValues;
   onChange: (patch: Partial<AppointmentDetailFieldValues>) => void;
   /** Which of the design's column groups to render. Omit for all of them. */
-  section?: 'mode' | 'provider' | 'billing';
-  /** Rendered directly under the mode radios — the caller owns the field, this
+  section?: 'location' | 'provider' | 'billing';
+  /** Rendered directly under the location fields — the caller owns the field, this
    *  just decides where in the group it belongs. */
-  modeSlot?: ReactNode;
+  locationSlot?: ReactNode;
   /** Commits the staff choice on its own, without saving the whole form. */
   onAssignStaff?: () => void;
   staffAssignDisabled?: boolean;
@@ -105,32 +104,18 @@ export default function AppointmentDetailFields({
 
   const primaryPolicy = policies.find(p => p.isPrimary) || policies[0];
 
-  const showMode = !section || section === 'mode';
+  const showLocation = !section || section === 'location';
   const showProvider = !section || section === 'provider';
   const showBilling = !section || section === 'billing';
 
   return (
     <>
-      {showMode && (<>
-      {/* ── How and where ─────────────────────────────────────────────── */}
-      <div>
-        <label>Appointment mode</label>
-        <div style={{ display: 'flex', gap: 18, padding: '6px 0' }}>
-          {([['in_office', 'In office'], ['telehealth', 'Telehealth']] as const).map(([value, label]) => (
-            <label key={value} style={{ display: 'flex', alignItems: 'center', gap: 7, textTransform: 'none', fontSize: 13, cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="appointment-mode"
-                checked={values.mode === value}
-                onChange={() => onChange({ mode: value })}
-                style={{ width: 15, height: 15 }}
-              />
-              {label}
-            </label>
-          ))}
-        </div>
-      </div>
-      {modeSlot}
+      {showLocation && (<>
+      {/* ── Where ─────────────────────────────────────────────────────
+          The in-office/remote radios lived here. Every visit happens in
+          person now, and a radio group with one option is not a choice — the
+          room below is the only thing left to decide. */}
+      {locationSlot}
 
       <>
         <div>

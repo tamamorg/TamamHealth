@@ -21,7 +21,7 @@ import {
   type PracticePayload, type PublicProvider, type PublicSlot,
 } from '@/lib/booking/public-client';
 import {
-  PatientClassToggle, ModalityToggle, BookingSelect, Field,
+  PatientClassToggle, BookingSelect, Field,
   ProviderAvatar, VirtualBadge,
 } from './primitives';
 import BookingFlow from './BookingFlow';
@@ -33,7 +33,6 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
   const { practice, policy, providers, reasons } = data;
 
   const [patientClass, setPatientClass] = useState<'new' | 'returning'>('new');
-  const [modality, setModality] = useState<'in_person' | 'telehealth'>('in_person');
   const [providerFilter, setProviderFilter] = useState('');
   const [reasonId, setReasonId] = useState('');
   const [weekStart, setWeekStart] = useState(todayIso());
@@ -73,7 +72,6 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
       practice: practice.slug,
       reason: reasonId,
       patientClass,
-      modality,
       from: columns[0],
       to: columns[columns.length - 1],
       provider: providerFilter || undefined,
@@ -86,7 +84,7 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
       .catch(err => { if (!ac.signal.aborted) setNote(err instanceof Error ? err.message : 'Could not load availability.'); })
       .finally(() => { if (!ac.signal.aborted) setLoading(false); });
     return () => ac.abort();
-  }, [practice.slug, reasonId, patientClass, modality, providerFilter, columns]);
+  }, [practice.slug, reasonId, patientClass, providerFilter, columns]);
 
   /** providerId → date → sorted start times. */
   const byProvider = useMemo(() => {
@@ -169,9 +167,6 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
           <div className="booking-divider" />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ minWidth: 240, flex: '0 1 320px' }}>
-              <ModalityToggle value={modality} onChange={setModality} />
-            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginInlineStart: 'auto' }}>
               <button
                 type="button" className="booking-round-btn" aria-label="Previous days"
@@ -222,7 +217,6 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
                   <div className="booking-provider-meta">
                     <b>{p.displayName}</b>
                     {p.specialtyLabel && <span>{p.specialtyLabel}</span>}
-                    {modality === 'telehealth' && <VirtualBadge />}
                   </div>
                 </div>
 

@@ -8,10 +8,9 @@ import { computeSignCount, type SigningInboxCounts } from '@/lib/hooks/signing-i
 import { usePhoneNotesInbox } from '@/lib/hooks/usePhoneNotesInbox';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useLabResults } from '@/lib/hooks/useLabResults';
-import { useTelehealth } from '@/lib/hooks/useTelehealth';
 import { getRoleConfig } from '@/lib/permissions';
 import { isHrefAllowed } from '@/components/ehr/ehr-navigation';
-import type { AppointmentDoc, LabResultDoc, PhoneNoteDoc, ReferralDoc, TelehealthSessionDoc } from '@/lib/db-types';
+import type { AppointmentDoc, LabResultDoc, PhoneNoteDoc, ReferralDoc } from '@/lib/db-types';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
 import { appointmentStatusGroup, APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 
@@ -53,8 +52,6 @@ export interface ClinicalOutstandingInput extends SigningInboxCounts {
   phoneNotes: PhoneNoteDoc[];
   referrals: ReferralDoc[];
   labResults: LabResultDoc[];
-  telehealthSessions: TelehealthSessionDoc[];
-  hasTelehealth: boolean;
   today: string;
 }
 
@@ -69,7 +66,7 @@ export interface ClinicalOutstandingInput extends SigningInboxCounts {
  * the mobile shell or its half-dozen backing hooks.
  */
 export function computeClinicalOutstanding(input: ClinicalOutstandingInput): MobileOutstandingItem[] {
-  const { currentUser, phoneNotes, referrals, labResults, telehealthSessions, hasTelehealth, today } = input;
+  const { currentUser, phoneNotes, referrals, labResults, today } = input;
   const signCount = computeSignCount(input);
   const myReferralsCount = referrals.filter((r) => r.createdBy === currentUser?._id).length;
   const awaitingLabs = labResults.filter(
@@ -82,15 +79,6 @@ export function computeClinicalOutstanding(input: ClinicalOutstandingInput): Mob
     { key: 'referrals', label: 'Open referrals', count: myReferralsCount, href: '/referrals' },
     { key: 'labs', label: 'Awaiting labs', count: awaitingLabs, href: '/lab' },
   ];
-
-  // Nurses don't have /telehealth in their allowedRoutes — omit the tile
-  // entirely rather than show a misleading 0.
-  if (hasTelehealth) {
-    const todayTelehealth = telehealthSessions.filter(
-      (s) => s.scheduledDate === today && (s.status === 'scheduled' || s.status === 'waiting_room')
-    ).length;
-    items.push({ key: 'telehealth', label: 'Telehealth visits', count: todayTelehealth, href: '/telehealth' });
-  }
 
   return items;
 }
@@ -110,14 +98,12 @@ export function useClinicalDashboardData(): MobileDashboardData {
   const { notes: phoneNotes, loading: phoneLoading } = usePhoneNotesInbox();
   const { referrals, loading: referralsLoading } = useReferrals();
   const { results: labResults, loading: labLoading } = useLabResults();
-  const { sessions: telehealthSessions, loading: telehealthLoading } = useTelehealth();
 
   const today = todayIso();
   const allowedRoutes = useMemo(
     () => (currentUser ? getRoleConfig(currentUser.role).allowedRoutes : []),
     [currentUser]
   );
-  const hasTelehealth = isHrefAllowed('/telehealth', allowedRoutes);
 
   const lanes = useMemo<MobileLane<AppointmentDoc>[]>(
     () => computeClinicalLanes(appointments, today),
@@ -126,10 +112,10 @@ export function useClinicalDashboardData(): MobileDashboardData {
 
   const outstanding = useMemo<MobileOutstandingItem[]>(() => computeClinicalOutstanding({
     currentUser, unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes,
-    phoneNotes, referrals, labResults, telehealthSessions, hasTelehealth, today,
-  }), [unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes, referrals, labResults, telehealthSessions, currentUser, hasTelehealth, today, phoneNotes]);
+    phoneNotes, referrals, labResults, today,
+  }), [unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes, referrals, labResults, currentUser, today, phoneNotes]);
 
-  const loading = apptLoading || signLoading || phoneLoading || referralsLoading || labLoading || telehealthLoading;
+  const loading = apptLoading || signLoading || phoneLoading || referralsLoading || labLoading;
 
   return { lanes, outstanding, loading };
 }

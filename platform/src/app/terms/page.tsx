@@ -279,7 +279,7 @@ export default function TermsPage() {
       <h2 id="third-party">11. Third-party services</h2>
       <p>
         Some features can be connected to outside services — SMS reminders, payment
-        providers, video for telehealth, error monitoring, AI assistance. All of them are
+        providers, error monitoring, AI assistance. All of them are
         optional: the platform runs with none of them configured, and features that depend on
         one degrade rather than fail.
       </p>

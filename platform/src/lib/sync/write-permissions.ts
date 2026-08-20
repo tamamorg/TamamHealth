@@ -113,9 +113,6 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
     'super_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
     'medical_superintendent', 'data_entry_clerk',
   ],
-  telehealth_session: [
-    'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
-  ],
   // Internal transfers of care ownership. Listed here because the document is
   // what actually moves accountability for a patient: left off the matrix it
   // would fail open (see buildValidateDocUpdateFn), letting a cashier write a

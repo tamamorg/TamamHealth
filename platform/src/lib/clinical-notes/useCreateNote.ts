@@ -5,7 +5,7 @@
  *
  * The point of creating from an appointment rather than from a blank screen is
  * that the appointment already knows the patient, the provider, the date, the
- * time and whether the visit is telehealth. Every one of those is a field the
+ * time. Every one of those is a field the
  * clinician would otherwise re-enter, and re-entry is where mismatched notes
  * come from.
  *
@@ -25,11 +25,10 @@ export interface CreateNoteFromVisitInput {
   patientName: string;
   mrn?: string;
   patientDob?: string;
-  /** Defaults to SOAP, or Telehealth SOAP when the visit is telehealth. */
+  /** Defaults to SOAP. */
   noteType?: NoteTypeId;
   appointmentId?: string;
   encounterId?: string;
-  telehealth?: boolean;
   serviceDate?: string;
   serviceTime?: string;
   assignedToId?: string;
@@ -62,13 +61,12 @@ export function findReusableDraft(
 }
 
 /**
- * An explicit choice from the type dropdown always wins; the telehealth
- * fallback only applies when the caller did not pick.
+ * An explicit choice from the type dropdown always wins; SOAP is the fallback.
  */
 export function resolveNoteTypeForCreate(
-  input: Pick<CreateNoteFromVisitInput, 'noteType' | 'telehealth'>,
+  input: Pick<CreateNoteFromVisitInput, 'noteType'>,
 ): NoteTypeId {
-  return input.noteType ?? (input.telehealth ? 'telehealth_soap' : 'soap');
+  return input.noteType ?? 'soap';
 }
 
 /**
@@ -93,7 +91,6 @@ export function buildCreateNoteInput(
     serviceTime: input.serviceTime || now.toTimeString().slice(0, 5),
     appointmentId: input.appointmentId,
     encounterId: input.encounterId,
-    telehealth: input.telehealth ?? getNoteType(noteType).telehealth,
     assignedToId: input.assignedToId ?? currentUser?._id,
     assignedToName: input.assignedToName ?? currentUser?.name ?? currentUser?.username,
     authorId: currentUser?._id,

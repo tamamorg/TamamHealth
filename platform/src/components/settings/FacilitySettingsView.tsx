@@ -7,7 +7,7 @@ import { useToast } from '@/components/Toast';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import {
   Settings, Building2, Stethoscope, FlaskConical, Wallet, ShieldCheck,
-  Trash2, Plus, Save, X, Clock, ClipboardCheck, Database, Server, Video,
+  Trash2, Plus, Save, X, Clock, ClipboardCheck, Database, Server,
   CalendarClock,
 } from '@/components/icons/lucide';
 import { useSettings, useSettingsContext } from '@/lib/settings/SettingsProvider';
@@ -676,71 +676,6 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
             <SaveBar
               saving={saving === 'security'}
               onSave={() => saveSection({ lockTimeoutMinutes: draft.lockTimeoutMinutes }, 'security')}
-            />
-          </SectionCard>
-
-          {/* ── Telehealth ───────────────────────────────────────────── */}
-          <SectionCard icon={Video} title="Telehealth">
-            <p className="fs-grouplabel">Patient join window</p>
-            <p className="fs-hint">
-              How long either side of a scheduled slot a patient may join. Enforced
-              on the server before video access is granted — widening it here
-              genuinely widens access.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Patient may join from (minutes before)">
-                <input
-                  type="number" min={0} className="fs-input"
-                  value={draft.telehealthJoinWindow.beforeMinutes}
-                  onChange={e => setDraft({ ...draft, telehealthJoinWindow: { ...draft.telehealthJoinWindow, beforeMinutes: Number(e.target.value) } })}
-                />
-              </Field>
-              <Field label="Join closes (minutes after)">
-                <input
-                  type="number" min={0} className="fs-input"
-                  value={draft.telehealthJoinWindow.afterMinutes}
-                  onChange={e => setDraft({ ...draft, telehealthJoinWindow: { ...draft.telehealthJoinWindow, afterMinutes: Number(e.target.value) } })}
-                />
-              </Field>
-            </div>
-
-            <p className="fs-grouplabel" style={{ marginTop: 18 }}>Consent policy</p>
-            <p className="fs-hint">
-              Shown to the patient before they join. <strong>Bump the version whenever
-              you change the text</strong> — consent records store the version, and
-              editing the wording without a new version silently rewrites what every
-              past patient is recorded as having agreed to.
-            </p>
-            <Field label="Policy version">
-              <input
-                className="fs-input"
-                value={draft.telehealthConsent.policyVersion}
-                onChange={e => setDraft({ ...draft, telehealthConsent: { ...draft.telehealthConsent, policyVersion: e.target.value } })}
-              />
-            </Field>
-            <Field label="Policy text (one paragraph per line)">
-              <textarea
-                className="fs-input"
-                rows={6}
-                value={draft.telehealthConsent.policyText.join('\n')}
-                onChange={e => setDraft({
-                  ...draft,
-                  telehealthConsent: {
-                    ...draft.telehealthConsent,
-                    // Blank lines dropped so a stray newline does not render as
-                    // an empty paragraph in the patient's consent screen.
-                    policyText: e.target.value.split('\n').map(l => l.trim()).filter(Boolean),
-                  },
-                })}
-              />
-            </Field>
-
-            <SaveBar
-              saving={saving === 'telehealth'}
-              onSave={() => saveSection({
-                telehealthJoinWindow: draft.telehealthJoinWindow,
-                telehealthConsent: draft.telehealthConsent,
-              }, 'telehealth')}
             />
           </SectionCard>
           </>

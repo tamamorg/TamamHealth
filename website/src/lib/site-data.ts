@@ -227,7 +227,7 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
     steps: [
       { t: "Sign in", b: "With a hospital ID and phone number, or name, date of birth and phone. The session is separate from staff login and clears on sign out." },
       { t: "See the record", b: "Medical records, prescriptions, lab results, radiology reports and immunisations, read-only. Pending lab work carries a pending badge rather than an empty space." },
-      { t: "Book an appointment", b: "Date, morning or afternoon, department, reason, and in-person or telehealth. The request arrives as requested for facility staff to confirm." },
+      { t: "Book an appointment", b: "Date, morning or afternoon, department, and reason. The request arrives as requested for facility staff to confirm." },
       { t: "Pay a bill", b: "Real invoices, with anything over thirty days flagged overdue. Payment by mobile money, card or bank transfer arrives pending for facility verification." },
       { t: "Message the facility", b: "A conversation with a facility department; staff replies appear in the same thread." },
       { t: "Keep details current", b: "Patients view and update their own demographics, which reduces the front desk's re-keying at the next visit." },

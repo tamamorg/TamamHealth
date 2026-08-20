@@ -753,21 +753,8 @@ export default function EhrClinicalDashboard({
     }
   };
 
-  const isTelehealth = (appointment: AppointmentDoc) => appointment.appointmentType === 'telehealth';
-  const joinTelehealth = (appointment: AppointmentDoc) => {
-    router.push(`/telehealth/visit/${encodeURIComponent(appointment._id)}`);
-  };
-
-  // Clicking an outstanding-item entry normally follows its href. But a
-  // telehealth entry must NOT jump straight into the video call — it opens the
-  // appointment detail popover first (matching the appointment card), and the
-  // Join button inside that popover launches the visit.
   const openOutstandingEntry = (entry: OutstandingEntry) => {
     const appointment = appointments.find(a => a._id === entry.id);
-    if (appointment && isTelehealth(appointment)) {
-      openAppointmentPreview(appointment);
-      return;
-    }
     if (entry.href) { router.push(entry.href); return; }
     // No href — never let the click dead-end: open the matching appointment,
     // else the patient's chart (resolved by name), else say so out loud.
@@ -924,7 +911,7 @@ export default function EhrClinicalDashboard({
     return getPageHeaderNavItems(navItems, currentUser?.role, roleConfig.defaultDashboard || '/dashboard');
   }, [currentUser]);
   // "Create clinical note" on a visit card — the appointment already carries
-  // the patient, provider, date and telehealth mode the note header needs.
+  // the patient, provider and date the note header needs.
   const { createNote, creating: creatingNote } = useCreateNote(currentUser);
 
   // ── Clinical activity charts (consultations trend + lab-review aging) ──
@@ -1366,11 +1353,6 @@ export default function EhrClinicalDashboard({
           <span>{appointmentTimeRange(openAppointment)}</span>
           <span>{openAppointment.department || 'OPD'}</span>
           <span className="appointment-detail-modal__priority-badge">{typeLabel(openAppointment.priority)}</span>
-          {isTelehealth(openAppointment) && (
-            <button type="button" className="appointment-detail-join-pill" onClick={() => joinTelehealth(openAppointment)}>
-              <Video className="w-3.5 h-3.5" /> Join
-            </button>
-          )}
         </div>
       </div>
 
@@ -1384,7 +1366,7 @@ export default function EhrClinicalDashboard({
         />
         <div className="appointment-detail-modal__summary-grid">
           {[
-            { label: 'Visit', value: openAppointment.appointmentType === 'telehealth' ? 'Telehealth' : openAppointment.appointmentType === 'walk_in' ? 'Walk-in' : 'In office' },
+            { label: 'Visit', value: openAppointment.appointmentType === 'walk_in' ? 'Walk-in' : 'In office' },
             { label: 'Date', value: formatAppointmentDate(openAppointment.appointmentDate) },
             { label: 'Provider', value: openAppointment.providerName || clinicianName || 'Unassigned' },
             { label: 'Language', value: patientLanguages.get(openAppointment.patientId) || 'Not recorded' },
@@ -1402,15 +1384,6 @@ export default function EhrClinicalDashboard({
       </div>
 
       <div className="appointment-detail-modal__actions">
-        {isTelehealth(openAppointment) && (
-          <button
-            type="button"
-            className="btn btn-sm appointment-detail-join-btn"
-            onClick={() => joinTelehealth(openAppointment)}
-          >
-            <Video className="w-4 h-4" /> Join Telehealth Visit
-          </button>
-        )}
         {canConsult && openAppointment.patientId ? (
           <div className="appointment-detail-modal__split" ref={noteMenuRef}>
             <button
@@ -1441,11 +1414,6 @@ export default function EhrClinicalDashboard({
                 <button type="button" onClick={() => { setDetailMenuOpen(null); openPatientRecord(openAppointment); }}>
                   <ClipboardList size={14} /> Open patient record
                 </button>
-                {isTelehealth(openAppointment) && (
-                  <button type="button" onClick={() => { setDetailMenuOpen(null); joinTelehealth(openAppointment); }}>
-                    <Video size={14} /> Join telehealth visit
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -1688,64 +1656,6 @@ export default function EhrClinicalDashboard({
                   <div className="ehr-queue-scroll">
                     <div className="ehr-queue-cards ehr-queue-cards--compact">
                       {visibleOutstandingEntries.map(entry => {
-                        // Telehealth visits render as full appointment cards (same
-                        // columns as the schedule) with a Status column in place of
-                        // Language. Clicking opens the appointment popover; Join lives
-                        // inside it.
-                        const appointment = appointments.find(a => a._id === entry.id);
-                        if (appointment && isTelehealth(appointment)) {
-                          return (
-                            <article
-                              key={entry.id}
-                              className="ehr-appointment-row"
-                              data-triage={appointmentTriage(appointment.priority)}
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => openOutstandingEntry(entry)}
-                              onKeyDown={event => {
-                                if (event.key === 'Enter' || event.key === ' ') {
-                                  event.preventDefault();
-                                  openOutstandingEntry(entry);
-                                }
-                              }}
-                            >
-                              <div className="ehr-appointment-identity">
-                                <div className="ehr-patient-icon" data-acuity={appointmentTriage(appointment.priority)}>{initials(appointment.patientName)}</div>
-                                <div className="ehr-appointment-main">
-                                  <button type="button" className="print-visible" onClick={event => { event.stopPropagation(); openPatientRecord(appointment); }}>
-                                    {appointment.patientName}
-                                  </button>
-                                  <p>{appointment.reason || 'Telehealth visit'}</p>
-                                </div>
-                              </div>
-                              <div className="ehr-appointment-time">
-                                <strong>{formatClockTime(appointment.appointmentTime)}</strong>
-                                <span>{typeLabel(appointment.priority)}</span>
-                              </div>
-                              <div className="ehr-appointment-language">
-                                <strong>{statusLabel(appointment.status)}</strong>
-                                <span>Status</span>
-                              </div>
-                              <span className="ehr-appointment-department">
-                                <b className={`ehr-department-pill ${departmentTone(appointment.department)}`}>{typeLabel(appointment.department || 'Telemedicine')}</b>
-                              </span>
-                              <div className="ehr-status-menu">
-                                <span className={statusTone(appointment.status)}>
-                                  {statusLabel(appointment.status)}
-                                </span>
-                              </div>
-                              {entry.actionLabel && (
-                                <button
-                                  type="button"
-                                  className="btn btn-secondary btn-sm ehr-outstanding-action"
-                                  onClick={event => { event.stopPropagation(); handleOutstandingAction(entry); }}
-                                >
-                                  {entry.actionLabel}
-                                </button>
-                              )}
-                            </article>
-                          );
-                        }
                         const pill = outstandingPillTone(entry.tone);
                         return (
                           <div
@@ -2046,7 +1956,6 @@ export default function EhrClinicalDashboard({
                                 patientName: row.name,
                                 mrn: row.patient?.id,
                                 appointmentId: row.appointment?._id,
-                                telehealth: row.appointment?.appointmentType === 'telehealth',
                                 serviceTime: row.appointment?.appointmentTime,
                               });
                             } : undefined}

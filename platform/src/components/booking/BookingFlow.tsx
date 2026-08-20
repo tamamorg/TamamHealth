@@ -109,7 +109,6 @@ export default function BookingFlow({
   }, [eligibleReasons, reasonId]);
 
   const reason = eligibleReasons.find(r => r.id === reasonId);
-  const modality: 'in_person' | 'telehealth' = reason?.modality === 'telehealth' ? 'telehealth' : 'in_person';
   const needsInsurance = Boolean(reason?.requiresInsurance || policy.requireInsurance);
 
   // ── Availability for the visible day ──
@@ -118,7 +117,7 @@ export default function BookingFlow({
     const ac = new AbortController();
     setLoadingSlots(true);
     setSlotNote(null);
-    fetchSlots({ practice: practiceSlug, reason: reasonId, patientClass, modality, from: date, to: date, provider: provider.id }, ac.signal)
+    fetchSlots({ practice: practiceSlug, reason: reasonId, patientClass, from: date, to: date, provider: provider.id }, ac.signal)
       .then(r => {
         setSlots(r.slots);
         if (r.notOfferedToPatientClass) setSlotNote('This visit is not offered to this kind of patient.');
@@ -128,7 +127,7 @@ export default function BookingFlow({
       .catch(err => { if (!ac.signal.aborted) setSlotNote(err instanceof Error ? err.message : 'Could not load times.'); })
       .finally(() => { if (!ac.signal.aborted) setLoadingSlots(false); });
     return () => ac.abort();
-  }, [practiceSlug, reasonId, patientClass, modality, date, provider.id]);
+  }, [practiceSlug, reasonId, patientClass, date, provider.id]);
 
   const times = useMemo(
     () => Array.from(new Set(slots.filter(s => s.date === date).map(s => s.startTime))).sort(),
@@ -165,7 +164,6 @@ export default function BookingFlow({
         reason: reasonId,
         holdToken,
         patientClass,
-        modality,
         firstName: draft.firstName.trim(),
         lastName: draft.lastName.trim(),
         email: draft.email.trim() || undefined,
@@ -198,7 +196,7 @@ export default function BookingFlow({
     } finally {
       setSubmitting(false);
     }
-  }, [practiceSlug, reasonId, holdToken, patientClass, modality, draft, onBooked]);
+  }, [practiceSlug, reasonId, holdToken, patientClass, draft, onBooked]);
 
   const stepIndex = step === 'slot' ? 0 : step === 'details' ? 1 : 2;
   const stepCount = needsInsurance ? 3 : 2;

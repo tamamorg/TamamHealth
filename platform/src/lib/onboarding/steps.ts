@@ -43,7 +43,6 @@ export interface OnboardingPlan {
 /** Curated per-route teaching copy. `verb` becomes the step title. */
 export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: number }> = {
   '/patients': { verb: 'Register your first patient', desc: 'Add a patient and open their record to see their history, vitals, and visits.', est: 2 },
-  '/telehealth': { verb: 'Start a telehealth visit', desc: 'Launch a secure video consultation and document it against the patient’s record.', est: 2 },
   '/consultation': { verb: 'Document a consultation', desc: 'Write a SOAP note, record a diagnosis, and order labs or prescriptions.', est: 3 },
   // Shared by clinicians and nurse-family roles alike — for nurses this is
   // also where the "ward" and "MAR" checklist items point, since the
@@ -212,7 +211,7 @@ export function getOnboardingPlan(role: UserRole): OnboardingPlan {
   }
 
   // ── Accessible tools with no sidebar nav item ───────────────────────────────
-  // Some routes a role can reach (e.g. /telehealth) aren't in the sidebar, so
+  // Some routes a role can reach aren't in the sidebar, so
   // the nav-derived sections miss them. Sweep the role's allowed routes and add
   // a card for any that has curated guidance but wasn't already covered, so the
   // tour truly reaches every place the role can go.

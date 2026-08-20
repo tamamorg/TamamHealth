@@ -40,7 +40,6 @@ export interface AvailabilityRequest {
   orgId?: string;
   visitReason: VisitReasonDoc;
   patientClass: PatientClass;
-  modality: 'in_person' | 'telehealth';
   channel: SlotChannel;
   /** Defaults to today. */
   from?: string;
@@ -108,7 +107,6 @@ export async function getAvailableSlots(request: AvailabilityRequest): Promise<A
     now,
     visitReason: request.visitReason,
     patientClass: request.patientClass,
-    modality: request.modality,
     channel: request.channel,
     facilityIds: [request.facilityId],
     providerIds: request.providerIds,
@@ -259,7 +257,6 @@ export async function verifySlotStillOpen(
       now,
       visitReason: request.visitReason,
       patientClass: request.patientClass,
-      modality: request.modality,
       channel: request.channel,
       facilityIds: [request.facilityId],
     },
