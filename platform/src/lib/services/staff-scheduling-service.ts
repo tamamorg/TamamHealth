@@ -6,6 +6,7 @@ import { findByType } from './db-query';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
+import { toIsoDate } from '@/lib/date-utils';
 
 export async function getAllSchedules(scope?: DataScope): Promise<StaffScheduleDoc[]> {
   const db = staffSchedulesDB();
@@ -48,7 +49,7 @@ export async function createSchedule(
   const now = new Date().toISOString();
 
   const doc: StaffScheduleDoc = {
-    _id: `sched-${uuidv4().slice(0, 8)}`,
+    _id: `sched-${uuidv4()}`,
     type: 'staff_schedule',
     ...data,
     createdAt: now,
@@ -133,7 +134,7 @@ export async function getWeeklyRoster(startDate: string, facilityId?: string, sc
   const end = new Date(start);
   end.setDate(end.getDate() + 7);
 
-  const endDateStr = end.toISOString().slice(0, 10);
+  const endDateStr = toIsoDate(end);
 
   return all.filter(s =>
     s.shiftDate >= startDate &&

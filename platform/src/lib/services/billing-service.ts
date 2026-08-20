@@ -16,6 +16,7 @@ import { logAuditSafe } from './audit-service';
 import { nextSequence } from './doc-counter';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
+import { toIsoDate } from '@/lib/date-utils';
 
 const billingDB = () => getDB('tamamhealth_billing');
 
@@ -27,7 +28,7 @@ const billingDB = () => getDB('tamamhealth_billing');
  */
 async function generateInvoiceNumber(): Promise<string> {
   const date = new Date();
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+  const dateStr = toIsoDate(date).replace(/-/g, '');
   const db = billingDB();
   // Per-day counter rather than `allDocs().total_rows`. The old count fell when
   // a bill was deleted, so the next bill reissued a number already in use — two
@@ -138,7 +139,7 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
   const items: BillLineItem[] = (data.items || []).map(item => ({
     ...item,
     /* istanbul ignore next -- defensive: items may arrive without id from legacy clients */
-    id: item.id || uuidv4().slice(0, 8),
+    id: item.id || uuidv4(),
     totalPrice: item.quantity * item.unitPrice,
   }));
 
@@ -155,7 +156,7 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
   const invoiceNumber = await generateInvoiceNumber();
 
   const doc: BillingDoc = {
-    _id: `bill-${uuidv4().slice(0, 8)}`,
+    _id: `bill-${uuidv4()}`,
     type: 'billing',
     patientId: data.patientId,
     patientName: data.patientName,
@@ -273,7 +274,7 @@ function applyPaymentToBill(
   sourcePaymentId?: string,
 ): PaymentRecord {
   const payment: PaymentRecord = {
-    id: uuidv4().slice(0, 8),
+    id: uuidv4(),
     amount,
     method,
     reference,
@@ -620,7 +621,7 @@ export async function updateBillItems(
     const oldTotal = bill.totalAmount;
     const normalized: BillLineItem[] = items.map(item => ({
       ...item,
-      id: item.id || uuidv4().slice(0, 8),
+      id: item.id || uuidv4(),
       totalPrice: Math.round(item.quantity * item.unitPrice * 100) / 100,
     }));
     const { subtotal, taxAmount, totalAmount } = calculateTotals(normalized, bill.discount, bill.taxRate);

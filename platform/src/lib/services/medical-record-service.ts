@@ -144,7 +144,7 @@ export async function createMedicalRecord(
   const db = medicalRecordsDB();
   const now = new Date().toISOString();
   const doc: MedicalRecordDoc = encryptRecordFields(withPendingOfflineSync({
-    _id: `rec-${uuidv4().slice(0, 12)}`,
+    _id: `rec-${uuidv4()}`,
     type: 'medical_record',
     ...data,
     createdAt: now,

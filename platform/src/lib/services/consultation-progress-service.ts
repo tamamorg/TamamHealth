@@ -73,7 +73,7 @@ export interface ProgressActor {
 
 function event(kind: ConsultationProgressEvent['kind'], message: string, actor?: ProgressActor): ConsultationProgressEvent {
   return {
-    id: `progress-event-${uuidv4().slice(0, 8)}`,
+    id: `progress-event-${uuidv4()}`,
     kind,
     message,
     actorId: actor?.id,
@@ -220,7 +220,7 @@ export async function addProgressTask(
   if (!existing || !input.title.trim()) return null;
   const now = new Date().toISOString();
   const task: ConsultationProgressTask = {
-    id: `progress-task-${uuidv4().slice(0, 8)}`,
+    id: `progress-task-${uuidv4()}`,
     title: input.title.trim(),
     status: 'open',
     priority: input.priority || 'routine',

@@ -49,6 +49,7 @@ import type { DataScope } from '@/lib/services/data-scope';
 import { useToast } from '@/components/Toast';
 import { isValidPhone, isValidEmail, normalizePhone, normalizeEmail } from '@/lib/field-formats';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 // ── Permission ───────────────────────────────────────────────────────────────
 const MANAGE_ROLES: UserRole[] = [
@@ -814,7 +815,7 @@ function InventoryTab({ scope, hospitalId }: { scope: DataScope | undefined; hos
         <tbody>
           {items.map(i => {
             const ratio = i.reorderLevel ? i.stockLevel / i.reorderLevel : 1;
-            const expired = i.expiryDate && i.expiryDate < new Date().toISOString().slice(0, 10);
+            const expired = i.expiryDate && i.expiryDate < todayIso();
             const status: { label: string; bg: string; color: string } = expired
               ? { label: t('hospitals.stockExpired'), bg: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }
               : i.stockLevel <= 0
@@ -851,7 +852,7 @@ function InventoryTab({ scope, hospitalId }: { scope: DataScope | undefined; hos
 // ═══════════════════════════════════════════════════════════════════════════
 function SchedulesTab({ hospitalId }: { hospitalId: string }) {
   const { t } = useTranslation();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const [date, setDate] = useState(today);
   const [schedules, setSchedules] = useState<StaffScheduleDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -959,7 +960,7 @@ function PerformanceTab({ scope, hospitalId }: { scope: DataScope | undefined; h
     setError(null);
     (async () => {
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayIso();
         const [
           { getTodaysAppointments },
           { getAllAdmissions },

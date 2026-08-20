@@ -23,6 +23,7 @@ import {
   canonicalAppointmentStatus, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import {  } from '@/lib/date-utils';
 import type { AppointmentStatus } from '@/lib/db-types';
 import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigation/care-dashboard-url';
 

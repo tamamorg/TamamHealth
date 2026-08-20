@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
+import { toIsoDate } from '@/lib/date-utils';
 
 export async function getAllAssets(scope?: DataScope): Promise<AssetDoc[]> {
   const db = assetsDB();
@@ -60,11 +61,11 @@ export async function createAsset(input: CreateAssetInput): Promise<AssetDoc> {
   const db = assetsDB();
   const now = new Date().toISOString();
   const nextServiceDueAt = input.serviceIntervalMonths
-    ? new Date(Date.now() + input.serviceIntervalMonths * 30 * 86400000).toISOString().slice(0, 10)
+    ? toIsoDate(new Date(Date.now() + input.serviceIntervalMonths * 30 * 86400000))
     : undefined;
 
   const doc: AssetDoc = {
-    _id: `asset-${uuidv4().slice(0, 8)}`,
+    _id: `asset-${uuidv4()}`,
     type: 'asset',
     name: input.name,
     serialNumber: input.serialNumber,
@@ -166,7 +167,7 @@ export async function logMaintenance(
     const now = new Date().toISOString();
     const log = [...(existing.maintenanceLog || []), { ...entry, date: entry.date || now }];
     const nextServiceDueAt = existing.serviceIntervalMonths
-      ? new Date(Date.now() + existing.serviceIntervalMonths * 30 * 86400000).toISOString().slice(0, 10)
+      ? toIsoDate(new Date(Date.now() + existing.serviceIntervalMonths * 30 * 86400000))
       : existing.nextServiceDueAt;
     const next: AssetDoc = {
       ...existing,

@@ -24,6 +24,7 @@ import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { prescription as rxLifecycle } from '@/lib/clinical-flow/order-lifecycles';
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 
 const UNITS = ['tablets', 'vials', 'bottles', 'sachets', 'tubes', 'ampoules', 'sachet', 'ml'];
 
@@ -551,7 +552,7 @@ export default function PharmacyPage() {
         unit: stockForm.unit,
         reorderLevel: stockForm.reorderLevel,
         batchNumber: stockForm.batchNumber.trim() || `BN${Date.now().toString(36).toUpperCase()}`,
-        expiryDate: stockForm.expiryDate || new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+        expiryDate: stockForm.expiryDate || toIsoDate(new Date(Date.now() + 365 * 86400000)),
         lastReceived: new Date().toISOString(),
         orgId: currentUser.orgId,
       });
@@ -636,7 +637,7 @@ export default function PharmacyPage() {
   });
 
   // ── Derived data for the Reorder / Expiry / Overview / Patients tabs ──
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayIso();
   const daysUntil = (date?: string) =>
     date ? Math.ceil((new Date(date).getTime() - new Date(todayStr).getTime()) / 86400000) : Infinity;
 

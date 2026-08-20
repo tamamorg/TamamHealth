@@ -15,6 +15,7 @@ import { findByType } from './db-query';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
+import { todayIso } from '@/lib/date-utils';
 
 async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | undefined> {
   if (!hospitalId) return undefined;
@@ -45,7 +46,7 @@ export async function createProgramEnrollment(
   const now = new Date().toISOString();
   const orgId = data.orgId || await inferOrgIdFromHospital(data.hospitalId);
   const doc: ProgramEnrollmentDoc = {
-    _id: `program-enrollment-${uuidv4().slice(0, 8)}`,
+    _id: `program-enrollment-${uuidv4()}`,
     type: 'program_enrollment',
     ...data,
     orgId,
@@ -127,6 +128,6 @@ export async function deleteProgramEnrollment(id: string): Promise<boolean> {
  */
 export async function setProgramEnrollmentStatus(id: string, status: ProgramEnrollmentStatus): Promise<ProgramEnrollmentDoc | null> {
   const patch: Partial<ProgramEnrollmentDoc> = { status };
-  patch.outcomeDate = status === 'active' ? undefined : new Date().toISOString().slice(0, 10);
+  patch.outcomeDate = status === 'active' ? undefined : todayIso();
   return updateProgramEnrollment(id, patch);
 }

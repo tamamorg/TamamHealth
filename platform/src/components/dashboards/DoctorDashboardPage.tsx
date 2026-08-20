@@ -37,6 +37,7 @@ import type {
   TriageDoc,
 } from '@/lib/db-types';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
+import { toIsoDate } from '@/lib/date-utils';
 
 const DEPARTMENTS = ['OPD', 'Emergency', 'Maternity', 'Pediatrics', 'Surgery', 'Lab', 'Pharmacy', 'ICU'];
 
@@ -99,7 +100,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   } = input;
   const now = input.now ?? new Date();
   const nowMs = now.getTime();
-  const todayIso = now.toISOString().slice(0, 10);
+  const todayIso = toIsoDate(now);
 
   // Resolve a patient display name for the signing inbox from the loaded roster.
   const signingPatientName = (patientId: string): string => {

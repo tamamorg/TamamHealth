@@ -33,14 +33,8 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
 import Modal from '@/components/Modal';
-import {
-  toIsoDate,
-  parseIsoDate,
-  startOfMonth,
-  addMonths,
-  addDays,
-  formatMonthTitle,
-} from '@/components/ehr/EhrMiniCalendar';
+import { addDays, addMonths, formatMonthTitle, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
+import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
 import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import EhrVisitPopup, { EhrQueueMoveDialog, waitLabel } from '@/components/ehr/EhrVisitPopup';
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';

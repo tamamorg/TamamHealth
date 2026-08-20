@@ -75,7 +75,7 @@ export async function createSupplyItem(input: CreateSupplyInput): Promise<Nutrit
   const db = nutritionSuppliesDB();
   const now = new Date().toISOString();
   const doc: NutritionSupplyDoc = {
-    _id: `nsup-${uuidv4().slice(0, 8)}`,
+    _id: `nsup-${uuidv4()}`,
     type: 'nutrition_supply',
     name,
     unit,

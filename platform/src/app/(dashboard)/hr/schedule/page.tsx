@@ -14,6 +14,7 @@ import EhrListHeader, { EhrListHeaderButton } from '@/components/ehr/EhrListHead
 import RowStatusSelect from '@/components/ehr/RowStatusSelect';
 import EmptyState from '@/components/EmptyState';
 import type { StaffScheduleDoc } from '@/lib/db-types';
+import { todayIso } from '@/lib/date-utils';
 import {
   HrPageShell, SCHEDULE_STATUS_TOKENS, SHIFT_TOKENS, SHIFT_TYPES, StaffIdentity,
   formatHrDate, parseScheduleDateFromParams, shiftDuration, statusPillStyle,
@@ -38,7 +39,7 @@ export default function HrSchedulePage() {
   const [schedules, setSchedules] = useState<StaffScheduleDoc[]>([]);
   const [staffingGaps, setStaffingGaps] = useState<StaffingGap[]>([]);
   const [date, setDate] = useState(
-    () => parseScheduleDateFromParams(searchParams ?? new URLSearchParams()) || new Date().toISOString().slice(0, 10),
+    () => parseScheduleDateFromParams(searchParams ?? new URLSearchParams()) || todayIso(),
   );
   const [open, setOpen] = useState(false);
 

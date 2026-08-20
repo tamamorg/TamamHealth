@@ -24,6 +24,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { type ChartType, type ChartPeriod } from '@/components/ChartCard';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 // recharts (~80-100KB) is deferred behind a dynamic boundary so it's fetched
 // only when this chart renders — same pattern as
@@ -181,7 +182,7 @@ export default function SurveillancePage() {
         cases: alertForm.cases,
         deaths: alertForm.deaths,
         alertLevel: alertForm.alertLevel,
-        reportDate: new Date().toISOString().slice(0, 10),
+        reportDate: todayIso(),
         trend: alertForm.trend,
         orgId: currentUser?.orgId,
       });
@@ -268,7 +269,7 @@ export default function SurveillancePage() {
       .map(a => a.reportDate)
       .filter((d): d is string => Boolean(d))
       .sort();
-    const latest = dated.length > 0 ? dated[dated.length - 1] : new Date().toISOString().slice(0, 10);
+    const latest = dated.length > 0 ? dated[dated.length - 1] : todayIso();
     const w = isoWeek(latest);
     if (!w) return t('surveillance.currentWeek');
     const monday = (() => {

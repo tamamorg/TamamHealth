@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { BarChart3, ChevronLeft, ChevronRight } from '@/components/icons/lucide';
-import { addDays, parseIsoDate, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { addDays } from '@/components/ehr/EhrMiniCalendar';
+import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
 
 /** One unit of work plotted on the chart: a row, appointment or order. */
 export type DayStatsItem = {

@@ -5,6 +5,7 @@ import Select from '@/components/Select';
 import { tribes, languages } from '@/lib/data/south-sudan-reference';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
+import { todayIso } from '@/lib/date-utils';
 
 export interface DemographicsSectionProps extends RegistrationSectionProps {
   /**
@@ -22,7 +23,7 @@ export default function DemographicsSection({
   form, errors, update, facilities = [], facilityRequired = false,
 }: DemographicsSectionProps) {
   const { t } = useTranslation();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   return (
     <>
       {/* Asked first, because it decides which organisation the record is

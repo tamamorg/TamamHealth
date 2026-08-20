@@ -10,6 +10,7 @@ import { findByType } from './db-query';
 import { getSettings } from '../settings/settings-store';
 import { normalizePhone, normalizeEmail, normalizeNationalId } from '../field-formats';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
+import { todayIso } from '@/lib/date-utils';
 import {
   buildGeocodeId,
   buildUnknownId,
@@ -245,7 +246,7 @@ async function assignGeocodeId(data: Record<string, unknown>, scope?: DataScope)
   // follow-up. The patient's UUID never changes when it is upgraded.
   if (!bomaCode || householdNumber === undefined || householdNumber === null || householdNumber === '') {
     const facility = (data.registrationHospital as string | undefined) || 'UNSPEC';
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const date = todayIso().replace(/-/g, '');
     const todaysPrefix = `UNKNOWN-${facility}-${date}-`;
     // Sequence within this facility/day, again taking highest + 1 so a deleted
     // record cannot collide with a live one.
@@ -272,16 +273,57 @@ async function assignGeocodeId(data: Record<string, unknown>, scope?: DataScope)
 }
 
 /**
- * Generate a unique hospital number using UUID suffix to avoid race conditions.
- * Format: PREFIX-XXXXXX (e.g., JTH-A3F2B1)
+ * Stable per-DEVICE code, minted once and kept in a `_local/` document so it
+ * never replicates and never changes for this browser profile.
+ *
+ * This is what makes the hospital number unique. `_local/` counters are
+ * per-device, but the facility prefix is per-FACILITY, so two workstations at
+ * one hospital both count 0005, 0006, 0007 for different patients. The old
+ * 2-character random tail turned that guaranteed sequence collision into a
+ * 1-in-256 identifier collision — and left two patients whose numbers read
+ * identically at a glance either way. Stamping the device into the number
+ * makes the pair (device, sequence) unique by construction: same device is
+ * separated by the counter, different devices by this code.
+ *
+ * 4 base-36 characters ≈ 1.68M codes, so ~50 devices at one facility collide
+ * with probability ~0.07% — and even then only matters if the two devices also
+ * land on the same sequence number.
  */
+const DEVICE_CODE_DOC = '_local/hospital_number_device_code';
+
+async function getDeviceCode(): Promise<string> {
+  const db = patientsDB();
+  try {
+    const doc = await db.get(DEVICE_CODE_DOC) as unknown as { code?: string };
+    if (typeof doc.code === 'string' && doc.code.length > 0) return doc.code;
+  } catch {
+    // Not minted on this device yet — fall through and create it.
+  }
+  // CSPRNG where available (browser + Node ≥19 both expose global crypto);
+  // uuid's own v4 is the fallback so this never throws in a bare test env.
+  const raw = uuidv4().replace(/-/g, '');
+  const code = parseInt(raw.slice(0, 8), 16).toString(36).toUpperCase().padStart(4, '0').slice(-4);
+  try {
+    await db.put({ _id: DEVICE_CODE_DOC, code } as unknown as Record<string, unknown>);
+  } catch {
+    // A concurrent tab won the race; re-read so both tabs agree on one code.
+    try {
+      const doc = await db.get(DEVICE_CODE_DOC) as unknown as { code?: string };
+      if (typeof doc.code === 'string' && doc.code.length > 0) return doc.code;
+    } catch {
+      // Unreadable — use the code we generated rather than failing registration.
+    }
+  }
+  return code;
+}
+
 /**
  * Monotonic counter for hospital numbers, stored per facility prefix.
  *
- * `_local/` documents are deliberate: they are NOT replicated, so each facility
- * node keeps its own sequence and two facilities can never fight over the same
- * counter revision. The number is already namespaced by facility prefix, so
- * per-node counters are the correct model.
+ * `_local/` documents are deliberate: they are NOT replicated, so no two nodes
+ * ever fight over the same counter revision. That makes the counter per-DEVICE
+ * rather than per-facility, which is why the number also carries a device code
+ * (see `getDeviceCode`) — the counter alone does not identify a patient.
  *
  * Replaces a `db.allDocs().total_rows` count, which was wrong in two ways:
  * it was O(N) on every registration, and — worse — deleting a patient lowered
@@ -319,13 +361,21 @@ async function nextHospitalSequence(prefix: string): Promise<number> {
   throw new Error('Could not allocate a hospital number after 5 attempts');
 }
 
-/** Highest sequence already present for a prefix, so a fresh counter starts above it. */
+/**
+ * Highest sequence already present for a prefix, so a fresh counter starts
+ * above it.
+ *
+ * Reads the leading digits of whatever follows the prefix, which parses BOTH
+ * identifier shapes: the current `PREFIX-NNNN-DDDD` and the legacy
+ * `PREFIX-NNNNXX` still carried by patients registered before the device code
+ * existed. A device joining a facility therefore starts above every number
+ * already in use, whichever shape wrote it.
+ */
 async function highestExistingSequence(prefix: string): Promise<number> {
   const all = await getAllPatients();
   let highest = 0;
   for (const p of all) {
     if (typeof p.hospitalNumber === 'string' && p.hospitalNumber.startsWith(`${prefix}-`)) {
-      // Format is PREFIX-NNNNXX; take the leading digits of the suffix.
       const m = /^(\d+)/.exec(p.hospitalNumber.slice(prefix.length + 1));
       if (m) highest = Math.max(highest, Number(m[1]));
     }
@@ -333,13 +383,21 @@ async function highestExistingSequence(prefix: string): Promise<number> {
   return highest;
 }
 
+/**
+ * `PREFIX-NNNN-DDDD` — facility, sequence, device. e.g. `JTH-0007-K3M9`.
+ *
+ * The device segment is what stops two workstations at one facility issuing
+ * the same number to different patients; see `getDeviceCode`. Numbers minted
+ * before this change keep their `PREFIX-NNNNXX` shape and stay valid — nothing
+ * rewrites an identifier a patient has already been given.
+ */
 async function generateHospitalNumber(hospitalId?: string): Promise<string> {
   const prefix = await getHospitalPrefix(hospitalId);
-  const seq = await nextHospitalSequence(prefix);
-  // The 2-char random tail is retained as belt-and-braces against a counter
-  // that gets rolled back by a restore; the sequence carries the ordering.
-  const suffix = `${String(seq).padStart(4, '0')}${uuidv4().slice(0, 2).toUpperCase()}`;
-  return `${prefix}-${suffix}`;
+  const [seq, deviceCode] = await Promise.all([
+    nextHospitalSequence(prefix),
+    getDeviceCode(),
+  ]);
+  return `${prefix}-${String(seq).padStart(4, '0')}-${deviceCode}`;
 }
 
 /**
@@ -537,7 +595,7 @@ export async function createPatient(
   }
   const db = patientsDB();
   const now = new Date().toISOString();
-  const id = `pat-${uuidv4().slice(0, 8)}`;
+  const id = `pat-${uuidv4()}`;
   // Resolved BEFORE the hospital number so a patient that cannot be saved does
   // not burn an MRN on the way to being refused.
   const orgId = data.orgId || await inferOrgIdFromHospital(data.registrationHospital);

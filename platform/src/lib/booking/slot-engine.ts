@@ -26,6 +26,7 @@ import type {
   BookingPolicyDoc, PatientClass, SlotHoldDoc, VisitReasonDoc,
 } from '../db-types-booking';
 import { APPOINTMENT_SLOT_RELEASED_STATUSES } from '../appointment-status';
+import { toIsoDate } from '@/lib/date-utils';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Public shapes
@@ -107,7 +108,7 @@ export function dayOfWeek(date: string): number {
 export function addDays(date: string, n: number): string {
   const [y, m, d] = date.split('-').map(Number);
   const shifted = new Date(Date.UTC(y, m - 1, d + n));
-  return shifted.toISOString().slice(0, 10);
+  return toIsoDate(shifted);
 }
 
 /** Every date from `from` to `to` inclusive. Capped so a bad range can't hang. */

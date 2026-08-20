@@ -82,9 +82,10 @@ describe('registration resolves the patient organisation', () => {
       .filter(d => d?.type === 'patient');
     expect(patients).toHaveLength(1);
     expect(patients[0]._id).toBe(saved._id);
-    // JTH-<4-digit sequence><2 random chars>. The sequence is 0001: the
-    // refused attempt never reached the counter.
-    expect(saved.hospitalNumber).toMatch(/^JTH-0001..$/);
+    // JTH-<4-digit sequence>-<4-char device code>. The sequence is 0001: the
+    // refused attempt never reached the counter. The device segment is what
+    // keeps two workstations at one facility from both issuing 0001.
+    expect(saved.hospitalNumber).toMatch(/^JTH-0001-[0-9A-Z]{4}$/);
   });
 
   test('the organisation is what makes the patient visible to their own facility', async () => {

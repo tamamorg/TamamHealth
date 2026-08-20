@@ -7,7 +7,8 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
-import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { formatDateTitle } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { formatClockTime } from '@/lib/format-utils';
 import {
   ClipboardCheck, Baby, Skull, Syringe, HeartPulse,
@@ -112,7 +113,7 @@ export default function DataEntryDashboard() {
   const { showToast } = useToast();
   const { t } = useTranslation();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const [showForm, setShowForm] = useState(false);
   const [census, setCensus] = useState<CensusData>(() => emptyCensus(today));
   const [savedReports, setSavedReports] = useState<SavedCensusReport[]>([]);

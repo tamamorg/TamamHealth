@@ -13,6 +13,7 @@ import { usePatientReminders } from '@/lib/hooks/usePatientReminders';
 import { patientFullName } from '@/lib/patient-utils';
 import { Bell, Plus, Check, X, Clock } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 const CHANNELS: { v: ReminderChannel; label: string }[] = [
   { v: 'sms', label: 'SMS' },
@@ -22,7 +23,7 @@ const CHANNELS: { v: ReminderChannel; label: string }[] = [
 ];
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayIso();
 }
 
 export default function RemindersPanel({ patient }: { patient: PatientDoc }) {

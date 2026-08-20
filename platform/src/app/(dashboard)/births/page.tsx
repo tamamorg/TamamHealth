@@ -12,6 +12,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import PopupSelect from '@/components/PopupSelect';
+import { todayIso } from '@/lib/date-utils';
 import {
   Baby, Plus, X, ChevronDown,
 } from '@/components/icons/lucide';
@@ -44,7 +45,7 @@ export default function BirthsPage() {
   const [selectedBirthId, setSelectedBirthId] = useState<string | null>(null);
   const [form, setForm] = useState({
     childFirstName: '', childSurname: '', childGender: 'Male' as 'Male' | 'Female',
-    dateOfBirth: new Date().toISOString().slice(0, 10), placeOfBirth: '', facilityId: '', facilityName: '',
+    dateOfBirth: todayIso(), placeOfBirth: '', facilityId: '', facilityName: '',
     motherName: '', motherAge: 0, motherNationality: 'South Sudanese',
     fatherName: '', fatherNationality: 'South Sudanese',
     birthWeight: 3000, birthType: 'single' as 'single' | 'twin' | 'multiple', deliveryType: 'normal' as 'normal' | 'caesarean' | 'assisted',
@@ -83,7 +84,7 @@ export default function BirthsPage() {
       });
       showToast(t('births.registeredSuccess'), 'success');
       setShowForm(false);
-      setForm({ childFirstName: '', childSurname: '', childGender: 'Male', dateOfBirth: new Date().toISOString().slice(0, 10), placeOfBirth: '', facilityId: '', facilityName: '', motherName: '', motherAge: 0, motherNationality: 'South Sudanese', fatherName: '', fatherNationality: 'South Sudanese', birthWeight: 3000, birthType: 'single', deliveryType: 'normal', attendedBy: '', registeredBy: '', state: '', county: '', certificateNumber: '' });
+      setForm({ childFirstName: '', childSurname: '', childGender: 'Male', dateOfBirth: todayIso(), placeOfBirth: '', facilityId: '', facilityName: '', motherName: '', motherAge: 0, motherNationality: 'South Sudanese', fatherName: '', fatherNationality: 'South Sudanese', birthWeight: 3000, birthType: 'single', deliveryType: 'normal', attendedBy: '', registeredBy: '', state: '', county: '', certificateNumber: '' });
     } catch {
       showToast(t('births.registerFailed'), 'error');
     }

@@ -1,5 +1,6 @@
 import type { PatientDoc } from '@/lib/db-types';
 import { formatClockTime } from '@/lib/format-utils';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 
 // Exam rooms / bays a walk-in patient can be placed in to meet the provider.
 // Fallback used only when facility settings provide no rooms.
@@ -60,10 +61,10 @@ export function formatDayMonthYear(iso?: string | null): string {
 }
 
 export function isoDateKey(value?: string | null): string {
-  if (!value) return new Date().toISOString().slice(0, 10);
+  if (!value) return todayIso();
   if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? new Date().toISOString().slice(0, 10) : date.toISOString().slice(0, 10);
+  return Number.isNaN(date.getTime()) ? todayIso() : toIsoDate(date);
 }
 
 // Final-checkout target: closing out a completed visit at the front desk.

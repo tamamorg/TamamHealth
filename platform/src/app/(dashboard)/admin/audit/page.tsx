@@ -21,6 +21,7 @@ import { FilterSelect } from '@/components/filters';
 import { X } from '@/components/icons/lucide';
 import { SaTable, classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { SadbPage, SadbCard, SadbChip, SadbSearch, SadbKvRow, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
+import { todayIso } from '@/lib/date-utils';
 
 type RangeFilter = '24h' | '7d' | '30d' | 'all';
 type SuccessFilter = 'all' | 'success' | 'failure';
@@ -139,7 +140,7 @@ export default function AuditLogsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `audit-evidence-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `audit-evidence-${todayIso()}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();

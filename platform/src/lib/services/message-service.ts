@@ -109,7 +109,7 @@ export async function deleteMessage(id: string): Promise<boolean> {
 export async function createMessage(data: Omit<MessageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'status'>): Promise<MessageDoc> {
   const db = messagesDB();
   const now = new Date().toISOString();
-  const id = `msg-${uuidv4().slice(0, 8)}`;
+  const id = `msg-${uuidv4()}`;
   const doc: MessageDoc = encryptMessageFields({
     _id: id,
     type: 'message',

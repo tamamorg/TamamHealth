@@ -21,6 +21,7 @@ import { PatientLogin } from '@/components/patient-portal/PatientLogin';
 import { ProfileTab } from '@/components/patient-portal/ProfileTab';
 import { BillingTab } from '@/components/patient-portal/BillingTab';
 import { Empty, dateParts, shortDate, type ChipTone } from '@/components/patient-portal/shared';
+import { todayIso } from '@/lib/date-utils';
 
 type Tab = 'overview' | 'appointments' | 'records' | 'lab' | 'prescriptions' | 'radiology' | 'immunizations' | 'messages' | 'chat' | 'billing' | 'profile';
 
@@ -119,7 +120,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
   }, [onLogout, patient._id]);
 
   const upcomingApts = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIso();
     return appointments.filter(a => a.appointmentDate >= today && a.status !== 'cancelled' && a.status !== 'no_show');
   }, [appointments]);
 
@@ -130,7 +131,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
     || patient.registrationHospital
     || '';
 
-  const [bookingDate, setBookingDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [bookingDate, setBookingDate] = useState(() => todayIso());
   const [bookingTime, setBookingTime] = useState<'morning' | 'afternoon' | 'any'>('any');
   const [bookingDepartment, setBookingDepartment] = useState('General / OPD');
   const [bookingReason, setBookingReason] = useState('');
@@ -138,7 +139,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
   const [bookingError, setBookingError] = useState<string | null>(null);
 
   const resetBookingForm = () => {
-    setBookingDate(new Date().toISOString().slice(0, 10));
+    setBookingDate(todayIso());
     setBookingTime('any');
     setBookingDepartment('General / OPD');
     setBookingReason('');
@@ -493,7 +494,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
 
         /* Things to do — only real, actionable items derived from the data
            already loaded; each jumps to the tab where the action lives. */
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayIso();
         const dueImm = immunizations.find(im => im.nextDueDate && im.nextDueDate >= today);
         const todos: { key: string; label: string; sub: string; icon: typeof User; amber?: boolean; go: () => void }[] = [];
         if (upcomingApts[0]) {
@@ -937,7 +938,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           ) : (
             <div className="pp-card">
               {immunizations.slice().sort((a, b) => b.dateGiven.localeCompare(a.dateGiven)).map(imm => {
-                const today = new Date().toISOString().slice(0, 10);
+                const today = todayIso();
                 const due = imm.nextDueDate && imm.nextDueDate >= today;
                 return (
                   <div key={imm._id} className="pp-row">
@@ -1036,7 +1037,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                 <Calendar size={14} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{t('patientPortal.bookingAt', { facility: patientFacilityName })}</span>
               </div>
-              <div><label>{t('patientPortal.preferredDate')}</label><input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} min={new Date().toISOString().slice(0, 10)} /></div>
+              <div><label>{t('patientPortal.preferredDate')}</label><input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} min={todayIso()} /></div>
               <div><label>{t('patientPortal.preferredTime')}</label>
                 <Select value={bookingTime} onChange={e => setBookingTime(e.target.value as typeof bookingTime)}>
                   <option value="morning">{t('patientPortal.timeMorning')}</option>

@@ -161,7 +161,7 @@ function makeEvent(
   extra: Partial<PatientTransferEvent> = {},
 ): PatientTransferEvent {
   return {
-    id: `xfer-ev-${uuidv4().slice(0, 8)}`,
+    id: `xfer-ev-${uuidv4()}`,
     kind,
     message,
     actorId: actor?.id,

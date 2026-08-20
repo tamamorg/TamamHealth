@@ -43,6 +43,7 @@ import { nextSequence } from './doc-counter';
 import { createLedgerEntry, getPatientBalance } from './ledger-service';
 import { jubaDate } from '../time-juba';
 import { getSettings } from '../settings/settings-store';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 
 const COLLECTION_STAGE_DAYS = {
   followUp: Number(process.env.COLLECTION_STAGE_FOLLOWUP_DAYS) || 30,
@@ -123,7 +124,7 @@ export async function collectPayment(input: CollectPaymentInput): Promise<Paymen
   await assertRefExists('tamamhealth_invoices', input.invoiceId, 'Invoice');
 
   const doc: PaymentDoc = {
-    _id: `pmt-${uuidv4().slice(0, 10)}`,
+    _id: `pmt-${uuidv4()}`,
     type: 'payment',
     patientId: input.patientId,
     patientName: input.patientName,
@@ -606,7 +607,7 @@ export async function startPaymentLinkAttempt(
 
     const now = new Date().toISOString();
     const reference = `PBL-${link.linkId.slice(0, 8).toUpperCase()}-${uuidv4().slice(0, 6).toUpperCase()}`;
-    const paymentId = `pmt-${uuidv4().slice(0, 10)}`;
+    const paymentId = `pmt-${uuidv4()}`;
     link.pendingPaymentId = paymentId;
     link.pendingReference = reference;
     link.updatedAt = now;
@@ -840,7 +841,7 @@ export async function createInsurancePolicy(input: CreateInsurancePolicyInput): 
   }
 
   const doc: InsurancePolicyDoc = {
-    _id: `ins-${uuidv4().slice(0, 10)}`,
+    _id: `ins-${uuidv4()}`,
     type: 'insurance_policy',
     ...input,
     isActive: true,
@@ -953,7 +954,7 @@ export async function checkEligibility(input: CheckEligibilityInput): Promise<El
   const source: EligibilitySource = input.source || 'manual';
 
   const doc: EligibilityCheckDoc = {
-    _id: `elig-${uuidv4().slice(0, 10)}`,
+    _id: `elig-${uuidv4()}`,
     type: 'eligibility_check',
     policyId: input.policyId,
     patientId: input.patientId,
@@ -1038,7 +1039,7 @@ export async function createCharge(input: CreateChargeInput): Promise<ChargeDoc>
   await assertRefExists('tamamhealth_encounters', input.encounterId, 'Encounter');
 
   const doc: ChargeDoc = {
-    _id: `chg-${uuidv4().slice(0, 10)}`,
+    _id: `chg-${uuidv4()}`,
     type: 'charge',
     ...input,
     status: 'pending' as ChargeStatus,
@@ -1157,7 +1158,7 @@ export async function submitClaim(input: SubmitClaimInput): Promise<ClaimDoc> {
   const now = new Date().toISOString();
 
   const doc: ClaimDoc = {
-    _id: `clm-${uuidv4().slice(0, 10)}`,
+    _id: `clm-${uuidv4()}`,
     type: 'claim',
     ...input,
     claimNumber: `CLM-${Date.now().toString(36).toUpperCase()}`,
@@ -1443,7 +1444,7 @@ export async function createAdjustment(input: {
   const now = new Date().toISOString();
 
   const doc: AdjustmentDoc = {
-    _id: `adj-${uuidv4().slice(0, 10)}`,
+    _id: `adj-${uuidv4()}`,
     type: 'adjustment',
     ...input,
     approvedDate: now,
@@ -1505,7 +1506,7 @@ export async function issueRefund(input: {
   const now = new Date().toISOString();
 
   const doc: RefundDoc = {
-    _id: `ref-${uuidv4().slice(0, 10)}`,
+    _id: `ref-${uuidv4()}`,
     type: 'refund',
     ...input,
     currency: input.currency || 'SSP',
@@ -1590,7 +1591,7 @@ export async function createPaymentPlan(input: {
       : monthlyAmount;
     installments.push({
       number: i + 1,
-      dueDate: dueDate.toISOString().slice(0, 10),
+      dueDate: toIsoDate(dueDate),
       amount: amt,
       status: 'pending',
     });
@@ -1600,7 +1601,7 @@ export async function createPaymentPlan(input: {
   endDate.setMonth(endDate.getMonth() + input.termMonths + 1);
 
   const doc: PaymentPlanDoc = {
-    _id: `plan-${uuidv4().slice(0, 10)}`,
+    _id: `plan-${uuidv4()}`,
     type: 'payment_plan',
     patientId: input.patientId,
     patientName: input.patientName,
@@ -1609,7 +1610,7 @@ export async function createPaymentPlan(input: {
     monthlyAmount,
     apr,
     startDate: now.slice(0, 10),
-    endDate: endDate.toISOString().slice(0, 10),
+    endDate: toIsoDate(endDate),
     status: 'active',
     nextDueDate: installments[0]?.dueDate,
     paidToDate: 0,
@@ -1667,7 +1668,7 @@ export async function recordPlanPayment(planId: string, installmentNumber: numbe
     if (installment) {
       installment.status = amount >= installment.amount ? 'paid' : 'partial';
       installment.paidAmount = amount;
-      installment.paidDate = new Date().toISOString().slice(0, 10);
+      installment.paidDate = todayIso();
       installment.paymentId = paymentId;
     }
 
@@ -1754,7 +1755,7 @@ export async function generateInvoice(input: {
   const seq = String(seqNum).padStart(5, '0');
 
   const doc: InvoiceDoc = {
-    _id: `inv-${uuidv4().slice(0, 10)}`,
+    _id: `inv-${uuidv4()}`,
     type: 'invoice',
     invoiceNumber: `INV-${seq}`,
     patientId: input.patientId,
@@ -1768,9 +1769,9 @@ export async function generateInvoice(input: {
     totalDue,
     currency: input.currency || 'SSP',
     issuedDate: now.slice(0, 10),
-    dueDate: dueDate.toISOString().slice(0, 10),
+    dueDate: toIsoDate(dueDate),
     status: 'draft' as InvoiceStatus,
-    paymentLinkToken: uuidv4().slice(0, 16),
+    paymentLinkToken: uuidv4(),
     facilityId: input.facilityId,
     facilityName: input.facilityName,
     orgId: input.orgId,
@@ -1853,7 +1854,7 @@ export async function savePaymentMethod(input: {
   }
 
   const doc: SavedPaymentMethodDoc = {
-    _id: `spm-${uuidv4().slice(0, 10)}`,
+    _id: `spm-${uuidv4()}`,
     type: 'saved_payment_method',
     ...input,
     label,

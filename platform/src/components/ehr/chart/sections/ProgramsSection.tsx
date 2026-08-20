@@ -18,6 +18,7 @@ import { usePrograms } from '@/lib/hooks/usePrograms';
 import { formatDate } from '@/lib/format-utils';
 import type { ProgramKey, ProgramEnrollmentStatus } from '@/lib/db-types';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 const PROGRAM_LABELS: Record<ProgramKey, string> = {
   art_hiv_care: 'ART / HIV care',
@@ -62,7 +63,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
   const [adding, setAdding] = useState(false);
   const [programKey, setProgramKey] = useState<ProgramKey>('art_hiv_care');
   const [otherName, setOtherName] = useState('');
-  const [enrollmentDate, setEnrollmentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [enrollmentDate, setEnrollmentDate] = useState(() => todayIso());
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [statusBusy, setStatusBusy] = useState<string | null>(null);
@@ -70,7 +71,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
   const resetForm = () => {
     setProgramKey('art_hiv_care');
     setOtherName('');
-    setEnrollmentDate(new Date().toISOString().slice(0, 10));
+    setEnrollmentDate(todayIso());
     setNotes('');
     setAdding(false);
   };

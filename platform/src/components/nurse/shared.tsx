@@ -12,6 +12,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { priorityOrder } from '@/lib/clinical/triage-display';
 import type { MedicationAdministration, PrescriptionDoc } from '@/lib/db-types';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
+import { todayIso } from '@/lib/date-utils';
 
 // Re-export the shared vital-flagging helper so a `./shared` importer keeps
 // working — the single source of truth lives in '@/lib/clinical/vitals'.
@@ -260,7 +261,7 @@ export function useMarEntries() {
   // Expand active/pending prescriptions into one row per scheduled dose for
   // today, deriving each row's status from the real administrations[] record.
   useEffect(() => {
-    const day = new Date().toISOString().slice(0, 10);
+    const day = todayIso();
     const now = Date.now();
     const HOUR = 60 * 60 * 1000;
     const entries: MAREntry[] = [];

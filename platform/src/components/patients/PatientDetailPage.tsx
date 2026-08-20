@@ -33,7 +33,7 @@ const VitalsTrends = dynamic(() => import('@/components/VitalsTrends'), {
   loading: () => <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading charts…</div>,
 });
 import PatientTimeline from '@/components/PatientTimeline';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate, todayIso as isoToday } from '@/lib/date-utils';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
 import { states as SOUTH_SUDAN_STATES, statesAndCounties } from '@/lib/data/south-sudan-reference';
@@ -2679,7 +2679,7 @@ function buildCareActions(patient: PatientDoc, immunizations: ImmunizationDoc[])
       detail: s.dueDate ? `Due ${formatDate(s.dueDate)}` : undefined,
     });
   }
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = isoToday();
   for (const imm of immunizations) {
     if (imm.status === 'completed' || !imm.nextDueDate) continue;
     items.push({

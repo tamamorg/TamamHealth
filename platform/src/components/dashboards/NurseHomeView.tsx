@@ -18,6 +18,7 @@ import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient
 import type { PatientDoc, TriageDoc, FollowUpDoc, ShiftHandoffDoc } from '@/lib/db-types';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
 import type { RoomingWorklistEntry } from '@/lib/services/rooming-service';
+import { toIsoDate } from '@/lib/date-utils';
 
 // Same due-window as the doctor worklist's "Follow-ups due" rail (see
 // DoctorDashboardPage.tsx) — a community-health follow-up counts as "due" here
@@ -94,7 +95,7 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
   } = input;
   const now = input.now ?? new Date();
   const nowMs = now.getTime();
-  const todayIso = now.toISOString().slice(0, 10);
+  const todayIso = toIsoDate(now);
 
   const patientById = new Map(patients.map(p => [p._id, p]));
 

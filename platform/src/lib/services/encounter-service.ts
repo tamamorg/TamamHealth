@@ -119,7 +119,7 @@ export async function createEncounter(
   const now = new Date().toISOString();
   const status: EncounterStatus = data.status ?? 'with_clinician';
   const doc: EncounterDoc = {
-    _id: `enc-${uuidv4().slice(0, 8)}`,
+    _id: `enc-${uuidv4()}`,
     type: 'clinical_encounter',
     ...data,
     status,

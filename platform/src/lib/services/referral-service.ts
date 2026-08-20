@@ -173,7 +173,7 @@ export async function createReferral(
   const orgId = data.orgId || await inferOrgId(data.fromHospitalId, data.toHospitalId);
   const toOrgId = data.toOrgId ?? await resolveDestinationOrg(orgId, data.toHospitalId);
   const doc: ReferralDoc = withPendingOfflineSync({
-    _id: `ref-${uuidv4().slice(0, 8)}`,
+    _id: `ref-${uuidv4()}`,
     type: 'referral',
     ...data,
     // Stamp the acknowledgement deadline unless the caller supplied one.
@@ -221,7 +221,7 @@ export async function createReferralWithTransfer(
   const orgId = data.orgId || await inferOrgId(data.fromHospitalId, data.toHospitalId);
   const transferToOrgId = data.toOrgId ?? await resolveDestinationOrg(orgId, data.toHospitalId);
   const doc: ReferralDoc = withPendingOfflineSync({
-    _id: `ref-${uuidv4().slice(0, 8)}`,
+    _id: `ref-${uuidv4()}`,
     type: 'referral',
     ...data,
     // Same acknowledgement deadline as the plain createReferral path — a

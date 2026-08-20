@@ -42,7 +42,7 @@ export async function addUnit(
   const now = new Date().toISOString();
 
   const doc: BloodBankDoc = {
-    _id: `blood-${uuidv4().slice(0, 8)}`,
+    _id: `blood-${uuidv4()}`,
     type: 'blood_bank',
     ...data,
     createdAt: now,

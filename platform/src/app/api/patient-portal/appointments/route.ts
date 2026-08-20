@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   // the missing identities on its own (an empty providerId is nothing to
   // collide on), so there was never anything to bypass it for.
   const now = new Date().toISOString();
-  const id = (typeof body._id === 'string' && body._id) || `apt-${uuidv4().slice(0, 8)}`;
+  const id = (typeof body._id === 'string' && body._id) || `apt-${uuidv4()}`;
 
   const doc: AppointmentDoc = {
     _id: id,

@@ -129,7 +129,7 @@ export async function enrollFingerprint(input: EnrollFingerprintInput): Promise<
   const db = biometricTemplatesDB();
   const now = new Date().toISOString();
   const doc: BiometricTemplateDoc = {
-    _id: `biotpl-${uuidv4().slice(0, 8)}`,
+    _id: `biotpl-${uuidv4()}`,
     type: 'biometric_template',
     patientId: input.patientId,
     patientName: input.patientName,

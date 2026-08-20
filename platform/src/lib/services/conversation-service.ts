@@ -68,7 +68,7 @@ export async function getOrCreateDM(
 
   const now = new Date().toISOString();
   const doc: ConversationDoc = {
-    _id: `conv-${uuidv4().slice(0, 8)}`,
+    _id: `conv-${uuidv4()}`,
     type: 'conversation',
     kind: 'dm',
     participantIds: [me.id, other.id],
@@ -103,7 +103,7 @@ export async function createGroup(
     (p, i, arr) => arr.findIndex(x => x.id === p.id) === i,
   );
   const doc: ConversationDoc = {
-    _id: `conv-${uuidv4().slice(0, 8)}`,
+    _id: `conv-${uuidv4()}`,
     type: 'conversation',
     kind: 'group',
     name: data.name,

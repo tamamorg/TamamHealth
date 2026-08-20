@@ -16,7 +16,8 @@ import {
   BarChart3, Utensils, Plus, X, ArrowRightLeft, HeartPulse,
 } from '@/components/icons/lucide';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
-import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { formatDateTitle } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 // The same patient lookup the lab order flow uses — generic over PatientDoc,
 // not lab-specific — so a screening can link to a real chart instead of
 // nowhere. Its `labord-*` styles are scoped and additive, matching how the

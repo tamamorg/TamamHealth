@@ -35,7 +35,7 @@ function legacyToStructured(patient: { allergies?: string[] }): AllergyEntry[] {
   const legacy = (patient.allergies || []).filter((a) => !isNoAllergySentinel(a));
   const now = new Date().toISOString();
   return legacy.map((substance) => ({
-    id: uuidv4().slice(0, 8),
+    id: uuidv4(),
     substance,
     classification: undefined,
     criticality: 'unknown' as const,
@@ -116,7 +116,7 @@ export async function addAllergy(patientId: string, input: AddAllergyInput): Pro
         next = [
           ...existing,
           {
-            id: uuidv4().slice(0, 8),
+            id: uuidv4(),
             substance,
             classification: input.classification,
             criticality: input.criticality ?? 'unknown',

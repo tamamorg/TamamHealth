@@ -34,7 +34,7 @@ export async function getByFacility(facilityId: string): Promise<ImmunizationDoc
 export async function createImmunization(data: Omit<ImmunizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<ImmunizationDoc> {
   const db = immunizationsDB();
   const now = new Date().toISOString();
-  const id = `imm-${uuidv4().slice(0, 8)}`;
+  const id = `imm-${uuidv4()}`;
   const doc: ImmunizationDoc = {
     _id: id,
     type: 'immunization',

@@ -13,6 +13,7 @@ import { useToast } from '@/components/Toast';
 import FileUpload from '@/components/FileUpload';
 import type { Attachment } from '@/data/mock';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 // Fallback list used only when the facility hasn't configured its departments
 // in Facility Settings (settings.departments drives the picker when present).
@@ -87,7 +88,7 @@ export default function ReferralFormModal({ onClose, onSent }: { onClose: () => 
           // The dashboard's "Open referrals" rail filters on createdBy — a
           // referral without it is invisible to the clinician who sent it.
           createdBy: currentUser?._id,
-          referralDate: new Date().toISOString().split('T')[0],
+          referralDate: todayIso(),
           status: 'sent',
         },
         formAttachments,

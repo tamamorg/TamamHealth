@@ -21,7 +21,7 @@ export async function getAssessmentsByFacility(facilityId: string): Promise<Faci
 export async function createAssessment(data: Omit<FacilityAssessmentDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<FacilityAssessmentDoc> {
   const db = facilityAssessmentsDB();
   const now = new Date().toISOString();
-  const id = `assess-${uuidv4().slice(0, 8)}`;
+  const id = `assess-${uuidv4()}`;
   const doc: FacilityAssessmentDoc = {
     _id: id,
     type: 'facility_assessment',

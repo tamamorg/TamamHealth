@@ -164,7 +164,7 @@ export async function holdSlot(request: HoldRequest): Promise<HoldResult> {
   const now = new Date();
   const holdToken = uuidv4();
   const doc: SlotHoldDoc = {
-    _id: `hold-${uuidv4().slice(0, 8)}`,
+    _id: `hold-${uuidv4()}`,
     type: 'slot_hold',
     orgId: request.orgId,
     facilityId: request.facilityId,

@@ -22,6 +22,7 @@ import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 import Modal from '@/components/Modal';
+import { todayIso } from '@/lib/date-utils';
 
 const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
 
@@ -78,7 +79,7 @@ export default function SuperintendentDashboard() {
   const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
 
   const facilityId = currentUser?.hospitalId;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
 
   useEffect(() => {
     let cancelled = false;

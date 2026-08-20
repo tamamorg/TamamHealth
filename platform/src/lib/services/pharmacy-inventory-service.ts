@@ -21,7 +21,7 @@ export async function createInventoryItem(
   const db = pharmacyInventoryDB();
   const now = new Date().toISOString();
   const doc: PharmacyInventoryDoc = {
-    _id: `inv-${uuidv4().slice(0, 8)}`,
+    _id: `inv-${uuidv4()}`,
     type: 'pharmacy_inventory',
     dispensedToday: 0,
     ...data,

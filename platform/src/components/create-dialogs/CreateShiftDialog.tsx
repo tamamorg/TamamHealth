@@ -16,6 +16,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SHIFT_TYPES } from '@/app/(dashboard)/hr/hr-shared';
 import type { StaffScheduleDoc } from '@/lib/db-types';
+import { todayIso } from '@/lib/date-utils';
 
 export interface CreateShiftDialogProps {
   onClose: () => void;
@@ -35,7 +36,7 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated }: C
   const [form, setForm] = useState({
     userId: '',
     shiftType: 'morning' as StaffScheduleDoc['shiftType'],
-    shiftDate: defaultDate || new Date().toISOString().slice(0, 10),
+    shiftDate: defaultDate || todayIso(),
     startTime: '08:00',
     endTime: '16:00',
     department: '',

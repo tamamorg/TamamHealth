@@ -25,7 +25,7 @@ export async function getDeathsByFacility(facilityId: string): Promise<DeathRegi
 export async function createDeath(data: Omit<DeathRegistrationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<DeathRegistrationDoc> {
   const db = deathsDB();
   const now = new Date().toISOString();
-  const id = `death-${uuidv4().slice(0, 8)}`;
+  const id = `death-${uuidv4()}`;
   const doc: DeathRegistrationDoc = {
     _id: id,
     type: 'death',

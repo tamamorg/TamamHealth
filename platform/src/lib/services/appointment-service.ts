@@ -245,7 +245,7 @@ export async function createAppointment(
   await assertNoBookingConflicts(data);
 
   const doc: AppointmentDoc = withPendingOfflineSync({
-    _id: `apt-${uuidv4().slice(0, 8)}`,
+    _id: `apt-${uuidv4()}`,
     type: 'appointment',
     ...data,
     createdAt: now,

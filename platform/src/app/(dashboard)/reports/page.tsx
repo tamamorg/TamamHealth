@@ -21,6 +21,7 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 import { ESSENTIAL_MEDICINES } from '@/lib/services/supply-chain-service';
 import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
 import Select from '@/components/Select';
+import { todayIso as isoToday } from '@/lib/date-utils';
 
 /* ── CSV helper ────────────────────────────────────────────────── */
 const downloadCSV = (data: Record<string, unknown>[], filename: string) => {
@@ -193,7 +194,7 @@ export default function ReportsPage() {
   // Today's ISO date (YYYY-MM-DD). Reports are regenerated on demand from
   // live data, so the most accurate "last generated" stamp we can show
   // without a per-report run history is "today".
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = isoToday();
 
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
   // Reporting period selector. Reports regenerate on demand from live data, so

@@ -5,7 +5,7 @@ import { makeCoalescer } from './live-reload';
 import type { FollowUpDoc } from '../db-types';
 import { followUpsDB } from '../db';
 import { useDataScope } from './useDataScope';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 
 // A follow-up counts as "due" here when it's scheduled today or within this
 // many days out — mirrors the window the doctor worklist rail (dashboard

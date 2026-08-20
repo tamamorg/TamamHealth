@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import type { InsurancePolicyDoc, PayerType } from '@/lib/db-types-payments';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 interface InsurancePolicyModalProps {
   patientId: string;
@@ -35,7 +36,7 @@ const DONOR_COVERAGE_TYPES: { value: NonNullable<InsurancePolicyDoc['donorCovera
   { value: 'emergency_only', label: 'Emergency only' },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayIso();
 
 export default function InsurancePolicyModal({
   patientId, policy, facilityId, orgId, createdBy, onClose, onSaved,

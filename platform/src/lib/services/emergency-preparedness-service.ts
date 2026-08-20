@@ -65,7 +65,7 @@ export async function createPlan(
   const now = new Date().toISOString();
 
   const doc: EmergencyPlanDoc = {
-    _id: `emerg-${uuidv4().slice(0, 8)}`,
+    _id: `emerg-${uuidv4()}`,
     type: 'emergency_plan',
     ...data,
     createdAt: now,

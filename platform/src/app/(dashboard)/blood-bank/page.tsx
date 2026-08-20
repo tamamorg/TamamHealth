@@ -25,6 +25,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { patientFullName } from '@/lib/patient-utils';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import Select from '@/components/Select';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 
 const BLOOD_GROUPS: BloodBankDoc['bloodGroup'][] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -50,7 +51,7 @@ const STATUS_TONE: Record<BloodBankDoc['status'], BadgeTone> = {
   discarded: 'danger',
 };
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => todayIso();
 const daysUntil = (date: string) =>
   Math.ceil((new Date(date).getTime() - new Date(todayStr()).getTime()) / 86400000);
 
@@ -79,7 +80,7 @@ export default function BloodBankPage() {
     component: 'whole_blood' as BloodBankDoc['component'],
     volume: 450,
     collectionDate: todayStr(),
-    expiryDate: new Date(Date.now() + 42 * 86400000).toISOString().slice(0, 10),
+    expiryDate: toIsoDate(new Date(Date.now() + 42 * 86400000)),
     donorName: '',
     notes: '',
   }), [suggestUnitId]);

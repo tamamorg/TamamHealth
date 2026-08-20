@@ -5,6 +5,7 @@ import { useApp } from '../context';
 import { makeCoalescer } from './live-reload';
 import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB } from '../db';
 import { isForViewer } from '../notification-scope';
+import { todayIso as isoToday } from '@/lib/date-utils';
 import {
   NOTIFICATION_READS_EVENT,
   getReadNotificationIds,
@@ -265,7 +266,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       }
     } catch { /* offline */ }
 
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = isoToday();
     const RECENT_MS = 3 * 24 * 60 * 60 * 1000;
     const nowMsLocal = Date.now();
 

@@ -140,7 +140,7 @@ async function postHandler(request: NextRequest) {
     const db = getDB('tamamhealth_triage');
     const now = new Date().toISOString();
     const doc: TriageDoc = {
-      _id: `triage-${uuidv4().slice(0, 8)}`,
+      _id: `triage-${uuidv4()}`,
       type: 'triage',
       patientId: body.patientId as string,
       patientName: body.patientName as string,

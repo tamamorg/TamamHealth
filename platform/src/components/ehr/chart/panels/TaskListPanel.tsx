@@ -14,6 +14,7 @@ import { usePatientReminders } from '@/lib/hooks/usePatientReminders';
 import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelUser } from './types';
+import { toIsoDate } from '@/lib/date-utils';
 
 interface TaskListPanelProps {
   patient: PatientDoc;
@@ -25,7 +26,7 @@ interface TaskListPanelProps {
 function tomorrowISO(): string {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return toIsoDate(d);
 }
 
 function badgeClass(status: string): string {

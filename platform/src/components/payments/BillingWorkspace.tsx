@@ -36,7 +36,7 @@ import ClaimsPanel, { claimFilterOptions, filterClaims, PAYER_LABEL_KEYS } from 
 import Modal from '@/components/Modal';
 import PaymentPanel from '@/components/payments/PaymentPanel';
 import { getMethodConfig } from '@/lib/payment-method-config';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { isPathAllowed } from '@/lib/role-routes';
 import type { PaymentDoc, ClaimDoc, PaymentPlanDoc, PaymentMethodType } from '@/lib/db-types-payments';
 import type { BillingDoc } from '@/lib/db-types-billing';
@@ -439,7 +439,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   // Export whatever the toolbar is currently showing — the rows on screen, not
   // the whole store, so a filtered view exports as filtered.
   const exportCurrentView = useCallback(() => {
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = todayIso();
     if (tab === 'claims') {
       downloadCsv(
         `claims-${stamp}.csv`,

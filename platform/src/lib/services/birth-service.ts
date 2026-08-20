@@ -50,7 +50,7 @@ export async function getBirthsByState(state: string): Promise<BirthRegistration
 export async function createBirth(data: Omit<BirthRegistrationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<BirthRegistrationDoc> {
   const db = birthsDB();
   const now = new Date().toISOString();
-  const id = `birth-${uuidv4().slice(0, 8)}`;
+  const id = `birth-${uuidv4()}`;
 
   // Best-effort: find any ANC visits this mother has on file so we can
   // bidirectionally link the prenatal history with the birth record.

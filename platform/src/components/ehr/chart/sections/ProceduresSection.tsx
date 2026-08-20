@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/context';
 import { useProcedures } from '@/lib/hooks/useProcedures';
 import { formatDate } from '@/lib/format-utils';
 import { procedure as procedureLifecycle, type ProcedureStatus } from '@/lib/clinical-flow/order-lifecycles';
+import { todayIso } from '@/lib/date-utils';
 
 /** Stage 7 states, worded the way a clinician would say them. */
 const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
@@ -44,7 +45,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayIso());
   const [bodySite, setBodySite] = useState('');
   const [outcome, setOutcome] = useState('');
   const [notes, setNotes] = useState('');
@@ -76,7 +77,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
 
   const resetForm = () => {
     setName(''); setCode(''); setBodySite(''); setOutcome(''); setNotes('');
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(todayIso());
     setAdding(false);
   };
 

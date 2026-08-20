@@ -105,7 +105,7 @@ export async function createLabResult(
   const orgId = data.orgId || await inferOrgIdFromHospital(data.hospitalId);
   const accessionNumber = data.accessionNumber || `ACC-${now.slice(2, 10).replace(/-/g, '')}-${uuidv4().slice(0, 5).toUpperCase()}`;
   const doc: LabResultDoc = encryptLabFields(withPendingOfflineSync({
-    _id: `lab-${uuidv4().slice(0, 8)}`,
+    _id: `lab-${uuidv4()}`,
     type: 'lab_result',
     ...data,
     orgId,

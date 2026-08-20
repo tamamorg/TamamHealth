@@ -130,7 +130,7 @@ export async function createProcedure(
   const now = new Date().toISOString();
   const orgId = data.orgId || await inferOrgIdFromHospital(data.hospitalId);
   const doc: ProcedureDoc = {
-    _id: `procedure-${uuidv4().slice(0, 8)}`,
+    _id: `procedure-${uuidv4()}`,
     type: 'procedure',
     ...data,
     orgId,

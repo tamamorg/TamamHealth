@@ -39,7 +39,7 @@ export async function createWard(data: Omit<WardDoc, '_id' | '_rev' | 'type' | '
   const db = wardDB();
   const now = new Date().toISOString();
   const doc: WardDoc = withPendingOfflineSync({
-    _id: `ward-${uuidv4().slice(0, 8)}`,
+    _id: `ward-${uuidv4()}`,
     type: 'ward',
     ...data,
     occupiedBeds: 0,
@@ -189,7 +189,7 @@ export async function admitPatient(
   }
 
   const doc: AdmissionDoc = withPendingOfflineSync({
-    _id: `adm-${uuidv4().slice(0, 8)}`,
+    _id: `adm-${uuidv4()}`,
     type: 'admission',
     ...data,
     encounterId,

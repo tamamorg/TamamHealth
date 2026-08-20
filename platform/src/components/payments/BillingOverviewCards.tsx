@@ -23,7 +23,8 @@ import {
 import ChartCard, { tooltipStyle, axisTick, type ChartPeriod } from '@/components/ChartCard';
 import { CashFlowDonut } from '@/components/dashboards/_FacilityCharts';
 import { AlertTriangle, Banknote, Clock, Receipt, Shield, Users, Wallet } from '@/components/icons/lucide';
-import { toIsoDate, addDays } from '@/components/ehr/EhrMiniCalendar';
+import { addDays } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 import { getMethodConfig } from '@/lib/payment-method-config';
 import { formatMoney } from '@/lib/format-utils';
 import type { ClaimDoc, PaymentDoc, PaymentMethodType } from '@/lib/db-types-payments';

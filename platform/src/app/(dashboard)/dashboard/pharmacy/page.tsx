@@ -23,7 +23,8 @@ import EhrCareDashboard, {
   type EhrCareDashboardAction,
 } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
-import { toIsoDate, addDays } from '@/components/ehr/EhrMiniCalendar';
+import { addDays } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 import { tooltipStyle, axisTick } from '@/components/ChartCard';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, ResponsiveContainer,
@@ -751,7 +752,7 @@ export default function PharmacyDashboardPage() {
           unit,
           reorderLevel: reorder,
           batchNumber: `BN${Date.now().toString(36).toUpperCase()}`,
-          expiryDate: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+          expiryDate: toIsoDate(new Date(Date.now() + 365 * 86400000)),
           lastReceived: new Date().toISOString(),
           orgId: currentUser.orgId,
         });

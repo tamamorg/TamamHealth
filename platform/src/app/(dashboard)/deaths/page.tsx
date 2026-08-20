@@ -12,7 +12,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 
 // Shared control styling inside the header's Filters popover.
@@ -44,7 +44,7 @@ export default function DeathsPage() {
   const [encounterId, setEncounterId] = useState<string | undefined>(undefined);
   const [form, setForm] = useState({
     deceasedFirstName: '', deceasedSurname: '', deceasedGender: 'Male' as 'Male' | 'Female',
-    dateOfBirth: '', dateOfDeath: new Date().toISOString().slice(0, 10), ageAtDeath: 0,
+    dateOfBirth: '', dateOfDeath: todayIso(), ageAtDeath: 0,
     placeOfDeath: '', facilityId: '', facilityName: '',
     immediateCause: '', immediateICD11: '', antecedentCause1: '', antecedentICD11_1: '',
     antecedentCause2: '', antecedentICD11_2: '', underlyingCause: '', underlyingICD11: '',

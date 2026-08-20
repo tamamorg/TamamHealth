@@ -164,7 +164,7 @@ export async function saveBookingPolicy(
   const doc: BookingPolicyDoc = {
     ...(existing ?? defaultPolicyFor(input.facilityId, input.orgId)),
     ...input,
-    _id: existing?._id ?? `booking-policy-${uuidv4().slice(0, 8)}`,
+    _id: existing?._id ?? `booking-policy-${uuidv4()}`,
     _rev: existing?._rev,
     type: 'booking_policy',
     createdAt: existing?.createdAt ?? now,

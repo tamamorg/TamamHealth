@@ -18,6 +18,7 @@ import {
   Calendar, ChevronRight, ExternalLink, Edit3,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 
 const RISK_FACTOR_OPTIONS = [
   'hypertension', 'anemia', 'previous_csection', 'multiple_pregnancy',
@@ -56,7 +57,7 @@ export default function ANCPage() {
 
   const [form, setForm] = useState({
     motherId: '', motherName: '', motherAge: 25, gravida: 1, parity: 0,
-    visitNumber: 1, visitDate: new Date().toISOString().slice(0, 10), gestationalAge: 12,
+    visitNumber: 1, visitDate: todayIso(), gestationalAge: 12,
     bloodPressure: '', weight: 0, fundalHeight: 0, fetalHeartRate: 0,
     hemoglobin: 0, urineProtein: 'Negative', bloodGroup: 'O', rhFactor: '+',
     hivStatus: 'Not tested', malariaTest: 'Negative', syphilisTest: 'Non-reactive',
@@ -149,14 +150,14 @@ export default function ANCPage() {
 
   // Header stat chips — computed from data already loaded on this page (no
   // extra fetches). Unaffected by the search box, same as the patients header.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const thisMonthPrefix = today.slice(0, 7);
   const highRiskCount = useMemo(() => motherSummaries.filter(m => m.latest.riskLevel === 'high').length, [motherSummaries]);
   const visitsThisMonth = useMemo(() => (visits || []).filter(v => v.visitDate?.startsWith(thisMonthPrefix)).length, [visits, thisMonthPrefix]);
   const dueSoonCount = useMemo(() => {
     const in7 = new Date();
     in7.setDate(in7.getDate() + 7);
-    const in7Str = in7.toISOString().slice(0, 10);
+    const in7Str = toIsoDate(in7);
     return motherSummaries.filter(m => m.latest.nextVisitDate && m.latest.nextVisitDate >= today && m.latest.nextVisitDate <= in7Str).length;
   }, [motherSummaries, today]);
 

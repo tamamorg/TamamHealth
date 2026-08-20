@@ -29,7 +29,7 @@ import { useSettings } from '@/lib/settings/SettingsProvider';
 import { getRoleConfig } from '@/lib/permissions';
 import EhrCareDashboard, { type EhrCareDashboardAction, type EhrCareDashboardMetric, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 import {
   Calendar, ClipboardCheck, ArrowRightLeft,
   UserPlus, ClipboardList, Plus,

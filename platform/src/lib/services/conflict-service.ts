@@ -108,7 +108,7 @@ export async function enqueueConflict(input: {
   const db = conflictQueueDB();
   const now = new Date().toISOString();
   const doc: ConflictQueueDoc = {
-    _id: `conflict-${uuidv4().slice(0, 12)}`,
+    _id: `conflict-${uuidv4()}`,
     type: 'conflict_queue',
     resourceType: input.resourceType,
     resourceId: input.resourceId,

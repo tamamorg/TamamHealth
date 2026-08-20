@@ -28,6 +28,7 @@ import { getNationalDataQuality, type NationalDataQuality } from '@/lib/services
 import { getImmunizationStats } from '@/lib/services/immunization-service';
 import { isoWeek } from '@/lib/format-utils';
 import { CHART_SERIES, CHART_SERIES_HEX, DISEASE_COLOR } from '@/lib/chart-colors';
+import { toIsoDate } from '@/lib/date-utils';
 
 // recharts (~80-100KB) is deferred behind dynamic boundaries so it's fetched
 // only when a chart actually renders — same pattern as
@@ -95,7 +96,7 @@ function isoWeekLabel(iso: string): { label: string; sortKey: string } {
   const dayNum = (target.getUTCDay() + 6) % 7;
   target.setUTCDate(target.getUTCDate() - dayNum + 3);
   const month = target.toLocaleString('en', { month: 'short', timeZone: 'UTC' });
-  return { label: `W${w.week} ${month}`, sortKey: target.toISOString().slice(0, 10) };
+  return { label: `W${w.week} ${month}`, sortKey: toIsoDate(target) };
 }
 
 // Threshold tone for percentage indicators (WHO DQR-style traffic light).

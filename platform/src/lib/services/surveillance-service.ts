@@ -83,7 +83,7 @@ export async function createAlert(
   const db = diseaseAlertsDB();
   const now = new Date().toISOString();
   const doc: DiseaseAlertDoc = {
-    _id: `alert-${uuidv4().slice(0, 8)}`,
+    _id: `alert-${uuidv4()}`,
     type: 'disease_alert',
     ...data,
     createdAt: now,

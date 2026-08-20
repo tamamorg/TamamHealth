@@ -6,6 +6,7 @@ import { usageEventsDB } from '../db';
 import type { UsageEventDoc, UsageEventName } from '../db-types';
 import { findByType } from './db-query';
 import type { SanitizedUsageEventInput } from '../usage/sanitize';
+import { toIsoDate } from '@/lib/date-utils';
 
 export interface UsageIdentity {
   userId: string;
@@ -113,8 +114,8 @@ export function aggregateUsageSummary(
 ): UsageSummary {
   const trendDays = opts.trendDays ?? 14;
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = toIsoDate(now);
+  const weekAgo = toIsoDate(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
   const trendStart = new Date(now.getTime() - (trendDays - 1) * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -171,7 +172,7 @@ export function aggregateUsageSummary(
 
   const dauTrend: UsageSummary['dauTrend'] = [];
   for (let i = trendDays - 1; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const d = toIsoDate(new Date(now.getTime() - i * 24 * 60 * 60 * 1000));
     dauTrend.push({
       date: d,
       users: dayUsers.get(d)?.size || 0,

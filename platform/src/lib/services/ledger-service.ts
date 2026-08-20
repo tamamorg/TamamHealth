@@ -60,7 +60,7 @@ export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<
   const doc: LedgerEntryDoc = {
     _id: input.idempotencyKey
       ? `ledger-idem-${input.idempotencyKey.replace(/[^A-Za-z0-9._:-]/g, '').slice(0, 120)}`
-      : `ledger-${uuidv4().slice(0, 12)}`,
+      : `ledger-${uuidv4()}`,
     type: 'ledger_entry',
     patientId: input.patientId,
     encounterId: input.encounterId,

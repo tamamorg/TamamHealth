@@ -38,7 +38,7 @@ export async function addCareAlert(patientId: string, input: AddCareAlertInput):
     throw new Error('Care alert message is required');
   }
   const entry: CareAlertEntry = {
-    id: uuidv4().slice(0, 8),
+    id: uuidv4(),
     category: input.category,
     message: input.message.trim(),
     priority: input.priority ?? 'normal',

@@ -57,7 +57,7 @@ Escape both with a scoped namespace rather than fighting specificity. Existing n
 
 **Icons.** Import from `@/components/icons` (in-repo duotone set) or the name-compat shim `@/components/icons/lucide`. Do not add new direct `lucide-react` imports.
 
-**Dates.** Client-side "today" is local (`toIsoDate` in `components/ehr/EhrMiniCalendar.tsx`). Anything bucketed by clinical day/month goes through `lib/time-juba.ts` (Africa/Juba, UTC+2, no DST). Raw `toISOString().slice()` belongs only in `app/api` server code.
+**Dates.** Client-side "today" is local — `todayIso()` / `toIsoDate()` from `lib/date-utils.ts` (re-exported by `components/ehr/EhrMiniCalendar` for older importers). Anything bucketed by clinical day/month goes through `lib/time-juba.ts` (Africa/Juba, UTC+2, no DST). Raw `toISOString().slice()` belongs only in `app/api` server code — in the browser it reports tomorrow after 22:00 local, which silently mis-dated births, deaths, immunizations and ANC visits until the 2026-08 sweep.
 
 **Names.** Lists and rows use `patientDisplayName` / `shortenPersonName` (first + last). Full legal name (`patientFullName`) is for the chart header, registration review, printed bills, and search matching. Staff names keep their titles ("Dr. James Igga").
 

@@ -46,7 +46,7 @@ export async function createPayrollEntry(input: CreatePayrollInput): Promise<Pay
   const allowances = input.allowances || 0;
   const deductions = input.deductions || 0;
   const doc: PayrollEntryDoc = {
-    _id: `pay-${uuidv4().slice(0, 8)}`,
+    _id: `pay-${uuidv4()}`,
     type: 'payroll_entry',
     userId: input.userId,
     userName: input.userName,

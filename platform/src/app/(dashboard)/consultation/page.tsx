@@ -30,6 +30,7 @@ import { useApp } from '@/lib/context';
 import { listClinicalNotes, createClinicalNote } from '@/lib/clinical-notes/note-service';
 import { defaultNoteTypeFor } from '@/components/clinical-notes/CreateNoteButton';
 import '@/components/clinical-notes/clinical-notes.css';
+import { todayIso } from '@/lib/date-utils';
 
 export default function ConsultationRedirectPage() {
   const router = useRouter();
@@ -90,7 +91,7 @@ export default function ConsultationRedirectPage() {
       if (!resolvedPatientId) { router.replace('/patients'); return; }
 
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayIso();
         const existing = await listClinicalNotes({ patientId: resolvedPatientId }, scope);
 
         // Resume rather than duplicate: pressing "Start consultation" twice in

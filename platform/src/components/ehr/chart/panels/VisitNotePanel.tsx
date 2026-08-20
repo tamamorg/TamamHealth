@@ -24,7 +24,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Image as ImageIcon, Stethoscope, X } from '@/components/icons/lucide';
 import CodedSearchField from '@/components/CodedSearchField';
 import { useToast } from '@/components/Toast';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelRouter, ChartPanelUser } from './types';

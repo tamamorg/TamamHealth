@@ -303,7 +303,7 @@ export async function createPrescription(
   const now = new Date().toISOString();
   const orgId = data.orgId || await inferOrgIdFromHospital(data.hospitalId);
   const doc: PrescriptionDoc = withPendingOfflineSync({
-    _id: `rx-${uuidv4().slice(0, 8)}`,
+    _id: `rx-${uuidv4()}`,
     type: 'prescription',
     ...data,
     // Stamped at write time, not derived on read: the tier is what the queue
@@ -441,7 +441,7 @@ export async function recordAdministration(
     const existing = await db.get(input.prescriptionId) as PrescriptionDoc;
     const now = new Date().toISOString();
     const entry: MedicationAdministration = {
-      id: `madm-${uuidv4().slice(0, 8)}`,
+      id: `madm-${uuidv4()}`,
       scheduledFor: input.scheduledFor,
       recordedAt: now,
       status: input.status,

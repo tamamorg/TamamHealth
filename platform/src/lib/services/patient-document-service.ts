@@ -50,7 +50,7 @@ export async function addPatientDocument(input: AddPatientDocumentInput): Promis
   const db = patientDocumentsDB();
   const now = new Date().toISOString();
   const doc: PatientDocumentDoc = {
-    _id: `pdoc-${uuidv4().slice(0, 8)}`,
+    _id: `pdoc-${uuidv4()}`,
     type: 'patient_document',
     patientId: input.patientId,
     title: input.title.trim(),

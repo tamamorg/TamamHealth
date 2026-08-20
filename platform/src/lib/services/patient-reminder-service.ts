@@ -16,9 +16,10 @@ import type { PatientReminderDoc, ReminderChannel } from '../db-types';
 import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
+import { todayIso } from '@/lib/date-utils';
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayIso();
 }
 
 /** Queued first (earliest send date), then the rest newest-first. */
@@ -67,7 +68,7 @@ export async function queueReminder(input: QueueReminderInput): Promise<PatientR
   const db = patientRemindersDB();
   const now = new Date().toISOString();
   const doc: PatientReminderDoc = {
-    _id: `prem-${uuidv4().slice(0, 8)}`,
+    _id: `prem-${uuidv4()}`,
     type: 'patient_reminder',
     patientId: input.patientId,
     patientName: input.patientName,

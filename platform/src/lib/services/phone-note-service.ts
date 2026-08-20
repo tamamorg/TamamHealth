@@ -73,7 +73,7 @@ export async function createPhoneNote(input: CreatePhoneNoteInput): Promise<Phon
   const db = phoneNotesDB();
   const now = new Date().toISOString();
   const doc: PhoneNoteDoc = {
-    _id: `phnote-${uuidv4().slice(0, 8)}`,
+    _id: `phnote-${uuidv4()}`,
     type: 'phone_note',
     ...input,
     subject: input.subject.trim(),

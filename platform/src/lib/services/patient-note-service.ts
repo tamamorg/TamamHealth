@@ -31,7 +31,7 @@ export async function createPatientNote(
 ): Promise<PatientNoteDoc> {
   const db = patientNotesDB();
   const now = new Date().toISOString();
-  const id = `pnote-${uuidv4().slice(0, 8)}`;
+  const id = `pnote-${uuidv4()}`;
   const doc: PatientNoteDoc = {
     _id: id,
     type: 'patient_note',

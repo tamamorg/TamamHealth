@@ -23,7 +23,7 @@ import { useAuth } from '@/lib/context';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { VACCINE_NAMES } from '@/lib/services/immunization-service';
 import { formatDate, humanizeStatus } from '@/lib/format-utils';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 import type { ImmunizationDoc, PatientDoc } from '@/lib/db-types';
 
 const SITES: ImmunizationDoc['site'][] = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];

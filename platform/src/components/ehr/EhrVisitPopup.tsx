@@ -10,6 +10,7 @@ import { formatClockTime, formatCompactDateTime } from '@/lib/format-utils';
 import { initials, stateTint, shortenPersonName } from '@/lib/patient-utils';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import type { AppointmentDoc, TriageDoc } from '@/lib/db-types';
+import { todayIso as isoToday } from '@/lib/date-utils';
 
 /* ─── Visit popup + move dialog (clinician worklist) ───
    Row click on "Patients assigned to you" opens this popup: the current
@@ -135,7 +136,7 @@ export default function EhrVisitPopup({
 }) {
   const [tab, setTab] = useState<'current' | 'previous'>('current');
   const { records } = useMedicalRecords(patientId);
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = isoToday();
 
   // Consultation notes only — nursing vitals snapshots are not visit notes.
   const consultations = useMemo(

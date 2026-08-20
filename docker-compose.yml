@@ -1,7 +1,7 @@
 # Production docker-compose stack for TamamHealth / SafeguardJunub.
 #
 # Required files before `docker compose up`:
-#   ./.env                         — compose-level vars (CouchDB/Postgres credentials, ports)
+#   ./.env                         — compose-level vars (CouchDB credentials, ports)
 #   ./platform/.env.production     — platform runtime env (JWT_SECRET, DATABASE_URL, etc.)
 #
 # Copy the platform example file and fill it in. The public website currently
@@ -100,16 +100,6 @@ services:
     depends_on:
       couchdb:
         condition: service_healthy
-      # Postgres is gated behind the `analytics` profile. When the operator
-      # opts in (docker compose --profile analytics up), the platform must
-      # wait for Postgres to be healthy before booting because
-      # instrumentation.ts runs migrations during register(). When the
-      # profile is NOT enabled, this depends_on entry is silently ignored
-      # by compose (postgres isn't part of the active profile), so the
-      # legacy CouchDB-only deploy path remains unchanged.
-      postgres:
-        condition: service_healthy
-        required: false
     restart: unless-stopped
     networks:
       - app-net
@@ -261,34 +251,8 @@ services:
     networks:
       - app-net
 
-  # Postgres is optional — the platform works fully via PouchDB alone.
-  # Start with:  docker compose --profile analytics up -d
-  postgres:
-    logging: *default-logging
-    container_name: tamamhealth-postgres
-    image: postgres:16-alpine
-    profiles: ["analytics"]
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
-      POSTGRES_DB: ${POSTGRES_DB:-safeguard_junub}
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    networks:
-      - app-net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
 volumes:
   couchdb_data:
-  postgres_data:
   couchdb_backups:
   sync_worker_state:
 

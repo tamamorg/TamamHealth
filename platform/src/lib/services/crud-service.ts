@@ -40,8 +40,6 @@ export interface CrudServiceConfig {
   resourceType?: string;
   /** Audit-action suffix (e.g. `'ASSET'` → `CREATE_ASSET`). Defaults to type upper-cased. */
   auditLabel?: string;
-  /** Length of the uuid slice used in the id (default 8). */
-  idLength?: number;
 }
 
 export type CreateInput<TDoc extends BaseDoc & { type: string }> =
@@ -60,13 +58,12 @@ export function createCrudService<TDoc extends BaseDoc & { type: string } & With
 ): CrudService<TDoc> {
   const resourceType = config.resourceType ?? config.type;
   const auditLabel = config.auditLabel ?? config.type.toUpperCase();
-  const idLen = config.idLength ?? 8;
 
   async function create(data: CreateInput<TDoc>): Promise<TDoc> {
     const db = config.db();
     const now = new Date().toISOString();
     const doc = {
-      _id: `${config.idPrefix}-${uuidv4().slice(0, idLen)}`,
+      _id: `${config.idPrefix}-${uuidv4()}`,
       type: config.type,
       ...data,
       createdAt: now,

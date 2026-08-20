@@ -16,7 +16,7 @@
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { CalendarClock, X } from '@/components/icons/lucide';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 import './clinical-notes.css';
 
 export interface FollowUpModalResult {

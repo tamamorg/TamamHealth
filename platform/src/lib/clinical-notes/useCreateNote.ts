@@ -19,6 +19,7 @@ import { createClinicalNote, listClinicalNotes, type CreateNoteInput } from './n
 import { getNoteType, type NoteTypeId } from './note-catalog';
 import { useDataScope } from '../hooks/useDataScope';
 import type { ClinicalNoteDoc } from './types';
+import { toIsoDate } from '@/lib/date-utils';
 
 export interface CreateNoteFromVisitInput {
   patientId: string;
@@ -87,7 +88,7 @@ export function buildCreateNoteInput(
     mrn: input.mrn,
     patientDob: input.patientDob,
     noteType,
-    serviceDate: input.serviceDate || now.toISOString().slice(0, 10),
+    serviceDate: input.serviceDate || toIsoDate(now),
     serviceTime: input.serviceTime || now.toTimeString().slice(0, 5),
     appointmentId: input.appointmentId,
     encounterId: input.encounterId,

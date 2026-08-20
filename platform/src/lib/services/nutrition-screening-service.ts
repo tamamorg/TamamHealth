@@ -66,7 +66,7 @@ export async function addNutritionScreening(input: AddNutritionScreeningInput): 
   const now = new Date().toISOString();
   const status = classifyScreening(input.muac, input.edema, input.isAnc);
   const doc: NutritionScreeningDoc = {
-    _id: `nscr-${uuidv4().slice(0, 8)}`,
+    _id: `nscr-${uuidv4()}`,
     type: 'nutrition_screening',
     patientId: input.patientId,
     patientName: name,

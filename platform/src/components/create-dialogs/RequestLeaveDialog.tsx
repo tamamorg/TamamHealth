@@ -16,9 +16,10 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { LEAVE_TYPES } from '@/app/(dashboard)/hr/hr-shared';
 import type { LeaveType } from '@/lib/db-types-hr';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 
-const today = () => new Date().toISOString().slice(0, 10);
-const tomorrow = () => new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+const today = () => todayIso();
+const tomorrow = () => toIsoDate(new Date(Date.now() + 86400000));
 
 export interface RequestLeaveDialogProps {
   onClose: () => void;

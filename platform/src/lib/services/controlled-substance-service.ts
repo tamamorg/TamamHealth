@@ -75,7 +75,7 @@ export async function recordMovement(input: RecordMovementInput): Promise<Contro
   const db = controlledSubstanceLogDB();
   const now = new Date().toISOString();
   const doc: ControlledSubstanceLogDoc = {
-    _id: `cslog-${uuidv4().slice(0, 8)}`,
+    _id: `cslog-${uuidv4()}`,
     type: 'controlled_substance_log',
     ...input,
     afterBalance,

@@ -51,7 +51,7 @@ export async function createAnnouncement(
   const db = announcementsDB();
   const now = new Date().toISOString();
   const doc: AnnouncementDoc = {
-    _id: `ann-${uuidv4().slice(0, 8)}`,
+    _id: `ann-${uuidv4()}`,
     type: 'announcement',
     dismissedBy: [],
     ...data,

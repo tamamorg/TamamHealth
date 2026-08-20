@@ -30,7 +30,7 @@ export async function getByFacility(facilityId: string): Promise<ANCVisitDoc[]> 
 export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<ANCVisitDoc> {
   const db = ancDB();
   const now = new Date().toISOString();
-  const id = `anc-${uuidv4().slice(0, 8)}`;
+  const id = `anc-${uuidv4()}`;
   const doc: ANCVisitDoc = {
     _id: id,
     type: 'anc_visit',
@@ -61,7 +61,7 @@ export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 't
       const safeMotherIdVal = data.motherId || '';
       const safeMotherNameVal = data.motherName || 'Unknown mother';
       const alertDoc: MessageDoc = {
-        _id: `msg-${uuidv4().slice(0, 8)}`,
+        _id: `msg-${uuidv4()}`,
         type: 'message',
         patientId: safeMotherIdVal,
         patientName: safeMotherNameVal,

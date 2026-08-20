@@ -12,6 +12,7 @@ import type { DirectiveSignature } from '../types/patient-clinical';
 import type { PatientDoc } from '../db-types';
 import { getPatientById } from './patient-service';
 import { mutatePatientListField } from './patient-list-field';
+import { todayIso } from '@/lib/date-utils';
 
 /** All directive entries for a patient (active + inactive). */
 export async function getDirectives(patientId: string): Promise<DirectiveEntry[]> {
@@ -38,10 +39,10 @@ export async function addDirective(patientId: string, input: AddDirectiveInput):
     throw new Error('Directive description is required');
   }
   const entry: DirectiveEntry = {
-    id: uuidv4().slice(0, 8),
+    id: uuidv4(),
     type: input.type,
     description: input.description.trim(),
-    startDate: input.startDate || new Date().toISOString().slice(0, 10),
+    startDate: input.startDate || todayIso(),
     status: 'active',
     recordedBy: input.recordedBy,
     recordedByName: input.recordedByName,

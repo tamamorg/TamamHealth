@@ -13,6 +13,7 @@ import { findByType } from './db-query';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
+import { todayIso } from '@/lib/date-utils';
 
 async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | undefined> {
   if (!hospitalId) return undefined;
@@ -43,7 +44,7 @@ export async function createProblem(
   const now = new Date().toISOString();
   const orgId = data.orgId || await inferOrgIdFromHospital(data.hospitalId);
   const doc: ProblemDoc = {
-    _id: `problem-${uuidv4().slice(0, 8)}`,
+    _id: `problem-${uuidv4()}`,
     type: 'problem',
     ...data,
     orgId,
@@ -121,7 +122,7 @@ export async function deleteProblem(id: string): Promise<boolean> {
 export async function setProblemStatus(id: string, status: ProblemStatus): Promise<ProblemDoc | null> {
   const patch: Partial<ProblemDoc> = { status };
   if (status === 'resolved') {
-    patch.resolvedDate = new Date().toISOString().slice(0, 10);
+    patch.resolvedDate = todayIso();
   }
   return updateProblem(id, patch);
 }

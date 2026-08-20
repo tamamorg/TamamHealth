@@ -93,7 +93,7 @@ export async function createAvailability(
   }
 
   const doc: AvailabilityDoc = {
-    _id: `avail-${uuidv4().slice(0, 8)}`,
+    _id: `avail-${uuidv4()}`,
     type: 'availability',
     status: 'open',
     ...data,

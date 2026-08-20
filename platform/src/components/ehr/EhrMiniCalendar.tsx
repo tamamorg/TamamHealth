@@ -2,17 +2,11 @@
 
 import { Calendar, ChevronLeft, ChevronRight } from '@/components/icons/lucide';
 
-export function toIsoDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-export function parseIsoDate(value: string) {
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(year, (month || 1) - 1, day || 1);
-}
+// Moved to `lib/date-utils` — a date helper does not belong in a calendar
+// component, and half the app was importing it from here. Re-exported so the
+// existing importers keep working; new code should import from the lib module.
+export { toIsoDate, parseIsoDate } from '@/lib/date-utils';
+import { toIsoDate, parseIsoDate } from '@/lib/date-utils';
 
 export function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);

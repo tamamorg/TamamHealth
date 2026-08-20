@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     const db = paymentsDB();
     const now = new Date().toISOString();
-    const id = (typeof body._id === 'string' && body._id) || `pmt-${uuidv4().slice(0, 10)}`;
+    const id = (typeof body._id === 'string' && body._id) || `pmt-${uuidv4()}`;
 
     const rawAmount = typeof body.amount === 'number' ? body.amount : Number(body.amount);
     const amount = Number.isFinite(rawAmount) && rawAmount > 0 ? rawAmount : 0;

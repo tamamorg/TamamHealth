@@ -35,6 +35,7 @@ import { waitLabel } from '@/components/ehr/EhrVisitPopup';
 import ListSearch from './ListSearch';
 import RowActionsMenu, { type RowAction } from '@/components/referrals/RowActionsMenu';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 function VitalInputField({
   field,
@@ -629,7 +630,7 @@ export default function TriageWorkflow({
               <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.etatTriageAssessment')}</h3>
             </div>
             <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              {t('nurse.triageHeaderSummary', { today: triageHistory.filter(ti => (ti.triagedAt || '').startsWith(new Date().toISOString().slice(0, 10))).length, red: triageHistory.filter(ti => ti.priority === 'RED' && ti.status === 'pending').length })}
+              {t('nurse.triageHeaderSummary', { today: triageHistory.filter(ti => (ti.triagedAt || '').startsWith(todayIso())).length, red: triageHistory.filter(ti => ti.priority === 'RED' && ti.status === 'pending').length })}
             </span>
           </div>
         )}

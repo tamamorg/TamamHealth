@@ -40,7 +40,7 @@ export async function createFollowUp(
   const db = followUpsDB();
   const now = new Date().toISOString();
   const doc: FollowUpDoc = {
-    _id: `followup-${uuidv4().slice(0, 8)}`,
+    _id: `followup-${uuidv4()}`,
     type: 'follow_up',
     ...data,
     createdAt: now,

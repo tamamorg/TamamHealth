@@ -13,10 +13,11 @@ import type { ScreeningEntry } from '../../data/mock';
 import type { PatientDoc } from '../db-types';
 import { getPatientById } from './patient-service';
 import { mutatePatientListField } from './patient-list-field';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 
 /** yyyy-mm-dd for today. */
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayIso();
 }
 
 /** Add `months` to a yyyy-mm-dd date, returning yyyy-mm-dd. */
@@ -24,7 +25,7 @@ function addMonths(fromISO: string, months: number): string {
   const d = new Date(fromISO);
   if (Number.isNaN(d.getTime())) return fromISO;
   d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
+  return toIsoDate(d);
 }
 
 /** Whether a "due" screening is past its due date as of `asOf` (default today). */
@@ -59,7 +60,7 @@ export async function addScreening(patientId: string, input: AddScreeningInput):
     throw new Error('Screening type is required');
   }
   const entry: ScreeningEntry = {
-    id: uuidv4().slice(0, 8),
+    id: uuidv4(),
     type: input.type.trim(),
     status: 'due',
     dueDate: input.dueDate || todayISO(),

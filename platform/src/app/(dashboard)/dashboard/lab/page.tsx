@@ -7,7 +7,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 import Modal from '@/components/Modal';
 import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { LabResultDoc } from '@/lib/db-types';

@@ -14,7 +14,7 @@ import Modal from '@/components/Modal';
 import {
   ClipboardList, Check, Clock, Calendar, Plus, Trash2, X, Flag, Pencil, Search, User,
 } from '@/components/icons/lucide';
-import { toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 import { useTasks } from '@/lib/hooks/useTasks';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientFullName, shortenPersonName } from '@/lib/patient-utils';

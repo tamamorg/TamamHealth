@@ -48,7 +48,7 @@ export async function requestLeave(input: CreateLeaveInput): Promise<LeaveReques
   const db = leaveRequestsDB();
   const now = new Date().toISOString();
   const doc: LeaveRequestDoc = {
-    _id: `leave-${uuidv4().slice(0, 8)}`,
+    _id: `leave-${uuidv4()}`,
     type: 'leave_request',
     ...input,
     days: daysBetween(input.startDate, input.endDate),

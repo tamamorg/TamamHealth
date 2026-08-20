@@ -27,6 +27,7 @@ import { useSettings } from '@/lib/settings/SettingsProvider';
 import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 // Minimal shape of the logged-in user needed by these modals. The patient
 // detail page passes `currentUser` from useApp(); we only read these fields.
@@ -265,7 +266,7 @@ export function ReferModal({ isOpen, onClose, patient, currentUser }: BaseModalP
         reason: reason.trim(),
         notes: notes.trim(),
         referringDoctor: currentUser?.name || '',
-        referralDate: new Date().toISOString().split('T')[0],
+        referralDate: todayIso(),
         status: 'sent',
         orgId: currentUser?.orgId,
       });

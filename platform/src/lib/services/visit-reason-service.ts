@@ -222,7 +222,7 @@ export async function createVisitReason(
   }
 
   const doc: VisitReasonDoc = {
-    _id: `visit-reason-${uuidv4().slice(0, 8)}`,
+    _id: `visit-reason-${uuidv4()}`,
     type: 'visit_reason',
     isActive: true,
     sortOrder: existing.length,

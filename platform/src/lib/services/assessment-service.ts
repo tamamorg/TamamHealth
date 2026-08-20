@@ -85,7 +85,7 @@ export async function createAssessment(input: CreateAssessmentInput): Promise<As
   const db = assessmentsDB();
   const now = new Date().toISOString();
   const doc: AssessmentDoc = {
-    _id: `asmt-${uuidv4().slice(0, 8)}`,
+    _id: `asmt-${uuidv4()}`,
     type: 'assessment',
     patientId: input.patientId,
     patientName: input.patientName,

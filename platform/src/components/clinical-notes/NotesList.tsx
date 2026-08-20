@@ -25,6 +25,7 @@ import {
 import type { ClinicalNoteDoc, NoteListFilters } from '@/lib/clinical-notes/types';
 import './clinical-notes.css';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 interface NotesListProps {
   /** Omit for the cross-patient queue. */
@@ -96,7 +97,7 @@ export default function NotesList({
         mrn,
         patientDob,
         noteType,
-        serviceDate: new Date().toISOString().slice(0, 10),
+        serviceDate: todayIso(),
         serviceTime: new Date().toTimeString().slice(0, 5),
         assignedToId: currentUser?._id,
         assignedToName: currentUser?.name || currentUser?.username,

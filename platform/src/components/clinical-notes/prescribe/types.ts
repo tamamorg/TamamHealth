@@ -1,4 +1,5 @@
 import type { FormularyDrug } from '@/lib/data/formulary';
+import { todayIso } from '@/lib/date-utils';
 
 /** The prescription being written. One draft per Rx; "Add Rx" resets it. */
 export interface RxDraft {
@@ -21,7 +22,7 @@ export function emptyDraft(serviceLocation: string): RxDraft {
     quantity: '1',
     refills: '0',
     daysSupply: '',
-    effectiveOn: new Date().toISOString().slice(0, 10),
+    effectiveOn: todayIso(),
     allowSubstitution: true,
     serviceLocation,
     reason: '',

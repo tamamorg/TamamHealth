@@ -131,7 +131,7 @@ export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
     try {
       const hospitalId = currentUser?.hospitalId || patient.registrationHospital;
       const patientName = `${patient.firstName} ${patient.surname}`;
-      const orderGroupId = `req-${uuidv4().slice(0, 8)}`;
+      const orderGroupId = `req-${uuidv4()}`;
       const placedAt = new Date().toISOString();
 
       // Anchor the order to the patient's CURRENT visit at this facility —

@@ -28,6 +28,7 @@ import ReferralFormModal from '@/components/referrals/ReferralFormModal';
 import type { Attachment, TransferPackage, ReferralDisposition } from '@/data/mock';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import Select from '@/components/Select';
+import { todayIso } from '@/lib/date-utils';
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -207,7 +208,7 @@ export default function ReferralsPage() {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `referrals-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `referrals-${activeTab}-${todayIso()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -218,7 +219,7 @@ export default function ReferralsPage() {
       setActionSubmitting(true);
       const ref = referrals.find(r => r._id === declineModalId);
       const existingNotes = ref?.notes || '';
-      const declineNote = `[${new Date().toISOString().split('T')[0]} ${currentUser?.name || 'Unknown'}] DECLINED: ${declineReason.trim()}`;
+      const declineNote = `[${todayIso()} ${currentUser?.name || 'Unknown'}] DECLINED: ${declineReason.trim()}`;
       const updatedNotes = existingNotes ? `${existingNotes}\n\n${declineNote}` : declineNote;
       await updateStatus(declineModalId, 'cancelled');
       await updateNotes(declineModalId, updatedNotes);
@@ -261,7 +262,7 @@ export default function ReferralsPage() {
       setActionSubmitting(true);
       const ref = referrals.find(r => r._id === noteModalId);
       const existingNotes = ref?.notes || '';
-      const newNote = `[${new Date().toISOString().split('T')[0]} ${currentUser?.name || 'Unknown'}] ${noteText.trim()}`;
+      const newNote = `[${todayIso()} ${currentUser?.name || 'Unknown'}] ${noteText.trim()}`;
       const updatedNotes = existingNotes ? `${existingNotes}\n\n${newNote}` : newNote;
       await updateNotes(noteModalId, updatedNotes);
       showToast(t('referrals.toastNoteAdded'), 'success');

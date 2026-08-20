@@ -111,7 +111,7 @@ export async function createTriage(
   const db = triageDB();
   const now = new Date().toISOString();
   const doc: TriageDoc = withPendingOfflineSync({
-    _id: `triage-${uuidv4().slice(0, 8)}`,
+    _id: `triage-${uuidv4()}`,
     type: 'triage',
     ...data,
     createdAt: now,

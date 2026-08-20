@@ -31,6 +31,7 @@ import {
   METRIC_LABELS, type PerformanceMetricKey,
 } from '@/lib/performance-colors';
 import { states, statesAndCounties } from '@/lib/data/south-sudan-reference';
+import { todayIso } from '@/lib/date-utils';
 
 // ───────────────────────────── helpers ─────────────────────────────
 const TYPE_LABEL_KEYS: Record<string, string> = {
@@ -222,7 +223,7 @@ function HospitalsPageInner() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `facility-performance-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `facility-performance-${todayIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }, [filteredHospitals]);

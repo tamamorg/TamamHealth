@@ -13,9 +13,10 @@ import type { PatientDoc } from '@/lib/db-types';
 import { ClipboardList, Plus, Check, X, Clock } from '@/components/icons/lucide';
 import CodedSearchField from '@/components/CodedSearchField';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { todayIso } from '@/lib/date-utils';
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayIso();
 }
 
 const COMMON_SCREENINGS = ['Blood pressure', 'HIV test', 'Cervical cancer (VIA)', 'Diabetes (blood glucose)', 'TB symptom screen', 'Well-child check', 'Nutrition (MUAC)'];

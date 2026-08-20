@@ -13,7 +13,8 @@ import {
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { appointmentPriorityLabel, appointmentTriage } from '@/lib/clinical/triage-display';
-import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { formatDateTitle } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate } from '@/lib/date-utils';
 import { formatClockTime } from '@/lib/format-utils';
 
 const ACCENT = 'var(--accent-primary)';

@@ -58,7 +58,7 @@ export async function createTask(input: CreateTaskInput): Promise<ClinicianTaskD
   const db = clinicianTasksDB();
   const now = new Date().toISOString();
   const doc: ClinicianTaskDoc = {
-    _id: `task-${uuidv4().slice(0, 8)}`,
+    _id: `task-${uuidv4()}`,
     type: 'clinician_task',
     userId: input.userId,
     title,

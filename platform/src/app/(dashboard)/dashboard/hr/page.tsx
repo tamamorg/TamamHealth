@@ -10,7 +10,8 @@ import { useToast } from '@/components/Toast';
 import { titleCase, formatClockTime } from '@/lib/format-utils';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
-import { formatDateTitle, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { formatDateTitle } from '@/components/ehr/EhrMiniCalendar';
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 import type { StaffScheduleDoc } from '@/lib/db-types';
 
@@ -43,7 +44,7 @@ export default function HRDashboardPage() {
   const [leaveTab, setLeaveTab] = useState('pending');
   const [staffSearch, setStaffSearch] = useState('');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const facilityId = currentUser?.hospitalId;
 
   useEffect(() => {
