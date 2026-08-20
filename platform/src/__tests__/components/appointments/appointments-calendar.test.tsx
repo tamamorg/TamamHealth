@@ -290,7 +290,11 @@ describe('an overflowing month day opens in place', () => {
     unmount();
   });
 
-  it('closes on Escape and on a second click of the same link', () => {
+  // The link itself ends up UNDER the opened day (the panel covers the cell it
+  // grew from), so in a real layout the toggle is only reachable from the
+  // keyboard — focus returns to the link when the day is collapsed. jsdom has
+  // no hit-testing, which is what lets both halves be driven here.
+  it('closes on Escape, and on the link itself when it can be reached', () => {
     const { container, unmount } = mountMonth();
 
     clickShowMore(container);

@@ -13173,9 +13173,13 @@ span:has(> svg:only-child) {
 }
 
 /* ── An opened day ──────────────────────────────────────────────────────────
-   "+28 more" opens the day where it stands: the panel takes the column's left
-   edge and runs down over the weeks below, so the day reads as its own cell
-   grown taller rather than as a card floating somewhere else on the page.
+   "+28 more" opens the day where it stands. This is deliberately NOT a card:
+   it is the day's own cell carrying on downwards into the space the calendar
+   already has, so it takes the grid's surface, the column's hairlines and the
+   date number in the corner it was already in. A lifted panel with a shadow
+   and a radius would read as a second surface floating over the month, which
+   is the thing the popup was doing wrong.
+
    Geometry (left / top / width / max-height) is measured off the day's
    background cell in _AppointmentsCalendar; everything here is the surface. */
 .gcal-shell {
@@ -13185,49 +13189,39 @@ span:has(> svg:only-child) {
 
 .gcal-daypop {
   position: absolute;
+  /* Above the weeks it grows over — an opaque background on the grid's own
+     colour is what makes the cell look taller instead of transparent. */
   z-index: 20;
   display: flex;
   flex-direction: column;
   min-height: 0;
   background: var(--bg-card-solid);
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  /* The one lifted surface in a flat grid: without a shadow the panel and the
-     cells it covers read as the same plane and the day looks corrupted. */
-  box-shadow: 0 10px 30px rgba(15, 30, 50, 0.16);
+  border-inline: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
   overflow: hidden;
 }
 
+/* The cell's own head: the date stays in the corner the grid puts it in, and
+   the count that was in the "+N more" link takes the space beside it. */
 .gcal-daypop-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 0 0 auto;
-  padding: 8px 8px 8px 12px;
+  padding: 2px 8px 3px 4px;
   border-bottom: 1px solid var(--glass-border);
 }
 
-.gcal-daypop-day {
-  font-size: 10px;
+.gcal-daypop-count {
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
   color: var(--text-secondary);
-}
-
-.gcal-daypop-date {
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--text-strong);
   font-variant-numeric: tabular-nums;
 }
 
-/* The count is why the panel was opened — it stays visible while the list
-   scrolls under it. */
-.gcal-daypop-count {
+.gcal-daypop-date {
   margin-inline-start: auto;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -13236,8 +13230,8 @@ span:has(> svg:only-child) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -13248,11 +13242,13 @@ span:has(> svg:only-child) {
 .gcal-daypop-close:hover { background: var(--surface-hover, #f1f3f4); }
 .gcal-daypop-close:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 
+/* Every appointment on the day. It scrolls only once a day carries more than
+   the calendar is tall — up to that point the cell simply grew. */
 .gcal-daypop-list {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 4px;
+  padding: 2px 0 4px;
 }
 
 /* Same row as the grid above it — dot, time, name — so opening a day changes
@@ -13260,7 +13256,7 @@ span:has(> svg:only-child) {
 .gcal-daypop-row {
   display: block;
   width: 100%;
-  padding: 2px 6px;
+  padding: 1px 6px 1px 4px;
   border: none;
   border-radius: 4px;
   background: transparent;

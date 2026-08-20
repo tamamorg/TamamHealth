@@ -346,8 +346,12 @@ function SlotHeader({ date }: { date: Date }) {
   );
 }
 
-/** How wide and how tall an opened day is allowed to get, in px. */
-const DAY_PANEL_MIN_WIDTH = 260;
+/**
+ * The least room an opened day is given, in px. Width is not among them: the
+ * panel is the day's own column, so it takes the column's width and truncates
+ * the way the cells above it already do. A wider panel would hang over the
+ * next day, which is exactly the "floating card" the grid is trying not to be.
+ */
 const DAY_PANEL_MIN_HEIGHT = 220;
 
 /** An opened day: which day, everything on it, and where to draw it. */
@@ -462,10 +466,7 @@ export default function AppointmentsCalendar({
     if (!shell || !cell) return null;
     const shellBox = shell.getBoundingClientRect();
     const cellBox = cell.getBoundingClientRect();
-    // A month column is ~150px wide, which cuts every name to its first word.
-    // The panel keeps the column's left edge and widens only as far as the
-    // names need, then stays inside the calendar.
-    const width = Math.min(Math.max(cellBox.width, DAY_PANEL_MIN_WIDTH), shellBox.width);
+    const width = cellBox.width;
     const left = Math.max(0, Math.min(cellBox.left - shellBox.left, shellBox.width - width));
     // A day in the last week has nothing under it to open into, so the panel
     // slides up to sit on the bottom of the grid rather than off it.
@@ -617,8 +618,9 @@ export default function AppointmentsCalendar({
       }}
     />
 
-      {/* The opened day. Same column, same left edge, running down over the
-          weeks below — and scrolling inside itself once a day carries more
+      {/* The opened day: the cell itself, carried on down through the space
+          the calendar already has — same column, same left edge, same surface
+          — and scrolling inside itself only once a day carries more
           appointments than the grid is tall. */}
       {expanded && (
         <div
@@ -628,9 +630,6 @@ export default function AppointmentsCalendar({
           aria-label={`${expanded.events.length} appointments on ${dfFormat(expanded.date, 'EEEE d MMMM')}`}
         >
           <div className="gcal-daypop-head">
-            <span className="gcal-daypop-day">{dfFormat(expanded.date, 'EEE').toUpperCase()}</span>
-            <span className="gcal-daypop-date">{expanded.date.getDate()}</span>
-            <span className="gcal-daypop-count">{expanded.events.length}</span>
             <button
               type="button"
               className="gcal-daypop-close"
@@ -639,6 +638,9 @@ export default function AppointmentsCalendar({
             >
               <X size={14} />
             </button>
+            <span className="gcal-daypop-count">{expanded.events.length}</span>
+            {/* The date stays where the grid puts it — top right of the cell. */}
+            <span className="gcal-daypop-date">{expanded.date.getDate()}</span>
           </div>
           <div className="gcal-daypop-list">
             {expanded.events.map(ev => (
