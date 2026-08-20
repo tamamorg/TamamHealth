@@ -26278,10 +26278,37 @@ table.patient-data-table.patient-data-table {
 .ehr-center-panel > .ehr-appointment-list,
 .ehr-center-panel > .ehr-appointment-list.ehr-care-list { padding: 0; }
 
-/* The head above them: name on the left, the day's title elastic in the middle,
-   the controls sized to themselves on the right. */
-.ehr-center-panel .ehr-daybar {
-  grid-template-columns: auto minmax(180px, 1fr) auto;
+/* The head above them: title on the left, search in the middle, lane tabs on
+   the right.
+
+   Both SIDE tracks must stay `1fr` and the centre track must stay sized to
+   itself. This rule used to read `auto minmax(180px, 1fr) auto`, which sized
+   the two side columns from their own content — and both sides change content
+   constantly:
+
+     • the lane tabs render "Label · N" counts that re-count on every date
+       change (24 -> 7 is a whole character narrower), and
+     • the title is `centerTitle || selectedDateLabel`, so on every station
+       that does not pass an explicit title it IS the date ("Thursday, August
+       20" vs "Wednesday, September 10").
+
+   Either one resizing dragged the centre column sideways, so the search field
+   jumped every time the user picked a different day in the mini-calendar.
+
+   `.ehr-daybar` already fixed this once (see the base rule near the top of the
+   EHR block) — this rule sits ~21,000 lines later at higher specificity and
+   silently undid it, so the fix is re-asserted HERE, where the override lives.
+   Do not put `auto` back on the side tracks.
+
+   Split on `:has()` so a daybar with no search box still gets its two-column
+   layout instead of an empty middle track pushing the tabs off the right. */
+.ehr-center-panel .ehr-daybar:has(.ehr-queue-search) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 330px) minmax(0, 1fr);
+  align-items: center;
+}
+
+.ehr-center-panel .ehr-daybar:not(:has(.ehr-queue-search)) {
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
 }
 
