@@ -14,6 +14,7 @@ import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
 import { checkNewPrescription, type DrugInteraction, type InteractionSeverity } from '@/lib/services/drug-interaction-service';
 import { formatMoney , formatRxSig, formatClockTime } from '@/lib/format-utils';
 import { isActivePharmacyStage, isFinanciallyCleared, pharmacyStage, pharmacyStageGroup, pharmacyStageLabel, pharmacyStageTone } from '@/lib/pharmacy-workflow';
+import { comparePharmacyPriority, isTier1 } from '@/lib/clinical-flow/medication-tiers';
 import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { PrescriptionDoc, PharmacyInventoryDoc, UserDoc } from '@/lib/db-types';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
@@ -542,7 +543,11 @@ export default function PharmacyDashboardPage() {
       rx.medication.toLowerCase().includes(queueQuery) ||
       (rx.prescribedBy || '').toLowerCase().includes(queueQuery)
     );
-  });
+  })
+    // Principle 2.11: life-sustaining orders are worked first, then oldest
+    // within a tier so nothing starves. The queue had no sort at all, so an
+    // insulin order sat wherever the underlying fetch happened to put it.
+    .sort(comparePharmacyPriority);
   const autoOpenRxId = useMemo(() => {
     if (deepLinkRxId && visibleQueue.some(rx => rx._id === deepLinkRxId)) return deepLinkRxId;
     if (!deepLinkPatientId && !deepLinkPatientName) return null;
@@ -622,7 +627,11 @@ export default function PharmacyDashboardPage() {
       showToast(`Could not confirm ${rx.patientName}'s balance — balance unavailable. Try again before dispensing.`, 'error');
       return;
     }
-    if (!isFinanciallyCleared(patientBalanceFor(rx))) {
+    // A patient must never be turned away from a life-sustaining medication
+    // over money — the Tier-1 safety rule states this outranks payment status
+    // outright. The balance is still owed and still shows at checkout; what
+    // changes is that it stops standing between the patient and their insulin.
+    if (!isFinanciallyCleared(patientBalanceFor(rx)) && !isTier1(rx)) {
       handlePaymentStep(rx);
       return;
     }
@@ -675,10 +684,18 @@ export default function PharmacyDashboardPage() {
           return;
         }
         setBalanceByPatient(prev => new Map(prev).set(patientId, { balance: liveBalance, status: 'ready' }));
-        if (!isFinanciallyCleared(liveBalance)) {
+        if (!isFinanciallyCleared(liveBalance) && !isTier1(rx)) {
           showToast(`Payment still due for ${rx.patientName}: ${formatMoney(liveBalance)}. Send the patient to cashier before dispensing.`, 'error');
           setDispenseTarget(null);
           return;
+        }
+        if (!isFinanciallyCleared(liveBalance) && isTier1(rx)) {
+          // Dispensed anyway, but said out loud — the balance is real and the
+          // desk needs to know it is following the patient to checkout.
+          showToast(
+            `${rx.medication} is life-sustaining — dispensing despite ${formatMoney(liveBalance)} outstanding. The balance stays on the account.`,
+            'success',
+          );
         }
       }
 

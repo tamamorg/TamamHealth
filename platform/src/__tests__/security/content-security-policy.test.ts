@@ -24,4 +24,29 @@ describe('strict content security policy', () => {
     expect(() => buildContentSecurityPolicy({ nonce: "x'; script-src *", isDev: false }))
       .toThrow('invalid characters');
   });
+
+  it('lets the browser reach the LiveKit server, in both schemes it needs', () => {
+    const policy = buildContentSecurityPolicy({
+      nonce: 'abc123XYZ',
+      isDev: false,
+      livekitUrl: 'wss://livekit.example.internal/rtc',
+    });
+    const connect = policy.split('; ').find(part => part.startsWith('connect-src'))!;
+
+    // The signalling socket AND the validate request, which is plain HTTPS to
+    // the same host. Neither is implied by the other in a CSP source list.
+    expect(connect).toContain('wss://livekit.example.internal');
+    expect(connect).toContain('https://livekit.example.internal');
+    expect(connect).not.toContain('/rtc');
+  });
+
+  it('keeps a local ws:// LiveKit on ws, and widens nothing when there is none', () => {
+    const dev = buildContentSecurityPolicy({ nonce: 'dev123', isDev: true, livekitUrl: 'ws://localhost:7880' });
+    expect(dev).toContain('ws://localhost:7880');
+    expect(dev).toContain('http://localhost:7880');
+
+    const none = buildContentSecurityPolicy({ nonce: 'dev123', isDev: true });
+    const connect = none.split('; ').find(part => part.startsWith('connect-src'))!;
+    expect(connect).toBe("connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com");
+  });
 });

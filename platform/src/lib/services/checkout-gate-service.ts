@@ -61,6 +61,21 @@ export interface CheckoutGateEvaluation {
   satisfiedKeys: string[];
   /** True when discharge may proceed without an override. */
   canDischarge: boolean;
+  /**
+   * Undispensed Tier-1 (life-sustaining) medications on this visit —
+   * `TIER1_CHECKOUT_SAFETY_RULE`.
+   *
+   * Reported SEPARATELY from the prescriptions gate item on purpose. That item
+   * is already critical, so any outstanding medication blocks; but the rule
+   * says a Tier-1 medication is "a clinical safety issue regardless of payment
+   * status, requiring admin intervention" — which means it must survive the
+   * override. A clerk who overrides `prescriptions_dispensed` to let a patient
+   * go home without their vitamins must not use the same click to send someone
+   * home without their insulin, so the checkout UI reads this list on its own.
+   *
+   * Empty is the normal case, including when nothing is outstanding at all.
+   */
+  tier1Outstanding: { id: string; medication: string }[];
 }
 
 /** Statuses meaning a prescription no longer holds up a discharge. */
@@ -83,6 +98,9 @@ export async function evaluateCheckoutGate(
     const g = item(key);
     results.push({ key, label: g.label, critical: g.critical, satisfied, detail, resolveHref });
   };
+  // Filled by the prescriptions check below; stays empty when that read fails,
+  // which is safe because the gate item itself blocks in that case.
+  let tier1Outstanding: { id: string; medication: string }[] = [];
 
   // ── All clinic visits closed ──────────────────────────────────────────
   // Derived from the encounter's own stage rather than a tick box: a visit
@@ -101,9 +119,17 @@ export async function evaluateCheckoutGate(
     const { getPrescriptionsByPatient } = await import('./prescription-service');
     const rxs = await getPrescriptionsByPatient(patientId);
     const outstanding = rxs.filter((r) => !RESOLVED_RX_STATUSES.has(r.status));
+    // Life-sustaining orders among them, for the separate safety signal above.
+    const { isTier1 } = await import('../clinical-flow/medication-tiers');
+    tier1Outstanding = outstanding
+      .filter(isTier1)
+      .map((r) => ({ id: r._id, medication: r.medication }));
     push('prescriptions_dispensed', outstanding.length === 0,
       outstanding.length
         ? `${outstanding.length} prescription(s) not yet dispensed: ${outstanding.map((r) => r.medication).slice(0, 3).join(', ')}.`
+          + (tier1Outstanding.length
+            ? ` ${tier1Outstanding.length} of these ${tier1Outstanding.length === 1 ? 'is' : 'are'} life-sustaining (Tier 1) — admin intervention required regardless of payment.`
+            : '')
         : undefined,
       outstanding.length ? '/pharmacy' : undefined);
   } catch (err) {
@@ -130,22 +156,34 @@ export async function evaluateCheckoutGate(
 
   // ── In-clinic procedures complete ─────────────────────────────────────
   //
-  // Reported satisfied, and this one is NOT derived from live data — because
-  // there is nothing to derive it from. `ProcedureDoc` records a procedure that
-  // has already been performed (it carries `date` and `performedBy` and has no
-  // `status` field), so an in-flight procedure has no representation in the
-  // data model. Every recorded procedure is by definition complete.
+  // Now evaluated for real. This item used to be hardcoded satisfied because
+  // `ProcedureDoc` had no `status` field at all, so an in-flight procedure had
+  // no representation and a *critical* gate item auto-passed on every
+  // discharge. The document now carries the Stage 7 lifecycle
+  // (`PROCEDURE_TRANSITIONS`), so the question is answerable.
   //
-  // The honest options were to report satisfied with this note, or to block
-  // every discharge on a condition that can never become true. Blocking on an
-  // unrepresentable condition would train clerks to override the gate as a
-  // matter of routine, which would defeat the other six checks.
-  //
-  // If in-flight procedures need to gate discharge, `ProcedureDoc` needs a
-  // status field first — that is the `PROCEDURE_TRANSITIONS` lifecycle in
-  // `order-lifecycles.ts`, which nothing currently writes to a document.
-  push('in_clinic_procedures_complete', true,
-    'Not evaluated: ProcedureDoc has no in-flight state — recorded procedures are already complete.');
+  // A procedure with no status counts as settled — see `isProcedureSettled`.
+  // Every record written before the lifecycle existed described something that
+  // had already happened, and blocking on those would train clerks to override
+  // the gate as a matter of routine, defeating the other six checks.
+  try {
+    const { getProceduresByPatient, isProcedureSettled } = await import('./procedure-service');
+    const encId = encounter?._id;
+    const procedures = await getProceduresByPatient(patientId);
+    // Only this visit's procedures. A procedure from an earlier encounter that
+    // was left mid-lifecycle is somebody else's loop to close, not a reason to
+    // hold this patient at the desk.
+    const forVisit = encId ? procedures.filter(p => p.encounterId === encId) : procedures;
+    const open = forVisit.filter(p => !isProcedureSettled(p));
+    push('in_clinic_procedures_complete', open.length === 0,
+      open.length
+        ? `${open.length} procedure${open.length === 1 ? '' : 's'} still in progress: ` +
+          open.map(p => `${p.name} (${p.status})`).join(', ')
+        : undefined,
+      open.length ? `/patients/${patientId}?tab=procedures` : undefined);
+  } catch (err) {
+    push('in_clinic_procedures_complete', false, `Could not read procedures — blocking. (${errText(err)})`);
+  }
 
   // ── Required documentation generated ──────────────────────────────────
   // Documentation lives in TWO stores: legacy consultation MedicalRecordDocs
@@ -202,6 +240,7 @@ export async function evaluateCheckoutGate(
     blocking,
     satisfiedKeys: results.filter((r) => r.satisfied).map((r) => r.key),
     canDischarge: blocking.length === 0,
+    tier1Outstanding,
   };
 }
 

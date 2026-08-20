@@ -15,6 +15,7 @@ import {
   type StructuredAllergyAlert,
 } from './drug-interaction-service';
 import { prescription as rxLifecycle, type PrescriptionStatus } from '../clinical-flow/order-lifecycles';
+import { resolvePrescriptionTier } from '../clinical-flow/medication-tiers';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 import { getUserById } from './user-service';
 
@@ -134,6 +135,102 @@ export async function checkPrescriptionInteractions(
   return checkNewPrescription(newMedication, activeRx);
 }
 
+/**
+ * Park the visit at the pharmacy (Stage 8).
+ *
+ * Ordering a lab already anchors the order to the open encounter and moves it
+ * to `awaiting_labs`, so the lab queue and the visit state tell the same story.
+ * Prescribing carried an `encounterId` but never transitioned anything, so a
+ * patient standing in the pharmacy queue still read as `with_clinician` on
+ * every dashboard that reports from the encounter.
+ *
+ * Only moves when the machine says the move is legal — `awaiting_pharmacy` is
+ * reachable from `with_clinician` and from `clinic_complete_awaiting_next_station`
+ * and nowhere else — so a prescription written from a chart long after the visit
+ * closed, or during a ward admission, changes nothing.
+ */
+async function parkVisitAtPharmacy(doc: PrescriptionDoc): Promise<void> {
+  if (!doc.encounterId) return;
+  try {
+    const { getEncounter, transitionEncounter } = await import('./encounter-service');
+    const { canTransition } = await import('../clinical-flow/encounter-journey');
+    const enc = await getEncounter(doc.encounterId);
+    if (!enc) return;
+    if (enc.status === 'awaiting_pharmacy') return; // second Rx on the same visit
+    if (!canTransition(enc.status, 'awaiting_pharmacy')) return;
+    await transitionEncounter(doc.encounterId, 'awaiting_pharmacy', {
+      reason: `Prescription ${doc._id}: ${doc.medication}`,
+    });
+  } catch (err) {
+    console.warn('[prescription] could not park the visit at pharmacy:', err);
+  }
+}
+
+/**
+ * Charge for the medication (Section 5).
+ *
+ * Dispensing used to raise no charge anywhere: `chargeForServices` was called
+ * only by lab ordering and the manual superbill, and `dispensing-service` has
+ * no billing reference at all. The demo looked right only because the seed
+ * hand-writes pharmacy charges. The knock-on was worse than the missing
+ * revenue — the pharmacy station gates dispensing on
+ * `isFinanciallyCleared(balance)`, and a balance that medications never
+ * contributed to meant the gate passed vacuously on every medication-only visit.
+ *
+ * Billed at PRESCRIBING time rather than at dispensing, for the same reason a
+ * lab test is billed when ordered and not when resulted: the charge has to
+ * exist before the patient reaches the counter, or the pay-first gate has
+ * nothing to check. Tier-1 medications are exempt from that gate at the
+ * counter, so this cannot strand a patient on a life-sustaining drug.
+ *
+ * Prices come from the org's fee schedule; an uncatalogued medication is
+ * skipped rather than charged zero, exactly as lab tests are.
+ */
+async function billPrescription(doc: PrescriptionDoc): Promise<void> {
+  if (!doc.hospitalId) return; // a bill has to belong to a facility
+  try {
+    const { chargeForServices } = await import('./fee-schedule-service');
+    const { getPatientById } = await import('./patient-service');
+    const [patient, hospital] = await Promise.all([
+      getPatientById(doc.patientId).catch(() => null),
+      hospitalsDB().get(doc.hospitalId).then(h => h as HospitalDoc).catch(() => null),
+    ]);
+
+    await chargeForServices(
+      {
+        patientId: doc.patientId,
+        patientName: doc.patientName,
+        hospitalNumber: patient?.hospitalNumber,
+        facilityId: doc.hospitalId,
+        facilityName: hospital?.name || doc.hospitalName || '',
+        facilityLevel: 'clinic',
+        state: patient?.state || '',
+        county: patient?.county,
+        orgId: doc.orgId,
+        encounterId: doc.encounterId,
+        generatedBy: doc.prescribedBy || 'system',
+        generatedByName: doc.prescribedBy || 'Prescriber',
+        // Admin-role scope over the prescribing facility: the fee schedule is
+        // an org-level catalogue, and this runs on behalf of the facility
+        // rather than of whoever happens to be signed in.
+        scope: { orgId: doc.orgId, hospitalId: doc.hospitalId, role: 'org_admin' },
+      },
+      [{
+        category: 'pharmacy' as const,
+        // Exact product first; `priceFor` falls back to the catalogue's generic
+        // dispensing fee when the facility has not priced this drug by name.
+        serviceCode: doc.medication,
+        description: doc.medication,
+        quantity: doc.quantityToDispense && doc.quantityToDispense > 0 ? doc.quantityToDispense : 1,
+        referenceId: doc._id,
+        referenceType: 'prescription',
+      }],
+    );
+  } catch (err) {
+    console.warn('[prescription] could not bill the prescription (the order stands):', err);
+  }
+}
+
 export async function createPrescription(
   data: Omit<PrescriptionDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>
 ): Promise<PrescriptionCreateResult> {
@@ -209,6 +306,11 @@ export async function createPrescription(
     _id: `rx-${uuidv4().slice(0, 8)}`,
     type: 'prescription',
     ...data,
+    // Stamped at write time, not derived on read: the tier is what the queue
+    // sorts on and what the checkout safety flag reads, and both must agree
+    // with what the prescriber saw. A later formulary edit reclassifying a
+    // drug must not silently retier orders already sitting in the queue.
+    criticalityTier: resolvePrescriptionTier(data.medication, data.criticalityTier),
     orgId,
     createdAt: now,
     updatedAt: now,
@@ -226,6 +328,13 @@ export async function createPrescription(
     username: doc.prescribedBy,
     hospitalId: doc.hospitalId,
   });
+
+  // Both of the following are best-effort and deliberately AFTER the write:
+  // the prescription is the clinical act, and neither a pricing gap nor an
+  // encounter in an unexpected state may cost the patient their medication.
+  await parkVisitAtPharmacy(doc);
+  await billPrescription(doc);
+
   return { prescription: doc, interactionWarnings, allergyWarnings, duplicateWarnings };
 }
 

@@ -25,6 +25,9 @@ export function RowAppointmentEditor({
   return (
     <AppointmentEditModal
       inline
+      // The row's own status pill is the picker (see EhrCareDashboard's status
+      // control): without this the expanded row offered the same ladder twice.
+      statusInRow
       appointment={appointment}
       appointments={appointments}
       patient={patient}

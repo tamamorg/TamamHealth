@@ -24,6 +24,7 @@ import { useSettings } from '@/lib/settings/SettingsProvider';
 import { appointmentStatusLabel } from '@/lib/appointment-status';
 import { useRouter } from 'next/navigation';
 import { useUsers } from '@/lib/hooks/useUsers';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { Video } from '@/components/icons/lucide';
 import type { AppointmentDoc, AppointmentPriority, AppointmentStatus, AppointmentType, PatientDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
@@ -57,6 +58,7 @@ export default function AppointmentEditModal({
   headerActions,
   hideInlineTabs,
   inlineLocation,
+  statusInRow,
 }: {
   appointment: AppointmentDoc;
   /** Every appointment in view, for the provider conflict check. */
@@ -71,6 +73,18 @@ export default function AppointmentEditModal({
   /** Optional nurse/ward placement control shown in the Details tab. */
   inlineLocation?: React.ReactNode;
   /**
+   * The surface around this editor already carries the status control — set by
+   * the worklist rows, whose header pill IS the status picker and sits two
+   * lines above this panel. The editor then drops its own Status field rather
+   * than offering the same seven rungs twice for one booking, and the tab it
+   * lived on says what is actually left on it.
+   *
+   * Off everywhere else, because everywhere else there is no pill: the
+   * calendar's event dialog and the standalone Edit dialog both render this
+   * editor with nothing but a patient name above it.
+   */
+  statusInRow?: boolean;
+  /**
    * Render as a panel inside the row rather than a centred dialog. The row
    * dropdown is where the doctor dashboard puts a visit's detail, so the desk's
    * rows open the same way instead of throwing a pop-up over the list.
@@ -82,6 +96,10 @@ export default function AppointmentEditModal({
   const { showToast } = useToast();
   const { departments } = useSettings();
   const { users } = useUsers();
+  const { canAccess } = usePermissions();
+  // The same test the Edge proxy applies to the route the Join button opens,
+  // so what the dialog offers and what the router will allow cannot disagree.
+  const canJoinTelehealth = canAccess('/telehealth');
   // Providers who can carry a visit at this facility.
   const providerOptions = useMemo(() => users
     .filter(u => (u.role === 'doctor' || u.role === 'clinical_officer')
@@ -250,7 +268,11 @@ export default function AppointmentEditModal({
       )}
       {inline && !hideInlineTabs && (
         <div className="ehr-visit-pop-tabs" role="tablist">
-          {([['appointment', 'Details'], ['care', 'Provider & staff'], ['billing', 'Status & billing']] as const).map(([key, label]) => (
+          {([
+            ['appointment', 'Details'],
+            ['care', 'Provider & staff'],
+            ['billing', statusInRow ? 'Priority & billing' : 'Status & billing'],
+          ] as const).map(([key, label]) => (
             <button
               key={key}
               type="button"
@@ -280,8 +302,15 @@ export default function AppointmentEditModal({
             modeSlot={(
               <>
               {/* Telehealth needs a way in, not just a radio: the visit room is
-                  the whole point of choosing it. */}
-              {detail.mode === 'telehealth' && (
+                  the whole point of choosing it.
+
+                  Shown only to a role that can actually open `/telehealth`.
+                  The proxy redirects a role that cannot (reception, for one)
+                  straight back to its dashboard, so the button used to look
+                  broken rather than absent — and the room registers whoever
+                  opens it as the visit's PROVIDER, which is not a thing the
+                  front desk should be able to do by mis-clicking. */}
+              {detail.mode === 'telehealth' && canJoinTelehealth && (
                 <div>
                   <label>Telehealth</label>
                   <button
@@ -365,7 +394,11 @@ export default function AppointmentEditModal({
         {(!inline || hideInlineTabs || tab === 'billing') && (
         <div className="appt-edit-col">
           {!inline && <h4 className="appt-edit-section">Status &amp; priority</h4>}
-          <div><label>Status</label><AppointmentStatusSelect status={status} layout="bare" onChange={setStatus} /></div>
+          {/* See `statusInRow`: in a worklist row the pill above is the status
+              picker, so this field would be the second one on screen. */}
+          {!statusInRow && (
+            <div><label>Status</label><AppointmentStatusSelect status={status} layout="bare" onChange={setStatus} /></div>
+          )}
           <div>
             <label>Priority</label>
             <Select value={priority} onChange={e => setPriority(e.target.value as AppointmentPriority)}>

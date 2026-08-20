@@ -37,15 +37,22 @@ export default async function PlatformPage() {
                 </Link>
               </div>
             </div>
-            {/* The platform itself, opposite the claim about it — the front
-                desk, which is where the sentence to the left starts. The
-                patient record is the hero on /products, so the two pages show
-                different rooms rather than the same screenshot twice. */}
-            <div className="blueprint tm-figure" style={{ position: "relative", background: "#FFFFFF", padding: 8, borderColor: "rgba(255,255,255,0.28)" }}>
+            {/* The platform itself, opposite the claim about it — the patient
+                record, which is the one record the sentence to the left is
+                about. The front desk is the hero on /products, so the two
+                pages show different rooms rather than the same screenshot
+                twice. */}
+            <figure className="blueprint tm-figure" style={{ margin: 0, position: "relative", background: "#FFFFFF", padding: 8, borderColor: "rgba(255,255,255,0.28)" }}>
               <Corners light />
               {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-              <img src="/assets/platform-front-desk.png" alt={t("The TamamHealth front desk: the day's arrivals with times, care team and triage status, beside the reception queue and patient flow")} style={{ width: "100%", display: "block" }} />
-            </div>
+              <img src="/assets/platform-patient-chart.png" alt={t("A TamamHealth patient record: allergies and current vitals across the top, with medications, safety alerts, latest observations and next care actions below")} style={{ width: "100%", display: "block" }} />
+              {/* The frame says what room it is: without a line under it a
+                  screenshot is decoration, and a reader who has never seen the
+                  product cannot tell a chart from a queue. */}
+              <figcaption className="fs125" style={{ padding: "9px 5px 2px", lineHeight: 1.5, color: "var(--color-neutral-600)" }}>
+                {t("The patient record — allergies, vitals, medications and the next care actions, in one view.")}
+              </figcaption>
+            </figure>
           </div>
           {/* The three facts move out of the right column and under both, as a
               row: stacked beside the copy they competed with the headline for

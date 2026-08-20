@@ -1,5 +1,8 @@
+import React, { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { mount } from '../clinical-notes/test-utils';
 import AppointmentsCalendar, { stackedDayLayout, calendarRange, type CalEvent } from '@/app/(dashboard)/appointments/_AppointmentsCalendar';
+import { calendarPeriodLabel, countInPeriod } from '@/app/(dashboard)/appointments/_calendar-period';
 import type { AppointmentDoc, AppointmentPriority, AppointmentStatus } from '@/lib/db-types';
 
 const at = (hour: number, minute = 0) => new Date(2026, 7, 20, hour, minute, 0);
@@ -178,5 +181,159 @@ describe('the day view is two days', () => {
 
     document.body.innerHTML = render('week');
     expect(document.querySelectorAll('.rbc-day-slot')).toHaveLength(7);
+  });
+});
+
+/**
+ * "+N more" opens the day in the grid.
+ *
+ * react-big-calendar decides how many rows fit a month cell by measuring the
+ * DOM, and jsdom lays nothing out — so the row limit and the panel's geometry
+ * both come from stubbed rects. What is being tested is ours: that the link
+ * opens a panel listing EVERY appointment on that day, anchored to that day's
+ * column, and that it closes again.
+ */
+describe('an overflowing month day opens in place', () => {
+  const statusConfig = {
+    scheduled: { color: '#0F6FA8', bg: '#E7F1F8', label: 'Scheduled' },
+  } as unknown as Record<AppointmentStatus, { color: string; bg: string; label: string }>;
+  const priorityConfig = {
+    routine: { color: '#0B7A54', label: 'Routine' },
+  } as unknown as Record<AppointmentPriority, { color: string; label: string }>;
+
+  const dayEvents = Array.from({ length: 12 }, (_, i) => ({
+    id: `a${i}`,
+    title: `Patient ${i} · Routine consultation`,
+    start: new Date(2026, 7, 20, 8 + i, 0),
+    end: new Date(2026, 7, 20, 8 + i, 30),
+    resource: { _id: `a${i}`, status: 'scheduled', priority: 'routine' } as unknown as AppointmentDoc,
+  }));
+
+  const mountMonth = (onSelectEvent: (apt: AppointmentDoc) => void = () => {}) => mount(
+    <AppointmentsCalendar
+      events={dayEvents}
+      calView="month"
+      calDate={new Date(2026, 7, 20, 12, 0)}
+      today="2026-08-20"
+      statusConfig={statusConfig}
+      priorityConfig={priorityConfig}
+      onNavigate={() => {}}
+      onView={() => {}}
+      onSelectEvent={onSelectEvent}
+      onSelectSlot={() => {}}
+    />,
+  );
+
+  const clickShowMore = (container: HTMLElement) => {
+    const link = container.querySelector('.rbc-show-more') as HTMLButtonElement | null;
+    expect(link).not.toBeNull();
+    act(() => { link!.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+  };
+
+  let rect: jest.SpyInstance;
+  beforeAll(() => {
+    // A 7-column grid 1400px wide, rows 120px tall. Every element answers the
+    // same box; only the panel's clamping maths reads these.
+    rect = jest.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 200, bottom: 120, width: 200, height: 120,
+      toJSON: () => ({}),
+    } as DOMRect);
+  });
+  afterAll(() => { rect.mockRestore(); });
+
+  it('lists every appointment on the day, not just the hidden ones', () => {
+    const { container, unmount } = mountMonth();
+    clickShowMore(container);
+
+    const panel = container.querySelector('.gcal-daypop');
+    expect(panel).not.toBeNull();
+    expect(panel!.querySelectorAll('.gcal-daypop-row')).toHaveLength(dayEvents.length);
+    // In time order, whatever order the grid handed them over in.
+    expect(panel!.querySelector('.gcal-event-time')?.textContent).toBe('8am');
+    unmount();
+  });
+
+  it('does not navigate away, and does not float a popup over the page', () => {
+    const views: string[] = [];
+    const { container, unmount } = mount(
+      <AppointmentsCalendar
+        events={dayEvents}
+        calView="month"
+        calDate={new Date(2026, 7, 20, 12, 0)}
+        today="2026-08-20"
+        statusConfig={statusConfig}
+        priorityConfig={priorityConfig}
+        onNavigate={() => {}}
+        onView={(v) => views.push(v)}
+        onSelectEvent={() => {}}
+        onSelectSlot={() => {}}
+      />,
+    );
+    clickShowMore(container);
+
+    // react-big-calendar's two built-in answers, both off: the drill-down to
+    // the day view and the `.rbc-overlay` card.
+    expect(views).toEqual([]);
+    expect(document.querySelector('.rbc-overlay')).toBeNull();
+    unmount();
+  });
+
+  it('opens the appointment that is clicked, and closes behind it', () => {
+    const opened: string[] = [];
+    const { container, unmount } = mountMonth((apt) => opened.push(apt._id));
+    clickShowMore(container);
+
+    const row = container.querySelectorAll('.gcal-daypop-row')[3] as HTMLButtonElement;
+    act(() => { row.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+
+    expect(opened).toEqual(['a3']);
+    expect(container.querySelector('.gcal-daypop')).toBeNull();
+    unmount();
+  });
+
+  // The link itself ends up UNDER the opened day (the panel covers the cell it
+  // grew from), so in a real layout the toggle is only reachable from the
+  // keyboard — focus returns to the link when the day is collapsed. jsdom has
+  // no hit-testing, which is what lets both halves be driven here.
+  it('closes on Escape, and on the link itself when it can be reached', () => {
+    const { container, unmount } = mountMonth();
+
+    clickShowMore(container);
+    act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); });
+    expect(container.querySelector('.gcal-daypop')).toBeNull();
+
+    clickShowMore(container);
+    expect(container.querySelector('.gcal-daypop')).not.toBeNull();
+    clickShowMore(container);
+    expect(container.querySelector('.gcal-daypop')).toBeNull();
+    unmount();
+  });
+});
+
+describe('what the day bar says it is showing', () => {
+  const at = (month: number, day: number, hour = 9) => new Date(2026, month, day, hour);
+  const events = [
+    { start: at(7, 19) },   // Wed 19 Aug
+    { start: at(7, 20) },   // Thu 20 Aug — the day
+    { start: at(7, 21) },   // Fri 21 Aug — the next day
+    { start: at(7, 24) },   // Mon 24 Aug
+    { start: at(8, 2) },    // Sep
+  ];
+  const thursday = new Date(2026, 7, 20, 12);
+
+  it('names the window each view actually draws', () => {
+    expect(calendarPeriodLabel('day', thursday)).toBe('Aug 20 – 21, 2026');
+    expect(calendarPeriodLabel('week', thursday)).toBe('Aug 16 – 22, 2026');
+    expect(calendarPeriodLabel('month', thursday)).toBe('August 2026');
+  });
+
+  it('carries a range across a month boundary in both names', () => {
+    expect(calendarPeriodLabel('day', new Date(2026, 7, 31, 12))).toBe('Aug 31 – Sep 1, 2026');
+  });
+
+  it('counts only what that window holds — the header and its number are one fact', () => {
+    expect(countInPeriod(events, 'day', thursday)).toBe(2);
+    expect(countInPeriod(events, 'week', thursday)).toBe(3);
+    expect(countInPeriod(events, 'month', thursday)).toBe(4);
   });
 });

@@ -1,0 +1,41 @@
+# Local-only LiveKit server, so telehealth can actually be exercised in dev.
+#
+# The platform degrades honestly when no LiveKit server is configured: the
+# token endpoint answers 503 and the visit room says "Video is not configured
+# on this deployment". That is the right behaviour for a deployment without
+# one — but it also means a developer can never see a telehealth visit connect.
+# This file is the missing piece, and it is for LOCAL WORK ONLY:
+#
+#   docker compose -f docker-compose.livekit.yml up -d
+#
+# then in platform/.env.local (gitignored):
+#
+#   LIVEKIT_URL=ws://localhost:7880
+#   LIVEKIT_API_KEY=devkey
+#   LIVEKIT_API_SECRET=secret
+#
+# and restart `npm run dev` — Next reads env at boot, not per request.
+#
+# `--dev` ships that well-known key/secret pair and no TLS, which is exactly
+# why this must never reach a real deployment: telehealth media carries PHI, so
+# production needs wss:// and real credentials. `lib/config-validation.ts`
+# refuses to boot a production build that has ws://, a placeholder secret, or
+# only some of the three variables set.
+# Its own compose project, so the main stack does not treat this container as
+# an orphan of itself (and `docker compose down` there cannot take it with it).
+name: tamam-livekit
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: tamam-livekit-dev
+    # --node-ip pins the ICE candidates to the loopback address the browser can
+    # actually dial. Without it the container advertises its own bridge address,
+    # signalling succeeds, and the media then fails to connect — the hardest
+    # version of this to diagnose, because the call looks like it is starting.
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1
+    ports:
+      - "7880:7880"      # signalling / API (ws + http)
+      - "7881:7881"      # TCP media fallback, for networks that block UDP
+      - "7882:7882/udp"  # WebRTC media
+    restart: unless-stopped

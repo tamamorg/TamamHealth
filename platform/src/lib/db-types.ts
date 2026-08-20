@@ -1,6 +1,7 @@
 import type { Hospital, Patient, Referral, DiseaseAlert, VitalSigns, Diagnosis, Prescription, LabResult, MedicalRecord, Attachment, TransferPackage, CareTeamMember } from '@/data/mock';
 import type { EncounterStatus, EncounterStageKey } from './clinical-flow/encounter-journey';
-import type { LabOrderStatus, PrescriptionStatus } from './clinical-flow/order-lifecycles';
+import type { LabOrderStatus, PrescriptionStatus, ProcedureStatus } from './clinical-flow/order-lifecycles';
+import type { CriticalityTier } from './clinical-flow/payment-model';
 
 export interface BaseDoc {
   _id: string;
@@ -504,6 +505,15 @@ export interface PrescriptionDoc extends BaseDoc {
   effectiveOn?: string;
   /** Free-text note to the dispensing pharmacy. */
   pharmacyInstructions?: string;
+  /**
+   * Medication criticality tier (Principle 2.11): 1 life-sustaining,
+   * 2 important/time-sensitive, 3 routine. Stamped at prescribing time from
+   * the formulary's ATC class unless the prescriber sets it explicitly — a
+   * free-text order the catalogue does not carry can still be marked
+   * life-sustaining, which the catalogue is not entitled to overrule.
+   * Drives pharmacy queue priority and the Tier-1 checkout safety flag.
+   */
+  criticalityTier?: CriticalityTier;
   /** Granular pharmacy dispensing lifecycle (Stage 8): prescribed →
    *  received_in_pharmacy_queue → under_review → cleared_for_dispensing →
    *  dispensed → counseled → complete, plus stockout/held/recalled branches.
@@ -765,6 +775,23 @@ export interface ProcedureDoc extends BaseDoc {
   code?: string;
   /** Date the procedure was performed (YYYY-MM-DD) */
   date: string;
+  /**
+   * Stage 7 lifecycle state (`PROCEDURE_TRANSITIONS` in order-lifecycles.ts):
+   * ordered → consented → in_progress → completed → in_observation → released,
+   * with aborted / complication → ae_reported branches.
+   *
+   * Optional, and absent means "already done". Every procedure written before
+   * this field existed is a historical record of something that had already
+   * happened — the document carried `date` and `performedBy` and nothing else —
+   * so treating a missing status as in-flight would block discharge on every
+   * visit with an old procedure on the chart. `isProcedureSettled` in
+   * procedure-service is the single reader of that rule.
+   */
+  status?: ProcedureStatus;
+  consentedAt?: string;
+  consentedBy?: string;
+  /** Required when `status` is 'aborted' — the lifecycle says "aborted (with reason)". */
+  abortedReason?: string;
   performedBy?: string;
   performedByName?: string;
   bodySite?: string;

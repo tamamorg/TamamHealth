@@ -65,6 +65,11 @@ services:
         NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: ${NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED:-false}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}
         NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE: ${NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE:-false}
+        # Telehealth: the browser dials LiveKit directly, and the CSP that
+        # permits it is inlined at build time. A deployment that sets only the
+        # runtime LIVEKIT_URL builds a policy with no LiveKit in it and every
+        # call is blocked — config-validation refuses to boot in that state.
+        NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-}
         NEXT_PUBLIC_BUILD_ID: ${NEXT_PUBLIC_BUILD_ID:-}
     # Legacy env_file path — kept as the default so deploys without a
     # DOPPLER_TOKEN keep working unchanged. Doppler-mode (below) overrides

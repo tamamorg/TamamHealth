@@ -256,6 +256,23 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
     }
   }
 
+  // The browser dials LiveKit directly, so its origin has to be in the page's
+  // Content-Security-Policy — and the policy is built in middleware, where
+  // Next inlines `process.env` at BUILD time. A server-only LIVEKIT_URL
+  // supplied at runtime is therefore invisible to it: the socket is refused by
+  // CSP and the visit room waits for a connection that never had permission to
+  // open, with only a console violation to say why. NEXT_PUBLIC_LIVEKIT_URL is
+  // the copy that survives into the bundle, so a configured deployment must
+  // carry it. It is a URL, not a credential — unlike the key and secret above,
+  // publishing it costs nothing.
+  if (lkSet === 3 && !env.NEXT_PUBLIC_LIVEKIT_URL) {
+    errors.push(
+      'Telehealth video is configured but NEXT_PUBLIC_LIVEKIT_URL is unset — the Content-Security-Policy '
+      + 'is built at build time and would omit the LiveKit origin, so every call would be blocked by the '
+      + 'browser. Set it to the same URL as LIVEKIT_URL.',
+    );
+  }
+
   // PHI-bearing media must not cross the network in the clear. `ws://` is
   // acceptable for a local dev server only.
   if (lkUrl && !isDemo && /^ws:\/\//i.test(lkUrl) && !/^ws:\/\/(localhost|127\.0\.0\.1)/i.test(lkUrl)) {

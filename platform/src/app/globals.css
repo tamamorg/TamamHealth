@@ -13172,6 +13172,100 @@ span:has(> svg:only-child) {
   padding-inline-start: 4px;
 }
 
+/* ── An opened day ──────────────────────────────────────────────────────────
+   "+28 more" opens the day where it stands. This is deliberately NOT a card:
+   it is the day's own cell carrying on downwards into the space the calendar
+   already has, so it takes the grid's surface, the column's hairlines and the
+   date number in the corner it was already in. A lifted panel with a shadow
+   and a radius would read as a second surface floating over the month, which
+   is the thing the popup was doing wrong.
+
+   Geometry (left / top / width / max-height) is measured off the day's
+   background cell in _AppointmentsCalendar; everything here is the surface. */
+.gcal-shell {
+  position: relative;
+  height: 100%;
+}
+
+.gcal-daypop {
+  position: absolute;
+  /* Above the weeks it grows over — an opaque background on the grid's own
+     colour is what makes the cell look taller instead of transparent. */
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-card-solid);
+  border-inline: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+/* The cell's own head: the date stays in the corner the grid puts it in, and
+   the count that was in the "+N more" link takes the space beside it. */
+.gcal-daypop-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 2px 8px 3px 4px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.gcal-daypop-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.gcal-daypop-date {
+  margin-inline-start: auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.gcal-daypop-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.gcal-daypop-close:hover { background: var(--surface-hover, #f1f3f4); }
+.gcal-daypop-close:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
+
+/* Every appointment on the day. It scrolls only once a day carries more than
+   the calendar is tall — up to that point the cell simply grew. */
+.gcal-daypop-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px 0 4px;
+}
+
+/* Same row as the grid above it — dot, time, name — so opening a day changes
+   how much you can see, not what an appointment looks like. */
+.gcal-daypop-row {
+  display: block;
+  width: 100%;
+  padding: 1px 6px 1px 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+}
+.gcal-daypop-row:hover { background: var(--surface-hover, #f1f3f4); }
+.gcal-daypop-row:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -1px; }
+
 /* ── Current-time indicator — red dot + line ── */
 .rbc-tamam .rbc-current-time-indicator {
   background: var(--color-danger);
@@ -18305,23 +18399,6 @@ textarea.ehr-handoff-input {
   font-weight: 700;
 }
 
-/* The appointments page mounts the column head OUTSIDE the scroller: the head
-   is part of the table's frame and only the rows scroll in
-   `.appointment-card-list` below it. Sticky-inside-the-scroller left rows
-   sliding through the container's padding above and behind the labels. */
-.appointment-card-frame {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  background: #fff;
-}
-.appointment-card-frame .appointment-card-head {
-  position: static;
-  flex: 0 0 auto;
-  padding-top: 10px;
-}
-
 .appointment-card-head {
   position: sticky;
   top: 0;
@@ -18479,61 +18556,6 @@ textarea.ehr-handoff-input {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill {
-  display: inline-flex;
-  width: auto;
-  max-width: 100%;
-  min-height: 22px;
-  margin-top: 0;
-  padding: 0 8px;
-  font-size: 11px;
-  line-height: 1;
-}
-
-.appointment-service-pill {
-  background: var(--semantic-neutral-bg);
-  color: var(--semantic-neutral);
-}
-
-.appointment-service-pill.type-anc {
-  background: var(--semantic-success-bg);
-  color: var(--semantic-success);
-}
-
-.appointment-service-pill.type-surgical,
-.appointment-service-pill.type-emergency {
-  background: var(--semantic-danger-bg);
-  color: var(--semantic-danger);
-}
-
-.appointment-service-pill.type-telehealth,
-.appointment-service-pill.type-specialist {
-  background: var(--semantic-active-bg);
-  color: var(--semantic-active);
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill {
-  background: var(--semantic-neutral-bg);
-  color: var(--semantic-neutral);
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-anc {
-  background: var(--semantic-success-bg);
-  color: var(--semantic-success);
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-surgical,
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-emergency {
-  background: var(--semantic-danger-bg);
-  color: var(--semantic-danger);
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-telehealth,
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-specialist {
-  background: var(--semantic-active-bg);
-  color: var(--semantic-active);
 }
 
 .appointment-card-status {
@@ -21445,20 +21467,14 @@ textarea.ehr-handoff-input {
   overflow: auto;
 }
 
-/* Inset the standalone appointments list like the laboratory and prescription
-   tables, without changing the full-width dashboard worklists. */
-.appointments-list-surface {
-  width: calc(100% - 32px);
-  margin-inline: auto;
-}
-
+/* Inset the patient registry like the laboratory and prescription tables,
+   without changing the full-width dashboard worklists. */
 .patients-list-surface {
   width: calc(100% - 32px);
   margin-inline: auto;
 }
 
 @media (max-width: 720px) {
-  .appointments-list-surface,
   .patients-list-surface {
     width: 100%;
   }
@@ -24022,6 +24038,19 @@ table.patient-data-table.patient-data-table {
   text-align: start;
 }
 
+/* One edge for every value in the column. A <select> carries its own 10px of
+   inner padding, so "Routine" started 10px to the right of "Nothing due" even
+   though both sit in the same grid column — the fields and the billing
+   readouts read as two ragged lists. Pulling each control back by that padding
+   lines the text up and still leaves the hover plate room around it.
+
+   The Notes textarea is left alone: it is the one control that keeps a visible
+   plate, and a plate lines up by its edge, not by the text inside it. */
+.appt-edit-shell.is-inline .appt-edit-col > div > select,
+.appt-edit-shell.is-inline .appt-edit-col > div > input:not([type='radio']) {
+  margin-inline-start: -10px;
+}
+
 /* The clash stays a sentence in the flow, red ink, no plate. */
 .appt-edit-shell.is-inline .appt-edit-col > p {
   display: flex;
@@ -26278,10 +26307,37 @@ table.patient-data-table.patient-data-table {
 .ehr-center-panel > .ehr-appointment-list,
 .ehr-center-panel > .ehr-appointment-list.ehr-care-list { padding: 0; }
 
-/* The head above them: name on the left, the day's title elastic in the middle,
-   the controls sized to themselves on the right. */
-.ehr-center-panel .ehr-daybar {
-  grid-template-columns: auto minmax(180px, 1fr) auto;
+/* The head above them: title on the left, search in the middle, lane tabs on
+   the right.
+
+   Both SIDE tracks must stay `1fr` and the centre track must stay sized to
+   itself. This rule used to read `auto minmax(180px, 1fr) auto`, which sized
+   the two side columns from their own content — and both sides change content
+   constantly:
+
+     • the lane tabs render "Label · N" counts that re-count on every date
+       change (24 -> 7 is a whole character narrower), and
+     • the title is `centerTitle || selectedDateLabel`, so on every station
+       that does not pass an explicit title it IS the date ("Thursday, August
+       20" vs "Wednesday, September 10").
+
+   Either one resizing dragged the centre column sideways, so the search field
+   jumped every time the user picked a different day in the mini-calendar.
+
+   `.ehr-daybar` already fixed this once (see the base rule near the top of the
+   EHR block) — this rule sits ~21,000 lines later at higher specificity and
+   silently undid it, so the fix is re-asserted HERE, where the override lives.
+   Do not put `auto` back on the side tracks.
+
+   Split on `:has()` so a daybar with no search box still gets its two-column
+   layout instead of an empty middle track pushing the tabs off the right. */
+.ehr-center-panel .ehr-daybar:has(.ehr-queue-search) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 330px) minmax(0, 1fr);
+  align-items: center;
+}
+
+.ehr-center-panel .ehr-daybar:not(:has(.ehr-queue-search)) {
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
 }
 

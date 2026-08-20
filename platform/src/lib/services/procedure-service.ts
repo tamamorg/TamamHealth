@@ -15,6 +15,7 @@ import { findByType } from './db-query';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
+import { procedure as procedureLifecycle, type ProcedureStatus } from '../clinical-flow/order-lifecycles';
 
 async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | undefined> {
   if (!hospitalId) return undefined;
@@ -24,6 +25,90 @@ async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | und
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Stage 7 states in which the procedure is finished with — nothing about it can
+ * still block a discharge.
+ *
+ * `complication` is deliberately NOT here: a complication is unfinished until
+ * it has been reported (`ae_reported`), which is the whole point of that edge
+ * in `PROCEDURE_TRANSITIONS`.
+ */
+const SETTLED_PROCEDURE_STATUSES: readonly ProcedureStatus[] = [
+  'released', 'aborted', 'ae_reported',
+];
+
+/**
+ * Whether a procedure is done with, for the facility-checkout gate.
+ *
+ * A procedure with NO status is settled. Every procedure written before the
+ * lifecycle existed is a historical record of something that had already
+ * happened — the document carried only `date`, `performedBy` and `outcome` —
+ * so treating a missing status as in-flight would block discharge on every
+ * visit with an old procedure on the chart, and train clerks to override the
+ * gate as a matter of routine. That is the exact failure the gate's own
+ * comments warn about.
+ */
+export function isProcedureSettled(p: Pick<ProcedureDoc, 'status'>): boolean {
+  if (!p.status) return true;
+  return SETTLED_PROCEDURE_STATUSES.includes(p.status);
+}
+
+/**
+ * Advance a procedure through its Stage 7 lifecycle, refusing any move the
+ * document's state machine does not allow — the same contract
+ * `transitionEncounter` enforces for the visit itself. An untracked (statusless)
+ * procedure is adopted at `ordered`, so a record created before this existed can
+ * still be picked up rather than being stuck outside the machine forever.
+ */
+export async function advanceProcedure(
+  id: string,
+  to: ProcedureStatus,
+  opts: { actorId?: string; actorName?: string; reason?: string } = {},
+): Promise<ProcedureDoc | null> {
+  const db = proceduresDB();
+  let existing: ProcedureDoc;
+  try {
+    existing = await db.get(id) as ProcedureDoc;
+  } catch {
+    return null;
+  }
+  const from: ProcedureStatus = existing.status || 'ordered';
+  if (from === to) return existing;
+  if (!procedureLifecycle.can(from, to)) {
+    throw new Error(
+      `A procedure cannot move from "${from}" to "${to}". Allowed: ${procedureLifecycle.next(from).join(', ') || 'nothing — this state is final'}.`,
+    );
+  }
+  // "aborted (with reason)" is how the document words it, so the reason is part
+  // of the move rather than something to fill in afterwards.
+  if (to === 'aborted' && !opts.reason?.trim()) {
+    throw new Error('Aborting a procedure requires a reason.');
+  }
+
+  const now = new Date().toISOString();
+  const updated: ProcedureDoc = {
+    ...existing,
+    status: to,
+    ...(to === 'consented' ? { consentedAt: now, consentedBy: opts.actorName || opts.actorId } : {}),
+    ...(to === 'aborted' ? { abortedReason: opts.reason?.trim() } : {}),
+    updatedAt: now,
+  };
+  const resp = await db.put(updated);
+  updated._rev = resp.rev;
+  await logAuditSafe('PROCEDURE_STATUS_CHANGED', opts.actorId, opts.actorName,
+    `Procedure ${id} (${existing.name}): ${from} → ${to}` + (opts.reason ? ` — ${opts.reason}` : ''));
+  emitSyncEvent({
+    resourceType: 'procedure',
+    resourceId: updated._id,
+    operation: 'update',
+    resourceVersion: updated._rev,
+    userId: opts.actorId,
+    orgId: updated.orgId,
+    hospitalId: updated.hospitalId,
+  });
+  return updated;
 }
 
 export async function getAllProcedures(scope?: DataScope): Promise<ProcedureDoc[]> {
