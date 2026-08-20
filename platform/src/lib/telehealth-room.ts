@@ -46,10 +46,23 @@ export function buildPatientJoinUrl(sessionId: string, baseUrl?: string): string
   return `${base}/telehealth/join/${encodeURIComponent(sessionId)}`;
 }
 
-/** Clinician-facing room URL. Same reasoning: no token in the link. */
-export function buildProviderJoinUrl(sessionId: string, baseUrl?: string): string {
+/**
+ * Clinician-facing room URL. Same reasoning as the patient link: no token in it.
+ *
+ * Takes the APPOINTMENT id, not the session id. `/telehealth/visit/[appointmentId]`
+ * resolves its visit out of the appointment list, so a URL built from a session
+ * id lands on a page that cannot find anything. That mismatch shipped and went
+ * unnoticed only because the stored `providerJoinUrl` had no readers yet — the
+ * first feature to use it (an SMS to the clinician, a calendar invite) would
+ * have been the one to discover it.
+ *
+ * Walk-in sessions have no appointment to key on, so they have no provider URL;
+ * callers get `null` rather than a link to `/telehealth/visit/undefined`.
+ */
+export function buildProviderJoinUrl(appointmentId: string | undefined, baseUrl?: string): string | null {
+  if (!appointmentId) return null;
   const base = (baseUrl || process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
-  return `${base}/telehealth/visit/${encodeURIComponent(sessionId)}`;
+  return `${base}/telehealth/visit/${encodeURIComponent(appointmentId)}`;
 }
 
 /** Whether a LiveKit server is configured. Callers degrade rather than crash. */

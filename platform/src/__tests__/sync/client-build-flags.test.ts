@@ -68,13 +68,18 @@ describe('client build flags reach every builder', () => {
     }
   });
 
-  it('the deploy workflow passes the flags that decide whether records leave the browser', () => {
+  it('the deploy workflow passes every declared flag as a build arg', () => {
+    // Was a hand-picked subset of three, on the reasoning that the rest were
+    // "cosmetic". NEXT_PUBLIC_LIVEKIT_URL was then added to the Dockerfile and
+    // not here, and telehealth shipped with a Content-Security-Policy that had
+    // no LiveKit origin in it — every call blocked in the browser, server-side
+    // config perfectly valid, nothing in any log. That is the same silent
+    // failure the sync flags produced, so this now asserts the WHOLE list: the
+    // Dockerfile and compose checks above already do, and the builder that
+    // actually ships production was the one exception.
     const workflow = read(REPO_ROOT, '.github', 'workflows', 'deploy-staging.yml');
     const platformBuild = workflow.slice(0, workflow.indexOf('Build + push website image'));
-    // Not the whole list: NEXT_PUBLIC_APP_URL and NEXT_PUBLIC_BUILD_ID are
-    // cosmetic there. These three decide whether the image seeds fake patients
-    // and whether it can sync at all.
-    for (const name of ['NEXT_PUBLIC_DEMO_MODE', 'NEXT_PUBLIC_SYNC_ENABLED', 'NEXT_PUBLIC_COUCHDB_URL']) {
+    for (const name of declared) {
       expect(platformBuild).toContain(`${name}=`);
     }
   });

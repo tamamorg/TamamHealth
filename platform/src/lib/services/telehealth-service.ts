@@ -177,7 +177,9 @@ export async function createSession(
     // holder still has to authenticate and be a participant to mint media
     // credentials at /api/telehealth/token.
     joinUrl: buildPatientJoinUrl(id),
-    providerJoinUrl: buildProviderJoinUrl(id),
+    // Built from the APPOINTMENT id — that is what the clinician route resolves.
+    // Absent for walk-ins, which have no appointment.
+    providerJoinUrl: buildProviderJoinUrl(data.appointmentId) ?? undefined,
     ...data,
     createdAt: now,
     updatedAt: now,
