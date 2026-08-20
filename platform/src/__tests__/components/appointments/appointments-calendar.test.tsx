@@ -2,6 +2,7 @@ import React, { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { mount } from '../clinical-notes/test-utils';
 import AppointmentsCalendar, { stackedDayLayout, calendarRange, type CalEvent } from '@/app/(dashboard)/appointments/_AppointmentsCalendar';
+import { calendarPeriodLabel, countInPeriod } from '@/app/(dashboard)/appointments/_calendar-period';
 import type { AppointmentDoc, AppointmentPriority, AppointmentStatus } from '@/lib/db-types';
 
 const at = (hour: number, minute = 0) => new Date(2026, 7, 20, hour, minute, 0);
@@ -306,5 +307,33 @@ describe('an overflowing month day opens in place', () => {
     clickShowMore(container);
     expect(container.querySelector('.gcal-daypop')).toBeNull();
     unmount();
+  });
+});
+
+describe('what the day bar says it is showing', () => {
+  const at = (month: number, day: number, hour = 9) => new Date(2026, month, day, hour);
+  const events = [
+    { start: at(7, 19) },   // Wed 19 Aug
+    { start: at(7, 20) },   // Thu 20 Aug — the day
+    { start: at(7, 21) },   // Fri 21 Aug — the next day
+    { start: at(7, 24) },   // Mon 24 Aug
+    { start: at(8, 2) },    // Sep
+  ];
+  const thursday = new Date(2026, 7, 20, 12);
+
+  it('names the window each view actually draws', () => {
+    expect(calendarPeriodLabel('day', thursday)).toBe('Aug 20 – 21, 2026');
+    expect(calendarPeriodLabel('week', thursday)).toBe('Aug 16 – 22, 2026');
+    expect(calendarPeriodLabel('month', thursday)).toBe('August 2026');
+  });
+
+  it('carries a range across a month boundary in both names', () => {
+    expect(calendarPeriodLabel('day', new Date(2026, 7, 31, 12))).toBe('Aug 31 – Sep 1, 2026');
+  });
+
+  it('counts only what that window holds — the header and its number are one fact', () => {
+    expect(countInPeriod(events, 'day', thursday)).toBe(2);
+    expect(countInPeriod(events, 'week', thursday)).toBe(3);
+    expect(countInPeriod(events, 'month', thursday)).toBe(4);
   });
 });

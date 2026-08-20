@@ -17,6 +17,7 @@ import {
   Download, Search,
 } from '@/components/icons/lucide';
 import EhrMiniCalendar, { parseIsoDate, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
+import { calendarPeriodLabel, countInPeriod } from './_calendar-period';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientFullName } from '@/lib/patient-utils';
@@ -76,27 +77,6 @@ const priorityConfig: Record<AppointmentPriority, { color: string; label: string
   urgent: { color: 'var(--color-warning)', label: 'Urgent' },
   emergency: { color: 'var(--color-danger)', label: 'Emergency' },
 };
-
-/**
- * What the day bar says it is showing. The calendar's own toolbar used to
- * print this; the label belongs in the card header now, where every other
- * workspace in the app puts the period it is scoped to.
- */
-function calendarPeriodLabel(view: 'month' | 'week' | 'day', date: Date): string {
-  if (view === 'month') return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  const start = new Date(date);
-  if (view === 'week') start.setDate(date.getDate() - date.getDay());
-  const end = new Date(start);
-  // The day view is two days — today and the one the clinic is preparing for.
-  end.setDate(start.getDate() + (view === 'week' ? 6 : 1));
-
-  const from = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const to = end.toLocaleDateString('en-US', end.getMonth() === start.getMonth()
-    ? { day: 'numeric', year: 'numeric' }
-    : { month: 'short', day: 'numeric', year: 'numeric' });
-  return `${from} – ${to}`;
-}
 
 const CAL_VIEW_TABS: { key: 'day' | 'week' | 'month'; label: string }[] = [
   { key: 'day', label: 'Day' },
@@ -295,6 +275,14 @@ export default function AppointmentsPage() {
       };
     });
   }, [appointments, filterStatus, search, globalSearch, today]);
+
+  // The day bar's own number. `calendarEvents` is every appointment matching
+  // the filter, across every month — printing that beside "Aug 20 – 21" put a
+  // period and a total in one line and invited them to be read as one fact.
+  const visibleCount = useMemo(
+    () => countInPeriod(calendarEvents, calView, calDate),
+    [calendarEvents, calView, calDate],
+  );
 
   // The days the rail marks: one entry per booking the calendar is currently
   // showing, so the rail never promises a day that reads empty when you land
@@ -587,7 +575,7 @@ export default function AppointmentsPage() {
               <div>
                 <h2>{calendarPeriodLabel(calView, calDate)}</h2>
                 <p className="ehr-care-subtitle">
-                  {calendarEvents.length === 1 ? '1 appointment' : `${calendarEvents.length} appointments`}
+                  {visibleCount === 1 ? '1 appointment' : `${visibleCount} appointments`}
                 </p>
               </div>
 

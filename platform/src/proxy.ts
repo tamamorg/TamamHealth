@@ -25,7 +25,13 @@ function nextWithCsp(request: NextRequest): NextResponse {
     // Telehealth dials the LiveKit server directly from the browser. Without
     // its origin here the signalling socket is refused by the policy and the
     // visit room waits for a connection that CSP already killed.
-    livekitUrl: process.env.LIVEKIT_URL || process.env.NEXT_PUBLIC_LIVEKIT_URL,
+    //
+    // Public copy FIRST: this policy is built in middleware, where Next inlines
+    // env at build time, and NEXT_PUBLIC_LIVEKIT_URL is the one guaranteed to
+    // be there. The server-only variable is the fallback for runtimes that do
+    // hand middleware live env (dev, and hosts that inject at the edge);
+    // config-validation refuses a production boot that sets only that one.
+    livekitUrl: process.env.NEXT_PUBLIC_LIVEKIT_URL || process.env.LIVEKIT_URL,
   });
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
