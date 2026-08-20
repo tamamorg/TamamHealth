@@ -24116,6 +24116,19 @@ table.patient-data-table.patient-data-table {
   text-align: start;
 }
 
+/* One edge for every value in the column. A <select> carries its own 10px of
+   inner padding, so "Routine" started 10px to the right of "Nothing due" even
+   though both sit in the same grid column — the fields and the billing
+   readouts read as two ragged lists. Pulling each control back by that padding
+   lines the text up and still leaves the hover plate room around it.
+
+   The Notes textarea is left alone: it is the one control that keeps a visible
+   plate, and a plate lines up by its edge, not by the text inside it. */
+.appt-edit-shell.is-inline .appt-edit-col > div > select,
+.appt-edit-shell.is-inline .appt-edit-col > div > input:not([type='radio']) {
+  margin-inline-start: -10px;
+}
+
 /* The clash stays a sentence in the flow, red ink, no plate. */
 .appt-edit-shell.is-inline .appt-edit-col > p {
   display: flex;

@@ -22,6 +22,10 @@ function nextWithCsp(request: NextRequest): NextResponse {
     isDev: process.env.NODE_ENV !== 'production',
     couchdbUrl: process.env.NEXT_PUBLIC_COUCHDB_URL,
     posthogHost: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    // Telehealth dials the LiveKit server directly from the browser. Without
+    // its origin here the signalling socket is refused by the policy and the
+    // visit room waits for a connection that CSP already killed.
+    livekitUrl: process.env.LIVEKIT_URL || process.env.NEXT_PUBLIC_LIVEKIT_URL,
   });
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
