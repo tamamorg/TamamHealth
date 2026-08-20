@@ -151,6 +151,19 @@ describe('the day view is two days', () => {
     expect(document.querySelectorAll('.gcal-colhead-date.is-today')).toHaveLength(1);
   });
 
+  it('gives the grid its hours — the custom view has to default them itself', () => {
+    document.body.innerHTML = render('day');
+
+    // A day of half-hour slots: 24 groups down the gutter and down each
+    // column. Undefined `min`/`max` render a grid with no rows at all, which
+    // is what a custom TimeGrid view gets if it forgets to default them.
+    expect(document.querySelectorAll('.rbc-time-gutter .rbc-timeslot-group')).toHaveLength(24);
+    expect(document.querySelector('.rbc-time-gutter .rbc-label')?.textContent).toBeTruthy();
+
+    const [firstColumn] = document.querySelectorAll('.rbc-day-slot');
+    expect(firstColumn.querySelectorAll('.rbc-timeslot-group')).toHaveLength(24);
+  });
+
   it('puts the patient, the time and where the visit is inside the block', () => {
     document.body.innerHTML = render('day');
 

@@ -239,10 +239,35 @@ const TWO_DAY_SPAN = 2;
 type TwoDayContext = { localizer: DateLocalizer };
 
 const TwoDayView = Object.assign(
-  function TwoDayGrid(props: { date: Date; localizer: DateLocalizer } & Record<string, unknown>) {
-    const { date, localizer } = props;
+  function TwoDayGrid({
+    date, localizer, min, max, scrollToTime, enableAutoScroll, ...props
+  }: {
+    date: Date;
+    localizer: DateLocalizer;
+    min?: Date;
+    max?: Date;
+    scrollToTime?: Date;
+    enableAutoScroll?: boolean;
+  } & Record<string, unknown>) {
     const range = TwoDayView.range(date, { localizer });
-    return <TimeGrid {...props} range={range} eventOffset={15} />;
+    return (
+      <TimeGrid
+        {...props}
+        date={date}
+        localizer={localizer}
+        range={range}
+        eventOffset={15}
+        /* `TimeGrid` needs the day's own bounds and cannot derive them: with
+           `min`/`max` undefined it lays out a grid with no hours in it — no
+           slot rows, no gutter labels, and every booking crushed into a strip
+           at the top. The built-in day and week views default them exactly
+           like this, which is why they looked right and this did not. */
+        min={min ?? localizer.startOf(new Date(), 'day')}
+        max={max ?? localizer.endOf(new Date(), 'day')}
+        scrollToTime={scrollToTime ?? localizer.startOf(new Date(), 'day')}
+        enableAutoScroll={enableAutoScroll ?? true}
+      />
+    );
   },
   {
     range: (date: Date, { localizer }: TwoDayContext) => {
