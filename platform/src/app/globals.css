@@ -4908,6 +4908,13 @@ html:has(.ehr-top-rail) {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  /* Query container for `.ehr-daybar`. The daybar's usable width is this
+     panel's width — a workspace-grid track — which has no fixed relationship
+     to the viewport: at a 1440px viewport this panel is 806px, and at 1150px
+     it is 230px. A `@media` breakpoint therefore measures the wrong box and
+     fires at the wrong time. Safe to contain: the width comes from the grid
+     track, not from the contents, and nothing inside is `position: fixed`. */
+  container-type: inline-size;
 }
 
 /* The queue header, per the design: title · search · tabs on one row, with the
@@ -4916,13 +4923,24 @@ html:has(.ehr-top-rail) {
 .ehr-daybar {
   flex: 0 0 auto;
   display: grid;
-  /* Fixed side columns, fixed field. With `auto` on the title the whole row
-     was measured from the date's own width, so "Thursday, August 20" and
-     "Wednesday, September 10" pushed the search box to different places —
-     the field jumped sideways every time the day changed. The centre track
-     is now the field's own width and the sides share what is left, so the
-     search sits still whatever the date says. */
-  grid-template-columns: minmax(0, 1fr) 330px minmax(0, 1fr);
+  /* Title · field · lanes.
+
+     The title track is `1fr` so it absorbs the slack: the date's own width
+     ("Thursday, August 20" vs "Wednesday, September 10") no longer pushes the
+     field sideways when the day changes, which is what this template was
+     written to fix.
+
+     The lane track is `auto`, NOT `1fr`. `1fr` sized the track from the space
+     left over, but the lane row is a fixed ~387px of buttons that cannot
+     shrink — so at a 806px card the track was 222px and the buttons overflowed
+     it. With `justify-self: end` that overflow ran LEFTWARD, laying "Upcoming"
+     straight over the right-hand end of the search box (149px of overlap at a
+     1440px viewport, 75px at 1280px). `auto` sizes the track to the buttons,
+     so the lanes can never reach into the field.
+
+     The field track can now shrink below 330px rather than force the row to
+     overflow, and `@container` below stacks the row before it gets silly. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 330px) auto;
   align-items: center;
   gap: 16px;
   min-height: 0;
@@ -4933,9 +4951,12 @@ html:has(.ehr-top-rail) {
 /* Lane tabs stay hard right; the title keeps the left. */
 .ehr-daybar > .ehr-day-tabs { justify-self: end; }
 
-/* Narrow cards can't hold a 330px centre track beside both sides — the row
-   stacks instead of squeezing the field. */
-@media (max-width: 900px) {
+/* Narrow cards can't hold the field beside the title and the lanes, so the row
+   stacks. Queried against `.ehr-center-panel`, the daybar's own parent — the
+   `@media (max-width: 900px)` this replaces tested the VIEWPORT, which is not
+   the box the daybar lives in: the panel is 806px inside a 1440px viewport, so
+   the rule never fired where it was needed and the row overlapped instead. */
+@container (max-width: 820px) {
   .ehr-daybar { grid-template-columns: minmax(0, 1fr); }
   .ehr-daybar > .ehr-day-tabs { justify-self: start; }
 }
