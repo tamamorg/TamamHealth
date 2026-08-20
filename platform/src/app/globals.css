@@ -18399,23 +18399,6 @@ textarea.ehr-handoff-input {
   font-weight: 700;
 }
 
-/* The appointments page mounts the column head OUTSIDE the scroller: the head
-   is part of the table's frame and only the rows scroll in
-   `.appointment-card-list` below it. Sticky-inside-the-scroller left rows
-   sliding through the container's padding above and behind the labels. */
-.appointment-card-frame {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  background: #fff;
-}
-.appointment-card-frame .appointment-card-head {
-  position: static;
-  flex: 0 0 auto;
-  padding-top: 10px;
-}
-
 .appointment-card-head {
   position: sticky;
   top: 0;
@@ -18573,61 +18556,6 @@ textarea.ehr-handoff-input {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill {
-  display: inline-flex;
-  width: auto;
-  max-width: 100%;
-  min-height: 22px;
-  margin-top: 0;
-  padding: 0 8px;
-  font-size: 11px;
-  line-height: 1;
-}
-
-.appointment-service-pill {
-  background: var(--semantic-neutral-bg);
-  color: var(--semantic-neutral);
-}
-
-.appointment-service-pill.type-anc {
-  background: var(--semantic-success-bg);
-  color: var(--semantic-success);
-}
-
-.appointment-service-pill.type-surgical,
-.appointment-service-pill.type-emergency {
-  background: var(--semantic-danger-bg);
-  color: var(--semantic-danger);
-}
-
-.appointment-service-pill.type-telehealth,
-.appointment-service-pill.type-specialist {
-  background: var(--semantic-active-bg);
-  color: var(--semantic-active);
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill {
-  background: var(--semantic-neutral-bg);
-  color: var(--semantic-neutral);
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-anc {
-  background: var(--semantic-success-bg);
-  color: var(--semantic-success);
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-surgical,
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-emergency {
-  background: var(--semantic-danger-bg);
-  color: var(--semantic-danger);
-}
-
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-telehealth,
-.appointment-card-row .ehr-appointment-department.appointment-card-department .appointment-service-pill.type-specialist {
-  background: var(--semantic-active-bg);
-  color: var(--semantic-active);
 }
 
 .appointment-card-status {
@@ -21539,20 +21467,14 @@ textarea.ehr-handoff-input {
   overflow: auto;
 }
 
-/* Inset the standalone appointments list like the laboratory and prescription
-   tables, without changing the full-width dashboard worklists. */
-.appointments-list-surface {
-  width: calc(100% - 32px);
-  margin-inline: auto;
-}
-
+/* Inset the patient registry like the laboratory and prescription tables,
+   without changing the full-width dashboard worklists. */
 .patients-list-surface {
   width: calc(100% - 32px);
   margin-inline: auto;
 }
 
 @media (max-width: 720px) {
-  .appointments-list-surface,
   .patients-list-surface {
     width: 100%;
   }

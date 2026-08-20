@@ -354,15 +354,25 @@ function SlotHeader({ date }: { date: Date }) {
  */
 const DAY_PANEL_MIN_HEIGHT = 220;
 
-/** An opened day: which day, everything on it, and where to draw it. */
+/**
+ * An opened day: which day, and where to draw it.
+ *
+ * Deliberately NOT the events — those are read from the current props every
+ * render. A snapshot taken at open time would go stale the moment anything on
+ * that day changed, and the panel would either show the old list or have to
+ * close itself; on a synced facility something changes every few seconds.
+ */
 type ExpandedDay = {
   date: Date;
-  events: CalEvent[];
   left: number;
   top: number;
   width: number;
   maxHeight: number;
 };
+
+const sameCalendarDay = (a: Date, b: Date) => (
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+);
 
 type AppointmentsCalendarProps = {
   events: CalEvent[];
@@ -440,16 +450,27 @@ export default function AppointmentsCalendar({
   const triggerRef = React.useRef<HTMLElement | null>(null);
   const [expanded, setExpanded] = React.useState<ExpandedDay | null>(null);
 
-  // Any change of what is on screen invalidates both the day and the measured
-  // geometry. Adjusted during render rather than in an effect, so the panel is
+  // Moving the grid — another month, another view — takes the opened day off
+  // screen along with the cell it was measured against, so it closes. A change
+  // to the DATA does not: the panel re-reads its day from the new events and
+  // stays where the clerk left it. It used to close on that too, which on a
+  // synced facility meant any colleague's booking anywhere shut the day being
+  // read. Adjusted during render rather than in an effect, so the panel is
   // never painted over the wrong month for a frame first; `setExpanded` rather
   // than `closeExpanded` because nothing was dismissed, so nothing should pull
   // focus back to a link that may no longer be there.
-  const [shownFor, setShownFor] = React.useState<[string, Date, CalEvent[]]>([calView, calDate, events]);
-  if (shownFor[0] !== calView || shownFor[1] !== calDate || shownFor[2] !== events) {
-    setShownFor([calView, calDate, events]);
+  const [shownFor, setShownFor] = React.useState<[string, Date]>([calView, calDate]);
+  if (shownFor[0] !== calView || shownFor[1] !== calDate) {
+    setShownFor([calView, calDate]);
     if (expanded) setExpanded(null);
   }
+
+  /** The opened day's appointments, as they are right now. */
+  const expandedEvents = React.useMemo(() => (
+    expanded
+      ? events.filter(e => sameCalendarDay(e.start, expanded.date)).sort((a, b) => a.start.getTime() - b.start.getTime())
+      : []
+  ), [events, expanded]);
 
   const closeExpanded = React.useCallback(() => {
     setExpanded(null);
@@ -493,11 +514,9 @@ export default function AppointmentsCalendar({
     const geometry = measureAnchor();
     if (!geometry) return;
 
-    setExpanded({
-      date,
-      events: [...dayEvents].sort((a, b) => a.start.getTime() - b.start.getTime()),
-      ...geometry,
-    });
+    // `dayEvents` is only what react-big-calendar had for that cell; the panel
+    // reads the day off the events prop instead, so it keeps up with changes.
+    setExpanded({ date, ...geometry });
   }, [expanded, closeExpanded, measureAnchor]);
 
   React.useEffect(() => {
@@ -622,12 +641,12 @@ export default function AppointmentsCalendar({
           the calendar already has — same column, same left edge, same surface
           — and scrolling inside itself only once a day carries more
           appointments than the grid is tall. */}
-      {expanded && (
+      {expanded && expandedEvents.length > 0 && (
         <div
           className="gcal-daypop"
           style={{ left: expanded.left, top: expanded.top, width: expanded.width, maxHeight: expanded.maxHeight }}
           role="group"
-          aria-label={`${expanded.events.length} appointments on ${dfFormat(expanded.date, 'EEEE d MMMM')}`}
+          aria-label={`${expandedEvents.length} appointments on ${dfFormat(expanded.date, 'EEEE d MMMM')}`}
         >
           <div className="gcal-daypop-head">
             <button
@@ -638,12 +657,12 @@ export default function AppointmentsCalendar({
             >
               <X size={14} />
             </button>
-            <span className="gcal-daypop-count">{expanded.events.length}</span>
+            <span className="gcal-daypop-count">{expandedEvents.length}</span>
             {/* The date stays where the grid puts it — top right of the cell. */}
             <span className="gcal-daypop-date">{expanded.date.getDate()}</span>
           </div>
           <div className="gcal-daypop-list">
-            {expanded.events.map(ev => (
+            {expandedEvents.map(ev => (
               <button
                 key={ev.id}
                 type="button"

@@ -15,6 +15,20 @@ import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useProcedures } from '@/lib/hooks/useProcedures';
 import { formatDate } from '@/lib/format-utils';
+import { procedure as procedureLifecycle, type ProcedureStatus } from '@/lib/clinical-flow/order-lifecycles';
+
+/** Stage 7 states, worded the way a clinician would say them. */
+const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
+  ordered: 'Ordered',
+  consented: 'Consented',
+  in_progress: 'In progress',
+  completed: 'Completed',
+  in_observation: 'In observation',
+  released: 'Released',
+  aborted: 'Aborted',
+  complication: 'Complication',
+  ae_reported: 'Adverse event reported',
+};
 
 interface ProceduresSectionProps {
   patientId: string;
@@ -25,7 +39,7 @@ interface ProceduresSectionProps {
 export default function ProceduresSection({ patientId, patientName, canConsult }: ProceduresSectionProps) {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const { procedures, create } = useProcedures(patientId);
+  const { procedures, create, advance } = useProcedures(patientId);
 
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
@@ -35,6 +49,30 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
   const [outcome, setOutcome] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [advancing, setAdvancing] = useState<string | null>(null);
+
+  /**
+   * Move one procedure to its next Stage 7 state. The picker only ever offers
+   * moves the lifecycle allows, and 'aborted' is prompted for its reason
+   * because the document specifies "aborted (with reason)" — the service
+   * refuses the move without one.
+   */
+  const advanceTo = async (id: string, to: ProcedureStatus) => {
+    let reason: string | undefined;
+    if (to === 'aborted') {
+      reason = window.prompt('Why was this procedure aborted?')?.trim() || undefined;
+      if (!reason) return;
+    }
+    setAdvancing(id);
+    try {
+      await advance(id, to, { actorId: currentUser?._id, actorName: currentUser?.name, reason });
+      showToast(`Procedure moved to ${PROCEDURE_STATUS_LABELS[to]}.`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not update the procedure.', 'error');
+    } finally {
+      setAdvancing(null);
+    }
+  };
 
   const resetForm = () => {
     setName(''); setCode(''); setBodySite(''); setOutcome(''); setNotes('');
@@ -88,6 +126,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
               <tr>
                 <th>Procedure</th>
                 <th>Date</th>
+                <th>Status</th>
                 <th>Performed by</th>
                 <th>Outcome</th>
               </tr>
@@ -101,6 +140,36 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                     {p.bodySite ? <div style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400, fontSize: 12 }}>{p.bodySite}</div> : null}
                   </td>
                   <td>{formatDate(p.date)}</td>
+                  <td>
+                    {/* A statusless row is a record of something already done —
+                        every procedure written before the lifecycle existed.
+                        It reads "Recorded" rather than being forced into a
+                        state nobody put it in, and can still be picked up. */}
+                    <span style={{ fontWeight: 600 }}>
+                      {p.status ? PROCEDURE_STATUS_LABELS[p.status] : 'Recorded'}
+                    </span>
+                    {p.status === 'aborted' && p.abortedReason ? (
+                      <div style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400, fontSize: 12 }}>{p.abortedReason}</div>
+                    ) : null}
+                    {canConsult && procedureLifecycle.next(p.status || 'ordered').length > 0 && (
+                      <select
+                        aria-label={`Advance ${p.name}`}
+                        value=""
+                        disabled={advancing === p._id}
+                        onChange={e => { if (e.target.value) advanceTo(p._id, e.target.value as ProcedureStatus); }}
+                        style={{
+                          display: 'block', marginTop: 4, fontSize: 12, padding: '2px 4px',
+                          border: '1px solid var(--border-light)', borderRadius: 6,
+                          background: 'var(--bg-card-solid)', color: 'var(--text-primary)',
+                        }}
+                      >
+                        <option value="">{advancing === p._id ? 'Saving…' : 'Advance to…'}</option>
+                        {procedureLifecycle.next(p.status || 'ordered').map(next => (
+                          <option key={next} value={next}>{PROCEDURE_STATUS_LABELS[next]}</option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
                   <td>{p.performedByName || '—'}</td>
                   <td>
                     {p.outcome || '—'}

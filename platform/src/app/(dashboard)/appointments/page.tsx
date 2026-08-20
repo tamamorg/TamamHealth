@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import AppointmentEditModal from '@/components/appointments/AppointmentEditModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
+import AvailabilityModal from '@/components/AvailabilityModal';
 import {
   APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS, APPOINTMENT_STATUS_I18N_KEYS,
   APPOINTMENT_STATUS_FLOW, APPOINTMENT_STATUS_EXITS,
@@ -11,13 +12,13 @@ import {
 import { useRouter } from 'next/navigation';
 import { getDefaultDashboard } from '@/lib/role-routes';
 import {
-  Calendar, Plus, User, RefreshCw,
+  Calendar, Plus, User, RefreshCw, Clock,
   Video, Stethoscope, Syringe, HeartPulse, FlaskConical,
   X, UserPlus, ChevronLeft, ChevronRight,
   Download, Search,
 } from '@/components/icons/lucide';
-import EhrMiniCalendar, { parseIsoDate, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
-import { calendarPeriodLabel, countInPeriod } from './_calendar-period';
+import EhrMiniCalendar, { parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { calendarPeriodLabel, calendarPeriodRange, countInPeriod } from './_calendar-period';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientFullName } from '@/lib/patient-utils';
@@ -98,6 +99,14 @@ export default function AppointmentsPage() {
   // Translated label lookups for module-level config (which can't call t()).
   const statusLabelKey = APPOINTMENT_STATUS_I18N_KEYS;
 
+  /**
+   * Who may publish clinic hours: the roles the booking wizard actually offers
+   * as providers. `AvailabilityModal` writes the window against the SIGNED-IN
+   * user, so a clerk opening it would publish clinic hours for themselves —
+   * the availability equivalent of booking a consultation with reception.
+   */
+  const canPublishAvailability = currentUser?.role === 'doctor' || currentUser?.role === 'clinical_officer';
+
   // The day — today and tomorrow — is what a desk opens on. Month is a
   // planning view, and landing in it meant scanning a grid of dots to find
   // the shift you are actually working.
@@ -111,6 +120,7 @@ export default function AppointmentsPage() {
   const [showNewForm, setShowNewForm] = useState(false);
   const router = useRouter();
   const [showWalkIn, setShowWalkIn] = useState(false);
+  const [showAvailability, setShowAvailability] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
@@ -307,11 +317,20 @@ export default function AppointmentsPage() {
     if (anchorMonth.getTime() !== railMonth.getTime()) setRailMonth(anchorMonth);
   }
 
-  // Same scope as the calendar (the search) but WITHOUT the status filter, so
-  // each rail count says how many appointments that status holds in what is
-  // currently being looked at rather than how many the filter left behind.
+  /**
+   * What the rail counts: the same window the grid is drawing and the same
+   * search, but WITHOUT the status filter — so each count says how many of
+   * that status are in view, and picking one returns exactly that many.
+   *
+   * Scoped to the period rather than the whole book, so every number on the
+   * screen answers the same question. "Scheduled 52" beside a two-day grid
+   * holding four of them is not a smaller truth, it is a different one.
+   */
   const statusBaseList = useMemo(() => {
-    let list = appointments;
+    const { start, end } = calendarPeriodRange(calView, calDate);
+    const fromDate = toIsoDate(start);
+    const untilDate = toIsoDate(end);
+    let list = appointments.filter(a => a.appointmentDate >= fromDate && a.appointmentDate < untilDate);
     const q = `${search} ${globalSearch}`.toLowerCase().trim();
     if (q) list = list.filter(a =>
       a.patientName.toLowerCase().includes(q) ||
@@ -320,7 +339,7 @@ export default function AppointmentsPage() {
       a.reason.toLowerCase().includes(q)
     );
     return list;
-  }, [appointments, search, globalSearch]);
+  }, [appointments, search, globalSearch, calView, calDate]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: statusBaseList.length };
@@ -514,6 +533,15 @@ export default function AppointmentsPage() {
           </div>
 
           <div className="ehr-schedule-actions">
+            {/* The one surface that writes availability — the windows the
+                booking wizard offers as slots. It had no home at all after the
+                top rail's quick-add menu went, so a provider could not publish
+                clinic hours anywhere in the app. */}
+            {canPublishAvailability && (
+              <button type="button" aria-label="Publish clinic hours" onClick={() => setShowAvailability(true)}>
+                <Clock className="w-4 h-4" /> Clinic hours
+              </button>
+            )}
             {canExportAppointments && (
               <button type="button" aria-label="Download appointments (CSV)" onClick={handleDownloadCsv}>
                 <Download className="w-4 h-4" /> Download
@@ -539,6 +567,7 @@ export default function AppointmentsPage() {
             {/* The rail's filter group, as on every station: the label of a
                 status and how many the day holds. It is the colour key for the
                 grid and the filter over it at once. */}
+            {/* Counted over the days on screen — see `statusBaseList`. */}
             <div className="ehr-filter-group">
               {/* Bookings still waiting to be approved lead the group when
                   there are any — the one status that is a queue of work rather
@@ -657,6 +686,12 @@ export default function AppointmentsPage() {
             defaultDate={formDate}
             onClose={() => { setShowNewForm(false); setFormDate(jubaDate()); }}
           />
+        )}
+
+        {/* Clinic hours — publishes a bookable window for the signed-in
+            provider, which is what gives the booking wizard slots to offer. */}
+        {showAvailability && canPublishAvailability && (
+          <AvailabilityModal onClose={() => setShowAvailability(false)} />
         )}
 
         {/* Walk-In */}

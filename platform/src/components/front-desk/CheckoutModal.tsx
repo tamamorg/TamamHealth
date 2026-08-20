@@ -138,6 +138,29 @@ export default function CheckoutModal({
             </div>
           )}
 
+          {/* Life-sustaining medication outstanding — TIER1_CHECKOUT_SAFETY_RULE.
+              Rendered ABOVE the blocking list and in the danger colour, not
+              folded into it, because it must survive the override: the same
+              click that lets a patient go home without their vitamins must not
+              read the same as sending someone home without their insulin. */}
+          {gate && gate.tier1Outstanding.length > 0 && (
+            <div className="rounded-xl p-3" style={{ background: 'rgba(229,46,66,0.08)', border: '1px solid rgba(229,46,66,0.35)' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-danger)' }}>
+                Life-sustaining medication not dispensed
+              </p>
+              <ul className="space-y-1">
+                {gate.tier1Outstanding.map(rx => (
+                  <li key={rx.id} className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)' }}>{rx.medication}</li>
+                ))}
+              </ul>
+              <p className="text-[11.5px] mt-1.5" style={{ color: 'var(--text-secondary)' }}>
+                This is a clinical safety issue regardless of payment status and needs a manager or clinician to intervene before the patient leaves.
+                {' '}
+                <Link href="/pharmacy" className="font-semibold underline" style={{ color: 'var(--accent-primary)' }}>Open pharmacy</Link>
+              </p>
+            </div>
+          )}
+
           {gate && gate.blocking.length > 0 && (
             <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
               <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-warning-text)' }}>
