@@ -333,17 +333,26 @@ function SlotEvent({ event }: { event: CalEvent }) {
  * lines also let the weekday shrink to a quiet uppercase label, so the date
  * itself is what the eye lands on.
  */
-function SlotHeader({ date }: { date: Date }) {
-  const now = jubaNow();
-  const isToday = date.getFullYear() === now.getFullYear()
-    && date.getMonth() === now.getMonth()
-    && date.getDate() === now.getDate();
-  return (
-    <span className="gcal-colhead">
-      <span className="gcal-colhead-day">{dfFormat(date, 'EEE').toUpperCase()}</span>
-      <span className={`gcal-colhead-date${isToday ? ' is-today' : ''}`}>{date.getDate()}</span>
-    </span>
-  );
+function makeSlotHeader(today: string) {
+  return function SlotHeader({ date }: { date: Date }) {
+    // "Today" comes from the `today` prop, the same value `dayPropGetter`
+    // below already tints the column with. This used to read `jubaNow()`
+    // directly, so the badge and the column tint answered to two different
+    // clocks — they disagreed whenever the page was open across midnight, and
+    // the header ignored the date the calendar was told to treat as today.
+    const isToday = calDateIso(date) === today;
+    return (
+      <span className="gcal-colhead">
+        <span className="gcal-colhead-day">{dfFormat(date, 'EEE').toUpperCase()}</span>
+        <span className={`gcal-colhead-date${isToday ? ' is-today' : ''}`}>{date.getDate()}</span>
+      </span>
+    );
+  };
+}
+
+/** Local calendar day as `YYYY-MM-DD` — the shape the `today` prop carries. */
+function calDateIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /**
@@ -551,16 +560,19 @@ export default function AppointmentsCalendar({
   }, [expanded, closeExpanded, measureAnchor]);
 
   const calendarComponents = React.useMemo(
-    () => ({
-      toolbar: CalToolbar,
-      month: { event: MonthEvent },
-      week: { event: SlotEvent, header: SlotHeader },
-      // Two columns now, so the day view needs the same weekday-over-date
-      // header the week view has — otherwise there is nothing above the
-      // divider saying which column is today and which is tomorrow.
-      day: { event: SlotEvent, header: SlotHeader },
-    }),
-    [MonthEvent],
+    () => {
+      const SlotHeader = makeSlotHeader(today);
+      return {
+        toolbar: CalToolbar,
+        month: { event: MonthEvent },
+        week: { event: SlotEvent, header: SlotHeader },
+        // Two columns now, so the day view needs the same weekday-over-date
+        // header the week view has — otherwise there is nothing above the
+        // divider saying which column is today and which is tomorrow.
+        day: { event: SlotEvent, header: SlotHeader },
+      };
+    },
+    [MonthEvent, today],
   );
 
   return (
@@ -632,8 +644,7 @@ export default function AppointmentsCalendar({
         };
       }}
       dayPropGetter={(d: Date) => {
-        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return iso === today ? { style: { backgroundColor: 'var(--accent-light)' } } : {};
+        return calDateIso(d) === today ? { style: { backgroundColor: 'var(--accent-light)' } } : {};
       }}
     />
 

@@ -115,6 +115,18 @@ describe('the pages that host the create dialog', () => {
     expect(source(file)).toContain(marker);
   });
 
+  test('the Add button on /hospitals paints its glyph white', () => {
+    // globals.css repaints any lucide glyph with no INLINE colour to
+    // --icon-color, the same brand blue as the primary button's fill — the
+    // plus was a blank blue circle. A className cannot escape that rule; the
+    // `color` prop writes a literal stroke attribute, which beats it. Every
+    // other `EhrListHeaderButton primary` in the app already does this.
+    const header = source('app/(dashboard)/hospitals/page.tsx')
+      .split('EhrListHeaderButton primary')[1]
+      .split('</EhrListHeaderButton>')[0];
+    expect(header).toContain('color="#fff"');
+  });
+
   test('the dialog asks a platform operator which organization owns the facility', () => {
     // `createHospital` refuses a facility with no orgId, and a super_admin has
     // none of their own — without this picker the operator's every attempt

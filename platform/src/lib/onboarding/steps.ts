@@ -61,7 +61,10 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   '/surveillance': { verb: 'Report disease surveillance', desc: 'File a case or outbreak alert and watch community disease trends.', est: 2 },
   '/my-facility': { verb: 'Review your facility profile', desc: 'Confirm your facility’s details, beds, services, and staff.', est: 2 },
   '/reports': { verb: 'Run a report', desc: 'Generate the routine reports your role is responsible for.', est: 2 },
-  '/hospitals': { verb: 'Explore the facility network', desc: 'Browse facilities, their status, and capacity across the network.', est: 2 },
+  // Read-only for most roles; for super_admin and org_admin this page also
+  // hosts the create-a-facility dialog, and registering the first facility is
+  // the step every staff account depends on (`roleNeedsFacility`).
+  '/hospitals': { verb: 'Set up your facilities', desc: 'Browse facilities, their status and capacity — and register a new one, which staff accounts have to be assigned to.', est: 2 },
   '/vital-statistics': { verb: 'Review vital statistics', desc: 'See births, deaths, and population-health indicators.', est: 2 },
   '/epidemic-intelligence': { verb: 'Open epidemic intelligence', desc: 'Monitor outbreak signals and early-warning indicators.', est: 2 },
   '/mch-analytics': { verb: 'Open MCH analytics', desc: 'Track maternal and child health programme performance.', est: 2 },

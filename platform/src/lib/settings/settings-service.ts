@@ -38,13 +38,27 @@ async function getDocOrNull(hospitalId: string): Promise<FacilitySettingsDoc | n
 
 /**
  * Upsert the facility settings. Accepts a partial patch which is merged over
- * the current stored settings (and defaults). Updates the in-memory store
- * synchronously so the change is reflected platform-wide right away.
+ * the current stored settings (and defaults). When the save targets the
+ * session's own facility it also updates the in-memory store synchronously, so
+ * the change is reflected platform-wide right away.
  */
 export async function saveFacilitySettings(
   hospitalId: string,
   patch: Partial<FacilitySettings>,
   orgId?: string,
+  /**
+   * The facility the *current session* belongs to. The in-memory store holds
+   * one facility's settings — the signed-in user's — so it may only be updated
+   * when this save targets that same facility.
+   *
+   * Super-admins and org-admins have no facility of their own and edit other
+   * hospitals through the facility picker. Pushing those values into the store
+   * used to overwrite their session with a facility they don't work at, which
+   * then drove currency, SLAs, and the lab catalogue everywhere else in the
+   * app. Pass `undefined` (the default) from those callers and the store is
+   * left alone; the editor re-renders from the returned value instead.
+   */
+  sessionHospitalId?: string,
 ): Promise<FacilitySettings> {
   const existing = await getDocOrNull(hospitalId);
   const current = mergeFacilitySettings(existing);
@@ -63,7 +77,9 @@ export async function saveFacilitySettings(
   };
 
   await hospitalsDB().put(doc);
-  setSettings(merged); // immediate platform-wide propagation
+  // Immediate platform-wide propagation — but only for the facility this
+  // session actually belongs to (see `sessionHospitalId` above).
+  if (sessionHospitalId && sessionHospitalId === hospitalId) setSettings(merged);
   return merged;
 }
 

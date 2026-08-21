@@ -55,7 +55,7 @@ const states = Object.keys(statesAndCounties);
 // of outputs — for exactly the credentials a facility admin hands to new staff.
 
 export default function SettingsPage() {
-  const { currentUser, isOnline, syncPaused, toggleOnline, syncNow, lastSync } = useApp();
+  const { currentUser, isOnline, syncPaused, toggleOnline, syncNow, lastSync, refreshCurrentUser } = useApp();
   const { users, loading: usersLoading, create: createUser, update: updateUser, resetPassword, deactivate, reactivate } = useUsers();
   const { hospitals, loading: hospitalsLoading, create: createHospital, reload: reloadHospitals } = useHospitals();
   const { canManageUsers, canAccess } = usePermissions();
@@ -220,6 +220,9 @@ export default function SettingsPage() {
         },
         currentUser._id, currentUser.username,
       );
+      // This is the signed-in user's own profile — refresh the session so the
+      // header, avatar, and clinical signatures pick the new name/photo up now.
+      await refreshCurrentUser();
       showToast('Profile updated', 'success');
     } catch {
       showToast('Failed to update profile', 'error');
@@ -366,6 +369,8 @@ export default function SettingsPage() {
           hospitalName: userForm.role !== 'government' ? userForm.hospitalName : undefined,
           photoUrl: userForm.photoUrl ?? null,
         }, currentUser._id, currentUser.username);
+        // An admin editing their own row is editing the live session too.
+        if (editingUser === currentUser._id) await refreshCurrentUser();
         showToast('User updated successfully', 'success');
       } else {
         await createUser({

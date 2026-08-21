@@ -233,6 +233,8 @@ async function ensureOrgIdIndex(db: PouchDB.Database, type: string): Promise<voi
 export async function getOrganizationStats(orgId: string): Promise<{
   userCount: number;
   hospitalCount: number;
+  /** How many of those facilities are currently reporting `syncStatus: 'offline'`. */
+  offlineHospitalCount: number;
   patientCount: number;
 }> {
   const { usersDB, hospitalsDB, patientsDB } = await import('../db');
@@ -256,13 +258,16 @@ export async function getOrganizationStats(orgId: string): Promise<{
     (async () => {
       const db = hospitalsDB();
       await ensureOrgIdIndex(db, 'hospital');
+      // syncStatus rides along in `fields` so the tenant list can show a sync
+      // figure without a second pass over the same rows.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const r = await (db as any).find({
         selector: { type: 'hospital', orgId },
-        fields: ['_id'],
+        fields: ['_id', 'syncStatus'],
         limit: 100000,
       });
-      return (r.docs as unknown[]).length;
+      const docs = r.docs as Array<{ syncStatus?: string }>;
+      return { total: docs.length, offline: docs.filter(d => d.syncStatus === 'offline').length };
     })(),
     (async () => {
       const db = patientsDB();
@@ -277,5 +282,10 @@ export async function getOrganizationStats(orgId: string): Promise<{
     })(),
   ]);
 
-  return { userCount: users, hospitalCount: hospitals, patientCount: patients };
+  return {
+    userCount: users,
+    hospitalCount: hospitals.total,
+    offlineHospitalCount: hospitals.offline,
+    patientCount: patients,
+  };
 }

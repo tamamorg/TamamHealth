@@ -79,6 +79,24 @@ function assignableRoleError(actorRole: UserRole, targetRole: UserRole | undefin
   return null;
 }
 
+/**
+ * Why a facility the admin just picked can be unknown here.
+ *
+ * The pickers read the browser's local replica; this route reads the server's
+ * copy. Accounts are provisioned centrally (password hashing must not happen
+ * client-side), so the facility has to have REACHED the server before staff
+ * can be pinned to it — and a facility registered on a device is a local write
+ * that replication carries up afterwards.
+ *
+ * The bare "Assigned hospital was not found" this replaces named a facility
+ * the admin could see on screen, so it read as a bug in the form rather than
+ * as a state that resolves itself. Say what is actually true instead.
+ */
+function unknownFacilityMessage(hospitalId: string): string {
+  return `Facility ${hospitalId} has not reached the server yet, so no account can be assigned to it. `
+    + 'If it was just registered, let sync finish and try again; otherwise pick another facility.';
+}
+
 async function validateActiveOrganization(orgId: string | undefined): Promise<NextResponse | null> {
   if (!orgId) {
     return NextResponse.json({ error: 'Organization assignment is required' }, { status: 400 });
@@ -386,7 +404,7 @@ async function postHandler(request: NextRequest) {
         const { getHospitalById } = await import('@/lib/services/hospital-service');
         const canonicalHospital = await getHospitalById(requestedHospitalId);
         if (!canonicalHospital) {
-          return NextResponse.json({ error: 'Assigned hospital was not found' }, { status: 400 });
+          return NextResponse.json({ error: unknownFacilityMessage(requestedHospitalId) }, { status: 400 });
         }
         if (requestedOrgId && canonicalHospital.orgId && requestedOrgId !== canonicalHospital.orgId) {
           return NextResponse.json(
@@ -457,7 +475,7 @@ async function postHandler(request: NextRequest) {
       const { getHospitalById } = await import('@/lib/services/hospital-service');
       const canonicalHospital = await getHospitalById(body.hospitalId as string);
       if (!canonicalHospital) {
-        return NextResponse.json({ error: 'Assigned hospital was not found' }, { status: 400 });
+        return NextResponse.json({ error: unknownFacilityMessage(body.hospitalId as string) }, { status: 400 });
       }
       if (body.orgId && canonicalHospital.orgId && body.orgId !== canonicalHospital.orgId) {
         return NextResponse.json(

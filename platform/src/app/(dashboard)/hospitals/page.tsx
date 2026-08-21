@@ -305,7 +305,13 @@ function HospitalsPageInner() {
                     </EhrListHeaderButton>
                     {canCreate && (
                       <EhrListHeaderButton primary onClick={() => setShowCreateFacility(true)} ariaLabel={t('orgHospitals.addFacility')}>
-                        <Plus className="w-4 h-4" />
+                        {/* `color` (not a class) is required on the primary
+                            variant: globals.css repaints any lucide glyph with
+                            no inline colour to --icon-color, which is the same
+                            brand blue as this button's fill — the plus was
+                            invisible. The prop writes a literal stroke, which
+                            beats the rule. Same as /inquiries and /hr/*. */}
+                        <Plus size={16} color="#fff" />
                       </EhrListHeaderButton>
                     )}
                   </>

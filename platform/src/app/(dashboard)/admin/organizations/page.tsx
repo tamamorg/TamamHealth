@@ -12,7 +12,7 @@
  * favor of SadbConfirmModal.
  */
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
@@ -20,8 +20,6 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useToast } from '@/components/Toast';
 import type { OrganizationDoc, UserRole } from '@/lib/db-types';
 import { Plus, X, Edit3, Ban, RefreshCw, Eye, EyeOff, ShieldCheck } from '@/components/icons/lucide';
-import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
-import type { RowAction } from '@/components/RowActionsMenu';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
 import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
@@ -145,10 +143,102 @@ function coerceStoredColorToHex(raw: string | undefined, fallbackHex: string): s
   }
 }
 
-/** Grid: Organization (wide) · Plan · Facilities · Users · Status · row actions (narrow). */
-// No trailing action gutter: clicking the row opens the actions, so the 48px
+/** Grid: Organization (wide) · Plan · Facilities · Users · Sync · Status. */
+// No trailing action gutter: clicking the row opens the pop card, so the 48px
 // that column held goes back to the organization name and its counts.
-const GRID_TEMPLATE = 'minmax(200px,1.7fr) minmax(88px,0.8fr) minmax(104px,0.9fr) minmax(104px,0.9fr) minmax(88px,0.8fr)';
+const GRID_TEMPLATE = 'minmax(200px,1.6fr) repeat(5, minmax(96px,1fr))';
+
+/** What the grid needs per organization, beyond the OrganizationDoc itself. */
+interface OrgRowStats {
+  userCount: number;
+  hospitalCount: number;
+  offlineHospitalCount: number;
+}
+
+/**
+ * Per-tenant sync: the share of this tenant's facilities currently online.
+ * Sync events are only tracked platform-wide, so facility reachability is the
+ * honest per-tenant proxy — the same one the super-admin dashboard used while
+ * this matrix lived there. A suspended tenant, or one with no facilities yet,
+ * has nothing to report rather than 0%.
+ */
+function tenantSync(org: OrganizationDoc, stats?: OrgRowStats): { label: string; color: string } {
+  const suspended = org.subscriptionStatus === 'suspended' || org.subscriptionStatus === 'cancelled';
+  if (!stats) return { label: '…', color: 'var(--text-muted)' };
+  if (suspended || stats.hospitalCount === 0) return { label: '—', color: 'var(--text-muted)' };
+  const pct = Math.round(((stats.hospitalCount - stats.offlineHospitalCount) / stats.hospitalCount) * 100);
+  return { label: `${pct}%`, color: pct < 95 ? 'var(--color-warning-700)' : 'var(--color-success-800)' };
+}
+
+/**
+ * Tenant pop card — what a row click opens.
+ *
+ * The row already carries the tenant's health figures; repeating them here
+ * (rather than jumping straight to a menu of two verbs) means the person about
+ * to edit or deactivate an organization is looking at its plan, capacity and
+ * sync state while they decide. The actions live in the footer, so the card is
+ * both the detail view and the action surface — there is no second popup.
+ */
+function TenantCard({ org, stats, t, onClose, onEdit, onDeactivate }: {
+  org: OrganizationDoc;
+  stats?: OrgRowStats;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  onClose: () => void;
+  onEdit: () => void;
+  onDeactivate: () => void;
+}) {
+  const titleId = 'org-tenant-card-title';
+  const sync = tenantSync(org, stats);
+  const onboarded = onboardedLabel(org.createdAt);
+  const orgKind = org.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
+  const details: Array<{ label: string; value: ReactNode }> = [
+    { label: t('orgAdmin.colPlan'), value: <span className="capitalize">{org.subscriptionPlan}</span> },
+    { label: t('orgAdmin.colStatus'), value: <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip> },
+    { label: t('orgAdmin.colFacilities'), value: stats ? `${stats.hospitalCount} / ${org.maxHospitals}` : '…' },
+    { label: t('orgAdmin.colUsers'), value: stats ? `${stats.userCount} / ${org.maxUsers}` : '…' },
+    { label: t('orgAdmin.colSync'), value: <span style={{ color: sync.color }}>{sync.label}</span> },
+  ];
+  return (
+    <Modal onClose={onClose} width={520} labelledBy={titleId}>
+      <div className="modal-panel">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="sadb-card-meta">
+              {t('orgAdmin.tenantHealth')} · {orgKind}{onboarded ? ` · onboarded ${onboarded}` : ''}
+            </p>
+            <h2 id={titleId} className="text-lg font-bold mt-1 truncate" style={{ color: 'var(--text-primary)' }}>{org.name}</h2>
+          </div>
+          <button type="button" className="p-2 rounded-lg flex-shrink-0" onClick={onClose} aria-label={t('action.close')}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="py-5">
+          <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
+            {details.map(detail => (
+              <div key={detail.label} className="sadb-kv" style={{ padding: '12px 14px' }}>
+                <span>{detail.label}</span>
+                <span className="sadb-kv-value">{detail.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>{t('action.close')}</button>
+          {/* Deactivate only while the org is still live — same rule the row
+              actions menu applied before this card replaced it. */}
+          {org.isActive && (
+            <button type="button" className="btn btn-sm sadb-btn-danger" onClick={onDeactivate}>
+              <Ban className="w-4 h-4" /> {t('orgAdmin.deactivate')}
+            </button>
+          )}
+          <button type="button" className="btn btn-primary btn-sm" onClick={onEdit}>
+            <Edit3 className="w-4 h-4" /> {t('action.edit')}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function onboardedLabel(iso?: string): string | null {
   if (!iso) return null;
@@ -187,24 +277,13 @@ export default function AdminOrganizationsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<OrgFormData>(emptyForm);
   const [formLoading, setFormLoading] = useState(false);
-  const [orgStats, setOrgStats] = useState<Record<string, { userCount: number; hospitalCount: number }>>({});
+  const [orgStats, setOrgStats] = useState<Record<string, OrgRowStats>>({});
   const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
-  // One popup for the list; the clicked row supplies its actions and position.
-  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
-
-  /** What a row offers. Deactivate only appears while the org is still live. */
-  const actionsFor = (org: OrganizationDoc): RowAction[] => [
-    { key: 'edit', label: t('action.edit'), icon: <Edit3 className="w-4 h-4" />, onClick: () => openEdit(org) },
-    ...(org.isActive
-      ? [{
-          key: 'deactivate',
-          label: t('orgAdmin.deactivate'),
-          tone: 'danger' as const,
-          icon: <Ban className="w-4 h-4" />,
-          onClick: () => setDeactivateTarget(org),
-        }]
-      : []),
-  ];
+  // Clicking a row opens the tenant pop card rather than a bare menu: the same
+  // health figures the row shows, plus the actions, in one place. Held by id so
+  // an edit landing while the card is open re-reads the fresh doc.
+  const [tenantCardId, setTenantCardId] = useState<string | null>(null);
+  const tenantCard = tenantCardId ? organizations.find(o => o._id === tenantCardId) ?? null : null;
   const [deactivating, setDeactivating] = useState(false);
   // The "Administrator" section's toggle. On create it defaults ON — the
   // whole point is to collapse "create org" + "go create its admin at
@@ -239,17 +318,21 @@ export default function AdminOrganizationsPage() {
     let cancelled = false;
     const loadStats = async () => {
       const entries = await Promise.all(
-        organizations.map(async (org): Promise<[string, { userCount: number; hospitalCount: number }]> => {
+        organizations.map(async (org): Promise<[string, OrgRowStats]> => {
           try {
             const stats = await getStats(org._id);
-            return [org._id, { userCount: stats.userCount, hospitalCount: stats.hospitalCount }];
+            return [org._id, {
+              userCount: stats.userCount,
+              hospitalCount: stats.hospitalCount,
+              offlineHospitalCount: stats.offlineHospitalCount,
+            }];
           } catch {
-            return [org._id, { userCount: 0, hospitalCount: 0 }];
+            return [org._id, { userCount: 0, hospitalCount: 0, offlineHospitalCount: 0 }];
           }
         })
       );
       if (cancelled) return;
-      const next: Record<string, { userCount: number; hospitalCount: number }> = {};
+      const next: Record<string, OrgRowStats> = {};
       for (const [id, s] of entries) next[id] = s;
       setOrgStats(next);
     };
@@ -525,19 +608,24 @@ export default function AdminOrganizationsPage() {
 
         <SadbGridList
           template={GRID_TEMPLATE}
-          minWidth={820}
-          head={['Organization', 'Plan', 'Facilities', 'Users', 'Status']}
+          minWidth={880}
+          head={[
+            t('orgAdmin.organization'), t('orgAdmin.colPlan'), t('orgAdmin.colFacilities'),
+            t('orgAdmin.colUsers'), t('orgAdmin.colSync'),
+            <span key="status" style={{ textAlign: 'end' }}>{t('orgAdmin.colStatus')}</span>,
+          ]}
           empty={loading ? t('orgAdmin.loading') : t('orgAdmin.empty')}
         >
           {filteredOrgs.map(org => {
             const stats = orgStats[org._id];
+            const sync = tenantSync(org, stats);
             const onboarded = onboardedLabel(org.createdAt);
             const orgKind = org.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
             return (
               <SadbGridRow
                 key={org._id}
                 template={GRID_TEMPLATE}
-                onClick={e => setRowMenu(rowActionsAt(e, actionsFor(org)))}
+                onClick={() => setTenantCardId(org._id)}
               >
                 <span className="min-w-0">
                   <span className="sadb-tenant-name truncate" style={{ color: org.isActive ? undefined : 'var(--text-muted)' }}>
@@ -550,7 +638,8 @@ export default function AdminOrganizationsPage() {
                 <span className="capitalize">{org.subscriptionPlan}</span>
                 <span className="sadb-tenant-num">{stats ? `${stats.hospitalCount} / ${org.maxHospitals}` : '…'}</span>
                 <span className="sadb-tenant-num">{stats ? `${stats.userCount} / ${org.maxUsers}` : '…'}</span>
-                <span>
+                <span style={{ color: sync.color }}>{sync.label}</span>
+                <span style={{ textAlign: 'end' }}>
                   <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip>
                 </span>
               </SadbGridRow>
@@ -559,7 +648,16 @@ export default function AdminOrganizationsPage() {
         </SadbGridList>
       </SadbCard>
 
-      <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
+      {tenantCard && (
+        <TenantCard
+          org={tenantCard}
+          stats={orgStats[tenantCard._id]}
+          t={t}
+          onClose={() => setTenantCardId(null)}
+          onEdit={() => { setTenantCardId(null); openEdit(tenantCard); }}
+          onDeactivate={() => { setTenantCardId(null); setDeactivateTarget(tenantCard); }}
+        />
+      )}
 
       {/* Create/Edit Modal */}
       {showForm && (

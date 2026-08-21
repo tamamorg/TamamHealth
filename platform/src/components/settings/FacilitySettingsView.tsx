@@ -121,7 +121,9 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
     if (!effectiveHospitalId) return;
     setSaving(section);
     try {
-      const saved = await saveFacilitySettings(effectiveHospitalId, patch, orgId);
+      // 4th arg: only let the save touch the global store when this IS the
+      // session's own facility — see saveFacilitySettings.
+      const saved = await saveFacilitySettings(effectiveHospitalId, patch, orgId, hospitalId);
       if (!hospitalId) setSelectedSettings(saved);
       setDraft(saved);
       showToast('Facility settings saved', 'success');

@@ -11,7 +11,7 @@ import type { OrganizationDoc } from '@/lib/db-types';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
 
 export default function OrgBrandingPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, refreshCurrentUser } = useAuth();
   const { t } = useTranslation();
   const [org, setOrg] = useState<OrganizationDoc | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,6 +106,9 @@ export default function OrgBrandingPage() {
       for (const [key, value] of Object.entries(vars)) {
         document.documentElement.style.setProperty(key, value);
       }
+      // CSS variables are only half of it — the org name in the header and
+      // `currentUser.branding` (logo, brand colour) come from the session.
+      await refreshCurrentUser();
 
       setSuccess(t('branding.savedSuccess'));
       setTimeout(() => setSuccess(''), 4000);

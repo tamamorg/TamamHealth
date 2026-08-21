@@ -47,7 +47,7 @@ const sectionCopy: Record<OrganizationSettingsSection, { title: string; note: st
 
 export default function OrganizationSettingsPanel({ section, users = [], hospitals = [], onNavigate }: Props) {
   const { t } = useTranslation();
-  const { currentUser } = useAuth();
+  const { currentUser, refreshCurrentUser } = useAuth();
   const { showToast } = useToast();
   const [org, setOrg] = useState<OrganizationDoc | null>(null);
   const [loading, setLoading] = useState(true);
@@ -234,6 +234,10 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
                       const { updateOrganization } = await import('@/lib/services/organization-service');
                       await updateOrganization(org._id, { lockTimeoutMinutes: lockTimeout }, currentUser?._id, currentUser?.username);
                       setOrg({ ...org, lockTimeoutMinutes: lockTimeout });
+                      // The idle timer reads `currentUser.organization`, not this
+                      // local copy — refresh the session or the new timeout only
+                      // takes effect after the next sign-in.
+                      await refreshCurrentUser();
                       localStorage.setItem('tamamhealth-lock-timeout', String(lockTimeout * 60_000));
                       showToast(t('orgSettings.toastTimeoutUpdated'), 'success');
                     } catch {

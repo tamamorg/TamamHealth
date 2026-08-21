@@ -2425,71 +2425,81 @@ thead th {
   font-weight: 700;
 }
 
-/* KPI stat "pill" — compact chip that hugs its content (icon + value + label)
-   instead of a stretched, mostly-empty full-width card. The label rides inline
-   beside the number so the figure actually reads as e.g. "40 Households". */
+/* KPI stat tile — the square dashboard card, shared by every module's KPI
+   strip. Shape follows the dashboard's own KPI row (SuperintendentDashboard):
+   icon + label on the top line, the figure large underneath, on a bordered
+   card that fills its grid column — rather than a chip hugging its text and
+   leaving the rest of the row empty.
+
+   `.kpi__body` is `display: contents` so the value and label become direct
+   grid items of `.kpi`. That lets the label ride beside the icon while the
+   value spans the row below, without every call site having to restructure
+   the markup it already shares. */
 .kpi {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 15px 7px 8px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "icon  label"
+    "value value";
+  column-gap: 8px;
+  row-gap: 8px;
+  padding: 14px 16px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 999px;
+  border-radius: var(--card-radius);
   box-shadow: var(--card-shadow) !important;
-  cursor: pointer;
-  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
   min-width: 0;
 }
 .kpi:hover {
   border-color: var(--card-hover-border);
   box-shadow: var(--card-shadow-lg) !important;
 }
+/* Both icon holders in use at the call sites land in the same slot. */
+.kpi > .icon-box-sm,
 .kpi__icon {
+  grid-area: icon;
   width: 28px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.kpi__icon svg { width: 14px; height: 14px; }
-.kpi__body {
-  flex: 0 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 6px;
-  white-space: nowrap;
-}
+.kpi > .icon-box-sm svg,
+.kpi__icon svg { width: 18px; height: 18px; }
+.kpi__body { display: contents; }
+/* Bottom-aligned so the figures line up across a row even when one tile's
+   label wraps to a second line. */
 .kpi__value {
+  grid-area: value;
+  align-self: end;
   font-family: var(--font-platform);
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.1;
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
   color: var(--text-strong);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
-/* Labels are visible again — they ride inline next to the value so the number
-   has meaning. Kept as the accessible name too. */
 .kpi__label {
-  font-size: 0.74rem;
-  font-weight: 600;
-  line-height: 1.1;
+  grid-area: label;
+  align-self: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
   color: var(--text-muted);
   letter-spacing: 0.01em;
-  white-space: nowrap;
 }
 
-/* KPI strip — a wrapping row of compact pills, sized to their content. */
+/* KPI strip — an even grid of tiles that fills the width of its container. */
 .kpi-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  align-items: stretch;
 }
 
 /* ============ KPI Card Header (shared across dashboard cards) ============
@@ -11160,7 +11170,7 @@ svg circle {
 }
 
 /* Stat cards stretch to fill their grid cell so a row of them lines up.
-   (.kpi pills are content-sized and intentionally excluded.) */
+   (.kpi tiles get the same treatment from .kpi-grid's own align-items.) */
 .stat-grid > .dash-stat { height: 100%; }
 
 /* ============ Unified Dashboard Card System ============ */
@@ -28260,7 +28270,9 @@ button.sadb-kpi:hover { border-color: var(--brand-300); }
   grid-template-columns: minmax(290px, 1.1fr) minmax(240px, 0.85fr) minmax(260px, 1fr);
   gap: 12px;
 }
-@media (max-width: 1180px) {
+/* Three narrow cards fit a good deal tighter than the chart this row used to
+   carry, so the two-up fallback starts later than it did. */
+@media (max-width: 980px) {
   .sadb-row-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .sadb-row-2 > :last-child { grid-column: 1 / -1; }
 }

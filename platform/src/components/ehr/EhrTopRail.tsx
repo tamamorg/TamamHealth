@@ -66,8 +66,13 @@ export default function EhrTopRail() {
   // Facility first when there is one: it is the narrower, more useful answer to
   // "where am I". The organization then rides underneath as context rather than
   // replacing it, and stands alone when there is no facility to show.
+  // For every other role this line answers "where am I" — the facility, then
+  // the organization. The platform administrator belongs to neither, so the
+  // only true answer is who they are: their own display name, which they can
+  // change in Settings and see reflected here (it seeds as "TamamHealth
+  // Platform Admin", so the console reads the same until they rename it).
   const centerLabel = isPlatformAdmin
-    ? 'TamamHealth Platform Admin'
+    ? currentUser?.name || 'TamamHealth Platform Admin'
     : facilityName || orgName || (isNationalRole ? 'Ministry of Health' : undefined);
   // Only a second line when it would say something the main line doesn't.
   const centerSubLabel = isPlatformAdmin

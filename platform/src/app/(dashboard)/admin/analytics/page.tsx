@@ -8,12 +8,32 @@ import { TrendingUp, Activity } from '@/components/icons/lucide';
 import EmptyState from '@/components/EmptyState';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, CartesianGrid, Legend
+  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, CartesianGrid, ComposedChart, Legend
 } from 'recharts';
 import { tooltipStyle as chartTooltipStyle, axisTick, AreaGradients } from '@/components/ChartCard';
 import {
   SadbPage, SadbCard, SadbKpiTile, SadbPanelHeader, SadbGridList, SadbGridRow, SadbKvRow, SadbChip, statusChip,
 } from '@/components/admin/sadb-ui';
+
+/** Local day bucket — the trend is read the way a operator reads a calendar,
+ *  in local days, not UTC slices. */
+function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function dailySeries(dates: string[], days: number): Array<{ day: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const iso of dates) {
+    if (iso) counts.set(dayKey(iso), (counts.get(dayKey(iso)) || 0) + 1);
+  }
+  const today = new Date();
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (days - 1 - i));
+    const key = dayKey(d.toISOString());
+    return { day: key, count: counts.get(key) || 0 };
+  });
+}
 
 interface OrgDataPoint {
   orgId: string;
@@ -72,6 +92,8 @@ export default function AdminAnalyticsPage() {
   const [orgChartMode, setOrgChartMode] = useState<ChartMode>('bar');
   const [growthChartMode, setGrowthChartMode] = useState<ChartMode>('line');
   const [usersChartMode, setUsersChartMode] = useState<ChartMode>('bar');
+  const [activityChartMode, setActivityChartMode] = useState<ChartMode>('area');
+  const [activity, setActivity] = useState<{ encounters: string[]; failures: string[] } | null>(null);
 
   // Load per-org stats — parallelised (was a sequential for-await loop).
   useEffect(() => {
@@ -115,6 +137,50 @@ export default function AdminAnalyticsPage() {
     })();
     return () => { cancelled = true; };
   }, [currentUser]);
+
+  // Platform activity — encounters against failed privileged actions, read
+  // from the same local stores the super-admin dashboard reads (this card
+  // used to live there; Analytics is where trends belong).
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'super_admin') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ getAllEncounters }, { getRecentAuditLogs }] = await Promise.all([
+          import('@/lib/services/encounter-service'),
+          import('@/lib/services/audit-service'),
+        ]);
+        const [encounters, logs] = await Promise.all([getAllEncounters(), getRecentAuditLogs(1000)]);
+        if (cancelled) return;
+        setActivity({
+          encounters: encounters.map(e => e.createdAt || e.startedAt || '').filter(Boolean),
+          failures: logs.filter(l => l.success === false).map(l => l.createdAt).filter(Boolean),
+        });
+      } catch (err) {
+        console.error('Failed to load platform activity:', err);
+        if (!cancelled) setActivity({ encounters: [], failures: [] });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser]);
+
+  const activityTrend = useMemo(() => {
+    const enc = dailySeries(activity?.encounters || [], 14);
+    const fails = dailySeries(activity?.failures || [], 14);
+    return enc.map((p, i) => ({
+      day: new Date(`${p.day}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+      encounters: p.count,
+      failures: fails[i]?.count || 0,
+    }));
+  }, [activity]);
+
+  /* Failures ride a hidden second axis (drawn against their own scale) so one
+     failed login stays visible next to a thousand encounters; the tooltip
+     still reports the raw counts. */
+  const failAxisMax = useMemo(
+    () => Math.ceil(Math.max(4, ...activityTrend.map(t => t.failures)) * 1.4),
+    [activityTrend],
+  );
 
   /** Per-org lookup keyed by org id (was a positional orgData[i] join, which
    *  broke silently the moment the two arrays fell out of order). */
@@ -337,6 +403,38 @@ export default function AdminAnalyticsPage() {
     );
   }
 
+  function renderActivityChart(mode: ChartMode) {
+    if (!activity) {
+      return <div className="flex items-center justify-center h-64"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('analytics.loadingChartData')}</p></div>;
+    }
+    if (activity.encounters.length === 0 && activity.failures.length === 0) {
+      return <div className="flex items-center justify-center h-64"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('analytics.noActivityYet')}</p></div>;
+    }
+    return (
+      <ResponsiveContainer width="100%" height={280}>
+        <ComposedChart data={activityTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }} barCategoryGap="28%">
+          <CartesianGrid stroke="var(--border-light)" vertical={false} />
+          <XAxis dataKey="day" tickLine={false} axisLine={false} tick={axisTick} interval="preserveStartEnd" />
+          <YAxis
+            tickLine={false} axisLine={false} tick={axisTick} width={38} allowDecimals={false}
+            tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(v))}
+          />
+          <YAxis yAxisId="failures" hide domain={[0, failAxisMax]} />
+          <Tooltip {...chartTooltipStyle} />
+          <Legend wrapperStyle={{ fontSize: '11px' }} />
+          {mode === 'bar' ? (
+            <Bar dataKey="encounters" name={t('analytics.legendEncounters')} fill="var(--accent-primary)" fillOpacity={0.55} maxBarSize={26} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+          ) : mode === 'area' ? (
+            <Area type="monotone" dataKey="encounters" name={t('analytics.legendEncounters')} stroke="var(--accent-primary)" strokeWidth={2} fill="var(--accent-primary)" fillOpacity={0.14} isAnimationActive={false} />
+          ) : (
+            <Line type="monotone" dataKey="encounters" name={t('analytics.legendEncounters')} stroke="var(--accent-primary)" strokeWidth={2} dot={false} isAnimationActive={false} />
+          )}
+          <Line yAxisId="failures" type="monotone" dataKey="failures" name={t('analytics.legendAuditFailures')} stroke="var(--color-danger-500)" strokeWidth={1.8} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    );
+  }
+
   return (
     <SadbPage>
       <SadbPanelHeader title={t('analytics.title')} />
@@ -348,6 +446,17 @@ export default function AdminAnalyticsPage() {
         <SadbKpiTile label={t('patients.kpiTotalPatients')} value={totalPatientsAll.toLocaleString()} />
         <SadbKpiTile label={t('analytics.avgPatientsPerOrg')} value={avgPatientsPerOrg.toLocaleString()} />
       </div>
+
+      {/* Platform activity — real encounters vs failed privileged actions.
+          Moved here from the super-admin dashboard, which now carries sync &
+          interoperability in that slot. */}
+      <SadbCard
+        title={t('analytics.platformActivity')}
+        meta={t('analytics.platformActivityMeta')}
+        action={<ChartModePills mode={activityChartMode} onChange={setActivityChartMode} />}
+      >
+        <div className="px-3 pt-3 pb-1">{renderActivityChart(activityChartMode)}</div>
+      </SadbCard>
 
       {/* Charts row 1: patients-per-org chart + plan/status pies */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">

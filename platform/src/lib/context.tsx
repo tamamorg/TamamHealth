@@ -63,6 +63,75 @@ interface AppUser {
 }
 
 /**
+ * Turn the raw `/api/auth/me` user payload into the full `AppUser` the app
+ * renders from: hospital document, organization document, resolved org name,
+ * and the branding whose CSS variables are applied to <html> as a side effect.
+ *
+ * Extracted so session-restore and `refreshCurrentUser()` build identity
+ * exactly the same way. Before this existed, `currentUser` was only ever set
+ * at login/restore, so a profile edit (display name), an org rename, a lock
+ * timeout change, or a branding change stayed invisible for the rest of the
+ * session — the app kept rendering a snapshot taken at sign-in.
+ */
+async function hydrateAppUser(raw: {
+  _id: string; username: string; name: string; role: UserRole;
+  hospitalId?: string; orgId?: string; orgName?: string;
+  [key: string]: unknown;
+}): Promise<AppUser> {
+  let hospital: HospitalDoc | undefined;
+  if (raw.hospitalId) {
+    try {
+      const { getHospitalById } = await import('./services/hospital-service');
+      const h = await getHospitalById(raw.hospitalId);
+      if (h) hospital = h;
+    } catch {
+      // Not replicated to this device yet — the id/name claims still stand.
+    }
+  }
+
+  let organization: OrganizationDoc | undefined;
+  if (raw.orgId) {
+    try {
+      const { getOrganizationById } = await import('./services/organization-service');
+      const org = await getOrganizationById(raw.orgId);
+      if (org) organization = org;
+    } catch {
+      // Same: absence of the org doc must not block the session.
+    }
+  }
+
+  const { getOrgBranding, brandingToCSSVars } = await import('./branding');
+  const branding = getOrgBranding(organization);
+  const vars = brandingToCSSVars(branding);
+  for (const [key, value] of Object.entries(vars)) {
+    document.documentElement.style.setProperty(key, value);
+  }
+
+  if (organization?.locale) {
+    const { initLocaleFromOrg } = await import('./i18n/useTranslation');
+    initLocaleFromOrg(organization.locale);
+  }
+
+  // Hydrate the user's own role settings before anyone reads them. The login
+  // redirect asks for their "Start-up screen" the moment `login()` resolves,
+  // which is before the dashboard shell (and PreferenceEffects) has mounted.
+  try {
+    const { initRoleSettings } = await import('./settings/role-settings-store');
+    initRoleSettings(raw._id, raw.role);
+  } catch {
+    // Defaults stand.
+  }
+
+  return {
+    ...(raw as unknown as AppUser),
+    hospital,
+    organization,
+    orgName: organization?.name ?? raw.orgName,
+    branding,
+  };
+}
+
+/**
  * Why the server refused the last sign-in attempt.
  *
  * `login()` collapses every failure into `false`, which left the sign-in form
@@ -98,6 +167,9 @@ interface AppState {
   /** Why the most recent `login()` returned false, or null if the server was never reached. */
   lastLoginFailure: () => LoginFailure | null;
   logout: () => void;
+  /** Re-read the signed-in identity from the server (display name, org,
+   *  branding, lock timeout) and re-render every consumer with it. */
+  refreshCurrentUser: () => Promise<void>;
   toggleOnline: () => void;
   /** Sync state from the SyncManager (null when sync is disabled) */
   syncStatus: AggregateStatus | null;
@@ -156,6 +228,7 @@ interface AuthSlice {
   login: AppState['login'];
   lastLoginFailure: AppState['lastLoginFailure'];
   logout: AppState['logout'];
+  refreshCurrentUser: AppState['refreshCurrentUser'];
 }
 
 /** Replication state. The high-frequency slice. */
@@ -265,50 +338,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (res.ok) {
             const data = await res.json();
             if (data.user) {
-              // Load hospital data if user has a hospitalId
-              let hospital: HospitalDoc | undefined;
-              if (data.user.hospitalId) {
-                try {
-                  const { getHospitalById } = await import('./services/hospital-service');
-                  const h = await getHospitalById(data.user.hospitalId);
-                  if (h) hospital = h;
-                } catch {
-                  // OK
-                }
-              }
-
-              // Load organization data
-              let organization: OrganizationDoc | undefined;
-              if (data.user.orgId) {
-                try {
-                  const { getOrganizationById } = await import('./services/organization-service');
-                  const org = await getOrganizationById(data.user.orgId);
-                  if (org) organization = org;
-                } catch {
-                  // OK
-                }
-              }
-
-              const { getOrgBranding, brandingToCSSVars } = await import('./branding');
-              const branding = getOrgBranding(organization);
-              const vars = brandingToCSSVars(branding);
-              for (const [key, value] of Object.entries(vars)) {
-                document.documentElement.style.setProperty(key, value);
-              }
-
-              // Apply org language setting
-              if (organization?.locale) {
-                const { initLocaleFromOrg } = await import('./i18n/useTranslation');
-                initLocaleFromOrg(organization.locale);
-              }
-
-              setCurrentUser({
-        ...data.user,
-        hospital,
-        organization,
-        orgName: organization?.name ?? data.user.orgName,
-        branding,
-      });
+              setCurrentUser(await hydrateAppUser(data.user));
               setIsAuthenticated(true);
 
               // The platform session was restored from cookies, but the
@@ -845,6 +875,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         mustChangePassword: geo.mustChangePassword,
         branding,
       });
+      // Same as the restore path: the login redirect reads the user's
+      // "Start-up screen" as soon as this returns.
+      try {
+        const { initRoleSettings } = await import('./settings/role-settings-store');
+        initRoleSettings(user._id, user.role as UserRole);
+      } catch {
+        // Defaults stand.
+      }
       setIsAuthenticated(true);
       return user.role as UserRole;
     } catch (err) {
@@ -868,6 +906,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // internal error text to the user — diagnostics go to the console and
       // Sentry above.
       return false;
+    }
+  }, []);
+
+  /**
+   * Re-read the signed-in identity from the server and re-render the app with
+   * it. `/api/auth/me` hydrates from the live user record (not the JWT), so
+   * this picks up a display-name change, a department move, an org rename, a
+   * new lock timeout, or fresh branding without a re-login.
+   *
+   * Call it after any write that changes who the current user is or what
+   * organization they belong to. Best-effort by design: offline, or on any
+   * server error, the existing identity simply stands — a failed refresh must
+   * never sign anyone out mid-shift.
+   */
+  const refreshCurrentUser = useCallback(async (): Promise<void> => {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data?.user) return;
+      setCurrentUser(await hydrateAppUser(data.user));
+    } catch {
+      // Offline or unreachable — keep the identity we already have.
     }
   }, []);
 
@@ -989,8 +1050,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // these values actually changes. setState setters and the useCallback'd
   // actions are stable, so they don't need to be in the dependency list.
   const authValue = useMemo<AuthSlice>(() => ({
-    isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout,
-  }), [isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout]);
+    isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout, refreshCurrentUser,
+  }), [isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout, refreshCurrentUser]);
 
   const syncValue = useMemo<SyncSlice>(() => ({
     isOnline, isNetworkUp, syncPaused, lastSync, syncStatus, syncNow, toggleOnline,

@@ -57,6 +57,7 @@ import type { TriageDoc } from '@/lib/db-types';
 import { encountersDB, labResultsDB } from '@/lib/db';
 import { makeCoalescer } from '@/lib/hooks/live-reload';
 import { withReturnTo } from '@/lib/navigation/return-to';
+import { useRoleChoice, useRoleFlag } from '@/lib/settings/useRoleSetting';
 
 export type WorklistPatient = {
   _id: string;
@@ -255,11 +256,21 @@ export function buildUnifiedPatientRows({
   selectedAppointmentsForDay,
   photoByPatientId,
   clinicianName,
+  sortMode = 'Appointment time',
+  mineOnly = false,
+  nowMs,
 }: {
   patients: WorklistPatient[];
   selectedAppointmentsForDay: AppointmentDoc[];
   photoByPatientId: Map<string, string>;
   clinicianName: string;
+  /** The doctor's "Sort patients by" setting (`queue.sort`). */
+  sortMode?: string;
+  /** The doctor's "Show only patients assigned to me" setting (`queue.mineOnly`). */
+  mineOnly?: boolean;
+  /** Wall clock for the wait-time sort. Injected so the ordering is testable
+   *  (the rest of this file samples `nowMs` for the same reason). */
+  nowMs?: number;
 }): UnifiedPatientRow[] {
   const appointmentByPatient = new Map<string, AppointmentDoc>();
   const appointmentByName = new Map<string, AppointmentDoc>();
@@ -321,11 +332,41 @@ export function buildUnifiedPatientRows({
     });
   }
 
-  return rows.sort((a, b) => {
+  // "Show only patients assigned to me" hides the wider facility queue —
+  // the unclaimed rows that exist so any doctor can pick them up.
+  const visible = mineOnly
+    ? rows.filter(row => row.isAssigned && (row.patient?.assignedDoctor || row.patient?.assignmentStatus))
+    : rows;
+
+  // Acuity rank for "Acuity first"; also the tiebreak nothing else resolves.
+  const acuityRank = (row: UnifiedPatientRow) =>
+    row.triagePriority === 'RED' ? 0 : row.triagePriority === 'YELLOW' ? 1 : 2;
+  // Minutes waited, from check-in. Rows with no check-in have not started
+  // waiting, so they sort last rather than pretending to a zero-minute wait.
+  const clock = nowMs ?? Date.now();
+  const waitMinutes = (row: UnifiedPatientRow) => {
+    const since = row.appointment?.checkedInAt;
+    if (!since) return -1;
+    const ms = clock - new Date(since).getTime();
+    return Number.isFinite(ms) && ms > 0 ? ms / 60_000 : 0;
+  };
+  const byAppointmentTime = (a: UnifiedPatientRow, b: UnifiedPatientRow) =>
+    (a.appointment?.appointmentTime || '99:99').localeCompare(b.appointment?.appointmentTime || '99:99')
+    || a.name.localeCompare(b.name);
+
+  return visible.sort((a, b) => {
     if (a.isAssigned !== b.isAssigned) return a.isAssigned ? -1 : 1;
-    const aTime = a.appointment?.appointmentTime || '99:99';
-    const bTime = b.appointment?.appointmentTime || '99:99';
-    return aTime.localeCompare(bTime) || a.name.localeCompare(b.name);
+    if (sortMode === 'Longest wait first') {
+      const diff = waitMinutes(b) - waitMinutes(a);
+      if (diff) return diff;
+      return acuityRank(a) - acuityRank(b) || byAppointmentTime(a, b);
+    }
+    if (sortMode === 'Acuity first') {
+      const diff = acuityRank(a) - acuityRank(b);
+      if (diff) return diff;
+      return waitMinutes(b) - waitMinutes(a) || byAppointmentTime(a, b);
+    }
+    return byAppointmentTime(a, b);
   });
 }
 
@@ -544,6 +585,11 @@ export default function EhrClinicalDashboard({
   const searchParams = useSearchParams();
   const search = searchParams.toString();
   const { showToast } = useToast();
+  // "My queue" settings (design 11). Read live, so changing them in Settings
+  // reorders this list without a reload.
+  const queueSort = useRoleChoice('queue.sort', 'Longest wait first');
+  const queueMineOnly = useRoleFlag('queue.mineOnly', true);
+  const queueOverTarget = useRoleFlag('queue.overTarget', true);
   // Gate the "Start consultation" action to roles that can actually consult,
   // and the "Dispense" action (header button, patient search, and the modal
   // itself) to roles that can actually dispense — a pharmacist working this
@@ -865,7 +911,8 @@ export default function EhrClinicalDashboard({
   const appointmentQuery = appointmentSearch.trim().toLowerCase();
   const unifiedPatientRows = useMemo<UnifiedPatientRow[]>(() => buildUnifiedPatientRows({
     patients, selectedAppointmentsForDay, photoByPatientId, clinicianName,
-  }), [clinicianName, patients, photoByPatientId, selectedAppointmentsForDay]);
+    sortMode: queueSort, mineOnly: queueMineOnly,
+  }), [clinicianName, patients, photoByPatientId, selectedAppointmentsForDay, queueSort, queueMineOnly]);
   const visiblePatientRows = unifiedPatientRows.filter(row => {
     // Assigned patients without a scheduled appointment belong to today's
     // worklist. Appointment-backed rows follow the selected calendar day.

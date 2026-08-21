@@ -8,7 +8,8 @@
  * and the notification watcher all stay in sync.
  */
 
-import { getDefaultDashboard } from './role-routes';
+import { getDefaultDashboard, isPathAllowed } from './role-routes';
+import { getRoleChoice } from './settings/role-settings-store';
 
 export type Density = 'comfortable' | 'compact';
 
@@ -70,9 +71,40 @@ export function applyDensity(density: Density): void {
 }
 
 /**
- * The page a user should land on after login: always the role's default
- * dashboard.
+ * The "Start-up screen" options offered on the Settings page (design 11,
+ * `accountSection` in lib/role-settings.ts) mapped to the routes they name.
+ *
+ * Labels rather than routes because the spec is written for the person
+ * choosing, not the router. Anything not listed here — including the
+ * per-role "My dashboard" / "Facility dashboard" / "Nursing station"
+ * entries — falls through to the role's default dashboard.
+ */
+const LANDING_ROUTES: Record<string, string> = {
+  'Patients': '/patients',
+  'Appointments': '/appointments',
+  'Consultation': '/consultation',
+  'Ward board': '/wards',
+  'Triage': '/triage',
+  'Dispense queue': '/pharmacy',
+  'Stock': '/pharmacy',
+  'Lab worklist': '/lab',
+  'Check-in': '/rooming',
+  'Payments': '/payments',
+  'Reports': '/reports',
+};
+
+/**
+ * The page a user should land on after login.
+ *
+ * Their "Start-up screen" choice wins when they made one and their role may
+ * actually enter that route; otherwise the role's default dashboard. The
+ * route check matters because the choice outlives a role change — a nurse
+ * promoted to pharmacist must not be bounced by the proxy on every sign-in.
  */
 export function resolveLandingPage(role: string): string {
-  return getDefaultDashboard(role);
+  const fallback = getDefaultDashboard(role);
+  const choice = getRoleChoice('account.landing', '');
+  const route = LANDING_ROUTES[choice];
+  if (!route) return fallback;
+  return isPathAllowed(role, route) ? route : fallback;
 }

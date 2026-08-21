@@ -26,9 +26,10 @@ import { hasLockPin, setLockPin, clearLockPin } from '@/lib/hooks/useAutoLock';
 import { getRoleConfig } from '@/lib/permissions';
 import { isPathAllowed } from '@/lib/role-routes';
 import {
-  specForRole, getStoredRoleSettings, saveStoredRoleSettings,
+  specForRole, getStoredRoleSettings,
   type RoleSettingsValues, type RoleSettingRow, type RoleSettingSection,
 } from '@/lib/role-settings';
+import { replaceRoleSettings, resetRoleSettings } from '@/lib/settings/role-settings-store';
 import { initials, avatarTint } from '@/lib/patient-utils';
 import { FacilitySettingsView } from '@/components/settings/FacilitySettingsView';
 import OrganizationSettingsPanel, { type OrganizationSettingsSection } from '@/components/settings/OrganizationSettingsPanel';
@@ -100,7 +101,7 @@ type NavItem = { id: string; label: string; icon: LucideIcon; badge?: string };
 type NavGroup = { title: string; items: NavItem[] };
 
 export default function RoleSettingsView() {
-  const { currentUser, isOnline, syncPaused, lastSync } = useApp();
+  const { currentUser, isOnline, syncPaused, lastSync, refreshCurrentUser } = useApp();
   const { showToast } = useToast();
   const { canManageUsers, canAccess } = usePermissions();
   const { users, update: updateUser } = useUsers();
@@ -358,9 +359,16 @@ export default function RoleSettingsView() {
       const nextName = String(draft['account.displayName'] || '').trim();
       if (nextName && nextName !== currentUser.name) {
         await updateUser(currentUser._id, { name: nextName }, currentUser._id, currentUser.username);
+        // The account record is only half the change: `currentUser` is what
+        // the header, the avatar, and every clinical signature actually read.
+        // Without this the app keeps stamping the old name until re-login.
+        await refreshCurrentUser();
       }
 
-      saveStoredRoleSettings(currentUser._id, draft);
+      // Through the store, not straight to localStorage: this is what pushes
+      // the new values to every live consumer (queue order, prescribing
+      // prompts, MAR, notification filters) without a reload.
+      replaceRoleSettings(currentUser._id, draft);
       setBaseline(draft);
       showToast('Settings saved', 'success');
     } catch {
@@ -373,7 +381,7 @@ export default function RoleSettingsView() {
   const handleResetSettings = () => {
     if (!window.confirm('Reset all settings on this device to their defaults?')) return;
     const defaults = buildDefaultSettings();
-    saveStoredRoleSettings(currentUser._id, {});
+    resetRoleSettings(currentUser._id, currentUser.role);
     setDraft(defaults);
     setBaseline(defaults);
     showToast('Settings reset', 'success');
@@ -923,6 +931,7 @@ export default function RoleSettingsView() {
                   setAcctSaving(true);
                   try {
                     await updateUser(currentUser._id, { name: next }, currentUser._id, currentUser.username);
+                    await refreshCurrentUser();
                     // Keep the settings draft in step so the name row doesn't
                     // show the old value or read as an unsaved change.
                     setDraft(prev => ({ ...prev, 'account.displayName': next }));

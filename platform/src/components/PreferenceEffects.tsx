@@ -2,6 +2,9 @@
 
 /**
  * Applies per-user UI preferences app-wide:
+ *  - the signed-in user's role settings, hydrated into the live store so every
+ *    consumer (queue order, prescribing prompts, MAR, notifications…) reads
+ *    the same effective values without a reload;
  *  - spacing density → <html data-density> (CSS targets it)
  *  - desktop notifications for new staff chat messages addressed to the
  *    current user while the tab is in the background.
@@ -11,12 +14,26 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/context';
 import { getUserPrefs, applyDensity, subscribeUserPrefs } from '@/lib/user-prefs';
+import { initRoleSettings, clearRoleSettings } from '@/lib/settings/role-settings-store';
 import { messagesDB } from '@/lib/db';
 import type { MessageDoc } from '@/lib/db-types';
 
 export default function PreferenceEffects() {
   const { currentUser } = useAuth();
   const userId = currentUser?._id;
+  const role = currentUser?.role;
+
+  // Role settings: hydrate the store for whoever is signed in, and re-hydrate
+  // when another tab writes them (localStorage `storage` fires cross-tab only).
+  useEffect(() => {
+    if (!userId || !role) { clearRoleSettings(); return; }
+    initRoleSettings(userId, role);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key && event.key.endsWith(userId)) initRoleSettings(userId, role);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [userId, role]);
 
   // Density: apply on mount and whenever it changes.
   useEffect(() => {
