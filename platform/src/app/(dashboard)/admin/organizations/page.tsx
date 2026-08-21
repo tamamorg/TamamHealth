@@ -20,7 +20,8 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useToast } from '@/components/Toast';
 import type { OrganizationDoc, UserRole } from '@/lib/db-types';
 import { Plus, X, Edit3, Ban, RefreshCw, Eye, EyeOff, ShieldCheck } from '@/components/icons/lucide';
-import RowActionsMenu from '@/components/RowActionsMenu';
+import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import type { RowAction } from '@/components/RowActionsMenu';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
 import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
@@ -145,7 +146,9 @@ function coerceStoredColorToHex(raw: string | undefined, fallbackHex: string): s
 }
 
 /** Grid: Organization (wide) · Plan · Facilities · Users · Status · row actions (narrow). */
-const GRID_TEMPLATE = 'minmax(200px,1.7fr) minmax(88px,0.8fr) minmax(104px,0.9fr) minmax(104px,0.9fr) minmax(88px,0.8fr) 48px';
+// No trailing action gutter: clicking the row opens the actions, so the 48px
+// that column held goes back to the organization name and its counts.
+const GRID_TEMPLATE = 'minmax(200px,1.7fr) minmax(88px,0.8fr) minmax(104px,0.9fr) minmax(104px,0.9fr) minmax(88px,0.8fr)';
 
 function onboardedLabel(iso?: string): string | null {
   if (!iso) return null;
@@ -186,6 +189,22 @@ export default function AdminOrganizationsPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [orgStats, setOrgStats] = useState<Record<string, { userCount: number; hospitalCount: number }>>({});
   const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
+  // One popup for the list; the clicked row supplies its actions and position.
+  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
+
+  /** What a row offers. Deactivate only appears while the org is still live. */
+  const actionsFor = (org: OrganizationDoc): RowAction[] => [
+    { key: 'edit', label: t('action.edit'), icon: <Edit3 className="w-4 h-4" />, onClick: () => openEdit(org) },
+    ...(org.isActive
+      ? [{
+          key: 'deactivate',
+          label: t('orgAdmin.deactivate'),
+          tone: 'danger' as const,
+          icon: <Ban className="w-4 h-4" />,
+          onClick: () => setDeactivateTarget(org),
+        }]
+      : []),
+  ];
   const [deactivating, setDeactivating] = useState(false);
   // The "Administrator" section's toggle. On create it defaults ON — the
   // whole point is to collapse "create org" + "go create its admin at
@@ -507,7 +526,7 @@ export default function AdminOrganizationsPage() {
         <SadbGridList
           template={GRID_TEMPLATE}
           minWidth={820}
-          head={['Organization', 'Plan', 'Facilities', 'Users', 'Status', '']}
+          head={['Organization', 'Plan', 'Facilities', 'Users', 'Status']}
           empty={loading ? t('orgAdmin.loading') : t('orgAdmin.empty')}
         >
           {filteredOrgs.map(org => {
@@ -515,7 +534,11 @@ export default function AdminOrganizationsPage() {
             const onboarded = onboardedLabel(org.createdAt);
             const orgKind = org.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
             return (
-              <SadbGridRow key={org._id} template={GRID_TEMPLATE}>
+              <SadbGridRow
+                key={org._id}
+                template={GRID_TEMPLATE}
+                onClick={e => setRowMenu(rowActionsAt(e, actionsFor(org)))}
+              >
                 <span className="min-w-0">
                   <span className="sadb-tenant-name truncate" style={{ color: org.isActive ? undefined : 'var(--text-muted)' }}>
                     {org.name}
@@ -530,19 +553,13 @@ export default function AdminOrganizationsPage() {
                 <span>
                   <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip>
                 </span>
-                <span className="flex items-center justify-center">
-                  <RowActionsMenu
-                    actions={[
-                      { key: 'edit', label: t('action.edit'), icon: <Edit3 className="w-4 h-4" />, onClick: () => openEdit(org) },
-                      ...(org.isActive ? [{ key: 'deactivate', label: t('orgAdmin.deactivate'), tone: 'danger' as const, icon: <Ban className="w-4 h-4" />, onClick: () => setDeactivateTarget(org) }] : []),
-                    ]}
-                  />
-                </span>
               </SadbGridRow>
             );
           })}
         </SadbGridList>
       </SadbCard>
+
+      <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
 
       {/* Create/Edit Modal */}
       {showForm && (

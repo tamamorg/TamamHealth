@@ -10,7 +10,8 @@ import {
   UserX, UserCheck, X, Eye, EyeOff, ChevronDown, AlertCircle,
   Copy, Check, RefreshCw, ShieldCheck,
 } from '@/components/icons/lucide';
-import RowActionsMenu from '@/components/RowActionsMenu';
+import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import type { RowAction } from '@/components/RowActionsMenu';
 import { avatarTint } from '@/lib/patient-utils';
 import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS, ehrTabId, ehrTabPanelId } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
@@ -31,7 +32,9 @@ import type { DataScope } from '@/lib/services/data-scope';
 // (minmax(320px, 1.6fr) + minmax(150px, 1fr) columns) so this list lines up
 // with the clinical worklist and patient registry; only the trailing actions
 // gutter is narrower, since it holds a lone kebab instead of a data column.
-const USER_GRID = 'minmax(320px, 1.6fr) repeat(3, minmax(150px, 1fr)) 44px';
+// No trailing action gutter — the row opens the actions, so the 44px it held
+// goes back to the data columns.
+const USER_GRID = 'minmax(320px, 1.6fr) repeat(3, minmax(150px, 1fr))';
 
 export default function OrgUsersPage() {
   const { currentUser, globalSearch } = useApp();
@@ -42,6 +45,25 @@ export default function OrgUsersPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState<string | null>(null);
+  // One popup for the list; the clicked row supplies its actions and position.
+  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
+
+  /** What a row offers. Deactivate is hidden for your own account — locking
+   *  yourself out of the console is never the intent behind that click. */
+  const actionsFor = (user: UserDoc): RowAction[] => [
+    {
+      key: 'reset',
+      label: t('orgUsers.resetPassword'),
+      icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
+      onClick: () => { setError(''); setShowResetModal(user._id); setResetPassword(''); },
+    },
+    ...(user.isActive && user._id !== currentUser?._id
+      ? [{ key: 'deactivate', label: t('orgUsers.deactivate'), tone: 'danger' as const, icon: <UserX className="w-4 h-4" />, onClick: () => handleDeactivate(user._id) }]
+      : []),
+    ...(!user.isActive
+      ? [{ key: 'reactivate', label: t('orgUsers.reactivate'), tone: 'success' as const, icon: <UserCheck className="w-4 h-4" />, onClick: () => handleReactivate(user._id) }]
+      : []),
+  ];
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>([]);
@@ -439,10 +461,8 @@ export default function OrgUsersPage() {
                   <span>{t('orgUsers.colRole')}</span>
                   <span>{t('orgUsers.colHospital')}</span>
                   {/* Status values right-align (shared .appointment-card-status),
-                      so its label right-aligns too — the last-child rule only
-                      covers the empty actions gutter here. */}
+                      so its label right-aligns to the same edge. */}
                   <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('orgUsers.colStatus')}</span>
-                  <span />
                 </div>
                 {filteredUsers.length === 0 && (
                   <EmptyState icon={Users} title={t('orgUsers.heading')} message={t('orgUsers.noUsersFound')} />
@@ -454,9 +474,10 @@ export default function OrgUsersPage() {
                       tabIndex={focusedUserId === user._id ? 0 : undefined}
                       aria-current={focusedUserId === user._id ? 'true' : undefined}
                       className="ehr-appointment-row appointment-card-row"
+                      role="button"
+                      onClick={e => setRowMenu(rowActionsAt(e, actionsFor(user)))}
                       style={{
                         gridTemplateColumns: USER_GRID,
-                        cursor: 'default',
                         background: focusedUserId === user._id ? 'var(--overlay-subtle)' : undefined,
                         outline: focusedUserId === user._id ? '2px solid var(--accent-primary)' : undefined,
                         outlineOffset: focusedUserId === user._id ? -2 : undefined,
@@ -500,20 +521,11 @@ export default function OrgUsersPage() {
                         <small>{user.mustChangePassword ? 'Password reset required' : 'Credentials current'}</small>
                       </div>
 
-                      {/* Edit / row actions */}
-                      <div className="flex justify-end">
-                        <RowActionsMenu
-                          ariaLabel="Actions"
-                          actions={[
-                            { key: 'reset', label: t('orgUsers.resetPassword'), tone: 'default', icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />, onClick: () => { setError(''); setShowResetModal(user._id); setResetPassword(''); } },
-                            ...(user.isActive && user._id !== currentUser?._id ? [{ key: 'deactivate', label: t('orgUsers.deactivate'), tone: 'danger' as const, icon: <UserX className="w-4 h-4" />, onClick: () => handleDeactivate(user._id) }] : []),
-                            ...(!user.isActive ? [{ key: 'reactivate', label: t('orgUsers.reactivate'), tone: 'success' as const, icon: <UserCheck className="w-4 h-4" />, onClick: () => handleReactivate(user._id) }] : []),
-                          ]}
-                        />
-                      </div>
                     </div>
                 ))}
           </div>
+
+          <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
 
           {/* Mounted for approvers whichever tab is showing, so the tab's
               pending badge is honest before anyone opens it. */}

@@ -54,6 +54,11 @@ export default function EhrTopRail() {
   // show the ministry name in the rail's center and give it the header search,
   // so the National Dashboard page doesn't need its own title + search row.
   const isNationalRole = currentUser?.role === 'government';
+  // The platform administrator belongs to no facility and no single tenant, so
+  // the rail's centre was blank for them — the one role signed into everything
+  // and told so nowhere. The console names itself here instead of on the
+  // dashboard page, which now opens straight into its numbers.
+  const isPlatformAdmin = currentUser?.role === 'super_admin';
   // Who the signed-in user works for. Org-wide roles (org_admin above all)
   // have no facility at all, so a facility-only header left them with a blank
   // centre — signed into an organization the app never named anywhere.
@@ -61,9 +66,13 @@ export default function EhrTopRail() {
   // Facility first when there is one: it is the narrower, more useful answer to
   // "where am I". The organization then rides underneath as context rather than
   // replacing it, and stands alone when there is no facility to show.
-  const centerLabel = facilityName || orgName || (isNationalRole ? 'Ministry of Health' : undefined);
+  const centerLabel = isPlatformAdmin
+    ? 'TamamHealth Platform Admin'
+    : facilityName || orgName || (isNationalRole ? 'Ministry of Health' : undefined);
   // Only a second line when it would say something the main line doesn't.
-  const centerSubLabel = facilityName && orgName && orgName !== facilityName ? orgName : undefined;
+  const centerSubLabel = isPlatformAdmin
+    ? 'Command Center'
+    : facilityName && orgName && orgName !== facilityName ? orgName : undefined;
   const { canRegisterPatients } = usePermissions();
   // Reception already carries "Register new patient" as a header action on its
   // own dashboard, so the rail's person-plus was the same act offered twice on

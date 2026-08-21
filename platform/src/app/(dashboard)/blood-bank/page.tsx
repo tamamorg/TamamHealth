@@ -19,7 +19,8 @@ import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { formatDate } from '@/lib/format-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
+import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import type { RowAction } from '@/components/RowActionsMenu';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { patientFullName } from '@/lib/patient-utils';
@@ -322,6 +323,9 @@ export default function BloodBankPage() {
     }
   };
 
+  // One popup for the table; the clicked row supplies its actions and position.
+  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
+
   const rowActions = (u: BloodBankDoc): RowAction[] => {
     const discardAction: RowAction = {
       key: 'discard',
@@ -452,7 +456,6 @@ export default function BloodBankPage() {
                   <th>Collected</th>
                   <th>Expires</th>
                   <th>Status</th>
-                  <th style={{ width: 56 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -462,7 +465,7 @@ export default function BloodBankPage() {
                   const expiringSoon = !expired && days < 7;
                   const expiryColor = expired ? 'var(--color-danger)' : expiringSoon ? 'var(--color-warning)' : 'var(--text-muted)';
                   return (
-                    <tr key={u._id}>
+                    <tr key={u._id} onClick={e => setRowMenu(rowActionsAt(e, rowActions(u)))} style={{ cursor: 'pointer' }}>
                       <td className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{u.unitId}</td>
                       <td>
                         <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>
@@ -479,15 +482,13 @@ export default function BloodBankPage() {
                       <td>
                         <Badge tone={STATUS_TONE[u.status]}>{u.status}</Badge>
                       </td>
-                      <td className="is-right">
-                        <RowActionsMenu actions={rowActions(u)} ariaLabel={`Actions for unit ${u.unitId}`} />
-                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           )}
+          <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
           </div>
         </div>
 

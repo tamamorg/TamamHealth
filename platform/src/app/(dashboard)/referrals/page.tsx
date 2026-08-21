@@ -23,7 +23,8 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import ReferralFilters, { type ReferralFilterState } from '@/components/referrals/ReferralFilters';
-import RowActionsMenu, { type RowAction } from '@/components/referrals/RowActionsMenu';
+import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import type { RowAction } from '@/components/referrals/RowActionsMenu';
 import ReferralFormModal from '@/components/referrals/ReferralFormModal';
 import type { Attachment, TransferPackage, ReferralDisposition } from '@/data/mock';
 import { formatPhoneDisplay } from '@/lib/field-formats';
@@ -59,6 +60,8 @@ export default function ReferralsPage() {
   ));
   const [showNewReferral, setShowNewReferral] = useState(false);
   const [expandedReferral, setExpandedReferral] = useState<string | null>(null);
+  // One popup for the table; the clicked row supplies its actions and position.
+  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
   // Structured filters — surfaced in a popover beside the platform search bar.
   const [colFilters, setColFilters] = useState<ReferralFilterState>({ patient: '', route: '', department: '', urgency: '', status: '' });
   // Deep link from a patient chart: /referrals?patient=<name> pre-filters.
@@ -621,13 +624,12 @@ export default function ReferralsPage() {
               {/* Patient absorbs the old Hospital ID column (the ID now sits
                   under the name), so it takes that width back. */}
               <colgroup>
+                <col style={{ width: '26%' }} />
                 <col style={{ width: '24%' }} />
-                <col style={{ width: '22%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '12%' }} />
                 <col style={{ width: '14%' }} />
-                <col style={{ width: '11%' }} />
-                <col style={{ width: '13%' }} />
                 <col style={{ width: '9%' }} />
-                <col style={{ width: '7%' }} />
               </colgroup>
               <thead>
                 <tr>
@@ -637,7 +639,6 @@ export default function ReferralsPage() {
                   <th>Urgency</th>
                   <th>Status</th>
                   <th>Date</th>
-                  <th className="ref-actions-col is-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -646,6 +647,13 @@ export default function ReferralsPage() {
                 const hasPatientChart = isRealPatient(ref.patientId) && !!patientById.get(ref.patientId);
                 // Status-driven actions, collapsed into a single kebab menu.
                 const rowActions: RowAction[] = [
+                  ...(hasPatientChart ? [{
+                    key: 'chart',
+                    label: t('referrals.openPatientChart'),
+                    tone: 'default' as const,
+                    icon: <ExternalLink className="w-4 h-4" />,
+                    onClick: () => router.push(`/patients/${ref.patientId}?tab=referrals`),
+                  }] : []),
                   {
                     key: 'view-details',
                     label: 'View referral details',
@@ -675,13 +683,7 @@ export default function ReferralsPage() {
                   <Fragment key={ref._id}>
                     <tr
                       className="cursor-pointer hover:bg-[var(--table-row-hover)]"
-                      onClick={() => {
-                        if (hasPatientChart) {
-                          router.push(`/patients/${ref.patientId}?tab=referrals`);
-                        } else {
-                          setExpandedReferral(ref._id);
-                        }
-                      }}
+                      onClick={e => setRowMenu(rowActionsAt(e, rowActions))}
                     >
                       {/* Same identity cell the lab queue and the registry use:
                           avatar, name, facility ID beneath — which is what the
@@ -731,11 +733,6 @@ export default function ReferralsPage() {
                         )}
                         </td>
                         <td className="text-xs font-mono whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{ref.referralDate}</td>
-                        <td>
-                          <div className="flex items-center justify-end">
-                            <RowActionsMenu actions={rowActions} ariaLabel="Actions" />
-                          </div>
-                        </td>
                     </tr>
 
                   </Fragment>
@@ -744,6 +741,7 @@ export default function ReferralsPage() {
               </tbody>
             </table>
             )}
+            <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
           </div>
         </div>
 

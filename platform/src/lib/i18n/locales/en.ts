@@ -5168,6 +5168,7 @@ const en: TranslationMap = {
   'referralChain.activeReferrals': 'Active Referrals',
   'referralChain.title': 'Referral Chain',
   'referralChain.viewAll': 'View all',
+  'referrals.openPatientChart': 'Open patient chart',
   'referrals.accept': 'Accept',
   'referrals.acceptDone': '{{accept}}% accept · {{done}}% done',
   'referrals.acceptTitle': 'Accept referral and transfer patient to this hospital',

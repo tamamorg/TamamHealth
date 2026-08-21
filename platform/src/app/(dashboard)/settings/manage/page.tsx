@@ -14,7 +14,7 @@ import { useToast } from '@/components/Toast';
 import { getAvailableRoles, getRoleConfig } from '@/lib/permissions';
 import { generateTempPassword } from '@/lib/temp-password';
 import { statesAndCounties } from '@/lib/data/south-sudan-reference';
-import type { UserRole } from '@/lib/db-types';
+import type { UserRole, UserDoc } from '@/lib/db-types';
 import FilterBar from '@/components/filters/FilterBar';
 import FilterSelect from '@/components/filters/FilterSelect';
 import {
@@ -22,7 +22,8 @@ import {
   X, Eye, EyeOff, RefreshCw, Check, Bell, LayoutDashboard, Trash2,
   Settings as SettingsIcon, Globe, Lock, Save, User as UserIcon,
 } from '@/components/icons/lucide';
-import RowActionsMenu from '@/components/RowActionsMenu';
+import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import type { RowAction } from '@/components/RowActionsMenu';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
 import { FacilitySettingsView } from '@/components/settings/FacilitySettingsView';
 import {
@@ -282,6 +283,8 @@ export default function SettingsPage() {
 
   // Reset password state
   const [resetUserId, setResetUserId] = useState<string | null>(null);
+  // One popup for the users table; the clicked row supplies its actions and position.
+  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
 
@@ -402,6 +405,13 @@ export default function SettingsPage() {
       showToast('Failed to update user status', 'error');
     }
   };
+
+  /** What a user row offers — opened by clicking the row itself. */
+  const userActions = (u: UserDoc): RowAction[] => [
+    { key: 'edit', label: 'Edit', icon: <Edit3 className="w-4 h-4" />, onClick: () => openEditUser(u._id) },
+    { key: 'reset', label: 'Reset Password', icon: <KeyRound className="w-4 h-4" />, onClick: () => { setResetUserId(u._id); setNewPassword(generateTempPassword()); setShowNewPassword(true); } },
+    { key: 'toggle', label: u.isActive ? 'Deactivate' : 'Activate', tone: u.isActive ? 'danger' : 'default', icon: u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />, onClick: () => handleToggleActive(u._id, u.isActive) },
+  ];
 
   // ─── Hospital Handlers ────────────────────────────────────
   const openCreateHospital = () => {
@@ -560,7 +570,7 @@ export default function SettingsPage() {
                 <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: 840 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      {['Name', 'Username', 'Role', 'Hospital', 'Status', 'Created', 'Actions'].map(h => (
+                      {['Name', 'Username', 'Role', 'Hospital', 'Status', 'Created'].map(h => (
                         <th key={h} className="text-start px-4 py-3" style={{
                           fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
                           textTransform: 'uppercase', letterSpacing: '0.05em',
@@ -570,11 +580,12 @@ export default function SettingsPage() {
                   </thead>
                   <tbody>
                     {usersLoading ? (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading users...</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading users...</td></tr>
                     ) : filteredUsers.length === 0 ? (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No users found</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No users found</td></tr>
                     ) : filteredUsers.map(u => (
-                      <tr key={u._id} style={{ borderBottom: '1px solid var(--border-light)' }}
+                      <tr key={u._id} style={{ borderBottom: '1px solid var(--border-light)', cursor: 'pointer' }}
+                          onClick={e => setRowMenu(rowActionsAt(e, userActions(u)))}
                           className="hover:bg-[rgba(17, 116, 180,0.03)] transition-colors">
                         <td className="px-4 py-3">
                           <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{u.name}</span>
@@ -600,22 +611,12 @@ export default function SettingsPage() {
                         <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                           {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center">
-                            <RowActionsMenu
-                              actions={[
-                                { key: 'edit', label: 'Edit', icon: <Edit3 className="w-4 h-4" />, onClick: () => openEditUser(u._id) },
-                                { key: 'reset', label: 'Reset Password', icon: <KeyRound className="w-4 h-4" />, onClick: () => { setResetUserId(u._id); setNewPassword(generateTempPassword()); setShowNewPassword(true); } },
-                                { key: 'toggle', label: u.isActive ? 'Deactivate' : 'Activate', tone: u.isActive ? 'danger' : 'default', icon: u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />, onClick: () => handleToggleActive(u._id, u.isActive) },
-                              ]}
-                            />
-                          </div>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
             </div>
           </div>
         )}

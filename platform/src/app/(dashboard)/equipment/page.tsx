@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import Modal from '@/components/Modal';
 import { Plus, X, CheckCircle2, Settings as Wrench } from '@/components/icons/lucide';
-import RowActionsMenu from '@/components/RowActionsMenu';
+import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import type { RowAction } from '@/components/RowActionsMenu';
 import { useApp } from '@/lib/context';
 import { useAssets } from '@/lib/hooks/useAssets';
 import { useToast } from '@/components/Toast';
@@ -43,6 +44,22 @@ export default function AssetsPage() {
   const q = globalSearch;
   const [createOpen, setCreateOpen] = useState(false);
   const [serviceFor, setServiceFor] = useState<AssetDoc | null>(null);
+  // One popup for the table; the clicked row supplies its actions and position.
+  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
+
+  /** What a row offers. "Mark operational" only shows while it is not. */
+  const actionsFor = (a: AssetDoc): RowAction[] => [
+    { key: 'service', label: t('equipment.logServiceTitle'), icon: <Wrench className="w-4 h-4" />, onClick: () => setServiceFor(a) },
+    ...(a.status !== 'operational'
+      ? [{
+          key: 'operational',
+          label: t('equipment.markOperationalTitle'),
+          tone: 'success' as const,
+          icon: <CheckCircle2 className="w-4 h-4" />,
+          onClick: () => setStatus(a._id, 'operational', { id: currentUser?._id || 'unknown', name: currentUser?.name || 'Staff' }),
+        }]
+      : []),
+  ];
 
   const [form, setForm] = useState({
     name: '', assetTag: '', serialNumber: '', category: 'medical_equipment' as AssetCategory,
@@ -169,18 +186,18 @@ export default function AssetsPage() {
                 <th>{t('equipment.colLocation')}</th>
                 <th>{t('equipment.colStatus')}</th>
                 <th>{t('equipment.colService')}</th>
-                <th></th>
+
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('equipment.noAssetsMatch')}</td></tr>
+                <tr><td colSpan={5} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('equipment.noAssetsMatch')}</td></tr>
               )}
               {filtered.map(a => {
                 const tok = STATUS_TOKENS[a.status];
                 const dueSoon = a.nextServiceDueAt && (new Date(a.nextServiceDueAt).getTime() - Date.now()) < 30 * 86400000;
                 return (
-                  <tr key={a._id}>
+                  <tr key={a._id} onClick={e => setRowMenu(rowActionsAt(e, actionsFor(a)))} style={{ cursor: 'pointer' }}>
                     <td>
                       <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{a.name}</div>
                       <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
@@ -204,21 +221,12 @@ export default function AssetsPage() {
                         </span>
                       ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
-                    <td className="is-right">
-                      <div className="flex justify-end">
-                        <RowActionsMenu
-                          actions={[
-                            { key: 'service', label: t('equipment.logServiceTitle'), icon: <Wrench className="w-4 h-4" />, onClick: () => setServiceFor(a) },
-                            ...(a.status !== 'operational' ? [{ key: 'operational', label: t('equipment.markOperationalTitle'), tone: 'success' as const, icon: <CheckCircle2 className="w-4 h-4" />, onClick: () => setStatus(a._id, 'operational', { id: currentUser?._id || 'unknown', name: currentUser?.name || 'Staff' }) }] : []),
-                          ]}
-                        />
-                      </div>
-                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
           </div>
         </div>
 
