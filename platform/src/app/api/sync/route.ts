@@ -126,7 +126,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySyncMachineRequest } from '@/lib/sync-auth';
-import { query, upsertDocument, deleteDocument } from '@/lib/db/postgres';
+import {
+  query, upsertDocument, deleteDocument,
+  ConflictPolicy, TABLE_CONFLICT_POLICY,
+} from '@/lib/db/postgres';
 import { patientAgeInYears } from '@/lib/validation';
 
 /**
@@ -1240,7 +1243,22 @@ export async function POST(request: NextRequest) {
           // type is unknown — clear the id from every projection the DB feeds.
           // Document ids are globally unique, so the extra deletes are no-ops.
           const targets = db === 'tamamhealth_wards' ? WARDS_DB_ALL_TABLES : [baseTable];
-          for (const tbl of targets) await deleteDocument(tbl, change.id);
+          for (const tbl of targets) {
+            // An append-only table is the national copy of an audit, narcotics,
+            // or ledger trail. A tombstone upstream must not be able to remove
+            // one: the CouchDB validator now refuses to produce such a
+            // tombstone, and this is the second half of that guarantee — the
+            // projection stays whole even if a deletion reaches CouchDB by some
+            // path that bypasses the validator (an admin credential, a restored
+            // backup, a future replication topology).
+            if (TABLE_CONFLICT_POLICY[tbl] === ConflictPolicy.APPEND_ONLY) {
+              console.warn(
+                `[Sync] Refused to delete ${tbl}/${change.id}: table is append-only`
+              );
+              continue;
+            }
+            await deleteDocument(tbl, change.id);
+          }
         } else if (change.doc) {
           // Skip design documents
           if (change.id.startsWith('_design/')) continue;

@@ -352,6 +352,14 @@ export class SyncManager {
     this._lastCleanPoint = status.lastSync;
     void import('../security/local-wipe')
       .then(({ recordSyncedSequences }) => recordSyncedSequences())
+      .then(() => {
+        // A clean point is the only moment retention pruning can run: it is
+        // exactly when every local audit entry is known to be upstream. The
+        // push-only trails are never pulled back, so without this a tablet
+        // that stays signed in grows without bound.
+        return import('../services/audit-retention')
+          .then(({ pruneLocalAuditTrails }) => pruneLocalAuditTrails());
+      })
       .catch(() => {
         // Bookkeeping only. Failing here leaves databases looking dirty,
         // which keeps data rather than losing it.

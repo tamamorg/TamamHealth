@@ -205,6 +205,8 @@ export async function ensureCouchUser(input: {
   password: string;
   orgId?: string;
   hospitalId?: string;
+  /** Extra facilities this user covers, beyond `hospitalId`. */
+  facilityIds?: string[];
   platformRole?: string;
   skipPasswordRefreshIfRolesMatch?: boolean;
 }): Promise<void> {
@@ -213,7 +215,15 @@ export async function ensureCouchUser(input: {
 
   const roles: string[] = [];
   if (input.orgId) roles.push(`org:${input.orgId}`);
-  if (input.hospitalId) roles.push(`facility:${input.hospitalId}`);
+  // One claim per facility. The write validator accepts a document whose
+  // owning facility matches ANY of them, and the replication selector narrows
+  // reads to the same set — so a clinician covering two sites gets exactly two,
+  // instead of an org-wide role that grants every facility in the tenant.
+  for (const facilityId of [input.hospitalId, ...(input.facilityIds ?? [])]) {
+    if (!facilityId) continue;
+    const claim = `facility:${facilityId}`;
+    if (!roles.includes(claim)) roles.push(claim);
+  }
   if (input.platformRole) roles.push(`role:${input.platformRole}`);
 
   // Read current rev (if any) so PUT can replace cleanly.
@@ -271,12 +281,16 @@ export async function ensureCouchGatewayUser(input: {
   sub: string;
   orgId?: string;
   hospitalId?: string;
+  facilityIds?: string[];
   role: string;
 }): Promise<{ username: string; password: string }> {
   const secret = process.env.COUCHDB_GATEWAY_SECRET || '';
   if (secret.length < 32) throw new Error('[couch-auth] COUCHDB_GATEWAY_SECRET must be at least 32 characters');
   const orgId = assertOrganizationId(input.orgId);
-  const identity = `${input.sub}|${orgId}|${input.role}|${input.hospitalId || ''}`;
+  // facilityIds joins the identity so a coverage change rotates the derived
+  // password and re-provisions the claims, instead of leaving a stale grant.
+  const facilities = [...(input.facilityIds ?? [])].sort().join(',');
+  const identity = `${input.sub}|${orgId}|${input.role}|${input.hospitalId || ''}|${facilities}`;
   const username = `gw-${createHmac('sha256', secret).update(`user:${input.sub}`).digest('hex').slice(0, 32)}`;
   const password = createHmac('sha384', secret).update(`password:${identity}`).digest('base64url');
   const cacheKey = `${username}:${identity}`;
@@ -288,6 +302,7 @@ export async function ensureCouchGatewayUser(input: {
       password,
       orgId,
       hospitalId: input.hospitalId,
+      facilityIds: input.facilityIds,
       platformRole: input.role,
       skipPasswordRefreshIfRolesMatch: true,
     }).then(() => ({ username, password }));

@@ -28254,10 +28254,10 @@ button.sadb-kpi:hover { border-color: var(--brand-300); }
 .sadb-chip--blue { background: var(--tb-blue-50); border-color: var(--brand-400); color: var(--brand-800); }
 .sadb-chip--neutral { background: var(--ehr-head); border-color: var(--border-light); color: var(--text-muted); }
 
-/* ── Row 2: readiness · business · activity ── */
+/* ── Row 2: readiness · business · sync & interoperability ── */
 .sadb-row-2 {
   display: grid;
-  grid-template-columns: minmax(290px, 1fr) minmax(240px, 0.72fr) minmax(0, 1.55fr);
+  grid-template-columns: minmax(290px, 1.1fr) minmax(240px, 0.85fr) minmax(260px, 1fr);
   gap: 12px;
 }
 @media (max-width: 1180px) {
@@ -28457,7 +28457,7 @@ button.sadb-signal { cursor: pointer; }
 .sadb-tenant-sub { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
 .sadb-tenant-num { font-variant-numeric: tabular-nums; }
 
-/* ── Bottom row: risk queue · watchlist · sync ── */
+/* ── Three-up card row (sync jobs, and any 3-card operational row) ── */
 .sadb-row-3 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));

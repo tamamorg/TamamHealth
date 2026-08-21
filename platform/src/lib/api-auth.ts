@@ -19,6 +19,8 @@ export interface AuthPayload {
   name: string;
   hospitalId?: string;
   hospitalName?: string;
+  /** Extra facilities this user covers — see UserDoc.facilityIds. */
+  facilityIds?: string[];
   orgId?: string;
   /** ISO 3166-1 alpha-2 — facility's country (e.g. "SS" for South Sudan) */
   countryId?: string;

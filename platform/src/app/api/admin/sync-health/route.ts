@@ -16,6 +16,65 @@ import type { UserRole, SyncEventDoc } from '@/lib/db-types';
 
 const ALLOWED_ROLES: UserRole[] = ['super_admin', 'org_admin', 'medical_superintendent', 'hrio', 'government'];
 
+interface ReplicationHealth {
+  /** 'ok' | 'degraded' | 'unknown' — unknown means CouchDB could not be asked. */
+  status: 'ok' | 'degraded' | 'unknown';
+  running: number;
+  /** Jobs in any state other than running, with the state and the last error. */
+  unhealthy: { id: string; state: string; error?: string }[];
+  note?: string;
+}
+
+/**
+ * Health of the continuous tenant <-> aggregate replication jobs.
+ *
+ * In tenant mode, browsers write to `tamamhealth_*--org-x` and server-side
+ * `_replicator` jobs mirror those into the shared aggregates. The sync-worker
+ * only ever polls the aggregates, so if an inbound job stalls the worker keeps
+ * reporting success against a database that has stopped receiving writes, and
+ * one organisation's national analytics silently goes stale. Nothing watched
+ * those jobs; this is the probe that makes the failure visible.
+ */
+async function replicationHealth(): Promise<ReplicationHealth> {
+  const base = (process.env.COUCHDB_URL || process.env.NEXT_PUBLIC_COUCHDB_URL || '').replace(/\/+$/, '');
+  const user = process.env.COUCHDB_ADMIN_USER || process.env.COUCHDB_USER;
+  const pass = process.env.COUCHDB_ADMIN_PASSWORD || process.env.COUCHDB_PASSWORD;
+  if (!base || !user || !pass) {
+    return { status: 'unknown', running: 0, unhealthy: [], note: 'CouchDB admin credentials not configured' };
+  }
+  try {
+    const res = await fetch(`${base}/_scheduler/docs`, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`,
+        Accept: 'application/json',
+      },
+    });
+    if (!res.ok) {
+      return { status: 'unknown', running: 0, unhealthy: [], note: `_scheduler/docs returned ${res.status}` };
+    }
+    const body = await res.json() as { docs?: { doc_id?: string; state?: string; info?: { error?: string } }[] };
+    const docs = body.docs ?? [];
+    const running = docs.filter(d => d.state === 'running').length;
+    const unhealthy = docs
+      .filter(d => d.state !== 'running')
+      .map(d => ({
+        id: d.doc_id ?? 'unknown',
+        state: d.state ?? 'unknown',
+        error: d.info?.error,
+      }));
+    return { status: unhealthy.length ? 'degraded' : 'ok', running, unhealthy };
+  } catch (err) {
+    // A probe failure must not take down the whole health view — the outbox
+    // numbers above are still worth returning.
+    return {
+      status: 'unknown',
+      running: 0,
+      unhealthy: [],
+      note: err instanceof Error ? err.message : 'CouchDB unreachable',
+    };
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);
@@ -55,6 +114,7 @@ export async function GET(request: NextRequest) {
       outbox: stats,
       perFacilityLast24h: perFacility,
       windowHours: 24,
+      replication: await replicationHealth(),
     });
   } catch (err) {
     logApiError('[API /admin/sync-health GET]', err);

@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       password: ephemeralPassword,
       orgId: auth.orgId,
       hospitalId: auth.hospitalId,
+      facilityIds: auth.facilityIds,
       platformRole: auth.role,
     });
 

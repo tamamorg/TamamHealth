@@ -10,6 +10,11 @@
  * The overview posture list and continuity backup-age row read the actual
  * *persisted* policy (not the draft), and derive an honest three-way backup
  * signal (KAN-117): "unknown" must not read as "at risk".
+ *
+ * The Security watchlist section is the home of the high-risk-action list the
+ * super-admin dashboard used to carry: the same 7-day window and the same
+ * `classifyAuditRisk` severity, read live from the audit store, with every row
+ * opening its full entry in Audit Logs.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,13 +22,14 @@ import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
-import type { PlatformConfigDoc } from '@/lib/db-types';
+import type { AuditLogDoc, PlatformConfigDoc } from '@/lib/db-types';
 import { DEFAULT_POLICIES } from '@/lib/admin/super-admin-policies';
-import { Lock, FileText, AlertTriangle, Clock, ShieldCheck } from '@/components/icons/lucide';
+import { Lock, FileText, AlertTriangle, Clock, ShieldCheck, Eye } from '@/components/icons/lucide';
+import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import {
   SadbPage, SadbShell, useSadbTab, SadbPanelHeader, SadbSettingGroup, SadbSettingRow,
   SadbToggle, SadbValueButton, SadbEditorModal, SadbCard, SadbKvRow, SadbHeadLink,
-  SadbSaveBar, TONE_CHIP, type Tone,
+  SadbQueueRow, SadbSaveBar, SEVERITY_CHIP, TONE_CHIP, type Tone,
 } from '@/components/admin/sadb-ui';
 
 type Policy = NonNullable<PlatformConfigDoc['superAdminPolicies']>;
@@ -90,6 +96,8 @@ export default function SecurityCompliancePage() {
   const { showToast } = useToast();
   const { config, update } = usePlatformConfig();
   const [backupAgeHours, setBackupAgeHours] = useState<number | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogDoc[]>([]);
+  const [auditLoading, setAuditLoading] = useState(true);
 
   const [activeSection, setActiveSection] = useSadbTab('access');
 
@@ -100,6 +108,38 @@ export default function SecurityCompliancePage() {
   useEffect(() => {
     if (backupStatus?.ageHours != null) setBackupAgeHours(backupStatus.ageHours);
   }, [backupStatus]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { getRecentAuditLogs } = await import('@/lib/services/audit-service');
+        const logs = await getRecentAuditLogs(500);
+        if (mounted) setAuditLogs(logs);
+      } catch (err) {
+        console.error('Failed to load the security watchlist:', err);
+      } finally {
+        if (mounted) setAuditLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  /* Watchlist — medium risk and above, last 7 days, worst first. Same window
+     and same classifier the Risk Center and Audit Logs use. */
+  const watchlist = useMemo(() => {
+    const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
+    const order: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
+    return auditLogs
+      .map(log => ({ log, severity: classifyAuditRisk(log.action, log.success) }))
+      .filter(({ log, severity }) =>
+        severity !== 'low'
+        && log.createdAt
+        && new Date(log.createdAt).getTime() >= cutoff)
+      .sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity)
+        || new Date(b.log.createdAt).getTime() - new Date(a.log.createdAt).getTime())
+      .slice(0, 25);
+  }, [auditLogs]);
 
   // Three-way, not boolean: "unknown" must not read as "not within RPO".
   const backupWithinRpo = backupStatus?.state === 'ok';
@@ -200,6 +240,7 @@ export default function SecurityCompliancePage() {
       { id: 'breakglass', label: 'Break-glass', icon: AlertTriangle, count: BREAKGLASS_FIELDS.length },
       // +1: the backup-age fact row rendered alongside the two RPO/RTO fields.
       { id: 'continuity', label: 'Continuity Objectives', icon: Clock, count: CONTINUITY_FIELDS.length + 1 },
+      { id: 'watchlist', label: 'Security watchlist', icon: Eye, count: watchlist.length },
       { id: 'overview', label: 'Posture & Evidence', icon: ShieldCheck, count: postureRows.length },
     ],
   }];
@@ -259,6 +300,37 @@ export default function SecurityCompliancePage() {
                 chipTone={TONE_CHIP[backupUnknown ? 'muted' : backupWithinRpo ? 'ok' : 'warn']}
               />
             </SadbSettingGroup>
+          </>
+        )}
+
+        {activeSection === 'watchlist' && (
+          <>
+            <SadbPanelHeader
+              title="Security watchlist"
+              note="High-risk privileged actions recorded in the last 7 days, worst first. Open a row for the full audit entry."
+              tag="Last 7 days"
+            />
+            <SadbCard
+              title="High-risk actions"
+              meta={auditLoading ? 'Loading…' : `${watchlist.length} recorded`}
+              action={<SadbHeadLink onClick={() => router.push('/admin/audit')}>Open Audit Logs</SadbHeadLink>}
+            >
+              {watchlist.length === 0 ? (
+                <p className="sadb-empty">
+                  {auditLoading ? 'Reading the audit store…' : 'No high-risk actions recorded this week.'}
+                </p>
+              ) : watchlist.map(({ log, severity }) => (
+                <SadbQueueRow
+                  key={log._id}
+                  chip={severity}
+                  chipTone={SEVERITY_CHIP[severity]}
+                  title={log.action}
+                  sub={`${log.username || 'system'} · ${log.details}`}
+                  when={formatWhen(log.createdAt)}
+                  onClick={() => router.push(`/admin/audit?log=${encodeURIComponent(log._id)}`)}
+                />
+              ))}
+            </SadbCard>
           </>
         )}
 

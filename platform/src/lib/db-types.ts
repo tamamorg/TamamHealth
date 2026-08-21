@@ -43,6 +43,19 @@ export interface UserDoc extends BaseDoc {
   role: UserRole;
   hospitalId?: string;
   hospitalName?: string;
+  /**
+   * Additional facilities this user may work at, beyond `hospitalId`.
+   *
+   * The entitlement model in `sync/facility-entitlements.ts` was built to read
+   * this and it was never populated, so the only way to give a clinician who
+   * covers two sites access to both was to hand them an org-wide role — which
+   * grants every facility in the tenant, not the two they actually attend.
+   *
+   * Each entry becomes a `facility:<id>` claim on the CouchDB user, which the
+   * replication selector narrows reads by and the write validator checks
+   * writes against.
+   */
+  facilityIds?: string[];
   orgId?: string;
   /**
    * Display name of the owning organization, denormalised alongside `orgId`

@@ -18,7 +18,9 @@ import { FilterSelect } from '@/components/filters';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import { generateTempPassword } from '@/lib/temp-password';
-import { canCreateUsers } from '@/lib/people-nav';
+import { canCreateUsers, canCreateFacilities } from '@/lib/people-nav';
+import { roleNeedsFacility } from '@/lib/user-scope-rules';
+import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
 import { getRoleConfig, labelRolesDistinctly } from '@/lib/permissions';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 
@@ -44,6 +46,9 @@ export default function OrgUsersPage() {
   const [hospitals, setHospitals] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  // Registering the organization's first facility without leaving the
+  // half-filled account form.
+  const [showAddFacility, setShowAddFacility] = useState(false);
   const [showResetModal, setShowResetModal] = useState<string | null>(null);
   // One popup for the list; the clicked row supplies its actions and position.
   const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
@@ -190,8 +195,11 @@ export default function OrgUsersPage() {
     }
   }, []);
 
-  const ROLES_WITHOUT_HOSPITAL: UserRole[] = ['super_admin', 'org_admin', 'government'];
-  const needsHospital = !ROLES_WITHOUT_HOSPITAL.includes(formRole);
+  // The facility requirement is `lib/user-scope-rules.ts`'s to state — this
+  // page used to keep its own list, and it had drifted: it omitted
+  // `county_health_director`, so that role was shown a facility picker the
+  // server strips on save.
+  const needsHospital = roleNeedsFacility(formRole);
 
   const handleCreate = async () => {
     setError('');
@@ -692,9 +700,16 @@ export default function OrgUsersPage() {
                   <p className="mb-2">{t('orgUsers.noFacilitiesBody')}</p>
                   <button
                     type="button"
-                    onClick={() => router.push('/org-admin/hospitals')}
+                    onClick={() => {
+                      // Create it here. Routing away used to discard the
+                      // half-filled account — including its generated
+                      // temporary password — and there was no route back.
+                      if (canCreateFacilities(currentUser?.role ?? '')) setShowAddFacility(true);
+                      else router.push('/hospitals');
+                    }}
                     className="text-sm font-semibold"
                     style={{ color: 'var(--accent-primary)' }}
+                    data-action="add-facility-inline"
                   >
                     {t('orgUsers.noFacilitiesAction')}
                   </button>
@@ -895,6 +910,22 @@ export default function OrgUsersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showAddFacility && canCreateFacilities(currentUser?.role ?? '') && (
+        <CreateFacilityModal
+          onClose={() => setShowAddFacility(false)}
+          onCreated={async hospital => {
+            setShowAddFacility(false);
+            await loadData();
+            // Preselect it — the operator opened this dialog precisely so the
+            // account they were filling in has somewhere to be assigned.
+            setFormHospitalId(hospital._id);
+          }}
+          orgId={currentUser?.orgId}
+          actor={{ _id: currentUser?._id, username: currentUser?.username }}
+          brandColor={brandColor}
+        />
       )}
     </>
   );

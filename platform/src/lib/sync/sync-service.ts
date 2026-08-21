@@ -125,7 +125,7 @@ export interface SyncServiceOptions {
   onChange?: (status: SyncStatus) => void;
 }
 
-import { DOC_WRITE_ROLES } from './write-permissions';
+import { DOC_WRITE_ROLES, isAppendOnlyDatabase } from './write-permissions';
 
 /**
  * Build a PouchDB push filter that drops documents the server would reject:
@@ -135,10 +135,19 @@ import { DOC_WRITE_ROLES } from './write-permissions';
  * gateway fails closed on unknown document types; filtering them here keeps a
  * malformed legacy record from wedging every later write in the checkpoint.
  */
-function buildPushFilter(role: string | undefined) {
+function buildPushFilter(role: string | undefined, appendOnlyDatabase = false) {
   return (doc: { _id?: string; _deleted?: boolean; type?: string }) => {
     if (typeof doc._id === 'string' && doc._id.indexOf('_design/') === 0) return false;
-    if (doc._deleted === true) return true;
+    if (doc._deleted === true) {
+      // A tombstone carries no `type`, so the matrix below cannot judge it —
+      // but on an append-only database the answer is known from the database
+      // alone: the server refuses every deletion there. Offering one would
+      // wedge the push checkpoint on a permanent rejection, which is precisely
+      // what this filter exists to prevent. Local retention pruning
+      // (`audit-retention.ts`) relies on this: it trims the device's copy
+      // without ever proposing to trim the server's.
+      return !appendOnlyDatabase;
+    }
     if (!role || !doc.type) return false;
     const allowed = doc.type ? DOC_WRITE_ROLES[doc.type] : undefined;
     if (!allowed) return false;
@@ -203,7 +212,13 @@ export class SyncService {
     this.selector = replicationSelector(
       opts.entitlement ?? { orgId: opts.orgId, facilityIds: [], allFacilities: true },
     );
-    this.pushFilter = buildPushFilter(opts.writableRole);
+    // `localDB.name` is the local PouchDB database name, which is exactly the
+    // key `isAppendOnlyDatabase` is stated in — the remote may be a tenant
+    // database (`…--org-x`), the local one never is.
+    this.pushFilter = buildPushFilter(
+      opts.writableRole,
+      isAppendOnlyDatabase((opts.localDB as { name?: string }).name ?? ''),
+    );
     this.pullMode = opts.pullMode ?? 'poll';
     this.pullIntervalMs = opts.pullIntervalMs ?? 15000;
   }

@@ -14,6 +14,11 @@ import { useToast } from '@/components/Toast';
 import { getAvailableRoles, getRoleConfig } from '@/lib/permissions';
 import { generateTempPassword } from '@/lib/temp-password';
 import { statesAndCounties } from '@/lib/data/south-sudan-reference';
+// The facility-type vocabulary is shared: this form used to offer three types
+// while /org-admin/hospitals offered five, so a PHCC or PHCU — the two
+// commonest facilities in South Sudan — could never be created from Settings.
+import { FACILITY_TYPES, DEFAULT_FACILITY_TYPE, type FacilityType } from '@/lib/facility-types';
+import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import type { UserRole, UserDoc } from '@/lib/db-types';
 import FilterBar from '@/components/filters/FilterBar';
 import FilterSelect from '@/components/filters/FilterSelect';
@@ -33,12 +38,6 @@ import {
 import type { DHIS2ExportScope } from '@/lib/services/dhis2-export-service';
 import Select from '@/components/Select';
 import StaffPhotoField from '@/components/staff/StaffPhotoField';
-
-const FACILITY_TYPES = [
-  { value: 'national_referral', label: 'National Referral' },
-  { value: 'state_hospital', label: 'State Hospital' },
-  { value: 'county_hospital', label: 'County Hospital' },
-];
 
 const ALL_SERVICES = [
   'Surgery', 'Maternity', 'Pediatrics', 'Laboratory', 'X-ray', 'Ultrasound',
@@ -291,7 +290,7 @@ export default function SettingsPage() {
   // Hospital form state
   const [showHospitalForm, setShowHospitalForm] = useState(false);
   const [hospitalForm, setHospitalForm] = useState({
-    name: '', facilityType: 'county_hospital' as 'national_referral' | 'state_hospital' | 'county_hospital',
+    name: '', facilityType: DEFAULT_FACILITY_TYPE as FacilityType,
     state: '', town: '',
     totalBeds: 0, icuBeds: 0, maternityBeds: 0, pediatricBeds: 0,
     doctors: 0, clinicalOfficers: 0, nurses: 0, labTechnicians: 0, pharmacists: 0,
@@ -301,6 +300,16 @@ export default function SettingsPage() {
     lat: 0, lng: 0,
   });
   const [hospitalFormLoading, setHospitalFormLoading] = useState(false);
+  // The owning tenant. A tenant admin has one; a platform operator does not,
+  // and `createHospital` refuses a facility with no orgId — which is why this
+  // form failed for a super_admin on every single attempt before.
+  const [hospitalOrgId, setHospitalOrgId] = useState('');
+  const { organizations } = useOrganizations();
+  const orgChoices = useMemo(
+    () => organizations.filter(o => o.isActive !== false),
+    [organizations],
+  );
+  const needsHospitalOrgChoice = !currentUser?.orgId;
 
   // Access: every authenticated user can open Settings for their own
   // Preferences (theme, language, profile, password, screen-lock, sync,
@@ -415,8 +424,9 @@ export default function SettingsPage() {
 
   // ─── Hospital Handlers ────────────────────────────────────
   const openCreateHospital = () => {
+    setHospitalOrgId('');
     setHospitalForm({
-      name: '', facilityType: 'county_hospital', state: '', town: '',
+      name: '', facilityType: DEFAULT_FACILITY_TYPE, state: '', town: '',
       totalBeds: 0, icuBeds: 0, maternityBeds: 0, pediatricBeds: 0,
       doctors: 0, clinicalOfficers: 0, nurses: 0, labTechnicians: 0, pharmacists: 0,
       hasElectricity: false, electricityHours: 0, hasGenerator: false, hasSolar: false,
@@ -431,17 +441,22 @@ export default function SettingsPage() {
       showToast('Hospital name and state are required', 'error');
       return;
     }
+    // Stamp the owning tenant. Without it the facility is written with no
+    // `orgId`: CouchDB's tenant validator rejects it on push and
+    // `filterByScope` hides it from every role but super_admin, so the org
+    // that just created a hospital keeps reading "Active Facilities 0".
+    // `createHospital` refuses the write outright when this is missing — which
+    // is what a super_admin (who has no org of their own) used to hit here on
+    // every attempt, because this form had no way to name an organization.
+    const orgId = currentUser.orgId || hospitalOrgId;
+    if (!orgId) {
+      showToast('Select the organization this facility belongs to', 'error');
+      return;
+    }
     setHospitalFormLoading(true);
     try {
-      // Stamp the creator's tenant. Without it the facility is written with no
-      // `orgId`: CouchDB's tenant validator rejects it on push and
-      // `filterByScope` hides it from every role but super_admin, so the org
-      // that just created a hospital keeps reading "Active Facilities 0".
-      // `createHospital` refuses the write outright when this is missing —
-      // which is what a super_admin (who has no org of their own) will now
-      // get here, instead of a silently orphaned record.
       await createHospital(
-        { ...hospitalForm, orgId: currentUser.orgId },
+        { ...hospitalForm, orgId },
         currentUser._id,
         currentUser.username,
       );
@@ -969,6 +984,17 @@ export default function SettingsPage() {
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--accent-primary)' }}>Basic Information</h4>
                 <div className="grid grid-cols-2 gap-3">
+                  {needsHospitalOrgChoice && (
+                    <div className="sm:col-span-2">
+                      <label style={labelStyle}>Organization</label>
+                      <Select value={hospitalOrgId}
+                        onChange={e => setHospitalOrgId(e.target.value)}
+                        style={selectStyle}>
+                        <option value="">Select an organization...</option>
+                        {orgChoices.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
+                      </Select>
+                    </div>
+                  )}
                   <div className="sm:col-span-2">
                     <label style={labelStyle}>Hospital Name</label>
                     <input type="text" value={hospitalForm.name}

@@ -56,11 +56,30 @@ MANIFEST="${OUT}/manifest.json"
 echo '{"startedAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","databases":[' > "$MANIFEST"
 FIRST=1
 
-# Every tamamhealth_* db (clinical + meta + outbox + conflicts).
+# Every tamamhealth_* db (clinical + meta + outbox + conflicts), including the
+# per-organization tenant databases, which carry the same prefix.
+#
+# Plus two system databases that the prefix filter misses and a restore cannot
+# work without:
+#
+#   _users       every provisioned CouchDB identity. Without it, no browser can
+#                authenticate to replicate after a restore, and each user has to
+#                be re-provisioned by signing in again.
+#   _replicator  the continuous tenant <-> aggregate replication jobs. Without
+#                them the shared aggregates stop receiving tenant writes and the
+#                analytics pipeline goes quietly stale — the sync-worker keeps
+#                polling an aggregate that no longer updates and reports no
+#                error at all.
+#
+# Both are recoverable by re-running `provisionOrganizationDatabases` per org,
+# but only if somebody knows to. Backing them up makes the restore complete
+# instead of merely plausible.
+#
 # Iterating a `for` over command substitution rather than piping into `while`:
 # a piped subshell cannot mutate FAILURES in the parent, so failures were
 # invisible to the exit status.
-for db in $(couch_get '/_all_dbs' | jq -r '.[]' | grep '^tamamhealth_'); do
+SYSTEM_DBS="_users _replicator"
+for db in $(couch_get '/_all_dbs' | jq -r '.[]' | grep '^tamamhealth_') $SYSTEM_DBS; do
   log "  dumping $db"
 
   # Read live state BEFORE dumping, so the recorded checkpoint is never ahead

@@ -7,14 +7,17 @@ import {
   Building2, BedDouble, Users, Stethoscope, WifiOff,
   Zap, ZapOff, Sun, Truck, Signal, Clock, Activity,
   MapPin, HeartPulse, X,
-  FlaskConical, Download, Eye, Settings,
+  FlaskConical, Download, Eye, Settings, Plus,
   Syringe, Baby, Pill, ShieldCheck, Microscope,
 } from '@/components/icons/lucide';
 import {
   ResponsiveContainer, LineChart, Line,
 } from 'recharts';
 import { useHospitals } from '@/lib/hooks/useHospitals';
+import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useApp } from '@/lib/context';
+import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
+import { canCreateFacilities } from '@/lib/people-nav';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { FilterSelect } from '@/components/filters';
 import EhrListHeader, { EhrListFilters, EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
@@ -108,9 +111,18 @@ function normalizeMetricForColor(key: PerformanceMetricKey, value: number): numb
 // ───────────────────────────── page ─────────────────────────────
 function HospitalsPageInner() {
   const { t } = useTranslation();
-  const { hospitals, loading } = useHospitals();
+  const { hospitals, loading, reload: reloadHospitals } = useHospitals();
   const { globalSearch, currentUser } = useApp();
   const canManage = !!currentUser && MANAGE_ROLES.includes(currentUser.role);
+  // Registering a facility is an organisation-level act, so it is narrower
+  // than `canManage` (which also covers running one). This is the action that
+  // used to exist only on a page with no nav row.
+  const canCreate = canCreateFacilities(currentUser?.role ?? '');
+  const [showCreateFacility, setShowCreateFacility] = useState(false);
+  const [createdFacility, setCreatedFacility] = useState<string | null>(null);
+  // A platform operator carries no orgId, so the dialog asks which tenant owns
+  // the new facility; a tenant admin's own org is used and never asked for.
+  const { organizations } = useOrganizations();
   const searchParams = useSearchParams();
   const stateParam = searchParams.get('state');
   const countyParam = searchParams.get('county');
@@ -128,6 +140,14 @@ function HospitalsPageInner() {
     const found = hospitals.find(h => h._id === facilityIdParam);
     if (found) setSelectedHospital(found);
   }, [facilityIdParam, hospitals]);
+
+  // `?new=1` — the global Add menu's "Add facility" entry, and the prompt the
+  // user form shows when a facility-bound role has no facility to be assigned
+  // to, both land here with the dialog already open.
+  const newParam = searchParams.get('new');
+  useEffect(() => {
+    if (newParam && canCreate) setShowCreateFacility(true);
+  }, [newParam, canCreate]);
   const [filterCounty, setFilterCounty] = useState(() => countyParam || 'all');
   const [filterType, setFilterType] = useState('all');
   const [filterOwnership, setFilterOwnership] = useState('all');
@@ -283,6 +303,11 @@ function HospitalsPageInner() {
                     <EhrListHeaderButton onClick={handleExport} ariaLabel={t('action.export')}>
                       <Download className="w-4 h-4" />
                     </EhrListHeaderButton>
+                    {canCreate && (
+                      <EhrListHeaderButton primary onClick={() => setShowCreateFacility(true)} ariaLabel={t('orgHospitals.addFacility')}>
+                        <Plus className="w-4 h-4" />
+                      </EhrListHeaderButton>
+                    )}
                   </>
                 }
               />
@@ -291,6 +316,31 @@ function HospitalsPageInner() {
           )}
         </div>
       </main>
+
+      {showCreateFacility && canCreate && (
+        <CreateFacilityModal
+          onClose={() => setShowCreateFacility(false)}
+          onCreated={async hospital => {
+            setShowCreateFacility(false);
+            setCreatedFacility(hospital.name);
+            await reloadHospitals();
+            setTimeout(() => setCreatedFacility(null), 4000);
+          }}
+          orgId={currentUser?.orgId}
+          organizations={currentUser?.orgId ? undefined : organizations}
+          actor={{ _id: currentUser?._id, username: currentUser?.username }}
+          brandColor={currentUser?.branding?.primaryColor || 'var(--accent-primary)'}
+        />
+      )}
+      {createdFacility && (
+        <div
+          role="status"
+          className="fixed bottom-6 start-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-semibold shadow-lg"
+          style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)', border: '1px solid var(--accent-border)' }}
+        >
+          {t('orgHospitals.successCreated', { name: createdFacility })}
+        </div>
+      )}
     </>
   );
 }

@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { patientDocumentsDB } from '../db';
 import type { PatientDocumentDoc, PatientDocumentCategory } from '../db-types';
 import { findByType } from './db-query';
+import { validateAttachmentPayload } from '../validation';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 
@@ -47,6 +48,18 @@ export interface AddPatientDocumentInput {
 export async function addPatientDocument(input: AddPatientDocumentInput): Promise<PatientDocumentDoc> {
   if (!input.base64Data) throw new Error('Document file data is required');
   if (!input.title || input.title.trim().length === 0) throw new Error('A document title is required');
+  // Size and type were checked nowhere on this path. The payload is stored
+  // inline on the document and this database replicates in full to every
+  // clinician's browser in the organisation, so an unbounded upload is an
+  // unbounded download for everyone else. Enforced here rather than in the
+  // uploader because browser writes go straight to the local replica.
+  const check = validateAttachmentPayload({
+    name: input.fileName,
+    mimeType: input.mimeType,
+    sizeBytes: input.sizeBytes,
+    base64Length: input.base64Data.length,
+  });
+  if (!check.valid) throw new Error(check.error);
   const db = patientDocumentsDB();
   const now = new Date().toISOString();
   const doc: PatientDocumentDoc = {

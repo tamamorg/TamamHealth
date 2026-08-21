@@ -1609,7 +1609,26 @@ const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
  * No demo patients, no sample records — a clean slate for real hospital data.
  */
 async function seedProduction(): Promise<void> {
-  await resetAllDatabases();
+  // A seed-version bump reaches production devices as an ordinary code change:
+  // `isSeeded()` compares the device marker to the SEED_VERSION constant, so
+  // every browser that boots after a bumped build lands here.
+  //
+  // This used to call `resetAllDatabases()`, which destroys unconditionally. In
+  // a clinic that has been working offline all afternoon that is destroying
+  // clinical work, not clearing stale data — and it needed nothing more than
+  // someone incrementing a number to happen. `wipeLocalData` applies the same
+  // dirty check the security triggers use: a database whose `update_seq` has
+  // moved since the last confirmed sync is kept, and the wipe is recorded as
+  // pending so the next boot after a successful sync finishes it.
+  const { wipeLocalData } = await import('./security/local-wipe');
+  const result = await wipeLocalData('seed-reset');
+  if (result.kept.length) {
+    console.warn(
+      '[TamamHealth] Seed reset kept databases holding unsynced writes; they will be ' +
+      'cleared once those changes reach the server.',
+      { kept: result.kept },
+    );
+  }
   const now = new Date().toISOString();
 
   // Create default organization

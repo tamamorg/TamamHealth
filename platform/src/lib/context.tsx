@@ -528,7 +528,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Only if the request itself fails (offline / network error) do we fall
       // back to the PouchDB-local path so previously-logged-in users can still
       // sign in without connectivity.
-      type LoginUser = Pick<UserDoc, '_id' | 'username' | 'name' | 'role' | 'hospitalId' | 'hospitalName' | 'orgId' | 'isActive' | 'passwordHash' | 'mustChangePassword' | 'department'> & { actualRole?: UserRole };
+      type LoginUser = Pick<UserDoc, '_id' | 'username' | 'name' | 'role' | 'hospitalId' | 'hospitalName' | 'facilityIds' | 'orgId' | 'isActive' | 'passwordHash' | 'mustChangePassword' | 'department'> & { actualRole?: UserRole };
       let user: LoginUser | null = null;
       let usedApi = false;
 
@@ -555,8 +555,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // for online logins — admin-issued temporary passwords were
             // silently accepted as permanent credentials.
             mustChangePassword: body.user.mustChangePassword,
+            facilityIds: body.user.facilityIds,
           };
           usedApi = true;
+
+          // Record this device's offline sign-in credential. The server has
+          // just authenticated the password, so what we cache is known-good.
+          // Without it there is no offline sign-in at all in production: the
+          // old fallback read `tamamhealth_users`, which is deliberately not
+          // replicated and is purged a few lines below.
+          try {
+            const signedIn = user;
+            const { cacheOfflineCredential } = await import('./offline-credential');
+            await cacheOfflineCredential(password, {
+              _id: signedIn._id,
+              username: signedIn.username,
+              name: signedIn.name,
+              role: signedIn.role,
+              hospitalId: signedIn.hospitalId,
+              hospitalName: signedIn.hospitalName,
+              facilityIds: signedIn.facilityIds,
+              orgId: signedIn.orgId,
+            });
+          } catch {
+            // Offline sign-in stays unavailable until the next online one.
+          }
 
           // v7 hardening: legacy builds replicated the complete users DB,
           // including password/PIN hashes, into IndexedDB. Tenant-database
@@ -626,7 +649,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Network error — fall through to PouchDB.
       }
 
-      // Offline fallback: verify against local PouchDB.
+      // Offline fallback.
+      //
+      // Two sources, in order of how much they can be trusted:
+      //
+      //   1. The device credential cached at the last successful ONLINE login
+      //      (`offline-credential.ts`). This is the production path — the
+      //      users database is not replicated, so nothing else can answer.
+      //   2. The local `tamamhealth_users` replica. Only demo builds seed it;
+      //      in production it is empty and, under tenant databases, purged.
+      //      Kept so the demo roster still signs in with the network off.
+      if (!user) {
+        const { verifyOfflineCredential } = await import('./offline-credential');
+        const cached = await verifyOfflineCredential(sanitizedUsername, password);
+        if (cached) {
+          // A cached credential already encodes the facility and role the
+          // server issued, so the role-picker and hospital checks below —
+          // which exist to re-derive them — have nothing left to decide.
+          const token = await createToken({
+            _id: cached._id,
+            username: cached.username,
+            role: cached.role,
+            name: cached.name,
+            hospitalId: cached.hospitalId,
+            facilityIds: cached.facilityIds,
+            orgId: cached.orgId,
+          });
+          document.cookie = `tamamhealth-token=${token}; path=/; max-age=${60 * 60 * 24}; samesite=lax${window.location.protocol === 'https:' ? '; secure' : ''}`;
+          user = {
+            _id: cached._id,
+            username: cached.username,
+            name: cached.name,
+            role: cached.role,
+            hospitalId: cached.hospitalId,
+            hospitalName: cached.hospitalName,
+            facilityIds: cached.facilityIds,
+            orgId: cached.orgId,
+            isActive: true,
+            passwordHash: '',
+          };
+        }
+      }
+
       if (!user) {
         const db = usersDB();
         let localUser: UserDoc;

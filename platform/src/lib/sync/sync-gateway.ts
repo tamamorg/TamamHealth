@@ -4,12 +4,28 @@ import {
   type DatabaseSyncConfig,
 } from './sync-config';
 import { tenantDatabaseName } from './tenant-database';
+import { isAppendOnlyDatabase } from './write-permissions';
 
 const READ_POST_ENDPOINTS = new Set(['_all_docs', '_bulk_get', '_changes', '_find', '_revs_diff']);
 const ALLOWED_INTERNAL_ENDPOINTS = new Set([
   '_all_docs', '_bulk_docs', '_bulk_get', '_changes', '_ensure_full_commit',
   '_find', '_local', '_revs_diff',
 ]);
+
+/**
+ * Databases whose every permitted document type is append-only.
+ *
+ * Derived rather than listed so adding a type to `APPEND_ONLY_TYPES` covers its
+ * database automatically. The CouchDB validator is the authority — it sees
+ * `oldDoc` and can tell an amendment from a create; the gateway sees only the
+ * request, so it enforces the coarser half it *can* be sure of: nothing is ever
+ * deleted out of one of these databases.
+ */
+function appendOnlyRejection(config: DatabaseSyncConfig): string | null {
+  return isAppendOnlyDatabase(config.localName)
+    ? `${config.localName} is an append-only record; entries cannot be deleted.`
+    : null;
+}
 
 export function resolveGatewayDatabase(
   requestedDatabase: string,
@@ -59,7 +75,10 @@ type GatewayDocument = { _id?: unknown; _deleted?: unknown; type?: unknown };
 function validateDocument(config: DatabaseSyncConfig, value: unknown): string | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return 'Document body must be an object.';
   const document = value as GatewayDocument;
-  if (document._deleted === true) return null;
+  // A tombstone carries no `type` to check, so the type allowlist cannot apply.
+  // That is not a reason to wave it through: on an append-only database a
+  // deletion is the one write that must never be forwarded.
+  if (document._deleted === true) return appendOnlyRejection(config);
   const allowed = DATABASE_DOCUMENT_TYPES[config.localName] || [];
   if (typeof document.type !== 'string' || !allowed.includes(document.type)) {
     return `Document type is not permitted in ${config.localName}.`;
@@ -75,9 +94,12 @@ export function validateGatewayWriteBody(
   body: unknown,
 ): string | null {
   const method = methodInput.toUpperCase();
-  if (method === 'DELETE' || !isCouchDocumentWrite(method, pathAfterDatabase)) return null;
+  if (!isCouchDocumentWrite(method, pathAfterDatabase)) return null;
   const endpoint = pathAfterDatabase[0] || '';
   if (endpoint === '_ensure_full_commit') return null;
+  // `DELETE /<db>/<docid>?rev=` has no body to inspect, so the database itself
+  // is the only thing left to judge it on.
+  if (method === 'DELETE') return appendOnlyRejection(config);
   if (endpoint === '_bulk_docs') {
     const docs = (body as { docs?: unknown } | null)?.docs;
     if (!Array.isArray(docs)) return 'Bulk write body must contain a docs array.';

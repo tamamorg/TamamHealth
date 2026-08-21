@@ -93,7 +93,7 @@ export function pwdAtClaim(passwordUpdatedAt?: string): number | undefined {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : undefined;
 }
 
-export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; passwordUpdatedAt?: string; pwdAt?: number }): Promise<string> {
+export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; facilityIds?: string[]; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; passwordUpdatedAt?: string; pwdAt?: number }): Promise<string> {
   const payload = {
     sub: user._id,
     username: user.username,
@@ -104,6 +104,8 @@ export async function createToken(user: { _id: string; username: string; role: s
     name: user.name,
     hospitalId: user.hospitalId,
     hospitalName: user.hospitalName,
+    // Extra facilities this user covers — see UserDoc.facilityIds.
+    facilityIds: user.facilityIds,
     orgId: user.orgId,
     countryId: user.countryId,
     payam: user.payam,
@@ -140,6 +142,7 @@ export interface VerifiedTokenPayload {
   name: string;
   hospitalId?: string;
   hospitalName?: string;
+  facilityIds?: string[];
   orgId?: string;
   countryId?: string;
   payam?: string;

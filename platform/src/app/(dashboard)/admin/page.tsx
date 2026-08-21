@@ -4,9 +4,14 @@
  * Super-admin Platform Dashboard — the command center, drawn per the
  * "Super Admin Dashboard.dc.html" design (sadb-* namespace in globals.css):
  * greeting + Command Center eyebrow, a clickable KPI tile row, readiness
- * donut with the two signals that move it, business snapshot, the activity
- * trend with line/area/bar pills, the tenant health matrix as a grid list,
- * and the risk / watchlist / sync cards.
+ * donut with the two signals that move it, business snapshot, sync &
+ * interoperability, and the tenant health matrix as a grid list.
+ *
+ * The queues this screen used to duplicate now live only where they are
+ * actually worked: the risk & incident queue on /admin/risk (Risk Center),
+ * and the high-risk security watchlist on /admin/security (Security &
+ * Compliance → Security watchlist). The dashboard keeps the signals those
+ * queues produce, not a second copy of the lists.
  *
  * It still answers "is the platform healthy today?" in one screen. Every
  * number comes from real local stores (PouchDB docs, audit log, sync events,
@@ -22,15 +27,10 @@ import { apiFetch } from '@/lib/api-fetch';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
-import { tooltipStyle, axisTick } from '@/components/ChartCard';
 import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import Modal from '@/components/Modal';
-import {
-  Area, Bar, CartesianGrid, ComposedChart, Legend, Line,
-  ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
-import { ChevronRight, Search, X } from '@/components/icons/lucide';
+import { Search, X } from '@/components/icons/lucide';
 import type { AuditLogDoc, EncounterDoc, OrganizationDoc, UserDoc } from '@/lib/db-types';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
@@ -48,41 +48,15 @@ const TONE_STROKE: Record<Tone, string> = {
   danger: 'var(--color-danger-500)', muted: 'var(--text-muted)',
 };
 
-const SEVERITY_TONE: Record<SaSeverity, Tone> = {
-  critical: 'danger', high: 'danger', medium: 'warn', low: 'muted',
-};
-
 function dayKey(iso: string): string {
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function dailySeries(dates: string[], days: number): Array<{ day: string; count: number }> {
-  const counts = new Map<string, number>();
-  for (const iso of dates) {
-    if (iso) counts.set(dayKey(iso), (counts.get(dayKey(iso)) || 0) + 1);
-  }
-  const today = new Date();
-  return Array.from({ length: days }, (_, i) => {
-    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (days - 1 - i));
-    const key = dayKey(d.toISOString());
-    return { day: key, count: counts.get(key) || 0 };
-  });
 }
 
 function onboardedLabel(iso?: string): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   return isNaN(d.getTime()) ? null : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-}
-
-interface RiskRow {
-  token: string;
-  severity: SaSeverity;
-  title: string;
-  detail: string;
-  when?: string;
-  href: string;
 }
 
 interface DashboardPreview {
@@ -175,7 +149,6 @@ export default function AdminDashboardPage() {
   const [dhis2, setDhis2] = useState<{ configured: boolean; host: string; lastPush?: string }>({ configured: false, host: 'Not configured' });
   const [loading, setLoading] = useState(true);
   const [tenantSearch, setTenantSearch] = useState('');
-  const [chartMode, setChartMode] = useState<'line' | 'area' | 'bar'>('area');
 
   // Defense in depth on top of the Edge proxy check (SaPage used to own this).
   useEffect(() => {
@@ -251,14 +224,6 @@ export default function AdminDashboardPage() {
     () => auditLogs.filter(l => l.success === false && new Date(l.createdAt).getTime() >= weekAgo),
     [auditLogs, weekAgo],
   );
-  const highRiskAudits = useMemo(
-    () => auditLogs.filter(l => {
-      const sev = classifyAuditRisk(l.action, l.success);
-      return (sev === 'critical' || sev === 'high' || sev === 'medium') && new Date(l.createdAt).getTime() >= weekAgo;
-    }).slice(0, 6),
-    [auditLogs, weekAgo],
-  );
-
   const todayKey = dayKey(new Date().toISOString());
   const encountersToday = useMemo(
     () => encounters.filter(e => dayKey(e.createdAt || e.startedAt || '') === todayKey).length,
@@ -303,60 +268,24 @@ export default function AdminDashboardPage() {
   ));
   const readinessTone: Tone = readiness >= 88 ? 'ok' : readiness >= 70 ? 'warn' : 'danger';
 
-  /* Risk & incident queue, worst first. */
-  const riskQueue = useMemo(() => {
-    const rows: RiskRow[] = [];
-    for (const log of failedAudits.slice(0, 3)) {
-      rows.push({
-        token: `risk:audit:${log._id}`,
-        severity: classifyAuditRisk(log.action, log.success),
-        title: `Audit failure — ${log.action}`,
-        detail: log.username ? `${log.username} · ${log.details}` : log.details,
-        when: log.createdAt,
-        href: `/admin/audit?log=${encodeURIComponent(log._id)}`,
-      });
-    }
-    if (syncStats.failed > 0) {
-      rows.push({ token: 'risk:sync', severity: 'high', title: `${syncStats.failed} sync job${syncStats.failed === 1 ? '' : 's'} failed`, detail: 'Replication to country node', href: '/admin/sync' });
-    }
-    if (conflictCount > 0) {
-      rows.push({ token: 'risk:conflicts', severity: 'medium', title: `${conflictCount} unresolved data conflict${conflictCount === 1 ? '' : 's'}`, detail: 'Reconciliation queue', href: '/admin/conflicts' });
-    }
-    for (const org of suspendedOrgs) {
-      rows.push({ token: `risk:org:${org._id}`, severity: 'medium', title: `Tenant ${org.subscriptionStatus === 'cancelled' ? 'cancelled' : 'suspended'} — ${org.name}`, detail: `${org.subscriptionPlan} plan`, href: `/admin/organizations?org=${encodeURIComponent(org._id)}` });
-    }
-    if (backupOverdue) {
-      rows.push({
-        token: 'risk:backup',
-        severity: 'high',
-        title: 'Backup overdue',
-        detail: `Last backup ${formatWhen(backupStatus!.lastBackupAt!)} · RPO ${rpoHours}h`,
-        href: '/admin/security',
-      });
-    } else if (backupUnknown) {
-      // Distinct from overdue, and deliberately still a risk row: "we cannot
-      // tell whether backups are running" is an operational problem worth an
-      // administrator's attention — it is just not the same problem as a
-      // backup that is known to be late.
-      rows.push({
-        token: 'risk:backup',
-        severity: 'medium',
-        title: 'Backup status unknown',
-        detail: `Nothing has reported a backup · RPO ${rpoHours}h`,
-        href: '/admin/security',
-      });
-    }
-    if (config?.maintenanceMode) {
-      rows.push({ token: 'risk:maintenance', severity: 'medium', title: 'Maintenance mode is ON', detail: 'Tenant access is restricted', href: '/admin/config' });
-    }
-    for (const org of trialOrgs) {
-      // Billing has no tenant-focus contract yet, so this remains a broad
-      // aggregate destination rather than carrying a query param it ignores.
-      rows.push({ token: `risk:trial:${org._id}`, severity: 'low', title: `Trial tenant — ${org.name}`, detail: `${org.maxUsers} seat limit`, href: '/admin/billing' });
-    }
+  /* Open risk signals behind the readiness card. The queue itself — with
+     every row's detail and its jump-off link — lives on /admin/risk; here we
+     only need how many are open and how severe the worst of them is. */
+  const riskSignals = useMemo(() => {
+    const signals: SaSeverity[] = [];
+    for (const log of failedAudits.slice(0, 3)) signals.push(classifyAuditRisk(log.action, log.success));
+    if (syncStats.failed > 0) signals.push('high');
+    if (conflictCount > 0) signals.push('medium');
+    for (const _org of suspendedOrgs) signals.push('medium');
+    // "Overdue" and "we cannot tell" are different problems, and both are
+    // worth an administrator's attention — they just aren't the same weight.
+    if (backupOverdue) signals.push('high');
+    else if (backupUnknown) signals.push('medium');
+    if (config?.maintenanceMode) signals.push('medium');
+    for (const _org of trialOrgs) signals.push('low');
     const order: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
-    return rows.sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity)).slice(0, 8);
-  }, [failedAudits, syncStats.failed, conflictCount, suspendedOrgs, trialOrgs, backupOverdue, backupUnknown, backupStatus, rpoHours, config?.maintenanceMode]);
+    return signals.sort((a, b) => order.indexOf(a) - order.indexOf(b)).slice(0, 8);
+  }, [failedAudits, syncStats.failed, conflictCount, suspendedOrgs, trialOrgs, backupOverdue, backupUnknown, config?.maintenanceMode]);
 
   /* Tenant health matrix (searchable). */
   const tenantMatrix = useMemo(() => {
@@ -374,25 +303,6 @@ export default function AdminDashboardPage() {
       });
   }, [organizations, users, hospitals, tenantSearch]);
 
-  /* 14-day activity trend (encounters vs audit failures). */
-  const trend = useMemo(() => {
-    const enc = dailySeries(encounters.map(e => e.createdAt || e.startedAt || '').filter(Boolean), 14);
-    const fails = dailySeries(auditLogs.filter(l => !l.success).map(l => l.createdAt), 14);
-    return enc.map((p, i) => ({
-      day: new Date(`${p.day}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' }),
-      encounters: p.count,
-      failures: fails[i]?.count || 0,
-    }));
-  }, [encounters, auditLogs]);
-
-  /* Failures ride a hidden second axis (the design draws them ×100) so one
-     failed login is visible next to a thousand encounters; the tooltip still
-     reports the raw counts. */
-  const failAxisMax = useMemo(
-    () => Math.ceil(Math.max(4, ...trend.map(t => t.failures)) * 1.4),
-    [trend],
-  );
-
   /* KPI deltas we can actually compute. */
   const now = new Date();
   const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).getTime();
@@ -406,9 +316,9 @@ export default function AdminDashboardPage() {
   const statusTone = (s: string): Tone =>
     s === 'active' ? 'ok' : s === 'trial' ? 'warn' : s === 'suspended' || s === 'cancelled' ? 'danger' : 'muted';
 
-  const openRiskTone: Tone = riskQueue.some(r => r.severity === 'critical' || r.severity === 'high')
+  const openRiskTone: Tone = riskSignals.some(sev => sev === 'critical' || sev === 'high')
     ? 'danger'
-    : riskQueue.length ? 'warn' : 'ok';
+    : riskSignals.length ? 'warn' : 'ok';
 
   /* Per-tenant sync: share of the tenant's facilities currently online —
      the honest per-tenant proxy while sync stats are only tracked globally. */
@@ -484,7 +394,7 @@ export default function AdminDashboardPage() {
         title: 'Platform risk',
         context: 'Readiness signal',
         details: [
-          { label: 'Open risks', value: riskQueue.length },
+          { label: 'Open risks', value: riskSignals.length },
           { label: 'Audit failures', value: `${failedAudits.length} in the last 7 days` },
         ],
         href: '/admin/risk',
@@ -515,32 +425,6 @@ export default function AdminDashboardPage() {
         href: `/admin/organizations?org=${encodeURIComponent(org._id)}`,
       };
     }
-    if (previewToken.startsWith('risk:')) {
-      const row = riskQueue.find(item => item.token === previewToken);
-      return row ? {
-        title: row.title,
-        context: `${row.severity} risk`,
-        details: [
-          { label: 'Details', value: row.detail },
-          ...(row.when ? [{ label: 'Recorded', value: formatWhen(row.when) }] : []),
-        ],
-        href: row.href,
-      } : null;
-    }
-    if (previewToken.startsWith('audit:')) {
-      const auditId = previewToken.slice('audit:'.length);
-      const log = highRiskAudits.find(item => item._id === auditId);
-      return log ? {
-        title: log.action,
-        context: 'Security watchlist',
-        details: [
-          { label: 'Actor', value: log.username || 'system' },
-          { label: 'Details', value: log.details },
-          { label: 'Recorded', value: formatWhen(log.createdAt) },
-        ],
-        href: `/admin/audit?log=${encodeURIComponent(log._id)}`,
-      } : null;
-    }
     return null;
   })();
 
@@ -564,13 +448,6 @@ export default function AdminDashboardPage() {
   };
 
   const CIRC = 2 * Math.PI * 38;
-
-  const legendProps = {
-    iconType: 'circle' as const,
-    iconSize: 8,
-    wrapperStyle: { fontSize: 11, paddingTop: 4 },
-    formatter: (value: ReactNode) => <span style={{ color: 'var(--text-secondary)' }}>{value}</span>,
-  };
 
   if (!currentUser || currentUser.role !== 'super_admin') return null;
 
@@ -599,7 +476,7 @@ export default function AdminDashboardPage() {
           })}
         </div>
 
-        {/* ═══ ROW 2 — Readiness · Business snapshot · Activity trend ═══ */}
+        {/* ═══ ROW 2 — Readiness · Business snapshot · Sync & interop ═══ */}
         <div className="sadb-row-2">
 
           {/* Platform readiness — donut + the two signals that move it */}
@@ -626,7 +503,7 @@ export default function AdminDashboardPage() {
               </svg>
               <div className="sadb-readiness-signals">
                 <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => openPreview('signal:risk')}>
-                  <b>{riskQueue.length ? `${riskQueue.length} open risk${riskQueue.length === 1 ? '' : 's'}` : 'No open risks'}</b>
+                  <b>{riskSignals.length ? `${riskSignals.length} open risk${riskSignals.length === 1 ? '' : 's'}` : 'No open risks'}</b>
                   <span>{failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days</span>
                 </button>
                 <div className={`sadb-signal ${TONE_SIGNAL[syncTone]}`}>
@@ -649,50 +526,25 @@ export default function AdminDashboardPage() {
             <KvRow label="Seats in use" value={loading ? '…' : `${users.length} / ${licensedSeats}`} />
           </div>
 
-          {/* Platform activity — encounters vs audit failures, last 14 days */}
-          <div className="sadb-card" style={{ minWidth: 0 }}>
-            <div className="sadb-card-head">
-              <div className="flex items-baseline gap-2 min-w-0">
-                <h3 className="sadb-card-title">Platform activity</h3>
-                <span className="sadb-card-meta whitespace-nowrap">Encounters vs audit failures · 14 days</span>
-              </div>
-              <div className="flex gap-1">
-                {(['line', 'area', 'bar'] as const).map(m => (
-                  <button
-                    key={m}
-                    type="button"
-                    className={`sadb-pill${chartMode === m ? ' is-active' : ''}`}
-                    aria-pressed={chartMode === m}
-                    onClick={() => setChartMode(m)}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="px-3 pt-3 pb-1">
-              <ResponsiveContainer width="100%" height={196}>
-                <ComposedChart data={trend} margin={{ top: 5, right: 5, left: -6, bottom: 0 }} barCategoryGap="28%">
-                  <CartesianGrid stroke="var(--border-light)" vertical={false} />
-                  <XAxis dataKey="day" tickLine={false} axisLine={false} tick={axisTick} interval="preserveStartEnd" />
-                  <YAxis
-                    tickLine={false} axisLine={false} tick={axisTick} width={34} allowDecimals={false}
-                    tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(v))}
-                  />
-                  <YAxis yAxisId="failures" hide domain={[0, failAxisMax]} />
-                  <Tooltip {...tooltipStyle} />
-                  <Legend {...legendProps} />
-                  {chartMode === 'bar' ? (
-                    <Bar dataKey="encounters" name="Encounters" fill="var(--accent-primary)" fillOpacity={0.55} maxBarSize={26} radius={[2, 2, 0, 0]} isAnimationActive={false} />
-                  ) : chartMode === 'area' ? (
-                    <Area type="monotone" dataKey="encounters" name="Encounters" stroke="var(--accent-primary)" strokeWidth={2} fill="var(--accent-primary)" fillOpacity={0.14} isAnimationActive={false} />
-                  ) : (
-                    <Line type="monotone" dataKey="encounters" name="Encounters" stroke="var(--accent-primary)" strokeWidth={2} dot={false} isAnimationActive={false} />
-                  )}
-                  <Line yAxisId="failures" type="monotone" dataKey="failures" name="Audit failures" stroke="var(--color-danger-500)" strokeWidth={1.8} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
+          {/* Sync & interoperability — replication posture at a glance; the
+              queue, job runners, and DHIS2 controls live on /admin/sync. */}
+          <div className="sadb-card">
+            <CardHead
+              title="Sync & interoperability"
+              action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/sync')}>Open ›</button>}
+            />
+            <KvRow
+              label="Replication"
+              chip={syncStats.failed > 0 ? 'Failing' : syncStats.pending > 0 ? 'Backlog' : 'Healthy'}
+              chipClass={TONE_CHIP[syncTone]}
+            />
+            <KvRow label="Pending events" value={syncStats.pending} />
+            <KvRow label="Failed events" value={syncStats.failed} valueClass={syncStats.failed > 0 ? 'is-warn' : undefined} />
+            <KvRow
+              label="Last DHIS2 push"
+              chip={dhis2.configured ? (dhis2.lastPush ? formatWhen(dhis2.lastPush) : 'Never') : 'Not configured'}
+              chipClass={dhis2.configured && dhis2.lastPush ? 'sadb-chip--green' : 'sadb-chip--neutral'}
+            />
           </div>
         </div>
 
@@ -762,60 +614,6 @@ export default function AdminDashboardPage() {
               {organizations.length === 0 ? 'No organizations yet.' : `No tenants match "${tenantSearch}".`}
             </p>
           )}
-        </div>
-
-        {/* ═══ ROW 3 — Risk queue · Security watchlist · Sync & interop ═══ */}
-        <div className="sadb-row-3">
-
-          <div className="sadb-card">
-            <CardHead title="Risk & incident queue" meta={`${riskQueue.length} open`} />
-            {riskQueue.length === 0 ? (
-              <p className="sadb-empty">No open risk signals — platform steady.</p>
-            ) : riskQueue.map(row => (
-              <button key={row.token} type="button" className="sadb-queue-row" onClick={() => openPreview(row.token)}>
-                <span className={`sadb-chip ${TONE_CHIP[SEVERITY_TONE[row.severity]]}`}>{row.severity}</span>
-                <span className="sadb-queue-copy">
-                  <span className="sadb-queue-title">{row.title}</span>
-                  <span className="sadb-queue-sub">{row.detail}</span>
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-              </button>
-            ))}
-          </div>
-
-          <div className="sadb-card">
-            <CardHead title="Security watchlist" meta="High-risk actions · 7d" />
-            {highRiskAudits.length === 0 ? (
-              <p className="sadb-empty">No high-risk actions recorded this week.</p>
-            ) : highRiskAudits.map(log => (
-              <button key={log._id} type="button" className="sadb-queue-row" onClick={() => openPreview(`audit:${log._id}`)}>
-                <span className="sadb-queue-copy">
-                  <span className="sadb-queue-title">{log.action}</span>
-                  <span className="sadb-queue-sub">{log.username || 'system'} · {log.details}</span>
-                </span>
-                <time className="sadb-queue-when">{formatWhen(log.createdAt)}</time>
-              </button>
-            ))}
-          </div>
-
-          <div className="sadb-card">
-            <CardHead
-              title="Sync & interoperability"
-              action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/sync')}>Open ›</button>}
-            />
-            <KvRow
-              label="Replication"
-              chip={syncStats.failed > 0 ? 'Failing' : syncStats.pending > 0 ? 'Backlog' : 'Healthy'}
-              chipClass={TONE_CHIP[syncTone]}
-            />
-            <KvRow label="Pending events" value={syncStats.pending} />
-            <KvRow label="Failed events" value={syncStats.failed} valueClass={syncStats.failed > 0 ? 'is-warn' : undefined} />
-            <KvRow
-              label="Last DHIS2 push"
-              chip={dhis2.configured ? (dhis2.lastPush ? formatWhen(dhis2.lastPush) : 'Never') : 'Not configured'}
-              chipClass={dhis2.configured && dhis2.lastPush ? 'sadb-chip--green' : 'sadb-chip--neutral'}
-            />
-          </div>
         </div>
       </div>
       {preview && (

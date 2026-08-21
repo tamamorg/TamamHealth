@@ -5,6 +5,9 @@ import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
 import { ROLE_LABEL } from '../role-display';
+import {
+  roleNeedsFacility, ORG_REQUIRED_MESSAGE, FACILITY_REQUIRED_MESSAGE,
+} from '../user-scope-rules';
 
 // Single source of truth: every role defined in ROLE_LABEL (a
 // Record<UserRole, …>) is a valid role. Deriving the list here means new roles
@@ -196,12 +199,13 @@ export async function createUser(
     throw new Error(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
   }
 
-  const ROLES_WITHOUT_HOSPITAL: UserRole[] = ['super_admin', 'org_admin', 'government', 'county_health_director'];
+  // Same rules the API route enforces — `lib/user-scope-rules.ts` states them
+  // once so the direct (node-side) path and the HTTP path cannot drift.
   if (data.role === 'org_admin' && !data.orgId) {
-    throw new Error('Organization administrators must be assigned to an organization');
+    throw new Error(ORG_REQUIRED_MESSAGE);
   }
-  if (!ROLES_WITHOUT_HOSPITAL.includes(data.role) && (!data.hospitalId || !data.hospitalName)) {
-    throw new Error('Clinical users must be assigned to a hospital');
+  if (roleNeedsFacility(data.role) && (!data.hospitalId || !data.hospitalName)) {
+    throw new Error(FACILITY_REQUIRED_MESSAGE);
   }
 
   // Check uniqueness

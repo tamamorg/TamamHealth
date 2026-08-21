@@ -30,7 +30,19 @@
 
 import { LOCAL_DATABASE_NAMES } from '../db';
 
-export type WipeReason = 'logout' | 'session-expired' | 'user-changed' | 'pending';
+export type WipeReason =
+  | 'logout'
+  | 'session-expired'
+  | 'user-changed'
+  | 'pending'
+  /**
+   * A production seed-version bump clearing stale local stores.
+   *
+   * Unlike the demo reseed — which destroys everything on purpose — this one
+   * runs against real clinics, so it goes through the dirty check like the
+   * security triggers do. See `seedProduction()` in db-seed.ts.
+   */
+  | 'seed-reset';
 
 export interface WipeResult {
   /** Databases destroyed by this call. */
@@ -205,6 +217,21 @@ export async function wipeLocalData(
   options: { force?: boolean; only?: string[] } = {},
 ): Promise<WipeResult> {
   if (!IS_BROWSER) return { wiped: [], kept: [], remaining: [], ok: true };
+
+  // The device's offline sign-in credential goes with the data it unlocks —
+  // but only on the security triggers. 'pending' is finishing a wipe already
+  // decided, and 'seed-reset' is a version bump that has no bearing on who may
+  // sign in; clearing on either would force the next sign-in online, which on a
+  // clinic tablet that has just been updated and taken offline is exactly the
+  // moment offline sign-in has to work.
+  if (reason === 'logout' || reason === 'session-expired' || reason === 'user-changed') {
+    try {
+      const { clearOfflineCredential } = await import('../offline-credential');
+      clearOfflineCredential();
+    } catch {
+      // Never block a wipe on this; the credential alone unlocks no PHI.
+    }
+  }
 
   const candidates = options.only ?? (await listLocalDatabases());
   const dirty = options.force ? new Set<string>() : new Set(await getDirtyDatabases());

@@ -120,9 +120,196 @@ describe('org-scoped validate_doc_update', () => {
     });
   });
 
+  describe('deletes are judged as writes', () => {
+    // A tombstone carries no body, so every one of these is decided on oldDoc.
+    const record = { _id: 'r-1', type: 'medical_record', orgId: 'org-a' };
+    const tombstone = { _id: 'r-1', _rev: '2-x', _deleted: true };
+
+    it('stops a role that could not have written the document from deleting it', () => {
+      expect(reasonFor(tombstone, record, nurseUser))
+        .toMatch(/role nurse may not delete documents of type medical_record/);
+    });
+
+    it('lets a role that may write the type delete it', () => {
+      expect(reasonFor(tombstone, record, clinicUser)).toBeNull();
+    });
+
+    it('refuses a tombstone aimed at another organisation’s document', () => {
+      const otherOrg = { ...record, orgId: 'org-b' };
+      expect(reasonFor(tombstone, otherOrg, clinicUser)).toMatch(/orgId mismatch/);
+    });
+
+    it('rejects a delete from a user with no role claim', () => {
+      const legacyUser: UserCtx = { name: 'old-1', roles: ['org:org-a'] };
+      expect(reasonFor(tombstone, record, legacyUser)).toMatch(/no role claim/);
+    });
+
+    it('does not let the tombstone body relabel what is being deleted', () => {
+      // Claiming a broadly-writable type on the way out must not widen the row
+      // the delete is checked against — oldDoc decides.
+      const spoofed = { _id: 'r-1', _rev: '2-x', _deleted: true, type: 'patient', orgId: 'org-a' };
+      expect(reasonFor(spoofed, record, nurseUser))
+        .toMatch(/role nurse may not delete documents of type medical_record/);
+    });
+  });
+
+  describe('facility boundary', () => {
+    const jubaNurse: UserCtx = {
+      name: 'n-1', roles: ['org:org-a', 'facility:hosp-juba', 'role:nurse'],
+    };
+    const roving: UserCtx = {
+      name: 'n-2', roles: ['org:org-a', 'facility:hosp-juba', 'facility:hosp-wau', 'role:nurse'],
+    };
+    const at = (hospitalId: string) => ({
+      _id: 't-1', type: 'triage', orgId: 'org-a', hospitalId,
+    });
+
+    it('accepts a write stamped with the user’s own facility', () => {
+      expect(reasonFor(at('hosp-juba'), null, jubaNurse)).toBeNull();
+    });
+
+    it('refuses a write stamped with another facility in the same org', () => {
+      expect(reasonFor(at('hosp-wau'), null, jubaNurse)).toMatch(/facility mismatch/);
+    });
+
+    it('honours every facility claim a user holds', () => {
+      expect(reasonFor(at('hosp-juba'), null, roving)).toBeNull();
+      expect(reasonFor(at('hosp-wau'), null, roving)).toBeNull();
+      expect(reasonFor(at('hosp-malakal'), null, roving)).toMatch(/facility mismatch/);
+    });
+
+    it('refuses to delete another facility’s record', () => {
+      const theirs = at('hosp-wau');
+      expect(reasonFor({ _id: 't-1', _rev: '2-x', _deleted: true }, theirs, jubaNurse))
+        .toMatch(/facility mismatch/);
+    });
+
+    it('leaves org-wide roles unscoped', () => {
+      // medical_superintendent and hospital_manager are in MULTI_FACILITY_ROLES,
+      // so their oversight spans every facility in the tenant.
+      const supt: UserCtx = {
+        name: 's-1', roles: ['org:org-a', 'facility:hosp-juba', 'role:medical_superintendent'],
+      };
+      expect(reasonFor(at('hosp-wau'), null, supt)).toBeNull();
+    });
+
+    it('does not apply to an account with no facility claim', () => {
+      const national: UserCtx = { name: 'g-1', roles: ['org:org-a', 'role:government'] };
+      expect(reasonFor(
+        { _id: 'a-1', type: 'facility_assessment', orgId: 'org-a', hospitalId: 'hosp-wau' },
+        null, national,
+      )).toBeNull();
+    });
+
+    it('does not apply to org-wide document types', () => {
+      const alert = { _id: 'al-1', type: 'disease_alert', orgId: 'org-a', hospitalId: 'hosp-wau' };
+      expect(reasonFor(alert, null, jubaNurse)).toBeNull();
+    });
+
+    it('ignores fields that name a counterparty rather than the owner', () => {
+      // A referral names the destination facility; sending one is the point.
+      // Neither PatientDoc nor ReferralDoc carries `hospitalId`, so the rule
+      // never reaches them.
+      const referral = {
+        _id: 'ref-1', type: 'referral', orgId: 'org-a',
+        fromHospitalId: 'hosp-juba', toHospitalId: 'hosp-wau',
+      };
+      expect(reasonFor(referral, null, jubaNurse)).toBeNull();
+
+      const patient = {
+        _id: 'p-9', type: 'patient', orgId: 'org-a',
+        registrationHospital: 'hosp-wau', lastVisitHospital: 'hosp-juba',
+      };
+      expect(reasonFor(patient, null, jubaNurse)).toBeNull();
+    });
+  });
+
+  describe('amend-only roles', () => {
+    // The pharmacy and the ward MAR both write the prescription document
+    // without authoring the order. They may change one that exists; they may
+    // not create one, and they may not delete one.
+    const pharmacist: UserCtx = { name: 'rx-1', roles: ['org:org-a', 'role:pharmacist'] };
+    const order = { _id: 'rx-1', type: 'prescription', orgId: 'org-a', orderStatus: 'verified' };
+
+    it('lets a pharmacist advance an existing order', () => {
+      expect(reasonFor({ ...order, orderStatus: 'dispensed' }, order, pharmacist)).toBeNull();
+    });
+
+    it('lets a nurse append an administration to an existing order', () => {
+      expect(reasonFor({ ...order, administrations: [{ id: 'madm-1' }] }, order, nurseUser))
+        .toBeNull();
+    });
+
+    it('refuses to let either of them author an order', () => {
+      expect(reasonFor(order, null, pharmacist))
+        .toMatch(/role pharmacist may not write documents of type prescription/);
+      expect(reasonFor(order, null, nurseUser))
+        .toMatch(/role nurse may not write documents of type prescription/);
+    });
+
+    it('refuses to let an amend-only role delete the order', () => {
+      const tombstone = { _id: 'rx-1', _rev: '2-x', _deleted: true };
+      expect(reasonFor(tombstone, order, pharmacist))
+        .toMatch(/role pharmacist may not delete documents of type prescription/);
+      expect(reasonFor(tombstone, order, nurseUser))
+        .toMatch(/role nurse may not delete documents of type prescription/);
+    });
+
+    it('leaves the prescriber able to do all three', () => {
+      expect(reasonFor(order, null, clinicUser)).toBeNull();
+      expect(reasonFor({ ...order, dose: '10mg' }, order, clinicUser)).toBeNull();
+      expect(reasonFor({ _id: 'rx-1', _rev: '2-x', _deleted: true }, order, clinicUser)).toBeNull();
+    });
+
+    it('grants nothing on a type with no amend-only row', () => {
+      const record = { _id: 'r-1', type: 'medical_record', orgId: 'org-a' };
+      expect(reasonFor({ ...record, note: 'x' }, record, nurseUser))
+        .toMatch(/role nurse may not write documents of type medical_record/);
+    });
+  });
+
+  describe('append-only trails', () => {
+    const entry = { _id: 'aud-1', type: 'audit_log', orgId: 'org-a' };
+
+    it('accepts a new entry from any staff role', () => {
+      expect(reasonFor(entry, null, nurseUser)).toBeNull();
+    });
+
+    it('refuses to amend an entry that already exists', () => {
+      expect(reasonFor({ ...entry, action: 'rewritten' }, entry, nurseUser))
+        .toMatch(/audit_log is append-only/);
+    });
+
+    it('refuses to delete an entry', () => {
+      expect(reasonFor({ _id: 'aud-1', _rev: '2-x', _deleted: true }, entry, clinicUser))
+        .toMatch(/audit_log is append-only/);
+    });
+
+    it('protects the narcotics register and the patient ledger the same way', () => {
+      for (const type of ['controlled_substance_log', 'ledger_entry']) {
+        const existing = { _id: `${type}-1`, type, orgId: 'org-a' };
+        expect(reasonFor({ ...existing, amount: 999 }, existing, clinicUser))
+          .toMatch(new RegExp(`${type} is append-only`));
+      }
+    });
+
+    it('leaves sync_event amendable — it is updated in place when it lands', () => {
+      const event = { _id: 'sync-1', type: 'sync_event', orgId: 'org-a' };
+      expect(reasonFor({ ...event, syncStatus: 'synced' }, event, nurseUser)).toBeNull();
+    });
+  });
+
   describe('replication and administration paths', () => {
-    it('lets deletion tombstones replicate', () => {
+    it('accepts a tombstone for a document this database never held', () => {
+      // Replication routinely delivers one; there is nothing to destroy, and
+      // rejecting it would stall the feed.
       expect(reasonFor({ _id: 'p-1', _deleted: true }, null, clinicUser)).toBeNull();
+    });
+
+    it('accepts a tombstone for an already-deleted document', () => {
+      const alreadyGone = { _id: 'p-1', _rev: '3-y', _deleted: true };
+      expect(reasonFor({ _id: 'p-1', _rev: '4-z', _deleted: true }, alreadyGone, nurseUser))
+        .toBeNull();
     });
 
     it('lets design documents through to the security object', () => {

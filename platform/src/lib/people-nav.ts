@@ -45,6 +45,35 @@ export function canCreateUsers(role: UserRole | string): boolean {
   return role === 'super_admin' || role === 'org_admin';
 }
 
+/**
+ * Where a role registers facilities. `/hospitals` is the network directory
+ * every role with facility sight already has in its nav; it hosts the create
+ * dialog so there is no second "Facilities" row competing with it. The
+ * org-scoped editor at `/org-admin/hospitals` is the same registry embedded in
+ * Settings, and opens the same dialog.
+ */
+export function facilitiesHrefForRole(role: UserRole | string): string | null {
+  return canCreateFacilities(role) ? '/hospitals' : null;
+}
+
+/**
+ * Who may CREATE a facility.
+ *
+ * Deliberately narrower than /api/hospitals' WRITE_ROLES, which also admits
+ * `medical_superintendent`: a superintendent runs ONE facility, so registering
+ * new sites in the tenant is an organisation-level act, not a facility-level
+ * one. The API stays the enforcement point — this only decides who is offered
+ * the action, and a UI narrower than its API is the safe direction.
+ *
+ * `super_admin` is here because the platform operator had no working facility
+ * path at all: the only form that admitted them stamped `currentUser.orgId`
+ * onto the document, and an operator carries none, so `createHospital` threw
+ * on every attempt. They now pick the owning organization in the dialog.
+ */
+export function canCreateFacilities(role: UserRole | string): boolean {
+  return role === 'super_admin' || role === 'org_admin';
+}
+
 export interface PeopleNavContext {
   role: UserRole | string;
   allowedRoutes: readonly string[];
@@ -67,7 +96,15 @@ export interface AddMenuEntry {
  */
 export function buildAddMenuEntries({ role, allowedRoutes }: PeopleNavContext): AddMenuEntry[] {
   const usersHref = usersHrefForRole(role);
+  const facilitiesHref = facilitiesHrefForRole(role);
   const candidates: AddMenuEntry[] = [
+    // Facility first: a facility-bound role cannot be saved without one
+    // (`roleNeedsFacility`), so registering the site genuinely precedes hiring
+    // into it. This entry is what was missing — the create form existed, but
+    // nothing in the running app pointed at it.
+    ...(facilitiesHref
+      ? [{ key: 'facility', label: 'Add facility', href: `${facilitiesHref}?new=1` } as AddMenuEntry]
+      : []),
     ...(usersHref && canCreateUsers(role)
       ? [{ key: 'staff', label: 'Add staff member', href: `${usersHref}?new=1` } as AddMenuEntry]
       : []),

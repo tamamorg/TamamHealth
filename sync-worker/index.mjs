@@ -70,7 +70,6 @@ const FALLBACK_DBS = Object.freeze([
   'tamamhealth_messages',
   'tamamhealth_controlled_substance_log',
   'tamamhealth_pharmacy_inventory',
-  'tamamhealth_telehealth',
   'tamamhealth_wards',
   'tamamhealth_blood_bank',
   'tamamhealth_emergency_plans',

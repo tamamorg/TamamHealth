@@ -125,11 +125,125 @@ matches.
 
 ## Where this is enforced
 
+The table above answers "what may this role reach". That is only one of **four
+independent axes**, and a permission question is not answered until all four are.
+Conflating them is how a control ends up looking complete while granting more than
+intended.
+
+| # | Axis | Question | Enforced by |
+|---|------|----------|-------------|
+| 1 | **Tenant** | Which organisation's data? | Physical tenant database + the `org:` claim in `validate_doc_update` + `filterByScope` |
+| 2 | **Facility** | Which hospital within that org? | Replication selector (`facility-entitlements.ts`) + `filterByScope` on read. **Not enforced on write** — see the gap note below |
+| 3 | **Role → document type** | May this cadre touch this kind of record? | `DOC_WRITE_ROLES` in `sync/write-permissions.ts` |
+| 4 | **Lifecycle** | May an existing record be changed at all? | `IMMUTABLE_FIELDS`, `APPEND_ONLY_TYPES` and `DOC_UPDATE_ONLY_ROLES`, same file |
+
+### Authoring vs amending
+
+Axis 3 has two grades, because several workflows write a document without
+creating it. `DOC_WRITE_ROLES` is authorship: create, amend and delete.
+`DOC_UPDATE_ONLY_ROLES` grants amendment alone — the role may change a document
+that already exists, and may never create or delete one. CouchDB passes the
+validator `oldDoc`, which is what makes the distinction enforceable rather than
+merely intended.
+
+Today it carries one row, `prescription`:
+
+| Role | May | May not |
+|------|-----|---------|
+| `pharmacist` | advance the dispensing lifecycle on an existing order | author an order, delete one |
+| `nurse`, `midwife`, `triage_nurse`, `rooming_nurse` | append a `MedicationAdministration` from the ward MAR | author an order, delete one |
+
+Both of those were previously refused outright, so the pharmacy could not
+dispense and no dose recorded on the MAR ever replicated. Granting them
+authorship instead would have been worse: `createPrescription` carries no
+prescriber check of its own — only `/api/prescriptions` does, and UI writes
+never reach it — so the write row is the only thing standing between a nurse and
+a medication order.
+
+### The layers, in the order a request actually meets them
+
 1. **Page navigation** — Edge middleware via `ROLE_ROUTE_TABLE` (`role-routes.ts`).
 2. **Sidebar/menus** — `ROLE_PERMISSIONS` nav items (`permissions.ts`).
 3. **Capabilities/UI affordances** — `usePermissions.ts`.
-4. **Data layer (authoritative)** — per-endpoint `READ_ROLES`/`WRITE_ROLES`/`CREATE_ROLES`
-   arrays in `platform/src/app/api/**/route.ts`, plus `VALID_ROLES` in `user-service.ts`.
+4. **API route guards** — per-endpoint `READ_ROLES`/`WRITE_ROLES`/`CREATE_ROLES` arrays in
+   `platform/src/app/api/**/route.ts`, plus `VALID_ROLES` in `user-service.ts`.
+5. **CouchDB `validate_doc_update` (authoritative for writes)** — generated from
+   `DOC_WRITE_ROLES` by `buildValidateDocUpdateFn()` and installed by
+   `npm run setup:couchdb:validators`.
 
-All four layers are kept in sync; the `middleware-routes` and `permissions` test suites assert
-that nav links can never point at a route the middleware would block (136 tests passing).
+> **Layer 5, not layer 4, is the authoritative one.** The browser writes to its local
+> PouchDB replica and replication carries the change upstream — that path **never touches
+> an API route**, so layers 1–4 are all advisory for any client that chooses to skip them.
+> The validator is the only guard on the offline write path, which is why it is generated
+> from the same table the route guards read rather than hand-written beside them.
+
+### Deletes and append-only trails
+
+A **delete is a write** and is checked against the same role row as a create. A tombstone
+carries no body, so it is judged entirely on the revision it destroys (`oldDoc`) — a body
+sent alongside it cannot relabel what is being deleted. The one deletion accepted without a
+role check is a tombstone for a document the database does not hold: it destroys nothing,
+and replication depends on it being accepted.
+
+Three document types are **append-only** — creatable by their role row, then never
+modifiable or deletable by anyone below `_admin`:
+
+| Type | Database | Why |
+|------|----------|-----|
+| `audit_log` | `tamamhealth_audit_log` | Written by every staff role, so it must not be amendable by the staff it records |
+| `controlled_substance_log` | `tamamhealth_controlled_substance_log` | Narcotics chain of custody |
+| `ledger_entry` | `tamamhealth_ledger` | Patient financial chain; a correction is a new reversing entry |
+
+Enforced in three places, kept in parity by `src/__tests__/sync/append-only-parity.test.ts`:
+the validator (refuses amendment and deletion), the sync gateway (refuses to forward any
+deletion to those databases), and `TABLE_CONFLICT_POLICY` in `db/postgres.ts` (refuses to
+overwrite or delete the national projection). `sync_event` is deliberately *not* append-only
+— it is updated in place when a change lands.
+
+### Known gap — axis 2 is read-only
+
+There is no facility check on **writes**. The validator compares `orgId` and never
+`hospitalId`, so a user at one facility can create a record stamped with another facility in
+the same organisation. The `facility:<id>` claim needed to close this is already provisioned
+onto every CouchDB user by `ensureCouchUser()`; nothing reads it yet. Closing it needs a
+per-type decision about which facility field is the owning one — a referral's
+`toHospitalId` and a message's `recipientHospitalId` legitimately name somewhere else.
+
+On the read side, `facility-entitlements.ts` documents its own limit: the replication
+selector is supplied by the client, so it prevents bulk exposure rather than being an
+authorization boundary. Per-facility databases are the real fix (`docs/FACILITY-ISOLATION.md`).
+
+### The station shim, and why layer 5 must be checked separately
+
+`hasRole` in `api-auth.ts` applies a **compatibility shim**: a clinical-flow station role
+also satisfies an allow-list naming its legacy equivalent, so `triage_nurse` passes a guard
+listing `nurse`. **The CouchDB validator has no shim** — it matches `role:` claims exactly.
+
+That gap is not cosmetic. A role the shim admits and the matrix omits gets the form, fills
+it in, and writes the document to its local replica, where it looks saved. Replication then
+rejects it and the record never leaves the device. Nothing in the UI reports this, because
+the local write succeeded.
+
+An audit in Aug 2026 found eight workflows in that state and repaired them:
+
+| Workflow | Role(s) that could not sync |
+|----------|------------------------------|
+| Patient registration | `central_registration_clerk`, `clinic_clerk`, `triage_nurse`, `rooming_nurse` |
+| Triage assessment | `triage_nurse` — its own primary function |
+| Referral intake | `front_desk`, `central_registration_clerk` (the `proxy_referral_capture` capability) |
+| Imaging report | `radiologist` |
+| Dispensing | `pharmacist` |
+| Ward MAR | `nurse`, `midwife`, `triage_nurse`, `rooming_nurse` |
+| Vital-event registers | `hrio`, `records_hmis_officer`, `triage_nurse`, `rooming_nurse` |
+| Facility assessment | `hrio` |
+| Audit trail + sync events | `government`, `county_health_director` — the two broadest-read roles had **no** server-side audit trail |
+
+`src/__tests__/rbac/workflow-write-parity.test.ts` now asserts the contract directly: for
+every capability the UI grants, every role holding it must be able to write the document
+types that workflow produces. It also reads `usePermissions.ts` and fails if a flag stops
+naming the roles the table expects, so the restated lists cannot drift.
+
+The other suites: `middleware-routes` and `permissions` assert nav links can never point at a
+route the middleware would block; `validate-doc-update` executes the generated validator the
+way CouchDB does; `api-role-guard` spot-checks the separation-of-duties invariants
+(clinicians don't handle money, clerks don't author clinical records).

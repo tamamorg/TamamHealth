@@ -12,6 +12,12 @@ import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole, UserDoc } from '@/lib/db-types';
 import type { InvitationOutcome } from '@/lib/user-invite';
 import { STAFF_DIRECTORY_READ_ROLES } from '@/lib/staff-directory-access';
+// The org/facility requirement is stated once, in `lib/user-scope-rules.ts`,
+// and read by this route, `user-service.createUser`, and the two admin UIs —
+// which previously kept four copies of the same list and had already drifted.
+import {
+  roleNeedsFacility, ORG_REQUIRED_MESSAGE, FACILITY_REQUIRED_MESSAGE,
+} from '@/lib/user-scope-rules';
 // Reading the staff directory is org-scoped (buildScopeFromAuth) and the rows
 // come back through redactUserForClient — it is a colleague list, not PHI.
 // `hospital_manager` runs the facility's roster, shifts, leave and payroll off
@@ -366,20 +372,16 @@ async function postHandler(request: NextRequest) {
       if (!existingUser || !effectiveRole) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
-      const rolesWithoutHospital: UserRole[] = ['super_admin', 'org_admin', 'government', 'county_health_director'];
       const requestedOrgId = (body.orgId as string | undefined) ?? existingUser.orgId;
       const requestedHospitalId = (body.hospitalId as string | undefined) ?? existingUser.hospitalId;
       let canonicalHospitalName: string | undefined;
       let canonicalOrgId = requestedOrgId;
       if (effectiveRole === 'org_admin' && !requestedOrgId) {
-        return NextResponse.json(
-          { error: 'Organization administrators must be assigned to an organization' },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: ORG_REQUIRED_MESSAGE }, { status: 400 });
       }
-      if (!rolesWithoutHospital.includes(effectiveRole)) {
+      if (roleNeedsFacility(effectiveRole)) {
         if (!requestedHospitalId) {
-          return NextResponse.json({ error: 'Clinical users must be assigned to a hospital' }, { status: 400 });
+          return NextResponse.json({ error: FACILITY_REQUIRED_MESSAGE }, { status: 400 });
         }
         const { getHospitalById } = await import('@/lib/services/hospital-service');
         const canonicalHospital = await getHospitalById(requestedHospitalId);
@@ -395,7 +397,7 @@ async function postHandler(request: NextRequest) {
         canonicalHospitalName = canonicalHospital.name;
         canonicalOrgId = canonicalHospital.orgId || requestedOrgId;
       }
-      if (effectiveRole === 'org_admin' || !rolesWithoutHospital.includes(effectiveRole)) {
+      if (effectiveRole === 'org_admin' || roleNeedsFacility(effectiveRole)) {
         const organizationError = await validateActiveOrganization(canonicalOrgId);
         if (organizationError) return organizationError;
       }
@@ -406,8 +408,8 @@ async function postHandler(request: NextRequest) {
           name: body.name as string | undefined,
           phone: body.phone as string | undefined,
           role: body.role as UserRole | undefined,
-          hospitalId: rolesWithoutHospital.includes(effectiveRole) ? undefined : requestedHospitalId,
-          hospitalName: rolesWithoutHospital.includes(effectiveRole) ? undefined : canonicalHospitalName,
+          hospitalId: roleNeedsFacility(effectiveRole) ? requestedHospitalId : undefined,
+          hospitalName: roleNeedsFacility(effectiveRole) ? canonicalHospitalName : undefined,
           orgId: canonicalOrgId,
           orgName: await resolveOrgName(canonicalOrgId),
           isActive: body.isActive as boolean | undefined,
@@ -445,16 +447,12 @@ async function postHandler(request: NextRequest) {
       }
     }
     const targetRole = body.role as UserRole;
-    const rolesWithoutHospital: UserRole[] = ['super_admin', 'org_admin', 'government', 'county_health_director'];
     if (targetRole === 'org_admin' && !body.orgId) {
-      return NextResponse.json(
-        { error: 'Organization administrators must be assigned to an organization' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: ORG_REQUIRED_MESSAGE }, { status: 400 });
     }
-    if (!rolesWithoutHospital.includes(targetRole)) {
+    if (roleNeedsFacility(targetRole)) {
       if (!body.hospitalId) {
-        return NextResponse.json({ error: 'Clinical users must be assigned to a hospital' }, { status: 400 });
+        return NextResponse.json({ error: FACILITY_REQUIRED_MESSAGE }, { status: 400 });
       }
       const { getHospitalById } = await import('@/lib/services/hospital-service');
       const canonicalHospital = await getHospitalById(body.hospitalId as string);
@@ -475,7 +473,7 @@ async function postHandler(request: NextRequest) {
       body.hospitalId = undefined;
       body.hospitalName = undefined;
     }
-    if (targetRole === 'org_admin' || !rolesWithoutHospital.includes(targetRole)) {
+    if (targetRole === 'org_admin' || roleNeedsFacility(targetRole)) {
       const organizationError = await validateActiveOrganization(body.orgId as string | undefined);
       if (organizationError) return organizationError;
     }

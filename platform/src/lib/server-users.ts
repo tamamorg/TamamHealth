@@ -19,6 +19,8 @@ export interface ServerUser {
   role: string;
   hospitalId?: string;
   hospitalName?: string;
+  /** Extra facilities this user covers — see UserDoc.facilityIds. */
+  facilityIds?: string[];
   orgId?: string;
   /** Organization display name denormalised onto the user doc — see UserDoc.orgName. */
   orgName?: string;
@@ -82,6 +84,7 @@ async function authenticateFromUsersDb(
       role: doc.role,
       hospitalId: doc.hospitalId,
       hospitalName: doc.hospitalName,
+      facilityIds: doc.facilityIds,
       orgId: doc.orgId,
       orgName: doc.orgName,
       isActive: doc.isActive,

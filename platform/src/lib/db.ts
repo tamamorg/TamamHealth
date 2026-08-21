@@ -17,6 +17,8 @@
  * etc.), so nothing above this layer has to care which runtime it's in.
  */
 
+import { DATABASE_SYNC_CONFIGS } from './sync/sync-config';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PouchDBCtor = any;
 type PouchDatabase = PouchDB.Database;
@@ -468,55 +470,65 @@ export async function markSeeded(): Promise<void> {
 // Browser-only: destroying a remote CouchDB database from a server process
 // would take out data for every clinic on the cluster.
 /**
+ * Databases the browser opens that do NOT replicate, so they cannot be derived
+ * from the sync map.
+ *
+ * `tamamhealth_users` is here for its legacy copy: user documents carry
+ * password and PIN hashes and are no longer replicated, but browsers seeded
+ * before that change still hold one and it has to be wipeable.
+ */
+const NON_REPLICATING_LOCAL_DATABASES: readonly string[] = [
+  'tamamhealth_users',
+  'tamamhealth_meta',
+  'tamamhealth_account_requests',
+  'tamamhealth_usage_events',
+  'tamamhealth_slot_holds',
+  // Retired with the patient intake-forms feature (v73). Kept so a browser
+  // seeded while the feature existed still has the orphaned database purged.
+  'tamamhealth_intake_forms',
+];
+
+/**
  * Every PouchDB database this app opens in the browser, by name.
  *
- * Two callers depend on it: `resetAllDatabases()` (seed-version bumps) and
- * the security wipe in `lib/security/local-wipe.ts`, which also discovers
- * databases at runtime so a name missing from this list still gets cleared
- * off a device. Keep it in sync when a new database is introduced.
+ * DERIVED from the sync map rather than hand-listed. The hand-written version
+ * had drifted by eight databases — `clinical_notes` (signed encounter notes),
+ * `consultation_progress`, `facility_census`, `text_shortcuts` and the four
+ * online-booking stores — partly because three of those are opened by a
+ * module-local `getDB('…')` call rather than an accessor in this file, so
+ * adding one never prompted anybody to update the list here.
+ *
+ * The cost of a missing name is not theoretical: `resetAllDatabases()` uses
+ * this list ONLY (no runtime discovery), so on a seed-version bump the omitted
+ * databases survived on the device and replicated their stale documents back
+ * up — which is the exact failure the v74 bump was made to stop.
+ *
+ * `src/__tests__/db-database-lists.test.ts` asserts the derivation stays whole.
  */
 export const LOCAL_DATABASE_NAMES: readonly string[] = [
-    'tamamhealth_users', 'tamamhealth_patients', 'tamamhealth_hospitals',
-    'tamamhealth_medical_records', 'tamamhealth_referrals', 'tamamhealth_lab_results',
-    'tamamhealth_disease_alerts', 'tamamhealth_prescriptions', 'tamamhealth_audit_log', 'tamamhealth_usage_events', 'tamamhealth_messages', 'tamamhealth_conversations', 'tamamhealth_patient_notes',
-    'tamamhealth_births', 'tamamhealth_deaths', 'tamamhealth_facility_assessments',
-    'tamamhealth_immunizations', 'tamamhealth_anc', 'tamamhealth_follow_ups',
-    'tamamhealth_organizations', 'tamamhealth_platform_config',
-    'tamamhealth_appointments', 'tamamhealth_pharmacy_inventory',
-    'tamamhealth_triage',
-    'tamamhealth_billing', 'tamamhealth_fee_schedule', 'tamamhealth_wards',
-    'tamamhealth_staff_schedules', 'tamamhealth_blood_bank',
-    'tamamhealth_insurance_policies', 'tamamhealth_eligibility_checks', 'tamamhealth_charges',
-    'tamamhealth_claims', 'tamamhealth_adjustments', 'tamamhealth_payments', 'tamamhealth_refunds',
-    'tamamhealth_saved_payment_methods', 'tamamhealth_payment_plans', 'tamamhealth_invoices', 'tamamhealth_ledger',
-    'tamamhealth_sync_events', 'tamamhealth_conflict_queue',
-    'tamamhealth_problems', 'tamamhealth_encounters', 'tamamhealth_biometric_templates',
-    'tamamhealth_program_enrollments', 'tamamhealth_procedures',
-    'tamamhealth_handoffs', 'tamamhealth_order_sets', 'tamamhealth_phone_notes', 'tamamhealth_assessments',
-    // Operational DBs that were created + synced but previously missed here,
-    // leaving stale data behind on reset/re-seed.
-    'tamamhealth_availability', 'tamamhealth_announcements', 'tamamhealth_account_requests',
-    'tamamhealth_emergency_plans', 'tamamhealth_assets',
-    'tamamhealth_leave_requests', 'tamamhealth_payroll_entries', 'tamamhealth_patient_feedback',
-    'tamamhealth_clinical_favorites', 'tamamhealth_consultation_templates',
-    'tamamhealth_clinician_tasks', 'tamamhealth_patient_documents',
-    'tamamhealth_patient_reminders',
-    // Retired with the patient intake-forms feature (v73). Kept in the reset
-    // list only so the bump purges the orphaned local database from browsers
-    // that were seeded while the feature existed.
-    'tamamhealth_intake_forms',
-    'tamamhealth_nutrition_screenings', 'tamamhealth_nutrition_supplies',
-    'tamamhealth_patient_transfers',
-    // NOTE: 'tamamhealth_controlled_substance_log' is deliberately NOT reset
-    // here — it is an append-only regulatory audit trail and resetAllDatabases()
-    // runs on production seed-version bumps (see seedProduction).
-    'tamamhealth_meta'
+  ...DATABASE_SYNC_CONFIGS.map(config => config.localName),
+  ...NON_REPLICATING_LOCAL_DATABASES,
+];
+
+/**
+ * Databases `resetAllDatabases()` must leave alone.
+ *
+ * The controlled-substance log is an append-only regulatory trail and the reset
+ * runs on production seed-version bumps. It is still a member of
+ * `LOCAL_DATABASE_NAMES`, so the security wipe in `lib/security/local-wipe.ts`
+ * does clear it off a device at logout — the two callers want different
+ * answers, and conflating them previously left the register behind in both.
+ */
+const RESET_EXCLUDED_DATABASES: readonly string[] = [
+  'tamamhealth_controlled_substance_log',
 ];
 
 export async function resetAllDatabases(): Promise<void> {
   if (!IS_BROWSER) return;
   const PouchDB = loadPouchDB();
-  const dbNames = LOCAL_DATABASE_NAMES;
+  const dbNames = LOCAL_DATABASE_NAMES.filter(
+    name => !RESET_EXCLUDED_DATABASES.includes(name),
+  );
   for (const name of dbNames) {
     try {
       // Prefer the cached instance — destroying a NEW PouchDB while the cached

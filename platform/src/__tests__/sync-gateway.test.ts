@@ -54,4 +54,29 @@ describe('server-authorized CouchDB sync gateway', () => {
     })).toBeNull();
     expect(validateGatewayWriteBody(patients, 'PUT', ['_local', 'checkpoint'], {})).toBeNull();
   });
+
+  it('never forwards a deletion to an append-only database', () => {
+    // A tombstone has no `type` for the allowlist to catch, so without this the
+    // audit trail, the narcotics register and the patient ledger were erasable
+    // by the staff they record.
+    for (const name of ['audit_log', 'controlled_substance_log', 'ledger']) {
+      const db = resolveGatewayDatabase(`tamamhealth_${name}--org-clinic-a`, 'org-clinic-a')!;
+      expect(validateGatewayWriteBody(db, 'POST', ['_bulk_docs'], {
+        docs: [{ _id: `${name}-1`, _rev: '2-x', _deleted: true }],
+      })).toMatch(/append-only/);
+      expect(validateGatewayWriteBody(db, 'DELETE', [`${name}-1`], null)).toMatch(/append-only/);
+    }
+  });
+
+  it('still lets append-only databases receive new entries', () => {
+    const audit = resolveGatewayDatabase('tamamhealth_audit_log--org-clinic-a', 'org-clinic-a')!;
+    expect(validateGatewayWriteBody(audit, 'POST', ['_bulk_docs'], {
+      docs: [{ _id: 'aud-1', type: 'audit_log', orgId: 'org-clinic-a' }],
+    })).toBeNull();
+  });
+
+  it('leaves deletes alone on databases that are not append-only', () => {
+    const patients = resolveGatewayDatabase('tamamhealth_patients--org-clinic-a', 'org-clinic-a')!;
+    expect(validateGatewayWriteBody(patients, 'DELETE', ['pat-1'], null)).toBeNull();
+  });
 });

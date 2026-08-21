@@ -108,10 +108,20 @@ describe('PEOPLE & HR nav section', () => {
 });
 
 describe('buildAddMenuEntries', () => {
-  test('org_admin can add staff, inquiries, shifts, leave and payroll', () => {
+  test('org_admin can add a facility, staff, inquiries, shifts, leave and payroll', () => {
     const entries = buildAddMenuEntries({ role: 'org_admin', allowedRoutes: allowedFor('org_admin') });
-    expect(entries.map(e => e.key)).toEqual(['staff', 'inquiry', 'shift', 'leave', 'payroll']);
+    expect(entries.map(e => e.key)).toEqual(['facility', 'staff', 'inquiry', 'shift', 'leave', 'payroll']);
     expect(entries.find(e => e.key === 'staff')!.href).toBe('/org-admin/users?new=1');
+  });
+
+  test('"Add facility" comes before "Add staff member" — a facility role cannot be saved without one', () => {
+    // roleNeedsFacility() blocks the account until the facility exists, so the
+    // menu lists the steps in the order the platform actually enforces.
+    for (const role of ['super_admin', 'org_admin'] as UserRole[]) {
+      const keys = buildAddMenuEntries({ role, allowedRoutes: allowedFor(role) }).map(e => e.key);
+      expect(keys.indexOf('facility')).toBeGreaterThanOrEqual(0);
+      expect(keys.indexOf('facility')).toBeLessThan(keys.indexOf('staff'));
+    }
   });
 
   test('super_admin adds staff through the platform accounts page', () => {

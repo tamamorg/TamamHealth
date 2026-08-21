@@ -9,7 +9,7 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import type { UserDoc, UserRole } from '@/lib/db-types';
 import {
-  UserX, UserCheck, UserPlus, Shield,
+  UserX, UserCheck, UserPlus, Shield, Building2,
   KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Info,
 } from '@/components/icons/lucide';
 import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
@@ -17,6 +17,9 @@ import type { RowAction } from '@/components/RowActionsMenu';
 import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
 import { generateTempPassword } from '@/lib/temp-password';
 import { avatarTint } from '@/lib/patient-utils';
+import { roleNeedsFacility, roleNeedsOrganization, validateUserScope } from '@/lib/user-scope-rules';
+import { canCreateFacilities } from '@/lib/people-nav';
+import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
 import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
@@ -65,7 +68,11 @@ export default function AdminUsersPage() {
   const [changingRole, setChangingRole] = useState(false);
   // "Add user" modal — super_admin can create users directly here instead of
   // detouring to /settings or /org-admin/users.
-  const { hospitals } = useHospitals();
+  const { hospitals, reload: reloadHospitals } = useHospitals();
+  // Registering a facility from inside the user dialog. A facility-bound role
+  // cannot be saved without one, and telling an operator to leave, create it
+  // elsewhere, and start the form again is the dead end this whole flow had.
+  const [showAddFacility, setShowAddFacility] = useState(false);
   const emptyAddForm = { name: '', username: '', password: '', role: 'nurse' as UserRole, orgId: '', hospitalId: '' };
   const [showAddUser, setShowAddUser] = useState(false);
   const [addForm, setAddForm] = useState(emptyAddForm);
@@ -165,6 +172,29 @@ export default function AdminUsersPage() {
     }
   };
 
+  // What the SELECTED role requires, and which facilities can satisfy it.
+  // A facility only counts when it belongs to the chosen organization —
+  // offering one from another tenant would produce a cross-tenant account
+  // that /api/users rejects ("Assigned hospital does not belong to the
+  // selected organization").
+  const needsOrg = roleNeedsOrganization(addForm.role);
+  const needsFacility = roleNeedsFacility(addForm.role);
+  const addFacilityChoices = useMemo(
+    () => (addForm.orgId ? hospitals.filter(h => h.orgId === addForm.orgId) : []),
+    [hospitals, addForm.orgId],
+  );
+
+  /**
+   * Changing the role changes what scope is required, so a stale facility from
+   * a previous selection must not ride along — an org_admin carrying a
+   * hospitalId is exactly the mismatch the server strips server-side, and
+   * leaving it in the form makes the dialog disagree with what gets saved.
+   */
+  const changeAddRole = (role: UserRole) => {
+    setAddError(null);
+    setAddForm(f => ({ ...f, role, hospitalId: roleNeedsFacility(role) ? f.hospitalId : '' }));
+  };
+
   const handleAddUser = async () => {
     if (!currentUser) return;
     if (!addForm.name.trim() || !addForm.username.trim() || !addForm.password) {
@@ -173,6 +203,20 @@ export default function AdminUsersPage() {
     }
     if (addForm.password.length < MIN_PASSWORD_LENGTH) {
       setAddError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      return;
+    }
+    // The organization and facility a role REQUIRES, checked with the same
+    // rules /api/users enforces. Without this the dialog cheerfully accepted
+    // "Organization: none / Facility: — None —" for a facility-bound role and
+    // only surfaced the problem as a 400 after the operator had typed
+    // everything, with the temporary password lost on the way back.
+    const scopeError = validateUserScope({
+      role: addForm.role,
+      orgId: addForm.orgId,
+      hospitalId: addForm.hospitalId,
+    });
+    if (scopeError) {
+      setAddError(scopeError);
       return;
     }
     setAddSaving(true);
@@ -546,28 +590,65 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Role</label>
-                <Select value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value as UserRole }))} style={selectStyle}>
+                <Select value={addForm.role} onChange={e => changeAddRole(e.target.value as UserRole)} style={selectStyle}>
                   {ALL_ROLES.filter(r => r !== 'super_admin').map(r => (
                     <option key={r} value={r}>{roleLabel(r)}</option>
                   ))}
                 </Select>
               </div>
               <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Organization</label>
+                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  Organization{needsOrg ? ' *' : ''}
+                </label>
                 <Select value={addForm.orgId} onChange={e => setAddForm(f => ({ ...f, orgId: e.target.value, hospitalId: '' }))} style={selectStyle}>
-                  <option value="">— None (platform-level role) —</option>
-                  {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
+                  {/* "None" is only an option for the platform and national
+                      roles that genuinely have no tenant — offering it to a
+                      facility role is how an unscoped account gets made. */}
+                  <option value="">{needsOrg ? '— Select an organization —' : '— None (platform-level role) —'}</option>
+                  {organizations.filter(o => o.isActive !== false).map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
                 </Select>
               </div>
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Facility</label>
-                <Select value={addForm.hospitalId} onChange={e => setAddForm(f => ({ ...f, hospitalId: e.target.value }))} style={selectStyle}>
-                  <option value="">— None —</option>
-                  {hospitals.filter(h => !addForm.orgId || h.orgId === addForm.orgId).map(h => (
-                    <option key={h._id} value={h._id}>{h.name}</option>
-                  ))}
-                </Select>
-              </div>
+              {/* Organisation-wide roles (org_admin, government, county health
+                  director) are not bound to a facility, so the picker is not
+                  shown for them at all rather than shown and ignored. */}
+              {needsFacility && (
+                <div>
+                  <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Facility *</label>
+                  {addFacilityChoices.length > 0 ? (
+                    <Select value={addForm.hospitalId} onChange={e => setAddForm(f => ({ ...f, hospitalId: e.target.value }))} style={selectStyle}>
+                      <option value="">— Select a facility —</option>
+                      {addFacilityChoices.map(h => (
+                        <option key={h._id} value={h._id}>{h.name}</option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <div
+                      className="rounded-lg px-3 py-2.5 text-xs"
+                      data-field="no-facilities"
+                      style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}
+                    >
+                      <p className="mb-1.5" style={{ color: 'var(--text-primary)' }}>
+                        {addForm.orgId ? 'This organization has no facilities yet.' : 'Select an organization first.'}
+                      </p>
+                      {addForm.orgId && (
+                        <>
+                          <p className="mb-2">A {roleLabel(addForm.role).toLowerCase()} works at a facility, so one has to exist before the account can be created.</p>
+                          {canCreateFacilities(currentUser?.role ?? '') && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => setShowAddFacility(true)}
+                              data-action="add-facility-inline"
+                            >
+                              <Building2 className="w-4 h-4" /> Add a facility
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               {addError && (
                 <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{addError}</p>
               )}
@@ -580,6 +661,24 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Registering a facility without leaving the half-filled user form. */}
+      {showAddFacility && canCreateFacilities(currentUser?.role ?? '') && (
+        <CreateFacilityModal
+          onClose={() => setShowAddFacility(false)}
+          onCreated={async hospital => {
+            setShowAddFacility(false);
+            await reloadHospitals();
+            // Select what was just created — it is the only reason the
+            // operator opened this dialog mid-form.
+            setAddForm(f => ({ ...f, orgId: hospital.orgId || f.orgId, hospitalId: hospital._id }));
+            showToast(`Facility ${hospital.name} created.`, 'success');
+          }}
+          orgId={addForm.orgId || undefined}
+          organizations={addForm.orgId ? undefined : organizations}
+          actor={{ _id: currentUser?._id, username: currentUser?.username }}
+        />
       )}
 
       {/* Credential hand-off — shown once after a create or reset */}

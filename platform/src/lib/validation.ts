@@ -16,11 +16,56 @@ export const ALLOWED_FILE_TYPES = [
 ];
 
 export function validateAttachment(file: File): { valid: boolean; error?: string } {
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { valid: false, error: `File "${file.name}" exceeds 5MB limit (${(file.size / 1024 / 1024).toFixed(1)}MB)` };
+  return validateAttachmentPayload({
+    name: file.name,
+    mimeType: file.type,
+    sizeBytes: file.size,
+  });
+}
+
+/**
+ * The same rules as `validateAttachment`, without needing a `File`.
+ *
+ * `validateAttachment` takes a browser `File` and so can only run in the one
+ * component that owns the file picker. Every other path — the patient-documents
+ * uploader, the radiology dashboard, an API caller, an offline write replayed
+ * from a device — arrives with a base64 string and no `File` in sight, and had
+ * nothing checking it at all. A 40MB scan became a ~54MB base64 field inside a
+ * single document, replicated in full to every clinician's browser in the
+ * organisation.
+ *
+ * Enforce this in the SERVICE, not only in the UI: browser writes go straight
+ * to the local replica, so a UI-only check is advisory.
+ *
+ * `base64Length`, when supplied, is checked against the declared size — a
+ * caller may not under-report to slip past the cap. Base64 encodes 3 bytes as
+ * 4 characters, so the decoded length is derived rather than trusted.
+ */
+export function validateAttachmentPayload(input: {
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  base64Length?: number;
+}): { valid: boolean; error?: string } {
+  const declared = Number.isFinite(input.sizeBytes) ? input.sizeBytes : 0;
+  // Derive the real size from the payload when we have it; a client controls
+  // `sizeBytes` and the encoded string equally, but only one of them is what
+  // actually gets stored.
+  const actual = input.base64Length === undefined
+    ? declared
+    : Math.max(declared, Math.floor((input.base64Length * 3) / 4));
+
+  if (actual > MAX_FILE_SIZE_BYTES) {
+    return {
+      valid: false,
+      error: `File "${input.name}" exceeds 5MB limit (${(actual / 1024 / 1024).toFixed(1)}MB)`,
+    };
   }
-  if (!ALLOWED_FILE_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith('.dcm')) {
-    return { valid: false, error: `File "${file.name}" has unsupported type (${file.type || 'unknown'}). Allowed: JPEG, PNG, GIF, WebP, PDF, DICOM` };
+  if (!ALLOWED_FILE_TYPES.includes(input.mimeType) && !input.name.toLowerCase().endsWith('.dcm')) {
+    return {
+      valid: false,
+      error: `File "${input.name}" has unsupported type (${input.mimeType || 'unknown'}). Allowed: JPEG, PNG, GIF, WebP, PDF, DICOM`,
+    };
   }
   return { valid: true };
 }

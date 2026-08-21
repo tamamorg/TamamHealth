@@ -41,8 +41,41 @@ export async function ensureIndex(db: AnyDB, fields: string[]): Promise<void> {
 }
 
 /**
+ * Index fields for a query, derived from what it actually filters on.
+ *
+ * The old default was `['type']` for every call, which reads like an index and
+ * behaves like none: `DATABASE_DOCUMENT_TYPES` gives each browser database
+ * exactly one document type, so a `type` index has a single key covering every
+ * row and Mango walks the whole database anyway — the very scan `findByType`
+ * was written to replace. 178 of the 279 call sites used that default.
+ *
+ * `type` stays as the leading column so the index shape matches the selector
+ * (and the explicit `['type', 'patientId']` fields already passed at ~20 call
+ * sites). What follows are the equality keys the caller narrowed by, which is
+ * where the selectivity actually is — `patientId` on a chart read, `status` on
+ * a work queue.
+ *
+ * Operator selectors (`{$in: …}`, `{$gt: …}`) are skipped: Mango can only use
+ * an index for a range on the LAST indexed field, so including them in the
+ * middle of a compound index silently prevents it being used at all.
+ */
+function derivedIndexFields(extraSelector: Record<string, unknown>): string[] {
+  const equalityKeys = Object.keys(extraSelector).filter((key) => {
+    // A primitive is an equality match; an object or array is an operator
+    // expression (`{$in: […]}`, `{$gt: …}`) and is not indexed here.
+    const valueType = typeof extraSelector[key];
+    return valueType === 'string' || valueType === 'number' || valueType === 'boolean';
+  });
+  return equalityKeys.length ? ['type', ...equalityKeys] : ['type'];
+}
+
+/**
  * Return all docs of a given `type` in `db`, optionally narrowed by an extra
  * selector. Uses an indexed Mango query instead of a full-DB scan.
+ *
+ * `limit` is a safety ceiling, not a page size — it exists so a runaway query
+ * cannot stream an entire database into memory, and callers that genuinely
+ * page should pass their own.
  */
 export async function findByType<T>(
   db: AnyDB,
@@ -50,7 +83,7 @@ export async function findByType<T>(
   extraSelector: Record<string, unknown> = {},
   options: { limit?: number; indexFields?: string[] } = {},
 ): Promise<T[]> {
-  await ensureIndex(db, options.indexFields ?? ['type']);
+  await ensureIndex(db, options.indexFields ?? derivedIndexFields(extraSelector));
   const res = (await db.find({
     selector: { type, ...extraSelector },
     limit: options.limit ?? 100_000,

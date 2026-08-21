@@ -148,6 +148,10 @@ export async function POST(request: NextRequest) {
       name: user.name,
       hospitalId: effective.hospitalId,
       hospitalName: effective.hospitalName,
+      // Extra facilities this account covers. Read from the account itself, not
+      // from `effective`: a super-admin signing in AS another role borrows a
+      // facility, and must not also inherit somebody's multi-site coverage.
+      facilityIds: user.facilityIds,
       orgId: effective.orgId,
       // May be undefined if the user record predates countryId — that's fine.
       countryId: user.countryId,
@@ -171,6 +175,7 @@ export async function POST(request: NextRequest) {
         actualRole: effective.actualRole,
         hospitalId: effective.hospitalId,
         hospitalName: effective.hospitalName,
+        facilityIds: user.facilityIds,
         orgId: effective.orgId,
         // Denormalised on the user record (see UserDoc.orgName), and resolved
         // from the organization for accounts created before that field existed
