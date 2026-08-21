@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { InvitationOutcome } from '@/lib/user-invite';
+import { describeInvitationOutcome } from '@/lib/invitation-copy';
 import {
   Plus, KeyRound, Users,
   UserX, UserCheck, X, Eye, EyeOff, ChevronDown, AlertCircle,
@@ -21,6 +22,7 @@ import { generateTempPassword } from '@/lib/temp-password';
 import { canCreateUsers, canCreateFacilities } from '@/lib/people-nav';
 import { roleNeedsFacility } from '@/lib/user-scope-rules';
 import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
+import { activeFacilities } from '@/lib/services/hospital-service';
 import { getRoleConfig, labelRolesDistinctly } from '@/lib/permissions';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 
@@ -146,7 +148,9 @@ export default function OrgUsersPage() {
       ]);
 
       setUsers(u);
-      setHospitals(h);
+      // Only facilities still in service can be staffed. A retired site keeps
+      // its history and its existing people; it just stops taking new ones.
+      setHospitals(activeFacilities(h));
 
       // Which roles this admin may hand out.
       //
@@ -783,13 +787,12 @@ export default function OrgUsersPage() {
                   {handoff.kind === 'created' ? 'User created' : 'Password reset'}
                 </h2>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {handoff.invitation?.sent
-                    ? `An invitation was emailed to ${handoff.invitation.to}. They choose their own password from it — you only need to share the one below if the email does not arrive.`
-                    : handoff.invitation?.reason === 'not_configured'
-                      ? 'Email is not configured on this deployment, so no invitation was sent. Share these credentials securely — the user must change the password at first login.'
-                      : handoff.invitation?.reason === 'send_failed'
-                        ? 'The invitation email could not be sent. Share these credentials securely — the user must change the password at first login.'
-                        : 'Share these credentials securely. The user must change the password at first login.'}
+                  {/* One source of this copy — /admin/users and the
+                      create-organization flow show the same sentences now,
+                      and this chain silently had no case for `no_email`. */}
+                  {handoff.kind === 'created'
+                    ? describeInvitationOutcome(handoff.invitation).message
+                    : 'Share these credentials securely. The user must change the password at first login.'}
                 </p>
               </div>
             </div>

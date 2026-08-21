@@ -7,7 +7,7 @@ import {
   Building2, BedDouble, Users, Stethoscope, WifiOff,
   Zap, ZapOff, Sun, Truck, Signal, Clock, Activity,
   MapPin, HeartPulse, X,
-  FlaskConical, Download, Eye, Settings, Plus,
+  FlaskConical, Download, Eye, Settings, Plus, Edit3, Ban, RotateCcw,
   Syringe, Baby, Pill, ShieldCheck, Microscope,
 } from '@/components/icons/lucide';
 import {
@@ -16,11 +16,14 @@ import {
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useApp } from '@/lib/context';
-import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
+import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import { canCreateFacilities } from '@/lib/people-nav';
+import { isFacilityActive } from '@/lib/services/hospital-service';
+import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { FilterSelect } from '@/components/filters';
 import EhrListHeader, { EhrListFilters, EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import Modal from '@/components/Modal';
 import type { HospitalDoc, UserRole } from '@/lib/db-types';
 
 // Roles that can open the per-hospital management dashboard. The route itself
@@ -119,7 +122,13 @@ function HospitalsPageInner() {
   // used to exist only on a page with no nav row.
   const canCreate = canCreateFacilities(currentUser?.role ?? '');
   const [showCreateFacility, setShowCreateFacility] = useState(false);
+  // The facility being edited. Until now nothing could change a facility's
+  // beds, type, location, staffing or infrastructure after registration — they
+  // were settable once, in a create form, and wrong forever if mistyped.
+  const [editingFacility, setEditingFacility] = useState<HospitalDoc | null>(null);
+  const [retireTarget, setRetireTarget] = useState<HospitalDoc | null>(null);
   const [createdFacility, setCreatedFacility] = useState<string | null>(null);
+  const { showToast } = useToast();
   // A platform operator carries no orgId, so the dialog asks which tenant owns
   // the new facility; a tenant admin's own org is used and never asked for.
   const { organizations } = useOrganizations();
@@ -264,7 +273,14 @@ function HospitalsPageInner() {
         {/* ── Facility Table / Profile ── */}
         <div className="card-elevated flex flex-col" style={{ overflow: 'hidden', flex: 1, minHeight: 0 }}>
           {selectedHospital ? (
-            <FacilityProfile hospital={selectedHospital} onClose={() => setSelectedHospital(null)} canManage={canManage} />
+            <FacilityProfile
+              hospital={selectedHospital}
+              onClose={() => setSelectedHospital(null)}
+              canManage={canManage}
+              canCreate={canCreate}
+              onEdit={() => setEditingFacility(selectedHospital)}
+              onRetire={() => setRetireTarget(selectedHospital)}
+            />
           ) : (
             <>
               <EhrListHeader
@@ -323,19 +339,48 @@ function HospitalsPageInner() {
         </div>
       </main>
 
-      {showCreateFacility && canCreate && (
-        <CreateFacilityModal
-          onClose={() => setShowCreateFacility(false)}
-          onCreated={async hospital => {
+      {(showCreateFacility || editingFacility) && canCreate && (
+        <FacilityFormModal
+          facility={editingFacility ?? undefined}
+          onClose={() => { setShowCreateFacility(false); setEditingFacility(null); }}
+          onSaved={async hospital => {
+            const wasEdit = !!editingFacility;
             setShowCreateFacility(false);
-            setCreatedFacility(hospital.name);
+            setEditingFacility(null);
             await reloadHospitals();
-            setTimeout(() => setCreatedFacility(null), 4000);
+            if (wasEdit) {
+              // Keep the profile open on the record just edited, showing the
+              // saved values rather than the stale ones behind the dialog.
+              setSelectedHospital(hospital);
+              showToast(t('orgHospitals.updatedToast', { name: hospital.name }), 'success');
+            } else {
+              setCreatedFacility(hospital.name);
+              setTimeout(() => setCreatedFacility(null), 4000);
+            }
           }}
           orgId={currentUser?.orgId}
           organizations={currentUser?.orgId ? undefined : organizations}
           actor={{ _id: currentUser?._id, username: currentUser?.username }}
           brandColor={currentUser?.branding?.primaryColor || 'var(--accent-primary)'}
+        />
+      )}
+      {/* Retiring is a soft flag, never a delete: admissions, bills and staff
+          records all carry this facility's id, and removing the document would
+          orphan every one of them. */}
+      {retireTarget && canCreate && (
+        <ConfirmRetireFacility
+          hospital={retireTarget}
+          onClose={() => setRetireTarget(null)}
+          onDone={async (updated, retired) => {
+            setRetireTarget(null);
+            await reloadHospitals();
+            setSelectedHospital(updated);
+            showToast(
+              t(retired ? 'orgHospitals.retiredToast' : 'orgHospitals.restoredToast', { name: updated.name }),
+              'success',
+            );
+          }}
+          actor={{ _id: currentUser?._id, username: currentUser?.username }}
         />
       )}
       {createdFacility && (
@@ -348,6 +393,62 @@ function HospitalsPageInner() {
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Retire / restore confirmation.
+ *
+ * Retiring reads as a delete to the person clicking it, so the copy says what
+ * actually happens: the records stay, the facility stops appearing when new
+ * work is assigned, and the plan's facility slot comes back.
+ */
+function ConfirmRetireFacility({ hospital, onClose, onDone, actor }: {
+  hospital: HospitalDoc;
+  onClose: () => void;
+  onDone: (updated: HospitalDoc, retired: boolean) => void;
+  actor?: { _id?: string; username?: string };
+}) {
+  const { t } = useTranslation();
+  const [saving, setSaving] = useState(false);
+  const retiring = isFacilityActive(hospital);
+
+  const run = async () => {
+    setSaving(true);
+    try {
+      const { setFacilityActive } = await import('@/lib/services/hospital-service');
+      const updated = await setFacilityActive(hospital._id, !retiring, actor?._id, actor?.username);
+      if (updated) onDone(updated, retiring);
+      else onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} width={420} labelledBy="retire-facility-title">
+      <div className={`sadb-modal${retiring ? ' sadb-modal--danger' : ''}`}>
+        <div className="sadb-modal-copy">
+          <h2 id="retire-facility-title" className="sadb-modal-title">
+            {retiring ? t('orgHospitals.retire') : t('orgHospitals.restore')}
+          </h2>
+          <p className="sadb-modal-sub">
+            {retiring ? t('orgHospitals.retireConfirm', { name: hospital.name }) : hospital.name}
+          </p>
+        </div>
+        <div className="sadb-modal-actions">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose} disabled={saving}>
+            {t('action.cancel')}
+          </button>
+          <button
+            type="button" className="btn btn-primary btn-sm" onClick={run} disabled={saving}
+            data-action="confirm-retire-facility"
+          >
+            {retiring ? t('orgHospitals.retire') : t('orgHospitals.restore')}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -493,10 +594,14 @@ function FacilityList({ hospitals, colorMetric, onSelect, canManage }: {
 // ═══════════════════════════════════════════
 //  Facility Profile Panel (with selection)
 // ═══════════════════════════════════════════
-function FacilityProfile({ hospital, onClose, canManage }: {
+function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRetire }: {
   hospital: HospitalDoc;
   onClose: () => void;
   canManage: boolean;
+  /** Registering, editing and retiring are all organisation-level acts. */
+  canCreate: boolean;
+  onEdit: () => void;
+  onRetire: () => void;
 }) {
   const { t } = useTranslation();
   const formatLastSync = (iso: string) => {
@@ -537,6 +642,21 @@ function FacilityProfile({ hospital, onClose, canManage }: {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {canCreate && (
+            <>
+              <button type="button" onClick={onEdit} className="btn btn-secondary btn-sm" style={{ gap: 4 }} data-action="edit-facility">
+                <Edit3 style={{ width: 13, height: 13 }} /> {t('orgHospitals.edit')}
+              </button>
+              <button
+                type="button" onClick={onRetire} className="btn btn-secondary btn-sm" style={{ gap: 4 }}
+                data-action={isFacilityActive(hospital) ? 'retire-facility' : 'restore-facility'}
+              >
+                {isFacilityActive(hospital)
+                  ? <><Ban style={{ width: 13, height: 13 }} /> {t('orgHospitals.retire')}</>
+                  : <><RotateCcw style={{ width: 13, height: 13 }} /> {t('orgHospitals.restore')}</>}
+              </button>
+            </>
+          )}
           {canManage && (
             <Link
               href={`/hospitals/${hospital._id}/manage`}

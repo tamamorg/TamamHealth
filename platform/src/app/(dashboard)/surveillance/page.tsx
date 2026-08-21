@@ -22,6 +22,7 @@ import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { downloadJson, safeFilenamePart } from '@/lib/export-file';
 import { type ChartType, type ChartPeriod } from '@/components/ChartCard';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
@@ -301,13 +302,7 @@ export default function SurveillancePage() {
       alerts: diseaseAlerts || [],
       idsrSummary,
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `surveillance-report-${reportingWeek.replace(/[ ()]/g, '_')}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadJson(payload, `surveillance-report-${safeFilenamePart(reportingWeek)}`);
   };
 
   const reportingFacilities = useMemo(() => {

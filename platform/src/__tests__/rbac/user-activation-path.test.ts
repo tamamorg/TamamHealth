@@ -32,9 +32,12 @@ const code = (rel: string) =>
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 
+// `/settings/manage` was a third account-administration surface until
+// 2026-08-21, when its User Management tab was removed — accounts live on
+// /admin/users and /org-admin/users, which are the two listed here.
 const SURFACES = [
   'app/(dashboard)/admin/users/page.tsx',
-  'app/(dashboard)/settings/manage/page.tsx',
+  'app/(dashboard)/org-admin/users/page.tsx',
 ];
 
 describe('activation uses its own action', () => {

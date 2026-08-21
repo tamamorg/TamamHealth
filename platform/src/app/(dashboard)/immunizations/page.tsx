@@ -14,6 +14,7 @@ import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useApp } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { toCsvRows, downloadCsvText, safeFilenamePart } from '@/lib/export-file';
 import type { ImmunizationDefaulter } from '@/lib/services/immunization-service';
 import type { ImmunizationDoc } from '@/lib/db-types';
 import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
@@ -308,15 +309,8 @@ export default function ImmunizationsPage() {
       const overdue = scoped.filter(r => r.status === 'overdue' || r.status === 'missed').length;
       return [child?.patientName || '', child?.dateOfBirth || '', child?.gender || '', child?.facilityName || '', completed, overdue];
     });
-    const csv = [header, ...rows]
-      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `immunizations-${vaccineFilter === 'all' ? 'all' : vaccineFilter.toLowerCase().replace(/\s+/g, '-')}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const suffix = vaccineFilter === 'all' ? 'all' : safeFilenamePart(vaccineFilter);
+    downloadCsvText(toCsvRows(header, rows), `immunizations-${suffix}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

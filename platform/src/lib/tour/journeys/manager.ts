@@ -45,13 +45,11 @@ export const MANAGER_STEPS: TourStep[] = [
   {
     id: 'facility-settings',
     route: '/facility-settings',
-    // Not anchored: the settings form (`.fs-settings-stack`) runs many
-    // screen-heights tall, so scrolling it into view keeps shifting the
-    // card's position while the smooth-scroll settles — a moving target for
-    // a click. A narrative card is the stable choice here.
+    // Not anchored: the module rail and the card beside it both move as the
+    // page scrolls into view, so a narrative card is the stable choice here.
     target: '',
     title: 'Facility settings',
-    body: 'Payment methods offered, tax rate, exam rooms, and feature flags like fingerprint identification.',
+    body: 'Pick a facility to set what varies there — its number prefix, visit types, departments and rooms, lab catalogue, and the stations a patient passes through. Everything the network shares, like payment methods and tax, is set once under All facilities.',
   },
   {
     id: 'facility-assessments',

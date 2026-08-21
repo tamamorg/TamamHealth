@@ -17,6 +17,7 @@ import { STAFF_DIRECTORY_READ_ROLES } from '@/lib/staff-directory-access';
 // which previously kept four copies of the same list and had already drifted.
 import {
   roleNeedsFacility, ORG_REQUIRED_MESSAGE, FACILITY_REQUIRED_MESSAGE,
+  PLATFORM_ONLY_ASSIGNABLE_ROLES,
 } from '@/lib/user-scope-rules';
 // Reading the staff directory is org-scoped (buildScopeFromAuth) and the rows
 // come back through redactUserForClient — it is a colleague list, not PHI.
@@ -36,7 +37,7 @@ const WRITE_ROLES: UserRole[] = [
 // (super_admin) may grant them. Without this guard a tenant's org_admin could
 // create — or promote themselves into — a super_admin/government account and
 // read every other organization's PHI (privilege-escalation → tenant breakout).
-const PRIVILEGED_ASSIGNABLE_ROLES: UserRole[] = ['super_admin', 'government', 'county_health_director'];
+const PRIVILEGED_ASSIGNABLE_ROLES: readonly UserRole[] = PLATFORM_ONLY_ASSIGNABLE_ROLES;
 
 /**
  * Roughly 1.4 MB of base64 — a 640px JPEG from `PhotoCaptureModal` is well
@@ -103,8 +104,55 @@ async function validateActiveOrganization(orgId: string | undefined): Promise<Ne
   }
   const { getOrganizationById } = await import('@/lib/services/organization-service');
   const organization = await getOrganizationById(orgId);
-  if (!organization || organization.isActive === false) {
+  if (!organization) {
     return NextResponse.json({ error: 'Assigned organization was not found or is inactive' }, { status: 400 });
+  }
+  // `getTenantAccess` is the same kill-switch `getAuthPayload` runs on every
+  // request, but that one reads the ACTOR's tenant — and a super_admin carries
+  // no orgId and is exempt anyway. So a platform operator could add staff to a
+  // suspended or cancelled tenant: accounts billed against a plan the tenant no
+  // longer holds, which cannot sign in because their own auth gate denies them.
+  const { getTenantAccess } = await import('@/lib/services/tenant-control-service');
+  const access = await getTenantAccess(orgId);
+  if (!access.allowed) {
+    return NextResponse.json(
+      { error: `${organization.name} is ${access.reason} — no new accounts can be created in it.` },
+      { status: 400 },
+    );
+  }
+  return null;
+}
+
+/**
+ * Seat limit. `maxUsers` was shown on four screens (the tenant matrix, the
+ * billing editor, the org-settings usage meter, the organizations list) and
+ * enforced by nothing, so an organization on a 50-seat plan could hold 500.
+ *
+ * Counted from ACTIVE accounts only: a deactivated leaver should not hold a
+ * seat their replacement then cannot have. Fails open on an unreadable count —
+ * a transient database error must not stop a clinic hiring.
+ */
+async function validateSeatAvailable(orgId: string | undefined): Promise<NextResponse | null> {
+  if (!orgId) return null;
+  try {
+    const { getOrganizationById } = await import('@/lib/services/organization-service');
+    const organization = await getOrganizationById(orgId);
+    const max = organization?.maxUsers;
+    if (!max || max <= 0) return null;
+    const { getAllUsers } = await import('@/lib/services/user-service');
+    const inUse = (await getAllUsers({ orgId, role: 'super_admin' }))
+      .filter(u => u.orgId === orgId && u.isActive !== false).length;
+    if (inUse >= max) {
+      return NextResponse.json(
+        {
+          error: `${organization!.name} has used all ${max} of its licensed seats. `
+            + 'Deactivate an account or raise the seat limit before adding another.',
+        },
+        { status: 409 },
+      );
+    }
+  } catch (err) {
+    logApiError('[API /users] seat check', err);
   }
   return null;
 }
@@ -494,6 +542,8 @@ async function postHandler(request: NextRequest) {
     if (targetRole === 'org_admin' || roleNeedsFacility(targetRole)) {
       const organizationError = await validateActiveOrganization(body.orgId as string | undefined);
       if (organizationError) return organizationError;
+      const seatError = await validateSeatAvailable(body.orgId as string | undefined);
+      if (seatError) return seatError;
     }
     const newPhoto = normalisePhoto(body.photoUrl);
     if ('error' in newPhoto) {

@@ -18,11 +18,26 @@ import type { UserRole } from '@/lib/db-types';
 
 const ALL_ROLES = Object.keys(ROLE_ROUTE_TABLE) as UserRole[];
 const allowedFor = (role: UserRole) => ROLE_ROUTE_TABLE[role].allowed;
+/**
+ * The people section, under either heading.
+ *
+ * Facility roles get 'PEOPLE & HR' — accounts plus the workforce area. The
+ * platform operator gets a narrower 'PEOPLE', because it employs nobody at a
+ * facility (see `super_admin` in permissions.ts).
+ */
+const PEOPLE_SECTIONS = ['PEOPLE & HR', 'PEOPLE'];
 const peopleItems = (role: UserRole) =>
-  ROLE_PERMISSIONS[role].navItems.filter(item => item.section === 'PEOPLE & HR');
+  ROLE_PERMISSIONS[role].navItems.filter(item => PEOPLE_SECTIONS.includes(item.section ?? ''));
 
-/** Roles that own the workforce area. */
-const HR_ROLES: UserRole[] = ['super_admin', 'org_admin', 'medical_superintendent', 'hospital_manager'];
+/**
+ * Roles that own the workforce area — leave, shifts, payroll, enquiries.
+ *
+ * `super_admin` is deliberately absent. It is a SaaS platform operator: it has
+ * no staff at a facility to schedule, no leave to approve and no payroll to
+ * run. Those four rows were on its console and are not any more; the routes
+ * stay registered for the roles below, which do employ the people.
+ */
+const HR_ROLES: UserRole[] = ['org_admin', 'medical_superintendent', 'hospital_manager'];
 
 describe('PEOPLE & HR nav section', () => {
   test.each(HR_ROLES)('%s gets the workforce destinations', role => {
@@ -30,6 +45,16 @@ describe('PEOPLE & HR nav section', () => {
     expect(hrefs).toEqual(expect.arrayContaining([
       '/hr/leave', '/hr/schedule', '/hr/payroll', '/inquiries',
     ]));
+  });
+
+  test('the platform operator gets none of the workforce destinations', () => {
+    const hrefs = peopleItems('super_admin').map(i => i.href);
+    for (const href of ['/hr/leave', '/hr/schedule', '/hr/payroll', '/inquiries']) {
+      expect(hrefs).not.toContain(href);
+    }
+    // The routes themselves stay reachable — this is a nav decision, not a
+    // revocation, and the roles that own the workforce still need them.
+    for (const role of HR_ROLES) expect(isPathAllowed(role, '/hr/leave')).toBe(true);
   });
 
   test('the HR landing page has no nav row — its content merged into the facility dashboard', () => {
@@ -86,6 +111,15 @@ describe('PEOPLE & HR nav section', () => {
       expect(groups).toHaveLength(1);
       expect(groups[0].items.length).toBeGreaterThanOrEqual(5);
     }
+  });
+
+  test('the platform operator’s narrower section is contiguous too', () => {
+    const visible = uniqueAllowedNavItems(
+      ROLE_PERMISSIONS.super_admin.navItems, allowedFor('super_admin'),
+    );
+    const groups = groupNavItemsBySection(visible).filter(g => g.section === 'PEOPLE');
+    expect(groups).toHaveLength(1);
+    expect(groups[0].items.map(i => i.href)).toEqual(['/admin/users', '/transfers']);
   });
 
   test('no role lists the same destination twice across its whole nav', () => {

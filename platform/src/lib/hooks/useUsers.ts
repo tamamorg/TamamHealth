@@ -56,6 +56,14 @@ export function useUsers() {
     password: string;
     name: string;
     role: UserRole;
+    /**
+     * The owning tenant. Absent from this type until 2026-08-21, so callers
+     * could not set it at all: creating an `org_admin` always 400'd, and a
+     * facility role only got a tenant because the server back-infers one from
+     * the assigned hospital.
+     */
+    orgId?: string;
+    email?: string;
     hospitalId?: string;
     hospitalName?: string;
     photoUrl?: string;

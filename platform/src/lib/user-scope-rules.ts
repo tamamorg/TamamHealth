@@ -42,6 +42,26 @@ export const ROLES_WITHOUT_ORGANIZATION: readonly UserRole[] = [
   'super_admin', 'government', 'county_health_director',
 ] as const;
 
+/**
+ * Roles that bypass org scoping in `filterByScope`, so only a platform
+ * operator may grant one.
+ *
+ * A tenant's org_admin creating any of these could read every other
+ * organization's PHI, so `/api/users` refuses it (privilege escalation ->
+ * tenant breakout). The list lives here because the ROLE PICKERS have to read
+ * it too: `assignableRolesForOrgAdmin` used to strip only `super_admin`, so a
+ * public-sector org admin was offered `government` and `county_health_director`
+ * — two rows that could never do anything but 403 on submit.
+ */
+export const PLATFORM_ONLY_ASSIGNABLE_ROLES: readonly UserRole[] = [
+  'super_admin', 'government', 'county_health_director',
+] as const;
+
+/** True when only a super_admin may grant this role. */
+export function isPlatformOnlyRole(role: UserRole | string | undefined): boolean {
+  return !!role && (PLATFORM_ONLY_ASSIGNABLE_ROLES as readonly string[]).includes(role);
+}
+
 /** True when this role must be assigned to a facility before it can be saved. */
 export function roleNeedsFacility(role: UserRole | string | undefined): boolean {
   return !!role && !(ROLES_WITHOUT_FACILITY as readonly string[]).includes(role);

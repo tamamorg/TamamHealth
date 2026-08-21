@@ -19,14 +19,25 @@ import { useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Check, Copy } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
+import { describeInvitationOutcome } from '@/lib/invitation-copy';
+import type { InvitationOutcome } from '@/lib/user-invite';
 
 export interface CredentialHandoffModalProps {
   /** e.g. "User created", "Password reset", "Administrator created". */
   title: string;
-  /** e.g. "Share these credentials securely. The user must change the password at first login." */
+  /** Fallback copy, used when no `invitation` outcome is supplied. */
   description: string;
   username: string;
   password: string;
+  /**
+   * What happened to the invitation email, straight from `/api/users`.
+   *
+   * Supplied on a create, absent on a reset. When present it REPLACES
+   * `description`, because "share these credentials securely" is misleading
+   * for an account whose owner has already been mailed a link — and equally
+   * misleading in reverse when the send failed and nobody said so.
+   */
+  invitation?: InvitationOutcome;
   onClose: () => void;
 }
 
@@ -35,9 +46,10 @@ export function formatCredentialHandoffText(username: string, password: string):
   return `Username: ${username}\nTemporary password: ${password}`;
 }
 
-export default function CredentialHandoffModal({ title, description, username, password, onClose }: CredentialHandoffModalProps) {
+export default function CredentialHandoffModal({ title, description, username, password, invitation, onClose }: CredentialHandoffModalProps) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const copy = invitation ? describeInvitationOutcome(invitation).message : description;
 
   return (
     <Modal onClose={onClose} width={420} labelledBy="handoff-title" disableBackdropClose>
@@ -48,7 +60,7 @@ export default function CredentialHandoffModal({ title, description, username, p
           </div>
           <div className="sadb-modal-copy" style={{ marginBottom: 0 }}>
             <h2 id="handoff-title" className="sadb-modal-title">{title}</h2>
-            <p className="sadb-modal-sub">{description}</p>
+            <p className="sadb-modal-sub">{copy}</p>
           </div>
         </div>
 

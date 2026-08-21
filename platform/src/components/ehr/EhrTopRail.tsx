@@ -383,7 +383,13 @@ export default function EhrTopRail() {
             <Search className="w-4 h-4" />
           </button>
         )}
-        {canRegisterPatients && !receptionRole && (
+        {/* Not for the platform operator. `canRegisterPatients` is true for
+            super_admin only because usePermissions sweeps every `can*` flag on
+            for that role — it is a blanket bypass, not a statement that
+            registering patients is part of the job. A governance console has no
+            facility to register a patient into, so the rail offered a clinical
+            intake form from every platform screen. */}
+        {canRegisterPatients && !receptionRole && !isPlatformAdmin && (
           <button
             type="button"
             onClick={() => router.push('/patients/new')}

@@ -21232,7 +21232,7 @@ textarea.ehr-handoff-input {
   text-transform: none;
   font-size: 10.5px;
   font-weight: 600;
-  color: #8A9BAC;
+  color: #94A2B3;
 }
 
 .fs-nav button,
@@ -21292,7 +21292,7 @@ textarea.ehr-handoff-input {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #C7D0DA;
+  background: #CFD6DD;
 }
 
 .fs-nav-foot {
@@ -21440,7 +21440,7 @@ textarea.ehr-handoff-input {
 .fs-fac-colhead {
   padding-block: 10px;
   background: #F5F7F8;
-  border-bottom: 1px solid #EDF2F7;
+  border-bottom: 1px solid var(--ehr-border);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -21452,7 +21452,7 @@ textarea.ehr-handoff-input {
 .fs-fac-count {
   text-align: end;
   letter-spacing: 0.04em;
-  color: #8A9BAC;
+  color: #94A2B3;
 }
 
 .fs-fac-group-label {
@@ -21461,7 +21461,7 @@ textarea.ehr-handoff-input {
   gap: 8px;
   padding: 9px 16px;
   background: #FAFBFC;
-  border-bottom: 1px solid #EDF2F7;
+  border-bottom: 1px solid var(--ehr-border);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -21470,14 +21470,14 @@ textarea.ehr-handoff-input {
   color: #5D728B;
 }
 
-.fs-fac-group-label b { color: #8A9BAC; }
+.fs-fac-group-label b { color: #94A2B3; }
 
 /* Rows meet on hairlines, no per-row card edge — the flat list language the
    worklists use. The divider is dropped on the last row of the last group
    (never per-row `:last-child`, which erases every divider). */
 .fs-fac-row {
   position: relative;
-  border-bottom: 1px solid #EDF2F7;
+  border-bottom: 1px solid var(--ehr-border);
 }
 
 .fs-fac-group:last-child .fs-fac-row:last-child { border-bottom: 0; }
@@ -21527,20 +21527,6 @@ textarea.ehr-handoff-input {
   white-space: nowrap;
 }
 
-.fs-fac-chip {
-  justify-self: start;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: #F1F5F9;
-  color: #5D728B;
-  font-family: var(--font-condensed);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .fs-fac-act {
   display: flex;
   align-items: center;
@@ -21568,7 +21554,7 @@ textarea.ehr-handoff-input {
   color: var(--ehr-blue);
 }
 
-.fs-fac-chev { flex: none; color: #C7D0DA; }
+.fs-fac-chev { flex: none; color: #CFD6DD; }
 .fs-fac-row:hover .fs-fac-chev { color: var(--ehr-blue); }
 
 .fs-fac-empty {
@@ -21585,15 +21571,15 @@ textarea.ehr-handoff-input {
   gap: 8px;
   margin-bottom: 14px;
   padding: 9px 12px;
-  border: 1px solid #F5E3C0;
+  border: 1px solid var(--color-warning-border);
   border-radius: 10px;
-  background: #FDF8EE;
+  background: var(--color-warning-bg);
   font-size: 12.5px;
   line-height: 1.5;
-  color: #7A5B1E;
+  color: var(--color-warning-text);
 }
 
-.fs-net-warn svg { color: #C98A15; margin-top: 1px; }
+.fs-net-warn svg { color: var(--color-warning-text); margin-top: 1px; }
 
 /* Base form controls for both settings editors (they used to be a <style>
    block inside FacilitySettingsView, which only one of the two rendered). */

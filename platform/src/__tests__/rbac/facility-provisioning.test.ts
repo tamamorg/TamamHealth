@@ -105,7 +105,19 @@ describe('the pages that host the create dialog', () => {
     'app/(dashboard)/admin/users/page.tsx',
     'app/(dashboard)/org-admin/users/page.tsx',
   ])('%s opens the shared dialog rather than its own copy', file => {
-    expect(source(file)).toContain('CreateFacilityModal');
+    // `CreateFacilityModal` is the create-only wrapper around the same
+    // component; either name means the caller is on the shared form.
+    expect(source(file)).toMatch(/CreateFacilityModal|FacilityFormModal/);
+  });
+
+  test('Settings → Manage no longer administers facilities or accounts at all', () => {
+    // Its two CRUD tabs were the platform's third user roster and second
+    // facility form, and both had drifted: the user form could not set an
+    // organization, and the facility form offered three of the five types.
+    const manage = source('app/(dashboard)/settings/manage/page.tsx');
+    expect(manage).not.toContain('createHospital');
+    expect(manage).not.toContain('USER MANAGEMENT TAB');
+    expect(manage).not.toContain('HOSPITAL MANAGEMENT TAB');
   });
 
   test.each([
@@ -131,16 +143,38 @@ describe('the pages that host the create dialog', () => {
     // `createHospital` refuses a facility with no orgId, and a super_admin has
     // none of their own — without this picker the operator's every attempt
     // threw, which is why the platform-level path was dead.
-    const modal = source('components/admin/CreateFacilityModal.tsx');
+    const modal = source('components/admin/FacilityFormModal.tsx');
     expect(modal).toContain('needsOrgChoice');
     expect(modal).toContain('effectiveOrgId');
     expect(modal).toContain('orgId: effectiveOrgId');
   });
 
-  test('Settings → Manage can name an organization too', () => {
-    const manage = source('app/(dashboard)/settings/manage/page.tsx');
-    expect(manage).toContain('needsHospitalOrgChoice');
-    expect(manage).toContain('currentUser.orgId || hospitalOrgId');
+  test('editing never re-asks for the organization', () => {
+    // Moving a facility between tenants would strand every admission, bill and
+    // staff record already stamped with its id, so `orgId` is immutable and the
+    // picker is create-only.
+    const modal = source('components/admin/FacilityFormModal.tsx');
+    expect(modal).toContain('!isEdit && !orgId');
+    expect(source('lib/services/hospital-service.ts'))
+      .toContain("Omit<HospitalDoc, '_id' | '_rev' | 'type' | 'orgId' | 'createdAt'>");
+  });
+
+  test('a facility can be corrected and retired, not just created', () => {
+    const service = source('lib/services/hospital-service.ts');
+    expect(service).toContain('export async function updateFacility');
+    expect(service).toContain('export async function setFacilityActive');
+    // Retiring is a soft flag — the records that reference the facility must
+    // survive it.
+    expect(service).not.toMatch(/db\.remove\(/);
+  });
+
+  test('retired facilities drop out of the assignment pickers', () => {
+    for (const file of [
+      'app/(dashboard)/admin/users/page.tsx',
+      'app/(dashboard)/org-admin/users/page.tsx',
+    ]) {
+      expect(source(file)).toContain('activeFacilities');
+    }
   });
 });
 
@@ -156,9 +190,8 @@ describe('facility types are one vocabulary', () => {
     // A three-entry list meant a PHCC or PHCU, the commonest facilities in
     // South Sudan, could not be created from Settings at all.
     for (const file of [
-      'app/(dashboard)/settings/manage/page.tsx',
       'app/(dashboard)/org-admin/hospitals/page.tsx',
-      'components/admin/CreateFacilityModal.tsx',
+      'components/admin/FacilityFormModal.tsx',
     ]) {
       const text = source(file);
       expect(text).not.toMatch(/const FACILITY_TYPES\s*=/);

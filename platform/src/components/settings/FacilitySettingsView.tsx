@@ -104,10 +104,16 @@ const TYPE_GROUPS: Array<{ key: string; label: string }> = [
   { key: 'other',             label: 'Other facilities' },
 ];
 
-const initials = (name: string) => name
-  .replace(/\b(county|state|teaching|hospital|centre|center|clinic|unit)\b/gi, ' ')
-  .split(/\s+/).filter(Boolean).slice(0, 2)
-  .map(w => w[0]?.toUpperCase() ?? '').join('') || name.slice(0, 2).toUpperCase();
+/** Two letters for the row plate. Facility names are mostly place + generic
+ *  noun ("Yei County Hospital"), so the generic half is dropped first; a name
+ *  left with one word falls back to its first two letters rather than one. */
+const initials = (name: string) => {
+  const words = name
+    .replace(/\b(county|state|teaching|referral|hospital|centre|center|clinic|unit|general)\b/gi, ' ')
+    .split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return (words[0] ?? name).slice(0, 2).toUpperCase();
+};
 
 const typeLabel = (t?: string) => (t ? t.replace(/_/g, ' ') : 'facility');
 
@@ -224,8 +230,8 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
             is empty or still loading, so the panel never changes shape. */}
         <div className="fs-fac-colhead">
           <span>Facility</span>
-          <span>Location</span>
-          <span>Type</span>
+          <span>Town</span>
+          <span>County / State</span>
           <span className="fs-fac-count">{matchCount} of {pickerHospitals.length}</span>
         </div>
 
@@ -252,8 +258,14 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
                     {h.name}
                   </button>
                 </div>
-                <span className="fs-fac-loc">{[h.town, h.county || h.state].filter(Boolean).join(' · ') || '—'}</span>
-                <span className="fs-fac-chip">{typeLabel(h.facilityType)}</span>
+                <span className="fs-fac-loc" title={h.town || undefined}>{h.town || '—'}</span>
+                {(() => {
+                  // County and state repeat each other at several facilities
+                  // ("Juba · Juba"), so the pair is de-duplicated before it
+                  // is joined; the title carries the untruncated value.
+                  const area = [h.county, h.state].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ');
+                  return <span className="fs-fac-loc" title={area || undefined}>{area || '—'}</span>;
+                })()}
                 <span className="fs-fac-act">
                   {canOpenProfile && (
                     <Link href={`/hospitals/${h._id}/manage`} className="fs-fac-profile">Profile</Link>

@@ -25,6 +25,121 @@ export async function getHospitalById(id: string, scope?: DataScope): Promise<Ho
   }
 }
 
+/**
+ * Whether a facility is still part of the network.
+ *
+ * `isActive` is undefined on every facility created before the field existed,
+ * so "active" is `!== false`, never `=== true`. Read this rather than testing
+ * the field inline — the polarity is easy to get backwards, and getting it
+ * backwards empties every facility picker in the app.
+ */
+export function isFacilityActive(hospital: Pick<HospitalDoc, 'isActive'>): boolean {
+  return hospital.isActive !== false;
+}
+
+/** The facilities new work may be assigned to. Retired sites stay readable. */
+export function activeFacilities<T extends Pick<HospitalDoc, 'isActive'>>(hospitals: T[]): T[] {
+  return hospitals.filter(isFacilityActive);
+}
+
+/**
+ * Edit a facility's own record.
+ *
+ * Until now the only writer was `updateHospitalStatus`, whose name says what it
+ * was built for: flipping status/sync/counters. Everything else about a
+ * facility — beds by type, staffing establishment, infrastructure, services,
+ * coordinates, even its facility TYPE — was write-once, settable only in the
+ * create form and never correctable afterwards.
+ *
+ * `orgId` is deliberately not editable: moving a facility between tenants would
+ * strand every admission, bill and staff record already stamped with it.
+ */
+export async function updateFacility(
+  id: string,
+  data: Partial<Omit<HospitalDoc, '_id' | '_rev' | 'type' | 'orgId' | 'createdAt'>>,
+  scope?: DataScope,
+): Promise<HospitalDoc | null> {
+  return updateHospitalStatus(id, data as Partial<HospitalDoc>, scope);
+}
+
+/**
+ * Retire a facility, or bring one back.
+ *
+ * A soft flag, never a delete: admissions, visits, bills, prescriptions and
+ * staff records all carry `hospitalId`, and removing the document would orphan
+ * all of them while leaving the history unreadable. A retired facility keeps
+ * its record and its numbers, disappears from the pickers new work is assigned
+ * through, and releases the `maxHospitals` slot it was holding.
+ */
+export async function setFacilityActive(
+  id: string,
+  isActive: boolean,
+  actorId?: string,
+  actorUsername?: string,
+  scope?: DataScope,
+): Promise<HospitalDoc | null> {
+  const updated = await updateHospitalStatus(
+    id,
+    isActive
+      ? { isActive: true, retiredAt: undefined, retiredBy: undefined }
+      : { isActive: false, retiredAt: new Date().toISOString(), retiredBy: actorId },
+    scope,
+  );
+  if (updated) {
+    const { logAudit } = await import('./audit-service');
+    await logAudit(
+      isActive ? 'hospital_restored' : 'hospital_retired',
+      actorId,
+      actorUsername,
+      `${isActive ? 'Restored' : 'Retired'} facility "${updated.name}"`,
+      true,
+    );
+  }
+  return updated;
+}
+
+/**
+ * Refuse a facility the organization is not entitled to hold — because it is
+ * suspended/cancelled/deactivated, or already at its `maxHospitals` limit.
+ *
+ * Both checks were displayed and never enforced: `maxHospitals` sat in the
+ * tenant matrix and the org-settings usage meter as "3 / 10" while every create
+ * path ignored it, and a suspended tenant could still be given new sites.
+ *
+ * Fails OPEN on an unreadable organization record: a transient database error
+ * must not stop a clinic registering a facility, and CouchDB's tenant validator
+ * on push is the backstop.
+ */
+async function assertOrganizationCanHoldAnotherFacility(orgId: string): Promise<void> {
+  let organization;
+  try {
+    const { getOrganizationById } = await import('./organization-service');
+    organization = await getOrganizationById(orgId);
+  } catch {
+    return;
+  }
+  if (!organization) return;
+
+  const { getTenantAccess } = await import('./tenant-control-service');
+  const access = await getTenantAccess(orgId);
+  if (!access.allowed) {
+    throw new ValidationError({
+      orgId: `${organization.name} is ${access.reason} — no new facilities can be registered in it.`,
+    });
+  }
+
+  const max = organization.maxHospitals;
+  if (!max || max <= 0) return;
+  const inUse = (await getAllHospitals({ orgId, role: 'super_admin' }))
+    .filter(h => h.orgId === orgId && h.isActive !== false).length;
+  if (inUse >= max) {
+    throw new ValidationError({
+      orgId: `${organization.name} has registered all ${max} facilities its plan allows. `
+        + 'Retire a facility or raise the limit before adding another.',
+    });
+  }
+}
+
 export async function createHospital(
   data: Omit<HospitalDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'syncStatus' | 'lastSync' | 'patientCount' | 'todayVisits'>,
   actorId?: string,
@@ -49,6 +164,11 @@ export async function createHospital(
       orgId: 'Select the organization this facility belongs to — a facility cannot be saved without one.',
     });
   }
+
+  // The organization has to be entitled to hold another facility. This is the
+  // single writer both the dialog and /api/hospitals go through, so stating the
+  // rule once covers every path.
+  await assertOrganizationCanHoldAnotherFacility(data.orgId);
 
   const db = hospitalsDB();
   const now = new Date().toISOString();

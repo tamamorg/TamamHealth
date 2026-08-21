@@ -18,8 +18,10 @@ import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
 import { generateTempPassword } from '@/lib/temp-password';
 import { avatarTint } from '@/lib/patient-utils';
 import { roleNeedsFacility, roleNeedsOrganization, validateUserScope } from '@/lib/user-scope-rules';
+import type { InvitationOutcome } from '@/lib/user-invite';
 import { canCreateFacilities } from '@/lib/people-nav';
 import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
+import { activeFacilities } from '@/lib/services/hospital-service';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
 import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
@@ -73,7 +75,7 @@ export default function AdminUsersPage() {
   // cannot be saved without one, and telling an operator to leave, create it
   // elsewhere, and start the form again is the dead end this whole flow had.
   const [showAddFacility, setShowAddFacility] = useState(false);
-  const emptyAddForm = { name: '', username: '', password: '', role: 'nurse' as UserRole, orgId: '', hospitalId: '' };
+  const emptyAddForm = { name: '', username: '', email: '', password: '', role: 'nurse' as UserRole, orgId: '', hospitalId: '' };
   const [showAddUser, setShowAddUser] = useState(false);
   const [addForm, setAddForm] = useState(emptyAddForm);
   const [addSaving, setAddSaving] = useState(false);
@@ -85,7 +87,13 @@ export default function AdminUsersPage() {
   const [showResetPassword, setShowResetPassword] = useState(true);
   // Credential hand-off — shown exactly once after a create or reset so the
   // admin can copy the temporary password before it is unrecoverable.
-  const [handoff, setHandoff] = useState<{ username: string; password: string; kind: 'created' | 'reset' } | null>(null);
+  const [handoff, setHandoff] = useState<{
+    username: string;
+    password: string;
+    kind: 'created' | 'reset';
+    /** What became of the invitation email — absent on a reset. */
+    invitation?: InvitationOutcome;
+  } | null>(null);
   // Reset-password modal
   const [resetUser, setResetUser] = useState<UserDoc | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
@@ -180,7 +188,9 @@ export default function AdminUsersPage() {
   const needsOrg = roleNeedsOrganization(addForm.role);
   const needsFacility = roleNeedsFacility(addForm.role);
   const addFacilityChoices = useMemo(
-    () => (addForm.orgId ? hospitals.filter(h => h.orgId === addForm.orgId) : []),
+    // Retired facilities keep their records and stay readable, but nothing new
+    // is assigned to them — staffing a closed site is what retiring it stops.
+    () => (addForm.orgId ? activeFacilities(hospitals.filter(h => h.orgId === addForm.orgId)) : []),
     [hospitals, addForm.orgId],
   );
 
@@ -222,24 +232,30 @@ export default function AdminUsersPage() {
     setAddSaving(true);
     setAddError(null);
     try {
-      const { createUser } = await import('@/lib/services/user-service');
+      // `createUserWithInvitation` is the same POST /api/users, kept whole:
+      // the route ALWAYS attempts an invitation and returns what happened, and
+      // this page used to discard that. An operator was shown a temporary
+      // password with no way to know a link had already been mailed — or, with
+      // no email field at all, that one never could be.
+      const { createUserWithInvitation } = await import('@/lib/services/user-service');
       const hospital = hospitals.find(h => h._id === addForm.hospitalId);
-      const created = await createUser({
+      const { user: created, invitation } = await createUserWithInvitation({
         name: addForm.name.trim(),
         username: addForm.username.trim(),
+        email: addForm.email.trim() || undefined,
         password: addForm.password,
         role: addForm.role,
         orgId: addForm.orgId || undefined,
         hospitalId: addForm.hospitalId || undefined,
         hospitalName: hospital?.name,
-      }, currentUser._id, currentUser.username);
+      });
       setUsers(prev => [created, ...prev]);
       setShowAddUser(false);
       showToast(`User ${created.username} created.`, 'success');
       // Hand the credentials to the admin exactly once — the password is
       // never retrievable again (only its hash is stored), and the user must
       // replace it at first login.
-      setHandoff({ username: created.username, password: addForm.password, kind: 'created' });
+      setHandoff({ username: created.username, password: addForm.password, kind: 'created', invitation });
       setAddForm(emptyAddForm);
     } catch (err) {
       setAddError((err as Error).message || 'Failed to create user');
@@ -558,6 +574,13 @@ export default function AdminUsersPage() {
                 <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Username</label>
                 <input type="text" value={addForm.username} onChange={e => setAddForm(f => ({ ...f, username: e.target.value }))} style={inputStyle} autoComplete="off" />
               </div>
+              {/* Optional, but it is the difference between the new user
+                  choosing their own password from a single-use link and an
+                  administrator reading a temporary one out to them. */}
+              <div>
+                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Email (for the invitation)</label>
+                <input type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} autoComplete="off" data-field="user-email" />
+              </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold block" style={{ color: 'var(--text-muted)' }}>Temporary password</label>
@@ -688,6 +711,7 @@ export default function AdminUsersPage() {
           description={t('adminUsers.handoffDescription')}
           username={handoff.username}
           password={handoff.password}
+          invitation={handoff.invitation}
           onClose={() => setHandoff(null)}
         />
       )}

@@ -22,25 +22,7 @@ import { ESSENTIAL_MEDICINES } from '@/lib/services/supply-chain-service';
 import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
 import Select from '@/components/Select';
 import { todayIso as isoToday } from '@/lib/date-utils';
-
-/* ── CSV helper ────────────────────────────────────────────────── */
-const downloadCSV = (data: Record<string, unknown>[], filename: string) => {
-  if (data.length === 0) return;
-  const headers = Object.keys(data[0]);
-  const csv = [
-    headers.join(','),
-    ...data.map(row =>
-      headers.map(h => `"${String(row[h] ?? '').replace(/"/g, '""')}"`).join(',')
-    ),
-  ].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${filename}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-};
+import { downloadCsv, safeFilenamePart } from '@/lib/export-file';
 
 /* ── Static report definitions ─────────────────────────────────── */
 // NOTE: this page does not yet track per-report refresh times — every report
@@ -728,7 +710,7 @@ export default function ReportsPage() {
             data-track="reports.export_csv"
             onClick={(e) => {
               e.stopPropagation();
-              downloadCSV(rows, title.replace(/\s+/g, '_').toLowerCase());
+              downloadCsv(rows, safeFilenamePart(title));
             }}
           >
             <Download className="w-3.5 h-3.5" /> {t('reports.downloadCsv')}

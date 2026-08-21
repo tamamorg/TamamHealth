@@ -13,6 +13,7 @@ import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { useANC } from '@/lib/hooks/useANC';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { downloadFile, safeFilenamePart } from '@/lib/export-file';
 import {
   getDhis2SyncLog, recordDhis2SyncResult, appendDhis2LogEntry,
   isDhis2Configured, getDhis2BaseUrlHost, groupDhis2DataValues, getMetric,
@@ -115,13 +116,13 @@ export default function DHIS2ExportPage() {
       const { generateDHIS2Export, exportToJSON, exportToCSV } = await import('@/lib/services/dhis2-export-service');
       const dataset = await generateDHIS2Export(period, buildExportScope());
       const content = format === 'json' ? exportToJSON(dataset) : exportToCSV(dataset);
-      const blob = new Blob([content], { type: format === 'json' ? 'application/json' : 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `dhis2-export-${period}.${format}`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // No BOM: DHIS2 parses this, and a strict reader treats the mark as
+      // part of the first column name.
+      downloadFile(
+        content,
+        `dhis2-export-${safeFilenamePart(period)}.${format}`,
+        format === 'json' ? 'application/json' : 'text/csv;charset=utf-8',
+      );
       setExportResult({ format: format.toUpperCase(), rows: dataset.dataValues?.length ?? 0, date: new Date().toLocaleString() });
     } catch (err) {
       console.error('Export failed', err);

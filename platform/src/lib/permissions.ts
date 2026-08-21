@@ -58,6 +58,7 @@ import {
   ClipboardList,
 } from '@/components/icons/lucide';
 import { BRAND_DARKER, BRAND_PRIMARY, BRAND_SECONDARY } from './theme-colors';
+import { isPlatformOnlyRole } from './user-scope-rules';
 
 // Lenient shape so either lucide or our duotone wrappers type-check.
 export type NavIcon = ComponentType<
@@ -139,13 +140,17 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // 2026-08-15: it renders the facility-admin dashboard language inside
       // the governance console. The route stays in allowedRoutes for deep
       // links; facility operators keep it as their own dashboard.
-      // PEOPLE & HR — the whole workforce area in one section (see org_admin).
-      { href: '/admin/users', label: 'User Accounts', icon: KeyRound, section: 'PEOPLE & HR' },
-      { href: '/hr/leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
-      { href: '/hr/schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
-      { href: '/hr/payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
-      { href: '/inquiries', label: 'Patient Inquiries', icon: MessageSquare, section: 'PEOPLE & HR' },
-      { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'PEOPLE & HR' },
+      // PEOPLE — account administration and cross-facility patient movement.
+      //
+      // Deliberately NOT the workforce area the org_admin / superintendent /
+      // manager rosters carry. Leave Requests, Shift Schedule, Payroll and
+      // Patient Inquiries were listed here too, and a platform operator has no
+      // staff at a facility to schedule, no leave to approve and no payroll to
+      // run — those belong to the roles that employ the people, all of which
+      // already have them. The routes stay registered for exactly that reason;
+      // only this console stops advertising them.
+      { href: '/admin/users', label: 'User Accounts', icon: KeyRound, section: 'PEOPLE' },
+      { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'PEOPLE' },
     ],
     color: BRAND_SECONDARY,
     gradientFrom: BRAND_DARKER,
@@ -406,9 +411,17 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/government/briefing', label: 'Executive Briefing', icon: ClipboardPen, section: 'NATIONAL COMMAND' },
       { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'SURVEILLANCE & RESPONSE' },
       { href: '/epidemic-intelligence', label: 'Epidemic Intelligence', icon: Biohazard, section: 'SURVEILLANCE & RESPONSE' },
-      { href: '/epidemic-intelligence?tab=alerts', label: 'Alert Verification', icon: ShieldAlert, section: 'SURVEILLANCE & RESPONSE' },
+      // 'Alert Verification' (?tab=alerts) was a second row onto the page above.
+      // Epidemic Intelligence has six tabs and the sidebar surfaced exactly one
+      // of them, which read as a separate destination rather than as the tab it
+      // is — reach it from the page's own tab strip.
       { href: '/hospitals', label: 'Facilities & Services', icon: HospitalIcon, section: 'HEALTH SYSTEM PERFORMANCE' },
       { href: '/facility-assessments', label: 'Assessments & Readiness', icon: ClipboardCheck, section: 'HEALTH SYSTEM PERFORMANCE' },
+      // Equity is a health-system-performance question, so it sits with the
+      // other two rather than carrying a section of its own. Its 'High Burden'
+      // and 'Service Access Gaps' rows were `?view=` links onto this same page
+      // and are reached from its FilterTabs.
+      { href: '/government/equity', label: 'Equity & Access', icon: GitCompareArrows, section: 'HEALTH SYSTEM PERFORMANCE' },
       { href: '/immunizations', label: 'Immunization', icon: Syringe, section: 'PROGRAMS' },
       { href: '/anc', label: 'ANC / RMNCAH', icon: HeartPulse, section: 'PROGRAMS' },
       { href: '/mch-analytics', label: 'MCH Analytics', icon: Baby, section: 'PROGRAMS' },
@@ -416,16 +429,17 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/births', label: 'Births', icon: Baby, section: 'VITAL EVENTS & CRVS' },
       { href: '/deaths', label: 'Deaths', icon: UserX, section: 'VITAL EVENTS & CRVS' },
       { href: '/vital-statistics', label: 'Vital Statistics', icon: TrendingUp, section: 'VITAL EVENTS & CRVS' },
-      { href: '/data-quality?view=completeness', label: 'Reporting Completeness', icon: Database, section: 'DATA QUALITY' },
-      { href: '/data-quality?view=timeliness', label: 'Reporting Timeliness', icon: Gauge, section: 'DATA QUALITY' },
-      { href: '/data-quality?view=outliers', label: 'Outliers & Validation', icon: ShieldAlert, section: 'DATA QUALITY' },
-      { href: '/data-quality?view=scores', label: 'Facility DQ Scores', icon: BarChart3, section: 'DATA QUALITY' },
       { href: '/reports', label: 'Reports & Downloads', icon: ClipboardCheck, section: 'REPORTS & EXCHANGE' },
       { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'REPORTS & EXCHANGE' },
       { href: '/public-stats', label: 'Public Statistics', icon: Globe, section: 'REPORTS & EXCHANGE' },
-      { href: '/government/equity', label: 'County Comparison', icon: GitCompareArrows, section: 'EQUITY & PLANNING' },
-      { href: '/government/equity?view=burden', label: 'High Burden / Low Coverage', icon: TrendingUp, section: 'EQUITY & PLANNING' },
-      { href: '/government/equity?view=access', label: 'Service Access Gaps', icon: Building2, section: 'EQUITY & PLANNING' },
+      // One row, not four. Completeness / Timeliness / Outliers / Facility
+      // Scores are the four VIEWS of this single page, each formerly its own
+      // sidebar row under a 'DATA QUALITY' heading — four rows that all opened
+      // the same screen, which no reader could tell apart from four
+      // destinations. The page's own view switcher moves between them, and it
+      // lands on Completeness by default exactly as the first row did. Filed
+      // with Reports because reporting quality is a reporting concern.
+      { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'REPORTS & EXCHANGE' },
     ],
     color: BRAND_SECONDARY,
     gradientFrom: BRAND_DARKER,
@@ -843,7 +857,12 @@ export function assignableRolesForOrgAdmin(
   orgType?: 'public' | 'private',
   enabledRoles?: UserRole[],
 ): UserRole[] {
-  const allowed = getAvailableRoles(orgType ?? 'public').filter(r => r !== 'super_admin');
+  // Strip every role only a platform operator may grant, not just super_admin.
+  // `government` and `county_health_director` bypass org scoping exactly the
+  // way super_admin does, and /api/users refuses them for an org_admin — so
+  // listing them here put two rows in the picker that could do nothing but 403
+  // on submit. A public-sector org saw both.
+  const allowed = getAvailableRoles(orgType ?? 'public').filter(r => !isPlatformOnlyRole(r));
   if (!enabledRoles || enabledRoles.length === 0) return allowed;
   const enabled = new Set(enabledRoles);
   const narrowed = allowed.filter(r => enabled.has(r));

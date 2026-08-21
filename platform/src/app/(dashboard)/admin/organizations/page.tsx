@@ -23,6 +23,7 @@ import { Plus, X, Edit3, Ban, RefreshCw, Eye, EyeOff, ShieldCheck } from '@/comp
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
 import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
+import type { InvitationOutcome } from '@/lib/user-invite';
 import {
   SadbPage, SadbCard, SadbChip, SadbSearch, SadbGridList, SadbGridRow,
   SadbSettingRow, SadbToggle, SadbConfirmModal, statusChip,
@@ -297,7 +298,7 @@ export default function AdminOrganizationsPage() {
   const [adminError, setAdminError] = useState<string | null>(null);
   // Credential hand-off for the admin account just created — same one-time
   // panel as /admin/users, shown only after both writes succeed.
-  const [handoff, setHandoff] = useState<{ username: string; password: string } | null>(null);
+  const [handoff, setHandoff] = useState<{ username: string; password: string; invitation?: InvitationOutcome } | null>(null);
 
   // Resolved brand colours for the branding pickers — starts at the literal
   // (tested) mirror in theme-colors.ts so the first paint is never black,
@@ -420,18 +421,21 @@ export default function AdminOrganizationsPage() {
   const provisionOrgAdmin = async (orgId: string, savedAs: 'created' | 'updated') => {
     const savedToast = savedAs === 'created' ? `Organization "${form.name}" created.` : `Organization "${form.name}" updated.`;
     try {
-      const { createUser } = await import('@/lib/services/user-service');
-      const created = await createUser(
+      const { createUserWithInvitation } = await import('@/lib/services/user-service');
+      // The invitation outcome is the point of using this variant: the route
+      // always mails a "set your password" link when the account has an email,
+      // and this flow used to discard the answer and always tell the operator
+      // to read out a temporary password. The actor comes from the session on
+      // the server side, so there is nothing to pass here.
+      const { user: created, invitation } = await createUserWithInvitation(
         buildOrgAdminUserPayload(adminForm, orgId),
-        currentUser?._id,
-        currentUser?.username
       );
       showToast(savedToast, 'success');
       setShowForm(false);
       // Hand the credentials to the admin exactly once — mirrors the
       // /admin/users "Add user" flow. mustChangePassword was set server-side
       // by createUser()'s POST /api/users path, not here.
-      setHandoff({ username: created.username, password: adminForm.password });
+      setHandoff({ username: created.username, password: adminForm.password, invitation });
     } catch (adminErr) {
       setShowForm(false);
       showToast(
@@ -952,6 +956,7 @@ export default function AdminOrganizationsPage() {
           description={t('orgAdmin.handoffDescription')}
           username={handoff.username}
           password={handoff.password}
+          invitation={handoff.invitation}
           onClose={() => setHandoff(null)}
         />
       )}

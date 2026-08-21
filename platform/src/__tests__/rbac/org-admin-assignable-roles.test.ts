@@ -13,6 +13,7 @@ import {
   assignableRolesForOrgAdmin,
   getAvailableRoles,
 } from '@/lib/permissions';
+import { PLATFORM_ONLY_ASSIGNABLE_ROLES, isPlatformOnlyRole } from '@/lib/user-scope-rules';
 
 describe('roles an org admin may assign', () => {
   it('returns a usable list when the organization record has not loaded', () => {
@@ -35,15 +36,34 @@ describe('roles an org admin may assign', () => {
     // Not knowing the org type is not a reason to offer fewer roles — only an
     // explicitly private organization gets the narrower set.
     expect(assignableRolesForOrgAdmin(undefined))
-      .toEqual(getAvailableRoles('public').filter(r => r !== 'super_admin'));
+      .toEqual(getAvailableRoles('public').filter(r => !isPlatformOnlyRole(r)));
   });
 
-  it('still narrows a private-sector organization', () => {
+  it('never offers a role only a platform operator may grant', () => {
+    // /api/users refuses `government` and `county_health_director` for an
+    // org_admin exactly as it refuses `super_admin` — all three bypass org
+    // scoping. Listing them put rows in the picker that could only 403.
+    for (const orgType of ['public', 'private', undefined] as const) {
+      for (const role of PLATFORM_ONLY_ASSIGNABLE_ROLES) {
+        expect(assignableRolesForOrgAdmin(orgType)).not.toContain(role);
+      }
+    }
+  });
+
+  it('no longer varies by sector — the split only ever hid the platform roles', () => {
+    // `getAvailableRoles` narrows a private organization by exactly three
+    // roles: super_admin, government, county_health_director. All three are
+    // now stripped for every org admin regardless of sector, because /api/users
+    // refuses all three from an org_admin. So the two lists coincide, and that
+    // is the correct outcome rather than a regression: the only difference the
+    // sector made here WAS the privilege boundary.
     const priv = assignableRolesForOrgAdmin('private');
     const pub = assignableRolesForOrgAdmin('public');
-    expect(priv).not.toEqual(pub);
-    expect(priv.length).toBeLessThan(pub.length);
-    // Whatever else changes, delegation itself must survive the narrowing.
+    expect(priv).toEqual(pub);
+    // The narrowing still exists one level down, where sector is about which
+    // roles an organization employs rather than about privilege.
+    expect(getAvailableRoles('private').length).toBeLessThan(getAvailableRoles('public').length);
+    // Whatever else changes, delegation itself must survive.
     expect(priv).toContain('org_admin');
   });
 

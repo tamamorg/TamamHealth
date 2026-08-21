@@ -166,6 +166,22 @@ export interface HospitalDoc extends BaseDoc, Omit<Hospital, 'id' | 'type'> {
   facilityType: Hospital['type'];
   facilityLevel?: FacilityLevel;  // boma | payam | county | state | national
   orgId?: string;
+  /**
+   * Whether the facility is still part of the organization's network.
+   *
+   * Retiring is a soft delete, never a document removal: admissions, visits,
+   * bills and staff records all carry `hospitalId`, and deleting the facility
+   * would orphan every one of them. A retired facility keeps its history, drops
+   * out of the pickers new work is assigned through, and releases the
+   * `maxHospitals` slot it was holding.
+   *
+   * `undefined` means active — every facility created before this field
+   * existed, which is why every read tests `!== false` rather than `=== true`.
+   */
+  isActive?: boolean;
+  /** When it was retired, and by whom — set together with `isActive: false`. */
+  retiredAt?: string;
+  retiredBy?: string;
 }
 
 /**
