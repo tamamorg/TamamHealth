@@ -26,9 +26,8 @@
      the app never changes palette, the same way they never change
      typeface.
 
-     White is pure white. Cream is the ground the white sits ON; it is
-     never a surface colour. */
-  --tm-cream:  #fcfef3;  /* page ground                                  */
+     White is pure white — pages and cards are #ffffff, never tinted. */
+  --tm-cream:  #fcfef3;  /* warm paper — hover surfaces                  */
   --tm-ice:    #c9f4ff;  /* pale brand wash                              */
   --tm-gold:   #fdd95f;  /* attention fill — stat accents, markers       */
   --tm-orange: #ff7f00;  /* second accent hue                            */
@@ -39,7 +38,10 @@
   --tm-ink:    #001d3f;  /* deepest ink, and the foreground ON gold/orange */
 
   --color-bg: #ffffff;
-  --color-surface: var(--tm-cream);
+  /* The pale-blue band behind alternating sections, the footer and the
+     header drawer. It has always been this wash and stays it — the ice
+     rung is the palette's version of the same colour, a shade brighter. */
+  --color-surface: var(--color-accent-100);
   --color-text: var(--tm-navy);
   --color-accent: var(--tm-blue);
   --color-divider: rgba(17, 48, 85, 0.3);
@@ -238,10 +240,12 @@ section[id] { scroll-margin-top: 130px; }
   flex-shrink: 0;
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-/* The primary call to action is amber on navy ink, per the design. Every blue
-   on this site is structural — links, headings, the navy grounds, the header
-   chrome — so a blue button dissolved into the page it sat on. Amber is the
-   only warm colour here and fills nothing else. */
+/* The primary call to action is the palette orange. Every blue on this site
+   is structural — links, headings, the navy grounds, the header chrome — so a
+   blue button dissolved into the page it sat on. Orange is the only warm
+   colour here and fills nothing else.
+   The label is navy ink, not white: #113055 on #ff7f00 is 5.75:1, where
+   white on the same orange is 2.53:1 and fails AA at any size. */
 .btn-primary { background: #ff7f00; border-color: #ff7f00; color: #113055; }
 .btn-primary:hover { background: #e67200 !important; border-color: #e67200 !important; color: #113055; }
 .btn-secondary { border-color: var(--color-divider); }

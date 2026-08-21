@@ -18,7 +18,7 @@
      design uses the practice's own colour for this bar; ours defaults to the
      platform blue so booking looks like the rest of TamamHealth. */
   --booking-accent: var(--accent-primary, #015697);
-  --booking-accent-strong: var(--tb-blue-800, #001D3F);
+  --booking-accent-strong: var(--tb-blue-800, #113055);
   --booking-accent-soft: #E1F9FF;
   --booking-ink: #001D3F;
   --booking-ink-muted: #5D728B;

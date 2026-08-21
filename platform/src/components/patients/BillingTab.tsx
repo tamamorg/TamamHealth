@@ -890,7 +890,7 @@ export default function BillingTab({
                 </dl>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 10px', borderRadius: 6, background: 'var(--ehr-page-bg, #FFFFFF)', border: '1px solid var(--ehr-border, #E2E6EB)',
+                  padding: '8px 10px', borderRadius: 6, background: 'var(--ehr-page-bg, #F5F8FB)', border: '1px solid var(--ehr-border, #E2E6EB)',
                 }}>
                   <ExternalLink size={14} className="bl-muted" style={{ flexShrink: 0 }} />
                   <span style={{ fontSize: 12, color: 'var(--ehr-text, #113055)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>

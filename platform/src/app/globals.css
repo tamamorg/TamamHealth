@@ -95,7 +95,7 @@
      never used as a surface colour. */
   --color-white: #FFFFFF;
 
-  --tm-cream:  #FCFEF3;  /* page ground — paper behind the white cards      */
+  --tm-cream:  #FCFEF3;  /* warm paper — hover surfaces, lifted rows        */
   --tm-ice:    #C9F4FF;  /* pale brand wash — selected rows, info surfaces  */
   --tm-gold:   #FDD95F;  /* attention fill — caution, highlights, markers   */
   --tm-orange: #FF7F00;  /* second action hue — secondary CTAs, warnings    */
@@ -209,7 +209,7 @@
   /* ── Warning ── now the palette's own warm pair: gold is the field,
      orange is the ink and the icon. There is no third amber. */
   --color-warning-400: var(--gold-500);
-  --color-warning-600: var(--orange-600);  /* 3.10:1 — icons, borders */
+  --color-warning-600: var(--orange-700);  /* 3.84:1 — icons, borders */
   --color-warning-700: var(--orange-800);  /* 4.83:1 — text */
   --color-warning-800: var(--orange-900);  /* 5.44:1 */
 
@@ -245,19 +245,21 @@
   --radius-pill: 999px;
 
   /* ── App canvas ────────────────────────────────────────────────────────
-     The ground is the palette's cream and the cards are pure white. That
-     is the one place the two near-whites are allowed to meet: paper behind
-     panels. Do NOT tint the cards to increase the separation — that was
-     tried as a 4% brand mix and read as a grey film over every panel.
-     Brand washes below are color-mix on --accent-primary, not frozen rgba,
-     so a rebranded tenant gets their own hue in every tint that means "a
-     wash of the accent", not just in the solid fills. */
-  --bg-app:        var(--tm-cream);
+     The ground stays the faint blue wash it has always been — 4% of the
+     accent in white — and the cards stay pure white. Do NOT tint the cards
+     to increase the separation: that was tried as a 4% brand mix and read
+     as a grey film over every panel. Tint the ground instead. Derived from
+     --accent-primary rather than a fixed hex so it tracks the brand, which
+     also means a rebranded tenant gets their own hue in every tint that
+     means "a wash of the accent", not just in the solid fills.
+     The palette's cream is the warm paper tone a surface lifts TO on hover
+     (--bg-card-hover, --color-cream-*), not the ground. */
+  --bg-app:        color-mix(in srgb, var(--accent-primary) 4%, var(--color-white));
   --bg-primary:    var(--color-white);
   --bg-secondary:  color-mix(in srgb, var(--accent-primary) 6%, transparent);
   --bg-card:       var(--color-white);
   --bg-card-solid: var(--color-white);
-  --bg-card-hover: var(--brand-50);
+  --bg-card-hover: var(--color-cream-75);
   --bg-input:      var(--color-white);
   --bg-sidebar:    var(--color-white);
   --overlay-subtle: color-mix(in srgb, var(--accent-primary) 7%, transparent);
@@ -276,8 +278,10 @@
         signal, selection. Never carries small text on white (3.24:1).
      Orange and gold are used at full strength and carry DARK ink, not
      white: #001D3F on #FF7F00 is 6.64:1 and on #FDD95F is 12.24:1, where
-     white on either fails. Darkening them to fit white text is what turned
-     the old orange into a brick (#B35900) — use --accent-orange-on.
+     white on either is 2.53:1 and 1.38:1. White labels were tried on the
+     orange and taken back out. Darkening the orange until white text fits
+     is what turned the old one into a brick; the fill stays the palette
+     colour and the foreground flips instead — --accent-orange-on.
      Clinical safety colours (danger/warning/success) are NOT part of this
      set; see the palette header. */
   --accent-primary:  var(--tb-blue-900);
@@ -484,7 +488,8 @@
   --chart-2: #2191D0;   /* brand blue  — palette */
   --chart-3: #BE185D;   /* rose        */
   --chart-4: #0D9488;   /* teal        */
-  --chart-5: #FF7F00;   /* orange      — palette */
+  --chart-5: #E67200;   /* orange      — palette, one rung down from #FF7F00
+                           so a thin line clears 3:1 on white (2.53 -> 3.10) */
   --chart-6: #6D45C2;   /* violet      */
 
   /* Sequential (magnitude) is one hue light->dark, from the brand ramp;
@@ -2802,7 +2807,7 @@ html:has(.ehr-top-rail) {
   flex-direction: column;
   height: 100dvh;
   width: 100%;
-  background: var(--bg-app, #F2FCFF);
+  background: var(--bg-app, #F5F8FB);
   color: var(--text-primary);
 }
 
@@ -3632,7 +3637,7 @@ html:has(.ehr-top-rail) {
   max-height: 86%;
   display: flex;
   flex-direction: column;
-  background: var(--bg-app, #F2FCFF);
+  background: var(--bg-app, #F5F8FB);
   border-radius: 24px 24px 0 0;
   overflow: hidden;
   box-shadow: 0 -12px 40px rgba(17, 48, 85, 0.25);
@@ -3650,7 +3655,7 @@ html:has(.ehr-top-rail) {
   width: 40px;
   height: 4px;
   border-radius: 999px;
-  background: var(--border-medium, #D9DEE4);
+  background: var(--border-medium, #E2E6EB);
 }
 
 .mobile-sheet-head {
@@ -4695,7 +4700,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-schedule-actions button:not(.primary):hover {
   border-color: var(--ehr-blue);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-segmented button.active {
@@ -4713,8 +4718,8 @@ html:has(.ehr-top-rail) {
 
 .ehr-schedule-actions button.primary:hover,
 .ehr-segmented button.active:hover {
-  border-color: var(--tb-blue-800, #001D3F);
-  background: var(--tb-blue-800, #001D3F);
+  border-color: var(--tb-blue-800, #113055);
+  background: var(--tb-blue-800, #113055);
 }
 
 /* A secondary action wears the palette's third color (--accent-orange) so it
@@ -4724,7 +4729,7 @@ html:has(.ehr-top-rail) {
   padding: 0 16px;
   border-color: var(--accent-orange);
   background: var(--accent-orange);
-  color: white;
+  color: var(--accent-orange-on);
 }
 
 .ehr-schedule-actions button.orange:hover,
@@ -5120,7 +5125,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
   background: #F2FCFF;
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-day-tabs button.active:not(.ehr-mobile-day-check) {
@@ -15639,7 +15644,7 @@ span:has(> svg:only-child) {
 .ehr-handoff-close:hover {
   border-color: var(--ehr-border);
   background: rgba(33, 145, 208, 0.07);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-handoff-body {
@@ -15785,7 +15790,7 @@ span:has(> svg:only-child) {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   font-size: 13.5px;
   font-weight: 700;
   text-align: start;
@@ -15918,7 +15923,7 @@ textarea.ehr-handoff-input {
 
 .ehr-handoff-btn:hover {
   border-color: var(--ehr-blue);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-handoff-btn.primary {
@@ -15928,8 +15933,8 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-handoff-btn.primary:hover {
-  border-color: var(--tb-blue-800, #001D3F);
-  background: var(--tb-blue-800, #001D3F);
+  border-color: var(--tb-blue-800, #113055);
+  background: var(--tb-blue-800, #113055);
   color: #fff;
 }
 
@@ -16520,7 +16525,7 @@ textarea.ehr-handoff-input {
    about an earlier expanded pill; this override reintroduced it.) */
 .ehr-right-rail .ehr-outstanding-chips button:hover,
 .ehr-right-rail .ehr-side-card > button:not(.ehr-side-card-icon-row):hover {
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 /* Selected changes colour and nothing else — same rule as hover above.
@@ -16534,7 +16539,7 @@ textarea.ehr-handoff-input {
      rule still fills the selected chip with --ehr-blue-light, and this rule
      only wins for the properties it names. */
   background: transparent;
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 /* Clicking a row opens a panel; it must not be left wearing a focus ring,
@@ -17145,7 +17150,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
   background: #fff;
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -17232,7 +17237,7 @@ textarea.ehr-handoff-input {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   font-size: 13.5px;
   font-weight: 700;
   line-height: 1.25;
@@ -17393,7 +17398,7 @@ textarea.ehr-handoff-input {
 .ehr-queue-action:focus-visible {
   border-color: var(--ehr-border);
   background: rgba(33, 145, 208, 0.07);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   outline: none;
 }
 
@@ -17520,7 +17525,7 @@ textarea.ehr-handoff-input {
 
 .ehr-daybar .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
   background: #F2FCFF;
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-daybar .ehr-day-tabs button.active:not(.ehr-mobile-day-check) {
@@ -18559,8 +18564,8 @@ textarea.ehr-handoff-input {
 }
 
 .appt-edit-header-actions .btn-primary:hover {
-  border-color: var(--tb-blue-800, #001D3F);
-  background: var(--tb-blue-800, #001D3F);
+  border-color: var(--tb-blue-800, #113055);
+  background: var(--tb-blue-800, #113055);
 }
 
 .appt-edit-header-actions .btn-secondary {
@@ -19462,7 +19467,7 @@ textarea.ehr-handoff-input {
 
 .ehr-set-btn:hover {
   border-color: var(--ehr-blue);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 /* Brand-aware again. These were pinned to the platform blue because a pale
@@ -19929,12 +19934,12 @@ textarea.ehr-handoff-input {
 
 .ehr-set-nav button:hover {
   background: rgba(33, 145, 208, 0.07);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-set-nav button.active {
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   font-weight: 800;
 }
 
@@ -20049,7 +20054,7 @@ textarea.ehr-handoff-input {
   padding: 3px 10px;
   border-radius: 999px;
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   font-size: 11.5px;
   font-weight: 700;
   white-space: nowrap;
@@ -20093,7 +20098,7 @@ textarea.ehr-handoff-input {
   place-items: center;
   border-radius: 9px;
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-set-shortcuts button svg {
@@ -20163,7 +20168,7 @@ textarea.ehr-handoff-input {
   place-items: center;
   border-radius: 9px;
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-set-section-head > span svg {
@@ -20241,7 +20246,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-toggle.is-on b {
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-set-toggle > span {
@@ -20294,7 +20299,7 @@ textarea.ehr-handoff-input {
 
 .ehr-set-select:hover {
   border-color: var(--ehr-blue);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .ehr-set-input,
@@ -20640,7 +20645,7 @@ textarea.ehr-handoff-input {
   height: 34px;
   border-radius: 9px;
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .org-set-head svg,
@@ -20681,7 +20686,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
   background: #fff;
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
@@ -20714,7 +20719,7 @@ textarea.ehr-handoff-input {
   width: 15px;
   height: 15px;
   margin-top: 1px;
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .org-set-readonly p,
@@ -20966,7 +20971,7 @@ textarea.ehr-handoff-input {
 }
 
 .org-set-feature[data-enabled='true'] > svg {
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .org-set-feature b {
@@ -21014,7 +21019,7 @@ textarea.ehr-handoff-input {
 }
 
 .org-set-chip-row b {
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   font-variant-numeric: tabular-nums;
 }
 
@@ -21115,12 +21120,12 @@ textarea.ehr-handoff-input {
 
 .settings-tab-strip button:hover {
   background: rgba(33, 145, 208, 0.06);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
 }
 
 .settings-tab-strip button.active {
   background: rgba(33, 145, 208, 0.11);
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   font-weight: 850;
 }
 
@@ -21190,7 +21195,7 @@ textarea.ehr-handoff-input {
 }
 
 .fs-facility-tile strong {
-  color: var(--tb-blue-800, #001D3F);
+  color: var(--tb-blue-800, #113055);
   font-size: 13px;
   font-weight: 800;
 }
@@ -23031,7 +23036,7 @@ table.patient-data-table.patient-data-table {
    border does in the card lists. */
 .ehr-table-detail-row > td {
   padding: 0 !important;
-  background: var(--ehr-page-bg, #FFFFFF);
+  background: var(--ehr-page-bg, #F5F8FB);
   border-bottom: 1px solid var(--border-light, #ECEEF1);
 }
 
@@ -23121,8 +23126,8 @@ table.patient-data-table.patient-data-table {
 }
 
 .ehr-visit-pop-icon.is-primary:hover {
-  background: var(--accent-hover, #001D3F);
-  border-color: var(--accent-hover, #001D3F);
+  background: var(--accent-hover, #113055);
+  border-color: var(--accent-hover, #113055);
   color: #fff;
 }
 
@@ -24032,17 +24037,17 @@ table.patient-data-table.patient-data-table {
      underline, the slab and the flush button stack are unchanged — the shape
      is what makes it read as OpenMRS, not the colours. */
   --omrs-ui-01: var(--tb-blue-50, #F2FCFF);        /* form slab */
-  --omrs-ui-02: var(--tb-blue-100, #E1F9FF);       /* slab edge */
-  --omrs-ui-03: var(--color-slate-150, #D9DEE4);   /* subtle divider */
+  --omrs-ui-02: var(--tb-blue-100, #C9F4FF);       /* slab edge */
+  --omrs-ui-03: var(--color-slate-150, #E2E6EB);   /* subtle divider */
   --omrs-ui-04: var(--color-slate-300, #CFD6DD);   /* field underline */
   --omrs-ui-05: var(--text-primary, #113055);      /* strong text */
   --omrs-text-02: var(--text-muted, #5D728B);      /* labels, secondary text */
   --omrs-field-01: var(--color-white, #fff);       /* field surface on the slab */
   /* Accents — Tamam blue in every slot Carbon fills with blue-60 / teal-60. */
   --omrs-interactive: var(--accent-primary, #015697);
-  --omrs-interactive-soft: var(--tb-blue-100, #E1F9FF);
+  --omrs-interactive-soft: var(--tb-blue-100, #C9F4FF);
   --omrs-primary: var(--accent-primary, #015697);
-  --omrs-primary-hover: var(--accent-hover, #001D3F);
+  --omrs-primary-hover: var(--accent-hover, #113055);
   /* Secondary is white-with-a-blue-edge rather than Carbon's charcoal slab:
      a dark grey button is the one thing in the reference that has no place in
      a white-and-blue theme. */
@@ -24537,7 +24542,7 @@ table.patient-data-table.patient-data-table {
 .omrs-reg .registration-contact-badge {
   border-radius: 0;
   background: var(--omrs-interactive-soft);
-  color: var(--accent-hover, #001D3F);
+  color: var(--accent-hover, #113055);
 }
 
 .registration-contact-remove {
@@ -24649,7 +24654,7 @@ table.patient-data-table.patient-data-table {
 .triage-patient-photo-label {
   display: block;
   padding: 10px 12px;
-  background: var(--accent-hover, #001D3F);
+  background: var(--accent-hover, #113055);
   color: #fff;
   font-size: 12px;
   line-height: 1.29;
@@ -24774,7 +24779,7 @@ table.patient-data-table.patient-data-table {
   border-radius: 0;
   /* The one dark surface the reference keeps. Tamam's deep blue rather than
      Carbon's gray-80, so it belongs to the white-and-blue palette. */
-  background: var(--accent-hover, #001D3F);
+  background: var(--accent-hover, #113055);
   color: #fff;
   font-family: var(--font-omrs);
   font-size: 14px;
@@ -25608,8 +25613,8 @@ table.patient-data-table.patient-data-table {
 
 .ehr-schedule-actions .ehr-rail-menu-trigger-primary:hover,
 .ehr-schedule-actions .ehr-rail-menu-trigger-primary.open {
-  border-color: var(--tb-blue-800, #001D3F);
-  background: var(--tb-blue-800, #001D3F);
+  border-color: var(--tb-blue-800, #113055);
+  background: var(--tb-blue-800, #113055);
   color: #fff;
 }
 
@@ -26201,7 +26206,7 @@ table.patient-data-table.patient-data-table {
   margin-inline: 0;
   padding: 0 0 10px;
   margin-bottom: 10px;
-  border-bottom: 1px solid var(--ehr-border, #ECEEF1);
+  border-bottom: 1px solid var(--ehr-border, #E2E6EB);
 }
 
 /* Day activity, measured against the design: a 60px plot of 8px bars, 7px
@@ -26872,7 +26877,7 @@ table.patient-data-table.patient-data-table {
   margin: 0 0 12px;
   margin-inline: 0;
   padding: 0 0 10px;
-  border-bottom: 1px solid var(--ehr-border, #ECEEF1);
+  border-bottom: 1px solid var(--ehr-border, #E2E6EB);
 }
 .ehr-day-stats .ehr-side-card-head h2,
 .ehr-stage-donut .ehr-side-card-head h2 {

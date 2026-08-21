@@ -171,7 +171,7 @@
 .bl-toolbar-select:hover:not(:disabled):not(:focus) { border-color: var(--bl-teal); }
 .bl-toolbar-select:disabled {
   color: var(--ehr-muted, #5D728B);
-  background-color: var(--ehr-page-bg, #FFFFFF);
+  background-color: var(--ehr-page-bg, #F5F8FB);
   cursor: not-allowed;
 }
 
@@ -314,7 +314,7 @@
   gap: 10px;
   margin: 0 18px 0;
   padding: 0 12px;
-  background: var(--ehr-page-bg, #FFFFFF);
+  background: var(--ehr-page-bg, #F5F8FB);
   border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 6px;
   color: var(--ehr-muted, #5D728B);

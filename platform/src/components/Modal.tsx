@@ -136,7 +136,7 @@ export default function Modal({
         alignItems: isDrawer ? 'stretch' : align === 'top' ? 'flex-start' : 'center',
         justifyContent: isDrawer ? 'flex-end' : 'center',
         padding: isDrawer ? 0 : `calc(16px + ${offset}) 16px 16px`,
-        background: 'rgba(8, 87, 58, 0.70)',
+        background: 'rgba(15, 31, 29, 0.70)',
         animation: 'modalFadeIn 0.2s ease-out',
         overflowY: isDrawer ? 'hidden' : 'auto',
       }}

@@ -324,7 +324,7 @@ export default function PaymentPanel({
 
           {emailSent && (
             <div style={{ padding: '0 20px 12px' }}>
-              <div className="bl-muted" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #FFFFFF)', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6, textAlign: 'center' }}>
+              <div className="bl-muted" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #F5F8FB)', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6, textAlign: 'center' }}>
                 {t('payments.receiptSentTo', { email: emailAddress })}
               </div>
             </div>
@@ -332,7 +332,7 @@ export default function PaymentPanel({
 
           {emailError && !emailSent && (
             <div style={{ padding: '0 20px 12px' }}>
-              <div className="bl-danger" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #FFFFFF)', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6, textAlign: 'center' }}>
+              <div className="bl-danger" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #F5F8FB)', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6, textAlign: 'center' }}>
                 {emailError}
               </div>
             </div>

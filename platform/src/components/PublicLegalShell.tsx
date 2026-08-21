@@ -126,7 +126,7 @@ export default function PublicLegalShell({
 .lg-shell {
   min-height: 100vh;
   display: flex; flex-direction: column;
-  background: var(--bg-app, #FFFFFF);
+  background: var(--bg-app, #F5F8FB);
   font-family: var(--font-platform, var(--font-dm-sans), 'DM Sans', system-ui, sans-serif);
   color: var(--text-primary, #113055);
 }
@@ -152,7 +152,7 @@ export default function PublicLegalShell({
   font-family: inherit; cursor: pointer;
   color: var(--text-secondary, #3C5574);
   background: var(--bg-card-solid, #FFFFFF);
-  border: 1px solid var(--border-medium, #D9DEE4);
+  border: 1px solid var(--border-medium, #E2E6EB);
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 .lg-print-btn:hover {
@@ -168,14 +168,14 @@ export default function PublicLegalShell({
   text-decoration: none; padding: 6px 10px; border-radius: 8px;
   transition: color 0.18s ease, background-color 0.18s ease;
 }
-.lg-header__link:hover { color: var(--accent-hover, #001D3F); background: var(--overlay-subtle, rgba(33,145,208,0.07)); }
+.lg-header__link:hover { color: var(--accent-hover, #113055); background: var(--overlay-subtle, rgba(33,145,208,0.07)); }
 .lg-btn-secondary {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 8px 18px; border-radius: var(--btn-radius, 10px);
   font-size: 0.82rem; font-weight: 600; letter-spacing: -0.01em;
   color: var(--text-secondary, #3C5574); text-decoration: none;
   background: var(--bg-card-solid, #FFFFFF);
-  border: 1px solid var(--border-medium, #D9DEE4);
+  border: 1px solid var(--border-medium, #E2E6EB);
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 .lg-btn-secondary:hover {

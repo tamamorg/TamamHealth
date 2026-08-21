@@ -311,7 +311,7 @@
 }
 
 .labord-step--current {
-  background: var(--accent-hover, #001D3F);
+  background: var(--accent-hover, #113055);
   color: #fff;
 }
 
@@ -710,8 +710,8 @@
 }
 
 .labord-btn--primary:hover:not(:disabled) {
-  background: var(--accent-hover, #001D3F);
-  border-color: var(--accent-hover, #001D3F);
+  background: var(--accent-hover, #113055);
+  border-color: var(--accent-hover, #113055);
 }
 
 .labord-btn--ghost { border-color: transparent; }

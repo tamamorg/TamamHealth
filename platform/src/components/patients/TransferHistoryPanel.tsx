@@ -31,7 +31,7 @@ import Select from '@/components/Select';
 
 const STATUS_STYLE: Record<PatientTransferStatus, { label: string; bg: string; fg: string }> = {
   draft: { label: 'Draft', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
-  requested: { label: 'Awaiting acceptance', bg: 'var(--gold-100, #fef2c7)', fg: 'var(--gold-800, #a65300)' },
+  requested: { label: 'Awaiting acceptance', bg: 'var(--gold-100, #FFFAE9)', fg: 'var(--gold-800, #a65300)' },
   accepted: { label: 'Accepted', bg: 'var(--iris-100, #c9f4ff)', fg: 'var(--iris-800, #015697)' },
   rejected: { label: 'Rejected', bg: 'var(--rose-100, #fae6e4)', fg: 'var(--rose-800, #a65300)' },
   cancelled: { label: 'Withdrawn', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
@@ -557,7 +557,7 @@ export function TransferBanner({
       className="flex items-start gap-2.5 px-3 py-2 rounded mb-3 text-[12px]"
       style={{
         background: overdue ? 'var(--rose-50, #fceeed)' : 'var(--gold-50, #fcfef3)',
-        border: `1px solid ${overdue ? 'var(--rose-200, #f9dddb)' : 'var(--gold-200, #fee697)'}`,
+        border: `1px solid ${overdue ? 'var(--rose-200, #f9dddb)' : 'var(--gold-200, #FFF7DC)'}`,
       }}
     >
       {overdue

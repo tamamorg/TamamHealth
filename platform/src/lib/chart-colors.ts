@@ -47,7 +47,7 @@ export const CHART_SEQUENTIAL = [
  * `color-tokens.test.ts` asserts these stay equal to the tokens.
  */
 export const CHART_SERIES_HEX = [
-  '#015697', '#2191D0', '#BE185D', '#0D9488', '#FF7F00', '#6D45C2',
+  '#015697', '#2191D0', '#BE185D', '#0D9488', '#E67200', '#6D45C2',
 ] as const;
 
 export const CHART_GRID = 'var(--chart-grid)';

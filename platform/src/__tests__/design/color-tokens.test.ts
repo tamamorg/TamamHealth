@@ -264,8 +264,11 @@ describe('the palette holds', () => {
     '#E67200', '#CC6600', '#B35900', '#A65300',
     // gold, diluted into white
     '#FFFCF2', '#FFFAE9', '#FFF7DC', '#FEF2C7', '#FEE697', '#B19843',
-    // cream, the ground
+    // cream, the warm paper tone
     '#FEFFFB', '#F7FBE4',
+    // the page ground, written out where a var() fallback needs a literal:
+    // color-mix(in srgb, var(--accent-primary) 4%, white)
+    '#F5F8FB',
   ];
 
   // Exception 1: clinical safety. Red/amber/green is how ETAT triage, allergy
@@ -316,10 +319,13 @@ describe('the palette holds', () => {
   });
 
   test('the accent carries white text and the warm pair carries dark ink', () => {
-    // Orange and gold are used at full strength; accessibility comes from
-    // flipping the foreground, not from darkening the brand colour.
+    // Solid fills get their readability from the foreground, not from
+    // darkening the brand colour. White on #FF7F00 is 2.53:1 and on #FDD95F
+    // is 1.38:1; the palette ink on them is 6.64:1 and 12.24:1.
     expect(contrast(token('accent-primary'), WHITE)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(token('accent-orange'), token('accent-orange-on'))).toBeGreaterThanOrEqual(4.5);
     expect(contrast(token('accent-gold'), token('accent-gold-on'))).toBeGreaterThanOrEqual(4.5);
+    // The text rung of orange still has to work as words on white.
+    expect(contrast(token('accent-orange-text'), WHITE)).toBeGreaterThanOrEqual(4.5);
   });
 });

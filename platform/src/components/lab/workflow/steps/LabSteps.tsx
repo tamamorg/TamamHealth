@@ -66,7 +66,7 @@ function CollectPreconditions({ order }: { order: LabResultDoc }) {
         <span
           key={note.key}
           className="labord-chip"
-          style={note.strong ? { borderColor: 'var(--color-warning, #E67200)', color: 'var(--color-warning, #E67200)' } : undefined}
+          style={note.strong ? { borderColor: 'var(--color-warning, #CC6600)', color: 'var(--color-warning, #CC6600)' } : undefined}
         >
           {note.text}
         </span>
@@ -416,7 +416,7 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
           <div className="labord-section-head">{t('labFlow.amendHeading')}</div>
           <div className="labord-section-body">
             {order.amended && (
-              <p className="labord-help" style={{ marginTop: 0, color: 'var(--color-warning, #E67200)', fontWeight: 600 }}>
+              <p className="labord-help" style={{ marginTop: 0, color: 'var(--color-warning, #CC6600)', fontWeight: 600 }}>
                 {t('labFlow.amendedNotice', {
                   from: order.amendedFrom || '—',
                   by: order.amendedBy || '—',
@@ -460,7 +460,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
             <Field
               label={t('labFlow.value')}
               value={
-                <span style={{ color: order.critical ? 'var(--color-danger, #D92B20)' : order.abnormal ? 'var(--color-warning, #E67200)' : undefined }}>
+                <span style={{ color: order.critical ? 'var(--color-danger, #D92B20)' : order.abnormal ? 'var(--color-warning, #CC6600)' : undefined }}>
                   {order.result || '—'} {order.unit}
                 </span>
               }
