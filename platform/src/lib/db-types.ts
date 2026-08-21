@@ -64,6 +64,15 @@ export interface UserDoc extends BaseDoc {
    * Cleared once the user sets their own password.
    */
   mustChangePassword?: boolean;
+  /**
+   * SHA-256 of the outstanding account-invitation token, and when it lapses.
+   *
+   * The raw token is emailed and never stored, so a database dump cannot be
+   * replayed into an account takeover. Both fields are cleared the moment the
+   * invitation is redeemed, which is what makes it single-use.
+   */
+  inviteTokenHash?: string;
+  inviteExpiresAt?: string;
   /** ISO timestamp of the last password change (admin reset or self-service). */
   passwordUpdatedAt?: string;
   /** Hashed 4-6 digit PIN for screen-lock quick unlock */

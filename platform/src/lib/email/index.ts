@@ -68,4 +68,20 @@ export async function sendEmail(input: EmailSendInput): Promise<EmailSendResult>
   }
 }
 
+/**
+ * Whether a send actually left the building.
+ *
+ * The `log` provider reports `ok: true` on purpose — it keeps delivery status,
+ * toasts and audit working on deployments with no mail credentials. That is
+ * right for a receipt nobody is waiting on, and wrong for anything a caller
+ * would otherwise stop doing: an administrator told "we emailed the invitation"
+ * will not read the temporary password out loud, and the new user is stranded.
+ *
+ * Callers whose next action depends on real delivery must use this rather than
+ * `result.ok`.
+ */
+export function wasDelivered(result: EmailSendResult): boolean {
+  return result.ok && result.providerId !== 'log';
+}
+
 export type { EmailProvider, EmailSendInput, EmailSendResult };
