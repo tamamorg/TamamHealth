@@ -71,7 +71,7 @@ function demoGroupName(account: DemoAccount): string {
 export default function LoginPage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { login, isAuthenticated, currentUser, dbReady } = useAuth();
+  const { login, lastLoginFailure, isAuthenticated, currentUser, dbReady } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -178,6 +178,24 @@ export default function LoginPage() {
     if (isAuthenticated && currentUser) router.push(resolveLandingPage(currentUser.role));
   }, [isAuthenticated, currentUser, router]);
 
+  /**
+   * Name the actual refusal. Every failed sign-in used to read "Invalid
+   * credentials", so a stopped database or a lockout sent people back to
+   * retyping a password that was already correct.
+   */
+  const describeLoginFailure = (fallback: string) => {
+    const failure = lastLoginFailure();
+    if (!failure) return fallback;
+    if (failure.status === 429) {
+      const minutes = failure.retryAfterSeconds ? Math.ceil(failure.retryAfterSeconds / 60) : 0;
+      return minutes > 0
+        ? t('login.errorTooManyAttemptsIn', { minutes })
+        : t('login.errorTooManyAttempts');
+    }
+    if (failure.status >= 500) return t('login.errorServiceUnavailable');
+    return fallback;
+  };
+
   /** One tap = filled form + signed in, so a demo never stalls on a password. */
   const signInAsDemo = async (account: DemoAccount) => {
     setUsername(account.username);
@@ -189,7 +207,7 @@ export default function LoginPage() {
     try {
       const result = await login(account.username, account.password);
       if (result) router.push(resolveLandingPage(result));
-      else { setError('That demo account could not sign in.'); setLoading(false); }
+      else { setError(describeLoginFailure('That demo account could not sign in.')); setLoading(false); }
     } catch { setError('Login failed. Please try again.'); setLoading(false); }
   };
 
@@ -200,7 +218,7 @@ export default function LoginPage() {
     try {
       const result = await login(username, password, undefined, roleChoice || undefined);
       if (result) router.push(resolveLandingPage(result));
-      else { setError(t('login.errorInvalidCredentials')); setLoading(false); }
+      else { setError(describeLoginFailure(t('login.errorInvalidCredentials'))); setLoading(false); }
     } catch { setError(t('login.errorLoginFailed')); setLoading(false); }
   };
 
