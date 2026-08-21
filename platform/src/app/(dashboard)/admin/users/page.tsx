@@ -18,7 +18,7 @@ import { generateTempPassword } from '@/lib/temp-password';
 import { avatarTint } from '@/lib/patient-utils';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
-import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbChip, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
+import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 
 // Column template for the user list header + rows:
@@ -477,17 +477,6 @@ export default function AdminUsersPage() {
             opens it. */}
         <div style={{ display: activeTab === 'requests' ? 'block' : 'none', padding: '4px 14px 14px' }}>
           <AccountRequestQueue viewerRole="super_admin" embedded onCountsChange={setRequestCounts} />
-        </div>
-      </SadbCard>
-
-      {/* ═══ Role distribution ═══ */}
-      <SadbCard title={t('adminUsers.roleDistribution')}>
-        <div className="flex flex-wrap gap-2" style={{ padding: '12px 14px' }}>
-          {ALL_ROLES.map(role => {
-            const count = roleCounts[role] || 0;
-            if (count === 0) return null;
-            return <SadbChip key={role} tone="neutral">{roleLabel(role)} · {count}</SadbChip>;
-          })}
         </div>
       </SadbCard>
 
