@@ -4,14 +4,18 @@
  * Super-admin Platform Dashboard — the command center, drawn per the
  * "Super Admin Dashboard.dc.html" design (sadb-* namespace in globals.css):
  * greeting + Command Center eyebrow, a clickable KPI tile row, readiness
- * donut with the two signals that move it, business snapshot, sync &
- * interoperability, and the tenant health matrix as a grid list.
+ * donut with the two signals that move it, business snapshot, and sync &
+ * interoperability.
  *
- * The queues this screen used to duplicate now live only where they are
+ * The lists this screen used to duplicate now live only where they are
  * actually worked: the risk & incident queue on /admin/risk (Risk Center),
- * and the high-risk security watchlist on /admin/security (Security &
- * Compliance → Security watchlist). The dashboard keeps the signals those
- * queues produce, not a second copy of the lists.
+ * the high-risk security watchlist on /admin/security (Security &
+ * Compliance → Security watchlist), and the tenant health matrix on
+ * /admin/organizations, where a row click can actually edit or deactivate
+ * the tenant. The dashboard keeps the signals those lists produce — the
+ * Organizations KPI tile is the way in — not a second copy of the lists, and
+ * the 14-day encounters-vs-audit-failures trend it used to draw now lives on
+ * /admin/analytics.
  *
  * It still answers "is the platform healthy today?" in one screen. Every
  * number comes from real local stores (PouchDB docs, audit log, sync events,
@@ -30,8 +34,8 @@ import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import Modal from '@/components/Modal';
-import { Search, X } from '@/components/icons/lucide';
-import type { AuditLogDoc, EncounterDoc, OrganizationDoc, UserDoc } from '@/lib/db-types';
+import { X } from '@/components/icons/lucide';
+import type { AuditLogDoc, EncounterDoc, UserDoc } from '@/lib/db-types';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
 
@@ -51,12 +55,6 @@ const TONE_STROKE: Record<Tone, string> = {
 function dayKey(iso: string): string {
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function onboardedLabel(iso?: string): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  return isNaN(d.getTime()) ? null : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
 }
 
 interface DashboardPreview {
@@ -148,7 +146,6 @@ export default function AdminDashboardPage() {
   const [conflictCount, setConflictCount] = useState(0);
   const [dhis2, setDhis2] = useState<{ configured: boolean; host: string; lastPush?: string }>({ configured: false, host: 'Not configured' });
   const [loading, setLoading] = useState(true);
-  const [tenantSearch, setTenantSearch] = useState('');
 
   // Defense in depth on top of the Edge proxy check (SaPage used to own this).
   useEffect(() => {
@@ -287,22 +284,6 @@ export default function AdminDashboardPage() {
     return signals.sort((a, b) => order.indexOf(a) - order.indexOf(b)).slice(0, 8);
   }, [failedAudits, syncStats.failed, conflictCount, suspendedOrgs, trialOrgs, backupOverdue, backupUnknown, config?.maintenanceMode]);
 
-  /* Tenant health matrix (searchable). */
-  const tenantMatrix = useMemo(() => {
-    const q = tenantSearch.trim().toLowerCase();
-    return organizations
-      .filter(org => !q || org.name.toLowerCase().includes(q) || org.subscriptionPlan.toLowerCase().includes(q) || org.subscriptionStatus.toLowerCase().includes(q))
-      .map(org => {
-        const orgFacilities = hospitals.filter(h => h.orgId === org._id);
-        return {
-          org,
-          users: users.filter(u => u.orgId === org._id).length,
-          facilities: orgFacilities.length,
-          offline: orgFacilities.filter(h => h.syncStatus === 'offline').length,
-        };
-      });
-  }, [organizations, users, hospitals, tenantSearch]);
-
   /* KPI deltas we can actually compute. */
   const now = new Date();
   const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).getTime();
@@ -313,22 +294,9 @@ export default function AdminDashboardPage() {
 
   const licensedSeats = organizations.reduce((sum, o) => sum + (o.maxUsers || 0), 0);
 
-  const statusTone = (s: string): Tone =>
-    s === 'active' ? 'ok' : s === 'trial' ? 'warn' : s === 'suspended' || s === 'cancelled' ? 'danger' : 'muted';
-
   const openRiskTone: Tone = riskSignals.some(sev => sev === 'critical' || sev === 'high')
     ? 'danger'
     : riskSignals.length ? 'warn' : 'ok';
-
-  /* Per-tenant sync: share of the tenant's facilities currently online —
-     the honest per-tenant proxy while sync stats are only tracked globally. */
-  const tenantSync = (row: { org: OrganizationDoc; facilities: number; offline: number }): { label: string; color: string } => {
-    if (statusTone(row.org.subscriptionStatus) === 'danger' || row.facilities === 0) {
-      return { label: '—', color: 'var(--text-muted)' };
-    }
-    const pct = Math.round(((row.facilities - row.offline) / row.facilities) * 100);
-    return { label: `${pct}%`, color: pct < 95 ? 'var(--color-warning-700)' : 'var(--color-success-800)' };
-  };
 
   const kpis: Array<{ key: string; label: string; value: string; delta: string; deltaClass?: string; href?: string }> = [
     {
@@ -398,31 +366,6 @@ export default function AdminDashboardPage() {
           { label: 'Audit failures', value: `${failedAudits.length} in the last 7 days` },
         ],
         href: '/admin/risk',
-      };
-    }
-    if (previewToken.startsWith('tenant:')) {
-      const orgId = previewToken.slice('tenant:'.length);
-      const org = organizations.find(item => item._id === orgId);
-      if (!org) return null;
-      const orgFacilities = hospitals.filter(item => item.orgId === orgId);
-      const row = {
-        org,
-        users: users.filter(item => item.orgId === orgId).length,
-        facilities: orgFacilities.length,
-        offline: orgFacilities.filter(item => item.syncStatus === 'offline').length,
-      };
-      const sync = tenantSync(row);
-      return {
-        title: org.name,
-        context: 'Tenant health',
-        details: [
-          { label: 'Plan', value: org.subscriptionPlan },
-          { label: 'Status', value: org.subscriptionStatus },
-          { label: 'Facilities', value: `${row.facilities} / ${org.maxHospitals}` },
-          { label: 'Users', value: `${row.users} / ${org.maxUsers}` },
-          { label: 'Sync', value: sync.label },
-        ],
-        href: `/admin/organizations?org=${encodeURIComponent(org._id)}`,
       };
     }
     return null;
@@ -548,73 +491,6 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ═══ Tenant health matrix ═══ */}
-        <div className="sadb-card">
-          <div className="sadb-card-head" style={{ padding: '12px 16px' }}>
-            <h3 className="sadb-card-title">Tenant health matrix</h3>
-            <div className="sadb-legend">
-              <span><i style={{ background: 'var(--text-muted)' }} />Organizations ({organizations.length})</span>
-              <span><i style={{ background: 'var(--color-success-800)' }} />Active ({activeOrgs.length})</span>
-              <span><i style={{ background: 'var(--color-warning-600)' }} />Trial ({trialOrgs.length})</span>
-              <span><i style={{ background: 'var(--color-danger-500)' }} />Suspended ({suspendedOrgs.length})</span>
-            </div>
-          </div>
-          <div className="sadb-search-row">
-            <label className="sadb-search">
-              <Search className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
-              <input
-                value={tenantSearch}
-                onChange={e => setTenantSearch(e.target.value)}
-                placeholder="Search tenants by name, plan, or status…"
-                aria-label="Search tenants"
-              />
-            </label>
-            <button type="button" className="btn btn-secondary btn-sm flex-shrink-0" onClick={() => router.push('/admin/organizations')}>
-              Manage tenants
-            </button>
-          </div>
-          <div className="sadb-tenant-scroll show-scrollbar">
-            <div>
-              {/* The column-header row stays rendered even when the list is empty. */}
-              <div className="sadb-tenant-grid sadb-tenant-grid--head">
-                <span>Organization</span><span>Plan</span><span>Facilities</span><span>Users</span><span>Sync</span>
-                <span style={{ textAlign: 'end' }}>Status</span>
-              </div>
-              {tenantMatrix.map(row => {
-                const sync = tenantSync(row);
-                const onboarded = onboardedLabel(row.org.createdAt);
-                const orgKind = row.org.orgType === 'public' ? 'Public' : 'Private';
-                return (
-                  <button
-                    key={row.org._id}
-                    type="button"
-                    className="sadb-tenant-grid sadb-tenant-row"
-                    onClick={() => openPreview(`tenant:${row.org._id}`)}
-                  >
-                    <span className="min-w-0">
-                      <span className="sadb-tenant-name truncate">{row.org.name}</span>
-                      <span className="sadb-tenant-sub truncate">
-                        {orgKind}{onboarded ? ` · onboarded ${onboarded}` : row.org.country ? ` · ${row.org.country}` : ''}
-                      </span>
-                    </span>
-                    <span className="capitalize">{row.org.subscriptionPlan}</span>
-                    <span className="sadb-tenant-num">{row.facilities} / {row.org.maxHospitals}</span>
-                    <span className="sadb-tenant-num">{row.users} / {row.org.maxUsers}</span>
-                    <span style={{ color: sync.color }}>{sync.label}</span>
-                    <span style={{ textAlign: 'end' }}>
-                      <span className={`sadb-chip ${TONE_CHIP[statusTone(row.org.subscriptionStatus)]}`}>{row.org.subscriptionStatus}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {tenantMatrix.length === 0 && (
-            <p className="sadb-empty">
-              {organizations.length === 0 ? 'No organizations yet.' : `No tenants match "${tenantSearch}".`}
-            </p>
-          )}
-        </div>
       </div>
       {preview && (
         <PreviewDialog preview={preview} onClose={closePreview} onOpen={() => openFullPage(preview)} />

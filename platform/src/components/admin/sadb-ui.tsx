@@ -206,11 +206,15 @@ export function SadbSearch({ value, onChange, placeholder, ariaLabel }: {
 
 /** Column-template grid list. The header row stays rendered when the list
  *  is empty; the empty message sits below it. */
-export function SadbGridList({ template, minWidth = 760, head, children, empty }: {
+export function SadbGridList({ template, minWidth = 760, head, alignEndLast = false, children, empty }: {
   /** CSS grid-template-columns for header and rows. */
   template: string;
   minWidth?: number;
   head: ReactNode[];
+  /** Right-align the final header cell — for lists whose last column is a
+   *  trailing status chip. The header cells are wrapped in spans of this
+   *  component's own making, so a caller cannot align them from outside. */
+  alignEndLast?: boolean;
   children?: ReactNode;
   /** Empty message; rendered under the header row when there are no rows. */
   empty?: ReactNode;
@@ -220,7 +224,9 @@ export function SadbGridList({ template, minWidth = 760, head, children, empty }
     <div className="sadb-tenant-scroll show-scrollbar">
       <div style={{ minWidth }}>
         <div className="sadb-tenant-grid sadb-tenant-grid--head" style={{ gridTemplateColumns: template }}>
-          {head.map((h, i) => <span key={i}>{h}</span>)}
+          {head.map((h, i) => (
+            <span key={i} style={alignEndLast && i === head.length - 1 ? { textAlign: 'end' } : undefined}>{h}</span>
+          ))}
         </div>
         {children}
         {!hasRows && empty && <p className="sadb-empty">{empty}</p>}

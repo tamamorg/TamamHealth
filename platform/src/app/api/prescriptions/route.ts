@@ -83,6 +83,12 @@ async function postHandler(request: NextRequest) {
       const ve = err as Error & { fields: Record<string, string> };
       return validationError(ve.fields);
     }
+    // Facility policy refused the order (allergy hard stop). That is a
+    // deliberate answer, not a server fault — 409 with the reason, so an
+    // integration or the mobile client can show the prescriber why.
+    if (err instanceof Error && err.name === 'AllergyHardStopError') {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
     logApiError('[API /prescriptions POST]', err);
     return serverError();
   }

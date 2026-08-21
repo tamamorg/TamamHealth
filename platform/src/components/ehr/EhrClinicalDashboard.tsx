@@ -58,6 +58,8 @@ import { encountersDB, labResultsDB } from '@/lib/db';
 import { makeCoalescer } from '@/lib/hooks/live-reload';
 import { withReturnTo } from '@/lib/navigation/return-to';
 import { useRoleChoice, useRoleFlag } from '@/lib/settings/useRoleSetting';
+import { useSettings } from '@/lib/settings/SettingsProvider';
+import { exceedsTargetWait } from '@/lib/clinical-flow/payment-model';
 
 export type WorklistPatient = {
   _id: string;
@@ -448,6 +450,13 @@ export function computeRowQueueColumns(
   entry: QueueEntry | null,
   triage: TriageDoc | null,
   nowMs: number | null,
+  /**
+   * The doctor's "Highlight waits over target" setting (`queue.overTarget`)
+   * and the facility's door-to-clinician target in minutes
+   * (`clinicalPolicy.doorToClinicianMinutes`). Defaulted so the existing
+   * callers and tests keep the behaviour they had.
+   */
+  waitHighlight: { enabled: boolean; targetMinutes: number } = { enabled: true, targetMinutes: 30 },
 ): RowQueueColumns {
   const inService = triage?.handoffStatus === 'in_consultation' || Boolean(triage?.handoffTo) || row.status === 'in_progress';
   const appointmentAt = row.appointment?.appointmentTime
@@ -495,7 +504,15 @@ export function computeRowQueueColumns(
         : entry?.acuity === 'GREEN'
           ? 'Routine'
           : row.patient?.assignmentNote || PRIORITY_META[row.triagePriority].label,
-    overTarget: Boolean(entry?.flaggedForReassessment),
+    // Flagged for reassessment by triage, OR simply waiting longer than the
+    // facility's door-to-clinician target — the second half is what the
+    // "Highlight waits over target" row always claimed to do and never did.
+    overTarget: waitHighlight.enabled && Boolean(
+      entry && (
+        entry.flaggedForReassessment
+        || exceedsTargetWait(entry.minutesWaiting, waitHighlight.targetMinutes)
+      ),
+    ),
     // A booked slot that has come and gone with the patient still not in the
     // queue. Rows that ARE in the queue are excluded deliberately: their time
     // is when they arrived, so "past" would be true of every one of them and
@@ -590,6 +607,8 @@ export default function EhrClinicalDashboard({
   const queueSort = useRoleChoice('queue.sort', 'Longest wait first');
   const queueMineOnly = useRoleFlag('queue.mineOnly', true);
   const queueOverTarget = useRoleFlag('queue.overTarget', true);
+  // Facility policy — the wait target every role's queue is measured against.
+  const facilitySettings = useSettings();
   // Gate the "Start consultation" action to roles that can actually consult,
   // and the "Dispense" action (header button, patient search, and the modal
   // itself) to roles that can actually dispense — a pharmacist working this
@@ -1117,6 +1136,7 @@ export default function EhrClinicalDashboard({
     row.patientId ? queueEntryByPatient.get(row.patientId) ?? null : null,
     row.patientId ? activeTriageByPatient.get(row.patientId) ?? null : null,
     queueNowMs,
+    { enabled: queueOverTarget, targetMinutes: facilitySettings.clinicalPolicy.doorToClinicianMinutes },
   );
 
   // Daybar filter pills — the shared three-lane vocabulary every role

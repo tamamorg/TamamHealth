@@ -34,6 +34,7 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import { staffOptionLabel, type StaffSlotContext } from '@/lib/appointment-staff';
 import { useAuth } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
+import { getRoleChoice } from '@/lib/settings/role-settings-store';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { jubaDate } from '@/lib/time-juba';
@@ -49,6 +50,13 @@ const FALLBACK_DEPARTMENTS = [
   'Emergency', 'Cardiology', 'Orthopedics', 'Ophthalmology', 'Neurology',
   'Dermatology', 'ENT', 'Outpatient',
 ];
+
+/** "20 min" → 20, falling back to the platform's long-standing 30. */
+function defaultAppointmentMinutes(): number {
+  const match = /^(\d+)/.exec(getRoleChoice('consult.length', '').trim());
+  const minutes = match ? Number(match[1]) : NaN;
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : 30;
+}
 
 /** 07:00 → 18:30 on the half hour — the manual fallback for unconfigured sites. */
 const TIME_SLOTS = Array.from({ length: 24 }, (_, h) =>
@@ -117,7 +125,10 @@ export default function BookAppointmentModal({
   const [provider, setProvider] = useState('');
   const [date, setDate] = useState(defaultDate || today);
   const [time, setTime] = useState('');
-  const [duration, setDuration] = useState(30);
+  // Seeded from the clinician's "Default appointment length" (`consult.length`),
+  // which is exactly what that row promises: "Used when you book from your
+  // calendar". A reason or a published slot still overrides it below.
+  const [duration, setDuration] = useState(defaultAppointmentMinutes);
   const [type, setType] = useState<AppointmentType>('general');
   const [priority, setPriority] = useState<AppointmentPriority>('routine');
   const [status, setStatus] = useState<AppointmentStatus>('scheduled');

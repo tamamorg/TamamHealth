@@ -5,6 +5,7 @@ import { X, Banknote, Smartphone, CreditCard, Building2, Shield, CheckCircle2, L
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSettings } from '@/lib/settings/SettingsProvider';
+import { getRoleChoice } from '@/lib/settings/role-settings-store';
 import { PAYOR_LABELS, type PaymentMethodKey } from '@/lib/settings/facility-settings';
 import Modal from '@/components/Modal';
 import { formatMoney } from '@/lib/format-utils';
@@ -25,13 +26,26 @@ interface PaymentPanelProps {
 
 type TabType = 'cash' | 'mobile' | 'card' | 'bank' | 'insurance';
 
+/** The settings row's label vocabulary → this panel's tabs. */
+const PAYMENT_TAB_BY_CHOICE: Record<string, TabType> = {
+  'Cash': 'cash',
+  'Mobile money': 'mobile',
+  'Insurance': 'insurance',
+};
+
+function defaultPaymentTab(): TabType {
+  return PAYMENT_TAB_BY_CHOICE[getRoleChoice('pay.method', '')] ?? 'cash';
+}
+
 export default function PaymentPanel({
   patientId, patientName, encounterId, amountDue, currency = 'SSP', onSuccess, onCancel
 }: PaymentPanelProps) {
   const { currentUser } = useAuth();
   const { t } = useTranslation();
   const settings = useSettings();
-  const [tab, setTab] = useState<TabType>('cash');
+  // Opens on the desk's own "Default payment method" (`pay.method`) — the most
+  // common method at this window, so the usual case needs no extra click.
+  const [tab, setTab] = useState<TabType>(defaultPaymentTab);
   const [amount, setAmount] = useState(amountDue > 0 ? amountDue.toString() : '');
 
   // Self-load balance if amountDue wasn't provided

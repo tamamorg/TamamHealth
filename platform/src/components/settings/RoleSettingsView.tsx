@@ -7,8 +7,10 @@
  * panel at a time. Every user gets their own role's personal panels (design
  * 11 sections — account, role defaults, notifications, security); users with
  * management rights additionally get the design-10 facility panels backed by
- * real functionality: the live Users & roles table, the real facility
- * settings editor, integration/sync status, and restricted actions.
+ * real functionality: the real facility settings editor, integration/sync
+ * status, restricted actions, and one People & access entry that opens the
+ * live user & hospital management screen (the roster used to be mirrored
+ * here read-only, with every action bouncing to that same screen).
  * There is no role switcher — each user sees only their own settings.
  */
 
@@ -30,8 +32,9 @@ import {
   type RoleSettingsValues, type RoleSettingRow, type RoleSettingSection,
 } from '@/lib/role-settings';
 import { replaceRoleSettings, resetRoleSettings } from '@/lib/settings/role-settings-store';
-import { initials, avatarTint } from '@/lib/patient-utils';
 import { FacilitySettingsView } from '@/components/settings/FacilitySettingsView';
+import FacilityPolicySections from '@/components/settings/FacilityPolicySections';
+import { useSettings } from '@/lib/settings/SettingsProvider';
 import OrganizationSettingsPanel, { type OrganizationSettingsSection } from '@/components/settings/OrganizationSettingsPanel';
 import OrgBrandingPage from '@/app/(dashboard)/org-admin/branding/page';
 import OrgHospitalsPage from '@/app/(dashboard)/org-admin/hospitals/page';
@@ -51,7 +54,7 @@ import {
 import { getDhis2SyncLog, isDhis2Configured, type Dhis2SyncLogDoc } from '@/lib/services/dhis2-sync-log-service';
 import {
   AlertTriangle, ArrowLeft, Bell, BedDouble, Building2, Check, ChevronRight, Clock,
-  CreditCard, FileText, FlaskConical, KeyRound, List, Lock, Palette, Pencil, Pill, Plus,
+  CreditCard, FileText, FlaskConical, KeyRound, List, Lock, Palette, Pill,
   RefreshCw, Server, Settings, Shield, Stethoscope, Trash2, User, Users, Zap, type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
@@ -97,7 +100,7 @@ const ORG_SETTINGS_PANEL_IDS = new Set([
   'org-billing',
 ]);
 
-type NavItem = { id: string; label: string; icon: LucideIcon; badge?: string };
+type NavItem = { id: string; label: string; icon: LucideIcon; badge?: string; nested?: boolean };
 type NavGroup = { title: string; items: NavItem[] };
 
 export default function RoleSettingsView() {
@@ -107,6 +110,7 @@ export default function RoleSettingsView() {
   const { users, update: updateUser } = useUsers();
   const { hospitals } = useHospitals();
   const { locale, setLocale } = useTranslation();
+  const facilitySettings = useSettings();
 
   const spec = useMemo(() => (currentUser ? specForRole(currentUser.role) : null), [currentUser]);
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
@@ -295,8 +299,13 @@ export default function RoleSettingsView() {
         groups.push({
           title: 'People & access',
           items: [
-            { id: 'users-roles', label: 'Users & roles', icon: Users, badge: users.length ? String(users.length) : undefined },
-            { id: 'manage-link', label: 'User & hospital management', icon: KeyRound },
+            {
+              id: 'manage-link',
+              label: 'Users & hospitals',
+              icon: Users,
+              badge: users.length ? String(users.length) : undefined,
+              nested: true,
+            },
           ],
         });
       }
@@ -518,58 +527,12 @@ export default function RoleSettingsView() {
     );
   };
 
-  // ── Users & roles panel (real accounts; full editing lives in /settings/manage) ──
-  const renderUsersPanel = () => (
-    <section className="ehr-set-section">
-      <div className="ehr-set-section-head">
-        <span><Users /></span>
-        <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-          <h3>Users &amp; roles</h3>
-          <small>{users.filter(u => u.isActive).length} active · {users.filter(u => !u.isActive).length} inactive</small>
-        </div>
-        <button type="button" className="ehr-set-btn primary" style={{ minHeight: 30, padding: '0 13px', fontSize: 12 }} onClick={() => setActivePanel('manage-screen')}>
-          <Plus /> Invite user
-        </button>
-      </div>
-      <div className="ehr-set-users-scroll">
-        <div className="ehr-set-users-head" aria-hidden="true">
-          {['User', 'Role', 'Facility', 'Status', 'Action'].map(head => <span key={head}>{head}</span>)}
-        </div>
-        {users.map(user => {
-          const userSpec = specForRole(user.role);
-          return (
-            <div key={user._id} className="ehr-set-user-row">
-              <div className="ehr-set-user-id">
-                <span style={avatarTint(user.name)}>{initials(user.name)}</span>
-                <div>
-                  <b>{user.name}</b>
-                  <small>{user.username}</small>
-                </div>
-              </div>
-              <span className="ehr-set-user-role">{getRoleConfig(user.role)?.label || user.role}</span>
-              <span className="ehr-set-user-dept">{user.hospitalName || '—'}</span>
-              <span>
-                <i className={`ehr-set-user-status ${user.isActive ? 'is-active' : 'is-off'}`.trim()}>
-                  {user.isActive ? 'Active' : 'Suspended'}
-                </i>
-              </span>
-              <span className="ehr-set-user-actions">
-                <button type="button" className="ehr-queue-action" title="Edit in user management" onClick={() => setActivePanel('manage-screen')}>
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button type="button" className="ehr-queue-action" title="Reset password in user management" onClick={() => setActivePanel('manage-screen')}>
-                  <KeyRound className="w-4 h-4" />
-                </button>
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-
   // ── Integrations & sync panel (real status where the app has it) ──
   const renderIntegrationsPanel = () => {
+    // Read from facility policy, not this browser: whether the facility runs
+    // mobile money or SMS is the same answer for every user at it.
+    const mobileMoneyOn = facilitySettings.itOperations.integrations.includes('payments');
+    const smsOn = facilitySettings.itOperations.integrations.includes('sms');
     const lastPush = dhis2Log?.lastPush;
     const dhis2Status = !isDhis2Configured()
       ? { label: 'Not set up', tone: 'neutral', detail: 'Set NEXT_PUBLIC_DHIS2_BASE_URL to enable national reporting.' }
@@ -588,16 +551,15 @@ export default function RoleSettingsView() {
       { name: 'Country node replication', ...replicationStatus },
       {
         name: 'm-Gurush mobile money',
-        label: draft['int.mgurush'] ? 'Connected' : 'Not set up', tone: draft['int.mgurush'] ? 'green' : 'neutral',
-        detail: draft['int.mgurush'] ? 'Payment confirmations posted to billing.' : 'Enable in Integrations policy to post confirmations.',
+        label: mobileMoneyOn ? 'Connected' : 'Not set up', tone: mobileMoneyOn ? 'green' : 'neutral',
+        detail: mobileMoneyOn ? 'Payment confirmations posted to billing.' : 'Enable it in the Integrations policy below.',
       },
       {
         name: 'SMS gateway',
-        label: draft['int.sms'] ? 'Pending' : 'Not set up', tone: draft['int.sms'] ? 'yellow' : 'neutral',
-        detail: draft['int.sms'] ? 'Sender ID awaiting regulator approval.' : 'No sender ID requested.',
+        label: smsOn ? 'Pending' : 'Not set up', tone: smsOn ? 'yellow' : 'neutral',
+        detail: smsOn ? 'Sender ID awaiting regulator approval.' : 'No sender ID requested.',
       },
     ];
-    const integrationsSection = spec.sections.find(s => s.id === 'integrations');
     return (
       <>
         <section className="ehr-set-section">
@@ -618,7 +580,7 @@ export default function RoleSettingsView() {
             ))}
           </div>
         </section>
-        {integrationsSection && renderSection(integrationsSection)}
+        <FacilityPolicySections panel="integrations" />
       </>
     );
   };
@@ -730,7 +692,12 @@ export default function RoleSettingsView() {
         </section>
       );
     }
-    if (activePanel === 'users-roles') return renderUsersPanel();
+    // Clinical policy and Reporting are facility-wide rules, not personal
+    // preferences — they are edited against the replicated facility settings
+    // doc, not this browser's localStorage.
+    if (isAdminSpec && (activePanel === 'clinical' || activePanel === 'reporting')) {
+      return <FacilityPolicySections panel={activePanel} />;
+    }
     if (activePanel === 'integrations-live') return renderIntegrationsPanel();
     if (activePanel === 'restricted') return renderRestrictedPanel();
     const section = spec.sections.find(s => s.id === activePanel) || spec.sections[0];
@@ -862,10 +829,14 @@ export default function RoleSettingsView() {
                       type="button"
                       className={isNavActive(item.id) ? 'active' : undefined}
                       onClick={() => handleNav(item.id)}
+                      /* A rail label can outrun its column; the tooltip keeps
+                         the full wording reachable when it ellipsises. */
+                      title={item.label}
                     >
                       <Icon />
                       <em>{item.label}</em>
-                      {item.badge ? <b className="is-badge">{item.badge}</b> : item.id === 'manage-link' ? <b><ChevronRight className="w-3 h-3" /></b> : null}
+                      {item.badge && <b className="is-badge">{item.badge}</b>}
+                      {item.nested && <b className="is-nested" aria-hidden="true"><ChevronRight /></b>}
                     </button>
                   );
                 })}

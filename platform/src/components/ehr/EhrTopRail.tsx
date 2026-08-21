@@ -25,7 +25,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useNotifications } from '@/lib/hooks/useNotifications';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
-import { formatPhoneDisplay } from '@/lib/field-formats';
+import { formatPhoneShared } from '@/lib/field-formats';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrModuleMenu from './EhrModuleMenu';
 import EhrTopActions from './EhrTopActions';
@@ -66,11 +66,10 @@ export default function EhrTopRail() {
   // Facility first when there is one: it is the narrower, more useful answer to
   // "where am I". The organization then rides underneath as context rather than
   // replacing it, and stands alone when there is no facility to show.
-  // For every other role this line answers "where am I" — the facility, then
-  // the organization. The platform administrator belongs to neither, so the
-  // only true answer is who they are: their own display name, which they can
-  // change in Settings and see reflected here (it seeds as "TamamHealth
-  // Platform Admin", so the console reads the same until they rename it).
+  // The platform administrator belongs to neither, so the only true answer for
+  // them is who they are: their own display name, which they can change in
+  // Settings and see reflected here (it seeds as "TamamHealth Platform Admin",
+  // so the console reads the same until they rename it).
   const centerLabel = isPlatformAdmin
     ? currentUser?.name || 'TamamHealth Platform Admin'
     : facilityName || orgName || (isNationalRole ? 'Ministry of Health' : undefined);
@@ -357,7 +356,7 @@ export default function EhrTopRail() {
                   <span>
                     <strong>{patientFullName(patient)}</strong>
                     <small>
-                      {[patient.hospitalNumber, patientGenderAge(patient), patient.phone ? formatPhoneDisplay(patient.phone) : ''].filter(Boolean).join(' · ')}
+                      {[patient.hospitalNumber, patientGenderAge(patient), patient.phone ? formatPhoneShared(patient.phone) : ''].filter(Boolean).join(' · ')}
                     </small>
                   </span>
                 </button>

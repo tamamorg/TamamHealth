@@ -27024,6 +27024,40 @@ table.patient-data-table.patient-data-table {
   font-weight: 600;
 }
 
+/* Rail rows: the active row carries an accent edge rather than leaning on a
+   pale tint alone; a row that opens a nested screen ends in a quiet chevron
+   that sits beside its count instead of replacing it; and keyboard focus
+   draws inside the row, so the ring follows the row's own corner radius
+   instead of boxing it at a mismatched one. */
+.ehr-set-nav button.active {
+  box-shadow: inset 2px 0 0 var(--set-accent, #015697);
+}
+.ehr-set-nav button:focus-visible {
+  outline: 2px solid var(--set-accent, #015697);
+  outline-offset: -2px;
+  border-radius: 7px;
+}
+.ehr-set-nav button.active b.is-badge {
+  background: #FFFFFF;
+  color: var(--set-accent, #015697);
+}
+.ehr-set-nav button b.is-nested {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  /* The badge already took the auto margin; when a row carries no count the
+     chevron takes it instead. */
+  margin-inline-start: 4px;
+  background: transparent;
+  color: var(--set-muted, #5D728B);
+}
+.ehr-set-nav button b.is-nested:only-of-type { margin-inline-start: auto; }
+.ehr-set-nav button b.is-nested svg { width: 13px; height: 13px; }
+.ehr-set-nav button.active b.is-nested,
+.ehr-set-nav button:hover b.is-nested { color: var(--set-accent, #015697); }
+
 /* ── Sections: flat cards with #F5F7F8 head bands, caps titles, right meta ── */
 .ehr-set-section {
   border-color: var(--set-line, #ECEEF1);

@@ -12,6 +12,8 @@
  * 9-digit national number beginning with 9). Display form: `+211 9XX XXX XXX`.
  */
 
+import { getRoleFlag } from './settings/role-settings-store';
+
 /** Default country calling code (South Sudan). */
 export const DEFAULT_COUNTRY_CODE = '211';
 
@@ -51,6 +53,34 @@ export function formatPhoneDisplay(raw: unknown, countryCode: string = DEFAULT_C
   if (!e164) return raw == null ? '' : String(raw);
   const nsn = e164.slice(1 + countryCode.length); // 9 digits
   return `+${countryCode} ${nsn.slice(0, 3)} ${nsn.slice(3, 6)} ${nsn.slice(6)}`;
+}
+
+/**
+ * Phone for a SHARED screen — a queue, a worklist, the header search results.
+ *
+ * Honours the user's "Hide patient identifiers on shared screens"
+ * (`security.mask`): a masked number keeps its last two digits so staff can
+ * still confirm the right patient with someone standing in front of them,
+ * without the whole number being readable across a waiting room.
+ *
+ * The patient's own chart, registration, and printed documents deliberately
+ * keep `formatPhoneDisplay` — masking there would hide the number from the
+ * clinician who needs to dial it.
+ */
+export function formatPhoneShared(raw: unknown, countryCode: string = DEFAULT_COUNTRY_CODE): string {
+  const shown = formatPhoneDisplay(raw, countryCode);
+  if (!shown) return '';
+  if (!getRoleFlag('security.mask', false)) return shown;
+  const digits = shown.replace(/\D/g, '');
+  if (digits.length < 3) return '•••';
+  return `••• ••• ${digits.slice(-2)}`;
+}
+
+/** Street address for a shared screen — masked entirely, or shown in full. */
+export function formatAddressShared(raw: unknown): string {
+  const value = raw == null ? '' : String(raw).trim();
+  if (!value) return '';
+  return getRoleFlag('security.mask', false) ? 'Address hidden' : value;
 }
 
 // ---------------------------------------------------------------------------

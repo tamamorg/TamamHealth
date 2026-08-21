@@ -18,7 +18,6 @@ describe('role dashboard preview links', () => {
   });
 
   it.each([
-    ['app/(dashboard)/admin/page.tsx', 'org=', 'app/(dashboard)/admin/organizations/page.tsx', "get('org')"],
     ['app/(dashboard)/admin/security/page.tsx', 'log=', 'app/(dashboard)/admin/audit/page.tsx', "get('log')"],
     ['components/dashboards/SuperintendentDashboard.tsx', 'alert=', 'app/(dashboard)/surveillance/page.tsx', "get('alert')"],
     ['components/dashboards/FacilityManagementDashboard.tsx', 'inquiry=', 'app/(dashboard)/inquiries/page.tsx', "get('inquiry')"],
@@ -49,10 +48,11 @@ describe('role dashboard preview links', () => {
 
   it('keeps admin preview URLs limited to validated opaque tokens', () => {
     const dashboard = source('app/(dashboard)/admin/page.tsx');
-    expect(dashboard).toContain("openPreview(`tenant:${row.org._id}`)");
     expect(dashboard).toContain("openPreview(`kpi:${k.key}`)");
     expect(dashboard).toContain("openPreview('signal:risk')");
-    expect(dashboard).toContain("organizations.find(item => item._id === orgId)");
+    // Every token is resolved back to current dashboard data, never rendered
+    // from the URL — a stale or fabricated token yields no preview at all.
+    expect(dashboard).toContain("kpis.find(item => `kpi:${item.key}` === previewToken");
     expect(dashboard).not.toContain('setPreview(');
   });
 
@@ -64,6 +64,9 @@ describe('role dashboard preview links', () => {
     expect(dashboard).not.toContain('title="Security watchlist"');
     expect(dashboard).toContain("href: '/admin/risk'");
     expect(dashboard).toContain("router.push('/admin/sync')");
+    // The 14-day activity trend the dashboard used to draw lives on Analytics.
+    expect(dashboard).not.toContain('ComposedChart');
+    expect(source('app/(dashboard)/admin/analytics/page.tsx')).toContain("t('analytics.platformActivity')");
     expect(source('app/(dashboard)/admin/risk/page.tsx')).toContain('title="Risk & incident queue"');
     expect(source('app/(dashboard)/admin/security/page.tsx')).toContain('title="Security watchlist"');
   });

@@ -123,6 +123,50 @@ export interface FacilitySettings {
    *  public facilities). Private facilities can set a default here. */
   taxRatePercent: number;
 
+  // ── Clinical policy ─────────────────────────────────────────────────────
+  /**
+   * The policies every clinical role inherits. These were rows on the admin's
+   * Settings page backed only by that browser's localStorage, so an
+   * administrator "set" a facility-wide rule that no other user — and no other
+   * device — ever saw. They live here because facility policy has to
+   * replicate, and because a clinician must not be able to opt out of one.
+   */
+  clinicalPolicy: {
+    /** Acuity scale used by every queue: 3-tier red/yellow/green, or 5-tier ESI. */
+    triageScale: '3-tier' | '5-tier';
+    /** Diagnosis coding standard required on a consultation. */
+    diagnosisCoding: 'ICD-11' | 'ICD-10';
+    /** Minutes from arrival to clinician before a wait is flagged as over target. */
+    doorToClinicianMinutes: number;
+    /** A second staff member must co-sign controlled substances. */
+    requireControlledSubstanceWitness: boolean;
+    /**
+     * A documented allergy blocks the order outright instead of warning.
+     * False keeps the long-standing advisory behaviour (warn, allow override).
+     */
+    allergyHardStop: boolean;
+  };
+
+  // ── Users & access policy ───────────────────────────────────────────────
+  userPolicy: {
+    /** New accounts need an administrator's approval (no self-registration). */
+    requireAdminApproval: boolean;
+    /** Two-factor authentication is mandatory for administrator accounts. */
+    requireAdminTwoFactor: boolean;
+    /** Deactivate accounts after this many idle days. 0 disables the sweep. */
+    deactivateAfterIdleDays: number;
+  };
+
+  // ── Statutory reporting schedule ────────────────────────────────────────
+  reportingSchedule: {
+    /** Weekday the IDSR weekly report is due. */
+    idsrDay: 'Monday' | 'Friday' | 'Sunday';
+    /** Submit automatically once completeness checks pass. */
+    autoSubmitWhenComplete: boolean;
+    /** Notify admins and the county when a deadline is missed. */
+    alertOnMissedDeadline: boolean;
+  };
+
   // ── Security ────────────────────────────────────────────────────────────
   /** Idle minutes before the screen auto-locks. */
   lockTimeoutMinutes: number;
@@ -249,6 +293,26 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
   payors: ['out_of_pocket', 'gov_moh', 'ngo_donor', 'pepfar', 'global_fund', 'private_insurance', 'cbhi', 'exemption_waiver', 'sliding_scale'],
   collectionStageDays: { followUp: 30, warning: 60, preWriteOff: 90 },
   taxRatePercent: 0,
+  // Mirror the values these rows shipped with on the admin Settings page, so
+  // promoting them from localStorage to facility policy changes nothing until
+  // an administrator actually edits one.
+  clinicalPolicy: {
+    triageScale: '3-tier',
+    diagnosisCoding: 'ICD-11',
+    doorToClinicianMinutes: 30,
+    requireControlledSubstanceWitness: true,
+    allergyHardStop: false,
+  },
+  userPolicy: {
+    requireAdminApproval: true,
+    requireAdminTwoFactor: true,
+    deactivateAfterIdleDays: 60,
+  },
+  reportingSchedule: {
+    idsrDay: 'Friday',
+    autoSubmitWhenComplete: false,
+    alertOnMissedDeadline: true,
+  },
   lockTimeoutMinutes: 2,
 };
 
@@ -296,6 +360,9 @@ export function mergeFacilitySettings(partial?: Partial<FacilitySettings> | null
     payors: partial.payors?.length ? partial.payors : [...d.payors],
     collectionStageDays: { ...d.collectionStageDays, ...(partial.collectionStageDays ?? {}) },
     taxRatePercent: partial.taxRatePercent ?? d.taxRatePercent,
+    clinicalPolicy: { ...d.clinicalPolicy, ...(partial.clinicalPolicy ?? {}) },
+    userPolicy: { ...d.userPolicy, ...(partial.userPolicy ?? {}) },
+    reportingSchedule: { ...d.reportingSchedule, ...(partial.reportingSchedule ?? {}) },
     lockTimeoutMinutes: partial.lockTimeoutMinutes ?? d.lockTimeoutMinutes,
   };
 }

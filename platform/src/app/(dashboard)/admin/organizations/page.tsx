@@ -611,9 +611,9 @@ export default function AdminOrganizationsPage() {
           minWidth={880}
           head={[
             t('orgAdmin.organization'), t('orgAdmin.colPlan'), t('orgAdmin.colFacilities'),
-            t('orgAdmin.colUsers'), t('orgAdmin.colSync'),
-            <span key="status" style={{ textAlign: 'end' }}>{t('orgAdmin.colStatus')}</span>,
+            t('orgAdmin.colUsers'), t('orgAdmin.colSync'), t('orgAdmin.colStatus'),
           ]}
+          alignEndLast
           empty={loading ? t('orgAdmin.loading') : t('orgAdmin.empty')}
         >
           {filteredOrgs.map(org => {

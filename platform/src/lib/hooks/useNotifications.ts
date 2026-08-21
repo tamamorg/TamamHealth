@@ -11,6 +11,8 @@ import {
   getReadNotificationIds,
   markNotificationsRead,
 } from '../notification-reads';
+import { getRoleSettings, subscribeRoleSettings } from '../settings/role-settings-store';
+import { filterNotifications } from '../settings/notification-preferences';
 
 export type NotificationType = 'alert' | 'triage' | 'referral' | 'lab' | 'appointment' | 'prescription' | 'progress' | 'transfer';
 /** How hard the item pushes: an outbreak or a breached critical result is not
@@ -107,7 +109,18 @@ export interface UseNotificationsOptions {
 export function useNotifications(options: UseNotificationsOptions = {}) {
   const perSourceLimit = options.perSourceLimit ?? DEFAULT_PER_SOURCE_LIMIT;
   const { currentUser } = useApp();
-  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [allItems, setAllItems] = useState<NotificationItem[]>([]);
+  // The user's own `notify.*` rows, live — turning one off empties those rows
+  // from the bell immediately rather than at the next reload.
+  const [notifyPrefs, setNotifyPrefs] = useState(getRoleSettings);
+  useEffect(() => {
+    setNotifyPrefs(getRoleSettings());
+    return subscribeRoleSettings(setNotifyPrefs);
+  }, []);
+  const items = useMemo(
+    () => filterNotifications(allItems, notifyPrefs),
+    [allItems, notifyPrefs],
+  );
   const [loading, setLoading] = useState(true);
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const userId = currentUser?._id ?? '';
@@ -404,7 +417,10 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       if (fresh.length > 0 && getNotificationAlertPref() === 'sound') playAlertChime();
       for (const n of out) seenIds.current.add(n.id);
     }
-    setItems(out);
+    // Everything the facility produced; the user's Notifications settings
+    // decide what actually reaches them. Stored unfiltered so toggling a
+    // setting re-filters without re-querying seven databases.
+    setAllItems(out);
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeKey, perSourceLimit]);

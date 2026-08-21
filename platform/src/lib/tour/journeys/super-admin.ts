@@ -149,7 +149,7 @@ export const SUPER_ADMIN_STEPS: TourStep[] = [
     route: '/admin/analytics',
     target: '.sadb-kpi-row',
     title: 'Usage analytics',
-    body: 'Per-tenant patient and user growth, plan and status mix, and real interaction data — daily actives, top modules, top actions — further down this page.',
+    body: 'Fourteen days of encounters against audit failures, per-tenant patient and user growth, plan and status mix, and real interaction data — daily actives, top modules, top actions — further down this page.',
     placement: 'bottom',
   },
   // No messaging stop: unlike every other role, super_admin's nav (see

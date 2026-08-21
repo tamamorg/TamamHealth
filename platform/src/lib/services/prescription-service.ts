@@ -18,6 +18,8 @@ import { prescription as rxLifecycle, type PrescriptionStatus } from '../clinica
 import { resolvePrescriptionTier } from '../clinical-flow/medication-tiers';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 import { getUserById } from './user-service';
+import { getSettings } from '../settings/settings-store';
+import { getRoleFlag } from '../settings/role-settings-store';
 
 /**
  * Roles allowed to clear a medication order for dispensing — the one state
@@ -94,6 +96,41 @@ export async function getAllPrescriptions(scope?: DataScope): Promise<Prescripti
 export async function getPrescriptionsByPatient(patientId: string, scope?: DataScope): Promise<PrescriptionDoc[]> {
   const rows = await findByType<PrescriptionDoc>(prescriptionsDB(), 'prescription', { patientId }, { indexFields: ['type', 'patientId'] });
   return scope ? filterByScope(rows, scope) : rows;
+}
+
+/**
+ * Internal sentinel: a safety check the prescriber has switched off. Thrown to
+ * leave the surrounding try/catch — which already treats every failure as
+ * "advisory check unavailable" — rather than duplicating the block.
+ */
+class SkipCheck extends Error {}
+
+/**
+ * A documented allergy blocked this order.
+ *
+ * Only thrown when the facility has "Allergy hard stop" enabled
+ * (`clinicalPolicy.allergyHardStop`). With it off — the shipped default and
+ * the platform's long-standing behaviour — the same match comes back as an
+ * advisory `allergyWarnings` entry and the prescription is written.
+ *
+ * Callers should surface `message` to the prescriber; it names the drug and
+ * the allergy so the refusal is actionable rather than mysterious.
+ *
+ * Server-side (`/api/prescriptions`) the settings store is never hydrated, so
+ * it holds the defaults and this cannot fire — API writes keep the advisory
+ * behaviour. The route still answers 409 rather than 500 if it ever does.
+ */
+export class AllergyHardStopError extends Error {
+  readonly alerts: StructuredAllergyAlert[];
+  constructor(medication: string, alerts: StructuredAllergyAlert[]) {
+    super(
+      `${medication} is blocked by a documented allergy: ` +
+      `${alerts.map(a => `${a.allergy} (${a.criticality})`).join(', ')}. ` +
+      'Facility policy does not allow this to be overridden.',
+    );
+    this.name = 'AllergyHardStopError';
+    this.alerts = alerts;
+  }
 }
 
 export interface PrescriptionCreateResult {
@@ -240,10 +277,14 @@ export async function createPrescription(
     throw new ValidationError(errors);
   }
 
-  // Check for drug interactions with patient's active prescriptions
+  // Check for drug interactions with patient's active prescriptions.
+  // "Interaction warnings" is the prescriber's own setting (`rx.interactions`)
+  // — off means they do not want the prompt, so the check is skipped rather
+  // than run and discarded.
   let interactionWarnings: InteractionCheckResult | null = null;
   let duplicateWarnings: string[] | null = null;
   try {
+    if (!getRoleFlag('rx.interactions', true)) throw new SkipCheck();
     interactionWarnings = await checkPrescriptionInteractions(
       data.patientId,
       data.medication,
@@ -281,12 +322,15 @@ export async function createPrescription(
   // allergy raised nothing when amoxicillin was prescribed. Advisory like the
   // interaction check — but severe matches are audit-logged.
   let allergyWarnings: StructuredAllergyAlert[] | null = null;
+  let allergyHardStop: StructuredAllergyAlert[] | null = null;
   try {
+    if (!getRoleFlag('rx.allergyCheck', true)) throw new SkipCheck();
     const { getActiveAllergies } = await import('./allergy-service');
     const active = await getActiveAllergies(data.patientId);
     const alerts = checkAllergiesStructured([data.medication], active);
     allergyWarnings = alerts.length ? alerts : null;
-    if (alerts.some(a => a.requiresOverride)) {
+    const overrides = alerts.filter(a => a.requiresOverride);
+    if (overrides.length) {
       await logAuditSafe(
         'DRUG_ALLERGY_WARNING',
         undefined,
@@ -294,9 +338,19 @@ export async function createPrescription(
         `Allergy alert: ${data.medication} for patient ${data.patientName} — ` +
         alerts.map(a => `${a.allergy} (${a.criticality})`).join(', ')
       );
+      // Facility policy — "Allergy hard stop" turns the advisory alert into a
+      // refusal. Collected here and thrown after the audit entry is written,
+      // so a blocked order still leaves a record of why.
+      if (getSettings().clinicalPolicy.allergyHardStop) allergyHardStop = overrides;
     }
-  } catch {
-    // Advisory — a failed lookup must not block the prescription.
+  } catch (err) {
+    // Advisory — a failed lookup must not block the prescription. A hard stop
+    // is not a failure, so it is re-thrown rather than swallowed here.
+    if (err instanceof AllergyHardStopError) throw err;
+  }
+
+  if (allergyHardStop) {
+    throw new AllergyHardStopError(data.medication, allergyHardStop);
   }
 
   const db = prescriptionsDB();

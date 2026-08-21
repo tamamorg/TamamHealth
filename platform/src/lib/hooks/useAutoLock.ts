@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSettings, subscribeSettings } from '@/lib/settings/settings-store';
+import { getRoleChoice, subscribeRoleSettings } from '@/lib/settings/role-settings-store';
 
 /**
  * Auto-lock hook for shared device security.
@@ -67,6 +68,14 @@ export function clearLockPin(): void {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(PIN_CHANGED_EVENT));
 }
 
+/** "10 min" → 10. Anything unparseable means "no personal preference set". */
+function parseIdleChoice(choice: string): number | undefined {
+  const match = /^(\d+)/.exec(choice.trim());
+  if (!match) return undefined;
+  const minutes = Number(match[1]);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : undefined;
+}
+
 export function useAutoLock(isAuthenticated: boolean, orgLockTimeoutMinutes?: number) {
   const [isLocked, setIsLocked] = useState(false);
   const [hasPin, setHasPin] = useState(false);
@@ -77,6 +86,10 @@ export function useAutoLock(isAuthenticated: boolean, orgLockTimeoutMinutes?: nu
   // org value. Kept in React state + subscribed so an admin change to the lock
   // timeout in Facility Settings re-arms the idle timer live.
   const [facilityLockMin, setFacilityLockMin] = useState<number | undefined>(() => getSettings().lockTimeoutMinutes);
+  // The user's own "Auto sign-out after inactivity" (`security.idle`, e.g.
+  // "10 min"). It may only make the lock STRICTER than facility policy — a
+  // shared workstation's protection is not something an individual can relax.
+  const [userLockMin, setUserLockMin] = useState<number | undefined>(() => parseIdleChoice(getRoleChoice('security.idle', '')));
 
   // Keep refs in sync for use in event handlers (avoids stale closures)
   useEffect(() => { isLockedRef.current = isLocked; }, [isLocked]);
@@ -84,6 +97,10 @@ export function useAutoLock(isAuthenticated: boolean, orgLockTimeoutMinutes?: nu
   useEffect(() => {
     setFacilityLockMin(getSettings().lockTimeoutMinutes);
     return subscribeSettings(s => setFacilityLockMin(s.lockTimeoutMinutes));
+  }, []);
+  useEffect(() => {
+    setUserLockMin(parseIdleChoice(getRoleChoice('security.idle', '')));
+    return subscribeRoleSettings(v => setUserLockMin(parseIdleChoice(String(v['security.idle'] ?? ''))));
   }, []);
 
   // Check if user has a PIN set — and stay in sync when it changes (e.g. the
@@ -101,12 +118,21 @@ export function useAutoLock(isAuthenticated: boolean, orgLockTimeoutMinutes?: nu
   }, []);
 
   const getTimeout = useCallback((): number => {
-    // Priority: facility setting > org config > localStorage > default
-    if (facilityLockMin && facilityLockMin > 0) {
-      return facilityLockMin * 60_000;
+    // Priority: facility setting > org config > localStorage > default, then
+    // the user's own choice applied on top — but only where it shortens the
+    // timeout. Picking "30 min" on a workstation the facility locks after 2
+    // must not extend it.
+    const policyMin = (facilityLockMin && facilityLockMin > 0)
+      ? facilityLockMin
+      : (orgLockTimeoutMinutes && orgLockTimeoutMinutes > 0)
+        ? orgLockTimeoutMinutes
+        : undefined;
+    if (policyMin !== undefined) {
+      const effective = userLockMin && userLockMin > 0 ? Math.min(policyMin, userLockMin) : policyMin;
+      return effective * 60_000;
     }
-    if (orgLockTimeoutMinutes && orgLockTimeoutMinutes > 0) {
-      return orgLockTimeoutMinutes * 60_000;
+    if (userLockMin && userLockMin > 0) {
+      return userLockMin * 60_000;
     }
     if (typeof window === 'undefined') return DEFAULT_TIMEOUT_MS;
     const saved = localStorage.getItem(LOCK_TIMEOUT_KEY);
@@ -115,7 +141,7 @@ export function useAutoLock(isAuthenticated: boolean, orgLockTimeoutMinutes?: nu
       if (!isNaN(parsed) && parsed > 0) return parsed;
     }
     return DEFAULT_TIMEOUT_MS;
-  }, [facilityLockMin, orgLockTimeoutMinutes]);
+  }, [facilityLockMin, orgLockTimeoutMinutes, userLockMin]);
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);

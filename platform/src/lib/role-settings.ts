@@ -310,51 +310,28 @@ const ADMIN: RoleSettingsSpec = {
     accountSection('Facility dashboard', ['Facility dashboard', 'Reports', 'Patients']),
     {
       id: 'facility', title: 'Facility profile', icon: 'building', note: 'Appears on receipts, referrals, and exports',
-      rows: [
-        sel('fac.type', 'Facility type', 'Determines available modules', 'Teaching / referral hospital', ['Teaching / referral hospital', 'State hospital', 'County hospital', 'PHCC']),
-        sel('fac.ownership', 'Ownership', 'Reporting classification', 'Public — Ministry of Health', ['Public — Ministry of Health', 'Faith-based', 'Private', 'NGO']),
-        sel('fac.hours', 'Service hours', 'Outpatient opening times', 'Mon–Sat · 08:00–17:00', ['Mon–Fri · 08:00–17:00', 'Mon–Sat · 08:00–17:00', 'Every day · 08:00–17:00']),
-        sel('fac.emergency', 'Emergency cover', 'When the emergency queue stays open', '24 hours', ['24 hours', 'Service hours only']),
-      ],
+      rows: [],
     },
     {
       id: 'users', title: 'Users & roles', icon: 'users', note: 'Account policy — manage people from User management',
-      rows: [
-        tg('users.approval', 'Require admin approval for new accounts', 'No self-registration', true),
-        tg('users.admin2fa', 'Two-factor authentication for admins', 'Applies to every admin account', true),
-        sel('users.idleDefault', 'Idle sign-out (facility default)', 'Individual roles may be stricter', '15 min', ['5 min', '10 min', '15 min', '30 min']),
-        tg('users.autoDeactivate', 'Deactivate accounts after 60 days idle', 'Reviewed monthly', true),
-      ],
+      rows: [],
     },
+    // Clinical policy, Users & roles policy, Reporting and Integrations are
+    // FACILITY policy, not personal preference: they must hold for every user
+    // on every device, so they live in the replicated `facility_settings` doc
+    // and are edited by `components/settings/FacilityPolicySections.tsx`.
+    // Only the section shells stay here, to name the rail entries.
     {
       id: 'clinical', title: 'Clinical policy', icon: 'steth', note: 'Inherited by clinical roles',
-      rows: [
-        sel('policy.triage', 'Triage scale', 'Acuity colors across all queues', '3-tier (Red/Yellow/Green)', ['3-tier (Red/Yellow/Green)', '5-tier (ESI)']),
-        sel('policy.coding', 'Diagnosis coding', 'Required on every consultation', 'ICD-11', ['ICD-11', 'ICD-10']),
-        sel('policy.doorTarget', 'Target door-to-clinician', 'Drives wait-time warnings', '30 min', ['15 min', '30 min', '60 min']),
-        tg('policy.witness', 'Witness required for controlled substances', 'Prescribing and dispensing', true),
-        tg('policy.allergyStop', 'Allergy hard stop', 'Cannot be overridden at dispensing', true),
-      ],
+      rows: [],
     },
     {
       id: 'reporting', title: 'Reporting & data', icon: 'doc', note: 'DHIS2 and surveillance obligations',
-      rows: [
-        sel('report.idsr', 'IDSR weekly report', 'Submission day', 'Friday', ['Monday', 'Friday', 'Sunday']),
-        sel('report.hmis', 'HMIS monthly report', 'Submission deadline', '5th of the month', ['1st of the month', '5th of the month', '10th of the month']),
-        tg('report.autoSubmit', 'Auto-submit when complete', 'Requires 100% data quality checks', false),
-        tg('report.deadlines', 'Alert on missed deadlines', 'Notifies admins and the county', true),
-        lock('Full database export', 'Requires Ministry authorisation code', 'Restricted'),
-      ],
+      rows: [],
     },
     {
       id: 'integrations', title: 'Integrations & offline sync', icon: 'sync', note: 'Connections this facility relies on',
-      rows: [
-        tg('int.dhis2', 'DHIS2 national reporting', 'HMIS and IDSR datasets', true),
-        tg('int.replication', 'Country node replication', 'Offline-first sync queue', true),
-        tg('int.mgurush', 'm-Gurush mobile money', 'Payment confirmations to billing', true),
-        tg('int.sms', 'SMS gateway', 'Sender ID pending regulator approval', false),
-        sel('int.frequency', 'Sync frequency', 'When connectivity allows', 'Every 15 min', ['Every 5 min', 'Every 15 min', 'Every hour']),
-      ],
+      rows: [],
     },
     notifySection([
       tg('notify.syncConflicts', 'Sync conflicts', 'When a record cannot merge automatically', true),

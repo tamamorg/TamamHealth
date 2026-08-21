@@ -37,7 +37,7 @@ import {
   Stethoscope, FileText, RotateCcw, type LucideIcon,
 } from '@/components/icons/lucide';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
-import { formatPhoneDisplay } from '@/lib/field-formats';
+import { formatPhoneShared } from '@/lib/field-formats';
 import Select from '@/components/Select';
 import {
   ROOM_OPTIONS, RESCHEDULE_SLOTS, suggestDepartment, splitDateTime,
@@ -1275,7 +1275,7 @@ export default function FrontDeskDashboardPage() {
           <>
             <FrontDeskDetailActions actions={popupActions} />
             <FrontDeskDetailFacts facts={[
-              { label: t('patient.phone'), value: patient?.phone ? formatPhoneDisplay(patient.phone) : undefined },
+              { label: t('patient.phone'), value: patient?.phone ? formatPhoneShared(patient.phone) : undefined },
               { label: 'Hospital number', value: patient?.hospitalNumber },
             ]} />
             {hasAllergies && (
@@ -1371,7 +1371,7 @@ export default function FrontDeskDashboardPage() {
               },
             ]} />
             <FrontDeskDetailFacts facts={[
-              { label: t('patient.phone'), value: patient.phone ? formatPhoneDisplay(patient.phone) : undefined },
+              { label: t('patient.phone'), value: patient.phone ? formatPhoneShared(patient.phone) : undefined },
               { label: 'Assigned doctor', value: patient.assignedDoctorName },
               {
                 label: t('frontDesk.lastVisit'),

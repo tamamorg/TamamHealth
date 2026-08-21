@@ -22,6 +22,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { useSettings } from '@/lib/settings/SettingsProvider';
+import { useRoleChoice, useRoleFlag } from '@/lib/settings/useRoleSetting';
 import type { LabResultDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 
@@ -120,6 +121,10 @@ export default function LabPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const { resultReviewSLA } = useSettings();
+  // The technician's own worklist settings (design 11, "Worklist").
+  const labSort = useRoleChoice('lab.sort', 'Urgency, then oldest');
+  const labStatTop = useRoleFlag('lab.statTop', true);
+  const labTatTarget = useRoleChoice('lab.tat', '60 min');
   // Analyzer import: paste a raw instrument payload (LIS-2A / HL7) and parse it
   // into structured results the tech can review before pre-filling an order.
   const [showImportModal, setShowImportModal] = useState(false);
@@ -200,6 +205,31 @@ export default function LabPage() {
     return true;
   });
 
+  // Worklist order, per the technician's "Sort orders by" setting. Critical
+  // orders are pinned above everything when "Show STAT orders at the top" is
+  // on — that is what makes it a pin rather than just another sort key.
+  const orderedAtMs = (o: LabResultDoc) =>
+    new Date(o.orderedAt || o.createdAt || '').getTime() || 0;
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (labStatTop && a.critical !== b.critical) return a.critical ? -1 : 1;
+    if (labSort === 'Newest first') return orderedAtMs(b) - orderedAtMs(a);
+    if (labSort === 'Oldest first') return orderedAtMs(a) - orderedAtMs(b);
+    // 'Urgency, then oldest'
+    if (a.critical !== b.critical) return a.critical ? -1 : 1;
+    return orderedAtMs(a) - orderedAtMs(b);
+  });
+
+  // Turnaround target: a still-open order past it is running late. Separate
+  // from `overdueReviews`, which is about a RESULT nobody has looked at.
+  const tatMinutes = Number(/^(\d+)/.exec(labTatTarget)?.[1] ?? 60);
+  const overTatIds = new Set(
+    sortedFiltered
+      .filter(o => o.status !== 'completed'
+        && (Date.now() - orderedAtMs(o)) / 60_000 > tatMinutes
+        && orderedAtMs(o) > 0)
+      .map(o => o._id),
+  );
+
   // KPI stat cards — scoped to the full lab queue (not narrowed by the table's
   // own filters, so the header numbers stay a stable "whole queue" summary).
   const labStats = {
@@ -221,7 +251,7 @@ export default function LabPage() {
   // Export the currently filtered/visible orders to CSV.
   const handleDownloadCsv = () => {
     const header = ['Patient', 'Hospital number', 'Test', 'Specimen', 'Status', 'Result', 'Ordered by', 'Ordered at', 'Completed at'];
-    const rows = filtered.map(o => [
+    const rows = sortedFiltered.map(o => [
       o.patientName || '',
       o.hospitalNumber || '',
       o.testName || '',
@@ -406,8 +436,11 @@ export default function LabPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(order => {
-                  const overdue = overdueIds.has(order._id);
+                {sortedFiltered.map(order => {
+                  // Two different lateness signals: a result nobody has
+                  // reviewed past its SLA, and an open order past this
+                  // technician's turnaround target.
+                  const overdue = overdueIds.has(order._id) || overTatIds.has(order._id);
                   return (
                   <tr
                     key={order._id}
@@ -505,7 +538,7 @@ export default function LabPage() {
                 })}
               </tbody>
             </table>
-            {!labLoading && filtered.length === 0 && (
+            {!labLoading && sortedFiltered.length === 0 && (
               <EmptyState
                 icon={FlaskConical}
                 title={t('lab.noPendingOrders')}
