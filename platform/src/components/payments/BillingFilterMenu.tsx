@@ -118,8 +118,8 @@ export default function BillingFilterMenu({ fields }: { fields: FilterField[] })
             display: 'flex', flexDirection: 'column', gap: 12,
             padding: 14, borderRadius: 10, zIndex: 1250,
             background: 'var(--ehr-panel, #fff)',
-            border: '1px solid var(--ehr-border, #DDEAF3)',
-            boxShadow: '0 14px 30px rgba(9, 30, 66, 0.16)',
+            border: '1px solid var(--ehr-border, #E2E6EB)',
+            boxShadow: '0 14px 30px rgba(0, 29, 63, 0.16)',
           }}
         >
           {fields.map(field => (

@@ -18,7 +18,7 @@ const LEVEL_COLORS: Record<string, string> = {
   emergency: 'var(--color-danger)',
   warning: 'var(--color-warning)',
   watch: 'var(--chart-1)',
-  normal: '#8a8f98',
+  normal: '#94a2b3',
 };
 
 const LEVEL_RANK: Record<string, number> = { emergency: 0, warning: 1, watch: 2, normal: 3 };

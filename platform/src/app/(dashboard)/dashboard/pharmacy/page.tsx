@@ -43,9 +43,9 @@ type WorkflowStepAction = { label: string; onClick: () => void };
 
 // Interaction severities coming out of drug-interaction-service.checkInteractions().
 const SEVERITY_STYLE: Record<InteractionSeverity, { bg: string; border: string; text: string; label: string }> = {
-  contraindicated: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)', text: 'var(--color-danger-text)', label: 'CONTRAINDICATED' },
-  serious: { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.22)', text: 'var(--color-danger-text)', label: 'SERIOUS' },
-  moderate: { bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.3)', text: 'var(--color-warning-text)', label: 'MODERATE' },
+  contraindicated: { bg: 'rgba(224, 49, 39,0.12)', border: 'rgba(224, 49, 39,0.35)', text: 'var(--color-danger-text)', label: 'CONTRAINDICATED' },
+  serious: { bg: 'rgba(224, 49, 39,0.08)', border: 'rgba(224, 49, 39,0.22)', text: 'var(--color-danger-text)', label: 'SERIOUS' },
+  moderate: { bg: 'rgba(255, 210, 166,0.1)', border: 'rgba(255, 210, 166,0.3)', text: 'var(--color-warning-text)', label: 'MODERATE' },
 };
 
 function titleCaseDrug(name: string): string {
@@ -71,7 +71,7 @@ const CHART_BLUE = 'var(--chart-1)';
 const CHART_GREEN = 'var(--color-success)';
 const CHART_RED = 'var(--color-danger)';
 const CHART_AMBER = 'var(--color-warning)';
-const CHART_NEUTRAL = '#94a3b8'; // "Other" aggregate bucket only — not a brand color
+const CHART_NEUTRAL = '#94a2b3'; // "Other" aggregate bucket only — not a brand color
 const DISPENSE_SERIES_COLORS = [CHART_BLUE, CHART_GREEN, CHART_RED, CHART_AMBER];
 const DISPENSED_DONE_STAGES = new Set(['dispensed', 'counseled', 'complete']);
 

@@ -162,11 +162,11 @@ export default function AssessmentsPanel({ patient, focusId }: {
                 </span>
                 <span className="flex-1" />
                 {signed ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(21,121,92,0.12)', color: 'var(--color-success-text)' }}>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(10, 110, 74,0.12)', color: 'var(--color-success-text)' }}>
                     <Lock className="w-3 h-3" /> Signed
                   </span>
                 ) : (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(217,119,6,0.12)', color: 'var(--color-warning-text)' }}>Held</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(230, 114, 0,0.12)', color: 'var(--color-warning-text)' }}>Held</span>
                 )}
               </div>
               <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>

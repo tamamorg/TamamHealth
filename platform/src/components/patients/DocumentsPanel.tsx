@@ -300,7 +300,7 @@ export default function DocumentsPanel({
             if (ok) await remove(d._id, currentUser?._id);
           }}
           className="p-1.5 rounded flex-shrink-0"
-          style={{ background: 'rgba(229,46,66,0.12)' }}
+          style={{ background: 'rgba(224, 49, 39,0.12)' }}
           title="Remove"
         >
           <X className="w-3.5 h-3.5" style={{ color: 'var(--color-danger)' }} />

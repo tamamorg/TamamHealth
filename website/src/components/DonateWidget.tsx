@@ -125,12 +125,12 @@ export default function DonateWidget() {
           <label htmlFor="dn-clinic">{t("Fund a specific clinic (optional)")}</label>
           <input id="dn-clinic" name="clinic" className="input" placeholder={t("Facility or state")} style={{ background: "#FFFFFF" }} />
         </div>
-        <button type="submit" disabled={state === "sending" || state === "sent"} className="btn btn-primary blueprint" style={{ padding: "14px 0", fontSize: 15.5, color: "#0E2A4A", width: "100%" }}>
+        <button type="submit" disabled={state === "sending" || state === "sent"} className="btn btn-primary blueprint" style={{ padding: "14px 0", fontSize: 15.5, color: "#113055", width: "100%" }}>
           {state === "sent" ? t("Message sent ✓") : state === "sending" ? t("Sending…") : t("Send message")}
           <Corners />
         </button>
         {state === "error" && (
-          <span style={{ fontSize: 13.5, lineHeight: 1.5, color: "#B3261E" }}>
+          <span style={{ fontSize: 13.5, lineHeight: 1.5, color: "#B4180F" }}>
             {t("Something went wrong sending that — please email support.tamam@gmail.com directly.")}
           </span>
         )}

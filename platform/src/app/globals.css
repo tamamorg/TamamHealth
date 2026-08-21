@@ -69,98 +69,163 @@
   --type-letter-body: 0;
   --type-letter-label: 0.04em;
 
-  /* ============ Design tokens — literal color values live here only ============ */
+  /* ═══════════════════════════════════════════════════════════════════════
+     THE TAMAM PALETTE — nine colours, and nothing else
+     ═══════════════════════════════════════════════════════════════════════
+     These nine hexes (plus pure white) are the entire colour supply for the
+     platform AND for tamamhealth.org, which declares the identical block.
+     Every other colour in this file is one of these nine, or a measured
+     mix of two of them. Nothing else may be introduced — a new hex here is
+     a new brand colour, and `src/__tests__/design/color-tokens.test.ts`
+     fails the build if one appears.
+
+     Two families are deliberately NOT in the nine, and are the only
+     exceptions in the app:
+       • Clinical safety — danger red and success green. Red/amber/green is
+         how ETAT triage, allergy alerts and abnormal labs are read at a
+         glance; the palette has no red or green, and inventing one out of
+         orange would make "critical" and "caution" the same hue.
+       • Chart series — a categorical scale needs six hues that stay apart
+         under colour-vision deficiency. Six blues cannot do that. Slot 1
+         and slot 5 are palette colours; the rest stay CVD-validated.
+     Everything else — every blue, navy, grey, teal, violet, amber and
+     gold in the product — now resolves to the nine.
+
+     White is pure white. Cream is the page ground the white sits ON; it is
+     never used as a surface colour. */
   --color-white: #FFFFFF;
-  --color-cream-25: #FEFFF9;
-  --color-cream-50: #F7FFF0;
-  --color-cream-75: #F4FFF0;
-  --color-cream-100: #EDFDE5;
-  /* ── Neutrals, biased toward the brand ───────────────────────────────
-     Ported from the marketing site, which uses blue-leaning greys against
-     the same blue. The platform's were Tailwind slate — a generic grey
-     that reads cold and unrelated beside #2191D0, and made the two
-     products look like different companies.
 
-     Steps are chosen by measured contrast, not by matching the site's
-     numbering: its neutral-600 (#6C7C8E) is 4.28:1 on white and fails AA
-     for body text, so muted text takes its 700 (#5B6B7E, 5.46:1) and 600
-     is kept for borders and icons where 3:1 is the bar. The site's ink
-     (#0E2A4A, 14.50:1) replaces slate-900. */
-  --color-slate-50: #FAFCFE;
-  --color-slate-100: #E3EBF2;   /* hairline rules */
-  --color-slate-150: #D9E4EE;
-  --color-slate-200: #D4DEE8;
-  --color-slate-300: #BFCEDC;   /* disabled, toggle tracks */
-  --color-slate-500: #5B6B7E;   /* muted text — 5.46:1, was #64748B */
-  --color-slate-600: #4A5D71;
-  --color-slate-700: #3D5166;   /* secondary text — 8.18:1 */
-  --color-slate-900: #0E2A4A;   /* primary ink — 14.50:1, the site's navy */
-  --color-slate-950: #08203A;
-  /* Icons and borders only: 4.28:1 is under AA for text, on purpose. */
-  --color-neutral-600: #6C7C8E;
-  /* ── Brand ramp, ported from the marketing site ──────────────────────
-     The website carries a proper nine-step scale; the platform had six
-     ad-hoc blues, two of which (--tb-blue-900 and -700) were the same
-     colour under different names. Same brand hue, now with rungs to pick
-     from, so a border, a fill and a link stop all reaching for #2191D0.
+  --tm-cream:  #FCFEF3;  /* page ground — paper behind the white cards      */
+  --tm-ice:    #C9F4FF;  /* pale brand wash — selected rows, info surfaces  */
+  --tm-gold:   #FDD95F;  /* attention fill — caution, highlights, markers   */
+  --tm-orange: #FF7F00;  /* second action hue — secondary CTAs, warnings    */
+  --tm-dodger: #1E90FF;  /* bright brand — focus rings, live/active signal  */
+  --tm-blue:   #2191D0;  /* brand — fills, icons, borders, charts           */
+  --tm-deep:   #015697;  /* primary action — buttons, links, rail, tabs     */
+  --tm-navy:   #113055;  /* primary ink and dark surfaces                   */
+  --tm-ink:    #001D3F;  /* deepest ink — headings, foreground on gold/orange */
 
-     Contrast on white, measured: 500 is 3.49:1 (fills, icons, large text
-     only), 600 is 5.12:1 and 700 is 7.56:1 (both safe for body text). The
-     site's own ramp repeated #015697 at 900; that is a mistake rather than
-     a decision, so 900 continues down to #012C4E here. */
-  --brand-100: #F5FBFE;
-  --brand-200: #DDF2FB;
-  --brand-300: #7FC4EA;
-  --brand-400: #52ADDE;
-  --brand-500: #2191D0;
-  --brand-600: #1774A8;
-  --brand-700: #015697;
-  --brand-800: #013D6B;
-  --brand-900: #012C4E;
+  /* ── Blue ramp ───────────────────────────────────────────────────────
+     Seven of its ten rungs ARE palette colours; only 300 and 600 are
+     mixes, and 50/100 are ice diluted into white. Measured on white:
+     400 3.24:1, 500 3.49:1 and 600 5.02:1 — 600 up is safe for body text,
+     below it is fills, icons, borders and large text only. */
+  --brand-50:   #F2FCFF;  /* ice 25% on white */
+  --brand-100:  #E1F9FF;  /* ice 55% on white */
+  --brand-200:  var(--tm-ice);
+  --brand-300:  #7CC7FF;  /* ice → dodger */
+  --brand-400:  var(--tm-dodger);
+  --brand-500:  var(--tm-blue);
+  --brand-600:  #1174B4;  /* blue → deep — 5.02:1, the lightest text-safe blue */
+  --brand-700:  var(--tm-deep);
+  --brand-800:  var(--tm-navy);
+  --brand-900:  var(--tm-ink);
 
-  /* The established names now read the ramp. Values are unchanged, so
-     nothing repaints: this is a re-sourcing, not a re-colouring. */
-  /* The deep blue the top rail wears is now the brand accent everywhere —
-     buttons, links, active tabs, card tints. It also settles a real
-     accessibility problem: white on the old #2191D0 was 3.49:1, under AA for
-     button labels; on this it is 9.44:1. */
-  --brand-accent: #144972;
+  /* ── Neutrals ── the navy diluted into white, so every grey in the app
+     is the brand's own hue at low strength rather than a foreign slate.
+     Percentages were chosen by measured contrast, not by even spacing:
+     500 is 4.12:1 (icons and borders, 3:1 bar), 550 is 4.95:1 (the first
+     rung that passes AA as body text), 700 is 7.65:1. */
+  --color-slate-25:  #FAFBFC;  /* navy 2%  */
+  --color-slate-50:  #F5F7F8;  /* navy 4%  */
+  --color-slate-75:  #F1F3F5;  /* navy 6%  */
+  --color-slate-100: #ECEEF1;  /* navy 8%  — hairline rules */
+  --color-slate-150: #E2E6EB;  /* navy 12% */
+  --color-slate-200: #D9DEE4;  /* navy 16% */
+  --color-slate-300: #CFD6DD;  /* navy 20% — disabled, toggle tracks */
+  --color-slate-400: #B3BDC9;  /* navy 32% */
+  --color-slate-450: #94A2B3;  /* navy 45% */
+  --color-slate-500: #5D728B;  /* navy 68% — muted text, 4.95:1 */
+  --color-slate-600: #546A85;  /* navy 72% — 5.56:1 */
+  --color-slate-700: #3C5574;  /* navy 82% — secondary text, 7.65:1 */
+  --color-slate-800: #2E4969;  /* navy 88% — 9.24:1 */
+  --color-slate-900: var(--tm-navy);  /* primary ink, 13.31:1 */
+  --color-slate-950: var(--tm-ink);   /* deepest ink, 16.83:1 */
+  /* Icons and borders only: 4.12:1 is under AA for text, on purpose. */
+  --color-neutral-600: #6B7F96;  /* navy 62% */
+
+  /* ── Cream ── the page ground, and only ever the ground. */
+  --color-cream-25:  #FEFFFB;  /* cream 50% on white */
+  --color-cream-50:  var(--tm-cream);
+  --color-cream-75:  var(--tm-cream);
+  --color-cream-100: #FFFAE9;  /* cream pushed one step, for hover on the ground */
+
+  /* ── Orange ── the palette's orange darkened toward black, which keeps it
+     saturated instead of turning it brown. 500 is the palette colour and
+     carries dark ink, not white (6.64:1); 600 up is where white sits. */
+  --orange-50:  #FFF5EB;
+  --orange-100: #FFEDDB;
+  --orange-200: #FFE3C7;
+  --orange-300: #FFD2A6;
+  --orange-400: #FF9933;
+  --orange-500: var(--tm-orange);
+  --orange-600: #E67200;  /* 3.10:1 — icons, borders, large text */
+  --orange-700: #CC6600;  /* 3.84:1 */
+  --orange-800: #B35900;  /* 4.83:1 — text, and white on it */
+  --orange-900: #A65300;  /* 5.44:1 */
+
+  /* ── Gold ── the palette's gold diluted into white for washes; it never
+     carries text of its own (1.38:1) — text ON gold is --tm-ink, 12.24:1. */
+  --gold-50:  #FCFEF3;
+  --gold-100: #FFFAE9;
+  --gold-200: #FFF7DC;
+  --gold-300: #FEF2C7;
+  --gold-400: #FEE697;
+  --gold-500: var(--tm-gold);
+  --gold-600: #E67200;  /* gold darkened — borders on a gold field */
+
+  /* The established names now read the ramp, so a caller that already says
+     --tb-blue-900 lands on the palette without being rewritten. */
+  --brand-accent: var(--tm-deep);
   --tb-blue-900: var(--brand-accent);  /* primary accent — rail, buttons, tabs */
-  --tb-blue-800: var(--brand-900);     /* hover — one step DOWN from the accent */
+  --tb-blue-800: var(--tm-navy);       /* hover — one step DOWN from the accent */
   --tb-blue-700: var(--brand-accent);  /* secondary accent — borders, tabs */
-  --tb-blue-600: #369FDA;           /* between 400 and 500; kept until callers move */
-  --tb-blue-100: var(--brand-200);  /* pale tint — light backgrounds */
-  --tb-blue-50:  #EFF8FD;           /* palest wash — between 100 and 200 */
+  --tb-blue-600: var(--tm-blue);
+  --tb-blue-100: var(--brand-200);
+  --tb-blue-50:  var(--brand-50);
 
-  --color-brand-300: var(--tb-blue-100);
-  --color-brand-400: var(--tb-blue-600);
-  --color-brand-500: var(--brand-500);   /* status INFO — stays the lighter blue */
+  --color-brand-300: var(--brand-200);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);   /* status INFO */
   --color-brand-700: var(--brand-700);   /* INFO text rung — 7.56:1 */
-  --color-brand-gradient: var(--color-brand-500);
-  --color-success-500: #1B9E77;
-  --color-success-600: #059669;
-  --color-success-700: #047857;
-  --color-success-800: #15795C;
-  --color-warning-400: #E4A84B;
-  --color-warning-600: #D97706;
-  --color-warning-700: #9C5E16;  /* darkened from #B8741C — was 3.33:1 on the warning badge bg, fails AA text */
-  --color-warning-800: #8A5A0E;
-  --color-danger-500: #C44536;
-  --color-danger-600: #DC2626;
-  --color-danger-700: #B91C1C;
-  --color-danger-800: #8B2E24;
-  --color-purple-500: #8B5CF6;
-  --color-blue-400: var(--tb-blue-600);
-  /* Deep surfaces, re-based on the site's navy (#0E2A4A — the same value as
-     --color-slate-900 above, which is that navy). The site uses it as a real
-     surface, not just ink: the products band and the primary button's hover
-     both land on it. These were a separate indigo family that read as a
-     third blue next to the brand and the ink. */
-  --color-dark-surface: #0E2A4A;
-  --color-dark-surface-hover: #14375E;
-  --color-dark-border: #1D4570;
-  --color-dark-border-strong: #2A5789;
-  --color-dark-overlay: #0A2039;
+  --color-brand-gradient: var(--brand-500);
+
+  /* ── Clinical safety — exception 1 ──────────────────────────────────
+     Not from the nine, on purpose (see the header). Both families were
+     re-tuned brighter and more saturated to sit with the new palette:
+     the greens were a muted teal-green (#0E9463, 3.03:1) and now clear
+     the 3:1 fill bar, and the reds moved off the desaturated brick. */
+  --color-success-400: #4FC79B;
+  --color-success-500: #0FA06A;  /* 3.36:1 — fills, icons, borders */
+  --color-success-600: #0E9463;  /* 3.86:1 */
+  --color-success-700: #0B8557;  /* 4.66:1 — text */
+  --color-success-800: #0A6E4A;  /* 6.28:1 */
+  --color-danger-400: #F26D64;
+  --color-danger-500: #E03127;   /* 4.53:1 */
+  --color-danger-600: #D92B20;   /* 4.86:1 */
+  --color-danger-700: #B4180F;   /* 6.82:1 — text */
+  --color-danger-800: #9E1B14;   /* 8.01:1 */
+
+  /* ── Warning ── now the palette's own warm pair: gold is the field,
+     orange is the ink and the icon. There is no third amber. */
+  --color-warning-400: var(--gold-500);
+  --color-warning-600: var(--orange-600);  /* 3.10:1 — icons, borders */
+  --color-warning-700: var(--orange-800);  /* 4.83:1 — text */
+  --color-warning-800: var(--orange-900);  /* 5.44:1 */
+
+  /* Purple is retired. It existed so a fourth action/category colour would
+     not read as "another blue"; the palette's orange does that job, and a
+     violet has no source in the nine. Callers keep the name. */
+  --color-purple-500: var(--orange-800);
+  --color-blue-400: var(--brand-400);
+
+  /* Deep surfaces are the palette's navy and ink, at last as real surfaces
+     rather than a third blue family invented for the purpose. */
+  --color-dark-surface: var(--tm-navy);
+  --color-dark-surface-hover: #113055;   /* navy lifted toward deep */
+  --color-dark-border: #015697;
+  --color-dark-border-strong: #015697;
+  --color-dark-overlay: var(--tm-ink);
 
   /* Tamam brand: supplied platform blue gradient and border color. */
   --brand-hero-bg: var(--color-brand-gradient);
@@ -169,7 +234,6 @@
 
 /* ============ LIGHT THEME — Blue & White Palette ============ */
 :root {
-  /* ── App canvas ── */
   /* ── Corner radius scale ────────────────────────────────────────────────
      One scale for the whole app. The chart grew three different treatments
      independently — 3px on the vitals sub-tabs, 4px-top on the demographics
@@ -180,72 +244,67 @@
   --radius-card: 8px;
   --radius-pill: 999px;
 
-  /* Brand washes below are color-mix on --accent-primary, not frozen rgba:
-     a rebranded tenant must get their own hue in every tint that means
-     "a wash of the accent", not just in the solid fills. */
-  /* Ground and cards are both the header's blue, at different strengths:
-     10% of the accent on white for the ground, 4% for a card. Same hue, two
-     shades, so the card lifts without introducing a second colour. */
-  /* The page ground is a faint accent wash so a white card reads as a panel
-     sitting ON something, rather than as an unbounded area fenced off by a
-     hairline. Two earlier attempts are worth not repeating: a 10% brand wash
-     here read dull, and a 4% mix on the CARDS (see --bg-card below) read as a
-     grey film over every panel. The distinction belongs on the ground, and it
-     has to stay faint — 4% of the accent in white is a cool near-white that
-     separates from a pure-white card without tinting the page. Derived from
-     --accent-primary rather than a fixed hex so it tracks the brand. */
-  --bg-app:        color-mix(in srgb, var(--accent-primary) 4%, var(--color-white));
-  --bg-primary:    #FFFFFF;
+  /* ── App canvas ────────────────────────────────────────────────────────
+     The ground is the palette's cream and the cards are pure white. That
+     is the one place the two near-whites are allowed to meet: paper behind
+     panels. Do NOT tint the cards to increase the separation — that was
+     tried as a 4% brand mix and read as a grey film over every panel.
+     Brand washes below are color-mix on --accent-primary, not frozen rgba,
+     so a rebranded tenant gets their own hue in every tint that means "a
+     wash of the accent", not just in the solid fills. */
+  --bg-app:        var(--tm-cream);
+  --bg-primary:    var(--color-white);
   --bg-secondary:  color-mix(in srgb, var(--accent-primary) 6%, transparent);
-  /* Cards are a shade of blue, not white: on the #F2F8FC ground a white card
-     was the only truly neutral surface in the app, so it read as a hole
-     rather than a panel. brand-100 sits a step lighter than the ground, which
-     is what makes it lift; inputs stay pure white so a field still reads as
-     the writable thing on the card. */
-  /* Cards stay pure white — deliberately. They are the lifted surface, and the
-     separation now comes from the faint ground behind them (--bg-app) plus the
-     existing hairline and shadow. Do NOT tint the cards to increase contrast:
-     that was tried as a 4% accent mix and read as a grey film over every panel.
-     Tint the ground instead. */
   --bg-card:       var(--color-white);
   --bg-card-solid: var(--color-white);
-  --bg-card-hover: var(--color-cream-75);
+  --bg-card-hover: var(--brand-50);
   --bg-input:      var(--color-white);
   --bg-sidebar:    var(--color-white);
   --overlay-subtle: color-mix(in srgb, var(--accent-primary) 7%, transparent);
   --overlay-light:  color-mix(in srgb, var(--accent-primary) 10%, transparent);
   --overlay-medium: color-mix(in srgb, var(--accent-primary) 16%, transparent);
-  --overlay-backdrop: rgba(15, 23, 42, 0.56);
+  --overlay-backdrop: color-mix(in srgb, var(--tm-ink) 62%, transparent);
 
-  /* ── The platform's 4 main colors ──
-     1. Sky     (--tb-blue-900 / --tb-blue-700 / --accent-primary) — primary
-        actions, active states, anything filled solid with white text.
-     2. Deep blue (--tb-blue-800 / --accent-hover) — hover/pressed states
-        and links; a darker step of the same blue, not a separate hue.
-     3. Orange  (--accent-orange) — a third, clearly distinct action color
-        so a secondary CTA doesn't read as "another blue button."
-     4. Purple  (--accent-purple) — a fourth distinct action/category color
-        (e.g. Refer).
-     Clinical safety colors (danger/warning/success — triage, allergy
-     alerts, abnormal labs) are intentionally NOT part of this set; they
-     stay their own red/amber/green regardless of the brand palette.
-     Orange/purple are darkened from the "pure" hue (#EB6834 / #8B5CF6) —
-     those fail 4.5:1 with white button text; these pass. */
+  /* ── The platform's 4 action colours, all from the nine ──
+     1. Deep blue (--accent-primary, #015697) — primary actions, active
+        states, the rail, anything filled solid with white text. 7.56:1.
+     2. Navy (--accent-hover, #113055) — hover/pressed; a darker step of
+        the same blue, not a separate hue.
+     3. Orange (--accent-orange, #FF7F00) — the second action hue, so a
+        secondary CTA doesn't read as "another blue button".
+     4. Bright blue (--accent-bright, #1E90FF) — focus rings, live/active
+        signal, selection. Never carries small text on white (3.24:1).
+     Orange and gold are used at full strength and carry DARK ink, not
+     white: #001D3F on #FF7F00 is 6.64:1 and on #FDD95F is 12.24:1, where
+     white on either fails. Darkening them to fit white text is what turned
+     the old orange into a brick (#B35900) — use --accent-orange-on.
+     Clinical safety colours (danger/warning/success) are NOT part of this
+     set; see the palette header. */
   --accent-primary:  var(--tb-blue-900);
   --accent-hover:    var(--tb-blue-800);
   --accent-text:     var(--color-brand-700);
-  --accent-light:    rgba(16, 25, 90, 0.08);
+  --accent-light:    color-mix(in srgb, var(--accent-primary) 8%, transparent);
   --accent-border:   var(--tb-blue-900);
   /* Foreground for content sitting ON the accent. Overwritten per-tenant by
      brandingToCSSVars, which picks white or dark ink from the brand's
      luminance — the platform's own blue takes white. */
   --accent-on: var(--color-white);
   --accent-on-hover: var(--color-white);
-  /* The rail wears the accent itself now that the accent is the deep blue.
-     A rebranded tenant's colour still arrives here unchanged. */
+  /* The rail wears the accent itself. A rebranded tenant's colour still
+     arrives here unchanged. */
   --rail-bg: var(--accent-primary);
-  --accent-orange: #CA4D1C;
-  --accent-purple: #7847EB;
+  --accent-bright:    var(--tm-dodger);
+  --accent-bright-on: var(--tm-ink);
+  --accent-orange:    var(--tm-orange);
+  --accent-orange-on: var(--tm-ink);
+  /* The text/border rung of orange, for orange words on white and for the
+     rare place white sits on orange. 4.83:1. */
+  --accent-orange-text: var(--orange-800);
+  --accent-gold:      var(--tm-gold);
+  --accent-gold-on:   var(--tm-ink);
+  /* Purple is retired — see the palette header. Kept as a name so the
+     handful of callers that say "purple" keep resolving. */
+  --accent-purple: var(--color-purple-500);
 
   /* Legacy aliases — many components reference these names directly instead
      of the canonical tokens above. Keep them pointed at the same values so
@@ -253,12 +312,12 @@
   --tamamhealth-blue: var(--accent-primary);
   --tamamhealth-red:  var(--color-danger);
 
-  /* ── Text (WCAG AA on #FEFFF9) ── */
-  /* Bold text wears the header's blue. Weight already marks these as the
+  /* ── Text (WCAG AA on the cream ground and on white) ── */
+  /* Bold text wears the accent blue. Weight already marks these as the
      things you scan for — a name, a column label, a section title, a chart
-     heading — so giving them the accent makes the page's structure legible at
-     a glance instead of one uniform wall of navy. Body copy stays --text-
-     primary; only what is already bold changes. 9.44:1 on white. */
+     heading — so giving them the accent makes the page's structure legible
+     at a glance instead of one uniform wall of navy. Body copy stays
+     --text-primary; only what is already bold changes. 7.56:1 on white. */
   --text-strong:    var(--accent-primary);
   --text-primary:   var(--color-slate-900);
   --text-secondary: var(--color-slate-700);
@@ -279,14 +338,12 @@
   --glass-highlight: none;
   --panel-shadow:    none;
 
-  /* ── Shadows ── barely-there lift on cards only; every other surface stays flat. */
-  /* Three steps, ported from the site (which uses 1px / 3px / 12px) and
-     re-inked in the platform's navy rather than its warm grey, so a lifted
-     card still reads blue-biased like everything around it. --card-shadow-xl
-     was `none`, which made "extra large" quieter than large. */
-  --card-shadow:       0 1px 2px rgba(14, 42, 74, 0.05);
-  --card-shadow-lg:    0 3px 10px rgba(14, 42, 74, 0.12);
-  --card-shadow-xl:    0 12px 32px rgba(14, 42, 74, 0.18);
+  /* ── Shadows ── barely-there lift on cards only; every other surface stays
+     flat. Three steps, inked in the palette's navy so a lifted card still
+     reads blue-biased like everything around it. */
+  --card-shadow:       0 1px 2px color-mix(in srgb, var(--tm-navy) 6%, transparent);
+  --card-shadow-lg:    0 3px 10px color-mix(in srgb, var(--tm-navy) 13%, transparent);
+  --card-shadow-xl:    0 12px 32px color-mix(in srgb, var(--tm-navy) 20%, transparent);
   --card-hover-border: var(--border-medium);
 
   /* Toggle */
@@ -302,8 +359,7 @@
   --table-row-hover: color-mix(in srgb, var(--accent-primary) 7%, transparent);
 
   /* Nav — dark text on light sidebar. Hover/active fill white text, which
-     needs the darker navy (not the lighter secondary-accent blue) to clear
-     4.5:1 contrast. */
+     needs the deep blue (not the bright one) to clear 4.5:1 contrast. */
   --nav-text: var(--color-slate-600);
   --nav-text-hover: var(--color-white);
   --nav-hover-bg: var(--tb-blue-900);
@@ -315,36 +371,37 @@
   --btn-secondary-hover-bg: color-mix(in srgb, var(--accent-primary) 10%, transparent);
   --btn-secondary-hover-border: var(--color-brand-500);
 
-  /* Status — colorblind-safe (Okabe-Ito derived) */
+  /* Status */
   --status-online: var(--color-success-500);
   --status-offline: var(--text-muted);
-  --status-syncing: var(--color-warning-400);
+  --status-syncing: var(--color-warning-600);
   --status-error: var(--color-danger-500);
 
-  /* Semantic status — WCAG AA compliant, standard clinical palette */
+  /* Semantic status — WCAG AA compliant. Info is the palette's blue; the
+     warning pair is the palette's gold field with orange ink; danger and
+     success are the two clinical-safety exceptions. */
   --color-success: var(--color-success-600);
   --color-success-text: var(--color-success-800);
-  --color-success-bg: rgba(27, 158, 119, 0.12);
+  --color-success-bg: #E2F2EC;
   --color-warning: var(--color-warning-600);
   --color-warning-text: var(--color-warning-700);
-  --color-warning-bg: rgba(217, 119, 6, 0.12);
+  --color-warning-bg: var(--gold-200);
   --color-danger: var(--color-danger-600);
   --color-danger-text: var(--color-danger-800);
-  --color-danger-bg: rgba(196, 69, 54, 0.10);
+  --color-danger-bg: #FAE6E4;
   --color-info: var(--color-brand-500);                /* fills/icons */
   --color-info-text: var(--color-brand-700);           /* AA-passing variant for text */
   --color-info-bg: color-mix(in srgb, var(--accent-primary) 12%, transparent);
-  --color-success-border: #15B8A6;
-  --color-warning-border: #F59E0B;
-  --color-danger-border: #F87171;
-  --color-info-border: var(--tb-blue-700);
+  --color-success-border: var(--color-success-400);
+  --color-warning-border: var(--gold-500);
+  --color-danger-border: var(--color-danger-400);
+  --color-info-border: var(--brand-300);
 
   /* ETAT triage acuity — Emergency / Urgent / Routine.
      The single definition of what an acuity looks like: the CSS rules for the
      worklist cue read these, and so does lib/clinical/triage-display.ts, which
-     paints the same three words inline elsewhere. Before this, RED text was
-     #EF4444 in TSX and --color-danger in CSS — one acuity, two reds. Amber
-     uses the -text variant because #D97706 on white fails AA at this size. */
+     paints the same three words inline elsewhere. Yellow is now the palette's
+     gold, inked in orange so it stays readable at body size. */
   --acuity-red: var(--color-danger);
   --acuity-yellow: var(--color-warning-text);
   --acuity-green: var(--color-success);
@@ -353,80 +410,82 @@
   --acuity-green-bg: var(--color-success-bg);
 
   /* Workflow semantics — use these in shared rows, pills, queues, and admin
-     surfaces so color carries the same meaning across departments. */
+     surfaces so color carries the same meaning across departments. Every
+     field/ink/edge triple is drawn from the palette or the two clinical
+     exceptions; nothing here invents a hue. */
   --semantic-active: var(--color-info-text);
-  --semantic-active-bg: var(--color-info-bg);
-  --semantic-active-border: #8FC1DF;
-  --semantic-success: #167755;
-  --semantic-success-bg: #E8F7F1;
-  --semantic-success-border: #9FD8C5;
-  --semantic-warning: #B55E13;
-  --semantic-warning-bg: #FFF4E9;
-  --semantic-warning-border: #F5C38E;
-  --semantic-danger: #C24135;
-  --semantic-danger-bg: #FFF0EF;
-  --semantic-danger-border: #F4B4AC;
-  --semantic-request: #6D45C2;
-  --semantic-request-bg: #F6F1FF;
-  --semantic-request-border: #CBB9FF;
-  --semantic-it: #0E7490;
-  --semantic-it-bg: #EDF8FB;
-  --semantic-it-border: #A9DDEB;
-  --semantic-neutral: #3D5967;
-  --semantic-neutral-bg: #EEF4F6;
-  --semantic-neutral-border: #C8DDEA;
-  --semantic-inactive: #607385;
-  --semantic-inactive-bg: #EEF1F4;
-  --semantic-inactive-border: #D8E3EC;
+  --semantic-active-bg: var(--brand-100);
+  --semantic-active-border: var(--brand-300);
+  --semantic-success: var(--color-success-700);
+  --semantic-success-bg: var(--color-success-bg);
+  --semantic-success-border: var(--color-success-400);
+  --semantic-warning: var(--orange-800);
+  --semantic-warning-bg: var(--gold-200);
+  --semantic-warning-border: var(--gold-500);
+  --semantic-danger: var(--color-danger-700);
+  --semantic-danger-bg: var(--color-danger-bg);
+  --semantic-danger-border: var(--color-danger-400);
+  --semantic-request: var(--orange-900);
+  --semantic-request-bg: var(--orange-100);
+  --semantic-request-border: var(--orange-300);
+  --semantic-it: var(--brand-600);
+  --semantic-it-bg: var(--brand-50);
+  --semantic-it-border: var(--brand-300);
+  --semantic-neutral: var(--color-slate-700);
+  --semantic-neutral-bg: var(--color-slate-75);
+  --semantic-neutral-border: var(--color-slate-200);
+  --semantic-inactive: var(--color-slate-600);
+  --semantic-inactive-bg: var(--color-slate-50);
+  --semantic-inactive-border: var(--color-slate-150);
 
   /* ── Category hues ── a second axis, orthogonal to status.
      Status says how something is GOING (success/warning/danger/info); a
-     category says what KIND of thing it is. They were being mixed: a role
-     accent borrowed the success green, a lab chip borrowed a status purple,
-     so a green pill meant "pharmacist" in one place and "resolved" in
-     another. These have no urgency meaning and never stand in for one.
-     Text-safe (≥4.5:1 on white) because they label chips and rows. */
-  --category-clinical: #0E7490;   /* nursing / triage-desk / IT-ish teal */
-  --category-clinical-bg: #EDF8FB;
-  --category-lab: #6D45C2;        /* laboratory violet */
-  --category-lab-bg: #F6F1FF;
-  --category-maternal: #BE185D;   /* MCH / triage rose */
-  --category-maternal-bg: #FDF2F7;
-  --category-transfer: #92400E;   /* patient movement gold */
-  --category-transfer-bg: #FBF1E7;
-  --category-admin: #3D5967;      /* administration slate */
-  --category-admin-bg: #EEF4F6;
+     category says what KIND of thing it is, carries no urgency, and never
+     stands in for one. The five used to be a teal, a violet, a rose, a
+     gold and a slate — five hues from nowhere. They now separate by
+     lightness and warmth inside the palette instead: deep blue, navy,
+     bright blue, orange, gold. Text-safe (>= 4.5:1 on white) because they
+     label chips and rows. */
+  --category-clinical: var(--tm-deep);        /* nursing / triage desk — 7.56:1 */
+  --category-clinical-bg: var(--brand-50);
+  --category-lab: var(--brand-600);           /* laboratory — 5.02:1 */
+  --category-lab-bg: var(--brand-100);
+  --category-maternal: var(--orange-900);     /* MCH — 5.44:1 */
+  --category-maternal-bg: var(--orange-100);
+  --category-transfer: var(--orange-800);     /* patient movement — 4.83:1 */
+  --category-transfer-bg: var(--gold-200);
+  --category-admin: var(--color-slate-700);   /* administration — 7.65:1 */
+  --category-admin-bg: var(--color-slate-75);
 
   /* ── Sequential performance ramp ── a THIRD axis: ordered, not categorical
-     and not status. WHO-style red → amber → gold → green for a 0-100 score.
-     It borrows the status hues at the ends (a failing facility really is in
+     and not status. WHO-style red → orange → gold → green for a 0-100 score.
+     It borrows the safety hues at the ends (a failing facility really is in
      danger) but needs four DISTINGUISHABLE stops, which the status scale
      cannot give: it only has three. Used as meter fills and large KPI
      numerals, so the 3:1 bar applies. */
   --perf-critical: var(--color-danger);   /* < 40 */
-  --perf-poor: var(--color-warning);      /* 40-59 */
-  --perf-fair: #A98207;                   /* 60-79 — gold, distinct from amber */
+  --perf-poor: var(--orange-600);         /* 40-59 */
+  --perf-fair: var(--gold-600);           /* 60-79 — gold, distinct from orange */
   --perf-good: var(--color-success);      /* 80+ */
 
-  /* ── Chart series ── a categorical scale: identity, not magnitude.
-     Fixed order, never cycled — slot 1 is always slot 1, so a filter that
-     drops a series never repaints the survivors.
+  /* ── Chart series — exception 2 ──────────────────────────────────────
+     A categorical scale: identity, not magnitude. Fixed order, never
+     cycled — slot 1 is always slot 1, so a filter that drops a series
+     never repaints the survivors.
 
-     The order is the colourblind-safety mechanism, not decoration. 120
-     orderings of this hue pool were enumerated and validated; 17 cleared
-     every gate and this is the strongest: worst adjacent pair ΔE 8.6 under
-     deuteranopia (target >= 8) and 22.3 for normal vision, all six above 3:1
-     on the card surface.
-
-     What it replaced was not a scale at all: slot 3 was the warning amber and
-     slot 4 the danger red, so a chart's third and fourth series impersonated
-     status. Status colours are reserved below and never appear here. */
-  --chart-1: #2191D0;   /* blue   — the brand's own, first by default */
-  --chart-2: #BE185D;   /* rose   */
-  --chart-3: #6D45C2;   /* violet */
-  --chart-4: #0D9488;   /* teal   */
-  --chart-5: #C2410C;   /* orange */
-  --chart-6: #2F855A;   /* green  */
+     Six hues that stay apart under colour-vision deficiency cannot all
+     come from a palette whose blues are six steps of one hue, so this is
+     the one scale that reaches outside the nine. Slots 1, 2 and 5 ARE
+     palette colours (deep, blue, orange); the remaining three keep the
+     CVD-validated hues. Status colours are reserved and never appear here
+     — slot 3 used to be the warning amber and slot 4 the danger red, so a
+     chart's third and fourth series impersonated urgency. */
+  --chart-1: #015697;   /* deep blue   — palette */
+  --chart-2: #2191D0;   /* brand blue  — palette */
+  --chart-3: #BE185D;   /* rose        */
+  --chart-4: #0D9488;   /* teal        */
+  --chart-5: #FF7F00;   /* orange      — palette */
+  --chart-6: #6D45C2;   /* violet      */
 
   /* Sequential (magnitude) is one hue light->dark, from the brand ramp;
      never a rainbow. Diverging pairs the blue against --chart-5 with a
@@ -450,40 +509,39 @@
   --color-chart-6: var(--chart-6);
 
   /* SVG map colors */
-  --map-bg: rgba(33, 145, 208, 0.06);
-  --map-stroke: rgba(0, 0, 0, 0.05);
-  --map-lines: rgba(0, 0, 0, 0.03);
-  --map-nile: rgba(33, 145, 208, 0.18);
-  --map-label: rgba(0, 0, 0, 0.2);
-  --map-tooltip-bg: rgba(254, 255, 249, 0.96);
-  --map-tooltip-stroke: rgba(1, 86, 151, 0.06);
+  --map-bg: color-mix(in srgb, var(--tm-blue) 8%, transparent);
+  --map-stroke: color-mix(in srgb, var(--tm-navy) 8%, transparent);
+  --map-lines: color-mix(in srgb, var(--tm-navy) 5%, transparent);
+  --map-nile: color-mix(in srgb, var(--tm-blue) 22%, transparent);
+  --map-label: color-mix(in srgb, var(--tm-navy) 30%, transparent);
+  --map-tooltip-bg: var(--color-white);
+  --map-tooltip-stroke: color-mix(in srgb, var(--tm-deep) 12%, transparent);
   --map-tooltip-text: var(--color-slate-900);
   --map-tooltip-sub: var(--color-slate-500);
-  --map-dot-stroke: var(--color-cream-25);
+  --map-dot-stroke: var(--color-white);
 
+  /* ── EHR shell ── the chart/worklist surfaces. Every value here is a rung
+     of the ramps above; the family used to carry its own dozen hexes. */
   --ehr-page-bg: var(--bg-app);
   --ehr-panel: var(--bg-card-solid);
-  --ehr-border: #DDEAF3;
-  --ehr-border-soft: #E7EEF5;
-  --ehr-text: #102634;
-  /* Matches the EHR shell's own override (#597386, 4.97:1). The old #8395A8
-     fallback was 3.07:1 — surfaces outside the shell (login, portal, admin)
-     rendered visibly paler than the reception/clinical dashboards. */
-  --ehr-muted: #597386;
-  --ehr-text-body: #39536B;
-  --ehr-text-title: #132C44;
-  --ehr-hover: #FAFCFE;
-  --ehr-head: #F7FAFC;
-  --ehr-soft: #E9F0F5;
-  --ehr-info-soft: #DCEFFB;
-  --ehr-info-bg: #EAF2F8;
-  --ehr-danger-bg: #FCE4DE;
-  --ehr-danger-text: #B93328;
-  --ehr-warning-bg: #FFF1C7;
-  --ehr-warning-text: #9C5E16;  /* darkened from #9C640E — was 4.40:1 on --ehr-warning-bg, fails AA text */
-  --ehr-success-bg: #DDF2E9;
-  --ehr-success-text: #0E7155;
-  --ehr-neutral-text: #4E6477;
+  --ehr-border: var(--color-slate-150);
+  --ehr-border-soft: var(--color-slate-100);
+  --ehr-text: var(--color-slate-900);
+  --ehr-muted: var(--color-slate-500);   /* 4.95:1 */
+  --ehr-text-body: var(--color-slate-700);
+  --ehr-text-title: var(--tm-navy);
+  --ehr-hover: var(--color-slate-25);
+  --ehr-head: var(--color-slate-50);
+  --ehr-soft: var(--color-slate-100);
+  --ehr-info-soft: var(--brand-100);
+  --ehr-info-bg: var(--brand-50);
+  --ehr-danger-bg: var(--color-danger-bg);
+  --ehr-danger-text: var(--color-danger-700);
+  --ehr-warning-bg: var(--gold-200);
+  --ehr-warning-text: var(--orange-800);
+  --ehr-success-bg: var(--color-success-bg);
+  --ehr-success-text: var(--color-success-800);
+  --ehr-neutral-text: var(--color-slate-600);
   --ehr-mission-bg: var(--tb-blue-900);
 }
 
@@ -505,12 +563,12 @@
 .tour-spotlight {
   box-shadow:
     0 0 0 3px var(--accent-primary),
-    0 0 0 6px rgba(59, 130, 246, 0.30),
-    0 0 0 9999px rgba(15, 23, 42, 0.50) !important;
+    0 0 0 6px rgba(33, 145, 208, 0.30),
+    0 0 0 9999px rgba(0, 29, 63, 0.50) !important;
 }
 
 .tour-card {
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.35) !important;
+  box-shadow: 0 12px 32px rgba(0, 29, 63, 0.35) !important;
 }
 
 /* Decorative glass gradients died with the flat redesign — but a conic
@@ -885,7 +943,7 @@ svg.lucide:not([style*="color"]) {
   border: 1px solid var(--ehr-border);
   border-inline-start-width: 0;
   background: var(--bg-card-solid, #FFFFFF);
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
   font-family: var(--font-condensed);
   font-size: 12.5px;
   font-weight: 700;
@@ -915,7 +973,7 @@ svg.lucide:not([style*="color"]) {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--color-danger-strong, #C2410C);
+  background: var(--color-danger-strong, #CC6600);
   box-shadow: 0 0 0 1.5px var(--th-badge-ring, var(--accent-primary));
   color: #FFFFFF;
   font-family: var(--font-condensed);
@@ -1335,16 +1393,16 @@ input::placeholder, textarea::placeholder {
   border-radius: 10px;
   box-shadow:
     inset 3px 0 0 var(--ehr-toast-edge, transparent),
-    0 8px 20px -10px rgba(16, 42, 67, 0.28);
+    0 8px 20px -10px rgba(17, 48, 85, 0.28);
   max-width: 100%;
 }
 
 /* The one place the status colour appears: the leading icon and the inset
    edge, both on the text rung (4.5:1) since the icon is the signal. */
-.ehr-toast--success { --ehr-toast-edge: var(--ehr-success-text, #0E7155); }
-.ehr-toast--success .ehr-toast-icon { color: var(--ehr-success-text, #0E7155); stroke: var(--ehr-success-text, #0E7155); }
-.ehr-toast--error { --ehr-toast-edge: var(--ehr-danger-text, #B93328); }
-.ehr-toast--error .ehr-toast-icon { color: var(--ehr-danger-text, #B93328); stroke: var(--ehr-danger-text, #B93328); }
+.ehr-toast--success { --ehr-toast-edge: var(--ehr-success-text, #0A6E4A); }
+.ehr-toast--success .ehr-toast-icon { color: var(--ehr-success-text, #0A6E4A); stroke: var(--ehr-success-text, #0A6E4A); }
+.ehr-toast--error { --ehr-toast-edge: var(--ehr-danger-text, #B4180F); }
+.ehr-toast--error .ehr-toast-icon { color: var(--ehr-danger-text, #B4180F); stroke: var(--ehr-danger-text, #B4180F); }
 
 .ehr-toast-icon {
   width: 18px;
@@ -1378,7 +1436,7 @@ input::placeholder, textarea::placeholder {
   transition: background 0.15s ease;
 }
 
-.ehr-toast-action:hover { background: var(--ehr-hover, rgba(16, 42, 67, 0.05)); }
+.ehr-toast-action:hover { background: var(--ehr-hover, rgba(17, 48, 85, 0.05)); }
 
 .ehr-toast-close {
   position: relative;
@@ -1396,7 +1454,7 @@ input::placeholder, textarea::placeholder {
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.ehr-toast-close:hover { background: var(--ehr-hover, rgba(16, 42, 67, 0.05)); color: var(--ehr-text, var(--text-primary)); }
+.ehr-toast-close:hover { background: var(--ehr-hover, rgba(17, 48, 85, 0.05)); color: var(--ehr-text, var(--text-primary)); }
 .ehr-toast-close svg { color: currentColor; stroke: currentColor; }
 
 /* The 44px pointer target WCAG asks for, without a 44px box in the layout. */
@@ -1506,8 +1564,8 @@ select option {
 select option:hover,
 select option:focus,
 select option:checked {
-  background: #EFF8FD;
-  color: #013D6B;
+  background: #F2FCFF;
+  color: #113055;
 }
 
 label {
@@ -1683,7 +1741,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #5B6B7E;
+  color: #5D728B;
   text-align: start;
   border-bottom: 1px solid var(--border-light);
   font-family: var(--font-condensed);
@@ -1714,7 +1772,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   top: 0;
   z-index: 2;
   background: var(--bg-card-solid) !important;
-  color: #5B6B7E !important;
+  color: #5D728B !important;
   font-family: var(--font-condensed) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
@@ -1722,7 +1780,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   line-height: 1.2;
   text-transform: uppercase;
   white-space: nowrap;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 0 rgba(0, 29, 63, 0.06);
 }
 
 /* Dashboard/card tables that predate `.data-table`.
@@ -1749,7 +1807,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   /* The design's column head: condensed small caps at 0.12em in the quiet
      slate, on a 10px rhythm. (Was 10px extrabold at 0.06em.) */
   padding: 10px 16px;
-  color: #5B6B7E;
+  color: #5D728B;
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -1759,14 +1817,14 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
 }
 
 /* Rows take the design's list rhythm: 13px of breathing room per cell on an
-   #EDF2F7 hairline, values at 13.5px. Utility paddings on the cells lose to
+   #F1F3F5 hairline, values at 13.5px. Utility paddings on the cells lose to
    this on specificity, which is the point — one rhythm for every card table. */
 .dash-card table.w-full tbody td,
 .card-elevated table.w-full tbody td,
 .ehr-set-section table.w-full tbody td,
 .org-set-card table.w-full tbody td {
   padding: 13px 16px;
-  border-bottom: 1px solid #EDF2F7;
+  border-bottom: 1px solid #F1F3F5;
   font-size: 13.5px;
   font-weight: 600;
 }
@@ -1782,7 +1840,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
 .card-elevated table.w-full tbody tr:hover,
 .ehr-set-section table.w-full tbody tr:hover,
 .org-set-card table.w-full tbody tr:hover {
-  background: #F7FAFC;
+  background: #F5F7F8;
 }
 
 /* The design's status chip: a 24px pill in condensed small caps, tinted by
@@ -2539,18 +2597,18 @@ thead th {
   --ehr-rail-muted: rgba(255, 255, 255, 0.68);
   --ehr-page-bg: var(--bg-app);
   --ehr-panel: var(--bg-card-solid);
-  --ehr-panel-soft: rgba(25, 136, 202, 0.075);
-  --ehr-table-head: rgba(25, 136, 202, 0.11);
-  --ehr-table-head-strong: rgba(25, 136, 202, 0.18);
-  --ehr-border: #D8E3EC;
-  --ehr-text: #102634;
-  --ehr-muted: #597386;
+  --ehr-panel-soft: rgba(33, 145, 208, 0.075);
+  --ehr-table-head: rgba(33, 145, 208, 0.11);
+  --ehr-table-head-strong: rgba(33, 145, 208, 0.18);
+  --ehr-border: #D9DEE4;
+  --ehr-text: #113055;
+  --ehr-muted: #5D728B;
   --ehr-blue: var(--accent-primary);
   --ehr-blue-light: color-mix(in srgb, var(--accent-primary) 8%, transparent);
-  --ehr-conflict: #FFE9ED;
-  --ehr-conflict-text: #A9354B;
-  --ehr-good: #1F7A67;
-  --ehr-warning: #FFF2CC;
+  --ehr-conflict: #FCEEED;
+  --ehr-conflict-text: #B4180F;
+  --ehr-good: #0B8557;
+  --ehr-warning: #FEF2C7;
 }
 
 /* The top rail's height lives on :root, not only on the app shell, because
@@ -2731,7 +2789,7 @@ html:has(.ehr-top-rail) {
     align-items: center;
     justify-content: center;
     margin-top: -14px;
-    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.22) !important;
+    box-shadow: 0 4px 10px rgba(0, 29, 63, 0.22) !important;
   }
 }
 
@@ -2744,7 +2802,7 @@ html:has(.ehr-top-rail) {
   flex-direction: column;
   height: 100dvh;
   width: 100%;
-  background: var(--bg-app, #F2F8FC);
+  background: var(--bg-app, #F2FCFF);
   color: var(--text-primary);
 }
 
@@ -2860,7 +2918,7 @@ html:has(.ehr-top-rail) {
   align-items: center;
   justify-content: center;
   margin-top: -14px;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.22);
+  box-shadow: 0 4px 10px rgba(0, 29, 63, 0.22);
 }
 
 .mobile-shell-loading {
@@ -2922,7 +2980,7 @@ html:has(.ehr-top-rail) {
   border: 1px solid var(--border-light);
   border-radius: 14px;
   background: var(--bg-card);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 29, 63, 0.04);
   cursor: pointer;
 }
 
@@ -2991,7 +3049,7 @@ html:has(.ehr-top-rail) {
   border-radius: 16px;
   background: var(--bg-card);
   padding: 14px;
-  box-shadow: 0 1px 2px rgba(18, 52, 78, 0.04);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.04);
 }
 
 .mobile-outstanding-title {
@@ -3087,7 +3145,7 @@ html:has(.ehr-top-rail) {
   border-radius: 14px;
   background: var(--bg-card);
   text-align: start;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 29, 63, 0.04);
 }
 
 .mobile-patient-avatar {
@@ -3487,7 +3545,7 @@ html:has(.ehr-top-rail) {
   border-radius: 14px;
   background: var(--bg-card);
   text-align: start;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 29, 63, 0.04);
 }
 
 .mobile-inbox-avatar {
@@ -3562,7 +3620,7 @@ html:has(.ehr-top-rail) {
   position: fixed;
   inset: 0;
   z-index: 1300;
-  background: rgba(16, 38, 52, 0.45);
+  background: rgba(17, 48, 85, 0.45);
 }
 
 .mobile-sheet {
@@ -3574,10 +3632,10 @@ html:has(.ehr-top-rail) {
   max-height: 86%;
   display: flex;
   flex-direction: column;
-  background: var(--bg-app, #F2F8FC);
+  background: var(--bg-app, #F2FCFF);
   border-radius: 24px 24px 0 0;
   overflow: hidden;
-  box-shadow: 0 -12px 40px rgba(18, 52, 78, 0.25);
+  box-shadow: 0 -12px 40px rgba(17, 48, 85, 0.25);
 }
 
 .mobile-sheet-handle {
@@ -3592,7 +3650,7 @@ html:has(.ehr-top-rail) {
   width: 40px;
   height: 4px;
   border-radius: 999px;
-  background: var(--border-medium, #D9E4EE);
+  background: var(--border-medium, #D9DEE4);
 }
 
 .mobile-sheet-head {
@@ -3658,7 +3716,7 @@ html:has(.ehr-top-rail) {
   display: grid;
   place-items: center;
   border-radius: 10px;
-  background: var(--accent-light, #EFF8FD);
+  background: var(--accent-light, #F2FCFF);
   color: var(--accent-primary);
 }
 
@@ -3843,8 +3901,8 @@ html:has(.ehr-top-rail) {
   height: 17px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #C2410C;
-  box-shadow: 0 0 0 1.5px #144972;
+  background: #CC6600;
+  box-shadow: 0 0 0 1.5px #015697;
   color: #fff;
   font-family: var(--font-condensed);
   font-size: 9px;
@@ -3957,7 +4015,7 @@ html:has(.ehr-top-rail) {
   border-radius: 0 0 12px 12px;
   background: var(--ehr-panel);
   color: var(--ehr-text);
-  box-shadow: 0 14px 30px rgba(9, 30, 66, 0.16);
+  box-shadow: 0 14px 30px rgba(0, 29, 63, 0.16);
   z-index: 1250;
 }
 
@@ -4037,7 +4095,7 @@ html:has(.ehr-top-rail) {
    trap the chart's left rail documents. */
 .ehr-module-menu section > button:hover {
   border-color: transparent;
-  background: var(--surface-hover, #EEF3F8);
+  background: var(--surface-hover, #F1F3F5);
   color: inherit;
 }
 
@@ -4172,7 +4230,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-avatar:hover,
 .ehr-avatar.active {
-  background: #F2F9FD !important;
+  background: #F2FCFF !important;
   border-color: var(--ehr-border) !important;
 }
 
@@ -4319,12 +4377,12 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-user-menu > button.danger {
-  color: #A43B2F;
+  color: #B4180F;
 }
 
 .ehr-user-menu > button.danger:hover {
-  background: #FFE7E1;
-  color: #8B2E24;
+  background: #FAE6E4;
+  color: #9E1B14;
 }
 
 .tamam-page-toolbar {
@@ -4626,7 +4684,7 @@ html:has(.ehr-top-rail) {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
 }
 .ehr-segmented button:first-child {
   border-inline-start-width: 1px;
@@ -4637,7 +4695,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-schedule-actions button:not(.primary):hover {
   border-color: var(--ehr-blue);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-segmented button.active {
@@ -4655,8 +4713,8 @@ html:has(.ehr-top-rail) {
 
 .ehr-schedule-actions button.primary:hover,
 .ehr-segmented button.active:hover {
-  border-color: var(--tb-blue-800, #012C4E);
-  background: var(--tb-blue-800, #012C4E);
+  border-color: var(--tb-blue-800, #001D3F);
+  background: var(--tb-blue-800, #001D3F);
 }
 
 /* A secondary action wears the palette's third color (--accent-orange) so it
@@ -4671,8 +4729,8 @@ html:has(.ehr-top-rail) {
 
 .ehr-schedule-actions button.orange:hover,
 .ehr-clinical-strip button.orange:hover {
-  border-color: #A63D14;
-  background: #A63D14;
+  border-color: #A65300;
+  background: #A65300;
   color: white;
 }
 
@@ -4839,7 +4897,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-mini-calendar-grid button:hover {
   border-color: var(--ehr-border);
-  background: #F4FBFE;
+  background: #F2FCFF;
 }
 
 .ehr-mini-calendar-grid b {
@@ -4859,7 +4917,7 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-mini-calendar-grid button.muted {
-  color: #A7B5BE;
+  color: #B3BDC9;
 }
 
 .ehr-mini-calendar-grid button.has-events::after {
@@ -4870,7 +4928,7 @@ html:has(.ehr-top-rail) {
   width: 4px;
   height: 4px;
   border-radius: 999px;
-  background: #18704F;
+  background: #0A6E4A;
   transform: translateX(-50%);
 }
 
@@ -5004,7 +5062,7 @@ html:has(.ehr-top-rail) {
   color: var(--ehr-muted);
   cursor: pointer;
 }
-.ehr-queue-search-clear:hover { background: var(--ehr-soft, #E9F0F5); }
+.ehr-queue-search-clear:hover { background: var(--ehr-soft, #ECEEF1); }
 
 .ehr-daybar > div:first-child {
   display: flex;
@@ -5061,8 +5119,8 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
-  background: #EFF8FD;
-  color: var(--tb-blue-800, #012C4E);
+  background: #F2FCFF;
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-day-tabs button.active:not(.ehr-mobile-day-check) {
@@ -5155,7 +5213,7 @@ html:has(.ehr-top-rail) {
   min-height: 0;
   padding: 14px 6px;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -5164,7 +5222,7 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-appointment-row:hover {
-  background: color-mix(in srgb, var(--ehr-text, #0E2A4A) 4%, transparent);
+  background: color-mix(in srgb, var(--ehr-text, #113055) 4%, transparent);
   box-shadow: none;
 }
 
@@ -5176,7 +5234,7 @@ html:has(.ehr-top-rail) {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: #E7EDF2;
+  background: #ECEEF1;
   color: var(--ehr-blue);
   font-size: 12px;
   font-weight: 800;
@@ -5206,20 +5264,20 @@ html:has(.ehr-top-rail) {
 
 .ehr-appointment-row[data-triage="RED"] .ehr-patient-icon,
 .ehr-worklist-row[data-triage="RED"] .ehr-patient-icon {
-  background: #FFF0EF;
-  color: #C24135;
+  background: #FCEEED;
+  color: #E03127;
 }
 
 .ehr-appointment-row[data-triage="YELLOW"] .ehr-patient-icon,
 .ehr-worklist-row[data-triage="YELLOW"] .ehr-patient-icon {
-  background: #FFF4E9;
-  color: #B55E13;
+  background: #FFF5EB;
+  color: #B35900;
 }
 
 .ehr-appointment-row[data-triage="GREEN"] .ehr-patient-icon,
 .ehr-worklist-row[data-triage="GREEN"] .ehr-patient-icon {
-  background: #E8F7F1;
-  color: #167755;
+  background: #ECF6F3;
+  color: #0B8557;
 }
 
 .ehr-appointment-main {
@@ -5329,7 +5387,7 @@ html:has(.ehr-top-rail) {
   grid-column: 1;
   grid-row: 1 / span 2;
   align-self: center;
-  color: #1F334A;
+  color: #113055;
   font-size: 17px;
   font-weight: 800;
   line-height: 1.1;
@@ -5360,8 +5418,8 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-status-menu select.done {
-  border-color: #8BC6A8;
-  background: #EAF8EF;
+  border-color: #4FC79B;
+  background: #ECF6F3;
 }
 
 .ehr-status-menu select.ready {
@@ -5712,7 +5770,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-progress-list.is-scrollable::-webkit-scrollbar { width: 6px; }
 .ehr-progress-list.is-scrollable::-webkit-scrollbar-thumb {
-  background: var(--border-medium, rgba(148, 163, 184, 0.45));
+  background: var(--border-medium, rgba(148, 162, 179, 0.45));
   border-radius: 999px;
 }
 .ehr-progress-list.is-scrollable::-webkit-scrollbar-track { background: transparent; }
@@ -5724,7 +5782,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 2px;
   padding: 8px 10px;
   text-align: start;
-  background: var(--ehr-surface-2, rgba(148, 163, 184, 0.08));
+  background: var(--ehr-surface-2, rgba(148, 162, 179, 0.08));
   border: 1px solid transparent;
   border-radius: 10px;
   cursor: pointer;
@@ -5732,7 +5790,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-progress-list button:hover {
-  background: var(--ehr-surface-3, rgba(148, 163, 184, 0.16));
+  background: var(--ehr-surface-3, rgba(148, 162, 179, 0.16));
 }
 
 /* The patient's name is the anchor; the verb is secondary weight so the eye
@@ -5807,14 +5865,14 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: #E9F0F2;
+  background: #ECEEF1;
   color: var(--ehr-text);
   font-size: 12px;
 }
 
 /* These two were the wrong way round in all but name: `warning` was pink
-   (#FFE3ED/#A8204A — a red by any reading) and `danger` was orange
-   (#FFE0D8/#B43921), so a card marked danger looked like a caution and one
+   (#FFE3C7/#A65300 — a red by any reading) and `danger` was orange
+   (#F9DDDB/#B4180F), so a card marked danger looked like a caution and one
    marked warning looked like an alarm. They read the status tokens now, at the
    `-text` rung the 12px numeral needs. `success` had no rule at all, which is
    why a healthy count fell through to the neutral grey. */
@@ -5900,8 +5958,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: #EEF4F6;
-  color: #3D5967;
+  background: #F1F3F5;
+  color: #546A85;
   font-size: 12px;
 }
 
@@ -6148,7 +6206,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: #E9F0F2;
+  background: #ECEEF1;
   color: var(--ehr-text);
   font-size: 12px;
 }
@@ -6247,7 +6305,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
    to cross a border to compare two times. The design draws a table: rows share
    one hairline rule, sit tight to the column grid, and only the row under the
    pointer gets a tint. Everything below is that spec verbatim — 14px/6px
-   padding, 12px gutters, top-aligned cells, a #EDF2F7 rule. */
+   padding, 12px gutters, top-aligned cells, a #F1F3F5 rule. */
 .ehr-care-row {
   grid-template-columns: var(--care-cols, 40px minmax(200px, 1.7fr) repeat(4, minmax(112px, 1fr)) 44px);
   column-gap: 12px;
@@ -6255,7 +6313,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   align-items: start;
   padding: 14px 6px;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
   border-radius: 0;
   background: transparent;
   box-shadow: none !important;
@@ -6266,7 +6324,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-care-row:focus-visible {
   /* A tint, not a border: the design keeps the grid unbroken so the hovered
      row does not jump against its neighbours. */
-  background: color-mix(in srgb, var(--ehr-text, #0E2A4A) 4%, transparent);
+  background: color-mix(in srgb, var(--ehr-text, #113055) 4%, transparent);
   box-shadow: none !important;
   outline: none;
 }
@@ -6327,7 +6385,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--ehr-table-head);
-  color: #315F6A;
+  color: #015697;
   font-size: 11px;
   font-weight: 800;
 }
@@ -6337,8 +6395,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-care-status.ready {
-  background: #EAF8EF;
-  color: #18704F;
+  background: #ECF6F3;
+  color: #0A6E4A;
 }
 
 .ehr-care-status.active {
@@ -6570,10 +6628,10 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-care-alert {
   margin: 10px 0 0;
   padding: 8px;
-  border: 1px solid rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(224, 49, 39, 0.15);
   border-radius: 6px;
-  background: rgba(239, 68, 68, 0.06);
-  color: #B43921;
+  background: rgba(224, 49, 39, 0.06);
+  color: #B4180F;
   font-size: 12px;
   font-weight: 800;
 }
@@ -6919,7 +6977,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   color: var(--accent-primary);
 }
 .ehr-registration-dialog-actions button:hover {
-  background: var(--tb-blue-50, #EFF8FD);
+  background: var(--tb-blue-50, #F2FCFF);
   border-color: var(--accent-primary);
 }
 
@@ -7580,9 +7638,9 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-consult-meta-strip button.active {
-  background: #FFE7E1;
-  border-color: #F7B2A6;
-  color: #B44731;
+  background: #FAE6E4;
+  border-color: #F9DDDB;
+  color: #D92B20;
 }
 
 .ehr-consult-workspace {
@@ -7671,7 +7729,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 /* Non-blocking out-of-range hint under a vital input. */
 .ehr-soap-scroll input.ehr-vital-flagged {
   border-color: var(--color-warning) !important;
-  background: rgba(217, 119, 6, 0.05) !important;
+  background: rgba(230, 114, 0, 0.05) !important;
 }
 .ehr-vitals-range {
   display: block;
@@ -7685,7 +7743,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   margin-top: 3px;
   font-size: 11px;
   font-weight: 600;
-  color: #B8741C;
+  color: #B35900;
 }
 /* Live BMI tile inside the Body measurements group. */
 .ehr-bmi-tile {
@@ -7724,9 +7782,9 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 1px 8px;
   border-radius: 999px;
 }
-.ehr-bmi-tile-chip.is-ok { background: rgba(21, 121, 92, 0.12); color: #15795C; }
-.ehr-bmi-tile-chip.is-warn { background: rgba(184, 116, 28, 0.14); color: #B8741C; }
-.ehr-bmi-tile-chip.is-alert { background: rgba(196, 69, 54, 0.12); color: #C44536; }
+.ehr-bmi-tile-chip.is-ok { background: rgba(10, 110, 74, 0.12); color: #0A6E4A; }
+.ehr-bmi-tile-chip.is-warn { background: rgba(179, 89, 0, 0.14); color: #B35900; }
+.ehr-bmi-tile-chip.is-alert { background: rgba(224, 49, 39, 0.12); color: #E03127; }
 
 .ehr-soap-scroll .card-elevated > button,
 .ehr-soap-scroll .card-elevated > div:first-child,
@@ -8292,7 +8350,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-page .card-elevated {
   border-radius: 0 !important;
-  border: 1px solid #d7e2e1 !important;
+  border: 1px solid #d9dee4 !important;
   background: #fff !important;
   box-shadow: none !important;
   overflow: hidden;
@@ -8390,8 +8448,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-page .card-elevated > .border-b,
 .ehr-chart-page .card-elevated > [style*="borderBottom"] {
   min-height: 50px;
-  background: #f6fafb !important;
-  border-color: #d7e2e1 !important;
+  background: #fafbfc !important;
+  border-color: #d9dee4 !important;
 }
 
 .ehr-chart-page .card-elevated h2,
@@ -8411,9 +8469,9 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-content table thead th {
   height: 44px;
   padding: 0 14px !important;
-  border-bottom: 1px solid #d7e2e1 !important;
-  background: #eef5f7 !important;
-  color: #63758a !important;
+  border-bottom: 1px solid #d9dee4 !important;
+  background: #f1f3f5 !important;
+  color: #5d728b !important;
   font-size: 11px !important;
   font-weight: 800 !important;
   letter-spacing: 0.03em !important;
@@ -8425,7 +8483,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-content table:not(.omrs-table) tbody td {
   min-height: 46px;
   padding: 12px 14px !important;
-  border-bottom: 1px solid #e5ecec !important;
+  border-bottom: 1px solid #eceef1 !important;
   color: var(--ehr-text);
   font-size: 13px;
   vertical-align: middle;
@@ -8433,7 +8491,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-content .data-table tbody tr:hover td,
 .ehr-chart-content table tbody tr:hover td {
-  background: #f7fbfc;
+  background: #fafbfc;
 }
 
 .ehr-chart-page .grid.lg\:grid-cols-3 {
@@ -8653,7 +8711,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-section-title h1,
 .tebra-demo-title h1 {
   margin: 0;
-  color: #111827;
+  color: #113055;
   font-size: 25px;
   font-weight: 800;
   letter-spacing: 0;
@@ -8663,7 +8721,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-section-title button {
   border: 0;
   background: transparent;
-  color: #5f7776;
+  color: #5d728b;
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
@@ -8686,7 +8744,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-height: 0;
   height: 100%;
   padding: 16px 18px;
-  border: 1px solid #d7e2e1;
+  border: 1px solid #d9dee4;
   border-radius: 2px;
   background: #fff;
   box-shadow: none;
@@ -8694,8 +8752,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-panel:hover {
-  background: #FBFEFE;
-  border-color: #C7DAD8;
+  background: #F2FCFF;
+  border-color: #D8EEE6;
 }
 
 .tebra-panel--wide {
@@ -8703,7 +8761,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-panel--highlight {
-  background: #e7f5f7;
+  background: #f1f3f5;
 }
 
 .tebra-panel h2 {
@@ -8716,7 +8774,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-none,
 .tebra-empty {
-  color: #202A2F;
+  color: #113055;
   font-size: 13px;
   font-weight: 800;
 }
@@ -8737,7 +8795,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-list-row strong {
   flex: 1 1 auto;
   overflow: hidden;
-  color: #111827;
+  color: #113055;
   font-size: 13px;
   font-weight: 800;
   line-height: 1.3;
@@ -8749,7 +8807,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex: 0 0 auto;
   overflow: hidden;
   margin-top: 0;
-  color: #5F6F73;
+  color: #5D728B;
   font-size: 12px;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -8766,9 +8824,9 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-vitals span {
   min-height: 42px;
   padding: 8px;
-  border: 1px solid rgba(23, 107, 102, 0.18);
+  border: 1px solid rgba(10, 110, 74, 0.18);
   background: rgba(255, 255, 255, 0.58);
-  color: #54686A;
+  color: #546A85;
   font-size: 11px;
   font-weight: 800;
 }
@@ -8776,7 +8834,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-vitals strong {
   display: block;
   margin-top: 3px;
-  color: #111827;
+  color: #113055;
   font-size: 15px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -8796,7 +8854,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 12px;
   align-items: center;
   min-height: 48px;
-  border-bottom: 1px solid #E5ECEB;
+  border-bottom: 1px solid #ECEEF1;
 }
 
 .tebra-reco-row:last-child {
@@ -8830,7 +8888,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-reco-row small {
   display: block;
-  color: #374151;
+  color: #2E4969;
   font-size: 12px;
   font-weight: 800;
   line-height: 1.25;
@@ -8838,7 +8896,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-reco-row strong {
   display: block;
-  color: #5A7A78;
+  color: #5D728B;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.3;
@@ -8848,14 +8906,14 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-demographics {
   margin: 0 0 18px;
-  border: 1px solid #d7e2e1;
+  border: 1px solid #d9dee4;
   background: #fff;
   box-shadow: none;
 }
 
 .tebra-demo-title {
   padding: 12px 14px 6px;
-  border-bottom: 1px solid #E0E5E4;
+  border-bottom: 1px solid #E2E6EB;
 }
 
 .tebra-demo-tabs {
@@ -8864,7 +8922,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   align-items: flex-end;
   min-height: 48px;
   padding: 8px 14px 0;
-  border-bottom: 1px solid #D7DEDD;
+  border-bottom: 1px solid #D9DEE4;
   overflow-x: auto;
 }
 
@@ -8872,19 +8930,19 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-width: max-content;
   height: 40px;
   padding: 0 16px;
-  border: 1px solid #D7DEDD;
+  border: 1px solid #D9DEE4;
   border-bottom: 0;
   border-radius: var(--radius-control) var(--radius-control) 0 0;
   background: #fff;
-  color: #69807E;
+  color: #6B7F96;
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
 }
 
 .tebra-demo-tabs button.active {
-  background: #08756D;
-  border-color: #08756D;
+  background: #0A6E4A;
+  border-color: #0A6E4A;
   color: #fff;
 }
 
@@ -8902,10 +8960,10 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   inset-inline-end: 16px;
   min-width: 96px;
   height: 28px;
-  border: 1px solid #D7DEDD;
+  border: 1px solid #D9DEE4;
   border-radius: 3px;
   background: #fff;
-  color: #596A6A;
+  color: #546A85;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -8924,21 +8982,21 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   display: grid;
   place-items: center;
   border-radius: 3px;
-  background: #E7EAEC;
-  color: #7D8A90;
+  background: #E2E6EB;
+  color: #6B7F96;
   font-size: 11px;
   font-weight: 800;
 }
 
 .tebra-demo-person h2 {
   margin: 0;
-  color: #111827;
+  color: #113055;
   font-size: 20px;
   font-weight: 800;
 }
 
 .tebra-demo-person span {
-  color: #45A248;
+  color: #0FA06A;
   font-size: 12px;
   font-weight: 800;
 }
@@ -8962,7 +9020,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-demo-field dt {
-  color: #4B5563;
+  color: #3C5574;
   font-size: 13px;
   font-weight: 700;
 }
@@ -8970,7 +9028,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-demo-field dd {
   min-width: 0;
   margin: 0;
-  color: #111827;
+  color: #113055;
   font-size: 13px;
   font-weight: 800;
   line-height: 1.35;
@@ -8980,12 +9038,12 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-demo-section {
   margin-top: 20px;
   padding-top: 14px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #E2E6EB;
 }
 
 .tebra-demo-section h3 {
   margin: 0 0 18px;
-  color: #111827 !important;
+  color: #113055 !important;
   font-size: 16px;
   font-weight: 800;
 }
@@ -8998,8 +9056,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-demo-table th,
 .tebra-demo-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #E5ECEB;
-  color: #111827;
+  border-bottom: 1px solid #ECEEF1;
+  color: #113055;
   font-size: 13px;
   font-weight: 600;
   text-align: start;
@@ -9010,7 +9068,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   top: 0;
   z-index: 2;
   background: #ffffff;
-  color: #5F6F73;
+  color: #5D728B;
   font-weight: 800;
 }
 
@@ -9199,13 +9257,13 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-page {
   --ehr-page-bg: var(--bg-app);
   --ehr-panel: var(--bg-card-solid);
-  --ehr-panel-soft: #F1F8FE;
-  --ehr-table-head: #EAF4FC;
-  --ehr-table-head-strong: #DCECF9;
-  --ehr-border: #D8E3EC;
-  --ehr-border-soft: #E5EDF4;
-  --ehr-text: #102634;
-  --ehr-muted: #5B7284;
+  --ehr-panel-soft: #E1F9FF;
+  --ehr-table-head: #E1F9FF;
+  --ehr-table-head-strong: #C9F4FF;
+  --ehr-border: #D9DEE4;
+  --ehr-border-soft: #ECEEF1;
+  --ehr-text: #113055;
+  --ehr-muted: #5D728B;
   --ehr-blue: var(--accent-primary);
   --ehr-blue-strong: var(--accent-hover);
   --ehr-blue-light: color-mix(in srgb, var(--accent-primary) 8%, transparent);
@@ -9261,7 +9319,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-nav button {
   min-height: 50px;
-  color: #496779 !important;
+  color: #546A85 !important;
   font-weight: 700 !important;
 }
 
@@ -9344,7 +9402,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   height: 38px;
   border-bottom: 1px solid var(--ehr-border) !important;
   background: var(--ehr-table-head-strong) !important;
-  color: #385d76 !important;
+  color: #3c5574 !important;
   font-size: 10px !important;
   font-weight: 800 !important;
   letter-spacing: 0 !important;
@@ -9359,7 +9417,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-content .data-table tbody tr:hover td,
 .ehr-chart-content table tbody tr:hover td {
-  background: #f6fbff;
+  background: #f2fcff;
 }
 
 .billing-account-grid {
@@ -9523,7 +9581,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-page input::placeholder,
 .ehr-chart-page textarea::placeholder {
-  color: #6e8497;
+  color: #6b7f96;
 }
 
 .ehr-chart-page input:focus,
@@ -9575,7 +9633,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-panel:hover {
-  background: #fafdff;
+  background: #f2fcff;
   border-color: var(--ehr-blue-strong) !important;
 }
 
@@ -9789,12 +9847,12 @@ button.ward-stat-chip:focus:not(:focus-visible) {
    sets these colours that way; matching it is the only way to win, and only
    the colour is overridden — size, weight and leading stay with the system. */
 .tebra-list-row--alert strong {
-  color: var(--tamamhealth-red-text, #A5372A) !important;
+  color: var(--tamamhealth-red-text, #B4180F) !important;
   font-weight: var(--type-weight-bold) !important;
 }
 
 .tebra-list-row--alert span {
-  color: var(--tamamhealth-red, #DC2626) !important;
+  color: var(--tamamhealth-red, #D92B20) !important;
 }
 
 .tebra-vitals span {
@@ -10483,7 +10541,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
      redesign; every design file draws heads this way, so the app-wide rule is
      the right place to say it once.) */
   background: var(--bg-card-solid) !important;
-  color: #5B6B7E !important;
+  color: #5D728B !important;
   font-family: var(--font-condensed) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
@@ -10506,7 +10564,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tamam-ehr-app .data-table tbody td,
 .tamam-ehr-app table tbody td {
   /* The design's row hairline — one shade quieter than the card border. */
-  border-bottom: 1px solid #EDF2F7 !important;
+  border-bottom: 1px solid #F1F3F5 !important;
 }
 
 /* Final role-wide override: the EHR theme normalizes table headings to
@@ -10514,7 +10572,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
    appointments column treatment for every user. */
 .tamam-ehr-app .appointment-table-head th,
 .ehr-chart-content .appointment-table-head th {
-  color: #5B6B7E !important;
+  color: #5D728B !important;
   font-family: var(--font-condensed) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
@@ -11191,7 +11249,7 @@ svg circle {
    Use across dashboards, KPI strips, patient info bits, etc. Severity
    variants drive alarm states on clinical data. */
 .data-tile {
-  background: var(--bg-tinted, #F2F5F3);
+  background: var(--bg-tinted, #F1F3F5);
   border: 1px solid var(--border-light);
   border-radius: 4px;
   padding: 12px 14px;
@@ -11413,7 +11471,7 @@ span:has(> svg:only-child) {
   z-index: 980;
   border: 0;
   padding: 0;
-  background: rgba(15, 23, 42, 0.28);
+  background: rgba(0, 29, 63, 0.28);
   cursor: default;
 }
 
@@ -11431,7 +11489,7 @@ span:has(> svg:only-child) {
   background: var(--bg-card-solid);
   border: 1px solid var(--border-medium);
   border-radius: 8px;
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 18px 48px rgba(0, 29, 63, 0.18);
 }
 
 .appointment-detail-sidebar__header {
@@ -11467,7 +11525,7 @@ span:has(> svg:only-child) {
 
 .appointment-detail-sidebar__back:hover,
 .appointment-detail-sidebar__close:hover {
-  background: var(--bg-hover, rgba(15, 23, 42, 0.06));
+  background: var(--bg-hover, rgba(0, 29, 63, 0.06));
   color: var(--text-primary);
 }
 
@@ -11673,7 +11731,7 @@ span:has(> svg:only-child) {
   overflow: hidden;
   padding: 0;
   border-radius: 6px;
-  box-shadow: -8px 0 24px rgba(15, 31, 29, 0.14);
+  box-shadow: -8px 0 24px rgba(8, 87, 58, 0.14);
   animation: none;
 }
 .appointment-detail-panel--clinical {
@@ -11681,7 +11739,7 @@ span:has(> svg:only-child) {
   max-height: min(680px, calc(100vh - 32px));
   border-radius: 10px;
   background: var(--bg-card-solid);
-  box-shadow: 0 24px 60px rgba(15, 31, 29, 0.28);
+  box-shadow: 0 24px 60px rgba(8, 87, 58, 0.28);
 }
 .appointment-detail-panel--clinical .appointment-detail-modal__header {
   padding: 18px 20px 16px;
@@ -12190,7 +12248,7 @@ span:has(> svg:only-child) {
   flex-direction: column;
   gap: 2px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
 }
 
 .appointment-detail-row dt {
@@ -12215,7 +12273,7 @@ span:has(> svg:only-child) {
 .appointment-detail-modal__insurance {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--ehr-border-soft, #E7EEF5);
+  border-top: 1px solid var(--ehr-border-soft, #ECEEF1);
 }
 
 .appointment-detail-modal__insurance-label {
@@ -12235,7 +12293,7 @@ span:has(> svg:only-child) {
   flex-shrink: 0;
   padding: 12px 16px;
   border-top: 1px solid var(--color-brand-500);
-  background: #F8FCFF;
+  background: #F2FCFF;
 }
 
 /* flex-basis 0 → the buttons always share one line (wrap can never trigger
@@ -12317,7 +12375,7 @@ span:has(> svg:only-child) {
   border-radius: 10px;
   border: 1px solid var(--border-medium);
   background: var(--bg-card-solid);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 12px 28px rgba(0, 29, 63, 0.18);
 }
 
 .appointment-detail-modal__menu--right {
@@ -12915,7 +12973,7 @@ span:has(> svg:only-child) {
 .rbc-tamam .rbc-time-slot { border-top: none; }
 /* Half-hour: dashed lighter line */
 .rbc-tamam .rbc-timeslot-group .rbc-time-slot:last-child {
-  border-top: 1px dashed rgba(203,213,225,0.40);
+  border-top: 1px dashed rgba(207, 214, 221,0.40);
 }
 .rbc-tamam .rbc-time-content { border-top: 1px solid var(--glass-border); }
 .rbc-tamam .rbc-day-slot + .rbc-day-slot { border-inline-start: 1px solid var(--glass-border); }
@@ -12942,7 +13000,7 @@ span:has(> svg:only-child) {
   /* The hairline is what keeps two cascaded blocks legible where they overlap:
      the one in front carries a rim of the page behind it, so its edge reads as
      an edge and not as a colour change inside one block. */
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.18), 0 0 0 1.5px var(--bg-card-solid);
+  box-shadow: 0 1px 2px rgba(0, 29, 63, 0.18), 0 0 0 1.5px var(--bg-card-solid);
   transition: filter 0.12s;
 }
 .rbc-tamam .rbc-day-slot .rbc-event:hover { filter: brightness(1.06); }
@@ -13127,7 +13185,7 @@ span:has(> svg:only-child) {
   box-shadow: none;
 }
 .rbc-tamam .rbc-month-view .rbc-event:hover {
-  background: var(--surface-hover, #f1f3f4);
+  background: var(--surface-hover, #f1f3f5);
 }
 
 .gcal-event {
@@ -13244,7 +13302,7 @@ span:has(> svg:only-child) {
   color: var(--text-secondary);
   cursor: pointer;
 }
-.gcal-daypop-close:hover { background: var(--surface-hover, #f1f3f4); }
+.gcal-daypop-close:hover { background: var(--surface-hover, #f1f3f5); }
 .gcal-daypop-close:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 
 /* Every appointment on the day. It scrolls only once a day carries more than
@@ -13268,7 +13326,7 @@ span:has(> svg:only-child) {
   text-align: start;
   cursor: pointer;
 }
-.gcal-daypop-row:hover { background: var(--surface-hover, #f1f3f4); }
+.gcal-daypop-row:hover { background: var(--surface-hover, #f1f3f5); }
 .gcal-daypop-row:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -1px; }
 
 /* ── Current-time indicator — red dot + line ── */
@@ -13567,7 +13625,7 @@ span:has(> svg:only-child) {
     gap: 4px;
     padding: 0 6px;
     border-color: var(--ehr-border);
-    background: #FCFEFB;
+    background: #FCFEF3;
     color: var(--ehr-text);
   }
 
@@ -13577,11 +13635,11 @@ span:has(> svg:only-child) {
   }
 
   .ehr-day-tabs .ehr-mobile-day-check.warning b {
-    color: #A8204A;
+    color: #A65300;
   }
 
   .ehr-day-tabs .ehr-mobile-day-check.danger b {
-    color: #B43921;
+    color: #B4180F;
   }
 
   .ehr-outstanding-card {
@@ -13678,7 +13736,7 @@ span:has(> svg:only-child) {
     grid-template-columns: minmax(0, 1.2fr) 34px 46px minmax(76px, 0.78fr) minmax(58px, 0.66fr);
     gap: 6px;
     padding: 8px 10px;
-    background: #f8fafc;
+    background: #fafbfc;
     color: var(--ehr-muted);
     font-size: 8.5px;
     font-weight: 800;
@@ -14171,7 +14229,7 @@ span:has(> svg:only-child) {
   gap: 4px;
   height: 26px;
   padding: 0 9px;
-  border: 1px solid var(--ehr-ledger-border, #DDEAF3);
+  border: 1px solid var(--ehr-ledger-border, #E2E6EB);
   border-radius: 4px;
   background: #fff;
   color: var(--ehr-blue-strong, var(--accent-primary));
@@ -14183,7 +14241,7 @@ span:has(> svg:only-child) {
 }
 
 .tebra-panel-action:hover {
-  background: var(--accent-light, #eaf4fb);
+  background: var(--accent-light, #e1f9ff);
   border-color: var(--ehr-blue-strong, var(--accent-primary));
 }
 
@@ -14483,7 +14541,7 @@ span:has(> svg:only-child) {
     inset: 0;
     z-index: 1205;
     border: 0;
-    background: rgba(15, 23, 42, 0.32);
+    background: rgba(0, 29, 63, 0.32);
     cursor: pointer;
   }
 
@@ -14519,7 +14577,7 @@ span:has(> svg:only-child) {
     justify-content: center;
     gap: 8px;
     padding: 0 12px;
-    border: 1px solid #D9E5EE;
+    border: 1px solid #E2E6EB;
     border-radius: 12px;
     background: var(--bg-card);
     color: var(--accent-primary);
@@ -14941,7 +14999,7 @@ span:has(> svg:only-child) {
 }
 
 .ehr-worklist-status.done {
-  background: #E9F0F2;
+  background: #ECEEF1;
   color: var(--ehr-muted);
 }
 
@@ -14950,7 +15008,7 @@ span:has(> svg:only-child) {
   border-radius: 18px;
   border-color: var(--ehr-border);
   background: #FFFFFF;
-  box-shadow: 0 1px 2px rgba(18, 52, 78, 0.04) !important;
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.04) !important;
 }
 
 .ehr-worklist-panel > div:first-child {
@@ -15041,7 +15099,7 @@ span:has(> svg:only-child) {
   border-top: 0;
   border-bottom-color: var(--ehr-border-soft);
   background: var(--ehr-head);
-  color: #8496A8;
+  color: #94A2B3;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -15304,9 +15362,9 @@ span:has(> svg:only-child) {
 .ehr-day-stats {
   padding: 18px;
   --viz-inpatient: #2191D0;
-  --viz-outpatient: #EB6834;
-  --viz-inpatient-soft: #B9D9EF;
-  --viz-outpatient-soft: #F8C6B2;
+  --viz-outpatient: #E67200;
+  --viz-inpatient-soft: #7CC7FF;
+  --viz-outpatient-soft: #FFD2A6;
   border: 1px solid var(--ehr-border);
   border-radius: var(--card-radius);
   background: var(--ehr-panel);
@@ -15356,7 +15414,7 @@ span:has(> svg:only-child) {
 }
 
 .ehr-day-stats-nav button:hover {
-  background: var(--ehr-hover, rgba(25, 136, 202, 0.08));
+  background: var(--ehr-hover, rgba(33, 145, 208, 0.08));
   color: var(--ehr-text);
 }
 
@@ -15477,12 +15535,12 @@ span:has(> svg:only-child) {
 }
 
 .ehr-week-seg-out {
-  background: #C2410C;
+  background: #CC6600;
   border-radius: 2px 2px 0 0;
 }
 
 .ehr-week-seg-in {
-  background: #144972;
+  background: #015697;
   border-radius: 2px 2px 0 0;
 }
 
@@ -15508,7 +15566,7 @@ span:has(> svg:only-child) {
 
 /* ── Shift handoff popup (nurse) ──
    Same flat design language as the dashboards: white 12px-radius sheet, 56px
-   header with #E7EEF5 divider, bordered 10px section cards, tinted badges,
+   header with #ECEEF1 divider, bordered 10px section cards, tinted badges,
    pill buttons. */
 .ehr-handoff-modal {
   display: flex;
@@ -15528,7 +15586,7 @@ span:has(> svg:only-child) {
   gap: 12px;
   min-height: 56px;
   padding: 10px 16px;
-  border-bottom: 1px solid #E7EEF5;
+  border-bottom: 1px solid #ECEEF1;
 }
 
 .ehr-handoff-head-title {
@@ -15581,7 +15639,7 @@ span:has(> svg:only-child) {
 .ehr-handoff-close:hover {
   border-color: var(--ehr-border);
   background: rgba(33, 145, 208, 0.07);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-handoff-body {
@@ -15647,7 +15705,7 @@ span:has(> svg:only-child) {
   gap: 10px;
   min-height: 44px;
   padding: 0 12px;
-  border-bottom: 1px solid #E7EEF5;
+  border-bottom: 1px solid #ECEEF1;
 }
 
 .ehr-handoff-section-head > div {
@@ -15685,20 +15743,20 @@ span:has(> svg:only-child) {
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: #EEF4F6;
-  color: #3D5967;
+  background: #F1F3F5;
+  color: #546A85;
   font-size: 12px;
   font-weight: 700;
 }
 
 .ehr-handoff-badge[data-tone='red'] {
-  background: #FFF0EF;
-  color: #C24135;
+  background: #FCEEED;
+  color: #E03127;
 }
 
 .ehr-handoff-badge[data-tone='green'] {
-  background: #E8F7F1;
-  color: #167755;
+  background: #ECF6F3;
+  color: #0B8557;
 }
 
 .ehr-handoff-card {
@@ -15727,7 +15785,7 @@ span:has(> svg:only-child) {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   font-size: 13.5px;
   font-weight: 700;
   text-align: start;
@@ -15742,8 +15800,8 @@ button.ehr-handoff-name:hover {
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #FFF0EF;
-  color: #C24135;
+  background: #FCEEED;
+  color: #E03127;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
@@ -15762,7 +15820,7 @@ button.ehr-handoff-name:hover {
 }
 
 .ehr-handoff-clear:hover {
-  color: #C24135;
+  color: #E03127;
 }
 
 .ehr-handoff-grid {
@@ -15860,7 +15918,7 @@ textarea.ehr-handoff-input {
 
 .ehr-handoff-btn:hover {
   border-color: var(--ehr-blue);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-handoff-btn.primary {
@@ -15870,8 +15928,8 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-handoff-btn.primary:hover {
-  border-color: var(--tb-blue-800, #012C4E);
-  background: var(--tb-blue-800, #012C4E);
+  border-color: var(--tb-blue-800, #001D3F);
+  background: var(--tb-blue-800, #001D3F);
   color: #fff;
 }
 
@@ -15914,7 +15972,7 @@ textarea.ehr-handoff-input {
   justify-content: center;
   gap: 8px;
   padding: 6px 0;
-  color: #167755;
+  color: #0B8557;
   font-size: 13px;
   font-weight: 700;
 }
@@ -15955,7 +16013,7 @@ textarea.ehr-handoff-input {
 }
 
 /* The centre panel keeps its own border + white surface (design): the daybar
-   and worklist live INSIDE it, separated only by the #E7EEF5 divider. */
+   and worklist live INSIDE it, separated only by the #ECEEF1 divider. */
 .ehr-appointment-list {
   overflow: hidden auto;
 }
@@ -16017,7 +16075,7 @@ textarea.ehr-handoff-input {
 }
 
 /* The centre panel is a real bordered card in the design (12px radius, white),
-   with the 56px daybar + its #E7EEF5 divider inside it — not a transparent
+   with the 56px daybar + its #ECEEF1 divider inside it — not a transparent
    wrapper with a floating title row. */
 .ehr-center-panel {
   display: flex;
@@ -16443,7 +16501,7 @@ textarea.ehr-handoff-input {
   min-height: 48px;
   padding: 0;
   border: 0;
-  border-bottom: 1px solid #E7EEF5;
+  border-bottom: 1px solid #ECEEF1;
   border-radius: 0;
   background: transparent;
   color: var(--ehr-text);
@@ -16462,7 +16520,7 @@ textarea.ehr-handoff-input {
    about an earlier expanded pill; this override reintroduced it.) */
 .ehr-right-rail .ehr-outstanding-chips button:hover,
 .ehr-right-rail .ehr-side-card > button:not(.ehr-side-card-icon-row):hover {
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 /* Selected changes colour and nothing else — same rule as hover above.
@@ -16476,7 +16534,7 @@ textarea.ehr-handoff-input {
      rule still fills the selected chip with --ehr-blue-light, and this rule
      only wins for the properties it names. */
   background: transparent;
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 /* Clicking a row opens a panel; it must not be left wearing a focus ring,
@@ -16543,7 +16601,7 @@ textarea.ehr-handoff-input {
 .ehr-chart-content .data-table tbody td,
 .ehr-chart-content table:not(.omrs-table) tbody td {
   border-bottom: 0 !important;
-  background: var(--overlay-subtle, #F2F6FB);
+  background: var(--overlay-subtle, #F5F7F8);
   padding: 11px 14px !important;
 }
 
@@ -16910,7 +16968,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 16px;
   padding: 18px;
-  box-shadow: 0 18px 40px rgba(15, 31, 29, 0.25);
+  box-shadow: 0 18px 40px rgba(8, 87, 58, 0.25);
 }
 
 .ehr-find-patient h3 {
@@ -17087,7 +17145,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
   background: #fff;
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -17137,23 +17195,23 @@ textarea.ehr-handoff-input {
 /* Acuity avatars are soft semantic tints (not solid triage colors), matching
    the priority pills — RED/YELLOW/GREEN from triage, neutral elsewhere. */
 .ehr-patient-icon[data-acuity='RED'] {
-  background: #FFF0EF;
-  color: #C24135;
+  background: #FCEEED;
+  color: #E03127;
 }
 
 .ehr-patient-icon[data-acuity='YELLOW'] {
-  background: #FFF4E9;
-  color: #B55E13;
+  background: #FFF5EB;
+  color: #B35900;
 }
 
 .ehr-patient-icon[data-acuity='GREEN'] {
-  background: #E8F7F1;
-  color: #167755;
+  background: #ECF6F3;
+  color: #0B8557;
 }
 
 .ehr-patient-icon[data-acuity='neutral'] {
-  background: #EEF4F6;
-  color: #3D5967;
+  background: #F1F3F5;
+  color: #546A85;
 }
 
 .ehr-queue-patient-text {
@@ -17174,7 +17232,7 @@ textarea.ehr-handoff-input {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   font-size: 13.5px;
   font-weight: 700;
   line-height: 1.25;
@@ -17200,18 +17258,18 @@ textarea.ehr-handoff-input {
 /* Priority pill tints/text are the semantic danger/warning/success tokens
    (design-facts), replacing the older ward-soft colors. */
 .ehr-queue-pill[data-tone='red'] {
-  background: #FFF0EF;
-  color: #C24135;
+  background: #FCEEED;
+  color: #E03127;
 }
 
 .ehr-queue-pill[data-tone='yellow'] {
-  background: #FFF4E9;
-  color: #B55E13;
+  background: #FFF5EB;
+  color: #B35900;
 }
 
 .ehr-queue-pill[data-tone='green'] {
-  background: #E8F7F1;
-  color: #167755;
+  background: #ECF6F3;
+  color: #0B8557;
 }
 
 /* Neutral status pill — used by EhrCareDashboard rows whose `priority` isn't
@@ -17219,7 +17277,7 @@ textarea.ehr-handoff-input {
    label instead of the clinician acuity pill. */
 .ehr-queue-pill[data-tone='neutral'] {
   background: var(--ehr-table-head);
-  color: #315F6A;
+  color: #015697;
 }
 
 .ehr-queue-status {
@@ -17258,7 +17316,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-queue-wait small.is-soon {
-  color: #B55E13;
+  color: #B35900;
 }
 
 /* Over-target waits in the queue's Time column. The row used to spell it out
@@ -17267,7 +17325,7 @@ textarea.ehr-handoff-input {
    `.ehr-appointment-countdown` and `.ehr-queue-wait small`, neither of which
    matches this span, so it was rendering muted grey under a red time. */
 .ehr-appointment-time span.is-soon {
-  color: #C24135;
+  color: #E03127;
 }
 
 /* Past due, everywhere a time is listed — the station shells
@@ -17279,31 +17337,31 @@ textarea.ehr-handoff-input {
    The clock time above it turns with the sub-line: the row is late, not the
    half of it that happens to carry the word "ago". */
 .ehr-appointment-time span.is-past {
-  color: #C24135;
+  color: #E03127;
   font-weight: 700;
 }
 
 .ehr-appointment-time:has(span.is-past) strong {
-  color: #C24135;
+  color: #E03127;
 }
 
 .ehr-queue-wait small.is-past {
-  color: #C24135;
+  color: #E03127;
   font-weight: 700;
 }
 
 .ehr-queue-wait:has(small.is-past) strong {
-  color: #C24135;
+  color: #E03127;
 }
 
 .ehr-queue-wait-over {
-  color: #C24135;
+  color: #E03127;
   font-weight: 700;
 }
 
 .ehr-queue-wait.ehr-queue-wait-over strong,
 .ehr-queue-wait.ehr-queue-wait-over small {
-  color: #C24135;
+  color: #E03127;
 }
 
 .ehr-queue-wait-over small {
@@ -17335,7 +17393,7 @@ textarea.ehr-handoff-input {
 .ehr-queue-action:focus-visible {
   border-color: var(--ehr-border);
   background: rgba(33, 145, 208, 0.07);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   outline: none;
 }
 
@@ -17461,8 +17519,8 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-daybar .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
-  background: #EFF8FD;
-  color: var(--tb-blue-800, #012C4E);
+  background: #F2FCFF;
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-daybar .ehr-day-tabs button.active:not(.ehr-mobile-day-check) {
@@ -17929,7 +17987,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-visit-pop-vital b {
-  color: var(--triage-red, #c0392b);
+  color: var(--triage-red, #d92b20);
   font-size: 12px;
 }
 
@@ -17937,7 +17995,7 @@ textarea.ehr-handoff-input {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: var(--triage-red, #c0392b);
+  background: var(--triage-red, #d92b20);
 }
 
 .ehr-visit-pop-stamp {
@@ -18212,13 +18270,13 @@ textarea.ehr-handoff-input {
      values. */
   padding: 0 4px 6px;
   background: #fff;
-  color: #5B6B7E;
+  color: #5D728B;
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 0 rgba(0, 29, 63, 0.06);
 }
 
 
@@ -18501,8 +18559,8 @@ textarea.ehr-handoff-input {
 }
 
 .appt-edit-header-actions .btn-primary:hover {
-  border-color: var(--tb-blue-800, #012C4E);
-  background: var(--tb-blue-800, #012C4E);
+  border-color: var(--tb-blue-800, #001D3F);
+  background: var(--tb-blue-800, #001D3F);
 }
 
 .appt-edit-header-actions .btn-secondary {
@@ -18515,7 +18573,7 @@ textarea.ehr-handoff-input {
 .appt-edit-header-actions .btn-secondary:focus-visible {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
-  background: var(--accent-light, #eff6ff);
+  background: var(--accent-light, #e1f9ff);
 }
 
 .nurse-inline-ward-row {
@@ -18593,7 +18651,7 @@ textarea.ehr-handoff-input {
 }
 
 /* Straight from the acuity tokens, so this cue and the same words rendered
-   inline elsewhere cannot drift apart. YELLOW was a loose #B45309 here. */
+   inline elsewhere cannot drift apart. YELLOW was a loose #B35900 here. */
 .appointment-card-status[data-priority='RED'] > small {
   color: var(--acuity-red);
 }
@@ -19312,7 +19370,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-header-left > svg {
-  color: #B7C6D2;
+  color: #B3BDC9;
 }
 
 /* Back out of a panel opened from inside another panel. Rendered only when
@@ -19374,11 +19432,11 @@ textarea.ehr-handoff-input {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: #167755;
+  background: #0B8557;
 }
 
 .ehr-set-saved.is-dirty i {
-  background: #B55E13;
+  background: #B35900;
 }
 
 .ehr-set-btn {
@@ -19404,7 +19462,7 @@ textarea.ehr-handoff-input {
 
 .ehr-set-btn:hover {
   border-color: var(--ehr-blue);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 /* Brand-aware again. These were pinned to the platform blue because a pale
@@ -19535,7 +19593,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   background: #fff;
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
 .ehr-set-stat-card span {
@@ -19665,7 +19723,7 @@ textarea.ehr-handoff-input {
   gap: 7px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #F0F5F9;
+  border-top: 1px solid #F5F7F8;
 }
 
 .ehr-set-identity-rows > div {
@@ -19701,7 +19759,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 13px;
   padding: 16px 18px;
-  border-bottom: 1px solid #E1EAF2;
+  border-bottom: 1px solid #E2E6EB;
   background:
     linear-gradient(90deg, rgba(33, 145, 208, 0.08), rgba(255, 255, 255, 0)),
     #fff;
@@ -19818,7 +19876,7 @@ textarea.ehr-handoff-input {
   align-items: baseline;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid #F0F5F9;
+  border-bottom: 1px solid #F5F7F8;
 }
 
 .ehr-set-account-rows > div:last-child {
@@ -19850,7 +19908,7 @@ textarea.ehr-handoff-input {
   padding: 6px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
 .ehr-set-nav button {
@@ -19863,7 +19921,7 @@ textarea.ehr-handoff-input {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #334155;
+  color: #2E4969;
   font-size: 13px;
   font-weight: 600;
   text-align: start;
@@ -19871,12 +19929,12 @@ textarea.ehr-handoff-input {
 
 .ehr-set-nav button:hover {
   background: rgba(33, 145, 208, 0.07);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-set-nav button.active {
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   font-weight: 800;
 }
 
@@ -19941,7 +19999,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   background: #fff;
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
 .ehr-set-scope b {
@@ -19967,7 +20025,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   background: #fff;
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
 .ehr-set-chips > span {
@@ -19991,7 +20049,7 @@ textarea.ehr-handoff-input {
   padding: 3px 10px;
   border-radius: 999px;
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   font-size: 11.5px;
   font-weight: 700;
   white-space: nowrap;
@@ -20019,7 +20077,7 @@ textarea.ehr-handoff-input {
   text-align: start;
   color: var(--ehr-text);
   cursor: pointer;
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
 .ehr-set-shortcuts button:hover {
@@ -20035,7 +20093,7 @@ textarea.ehr-handoff-input {
   place-items: center;
   border-radius: 9px;
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-set-shortcuts button svg {
@@ -20083,7 +20141,7 @@ textarea.ehr-handoff-input {
   border-radius: 12px;
   overflow: hidden;
   scroll-margin-top: 4px;
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
 .ehr-set-section-head {
@@ -20091,7 +20149,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 12px;
   padding: 16px 18px;
-  border-bottom: 1px solid #E1EAF2;
+  border-bottom: 1px solid #E2E6EB;
   background:
     linear-gradient(90deg, rgba(33, 145, 208, 0.08), rgba(255, 255, 255, 0)),
     #fff;
@@ -20105,7 +20163,7 @@ textarea.ehr-handoff-input {
   place-items: center;
   border-radius: 9px;
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-set-section-head > span svg {
@@ -20135,7 +20193,7 @@ textarea.ehr-handoff-input {
   gap: 16px;
   align-items: center;
   padding: 13px 18px;
-  border-bottom: 1px solid #F2F6FA;
+  border-bottom: 1px solid #F5F7F8;
 }
 
 .ehr-set-row:last-child {
@@ -20143,7 +20201,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-row:hover {
-  background: #F8FBFD;
+  background: #FAFBFC;
 }
 
 .ehr-set-row-label b {
@@ -20183,7 +20241,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-toggle.is-on b {
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-set-toggle > span {
@@ -20194,7 +20252,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   padding: 2px;
   border-radius: 999px;
-  background: #D8E3EC;
+  background: #D9DEE4;
   transition: background 120ms ease;
 }
 
@@ -20207,7 +20265,7 @@ textarea.ehr-handoff-input {
   height: 18px;
   border-radius: 999px;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(16, 42, 67, 0.25);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.25);
   margin-inline-start: 0;
   transition: margin-left 120ms ease;
 }
@@ -20236,7 +20294,7 @@ textarea.ehr-handoff-input {
 
 .ehr-set-select:hover {
   border-color: var(--ehr-blue);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .ehr-set-input,
@@ -20266,8 +20324,8 @@ textarea.ehr-handoff-input {
   gap: 6px;
   padding: 5px 11px;
   border-radius: 8px;
-  background: #F1F5F8;
-  color: #3D5967;
+  background: #F1F3F5;
+  color: #546A85;
   font-size: 11.5px;
   font-weight: 700;
   white-space: nowrap;
@@ -20289,7 +20347,7 @@ textarea.ehr-handoff-input {
 
 .ehr-set-nav-group + .ehr-set-nav-group {
   margin-top: 4px;
-  border-top: 1px solid #F0F5F9;
+  border-top: 1px solid #F5F7F8;
 }
 
 .ehr-set-nav-group-title {
@@ -20319,8 +20377,8 @@ textarea.ehr-handoff-input {
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: #FFF4E9;
-  color: #B55E13;
+  background: #FFF5EB;
+  color: #B35900;
   font-size: 11px;
   font-weight: 800;
 }
@@ -20344,8 +20402,8 @@ textarea.ehr-handoff-input {
 .ehr-set-users-head {
   background:
     linear-gradient(90deg, rgba(33, 145, 208, 0.08), rgba(255, 255, 255, 0)),
-    #F8FBFD;
-  border-bottom: 1px solid #E1EAF2;
+    #FAFBFC;
+  border-bottom: 1px solid #E2E6EB;
 }
 
 .ehr-set-users-head span {
@@ -20363,12 +20421,12 @@ textarea.ehr-handoff-input {
 .ehr-set-user-row {
   min-height: 52px;
   padding: 8px 18px;
-  border-bottom: 1px solid #EDF2F7;
+  border-bottom: 1px solid #F1F3F5;
   background: #fff;
 }
 
 .ehr-set-user-row:hover {
-  background: #F8FBFD;
+  background: #FAFBFC;
 }
 
 .ehr-set-user-row:last-child {
@@ -20435,8 +20493,8 @@ textarea.ehr-handoff-input {
   display: inline-flex;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #EEF4F6;
-  color: #3D5967;
+  background: #F1F3F5;
+  color: #546A85;
   font-size: 12px;
   font-weight: 700;
   font-style: normal;
@@ -20444,13 +20502,13 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-user-status.is-active {
-  background: #E8F7F1;
-  color: #167755;
+  background: #ECF6F3;
+  color: #0B8557;
 }
 
 .ehr-set-user-status.is-off {
-  background: #FFF0EF;
-  color: #C24135;
+  background: #FCEEED;
+  color: #E03127;
 }
 
 .ehr-set-user-actions {
@@ -20464,7 +20522,7 @@ textarea.ehr-handoff-input {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 1px;
-  background: #E7EEF5;
+  background: #ECEEF1;
 }
 
 .ehr-set-integrations > div {
@@ -20477,17 +20535,17 @@ textarea.ehr-handoff-input {
   display: inline-flex;
   padding: 2px 9px;
   border-radius: 999px;
-  background: #EEF4F6;
-  color: #3D5967;
+  background: #F1F3F5;
+  color: #546A85;
   font-size: 11px;
   font-weight: 700;
   font-style: normal;
   white-space: nowrap;
 }
 
-.ehr-set-int-pill[data-tone='green'] { background: #E8F7F1; color: #167755; }
-.ehr-set-int-pill[data-tone='yellow'] { background: #FFF4E9; color: #B55E13; }
-.ehr-set-int-pill[data-tone='red'] { background: #FFF0EF; color: #C24135; }
+.ehr-set-int-pill[data-tone='green'] { background: #ECF6F3; color: #0B8557; }
+.ehr-set-int-pill[data-tone='yellow'] { background: #FFF5EB; color: #B35900; }
+.ehr-set-int-pill[data-tone='red'] { background: #FCEEED; color: #E03127; }
 
 .ehr-set-integrations b {
   display: block;
@@ -20507,19 +20565,19 @@ textarea.ehr-handoff-input {
 
 /* Restricted actions (danger zone). */
 .ehr-set-danger {
-  border-color: #F4B4AC;
+  border-color: #F9DDDB;
 }
 
 .ehr-set-danger .ehr-set-section-head {
-  border-bottom-color: #FBE3E0;
+  border-bottom-color: #FAE6E4;
   background:
-    linear-gradient(90deg, rgba(194, 65, 53, 0.08), rgba(255, 255, 255, 0)),
+    linear-gradient(90deg, rgba(224, 49, 39, 0.08), rgba(255, 255, 255, 0)),
     #fff;
 }
 
 .ehr-set-danger .ehr-set-section-head > span {
-  background: #FFF0EF;
-  color: #C24135;
+  background: #FCEEED;
+  color: #E03127;
 }
 
 .ehr-set-danger-btn {
@@ -20528,31 +20586,31 @@ textarea.ehr-handoff-input {
   align-items: center;
   height: 30px;
   padding: 0 13px;
-  border: 1px solid #F4B4AC;
+  border: 1px solid #F9DDDB;
   border-radius: 999px;
-  background: #FFF0EF;
-  color: #C24135;
+  background: #FCEEED;
+  color: #E03127;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .ehr-set-danger-btn:hover {
-  border-color: #C24135;
-  background: #C24135;
+  border-color: #E03127;
+  background: #E03127;
   color: #fff;
 }
 
 /* Embedded full-page editors (facility settings) inside a settings panel. */
 .ehr-set-embed {
   padding: 12px;
-  background: #F8FBFD;
+  background: #FAFBFC;
 }
 
 /* Organization admin settings: policy hub summaries, not duplicate editors. */
 .org-set-wrapper {
   padding: 0;
-  background: #F8FBFD;
+  background: #FAFBFC;
 }
 
 .org-set-panel {
@@ -20567,7 +20625,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 12px;
   padding: 16px 18px;
-  border-bottom: 1px solid #E1EAF2;
+  border-bottom: 1px solid #E2E6EB;
   background:
     linear-gradient(90deg, rgba(33, 145, 208, 0.08), rgba(255, 255, 255, 0)),
     #fff;
@@ -20582,7 +20640,7 @@ textarea.ehr-handoff-input {
   height: 34px;
   border-radius: 9px;
   background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .org-set-head svg,
@@ -20623,7 +20681,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
   background: #fff;
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
@@ -20645,10 +20703,10 @@ textarea.ehr-handoff-input {
   gap: 9px;
   margin: 0 18px;
   padding: 10px 12px;
-  border: 1px solid #D8E8F4;
+  border: 1px solid #E2E6EB;
   border-radius: 10px;
-  background: #F6FBFE;
-  color: #3D5967;
+  background: #F2FCFF;
+  color: #546A85;
 }
 
 .org-set-readonly svg {
@@ -20656,7 +20714,7 @@ textarea.ehr-handoff-input {
   width: 15px;
   height: 15px;
   margin-top: 1px;
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .org-set-readonly p,
@@ -20684,7 +20742,7 @@ textarea.ehr-handoff-input {
   border-radius: 12px;
   background: #fff;
   overflow: hidden;
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
 .org-set-card-head {
@@ -20692,7 +20750,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border-bottom: 1px solid #F0F5F9;
+  border-bottom: 1px solid #F5F7F8;
 }
 
 .org-set-card-head h4 {
@@ -20720,7 +20778,7 @@ textarea.ehr-handoff-input {
      and a text row measure the same. */
   min-height: 38px;
   padding: 4px 0;
-  border-bottom: 1px solid #F2F6FA;
+  border-bottom: 1px solid #F5F7F8;
 }
 
 .org-set-info-row:last-child {
@@ -20820,7 +20878,7 @@ textarea.ehr-handoff-input {
   display: block;
   height: 7px;
   border-radius: 999px;
-  background: #E7EEF5;
+  background: #ECEEF1;
   overflow: hidden;
 }
 
@@ -20828,15 +20886,15 @@ textarea.ehr-handoff-input {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #167755;
+  background: #0B8557;
 }
 
 .org-set-meter[data-tone='warn'] > i em {
-  background: #B55E13;
+  background: #B35900;
 }
 
 .org-set-meter[data-tone='danger'] > i em {
-  background: #C24135;
+  background: #E03127;
 }
 
 .org-set-control-row {
@@ -20904,11 +20962,11 @@ textarea.ehr-handoff-input {
   width: 18px;
   height: 18px;
   margin-top: 1px;
-  color: #8CA0AE;
+  color: #94A2B3;
 }
 
 .org-set-feature[data-enabled='true'] > svg {
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .org-set-feature b {
@@ -20949,14 +21007,14 @@ textarea.ehr-handoff-input {
   gap: 7px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: #F1F5F8;
-  color: #3D5967;
+  background: #F1F3F5;
+  color: #546A85;
   font-size: 11.5px;
   font-weight: 750;
 }
 
 .org-set-chip-row b {
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   font-variant-numeric: tabular-nums;
 }
 
@@ -20991,7 +21049,7 @@ textarea.ehr-handoff-input {
 .settings-embedded-page {
   min-height: 0;
   overflow: hidden;
-  background: #F8FBFD;
+  background: #FAFBFC;
 }
 
 .settings-embedded-page > .flex-1,
@@ -21038,7 +21096,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   background: #fff;
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
 .settings-tab-strip button {
@@ -21057,12 +21115,12 @@ textarea.ehr-handoff-input {
 
 .settings-tab-strip button:hover {
   background: rgba(33, 145, 208, 0.06);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
 }
 
 .settings-tab-strip button.active {
   background: rgba(33, 145, 208, 0.11);
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   font-weight: 850;
 }
 
@@ -21120,7 +21178,7 @@ textarea.ehr-handoff-input {
   background: #fff;
   color: inherit;
   text-decoration: none;
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
   font: inherit;
   text-align: start;
   cursor: pointer;
@@ -21132,7 +21190,7 @@ textarea.ehr-handoff-input {
 }
 
 .fs-facility-tile strong {
-  color: var(--tb-blue-800, #012C4E);
+  color: var(--tb-blue-800, #001D3F);
   font-size: 13px;
   font-weight: 800;
 }
@@ -21152,7 +21210,7 @@ textarea.ehr-handoff-input {
 .settings-embedded-page .fs-section,
 .settings-embedded-page .org-set-wrapper,
 .settings-embedded-page .ehr-set-section {
-  box-shadow: 0 1px 0 rgba(16, 42, 67, 0.03);
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
 /* ── In-grid insights strip (analytics under a dashboard's worklist) ──
@@ -21200,9 +21258,9 @@ textarea.ehr-handoff-input {
 /* Amber tone for care statuses that need attention (no appointment-status
    equivalent existed). */
 .appointment-status-pill.status-attention {
-  border-color: #F5C38E;
-  background: #FFF4E9;
-  color: #B55E13;
+  border-color: #FFD2A6;
+  background: #FFF5EB;
+  color: #B35900;
 }
 
 /* Care-dashboard patient lists = the appointments table exactly: same white
@@ -21310,7 +21368,7 @@ table.patient-data-table.patient-data-table {
   top: 0;
   z-index: 4;
   background: #fff;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 0 rgba(0, 29, 63, 0.06);
 }
 
 /* Metrics below are deliberately identical to `.appointment-card-*` so the
@@ -21543,7 +21601,7 @@ table.patient-data-table.patient-data-table {
   top: 0;
   z-index: 4;
   background: #fff;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 0 rgba(0, 29, 63, 0.06);
 }
 
 .tamam-ehr-app .ehr-list-scroll .data-table thead th,
@@ -21555,7 +21613,7 @@ table.patient-data-table.patient-data-table {
   border: 0 !important;
   border-radius: 0 !important;
   background: #fff !important;
-  color: #5B6B7E !important;
+  color: #5D728B !important;
   font-family: var(--font-condensed) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
@@ -21636,7 +21694,7 @@ table.patient-data-table.patient-data-table {
    without relying on colour alone carrying the meaning. */
 .ehr-list-scroll .data-table tbody tr.is-danger td,
 .ehr-list-scroll .data-table tbody tr.is-danger:hover td {
-  background: rgba(229, 46, 66, 0.08);
+  background: rgba(224, 49, 39, 0.08);
 }
 
 .ehr-list-scroll .data-table tbody tr.is-danger td:first-child {
@@ -21645,7 +21703,7 @@ table.patient-data-table.patient-data-table {
 
 .ehr-list-scroll .data-table tbody tr.is-warning td,
 .ehr-list-scroll .data-table tbody tr.is-warning:hover td {
-  background: rgba(217, 119, 6, 0.08);
+  background: rgba(230, 114, 0, 0.08);
 }
 
 .ehr-list-scroll .data-table tbody tr.is-warning td:first-child {
@@ -21768,7 +21826,7 @@ table.patient-data-table.patient-data-table {
   border: 1px solid var(--border-light);
   border-radius: 8px;
   background: var(--bg-card-solid);
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
 
@@ -21847,9 +21905,9 @@ table.patient-data-table.patient-data-table {
   white-space: nowrap;
 }
 
-.sa-pill[data-tone='ok'] { border-color: rgba(21, 121, 92, 0.40); background: rgba(21, 121, 92, 0.10); color: var(--color-success-800); }
-.sa-pill[data-tone='warn'] { border-color: rgba(156, 94, 22, 0.42); background: rgba(156, 94, 22, 0.10); color: var(--color-warning-700); }
-.sa-pill[data-tone='danger'] { border-color: rgba(139, 46, 36, 0.42); background: rgba(139, 46, 36, 0.08); color: var(--color-danger-800); }
+.sa-pill[data-tone='ok'] { border-color: rgba(10, 110, 74, 0.40); background: rgba(10, 110, 74, 0.10); color: var(--color-success-800); }
+.sa-pill[data-tone='warn'] { border-color: rgba(179, 89, 0, 0.42); background: rgba(179, 89, 0, 0.10); color: var(--color-warning-700); }
+.sa-pill[data-tone='danger'] { border-color: rgba(158, 27, 20, 0.42); background: rgba(158, 27, 20, 0.08); color: var(--color-danger-800); }
 .sa-pill[data-tone='info'] { border-color: var(--brand-400); background: var(--tb-blue-50); color: var(--brand-800); }
 
 /* Dense tables — design chrome: condensed heads, hairline row rules. */
@@ -21878,7 +21936,7 @@ table.patient-data-table.patient-data-table {
 
 .sa-table td {
   padding: 9px 14px;
-  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
   color: var(--text-secondary);
   font-size: 12.5px;
   font-weight: 600;
@@ -22085,7 +22143,7 @@ table.patient-data-table.patient-data-table {
   letter-spacing: -0.015em;
   color: var(--text-primary);
 }
-.gov-page-head p { margin: 2px 0 0; font-size: 12px; font-weight: 700; color: #5B6B7E; }
+.gov-page-head p { margin: 2px 0 0; font-size: 12px; font-weight: 700; color: #5D728B; }
 .gov-page-head .btn {
   min-height: 36px;
   gap: 7px;
@@ -22094,8 +22152,8 @@ table.patient-data-table.patient-data-table {
 }
 .gov-page-head .btn-secondary { background: #FFFFFF; border-color: var(--ehr-border); }
 /* The design's one crimson button: alerts are the ministry's call to action. */
-.gov-page-head .btn-alerts { background: #8B2E24; border-color: #8B2E24; color: #ffffff; }
-.gov-page-head .btn-alerts:hover { background: #77271E; border-color: #77271E; }
+.gov-page-head .btn-alerts { background: #9E1B14; border-color: #9E1B14; color: #ffffff; }
+.gov-page-head .btn-alerts:hover { background: #7E150F; border-color: #7E150F; }
 
 .gov-grid {
   display: grid;
@@ -22151,7 +22209,7 @@ table.patient-data-table.patient-data-table {
   background: #FFFFFF;
   border: 1px solid var(--ehr-border);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
 .gov-panel-head {
@@ -22172,7 +22230,7 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   color: var(--text-primary);
 }
-.gov-panel-head .gov-meta { font-size: 11px; font-weight: 700; color: #5B6B7E; }
+.gov-panel-head .gov-meta { font-size: 11px; font-weight: 700; color: #5D728B; }
 
 /* Map layer pills sit in their own row under the head, not in it. */
 .gov-map-layers {
@@ -22186,8 +22244,8 @@ table.patient-data-table.patient-data-table {
   padding: 4px 11px;
   border: 0;
   border-radius: 999px;
-  background: #EDF2F7;
-  color: #3D5166;
+  background: #F1F3F5;
+  color: #3C5574;
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
@@ -22195,7 +22253,7 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   cursor: pointer;
 }
-.gov-map-layers button.is-active { background: #144972; color: #ffffff; }
+.gov-map-layers button.is-active { background: #015697; color: #ffffff; }
 
 .gov-map-body {
   display: flex;
@@ -22211,9 +22269,9 @@ table.patient-data-table.patient-data-table {
   gap: 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #5B6B7E;
+  color: #5D728B;
 }
-.gov-map-legend { padding: 10px 12px; background: #F7FAFC; border-radius: 8px; }
+.gov-map-legend { padding: 10px 12px; background: #F5F7F8; border-radius: 8px; }
 .gov-map-legend .gov-legend-title {
   margin: 0 0 6px;
   font-family: var(--font-condensed);
@@ -22239,7 +22297,7 @@ table.patient-data-table.patient-data-table {
   background: transparent;
   border: 0;
   text-align: start;
-  color: #144972;
+  color: #015697;
   font-family: var(--font-condensed);
   font-size: 11.5px;
   font-weight: 700;
@@ -22249,7 +22307,7 @@ table.patient-data-table.patient-data-table {
 }
 .gov-map-hint {
   padding: 10px 12px;
-  border: 1px dashed #D9E4EE;
+  border: 1px dashed #D9DEE4;
   border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
@@ -22287,7 +22345,7 @@ table.patient-data-table.patient-data-table {
   gap: 8px;
   font-size: 12px;
 }
-.gov-donut-legend span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; color: #5B6B7E; }
+.gov-donut-legend span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; color: #5D728B; }
 .gov-donut-legend i { width: 8px; height: 8px; flex: none; border-radius: 50%; }
 .gov-donut-legend b {
   font-family: var(--font-condensed);
@@ -22306,7 +22364,7 @@ table.patient-data-table.patient-data-table {
   gap: 8px;
 }
 .gov-rank-row .gov-rank-line > span { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
-.gov-rank-row .gov-rank-line > span small { font-size: 11px; font-weight: 700; color: #5B6B7E; }
+.gov-rank-row .gov-rank-line > span small { font-size: 11px; font-weight: 700; color: #5D728B; }
 .gov-rank-row .gov-rank-line > b {
   font-family: var(--font-condensed);
   font-size: 13px;
@@ -22317,12 +22375,12 @@ table.patient-data-table.patient-data-table {
 .gov-rank-row .gov-rank-track {
   height: 6px;
   margin-top: 4px;
-  background: #EDF2F7;
+  background: #F1F3F5;
   border-radius: 3px;
   overflow: hidden;
 }
 .gov-rank-row .gov-rank-track > div { height: 100%; }
-.gov-rank-foot { margin: 0; padding: 0 14px 12px; font-size: 10.5px; font-weight: 700; color: #5B6B7E; }
+.gov-rank-foot { margin: 0; padding: 0 14px 12px; font-size: 10.5px; font-weight: 700; color: #5D728B; }
 
 /* Chart bodies breathe 14px like every other panel body. */
 .gov-chart-body { padding: 14px; }
@@ -22883,7 +22941,7 @@ table.patient-data-table.patient-data-table {
   border: 1px solid var(--ehr-border);
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: var(--card-shadow, 0 1px 2px rgba(16, 42, 67, 0.05));
+  box-shadow: var(--card-shadow, 0 1px 2px rgba(17, 48, 85, 0.05));
   margin: 4px 0 10px;
 }
 
@@ -22895,7 +22953,7 @@ table.patient-data-table.patient-data-table {
      expanded row hands that job to the group so the block has one outline
      instead of two nested ones. */
   border: 0 !important;
-  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5) !important;
+  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
 }
@@ -22974,7 +23032,7 @@ table.patient-data-table.patient-data-table {
 .ehr-table-detail-row > td {
   padding: 0 !important;
   background: var(--ehr-page-bg, #FFFFFF);
-  border-bottom: 1px solid var(--border-light, #E3EBF2);
+  border-bottom: 1px solid var(--border-light, #ECEEF1);
 }
 
 .ehr-table-detail-row > td > .ehr-row-detail--table {
@@ -23015,7 +23073,7 @@ table.patient-data-table.patient-data-table {
 .ehr-visit-pop-tabs .ehr-visit-pop-icon,
 .ehr-visit-pop-tabs .ehr-visit-pop-icon:hover {
   padding: 0;
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 6px;
   font-size: 0;
 }
@@ -23043,7 +23101,7 @@ table.patient-data-table.patient-data-table {
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   background: #fff;
   color: var(--text-secondary);
   cursor: pointer;
@@ -23063,8 +23121,8 @@ table.patient-data-table.patient-data-table {
 }
 
 .ehr-visit-pop-icon.is-primary:hover {
-  background: var(--accent-hover, #012C4E);
-  border-color: var(--accent-hover, #012C4E);
+  background: var(--accent-hover, #001D3F);
+  border-color: var(--accent-hover, #001D3F);
   color: #fff;
 }
 
@@ -23540,9 +23598,9 @@ table.patient-data-table.patient-data-table {
   align-items: flex-start;
   margin: 4px 0 0;
   padding: 8px 10px;
-  border: 1px solid rgba(220, 38, 38, 0.28);
+  border: 1px solid rgba(217, 43, 32, 0.28);
   border-radius: 8px;
-  background: rgba(220, 38, 38, 0.06);
+  background: rgba(217, 43, 32, 0.06);
 }
 
 /* Billing reads as a small statement card, not loose text. */
@@ -23623,7 +23681,7 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   gap: 0 18px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
 }
 
 .appt-edit-shell.is-inline .appt-edit-col > div:last-child {
@@ -23642,7 +23700,7 @@ table.patient-data-table.patient-data-table {
 .appt-edit-shell.is-inline .appt-edit-section {
   margin: 14px 0 0;
   padding: 0 0 6px;
-  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 800;
@@ -23683,7 +23741,7 @@ table.patient-data-table.patient-data-table {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0 14px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
 }
 
 .appt-edit-shell.is-inline .appt-edit-row > div {
@@ -23710,7 +23768,7 @@ table.patient-data-table.patient-data-table {
   grid-template-columns: 132px minmax(0, 1fr);
   gap: 0 18px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
 }
 
 .appt-edit-shell.is-inline .appointment-billing-panel dd {
@@ -23735,7 +23793,7 @@ table.patient-data-table.patient-data-table {
   display: flex;
   padding: 10px 0;
   border: 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
   border-radius: 0;
   background: transparent;
 }
@@ -23955,7 +24013,7 @@ table.patient-data-table.patient-data-table {
 
      - square, never rounded (Carbon has no border-radius on fields, buttons
        or containers);
-     - fields are white on a gray-10 (#f4f4f4) form container, with a single
+     - fields are white on a gray-10 (#f1f3f5) form container, with a single
        bottom rule instead of a box;
      - teal-60 for the primary action, gray-80 for the secondary, blue-60 for
        links, selection and focus;
@@ -23973,25 +24031,25 @@ table.patient-data-table.patient-data-table {
      is filled from the Tamam ramp instead. The square edges, the field
      underline, the slab and the flush button stack are unchanged — the shape
      is what makes it read as OpenMRS, not the colours. */
-  --omrs-ui-01: var(--tb-blue-50, #EFF8FD);        /* form slab */
-  --omrs-ui-02: var(--tb-blue-100, #DDF2FB);       /* slab edge */
-  --omrs-ui-03: var(--color-slate-150, #D9E4EE);   /* subtle divider */
-  --omrs-ui-04: var(--color-slate-300, #BFCEDC);   /* field underline */
-  --omrs-ui-05: var(--text-primary, #0E2A4A);      /* strong text */
-  --omrs-text-02: var(--text-muted, #5B6B7E);      /* labels, secondary text */
+  --omrs-ui-01: var(--tb-blue-50, #F2FCFF);        /* form slab */
+  --omrs-ui-02: var(--tb-blue-100, #E1F9FF);       /* slab edge */
+  --omrs-ui-03: var(--color-slate-150, #D9DEE4);   /* subtle divider */
+  --omrs-ui-04: var(--color-slate-300, #CFD6DD);   /* field underline */
+  --omrs-ui-05: var(--text-primary, #113055);      /* strong text */
+  --omrs-text-02: var(--text-muted, #5D728B);      /* labels, secondary text */
   --omrs-field-01: var(--color-white, #fff);       /* field surface on the slab */
   /* Accents — Tamam blue in every slot Carbon fills with blue-60 / teal-60. */
-  --omrs-interactive: var(--accent-primary, #144972);
-  --omrs-interactive-soft: var(--tb-blue-100, #DDF2FB);
-  --omrs-primary: var(--accent-primary, #144972);
-  --omrs-primary-hover: var(--accent-hover, #012C4E);
+  --omrs-interactive: var(--accent-primary, #015697);
+  --omrs-interactive-soft: var(--tb-blue-100, #E1F9FF);
+  --omrs-primary: var(--accent-primary, #015697);
+  --omrs-primary-hover: var(--accent-hover, #001D3F);
   /* Secondary is white-with-a-blue-edge rather than Carbon's charcoal slab:
      a dark grey button is the one thing in the reference that has no place in
      a white-and-blue theme. */
   --omrs-secondary: var(--color-white, #fff);
-  --omrs-secondary-hover: var(--tb-blue-50, #EFF8FD);
-  --omrs-secondary-ink: var(--accent-primary, #144972);
-  --omrs-danger: var(--color-danger, #DC2626);
+  --omrs-secondary-hover: var(--tb-blue-50, #F2FCFF);
+  --omrs-secondary-ink: var(--accent-primary, #015697);
+  --omrs-danger: var(--color-danger, #D92B20);
 
   --reg-cols-three: 3;
   --reg-cols-two: 2;
@@ -24111,8 +24169,8 @@ table.patient-data-table.patient-data-table {
 
 /* Review stays out of reach until the form would actually submit — offering
    it earlier only produces a bounce back to the first missing field. */
-.omrs-reg-navitem:disabled { cursor: not-allowed; color: var(--color-slate-300, #BFCEDC); }
-.omrs-reg-navitem:disabled .omrs-reg-navarrow { color: var(--color-slate-300, #BFCEDC); }
+.omrs-reg-navitem:disabled { cursor: not-allowed; color: var(--color-slate-300, #CFD6DD); }
+.omrs-reg-navitem:disabled .omrs-reg-navarrow { color: var(--color-slate-300, #CFD6DD); }
 
 .omrs-reg-navlabel {
   flex: 1;
@@ -24332,7 +24390,7 @@ table.patient-data-table.patient-data-table {
 .omrs-reg select { padding-inline-end: 40px; background-position: right 14px center; }
 
 .omrs-reg input::placeholder,
-.omrs-reg textarea::placeholder { color: var(--text-muted, #5B6B7E); opacity: 0.75; }
+.omrs-reg textarea::placeholder { color: var(--text-muted, #5D728B); opacity: 0.75; }
 
 /* Carbon focus is a 2px inset blue outline on the whole field, not a ring. */
 .omrs-reg input:focus,
@@ -24350,7 +24408,7 @@ table.patient-data-table.patient-data-table {
 .omrs-reg textarea:disabled {
   background-color: var(--omrs-field-01);
   border-bottom-color: var(--omrs-ui-03);
-  color: var(--color-slate-300, #BFCEDC);
+  color: var(--color-slate-300, #CFD6DD);
   cursor: not-allowed;
 }
 
@@ -24479,7 +24537,7 @@ table.patient-data-table.patient-data-table {
 .omrs-reg .registration-contact-badge {
   border-radius: 0;
   background: var(--omrs-interactive-soft);
-  color: var(--accent-hover, #012C4E);
+  color: var(--accent-hover, #001D3F);
 }
 
 .registration-contact-remove {
@@ -24575,7 +24633,7 @@ table.patient-data-table.patient-data-table {
    whole assessment rather than one field among many. */
 .triage-patient-photo {
   width: 168px;
-  border: 1px solid var(--color-slate-300, #BFCEDC);
+  border: 1px solid var(--color-slate-300, #CFD6DD);
   background: #fff;
 }
 .triage-patient-photo-frame {
@@ -24591,7 +24649,7 @@ table.patient-data-table.patient-data-table {
 .triage-patient-photo-label {
   display: block;
   padding: 10px 12px;
-  background: var(--accent-hover, #012C4E);
+  background: var(--accent-hover, #001D3F);
   color: #fff;
   font-size: 12px;
   line-height: 1.29;
@@ -24644,7 +24702,7 @@ table.patient-data-table.patient-data-table {
 .triage-reg-form .omrs-reg-fields textarea {
   background: var(--omrs-field-01, #fff) !important;
   border: 0 !important;
-  border-bottom: 1px solid var(--omrs-ui-04, #CBD5E1) !important;
+  border-bottom: 1px solid var(--omrs-ui-04, #CFD6DD) !important;
   border-radius: 0 !important;
   box-sizing: border-box;
   padding: 10px 12px !important;
@@ -24716,7 +24774,7 @@ table.patient-data-table.patient-data-table {
   border-radius: 0;
   /* The one dark surface the reference keeps. Tamam's deep blue rather than
      Carbon's gray-80, so it belongs to the white-and-blue palette. */
-  background: var(--accent-hover, #012C4E);
+  background: var(--accent-hover, #001D3F);
   color: #fff;
   font-family: var(--font-omrs);
   font-size: 14px;
@@ -24785,8 +24843,8 @@ table.patient-data-table.patient-data-table {
   border: 1px solid var(--border-medium);
   border-radius: 12px;
   box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 12px 32px rgba(15, 23, 42, 0.14);
+    0 1px 2px rgba(0, 29, 63, 0.04),
+    0 12px 32px rgba(0, 29, 63, 0.14);
   overflow: hidden;
   outline: none;
   animation: tselMenuIn 0.13s cubic-bezier(0.2, 0, 0.2, 1);
@@ -24862,7 +24920,7 @@ table.patient-data-table.patient-data-table {
   border-color: var(--accent-primary);
   box-shadow:
     0 0 0 3px var(--accent-light),
-    0 16px 36px rgba(15, 23, 42, 0.13);
+    0 16px 36px rgba(0, 29, 63, 0.13);
 }
 
 .tsel-menu.is-inline .tsel-search {
@@ -24956,8 +25014,8 @@ table.patient-data-table.patient-data-table {
   background:
     linear-gradient(var(--bg-card-solid) 30%, rgba(255, 255, 255, 0)) top / 100% 16px local no-repeat,
     linear-gradient(rgba(255, 255, 255, 0), var(--bg-card-solid) 70%) bottom / 100% 16px local no-repeat,
-    radial-gradient(farthest-side at 50% 0, rgba(15, 23, 42, 0.11), rgba(15, 23, 42, 0)) top / 100% 7px scroll no-repeat,
-    radial-gradient(farthest-side at 50% 100%, rgba(15, 23, 42, 0.11), rgba(15, 23, 42, 0)) bottom / 100% 7px scroll no-repeat;
+    radial-gradient(farthest-side at 50% 0, rgba(0, 29, 63, 0.11), rgba(0, 29, 63, 0)) top / 100% 7px scroll no-repeat,
+    radial-gradient(farthest-side at 50% 100%, rgba(0, 29, 63, 0.11), rgba(0, 29, 63, 0)) bottom / 100% 7px scroll no-repeat;
 }
 
 /* Inset track, so the thumb reads as part of the card rather than a bar
@@ -25096,7 +25154,7 @@ table.patient-data-table.patient-data-table {
 }
 
 .omrs-reg-reviewgroup {
-  border: 1px solid var(--border-light, #E3EBF2);
+  border: 1px solid var(--border-light, #ECEEF1);
   border-radius: 12px;
   overflow: hidden;
   background: var(--bg-card-solid, #FFFFFF);
@@ -25109,7 +25167,7 @@ table.patient-data-table.patient-data-table {
   gap: 12px;
   padding: 10px 14px;
   background: var(--overlay-subtle);
-  border-bottom: 1px solid var(--border-light, #E3EBF2);
+  border-bottom: 1px solid var(--border-light, #ECEEF1);
 }
 
 .omrs-reg-reviewgroup > header h4 {
@@ -25150,7 +25208,7 @@ table.patient-data-table.patient-data-table {
   align-items: baseline;
   gap: 10px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--border-light, #E3EBF2);
+  border-bottom: 1px solid var(--border-light, #ECEEF1);
   min-width: 0;
 }
 
@@ -25187,7 +25245,7 @@ table.patient-data-table.patient-data-table {
    hairline, so the title reads as a card header instead of as the first row
    of the list beneath it. The rule is pulled out to the card edge with a
    negative inline margin — the card clips with `overflow: hidden`, so it
-   meets the card border on both sides — and reuses the #E7EEF5 the metric
+   meets the card border on both sides — and reuses the #ECEEF1 the metric
    and outstanding rows already divide on, which keeps one line language per
    card. On the solid blue mission card the same rule is drawn in translucent
    white, since a light-blue hairline would disappear into the fill.
@@ -25195,7 +25253,7 @@ table.patient-data-table.patient-data-table {
 .ehr-side-card .ehr-side-card-head {
   margin-inline: -14px;
   padding: 0 14px 10px;
-  border-bottom: 1px solid #E7EEF5;
+  border-bottom: 1px solid #ECEEF1;
 }
 
 /* Right-rail cards pad to 22px/24px, so the header gets matching breathing
@@ -25224,7 +25282,7 @@ table.patient-data-table.patient-data-table {
 .ehr-day-stats .ehr-day-stats-head {
   margin-inline: -18px;
   padding: 0 18px 14px;
-  border-bottom: 1px solid #E7EEF5;
+  border-bottom: 1px solid #ECEEF1;
 }
 
 .ehr-day-stats .ehr-week-activity-bars {
@@ -25308,7 +25366,7 @@ table.patient-data-table.patient-data-table {
   border-radius: inherit !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
-  background: var(--accent-primary, #144972) !important;
+  background: var(--accent-primary, #015697) !important;
   color: #fff !important;
 }
 
@@ -25550,8 +25608,8 @@ table.patient-data-table.patient-data-table {
 
 .ehr-schedule-actions .ehr-rail-menu-trigger-primary:hover,
 .ehr-schedule-actions .ehr-rail-menu-trigger-primary.open {
-  border-color: var(--tb-blue-800, #012C4E);
-  background: var(--tb-blue-800, #012C4E);
+  border-color: var(--tb-blue-800, #001D3F);
+  background: var(--tb-blue-800, #001D3F);
   color: #fff;
 }
 
@@ -25578,7 +25636,7 @@ table.patient-data-table.patient-data-table {
   border: 1px solid var(--border-medium);
   border-radius: 14px;
   background: var(--bg-card-solid);
-  box-shadow: 0 16px 40px rgba(9, 30, 66, 0.20);
+  box-shadow: 0 16px 40px rgba(0, 29, 63, 0.20);
 }
 
 .ehr-list-filters-head {
@@ -25620,7 +25678,7 @@ table.patient-data-table.patient-data-table {
   border-radius: 0 0 10px 10px;
   background: var(--ehr-panel);
   color: var(--ehr-text);
-  box-shadow: 0 10px 22px rgba(9, 30, 66, 0.14);
+  box-shadow: 0 10px 22px rgba(0, 29, 63, 0.14);
   z-index: 1250;
 }
 
@@ -25653,7 +25711,7 @@ table.patient-data-table.patient-data-table {
    the menu stops answering "where am I?" (same trap the module menu documents). */
 .ehr-rail-menu-item:hover:not(:disabled),
 .ehr-rail-menu-item:focus-visible {
-  background: var(--surface-hover, #EEF3F8);
+  background: var(--surface-hover, #F1F3F5);
   color: inherit;
   outline: none;
 }
@@ -25717,7 +25775,7 @@ table.patient-data-table.patient-data-table {
   min-height: 0;
   padding: 14px 6px;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
   border-radius: 0;
   background: transparent;
   box-shadow: none !important;
@@ -25728,7 +25786,7 @@ table.patient-data-table.patient-data-table {
 .ehr-center-panel .ehr-appointment-row:hover,
 .ehr-center-panel .ehr-care-row:hover,
 .ehr-care-list .appointment-card-row.ehr-appointment-row:hover {
-  background: color-mix(in srgb, var(--ehr-text, #0E2A4A) 4%, transparent);
+  background: color-mix(in srgb, var(--ehr-text, #113055) 4%, transparent);
   border-color: transparent;
   box-shadow: none !important;
 }
@@ -25840,7 +25898,7 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  color: color-mix(in srgb, var(--ehr-text, #0E2A4A) 70%, transparent);
+  color: color-mix(in srgb, var(--ehr-text, #113055) 70%, transparent);
 }
 .ehr-stage-donut-legend span > i {
   width: 8px;
@@ -26111,7 +26169,7 @@ table.patient-data-table.patient-data-table {
   padding: 10px 0;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
 }
 .ehr-right-rail .ehr-side-card > button:not(.ehr-side-card-icon-row):last-child {
   border-bottom: 0;
@@ -26143,7 +26201,7 @@ table.patient-data-table.patient-data-table {
   margin-inline: 0;
   padding: 0 0 10px;
   margin-bottom: 10px;
-  border-bottom: 1px solid var(--ehr-border, #E3EBF2);
+  border-bottom: 1px solid var(--ehr-border, #ECEEF1);
 }
 
 /* Day activity, measured against the design: a 60px plot of 8px bars, 7px
@@ -26197,7 +26255,7 @@ table.patient-data-table.patient-data-table {
   margin-bottom: 11px;
   padding: 0 10px;
   background: #FFFFFF;
-  border: 1px solid #D9E4EE;
+  border: 1px solid #D9DEE4;
   border-radius: 6px;
   color: var(--text-primary);
   font-family: var(--font-condensed) !important; /* the app-wide button reset re-fonts this otherwise */
@@ -26205,7 +26263,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 600;
   cursor: pointer;
 }
-.ehr-mini-calendar .ehr-mini-calendar-goto:hover { background: #EFF8FD; }
+.ehr-mini-calendar .ehr-mini-calendar-goto:hover { background: #F2FCFF; }
 
 /* The small-caps role line under the greeting — "Doctor · Clinical
    workspace" at 11.5px, 0.1em, 55% ink. */
@@ -26234,7 +26292,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.ehr-right-rail .ehr-outstanding-chips button b { color: #144972; }
+.ehr-right-rail .ehr-outstanding-chips button b { color: #015697; }
 .ehr-right-rail .ehr-outstanding-chips button.warning b { color: var(--semantic-warning); }
 .ehr-right-rail .ehr-outstanding-chips button.danger b { color: var(--semantic-danger); }
 
@@ -26472,7 +26530,7 @@ table.patient-data-table.patient-data-table {
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(16, 38, 52, 0.10);
+  box-shadow: 0 8px 24px rgba(17, 48, 85, 0.10);
 }
 .msgs-me-menu button {
   display: flex;
@@ -26541,7 +26599,7 @@ table.patient-data-table.patient-data-table {
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(16, 38, 52, 0.10);
+  box-shadow: 0 8px 24px rgba(17, 48, 85, 0.10);
 }
 .msgs-menu button {
   display: flex;
@@ -26671,7 +26729,7 @@ table.patient-data-table.patient-data-table {
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(16, 38, 52, 0.10);
+  box-shadow: 0 8px 24px rgba(17, 48, 85, 0.10);
 }
 .msgs-react-pop button { border: 0; background: transparent; font-size: 15px; cursor: pointer; }
 
@@ -26814,7 +26872,7 @@ table.patient-data-table.patient-data-table {
   margin: 0 0 12px;
   margin-inline: 0;
   padding: 0 0 10px;
-  border-bottom: 1px solid var(--ehr-border, #E3EBF2);
+  border-bottom: 1px solid var(--ehr-border, #ECEEF1);
 }
 .ehr-day-stats .ehr-side-card-head h2,
 .ehr-stage-donut .ehr-side-card-head h2 {
@@ -26846,7 +26904,7 @@ table.patient-data-table.patient-data-table {
 
 /* ═══════════ Design alignment — "Super Admin Settings" (dashboard redesign) ═══════════
    The settings console measured against Super Admin Settings.dc.html: white
-   chrome and nav on #E3EBF2 hairlines, flat #F7FAFC card head-bands with
+   chrome and nav on #ECEEF1 hairlines, flat #F5F7F8 card head-bands with
    condensed-caps titles, 13.5/600 row labels over muted subs, navy toggles,
    banded value controls, toned status chips, and a red-toned restricted zone.
    RoleSettingsView is spec-driven and shared by every role, so this one layer
@@ -26854,18 +26912,18 @@ table.patient-data-table.patient-data-table {
    Stated last so the design wins in one place. */
 
 .ehr-set-shell, .ehr-set-grid {
-  --set-ink: #0E2A4A;
-  --set-accent: #144972;
-  --set-accent-deep: #013D6B;
-  --set-line: #E3EBF2;
-  --set-line-soft: #EDF2F7;
-  --set-band: #F7FAFC;
-  --set-tint: #EFF8FD;
-  --set-tint-border: #52ADDE;
-  --set-muted: #5B6B7E;
-  /* Was #94A3B8 — under 3:1 on white. Matched to the app-wide --ehr-muted
+  --set-ink: #113055;
+  --set-accent: #015697;
+  --set-accent-deep: #113055;
+  --set-line: #ECEEF1;
+  --set-line-soft: #F1F3F5;
+  --set-band: #F5F7F8;
+  --set-tint: #F2FCFF;
+  --set-tint-border: #1E90FF;
+  --set-muted: #5D728B;
+  /* Was #94A2B3 — under 3:1 on white. Matched to the app-wide --ehr-muted
      rung so the settings "ghost" tier still reads as caption ink. */
-  --set-ghost: #597386;
+  --set-ghost: #5D728B;
 }
 
 /* ── Header: title + caps context; saved chip; 8px-radius actions ── */
@@ -26874,58 +26932,58 @@ table.patient-data-table.patient-data-table {
   font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.015em;
-  color: var(--set-ink, #0E2A4A);
+  color: var(--set-ink, #113055);
 }
 .ehr-set-crumb { font-weight: 600; }
 
 .ehr-set-saved {
   height: 36px;
   padding: 0 12px;
-  border: 1px solid var(--set-line, #E3EBF2);
+  border: 1px solid var(--set-line, #ECEEF1);
   border-radius: 8px;
-  background: var(--set-band, #F7FAFC);
-  color: var(--set-muted, #5B6B7E);
+  background: var(--set-band, #F5F7F8);
+  color: var(--set-muted, #5D728B);
   font-size: 12px;
   font-weight: 700;
 }
-.ehr-set-saved i { background: #15795C; }
-.ehr-set-saved.is-dirty { border-color: rgba(156, 94, 22, 0.42); color: #9C5E16; }
-.ehr-set-saved.is-dirty i { background: #9C5E16; }
+.ehr-set-saved i { background: #0A6E4A; }
+.ehr-set-saved.is-dirty { border-color: rgba(179, 89, 0, 0.42); color: #B35900; }
+.ehr-set-saved.is-dirty i { background: #B35900; }
 
 .ehr-set-btn {
   min-height: 36px;
-  border-color: var(--set-line, #E3EBF2);
+  border-color: var(--set-line, #ECEEF1);
   border-radius: 8px;
-  color: var(--set-ink, #0E2A4A);
+  color: var(--set-ink, #113055);
   font-family: var(--font-condensed);
   font-size: 13.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-.ehr-set-btn:hover { border-color: var(--set-tint-border, #52ADDE); background: var(--set-band, #F7FAFC); color: var(--set-ink, #0E2A4A); }
+.ehr-set-btn:hover { border-color: var(--set-tint-border, #1E90FF); background: var(--set-band, #F5F7F8); color: var(--set-ink, #113055); }
 .ehr-set-btn.primary {
-  background: var(--set-accent, #144972);
-  border-color: var(--set-accent, #144972);
+  background: var(--set-accent, #015697);
+  border-color: var(--set-accent, #015697);
   color: #FFFFFF;
 }
-.ehr-set-btn.primary:hover { background: var(--set-accent-deep, #013D6B); border-color: var(--set-accent-deep, #013D6B); color: #FFFFFF; }
+.ehr-set-btn.primary:hover { background: var(--set-accent-deep, #113055); border-color: var(--set-accent-deep, #113055); color: #FFFFFF; }
 
 /* ── Nav: flat white card, tinted active row, quiet neutral badges ── */
 .ehr-set-nav {
-  border-color: var(--set-line, #E3EBF2);
+  border-color: var(--set-line, #ECEEF1);
   border-radius: 8px;
   padding: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
 .ehr-set-nav button {
   min-height: 34px;
   border-radius: 7px;
-  color: var(--set-ink, #0E2A4A);
+  color: var(--set-ink, #113055);
   font-size: 13px;
   font-weight: 700;
 }
-.ehr-set-nav button:hover { background: #F0F6FA; color: var(--set-ink, #0E2A4A); }
-.ehr-set-nav button.active { background: var(--set-tint, #EFF8FD); color: var(--set-accent-deep, #013D6B); font-weight: 700; }
+.ehr-set-nav button:hover { background: #F5F7F8; color: var(--set-ink, #113055); }
+.ehr-set-nav button.active { background: var(--set-tint, #F2FCFF); color: var(--set-accent-deep, #113055); font-weight: 700; }
 .ehr-set-nav button svg { width: 15px; height: 15px; }
 
 .ehr-set-nav-group + .ehr-set-nav-group { border-top: 0; margin-top: 10px; }
@@ -26934,7 +26992,7 @@ table.patient-data-table.patient-data-table {
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.13em;
-  color: var(--set-muted, #5B6B7E);
+  color: var(--set-muted, #5D728B);
 }
 .ehr-set-nav-group-title::after { display: none; }
 
@@ -26944,24 +27002,24 @@ table.patient-data-table.patient-data-table {
   height: 17px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #E7EDF2;
-  color: var(--set-accent, #144972);
+  background: #ECEEF1;
+  color: var(--set-accent, #015697);
   font-family: var(--font-condensed);
   font-size: 10px;
   font-weight: 600;
 }
 
-/* ── Sections: flat cards with #F7FAFC head bands, caps titles, right meta ── */
+/* ── Sections: flat cards with #F5F7F8 head bands, caps titles, right meta ── */
 .ehr-set-section {
-  border-color: var(--set-line, #E3EBF2);
+  border-color: var(--set-line, #ECEEF1);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
 .ehr-set-section-head {
   gap: 10px;
   padding: 10px 16px;
-  background: var(--set-band, #F7FAFC);
-  border-bottom-color: var(--set-line, #E3EBF2);
+  background: var(--set-band, #F5F7F8);
+  border-bottom-color: var(--set-line, #ECEEF1);
 }
 /* The design's card heads carry no icon plate — the caps title is the label. */
 .ehr-set-section-head > span { display: none; }
@@ -26971,31 +27029,31 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--set-ink, #0E2A4A);
+  color: var(--set-ink, #113055);
 }
 .ehr-set-section-head small {
   margin-top: 0;
   margin-inline-start: auto;
   font-size: 11px;
   font-weight: 700;
-  color: var(--set-ghost, #597386);
+  color: var(--set-ghost, #5D728B);
 }
 
 .ehr-set-row {
   padding: 12px 16px;
-  border-bottom-color: var(--set-line-soft, #EDF2F7);
+  border-bottom-color: var(--set-line-soft, #F1F3F5);
 }
-.ehr-set-row:hover { background: #FBFDFE; }
-.ehr-set-row-label b { font-size: 13.5px; font-weight: 700; color: var(--set-ink, #0E2A4A); }
-.ehr-set-row-label span { margin-top: 1px; font-size: 12px; font-weight: 700; color: var(--set-muted, #5B6B7E); }
+.ehr-set-row:hover { background: #F2FCFF; }
+.ehr-set-row-label b { font-size: 13.5px; font-weight: 700; color: var(--set-ink, #113055); }
+.ehr-set-row-label span { margin-top: 1px; font-size: 12px; font-weight: 700; color: var(--set-muted, #5D728B); }
 
 /* ── Row controls ── */
 /* Toggle: 38×21, navy on / mist off; the switch colour is the state, so the
    ON/OFF text beside it retires. */
 .ehr-set-toggle b { display: none; }
-.ehr-set-toggle > span { width: 38px; height: 21px; background: #C7D5E0; }
-.ehr-set-toggle.is-on > span { background: var(--set-accent, #144972); }
-.ehr-set-toggle > span i { width: 17px; height: 17px; box-shadow: 0 1px 2px rgba(14, 42, 74, 0.25); }
+.ehr-set-toggle > span { width: 38px; height: 21px; background: #CFD6DD; }
+.ehr-set-toggle.is-on > span { background: var(--set-accent, #015697); }
+.ehr-set-toggle > span i { width: 17px; height: 17px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.25); }
 .ehr-set-toggle.is-on > span i { margin-inline-start: 17px; }
 
 /* Value controls sit on the band, hairline-edged, tabular. */
@@ -27003,37 +27061,37 @@ table.patient-data-table.patient-data-table {
 .tamam-ehr-app select.ehr-set-select {
   min-height: 30px;
   padding: 4px 28px 4px 11px;
-  border-color: var(--set-line, #E3EBF2);
+  border-color: var(--set-line, #ECEEF1);
   border-radius: 6px !important;
-  background-color: var(--set-band, #F7FAFC);
-  color: var(--set-ink, #0E2A4A);
+  background-color: var(--set-band, #F5F7F8);
+  color: var(--set-ink, #113055);
   font-size: 12.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.ehr-set-select:hover { border-color: #7FC4EA; background-color: var(--set-tint, #EFF8FD); color: var(--set-ink, #0E2A4A); }
+.ehr-set-select:hover { border-color: #7CC7FF; background-color: var(--set-tint, #F2FCFF); color: var(--set-ink, #113055); }
 .ehr-set-input,
 .tamam-ehr-app input.ehr-set-input {
   min-height: 30px;
-  border-color: var(--set-line, #E3EBF2);
+  border-color: var(--set-line, #ECEEF1);
   border-radius: 6px !important;
-  background: var(--set-band, #F7FAFC);
-  color: var(--set-ink, #0E2A4A);
+  background: var(--set-band, #F5F7F8);
+  color: var(--set-ink, #113055);
   font-size: 12.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.ehr-set-input:hover { border-color: #7FC4EA; background: var(--set-tint, #EFF8FD); }
-.ehr-set-input:focus { border-color: #7FC4EA; }
+.ehr-set-input:hover { border-color: #7CC7FF; background: var(--set-tint, #F2FCFF); }
+.ehr-set-input:focus { border-color: #7CC7FF; }
 
 /* Locked / read-only values read as toned pills, per the design's chips. */
 .ehr-set-locked {
   height: 22px;
   padding: 0 9px;
-  border: 1px solid var(--set-tint-border, #52ADDE);
+  border: 1px solid var(--set-tint-border, #1E90FF);
   border-radius: 999px;
-  background: var(--set-tint, #EFF8FD);
-  color: var(--set-accent-deep, #013D6B);
+  background: var(--set-tint, #F2FCFF);
+  color: var(--set-accent-deep, #113055);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -27049,10 +27107,10 @@ table.patient-data-table.patient-data-table {
   gap: 6px;
   height: 22px;
   padding: 0 9px;
-  border: 1px solid var(--set-line, #E3EBF2);
+  border: 1px solid var(--set-line, #ECEEF1);
   border-radius: 999px;
-  background: var(--set-band, #F7FAFC);
-  color: var(--set-muted, #5B6B7E);
+  background: var(--set-band, #F5F7F8);
+  color: var(--set-muted, #5D728B);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -27061,28 +27119,28 @@ table.patient-data-table.patient-data-table {
   line-height: 1;
   font-style: normal;
 }
-.ehr-set-int-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #94A3B8; }
-.ehr-set-int-pill[data-tone='green'] { background: rgba(21, 121, 92, 0.10); border-color: rgba(21, 121, 92, 0.4); color: #15795C; }
-.ehr-set-int-pill[data-tone='green']::before { background: #15795C; }
-.ehr-set-int-pill[data-tone='yellow'] { background: rgba(156, 94, 22, 0.10); border-color: rgba(156, 94, 22, 0.42); color: #9C5E16; }
-.ehr-set-int-pill[data-tone='yellow']::before { background: #9C5E16; }
-.ehr-set-int-pill[data-tone='red'] { background: rgba(139, 46, 36, 0.08); border-color: rgba(139, 46, 36, 0.42); color: #8B2E24; }
-.ehr-set-int-pill[data-tone='red']::before { background: #8B2E24; }
+.ehr-set-int-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #94A2B3; }
+.ehr-set-int-pill[data-tone='green'] { background: rgba(10, 110, 74, 0.10); border-color: rgba(10, 110, 74, 0.4); color: #0A6E4A; }
+.ehr-set-int-pill[data-tone='green']::before { background: #0A6E4A; }
+.ehr-set-int-pill[data-tone='yellow'] { background: rgba(179, 89, 0, 0.10); border-color: rgba(179, 89, 0, 0.42); color: #B35900; }
+.ehr-set-int-pill[data-tone='yellow']::before { background: #B35900; }
+.ehr-set-int-pill[data-tone='red'] { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: #9E1B14; }
+.ehr-set-int-pill[data-tone='red']::before { background: #9E1B14; }
 
 /* ── Restricted actions: red-toned head band, outline red actions ── */
-.ehr-set-danger { border-color: rgba(139, 46, 36, 0.35); }
+.ehr-set-danger { border-color: rgba(158, 27, 20, 0.35); }
 .ehr-set-danger .ehr-set-section-head {
-  background: rgba(139, 46, 36, 0.04);
-  border-bottom-color: rgba(139, 46, 36, 0.2);
+  background: rgba(158, 27, 20, 0.04);
+  border-bottom-color: rgba(158, 27, 20, 0.2);
 }
-.ehr-set-danger .ehr-set-section-head h3 { color: #8B2E24; }
+.ehr-set-danger .ehr-set-section-head h3 { color: #9E1B14; }
 .ehr-set-danger-btn {
   height: 30px;
   padding: 0 12px;
-  border: 1px solid rgba(139, 46, 36, 0.45);
+  border: 1px solid rgba(158, 27, 20, 0.45);
   border-radius: 6px;
   background: #FFFFFF;
-  color: #8B2E24;
+  color: #9E1B14;
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
@@ -27091,7 +27149,7 @@ table.patient-data-table.patient-data-table {
   white-space: nowrap;
   cursor: pointer;
 }
-.ehr-set-danger-btn:hover { background: rgba(139, 46, 36, 0.06); }
+.ehr-set-danger-btn:hover { background: rgba(158, 27, 20, 0.06); }
 
 /* ═══ Settings design alignment, part 2 — embedded panels every role sees ═══
    The org-admin panels, facility settings, management console, and users
@@ -27102,8 +27160,8 @@ table.patient-data-table.patient-data-table {
 .org-set-wrapper { background: #FFFFFF; }
 .org-set-head {
   padding: 10px 16px;
-  background: #F7FAFC;
-  border-bottom-color: #E3EBF2;
+  background: #F5F7F8;
+  border-bottom-color: #ECEEF1;
 }
 .org-set-head > span,
 .org-set-card-head > span { display: none; }
@@ -27113,14 +27171,14 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0E2A4A;
+  color: #113055;
 }
-.org-set-head small { font-size: 11px; font-weight: 700; color: #597386; }
-.org-set-card { border-radius: 8px; box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05); }
+.org-set-head small { font-size: 11px; font-weight: 700; color: #5D728B; }
+.org-set-card { border-radius: 8px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
 .org-set-card-head {
   padding: 10px 14px;
-  background: #F7FAFC;
-  border-bottom-color: #E3EBF2;
+  background: #F5F7F8;
+  border-bottom-color: #ECEEF1;
 }
 .org-set-card-head h4 {
   font-family: var(--font-condensed);
@@ -27128,20 +27186,20 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0E2A4A;
+  color: #113055;
 }
 .org-set-link-btn {
   min-height: 28px;
   border-radius: 6px;
-  border-color: #E3EBF2;
-  color: #144972;
+  border-color: #ECEEF1;
+  color: #015697;
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.org-set-link-btn:hover { border-color: #E3EBF2; background: #EFF8FD; }
+.org-set-link-btn:hover { border-color: #ECEEF1; background: #F2FCFF; }
 
 /* Facility settings + management console buttons: 8px corners, condensed. */
 .fs-section .btn,
@@ -27156,33 +27214,33 @@ table.patient-data-table.patient-data-table {
 .settings-manage-shell input,
 .settings-manage-shell select,
 .settings-manage-shell textarea {
-  border-color: #E3EBF2 !important;
+  border-color: #ECEEF1 !important;
 }
-.fs-facility-tile { border-radius: 8px; box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05); }
-.fs-facility-tile:hover { border-color: #7FC4EA; background: #EFF8FD; }
-.fs-facility-tile strong { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
+.fs-facility-tile { border-radius: 8px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
+.fs-facility-tile:hover { border-color: #7CC7FF; background: #F2FCFF; }
+.fs-facility-tile strong { font-size: 13.5px; font-weight: 600; color: #113055; }
 
 /* Users & roles table: flat band head, condensed columns, toned chips. */
 .ehr-set-users-head {
-  background: #F7FAFC;
-  border-bottom-color: #E3EBF2;
+  background: #F5F7F8;
+  border-bottom-color: #ECEEF1;
 }
 .ehr-set-users-head span {
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #5B6B7E;
+  color: #5D728B;
 }
-.ehr-set-user-row:hover { background: #FBFDFE; }
-.ehr-set-user-id b { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
+.ehr-set-user-row:hover { background: #F2FCFF; }
+.ehr-set-user-id b { font-size: 13.5px; font-weight: 600; color: #113055; }
 .ehr-set-user-status {
   padding: 0 9px;
   height: 22px;
   align-items: center;
-  border: 1px solid #E3EBF2;
-  background: #F7FAFC;
-  color: #5B6B7E;
+  border: 1px solid #ECEEF1;
+  background: #F5F7F8;
+  color: #5D728B;
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -27190,29 +27248,29 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   line-height: 1;
 }
-.ehr-set-user-status.is-active { background: rgba(21, 121, 92, 0.10); border-color: rgba(21, 121, 92, 0.4); color: #15795C; }
-.ehr-set-user-status.is-off { background: rgba(139, 46, 36, 0.08); border-color: rgba(139, 46, 36, 0.42); color: #8B2E24; }
+.ehr-set-user-status.is-active { background: rgba(10, 110, 74, 0.10); border-color: rgba(10, 110, 74, 0.4); color: #0A6E4A; }
+.ehr-set-user-status.is-off { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: #9E1B14; }
 
 /* Integrations grid hairlines onto the design's line colour. */
-.ehr-set-integrations { background: #E3EBF2; }
-.ehr-set-integrations > div b { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
-.ehr-set-integrations > div p { color: #5B6B7E; }
+.ehr-set-integrations { background: #ECEEF1; }
+.ehr-set-integrations > div b { font-size: 13.5px; font-weight: 600; color: #113055; }
+.ehr-set-integrations > div p { color: #5D728B; }
 
 /* Security-row action buttons (Change password, Set PIN) onto the design's
    action-button geometry. This class has no consumer outside settings. */
 .ehr-queue-action-pill {
   height: 28px;
   padding: 0 11px;
-  border-color: #E3EBF2;
+  border-color: #ECEEF1;
   border-radius: 6px;
-  color: #144972;
+  color: #015697;
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.ehr-queue-action-pill:hover { background: #EFF8FD; }
+.ehr-queue-action-pill:hover { background: #F2FCFF; }
 
 /* ═══ Settings design alignment, part 3 — the My-account landing panel ═══
    The identity card, scope card, "You control" chips, and shortcut tiles kept
@@ -27221,54 +27279,54 @@ table.patient-data-table.patient-data-table {
 
 .ehr-set-account-head {
   padding: 12px 16px;
-  background: #F7FAFC;
-  border-bottom-color: #E3EBF2;
+  background: #F5F7F8;
+  border-bottom-color: #ECEEF1;
 }
-.ehr-set-account-head b { font-size: 14px; font-weight: 700; color: #0E2A4A; }
-.ehr-set-account-head small { font-size: 11.5px; font-weight: 700; color: #5B6B7E; }
+.ehr-set-account-head b { font-size: 14px; font-weight: 700; color: #113055; }
+.ehr-set-account-head small { font-size: 11.5px; font-weight: 700; color: #5D728B; }
 .ehr-set-account-head > span { border-radius: 12px; font-weight: 700; }
 .ehr-set-account-gear {
-  border-color: #E3EBF2;
+  border-color: #ECEEF1;
   background: #FFFFFF;
-  color: #144972;
+  color: #015697;
 }
-.ehr-set-account-gear:hover { background: #EFF8FD; border-color: #7FC4EA; color: #013D6B; }
+.ehr-set-account-gear:hover { background: #F2FCFF; border-color: #7CC7FF; color: #113055; }
 
-.ehr-set-account-rows > div { border-bottom-color: #EDF2F7; }
+.ehr-set-account-rows > div { border-bottom-color: #F1F3F5; }
 .ehr-set-account-rows span {
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #5B6B7E;
+  color: #5D728B;
 }
-.ehr-set-account-rows b { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
+.ehr-set-account-rows b { font-size: 13.5px; font-weight: 600; color: #113055; }
 
 /* Scope card + "You control" chips onto the design's card and chip shapes. */
 .ehr-set-scope {
-  border-color: #E3EBF2;
+  border-color: #ECEEF1;
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
-.ehr-set-scope b { font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
+.ehr-set-scope b { font-size: 13.5px; font-weight: 600; color: #113055; }
 .ehr-set-chips {
-  border-color: #E3EBF2;
+  border-color: #ECEEF1;
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
 .ehr-set-chips > span {
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #5B6B7E;
+  color: #5D728B;
 }
 .ehr-set-chips > div span {
   height: 22px;
   padding: 0 9px;
-  border: 1px solid #52ADDE;
-  background: #EFF8FD;
-  color: #013D6B;
+  border: 1px solid #1E90FF;
+  background: #F2FCFF;
+  color: #113055;
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -27279,40 +27337,40 @@ table.patient-data-table.patient-data-table {
 
 /* Shortcut tiles: white on hairlines, tint on hover, condensed labels. */
 .ehr-set-shortcuts button {
-  border-color: #E3EBF2;
+  border-color: #ECEEF1;
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
-.ehr-set-shortcuts button:hover { border-color: #7FC4EA; background: #EFF8FD; }
+.ehr-set-shortcuts button:hover { border-color: #7CC7FF; background: #F2FCFF; }
 .ehr-set-shortcuts button > span {
   border-radius: 8px;
-  background: #EFF8FD;
-  color: #144972;
+  background: #F2FCFF;
+  color: #015697;
 }
-.ehr-set-shortcuts button b { font-size: 12.5px; font-weight: 600; color: #0E2A4A; }
+.ehr-set-shortcuts button b { font-size: 12.5px; font-weight: 600; color: #113055; }
 
 /* Update-account popup identity rows. */
-.ehr-set-acct-readonly { border-color: #E3EBF2; background: #F7FAFC; }
+.ehr-set-acct-readonly { border-color: #ECEEF1; background: #F5F7F8; }
 
 /* Management-console tab strip onto the design's nav treatment. */
-.settings-tab-strip { border-color: #E3EBF2; border-radius: 8px; box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05); }
-.settings-tab-strip button { border-radius: 7px; color: #0E2A4A; font-weight: 700; }
-.settings-tab-strip button:hover { background: #F0F6FA; color: #0E2A4A; }
-.settings-tab-strip button.active { background: #EFF8FD; color: #013D6B; font-weight: 700; }
+.settings-tab-strip { border-color: #ECEEF1; border-radius: 8px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
+.settings-tab-strip button { border-radius: 7px; color: #113055; font-weight: 700; }
+.settings-tab-strip button:hover { background: #F5F7F8; color: #113055; }
+.settings-tab-strip button.active { background: #F2FCFF; color: #113055; font-weight: 700; }
 
 /* ══════════════════ Patient portal (pp-*) ══════════════════
    The signed-in patient portal on the Patient Portal design: 54px brand-blue
    top bar (logo · facility · pill search · patient chip), a grouped white
-   sidebar, and flat white cards on hairlines over the #F7FAFC ground. Chip
+   sidebar, and flat white cards on hairlines over the #F5F7F8 ground. Chip
    tones and popover treatments come straight from the design file; the brand
-   blue reads --accent-primary (= the design's #144972). */
+   blue reads --accent-primary (= the design's #015697). */
 
 .pp-shell {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: #F7FAFC;
-  color: #0E2A4A;
+  background: #F5F7F8;
+  color: #113055;
   font-family: var(--font-platform);
   font-size: 14px;
 }
@@ -27400,9 +27458,9 @@ table.patient-data-table.patient-data-table {
   position: absolute;
   z-index: 80;
   background: #FFFFFF;
-  border: 1px solid #E3EBF2;
+  border: 1px solid #ECEEF1;
   border-radius: 10px;
-  box-shadow: 0 14px 40px rgba(14, 42, 74, 0.25);
+  box-shadow: 0 14px 40px rgba(17, 48, 85, 0.25);
   overflow: hidden;
   padding: 5px;
 }
@@ -27417,10 +27475,10 @@ table.patient-data-table.patient-data-table {
   text-align: start;
   cursor: pointer;
 }
-.pp-search-menu button:hover { background: #F0F6FA; }
-.pp-search-menu button strong { display: block; font-size: 12.5px; font-weight: 700; color: #0E2A4A; }
-.pp-search-menu button small { display: block; font-size: 11px; color: #5B6B7E; }
-.pp-search-menu > p { margin: 0; padding: 10px; font-size: 12px; color: #5B6B7E; }
+.pp-search-menu button:hover { background: #F5F7F8; }
+.pp-search-menu button strong { display: block; font-size: 12.5px; font-weight: 700; color: #113055; }
+.pp-search-menu button small { display: block; font-size: 11px; color: #5D728B; }
+.pp-search-menu > p { margin: 0; padding: 10px; font-size: 12px; color: #5D728B; }
 
 /* Patient chip + menu. */
 .pp-user-wrap { position: relative; flex: none; }
@@ -27460,9 +27518,9 @@ table.patient-data-table.patient-data-table {
   color: rgba(255, 255, 255, 0.85);
 }
 .pp-user-menu { top: 44px; inset-inline-end: 0; width: 236px; }
-.pp-user-menu-id { padding: 9px 10px 8px; border-bottom: 1px solid #EDF2F7; margin-bottom: 4px; }
-.pp-user-menu-id b { display: block; font-size: 13px; color: #0E2A4A; }
-.pp-user-menu-id small { display: block; margin-top: 1px; font-size: 11px; color: #5B6B7E; }
+.pp-user-menu-id { padding: 9px 10px 8px; border-bottom: 1px solid #F1F3F5; margin-bottom: 4px; }
+.pp-user-menu-id b { display: block; font-size: 13px; color: #113055; }
+.pp-user-menu-id small { display: block; margin-top: 1px; font-size: 11px; color: #5D728B; }
 .pp-menu-item {
   display: flex;
   align-items: center;
@@ -27472,15 +27530,15 @@ table.patient-data-table.patient-data-table {
   background: transparent;
   border: 0;
   border-radius: 7px;
-  color: #0E2A4A;
+  color: #113055;
   font-family: var(--font-platform);
   font-size: 13px;
   text-align: start;
   cursor: pointer;
 }
-.pp-menu-item:hover { background: #F0F6FA; }
-.pp-menu-item.danger { color: #8B2E24; }
-.pp-menu-item.danger:hover { background: rgba(139, 46, 36, 0.06); }
+.pp-menu-item:hover { background: #F5F7F8; }
+.pp-menu-item.danger { color: #9E1B14; }
+.pp-menu-item.danger:hover { background: rgba(158, 27, 20, 0.06); }
 .pp-scrim { position: fixed; inset: 0; z-index: 79; }
 
 /* ── Body: sidebar + main ── */
@@ -27497,7 +27555,7 @@ table.patient-data-table.patient-data-table {
   flex-direction: column;
   padding: 14px 10px 14px 12px;
   background: #FFFFFF;
-  border-inline-end: 1px solid #E3EBF2;
+  border-inline-end: 1px solid #ECEEF1;
 }
 .pp-side-group { margin-bottom: 14px; }
 .pp-side-title {
@@ -27508,7 +27566,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: #5B6B7E;
+  color: #5D728B;
 }
 .pp-side-item {
   display: flex;
@@ -27519,15 +27577,15 @@ table.patient-data-table.patient-data-table {
   background: transparent;
   border: 0;
   border-radius: 7px;
-  color: #0E2A4A;
+  color: #113055;
   font-family: var(--font-platform);
   font-size: 13px;
   font-weight: 700;
   text-align: start;
   cursor: pointer;
 }
-.pp-side-item:hover { background: #F0F6FA; }
-.pp-side-item.active { background: #EFF8FD; color: #013D6B; font-weight: 700; }
+.pp-side-item:hover { background: #F5F7F8; }
+.pp-side-item.active { background: #F2FCFF; color: #113055; font-weight: 700; }
 .pp-side-item svg { flex: none; }
 .pp-side-item > span {
   flex: 1;
@@ -27545,14 +27603,14 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: #E7EDF2;
+  background: #ECEEF1;
   color: var(--accent-primary);
   font-family: var(--font-condensed);
   font-size: 10px;
   font-weight: 700;
 }
-.pp-side-badge.orange { background: #C2410C; color: #ffffff; }
-.pp-side-foot { margin-top: auto; padding: 10px 10px 2px; border-top: 1px solid #EDF2F7; }
+.pp-side-badge.orange { background: #CC6600; color: #ffffff; }
+.pp-side-foot { margin-top: auto; padding: 10px 10px 2px; border-top: 1px solid #F1F3F5; }
 .pp-side-foot p { margin: 0; font-size: 11px; font-weight: 700; color: var(--ehr-muted); line-height: 1.5; }
 
 .pp-main { min-height: 0; overflow-y: auto; padding: 18px 22px 30px; }
@@ -27574,9 +27632,9 @@ table.patient-data-table.patient-data-table {
   font-weight: 800;
   letter-spacing: -0.015em;
   line-height: 1.12;
-  color: #0E2A4A;
+  color: #113055;
 }
-.pp-head-note { margin: 2px 0 0; font-size: 12.5px; font-weight: 700; color: #5B6B7E; }
+.pp-head-note { margin: 2px 0 0; font-size: 12.5px; font-weight: 700; color: #5D728B; }
 .pp-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Buttons — condensed labels, 38px, flat. */
@@ -27597,9 +27655,9 @@ table.patient-data-table.patient-data-table {
 }
 .pp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .pp-btn-primary { background: var(--accent-primary); border: 1px solid var(--accent-primary); color: #ffffff; }
-.pp-btn-primary:hover:not(:disabled) { background: #013D6B; border-color: #013D6B; }
-.pp-btn-secondary { background: #FFFFFF; border: 1px solid #E3EBF2; color: #0E2A4A; }
-.pp-btn-secondary:hover:not(:disabled) { background: #F0F6FA; }
+.pp-btn-primary:hover:not(:disabled) { background: #113055; border-color: #113055; }
+.pp-btn-secondary { background: #FFFFFF; border: 1px solid #ECEEF1; color: #113055; }
+.pp-btn-secondary:hover:not(:disabled) { background: #F5F7F8; }
 
 /* Small outline action on list rows ("View", "Book"…). */
 .pp-row-action {
@@ -27610,7 +27668,7 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   gap: 5px;
   background: #FFFFFF;
-  border: 1px solid #E3EBF2;
+  border: 1px solid #ECEEF1;
   border-radius: 6px;
   color: var(--accent-primary);
   font-family: var(--font-condensed);
@@ -27621,7 +27679,7 @@ table.patient-data-table.patient-data-table {
   white-space: nowrap;
   cursor: pointer;
 }
-.pp-row-action:hover { background: #EFF8FD; }
+.pp-row-action:hover { background: #F2FCFF; }
 
 /* Small solid action ("Pay"). */
 .pp-row-pay {
@@ -27639,14 +27697,14 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   cursor: pointer;
 }
-.pp-row-pay:hover { background: #013D6B; }
+.pp-row-pay:hover { background: #113055; }
 
 /* ── Cards ── */
 .pp-card {
   background: #FFFFFF;
-  border: 1px solid #E3EBF2;
+  border: 1px solid #ECEEF1;
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
 .pp-card-head {
@@ -27655,7 +27713,7 @@ table.patient-data-table.patient-data-table {
   justify-content: space-between;
   gap: 10px;
   padding: 11px 14px;
-  border-bottom: 1px solid #E3EBF2;
+  border-bottom: 1px solid #ECEEF1;
 }
 .pp-card-head h2 {
   margin: 0;
@@ -27664,7 +27722,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0E2A4A;
+  color: #113055;
 }
 .pp-card-head small { font-size: 11px; font-weight: 700; color: var(--ehr-muted); }
 .pp-card-link {
@@ -27694,7 +27752,7 @@ table.patient-data-table.patient-data-table {
   text-align: start;
   cursor: pointer;
 }
-.pp-card-foot:hover { background: #F7FAFC; }
+.pp-card-foot:hover { background: #F5F7F8; }
 
 /* ── List rows ── */
 .pp-row {
@@ -27702,18 +27760,18 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   gap: 13px;
   padding: 12px 16px;
-  border-bottom: 1px solid #EDF2F7;
+  border-bottom: 1px solid #F1F3F5;
 }
-.pp-row:hover { background: #FBFDFE; }
+.pp-row:hover { background: #F2FCFF; }
 .pp-row-main { min-width: 0; flex: 1; }
-.pp-row-main b { display: block; font-size: 13.5px; font-weight: 600; color: #0E2A4A; }
-.pp-row-main span { display: block; margin-top: 1px; font-size: 12px; font-weight: 700; color: #5B6B7E; }
+.pp-row-main b { display: block; font-size: 13.5px; font-weight: 600; color: #113055; }
+.pp-row-main span { display: block; margin-top: 1px; font-size: 12px; font-weight: 700; color: #5D728B; }
 .pp-row-value {
   flex: none;
   font-size: 12.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #0E2A4A;
+  color: #113055;
   text-align: end;
   white-space: nowrap;
 }
@@ -27729,13 +27787,13 @@ table.patient-data-table.patient-data-table {
   text-align: start;
   font-family: var(--font-platform);
 }
-.pp-row-toggle:hover { background: #FBFDFE; }
+.pp-row-toggle:hover { background: #F2FCFF; }
 .pp-row-detail { padding: 2px 16px 14px; }
 .pp-row-detail-box {
   padding: 10px 12px;
   border-radius: 8px;
-  background: #F7FAFC;
-  border: 1px solid #EDF2F7;
+  background: #F5F7F8;
+  border: 1px solid #F1F3F5;
 }
 
 /* Status chips — condensed caps pills, toned per the design's CHIP map. */
@@ -27754,11 +27812,11 @@ table.patient-data-table.patient-data-table {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.pp-chip--green { background: rgba(21, 121, 92, 0.10); border: 1px solid rgba(21, 121, 92, 0.4); color: #15795C; }
-.pp-chip--yellow { background: rgba(156, 94, 22, 0.10); border: 1px solid rgba(156, 94, 22, 0.42); color: #9C5E16; }
-.pp-chip--red { background: rgba(139, 46, 36, 0.08); border: 1px solid rgba(139, 46, 36, 0.42); color: #8B2E24; }
-.pp-chip--blue { background: #EFF8FD; border: 1px solid #52ADDE; color: #013D6B; }
-.pp-chip--neutral { background: #F7FAFC; border: 1px solid #E3EBF2; color: #5B6B7E; }
+.pp-chip--green { background: rgba(10, 110, 74, 0.10); border: 1px solid rgba(10, 110, 74, 0.4); color: #0A6E4A; }
+.pp-chip--yellow { background: rgba(179, 89, 0, 0.10); border: 1px solid rgba(179, 89, 0, 0.42); color: #B35900; }
+.pp-chip--red { background: rgba(158, 27, 20, 0.08); border: 1px solid rgba(158, 27, 20, 0.42); color: #9E1B14; }
+.pp-chip--blue { background: #F2FCFF; border: 1px solid #1E90FF; color: #113055; }
+.pp-chip--neutral { background: #F5F7F8; border: 1px solid #ECEEF1; color: #5D728B; }
 
 /* ── Stat tiles (vitals, billing) ── */
 .pp-tiles {
@@ -27769,9 +27827,9 @@ table.patient-data-table.patient-data-table {
 }
 .pp-tile {
   background: #FFFFFF;
-  border: 1px solid #E3EBF2;
+  border: 1px solid #ECEEF1;
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   padding: 11px 13px;
 }
 .pp-tile-label {
@@ -27781,7 +27839,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #5B6B7E;
+  color: #5D728B;
 }
 .pp-tile-value {
   margin: 5px 0 0;
@@ -27789,7 +27847,7 @@ table.patient-data-table.patient-data-table {
   font-size: 21px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #0E2A4A;
+  color: #113055;
 }
 .pp-tile-value small { font-size: 11.5px; font-weight: 700; color: var(--ehr-muted); }
 .pp-tile-sub { margin: 2px 0 0; font-size: 10.5px; font-weight: 700; color: var(--ehr-muted); }
@@ -27803,13 +27861,13 @@ table.patient-data-table.patient-data-table {
   padding: 12px 14px;
   background: transparent;
   border: 0;
-  border-inline-end: 1px solid #EDF2F7;
-  border-bottom: 1px solid #EDF2F7;
+  border-inline-end: 1px solid #F1F3F5;
+  border-bottom: 1px solid #F1F3F5;
   text-align: start;
   cursor: pointer;
   font-family: var(--font-platform);
 }
-.pp-todo:hover { background: #F7FAFC; }
+.pp-todo:hover { background: #F5F7F8; }
 .pp-todo-ic {
   flex: none;
   width: 30px;
@@ -27817,13 +27875,13 @@ table.patient-data-table.patient-data-table {
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #EFF8FD;
+  background: #F2FCFF;
   color: var(--accent-primary);
 }
-.pp-todo-ic.amber { background: rgba(156, 94, 22, 0.10); color: #9C5E16; }
+.pp-todo-ic.amber { background: rgba(179, 89, 0, 0.10); color: #B35900; }
 .pp-todo-body { min-width: 0; }
-.pp-todo-body b { display: block; font-size: 13px; font-weight: 700; color: #0E2A4A; }
-.pp-todo-body small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 700; color: #5B6B7E; }
+.pp-todo-body b { display: block; font-size: 13px; font-weight: 700; color: #113055; }
+.pp-todo-body small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 700; color: #5D728B; }
 
 /* ── Overview: card grid + widgets ── */
 .pp-grid2 {
@@ -27836,7 +27894,7 @@ table.patient-data-table.patient-data-table {
   width: 44px;
   text-align: center;
   padding: 5px 0;
-  background: #EFF8FD;
+  background: #F2FCFF;
   border-radius: 8px;
 }
 .pp-date-plate b {
@@ -27844,7 +27902,7 @@ table.patient-data-table.patient-data-table {
   font-family: var(--font-condensed);
   font-size: 15px;
   font-weight: 700;
-  color: #013D6B;
+  color: #113055;
 }
 .pp-date-plate small {
   display: block;
@@ -27860,9 +27918,9 @@ table.patient-data-table.patient-data-table {
   justify-content: space-between;
   gap: 10px;
   padding: 10px 14px;
-  border-bottom: 1px solid #EDF2F7;
+  border-bottom: 1px solid #F1F3F5;
 }
-.pp-activity-row > span { min-width: 0; font-size: 12.5px; font-weight: 600; color: #0E2A4A; }
+.pp-activity-row > span { min-width: 0; font-size: 12.5px; font-weight: 600; color: #113055; }
 .pp-activity-row > small { flex: none; font-size: 11px; font-weight: 700; color: var(--ehr-muted); }
 
 /* ── Chat ── */
@@ -27887,8 +27945,8 @@ table.patient-data-table.patient-data-table {
   max-width: 72%;
   padding: 9px 13px;
   border-radius: 12px;
-  background: #F0F4F8;
-  color: #0E2A4A;
+  background: #F1F3F5;
+  color: #113055;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -27899,23 +27957,23 @@ table.patient-data-table.patient-data-table {
   display: flex;
   gap: 8px;
   padding: 12px 14px;
-  border-top: 1px solid #E3EBF2;
+  border-top: 1px solid #ECEEF1;
 }
 .pp-composer input {
   flex: 1;
   min-width: 0;
   height: 38px;
   padding: 0 13px;
-  background: #F7FAFC;
-  border: 1px solid #E3EBF2;
+  background: #F5F7F8;
+  border: 1px solid #ECEEF1;
   border-radius: 8px;
   outline: none;
   font-family: var(--font-platform);
   font-size: 13px;
   font-weight: 700;
-  color: #0E2A4A;
+  color: #113055;
 }
-.pp-composer input:focus { border-color: #52ADDE; }
+.pp-composer input:focus { border-color: #1E90FF; }
 .pp-composer input::placeholder { color: var(--ehr-muted); }
 
 /* ── Profile ── */
@@ -27934,10 +27992,10 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   color: var(--ehr-muted);
 }
-.pp-field-value { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: #0E2A4A; overflow-wrap: anywhere; }
-.pp-card--danger { border-color: rgba(139, 46, 36, 0.3); box-shadow: none; }
-.pp-card--danger .pp-card-head { border-bottom-color: #EDF2F7; }
-.pp-card--danger .pp-card-head h2 { color: #8B2E24; }
+.pp-field-value { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: #113055; overflow-wrap: anywhere; }
+.pp-card--danger { border-color: rgba(158, 27, 20, 0.3); box-shadow: none; }
+.pp-card--danger .pp-card-head { border-bottom-color: #F1F3F5; }
+.pp-card--danger .pp-card-head h2 { color: #9E1B14; }
 .pp-pillbox { padding: 10px 14px; display: flex; gap: 6px; flex-wrap: wrap; }
 .pp-pill {
   display: inline-flex;
@@ -27952,9 +28010,9 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   line-height: 1;
 }
-.pp-pill--red { background: rgba(139, 46, 36, 0.08); border: 1px solid rgba(139, 46, 36, 0.42); color: #8B2E24; }
-.pp-pill--amber { background: rgba(156, 94, 22, 0.10); border: 1px solid rgba(156, 94, 22, 0.42); color: #9C5E16; }
-.pp-pill--blue { background: #EFF8FD; border: 1px solid #52ADDE; color: #013D6B; }
+.pp-pill--red { background: rgba(158, 27, 20, 0.08); border: 1px solid rgba(158, 27, 20, 0.42); color: #9E1B14; }
+.pp-pill--amber { background: rgba(179, 89, 0, 0.10); border: 1px solid rgba(179, 89, 0, 0.42); color: #B35900; }
+.pp-pill--blue { background: #F2FCFF; border: 1px solid #1E90FF; color: #113055; }
 
 /* ── Toast ── */
 .pp-toast {
@@ -27967,13 +28025,13 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #0E2A4A;
+  background: #113055;
   color: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 8px 26px rgba(14, 42, 74, 0.35);
+  box-shadow: 0 8px 26px rgba(17, 48, 85, 0.35);
   font-size: 13px;
 }
-.pp-toast svg { color: #7BC394; }
+.pp-toast svg { color: #4FC79B; }
 
 /* Payment-flow panels reuse pp-card; the narrow column centers itself. */
 .pp-narrow { max-width: 480px; margin: 0 auto; }
@@ -28006,7 +28064,7 @@ table.patient-data-table.patient-data-table {
     overflow-y: hidden;
     padding: 8px 10px;
     border-inline-end: 0;
-    border-bottom: 1px solid #E3EBF2;
+    border-bottom: 1px solid #ECEEF1;
   }
   .pp-side-group { display: contents; }
   .pp-side-title, .pp-side-foot { display: none; }
@@ -28045,7 +28103,7 @@ table.patient-data-table.patient-data-table {
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
 .sadb-card-head {
@@ -28115,7 +28173,7 @@ table.patient-data-table.patient-data-table {
 .sadb-tab.is-active {
   background: var(--bg-card-solid);
   color: var(--brand-800);
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.08);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.08);
 }
 .sadb-tab-badge {
   min-width: 17px;
@@ -28142,7 +28200,7 @@ table.patient-data-table.patient-data-table {
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   min-width: 0;
 }
 button.sadb-kpi { cursor: pointer; }
@@ -28185,9 +28243,9 @@ button.sadb-kpi:hover { border-color: var(--brand-300); }
   text-transform: uppercase;
   border: 1px solid transparent;
 }
-.sadb-chip--green { background: rgba(21, 121, 92, 0.10); border-color: rgba(21, 121, 92, 0.40); color: var(--color-success-800); }
-.sadb-chip--yellow { background: rgba(156, 94, 22, 0.10); border-color: rgba(156, 94, 22, 0.42); color: var(--color-warning-700); }
-.sadb-chip--red { background: rgba(139, 46, 36, 0.08); border-color: rgba(139, 46, 36, 0.42); color: var(--color-danger-800); }
+.sadb-chip--green { background: rgba(10, 110, 74, 0.10); border-color: rgba(10, 110, 74, 0.40); color: var(--color-success-800); }
+.sadb-chip--yellow { background: rgba(179, 89, 0, 0.10); border-color: rgba(179, 89, 0, 0.42); color: var(--color-warning-700); }
+.sadb-chip--red { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: var(--color-danger-800); }
 .sadb-chip--blue { background: var(--tb-blue-50); border-color: var(--brand-400); color: var(--brand-800); }
 .sadb-chip--neutral { background: var(--ehr-head); border-color: var(--border-light); color: var(--text-muted); }
 
@@ -28229,11 +28287,11 @@ button.sadb-kpi:hover { border-color: var(--brand-300); }
 button.sadb-signal { cursor: pointer; }
 .sadb-signal b { display: block; font-size: 13px; font-weight: 700; }
 .sadb-signal span { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
-.sadb-signal--green { background: rgba(21, 121, 92, 0.07); border-color: rgba(21, 121, 92, 0.32); }
+.sadb-signal--green { background: rgba(10, 110, 74, 0.07); border-color: rgba(10, 110, 74, 0.32); }
 .sadb-signal--green b { color: var(--color-success-800); }
-.sadb-signal--yellow { background: rgba(156, 94, 22, 0.07); border-color: rgba(156, 94, 22, 0.35); }
+.sadb-signal--yellow { background: rgba(179, 89, 0, 0.07); border-color: rgba(179, 89, 0, 0.35); }
 .sadb-signal--yellow b { color: var(--color-warning-700); }
-.sadb-signal--red { background: rgba(139, 46, 36, 0.06); border-color: rgba(139, 46, 36, 0.35); }
+.sadb-signal--red { background: rgba(158, 27, 20, 0.06); border-color: rgba(158, 27, 20, 0.35); }
 .sadb-signal--red b { color: var(--color-danger-800); }
 
 /* Key/value rows (business snapshot, sync & interop) */
@@ -28243,7 +28301,7 @@ button.sadb-signal { cursor: pointer; }
   justify-content: space-between;
   gap: 10px;
   padding: 11px 14px;
-  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
@@ -28264,7 +28322,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 4px 11px;
   border-radius: 999px;
   border: 0;
-  background: var(--ehr-row-rule, #EDF2F7);
+  background: var(--ehr-row-rule, #F1F3F5);
   color: var(--text-secondary);
   font-family: var(--font-condensed);
   font-weight: 700;
@@ -28349,7 +28407,7 @@ button.sadb-signal { cursor: pointer; }
   text-align: start;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
   cursor: pointer;
   font-size: 12.5px;
   font-weight: 600;
@@ -28376,7 +28434,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 12px 14px;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
   text-align: start;
   cursor: pointer;
 }
@@ -28537,7 +28595,7 @@ button.sadb-signal { cursor: pointer; }
   align-items: center;
   gap: 14px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--ehr-row-rule, #EDF2F7);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
 }
 .sadb-setting-row:last-child { border-bottom: 0; }
 .sadb-setting-copy { min-width: 0; flex: 1; }
@@ -28595,7 +28653,7 @@ button.sadb-signal { cursor: pointer; }
   height: 17px;
   border-radius: 50%;
   background: #FFFFFF;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.25);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.25);
 }
 
 .sadb-action-btn {
@@ -28619,10 +28677,10 @@ button.sadb-signal { cursor: pointer; }
 .sadb-action-btn.is-danger {
   height: 30px;
   padding: 0 12px;
-  border-color: rgba(139, 46, 36, 0.45);
+  border-color: rgba(158, 27, 20, 0.45);
   color: var(--color-danger-800);
 }
-.sadb-action-btn.is-danger:hover { background: rgba(139, 46, 36, 0.06); }
+.sadb-action-btn.is-danger:hover { background: rgba(158, 27, 20, 0.06); }
 
 /* ── Status-card grid (integrations / endpoints) ── */
 .sadb-status-grid {
@@ -28647,7 +28705,7 @@ button.sadb-signal { cursor: pointer; }
   flex-direction: column;
   min-width: 0;
   background: var(--bg-card-solid);
-  border: 1px solid rgba(139, 46, 36, 0.35);
+  border: 1px solid rgba(158, 27, 20, 0.35);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -28656,8 +28714,8 @@ button.sadb-signal { cursor: pointer; }
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border-bottom: 1px solid rgba(139, 46, 36, 0.2);
-  background: rgba(139, 46, 36, 0.04);
+  border-bottom: 1px solid rgba(158, 27, 20, 0.2);
+  background: rgba(158, 27, 20, 0.04);
   color: var(--color-danger-800);
 }
 .sadb-danger-title {

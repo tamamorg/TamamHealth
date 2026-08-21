@@ -33,11 +33,11 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
 
   return (
     <main>
-      <section style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "30px 32px 74px" }}>
+      <section style={{ background: "#113055", color: "#FFFFFF", padding: "30px 32px 74px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           {/* Back to the rail these cards came from — it lives on the health
               system page, not on /about. */}
-          <Link href="/health-system#challenges" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7FC4EA", textDecoration: "none" }}>{t("← All challenges")}</Link>
+          <Link href="/health-system#challenges" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7CC7FF", textDecoration: "none" }}>{t("← All challenges")}</Link>
           <div className="tm-split" style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 48, alignItems: "center", marginTop: 26 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "flex-start" }}>
               <h1 style={{ fontSize: "clamp(31px, 5vw, 54px)", margin: 0, color: "#FFFFFF" }}>{c.title}</h1>

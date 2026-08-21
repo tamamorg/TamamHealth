@@ -1032,7 +1032,7 @@ export default function ClinicalNoteEditor({
         <Modal onClose={() => setShowAddendum(false)} width={520}>
           <div style={{ padding: 20 }}>
             <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700 }}>Add an addendum</h2>
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted, #64748b)', margin: '0 0 10px' }}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 10px' }}>
               The original note is not changed. Your correction is appended and attributed to you.
             </p>
             <textarea

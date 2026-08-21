@@ -166,7 +166,7 @@ export default function PhotoCaptureModal({ onCapture, onClose }: PhotoCaptureMo
           </div>
 
           {error && phase !== 'error' && (
-            <p className="text-xs" style={{ color: 'var(--danger, #dc2626)' }}>{error}</p>
+            <p className="text-xs" style={{ color: 'var(--danger, #d92b20)' }}>{error}</p>
           )}
 
           {/* Actions */}

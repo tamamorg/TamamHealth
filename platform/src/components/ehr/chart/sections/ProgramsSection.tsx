@@ -144,11 +144,11 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
                 <tr key={e._id}>
                   <td style={{ fontWeight: 600 }}>
                     {e.programName}
-                    {e.notes ? <div style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400, fontSize: 12 }}>{e.notes}</div> : null}
+                    {e.notes ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400, fontSize: 12 }}>{e.notes}</div> : null}
                   </td>
                   <td>
                     {formatDate(e.enrollmentDate)}
-                    {e.outcomeDate ? <div style={{ color: 'var(--ehr-muted, #597386)', fontSize: 12 }}>ended {formatDate(e.outcomeDate)}</div> : null}
+                    {e.outcomeDate ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>ended {formatDate(e.outcomeDate)}</div> : null}
                   </td>
                   <td><span className={STATUS_BADGE[e.status]}>{STATUS_LABELS[e.status]}</span></td>
                   <td>

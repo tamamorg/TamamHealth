@@ -28,7 +28,7 @@ export const NOTIFICATION_META: Record<NotificationType, NotificationMeta> = {
   referral: { icon: ArrowRightLeft, color: 'var(--tb-blue-700)', bg: 'rgba(33, 145, 208, 0.12)', label: 'Referrals' },
   lab: { icon: FlaskConical, color: 'var(--category-lab)', bg: 'var(--category-lab-bg)', label: 'Lab' },
   appointment: { icon: Calendar, color: 'var(--tb-blue-800)', bg: 'rgba(1, 86, 151, 0.10)', label: 'Schedule' },
-  prescription: { icon: Pill, color: 'var(--color-warning)', bg: 'rgba(217, 119, 6, 0.12)', label: 'Pharmacy' },
+  prescription: { icon: Pill, color: 'var(--color-warning)', bg: 'rgba(230, 114, 0, 0.12)', label: 'Pharmacy' },
   progress: { icon: ClipboardList, color: 'var(--accent-primary)', bg: 'var(--accent-light)', label: 'Care progress' },
   // Internal transfers share the arrows glyph with referrals but take the gold
   // accent — the two move a patient in different senses (ownership vs facility)

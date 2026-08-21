@@ -59,7 +59,7 @@ export default function FacilityAssessmentsPage() {
   if (loading) return <main className="page-container flex items-center justify-center"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('status.loading')}</p></main>;
 
   const scoreColor = (score: number) => score >= 70 ? 'var(--accent-primary)' : score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
-  const scoreBg = (score: number) => score >= 70 ? 'rgba(33, 145, 208, 0.12)' : score >= 50 ? 'rgba(252,211,77,0.12)' : 'rgba(229,46,66,0.12)';
+  const scoreBg = (score: number) => score >= 70 ? 'rgba(33, 145, 208, 0.12)' : score >= 50 ? 'rgba(253, 217, 95,0.12)' : 'rgba(224, 49, 39,0.12)';
 
   const handleSubmit = async () => {
     if (!form.facilityId) {

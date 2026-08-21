@@ -545,7 +545,7 @@ export default function LabPage() {
                   </button>
                   {importProtocol && (
                     <span className="text-[11px] font-mono px-2 py-1 rounded" style={{
-                      background: importProtocol === 'unknown' ? 'rgba(229,46,66,0.1)' : 'var(--accent-light)',
+                      background: importProtocol === 'unknown' ? 'rgba(224, 49, 39,0.1)' : 'var(--accent-light)',
                       color: importProtocol === 'unknown' ? 'var(--color-danger-text)' : 'var(--accent-primary)',
                     }}>
                       protocol: {importProtocol}
@@ -554,7 +554,7 @@ export default function LabPage() {
                 </div>
 
                 {importWarnings.length > 0 && (
-                  <div className="mt-3 p-2.5 rounded-lg" style={{ background: 'rgba(229,46,66,0.06)', border: '1px solid var(--color-danger)' }}>
+                  <div className="mt-3 p-2.5 rounded-lg" style={{ background: 'rgba(224, 49, 39,0.06)', border: '1px solid var(--color-danger)' }}>
                     {importWarnings.map((w, i) => (
                       <p key={i} className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{w}</p>
                     ))}

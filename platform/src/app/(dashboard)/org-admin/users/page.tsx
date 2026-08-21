@@ -345,7 +345,7 @@ export default function OrgUsersPage() {
           </div>
         )}
         {error && !showCreateModal && !showResetModal && (
-          <div className="mb-4 p-3 rounded-lg text-sm font-medium flex-shrink-0" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(229,46,66,0.2)' }}>
+          <div className="mb-4 p-3 rounded-lg text-sm font-medium flex-shrink-0" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(224, 49, 39,0.2)' }}>
             {error}
           </div>
         )}
@@ -481,8 +481,8 @@ export default function OrgUsersPage() {
                         <span
                           className="appointment-status-pill"
                           style={user.isActive
-                            ? { borderColor: 'rgba(25,158,112,0.45)', background: 'rgba(25,158,112,0.10)', color: 'var(--color-success-text)' }
-                            : { borderColor: 'rgba(227,73,72,0.45)', background: 'rgba(227,73,72,0.10)', color: 'var(--color-danger-text)' }}
+                            ? { borderColor: 'rgba(15, 160, 106,0.45)', background: 'rgba(15, 160, 106,0.10)', color: 'var(--color-success-text)' }
+                            : { borderColor: 'rgba(224, 49, 39,0.45)', background: 'rgba(224, 49, 39,0.10)', color: 'var(--color-danger-text)' }}
                         >
                           {user.isActive ? t('orgUsers.statusActive') : t('orgUsers.statusInactive')}
                         </span>
@@ -539,7 +539,7 @@ export default function OrgUsersPage() {
             </div>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg text-sm flex items-center gap-2" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(229,46,66,0.2)' }}>
+              <div className="mb-4 p-3 rounded-lg text-sm flex items-center gap-2" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(224, 49, 39,0.2)' }}>
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
@@ -783,7 +783,7 @@ export default function OrgUsersPage() {
             </div>
 
             {error && (
-              <div className="mb-3 p-2 rounded-lg text-xs" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)' }}>
+              <div className="mb-3 p-2 rounded-lg text-xs" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)' }}>
                 {error}
               </div>
             )}

@@ -43,10 +43,10 @@ import {
  *  alone. `border` is carried explicitly rather than derived as `${color}40`,
  *  which produces invalid CSS for the `var(--…)` entries. */
 const STATUS_TOKENS: Record<EnquiryStatus, { color: string; bg: string; border: string }> = {
-  new: { color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)', border: 'rgba(228, 168, 75, 0.45)' },
+  new: { color: 'var(--color-warning-text)', bg: 'rgba(254, 230, 151, 0.16)', border: 'rgba(254, 230, 151, 0.45)' },
   contacted: { color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
-  appointment_scheduled: { color: 'var(--accent-purple)', bg: 'rgba(124, 58, 237, 0.12)', border: 'rgba(124, 58, 237, 0.35)' },
-  closed: { color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)', border: 'rgba(27, 158, 119, 0.40)' },
+  appointment_scheduled: { color: 'var(--accent-purple)', bg: 'rgba(166, 83, 0, 0.12)', border: 'rgba(166, 83, 0, 0.35)' },
+  closed: { color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.12)', border: 'rgba(15, 160, 106, 0.40)' },
 };
 
 // Column template for the inquiry list head + rows:

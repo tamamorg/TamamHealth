@@ -119,10 +119,10 @@ function FacilityOverview() {
   }));
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    functional: { bg: 'rgba(74,222,128,0.12)', color: 'var(--color-success)', label: t('myFacility.statusFunctional') },
-    partially_functional: { bg: 'rgba(252,211,77,0.12)', color: 'var(--color-warning)', label: t('myFacility.statusPartiallyFunctional') },
-    non_functional: { bg: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)', label: t('myFacility.statusNonFunctional') },
-    closed: { bg: 'rgba(148,163,184,0.12)', color: 'var(--text-muted)', label: t('myFacility.statusClosed') },
+    functional: { bg: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success)', label: t('myFacility.statusFunctional') },
+    partially_functional: { bg: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning)', label: t('myFacility.statusPartiallyFunctional') },
+    non_functional: { bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', label: t('myFacility.statusNonFunctional') },
+    closed: { bg: 'rgba(148, 162, 179,0.12)', color: 'var(--text-muted)', label: t('myFacility.statusClosed') },
   };
   const opStatus = hospital?.operationalStatus || 'functional';
 
@@ -150,15 +150,15 @@ function FacilityOverview() {
                 only when you submit it here — it is not sent automatically.
               </p>
               {!submittedAt ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(148,163,184,0.12)', color: 'var(--text-muted)' }}>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(148, 162, 179,0.12)', color: 'var(--text-muted)' }}>
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--text-muted)' }} /> Not yet submitted
                 </span>
               ) : hasPendingChanges ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(252,211,77,0.12)', color: 'var(--color-warning-text)' }}>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning-text)' }}>
                   <Clock className="w-3 h-3" /> Changes pending submission
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: 'var(--color-success-text)' }}>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success-text)' }}>
                   <CheckCircle className="w-3 h-3" /> Submitted to Ministry of Health
                 </span>
               )}
@@ -176,7 +176,7 @@ function FacilityOverview() {
                 className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   background: submitting ? 'var(--text-muted)' : 'linear-gradient(135deg, #2191D0, #015697)',
-                  boxShadow: '0 2px 8px rgba(0,119,215,0.3)',
+                  boxShadow: '0 2px 8px rgba(17, 116, 180,0.3)',
                 }}
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

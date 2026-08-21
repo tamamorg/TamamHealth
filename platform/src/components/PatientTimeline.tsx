@@ -124,10 +124,10 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
     // unattested one — so it outranks the visit type for the badge slot.
     const recStatus = r.documentStatus ?? 'draft';
     const recBadge = recStatus === 'signed' || recStatus === 'amended'
-      ? { label: recStatus === 'amended' ? 'Amended' : 'Signed', bg: 'rgba(31, 157, 111,0.12)', color: 'var(--color-success)' }
+      ? { label: recStatus === 'amended' ? 'Amended' : 'Signed', bg: 'rgba(15, 160, 106,0.12)', color: 'var(--color-success)' }
       : recStatus === 'awaiting_cosign'
-        ? { label: 'Awaiting co-sign', bg: 'rgba(252,211,77,0.16)', color: 'var(--color-warning)' }
-        : { label: 'Unsigned', bg: 'rgba(252,211,77,0.16)', color: 'var(--color-warning)' };
+        ? { label: 'Awaiting co-sign', bg: 'rgba(253, 217, 95,0.16)', color: 'var(--color-warning)' }
+        : { label: 'Unsigned', bg: 'rgba(253, 217, 95,0.16)', color: 'var(--color-warning)' };
     events.push({
       id: `mr-${r._id}`,
       docId: r._id,
@@ -161,8 +161,8 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
       meta: [n.signedByName || n.assignedToName || n.authorName, n.hospitalName]
         .filter(Boolean).join(' · ') || undefined,
       badge: signed
-        ? { label: n.status === 'amended' ? 'Amended' : 'Signed', bg: 'rgba(31, 157, 111,0.12)', color: 'var(--color-success)' }
-        : { label: n.status === 'awaiting_cosign' ? 'Awaiting co-sign' : 'Unsigned', bg: 'rgba(252,211,77,0.16)', color: 'var(--color-warning)' },
+        ? { label: n.status === 'amended' ? 'Amended' : 'Signed', bg: 'rgba(15, 160, 106,0.12)', color: 'var(--color-success)' }
+        : { label: n.status === 'awaiting_cosign' ? 'Awaiting co-sign' : 'Unsigned', bg: 'rgba(253, 217, 95,0.16)', color: 'var(--color-warning)' },
     });
   }
 
@@ -176,9 +176,9 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
       subtitle: status,
       meta: lr.specimen ? t('timeline.metaSpecimen', { specimen: lr.specimen }) : undefined,
       badge: lr.critical
-        ? { label: t('timeline.badgeCritical'), bg: 'rgba(229,46,66,0.14)', color: 'var(--color-danger)' }
+        ? { label: t('timeline.badgeCritical'), bg: 'rgba(224, 49, 39,0.14)', color: 'var(--color-danger)' }
         : lr.abnormal
-        ? { label: t('timeline.badgeAbnormal'), bg: 'rgba(252,211,77,0.14)', color: 'var(--color-warning)' }
+        ? { label: t('timeline.badgeAbnormal'), bg: 'rgba(253, 217, 95,0.14)', color: 'var(--color-warning)' }
         : undefined,
     });
   }
@@ -192,8 +192,8 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
       subtitle: formatRxSig(rx),
       meta: rx.prescribedBy,
       badge: rx.status === 'dispensed'
-        ? { label: t('timeline.badgeDispensed'), bg: 'rgba(31, 157, 111,0.14)', color: 'var(--color-success)' }
-        : { label: t('timeline.badgePending'), bg: 'rgba(252,211,77,0.14)', color: 'var(--color-warning)' },
+        ? { label: t('timeline.badgeDispensed'), bg: 'rgba(15, 160, 106,0.14)', color: 'var(--color-success)' }
+        : { label: t('timeline.badgePending'), bg: 'rgba(253, 217, 95,0.14)', color: 'var(--color-warning)' },
     });
   }
 
@@ -216,7 +216,7 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
       title: t('timeline.titleReferral', { facility: ref.toHospital || t('timeline.facilityFallback') }),
       subtitle: ref.reason || ref.department,
       meta: ref.referringDoctor,
-      badge: { label: humanizeStatus(ref.status), bg: 'rgba(245,158,11,0.10)', color: 'var(--color-warning)' },
+      badge: { label: humanizeStatus(ref.status), bg: 'rgba(255, 127, 0,0.10)', color: 'var(--color-warning)' },
     });
   }
 
@@ -229,9 +229,9 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
       subtitle: t('timeline.subtitleAnc', { weeks: a.gestationalAge || '—', risk: a.riskLevel }),
       meta: a.facilityName,
       badge: a.riskLevel === 'high'
-        ? { label: t('timeline.badgeHighRisk'), bg: 'rgba(229,46,66,0.14)', color: 'var(--color-danger)' }
+        ? { label: t('timeline.badgeHighRisk'), bg: 'rgba(224, 49, 39,0.14)', color: 'var(--color-danger)' }
         : a.riskLevel === 'moderate'
-        ? { label: t('timeline.badgeModerate'), bg: 'rgba(252,211,77,0.14)', color: 'var(--color-warning)' }
+        ? { label: t('timeline.badgeModerate'), bg: 'rgba(253, 217, 95,0.14)', color: 'var(--color-warning)' }
         : undefined,
     });
   }
@@ -244,7 +244,7 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
       title: ap.reason || (ap.appointmentType ? `${humanizeStatus(ap.appointmentType)} appointment` : t('timeline.titleAppointment')),
       subtitle: ap.department,
       meta: ap.providerName,
-      badge: { label: humanizeStatus(ap.status), bg: 'rgba(99,102,241,0.10)', color: '#6366F1' },
+      badge: { label: humanizeStatus(ap.status), bg: 'rgba(17, 116, 180,0.10)', color: '#1174B4' },
     });
   }
 

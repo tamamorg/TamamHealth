@@ -19,7 +19,7 @@ import { useTasks } from '@/lib/hooks/useTasks';
  * be `--accent-primary`, i.e. blue on blue, so all a user saw was a floating
  * white digit with no pill behind it.
  */
-const RAIL_BADGE_RED = '#E05A3A';
+const RAIL_BADGE_RED = '#E03127';
 
 export default function QuickActions({ notificationCount }: {
   /** Unread bell count. Supplied by the rail, which already loads the feed for

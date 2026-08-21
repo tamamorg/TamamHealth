@@ -583,7 +583,7 @@ export default function DataEntryDashboard() {
                 </div>
 
                 {/* 7. Notes */}
-                {sectionHeader(FileText, t('dataEntry.dailyNotes'), '#5A7370')}
+                {sectionHeader(FileText, t('dataEntry.dailyNotes'), '#5D728B')}
                 {textField(t('dataEntry.challenges'), 'challenges', t('dataEntry.challengesPlaceholder'))}
                 {textField(t('dataEntry.achievements'), 'achievements', t('dataEntry.achievementsPlaceholder'))}
                 {textField(t('dataEntry.urgentNeeds'), 'urgentNeeds', t('dataEntry.urgentNeedsPlaceholder'))}

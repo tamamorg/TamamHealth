@@ -215,9 +215,9 @@ function outstandingPillTone(tone?: OutstandingEntry['tone']) {
 // critical still needs a pill; it gets a neutral gray "Overdue" rather than
 // inventing a fabricated severity.
 function overdueFlagTone(result: Pick<LabResultDoc, 'critical' | 'abnormal'>) {
-  if (result.critical) return { label: 'Critical', bg: 'rgba(239,68,68,0.12)', color: 'var(--color-danger)', border: 'rgba(239,68,68,0.25)' };
-  if (result.abnormal) return { label: 'Abnormal', bg: 'rgba(251,191,36,0.12)', color: 'var(--color-warning)', border: 'rgba(251,191,36,0.25)' };
-  return { label: 'Overdue', bg: 'rgba(148,163,184,0.14)', color: 'var(--text-muted)', border: 'rgba(148,163,184,0.28)' };
+  if (result.critical) return { label: 'Critical', bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', border: 'rgba(224, 49, 39,0.25)' };
+  if (result.abnormal) return { label: 'Abnormal', bg: 'rgba(255, 210, 166,0.12)', color: 'var(--color-warning)', border: 'rgba(255, 210, 166,0.25)' };
+  return { label: 'Overdue', bg: 'rgba(148, 162, 179,0.14)', color: 'var(--text-muted)', border: 'rgba(148, 162, 179,0.28)' };
 }
 
 function departmentTone(value?: string) {
@@ -1595,9 +1595,9 @@ export default function EhrClinicalDashboard({
             title="Today by acuity"
             centerLabel="on list"
             segments={[
-              { name: 'Emergency', value: visiblePatientRows.filter(row => row.triagePriority === 'RED').length, color: '#8B2E24' },
-              { name: 'Urgent', value: visiblePatientRows.filter(row => row.triagePriority === 'YELLOW').length, color: '#9C5E16' },
-              { name: 'Routine', value: visiblePatientRows.filter(row => row.triagePriority !== 'RED' && row.triagePriority !== 'YELLOW').length, color: '#15795C' },
+              { name: 'Emergency', value: visiblePatientRows.filter(row => row.triagePriority === 'RED').length, color: '#9E1B14' },
+              { name: 'Urgent', value: visiblePatientRows.filter(row => row.triagePriority === 'YELLOW').length, color: '#B35900' },
+              { name: 'Routine', value: visiblePatientRows.filter(row => row.triagePriority !== 'RED' && row.triagePriority !== 'YELLOW').length, color: '#0A6E4A' },
             ]}
           />
         </aside>

@@ -132,16 +132,16 @@ export default function BootIntegrityGuard() {
       style={{
         position: 'fixed', inset: 0, zIndex: 2147483647,
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, boxSizing: 'border-box',
-        background: '#0f1117', color: '#f1f5f9',
+        background: '#001d3f', color: '#f1f3f5',
         fontFamily: 'system-ui, sans-serif',
       }}
     >
       <div style={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(229,46,66,0.12)', border: '1px solid rgba(229,46,66,0.25)' }}>
+        <div style={{ width: 56, height: 56, borderRadius: 16, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(224, 49, 39,0.12)', border: '1px solid rgba(224, 49, 39,0.25)' }}>
           <span style={{ fontSize: 28, lineHeight: 1 }} aria-hidden>⚠️</span>
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px' }}>Couldn’t load the app</h2>
-        <p style={{ fontSize: 14, color: '#94a3b8', margin: '0 0 24px', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, color: '#94a2b3', margin: '0 0 24px', lineHeight: 1.5 }}>
           Some files didn’t load correctly — this is usually a network hiccup or an out-of-date copy of the app. Reloading should fix it.
         </p>
         <button

@@ -502,8 +502,8 @@ function FacilityProfile({ hospital, onClose, canManage }: {
       <div className="kpi-grid" style={{ marginBottom: 16 }}>
         <div className="kpi"><div className="icon-box-sm"><Users style={{ color: 'var(--accent-primary)' }} /></div><div className="kpi__body"><div className="kpi__value">{hospital.patientCount.toLocaleString()}</div><div className="kpi__label">{t('hospitals.statPatients')}</div></div></div>
         <div className="kpi"><div className="icon-box-sm"><Activity style={{ color: 'var(--accent-primary)' }} /></div><div className="kpi__body"><div className="kpi__value">{hospital.todayVisits}</div><div className="kpi__label">{t('hospitals.statToday')}</div></div></div>
-        <div className="kpi"><div className="icon-box-sm"><BedDouble style={{ color: '#A78BFA' }} /></div><div className="kpi__body"><div className="kpi__value">{hospital.totalBeds}</div><div className="kpi__label">{t('hospitals.statBeds')}</div></div></div>
-        <div className="kpi"><div className="icon-box-sm"><Stethoscope style={{ color: '#A78BFA' }} /></div><div className="kpi__body"><div className="kpi__value">{totalStaff}</div><div className="kpi__label">{t('hospitals.statStaff')}</div></div></div>
+        <div className="kpi"><div className="icon-box-sm"><BedDouble style={{ color: '#FFD2A6' }} /></div><div className="kpi__body"><div className="kpi__value">{hospital.totalBeds}</div><div className="kpi__label">{t('hospitals.statBeds')}</div></div></div>
+        <div className="kpi"><div className="icon-box-sm"><Stethoscope style={{ color: '#FFD2A6' }} /></div><div className="kpi__body"><div className="kpi__value">{totalStaff}</div><div className="kpi__label">{t('hospitals.statStaff')}</div></div></div>
       </div>
 
       <hr className="section-divider" />
@@ -591,7 +591,7 @@ function FacilityProfile({ hospital, onClose, canManage }: {
           <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
             {[
               { label: t('hospitals.staffDoctors'), value: hospital.doctors, color: 'var(--accent-primary)' },
-              { label: t('hospitals.staffClinicalOfficers'), value: hospital.clinicalOfficers, color: '#A78BFA' },
+              { label: t('hospitals.staffClinicalOfficers'), value: hospital.clinicalOfficers, color: '#FFD2A6' },
               { label: t('hospitals.staffNurses'), value: hospital.nurses, color: 'var(--chart-2)' },
               { label: t('hospitals.staffLabTech'), value: hospital.labTechnicians, color: 'var(--color-warning-text)' },
               { label: t('hospitals.staffPharmacists'), value: hospital.pharmacists, color: 'var(--color-success-text)' },
@@ -610,14 +610,14 @@ function FacilityProfile({ hospital, onClose, canManage }: {
         <div className="card-elevated" style={{ padding: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('hospitals.infrastructure')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {hospital.hasElectricity ? <InfraBadge icon={Zap} label={t('hospitals.infraPower')} color="#FCD34D" bg="rgba(252,211,77,0.10)" />
-              : <InfraBadge icon={ZapOff} label={t('hospitals.infraNoPower')} color="#8A9E9A" bg="rgba(100,116,139,0.10)" />}
-            {hospital.hasGenerator && <InfraBadge icon={Activity} label={t('hospitals.infraGenerator')} color="var(--color-success-text)" bg="rgba(31, 157, 111,0.10)" />}
-            {hospital.hasSolar && <InfraBadge icon={Sun} label={t('hospitals.infraSolar')} color="#FCD34D" bg="rgba(252,211,77,0.08)" />}
-            {hospital.hasInternet ? <InfraBadge icon={Signal} label={hospital.internetType} color="var(--accent-primary)" bg="rgba(96,165,250,0.10)" />
-              : <InfraBadge icon={WifiOff} label={t('hospitals.infraNoInternet')} color="#8A9E9A" bg="rgba(100,116,139,0.10)" />}
-            {hospital.hasAmbulance && <InfraBadge icon={Truck} label={t('hospitals.infraAmbulance')} color="var(--color-danger-text)" bg="rgba(239,68,68,0.08)" />}
-            {hospital.emergency24hr && <InfraBadge icon={HeartPulse} label={t('hospitals.infra24hrEr')} color="var(--color-danger-text)" bg="rgba(239,68,68,0.08)" />}
+            {hospital.hasElectricity ? <InfraBadge icon={Zap} label={t('hospitals.infraPower')} color="#FDD95F" bg="rgba(253, 217, 95,0.10)" />
+              : <InfraBadge icon={ZapOff} label={t('hospitals.infraNoPower')} color="#94A2B3" bg="rgba(93, 114, 139,0.10)" />}
+            {hospital.hasGenerator && <InfraBadge icon={Activity} label={t('hospitals.infraGenerator')} color="var(--color-success-text)" bg="rgba(15, 160, 106,0.10)" />}
+            {hospital.hasSolar && <InfraBadge icon={Sun} label={t('hospitals.infraSolar')} color="#FDD95F" bg="rgba(253, 217, 95,0.08)" />}
+            {hospital.hasInternet ? <InfraBadge icon={Signal} label={hospital.internetType} color="var(--accent-primary)" bg="rgba(30, 144, 255,0.10)" />
+              : <InfraBadge icon={WifiOff} label={t('hospitals.infraNoInternet')} color="#94A2B3" bg="rgba(93, 114, 139,0.10)" />}
+            {hospital.hasAmbulance && <InfraBadge icon={Truck} label={t('hospitals.infraAmbulance')} color="var(--color-danger-text)" bg="rgba(224, 49, 39,0.08)" />}
+            {hospital.emergency24hr && <InfraBadge icon={HeartPulse} label={t('hospitals.infra24hrEr')} color="var(--color-danger-text)" bg="rgba(224, 49, 39,0.08)" />}
           </div>
           {hospital.electricityHours > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
@@ -641,7 +641,7 @@ function FacilityProfile({ hospital, onClose, canManage }: {
             {Object.entries(SERVICE_FLAG_ICONS).map(([key, { icon: FlagIcon, labelKey }]) => {
               const available = (hospital.serviceFlags as Record<string, boolean>)?.[key];
               return (
-                <span key={key} className="badge" style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, background: available ? 'rgba(0,119,215,0.08)' : 'rgba(100,116,139,0.06)', color: available ? 'var(--accent-primary)' : 'var(--text-muted)', opacity: available ? 1 : 0.5 }}>
+                <span key={key} className="badge" style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, background: available ? 'rgba(17, 116, 180,0.08)' : 'rgba(93, 114, 139,0.06)', color: available ? 'var(--accent-primary)' : 'var(--text-muted)', opacity: available ? 1 : 0.5 }}>
                   <FlagIcon style={{ width: 11, height: 11 }} /> {t(labelKey)}
                 </span>
               );

@@ -50,7 +50,7 @@ const WeeklyCasesChart = dynamic(
    They come from the chart scale, not from status. */
 const LAYER_ALERTS = CHART_SERIES_HEX[4];   // orange
 const LAYER_IMMUNIZATION = CHART_SERIES_HEX[5]; // green
-const LAYER_DEEP = '#013D6B';               // brand-800, the reporting layer
+const LAYER_DEEP = '#113055';               // brand-800, the reporting layer
 
 /* STATUS (on target / follow-up / critical): handed straight to CSS, so these
    stay tokens and keep tracking the semantic scale. */
@@ -166,14 +166,14 @@ const DISEASE_COLORS: Record<string, string> = {
 const DISEASE_FALLBACK = [...CHART_SERIES];
 
 // Facility-type donut palette + labels (matches the hospital registry vocab).
-// PHCU was slate (#64748B) — it read as gray and was near-indistinguishable
+// PHCU was slate (#5D728B) — it read as gray and was near-indistinguishable
 // from the referral blue; the warm orange step validates against every neighbor.
 const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
   national_referral: { label: 'National Referral', color: 'var(--chart-1)' },
   state_hospital: { label: 'State Hospital', color: 'var(--chart-3)' },
   county_hospital: { label: 'County Hospital', color: 'var(--color-success-text)' },
   phcc: { label: 'PHCC', color: 'var(--color-warning-text)' },
-  phcu: { label: 'PHCU', color: '#CA4D1C' },
+  phcu: { label: 'PHCU', color: '#B35900' },
 };
 
 export default function GovernmentNationalDashboard() {
@@ -285,7 +285,7 @@ export default function GovernmentNationalDashboard() {
     const map = new Map<string, string>();
     for (const d of diseaseList) {
       const named = DISEASE_COLORS[d.toLowerCase()];
-      const color = named && !used.has(named) ? named : DISEASE_FALLBACK.find(c => !used.has(c)) || '#64748B';
+      const color = named && !used.has(named) ? named : DISEASE_FALLBACK.find(c => !used.has(c)) || '#5D728B';
       used.add(color);
       map.set(d, color);
     }
@@ -531,8 +531,8 @@ export default function GovernmentNationalDashboard() {
                               this gradient IS the legend. */}
                           <span aria-hidden="true" className="gov-scale-bar flex-1 rounded-full" style={{
                             height: 8,
-                            background: `linear-gradient(90deg, rgb(247,250,252), ${layerHex})`,
-                            border: '1px solid var(--ehr-border, #DDEAF3)',
+                            background: `linear-gradient(90deg, rgb(245, 247, 248), ${layerHex})`,
+                            border: '1px solid var(--ehr-border, #E2E6EB)',
                           }} />
                           <span className="text-[10px] tabular-nums">{maxValue.toLocaleString()}</span>
                         </div>

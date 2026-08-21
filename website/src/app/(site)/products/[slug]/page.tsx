@@ -30,13 +30,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   return (
     <main>
-      <section style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "30px 32px 74px" }}>
+      <section style={{ background: "#113055", color: "#FFFFFF", padding: "30px 32px 74px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <Link href="/products" style={{ fontSize: 14, color: "#7FC4EA", textDecoration: "none", letterSpacing: "0.04em" }}>{t("← All products")}</Link>
+          <Link href="/products" style={{ fontSize: 14, color: "#7CC7FF", textDecoration: "none", letterSpacing: "0.04em" }}>{t("← All products")}</Link>
           <div className="tm-split" style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 48, alignItems: "center", marginTop: 26 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "flex-start" }}>
               <h1 style={{ fontSize: "clamp(31px, 5vw, 54px)", margin: 0, color: "#FFFFFF" }}>{p.title}</h1>
-              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7FC4EA" }}>{p.tagline}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7CC7FF" }}>{p.tagline}</span>
               <p style={{ margin: 0, fontSize: 17, lineHeight: 1.7, color: "rgba(255,255,255,0.82)", maxWidth: 640 }}>{d.intro}</p>
               <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap" }}>
                 <Link href="/contact" className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, whiteSpace: "nowrap", flexShrink: 0, background: "#FFFFFF", borderColor: "#FFFFFF", color: "#015697" }}>

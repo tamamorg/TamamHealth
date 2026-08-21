@@ -59,7 +59,7 @@ export default function NewsExplorer() {
         aria-expanded={open[key]}
         style={{ appearance: "none", background: "none", border: 0, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "15px 0", textAlign: "start" }}
       >
-        <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 17, color: "#0E2A4A" }}>{label}</span>
+        <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 17, color: "#113055" }}>{label}</span>
         <span aria-hidden="true" style={{ fontFamily: "var(--font-heading)", fontWeight: 400, fontSize: 24, lineHeight: 1, color: "var(--color-accent-700)" }}>
           {open[key] ? "−" : "+"}
         </span>
@@ -101,7 +101,7 @@ export default function NewsExplorer() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("Search")}
               aria-label={t("Search news")}
-              style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "none", fontFamily: "var(--font-body)", fontSize: 15, color: "#0E2A4A", padding: "12px 0" }}
+              style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "none", fontFamily: "var(--font-body)", fontSize: 15, color: "#113055", padding: "12px 0" }}
             />
             <span aria-hidden="true" style={{ width: 36, height: 36, display: "grid", placeItems: "center", color: "#015697" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>

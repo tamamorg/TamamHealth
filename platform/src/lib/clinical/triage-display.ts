@@ -7,7 +7,7 @@
  * The same three lines used to be re-derived inline in a dozen files, and they
  * disagreed: one station called RED "Critical" while the rest said
  * "Emergency", routine appointments were labelled "Appointment", and RED text
- * was #EF4444 in TSX but --color-danger in CSS — two reds for one acuity.
+ * was #E03127 in TSX but --color-danger in CSS — two reds for one acuity.
  *
  * Colours are the --acuity-* tokens from globals.css — the same ones the CSS
  * cue under a status pill reads — so a word painted inline here and the

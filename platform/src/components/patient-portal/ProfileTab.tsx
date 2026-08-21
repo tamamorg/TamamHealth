@@ -57,10 +57,10 @@ export function ProfileTab({ patient }: { patient: PatientDoc }) {
           <div className="pp-card">
             <div className="pp-card-head"><h2>{t('patientPortal.emergencyContact')}</h2></div>
             <div style={{ padding: '11px 14px' }}>
-              <b style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: '#0E2A4A' }}>
+              <b style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: '#113055' }}>
                 {patient.nokName || '—'}{patient.nokRelationship ? ` · ${patient.nokRelationship}` : ''}
               </b>
-              <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: '#5B6B7E' }}>{patient.nokPhone || '—'}</span>
+              <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: '#5D728B' }}>{patient.nokPhone || '—'}</span>
             </div>
           </div>
 
@@ -70,7 +70,7 @@ export function ProfileTab({ patient }: { patient: PatientDoc }) {
               {realAllergies.length > 0 ? realAllergies.map((a, i) => (
                 <span key={i} className="pp-pill pp-pill--red">{a}</span>
               )) : (
-                <span style={{ fontSize: 12, color: '#5B6B7E' }}>{t('patientPortal.noKnownAllergies')}</span>
+                <span style={{ fontSize: 12, color: '#5D728B' }}>{t('patientPortal.noKnownAllergies')}</span>
               )}
             </div>
           </div>
@@ -81,7 +81,7 @@ export function ProfileTab({ patient }: { patient: PatientDoc }) {
               {realConditions.length > 0 ? realConditions.map((c, i) => (
                 <span key={i} className="pp-pill pp-pill--blue">{c}</span>
               )) : (
-                <span style={{ fontSize: 12, color: '#5B6B7E' }}>{t('patientPortal.noChronicConditions')}</span>
+                <span style={{ fontSize: 12, color: '#5D728B' }}>{t('patientPortal.noChronicConditions')}</span>
               )}
             </div>
           </div>

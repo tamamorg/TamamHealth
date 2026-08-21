@@ -387,7 +387,7 @@ export default function MessagingDock() {
         // floats over PHI.
         borderRadius: 'var(--card-radius)', border: '1px solid var(--border-light)',
         background: 'var(--bg-card-solid)',
-        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.16)',
+        boxShadow: '0 12px 32px rgba(0, 29, 63, 0.16)',
         // Opens from wherever the launcher was last dragged to, instead of
         // snapping back to the default corner.
         transform: `translate3d(${dockOffset.x}px, ${dockOffset.y}px, 0)`,
@@ -464,7 +464,7 @@ export default function MessagingDock() {
                   <div className="fixed inset-0 z-40" onClick={() => setComposeOpen(false)} />
                   <div
                     className="absolute end-0 top-full mt-1.5 z-50 py-1 rounded-xl overflow-hidden min-w-[196px]"
-                    style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', boxShadow: '0 8px 24px rgba(15,23,42,0.14)' }}
+                    style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', boxShadow: '0 8px 24px rgba(0, 29, 63,0.14)' }}
                     role="menu"
                   >
                     {[
@@ -576,7 +576,7 @@ export default function MessagingDock() {
           <div className="flex-shrink-0" style={{ borderTop: '1px solid var(--border-light)' }}>
             {/* PHI Warning */}
             {phiWarning && (
-              <div className="mx-2.5 mt-2.5 p-2.5 rounded-lg" style={{ background: 'rgba(217,119,6,0.12)', border: '1px solid rgba(217,119,6,0.3)' }}>
+              <div className="mx-2.5 mt-2.5 p-2.5 rounded-lg" style={{ background: 'rgba(230, 114, 0,0.12)', border: '1px solid rgba(230, 114, 0,0.3)' }}>
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: 'var(--color-warning-600)' }} />
                   <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>

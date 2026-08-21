@@ -62,7 +62,7 @@ export function WeeklyCasesChart({ data, diseases, colorMap }: WeeklyCasesChartP
   return (
     <ResponsiveContainer width="100%" height="100%" minHeight={0}>
       <BarChart data={data} margin={{ top: 6, right: 8, left: -12, bottom: 0 }}>
-        <CartesianGrid stroke="var(--chart-grid, #E3EBF2)" vertical={false} />
+        <CartesianGrid stroke="var(--chart-grid, #ECEEF1)" vertical={false} />
         <XAxis dataKey="week" tick={axisTick} tickLine={false} axisLine={false} />
         <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
         <Tooltip {...tooltipStyle} cursor={{ fill: 'var(--overlay-subtle)' }} />

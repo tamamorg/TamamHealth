@@ -31,11 +31,11 @@ import Select from '@/components/Select';
 
 const STATUS_STYLE: Record<PatientTransferStatus, { label: string; bg: string; fg: string }> = {
   draft: { label: 'Draft', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
-  requested: { label: 'Awaiting acceptance', bg: 'var(--gold-100, #fef3c7)', fg: 'var(--gold-800, #92400e)' },
-  accepted: { label: 'Accepted', bg: 'var(--iris-100, #e0e7ff)', fg: 'var(--iris-800, #3730a3)' },
-  rejected: { label: 'Rejected', bg: 'var(--rose-100, #ffe4e6)', fg: 'var(--rose-800, #9f1239)' },
+  requested: { label: 'Awaiting acceptance', bg: 'var(--gold-100, #fef2c7)', fg: 'var(--gold-800, #a65300)' },
+  accepted: { label: 'Accepted', bg: 'var(--iris-100, #c9f4ff)', fg: 'var(--iris-800, #015697)' },
+  rejected: { label: 'Rejected', bg: 'var(--rose-100, #fae6e4)', fg: 'var(--rose-800, #a65300)' },
   cancelled: { label: 'Withdrawn', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
-  completed: { label: 'Completed', bg: 'var(--green-100, #dcfce7)', fg: 'var(--green-800, #166534)' },
+  completed: { label: 'Completed', bg: 'var(--green-100, #ecf6f3)', fg: 'var(--green-800, #0A6E4A)' },
   expired: { label: 'Lapsed', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
 };
 
@@ -131,14 +131,14 @@ function TransferCard({
               </span>
               {transfer.forced && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
-                  style={{ background: 'var(--rose-100, #ffe4e6)', color: 'var(--rose-800, #9f1239)' }}
+                  style={{ background: 'var(--rose-100, #fae6e4)', color: 'var(--rose-800, #a65300)' }}
                   title="Applied by an administrator without the receiving team accepting">
                   Forced
                 </span>
               )}
               {overdue && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold inline-flex items-center gap-1"
-                  style={{ background: 'var(--rose-100, #ffe4e6)', color: 'var(--rose-800, #9f1239)' }}>
+                  style={{ background: 'var(--rose-100, #fae6e4)', color: 'var(--rose-800, #a65300)' }}>
                   <Clock className="w-3 h-3" /> Overdue
                 </span>
               )}
@@ -242,7 +242,7 @@ function TransferCard({
         )}
 
         {error && (
-          <p className="text-[11px] mt-2" style={{ color: 'var(--rose-700, #b91c1c)' }}>{error}</p>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--rose-700, #b4180f)' }}>{error}</p>
         )}
       </div>
 
@@ -290,8 +290,8 @@ function TransferCard({
                   <span key={item.key}
                     className="text-[11px] px-1.5 py-0.5 rounded inline-flex items-center gap-1"
                     style={{
-                      background: item.done ? 'var(--green-100, #dcfce7)' : 'var(--border-light)',
-                      color: item.done ? 'var(--green-800, #166534)' : 'var(--text-muted)',
+                      background: item.done ? 'var(--green-100, #ecf6f3)' : 'var(--border-light)',
+                      color: item.done ? 'var(--green-800, #0A6E4A)' : 'var(--text-muted)',
                     }}>
                     {item.done ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                     {item.label}
@@ -442,7 +442,7 @@ function TransferOperations({
       )}
       <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
         {['bed_reserved', 'ready_for_transport', 'departed', 'in_transit', 'arrived', 'closed'].map(step => (
-          <span key={step} className="px-1.5 py-0.5 rounded" style={{ background: step === physical ? 'var(--green-100, #dcfce7)' : 'var(--border-light)' }}>{step.replace(/_/g, ' ')}</span>
+          <span key={step} className="px-1.5 py-0.5 rounded" style={{ background: step === physical ? 'var(--green-100, #ecf6f3)' : 'var(--border-light)' }}>{step.replace(/_/g, ' ')}</span>
         ))}
       </div>
     </section>
@@ -556,13 +556,13 @@ export function TransferBanner({
     <div
       className="flex items-start gap-2.5 px-3 py-2 rounded mb-3 text-[12px]"
       style={{
-        background: overdue ? 'var(--rose-50, #fef2f2)' : 'var(--gold-50, #fffbeb)',
-        border: `1px solid ${overdue ? 'var(--rose-200, #fecaca)' : 'var(--gold-200, #fde68a)'}`,
+        background: overdue ? 'var(--rose-50, #fceeed)' : 'var(--gold-50, #fcfef3)',
+        border: `1px solid ${overdue ? 'var(--rose-200, #f9dddb)' : 'var(--gold-200, #fee697)'}`,
       }}
     >
       {overdue
-        ? <AlertTriangle className="w-4 h-4 shrink-0 mt-px" style={{ color: 'var(--rose-700, #b91c1c)' }} />
-        : <ArrowRightLeft className="w-4 h-4 shrink-0 mt-px" style={{ color: 'var(--gold-800, #92400e)' }} />}
+        ? <AlertTriangle className="w-4 h-4 shrink-0 mt-px" style={{ color: 'var(--rose-700, #b4180f)' }} />
+        : <ArrowRightLeft className="w-4 h-4 shrink-0 mt-px" style={{ color: 'var(--gold-800, #a65300)' }} />}
       <div className="min-w-0">
         <strong>
           {pending

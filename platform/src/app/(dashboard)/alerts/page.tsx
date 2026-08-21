@@ -31,14 +31,14 @@ interface AlertItem {
 
 const SEVERITY_STYLES: Record<Severity, { bg: string; border: string; color: string; label: string }> = {
   critical: {
-    bg: 'rgba(196, 69, 54, 0.06)',
-    border: 'rgba(196, 69, 54, 0.22)',
+    bg: 'rgba(224, 49, 39, 0.06)',
+    border: 'rgba(224, 49, 39, 0.22)',
     color: 'var(--color-danger)',
     label: 'CRITICAL',
   },
   warning: {
-    bg: 'rgba(228, 168, 75, 0.10)',
-    border: 'rgba(228, 168, 75, 0.30)',
+    bg: 'rgba(254, 230, 151, 0.10)',
+    border: 'rgba(254, 230, 151, 0.30)',
     color: 'var(--color-warning-text)',
     label: 'WARNING',
   },

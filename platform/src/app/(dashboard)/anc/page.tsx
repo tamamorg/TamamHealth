@@ -433,7 +433,7 @@ export default function ANCPage() {
                               <hr className="section-divider" />
                               <div className="flex flex-wrap gap-1">
                                 {(v.riskFactors || []).map(rf => (
-                                  <span key={rf} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)' }}>
+                                  <span key={rf} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)' }}>
                                     {rf.replace(/_/g, ' ')}
                                   </span>
                                 ))}
@@ -455,7 +455,7 @@ export default function ANCPage() {
                   return (
                     <div className="card-elevated p-4">
                       <h3 className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                        <Calendar className="w-4 h-4" style={{ color: '#6366F1' }} />
+                        <Calendar className="w-4 h-4" style={{ color: '#1174B4' }} />
                         Birth Plan
                       </h3>
                       <hr className="section-divider" />
@@ -504,7 +504,7 @@ export default function ANCPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Link to existing patient (recommended) */}
-                <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(59, 130, 246,0.25))' }}>
+                <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33, 145, 208,0.25))' }}>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
                     <Users className="w-3 h-3" />
                     Link to existing mother (recommended)
@@ -712,7 +712,7 @@ export default function ANCPage() {
                         className="text-xs px-2 py-1 rounded-full border transition-colors"
                         style={{
                           borderColor: form.riskFactors.includes(rf) ? 'var(--color-danger)' : 'var(--border-light)',
-                          background: form.riskFactors.includes(rf) ? 'rgba(229,46,66,0.12)' : 'transparent',
+                          background: form.riskFactors.includes(rf) ? 'rgba(224, 49, 39,0.12)' : 'transparent',
                           color: form.riskFactors.includes(rf) ? 'var(--color-danger-text)' : 'var(--text-muted)',
                         }}
                       >

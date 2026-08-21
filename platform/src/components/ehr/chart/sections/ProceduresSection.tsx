@@ -137,8 +137,8 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 <tr key={p._id}>
                   <td style={{ fontWeight: 600 }}>
                     {p.name}
-                    {p.code ? <span style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400 }}> · {p.code}</span> : null}
-                    {p.bodySite ? <div style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400, fontSize: 12 }}>{p.bodySite}</div> : null}
+                    {p.code ? <span style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400 }}> · {p.code}</span> : null}
+                    {p.bodySite ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400, fontSize: 12 }}>{p.bodySite}</div> : null}
                   </td>
                   <td>{formatDate(p.date)}</td>
                   <td>
@@ -150,7 +150,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                       {p.status ? PROCEDURE_STATUS_LABELS[p.status] : 'Recorded'}
                     </span>
                     {p.status === 'aborted' && p.abortedReason ? (
-                      <div style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400, fontSize: 12 }}>{p.abortedReason}</div>
+                      <div style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400, fontSize: 12 }}>{p.abortedReason}</div>
                     ) : null}
                     {canConsult && procedureLifecycle.next(p.status || 'ordered').length > 0 && (
                       <select
@@ -174,7 +174,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                   <td>{p.performedByName || '—'}</td>
                   <td>
                     {p.outcome || '—'}
-                    {p.notes ? <div style={{ color: 'var(--ehr-muted, #597386)', fontSize: 12 }}>{p.notes}</div> : null}
+                    {p.notes ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>{p.notes}</div> : null}
                   </td>
                 </tr>
               ))}

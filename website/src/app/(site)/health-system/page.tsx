@@ -68,7 +68,7 @@ export default async function HealthSystemPage() {
                 <div className="tm-figure tm-break-fig" style={{ position: "relative", height: 172, borderBottom: "3px solid var(--color-accent)" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- panel figure, sized by CSS */}
                   <img src={b.image} alt={b.imageAlt} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: b.focus }} />
-                  <span className="fs115" style={{ position: "absolute", left: 0, bottom: 0, background: "var(--color-accent-300)", color: "#0E2A4A", padding: "7px 12px 6px", letterSpacing: "0.13em", textTransform: "uppercase", fontWeight: 700 }}>{b.where}</span>
+                  <span className="fs115" style={{ position: "absolute", left: 0, bottom: 0, background: "var(--color-accent-300)", color: "#113055", padding: "7px 12px 6px", letterSpacing: "0.13em", textTransform: "uppercase", fontWeight: 700 }}>{b.where}</span>
                 </div>
                 {/* Recessed data plate. The fixed minimum keeps the three
                     numerals — and the headings under them — on one line
@@ -122,7 +122,7 @@ export default async function HealthSystemPage() {
 
       <section id="diagnosis" style={{ padding: "60px 32px 96px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <div className="tm-pad-lg" style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "46px 52px", display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="tm-pad-lg" style={{ background: "#113055", color: "#FFFFFF", padding: "46px 52px", display: "flex", flexDirection: "column", gap: 16 }}>
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-300)" }}>{t("The Ministry’s own diagnosis")}</span>
             <p style={{ margin: 0, maxWidth: 980, fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(23px, 2.6vw, 31px)", lineHeight: 1.3 }}>
               {t("The sector still runs on parallel, disconnected systems — and the lack of accurate, timely data means care and planning can’t rely on what’s recorded.")}

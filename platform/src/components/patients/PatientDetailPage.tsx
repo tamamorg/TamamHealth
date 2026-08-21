@@ -809,7 +809,7 @@ export default function PatientDetailPage() {
   const isPregnant = !!activeANC;
   const pregnancyPillNode = isPregnant ? (
     <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full font-bold" style={{
-      background: 'rgba(217, 110, 89, 0.12)', color: 'var(--color-danger-500)', border: '1px solid rgba(217, 110, 89, 0.32)', letterSpacing: 0.2,
+      background: 'rgba(242, 109, 100, 0.12)', color: 'var(--color-danger-500)', border: '1px solid rgba(242, 109, 100, 0.32)', letterSpacing: 0.2,
     }}>
       <DuotoneInfoIcon name="pregnant" size={11} color="var(--color-danger-500)" accent="var(--color-danger-500)" />
       Pregnant{activeANC?.gestationalAge ? ` · ${activeANC.gestationalAge} wk` : ''}
@@ -832,7 +832,7 @@ export default function PatientDetailPage() {
 
           html, body {
             background: #fff !important;
-            color: #1a1a1a !important;
+            color: #001d3f !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             font-family: var(--font-platform) !important;
@@ -939,7 +939,7 @@ export default function PatientDetailPage() {
 
           /* ── Patient banner ── */
           .rx-patient-banner {
-            background: #f0f6fb !important;
+            background: #f5f7f8 !important;
             border-bottom: 2px solid var(--accent-hover) !important;
             padding: 6mm 14mm;
             page-break-inside: avoid;
@@ -961,12 +961,12 @@ export default function PatientDetailPage() {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5pt;
-            color: #5a7a96 !important;
+            color: #6b7f96 !important;
             margin-bottom: 1pt;
           }
           .rx-patient-field span {
             font-size: 8.5pt;
-            color: #1a1a1a !important;
+            color: #001d3f !important;
             font-weight: 500;
           }
 
@@ -985,7 +985,7 @@ export default function PatientDetailPage() {
             padding-bottom: 2pt;
             margin-bottom: 5pt;
           }
-          .rx-section-body { font-size: 8.5pt; color: #1a1a1a !important; }
+          .rx-section-body { font-size: 8.5pt; color: #001d3f !important; }
 
           /* ── Two-column layout ── */
           .rx-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt; }
@@ -998,37 +998,37 @@ export default function PatientDetailPage() {
           /* ── Vitals table ── */
           .rx-vitals-table { width: 100%; border-collapse: collapse; }
           .rx-vitals-table td {
-            border: 1pt solid #c5d8e8 !important;
+            border: 1pt solid #cfd6dd !important;
             padding: 4pt 8pt;
             font-size: 8pt;
             text-align: center;
-            color: #1a1a1a !important;
+            color: #001d3f !important;
           }
-          .rx-vitals-table td:first-child { text-align: left; font-weight: 600; background: #f0f6fb !important; }
+          .rx-vitals-table td:first-child { text-align: left; font-weight: 600; background: #f5f7f8 !important; }
 
           /* ── Med / lab rows ── */
           .rx-row {
-            border-bottom: 0.5pt solid #dde8f0 !important;
+            border-bottom: 0.5pt solid #e2e6eb !important;
             padding: 3pt 0;
             font-size: 8.5pt;
-            color: #1a1a1a !important;
+            color: #001d3f !important;
           }
           .rx-row:last-child { border-bottom: none !important; }
           .rx-row b { color: var(--accent-hover) !important; }
 
           /* ── Diagnosis rows ── */
           .rx-dx-row { display: flex; gap: 8pt; align-items: baseline; margin-bottom: 3pt; }
-          .rx-dx-code { font-size: 7pt; font-weight: 700; background: #e8f2fa !important; color: var(--accent-hover) !important; padding: 1pt 5pt; border-radius: 3pt; flex-shrink: 0; }
-          .rx-dx-name { font-size: 8.5pt; color: #1a1a1a !important; }
+          .rx-dx-code { font-size: 7pt; font-weight: 700; background: #f1f3f5 !important; color: var(--accent-hover) !important; padding: 1pt 5pt; border-radius: 3pt; flex-shrink: 0; }
+          .rx-dx-name { font-size: 8.5pt; color: #001d3f !important; }
           .rx-dx-type { font-size: 7pt; color: #888 !important; margin-left: 4pt; }
 
           /* ── Allergy pill ── */
           .rx-allergy-row { display: flex; gap: 6pt; align-items: center; margin-bottom: 3pt; }
           .rx-allergy-sev { font-size: 7pt; font-weight: 700; padding: 1pt 5pt; border-radius: 3pt; }
-          .rx-allergy-sev.severe { background: #fde8e8 !important; color: #c0392b !important; }
-          .rx-allergy-sev.moderate { background: #fef3cd !important; color: #b7791f !important; }
-          .rx-allergy-sev.mild { background: #d4edda !important; color: #276749 !important; }
-          .rx-allergy-sev.unknown { background: #f1f3f4 !important; color: #555 !important; }
+          .rx-allergy-sev.severe { background: #fae6e4 !important; color: #d92b20 !important; }
+          .rx-allergy-sev.moderate { background: #fef2c7 !important; color: #cc6600 !important; }
+          .rx-allergy-sev.mild { background: #d8eee6 !important; color: #0A6E4A !important; }
+          .rx-allergy-sev.unknown { background: #f1f3f5 !important; color: #555 !important; }
 
           /* ── Signature block ── */
           .rx-sig-block {
@@ -1040,24 +1040,24 @@ export default function PatientDetailPage() {
             gap: 30pt;
             page-break-inside: avoid;
           }
-          .rx-sig-label { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; color: #5a7a96 !important; margin-bottom: 18pt; }
+          .rx-sig-label { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; color: #6b7f96 !important; margin-bottom: 18pt; }
           .rx-sig-line { border-bottom: 1pt solid #333 !important; margin-bottom: 4pt; height: 1pt; }
-          .rx-sig-name { font-size: 8.5pt; color: #1a1a1a !important; font-weight: 600; }
+          .rx-sig-name { font-size: 8.5pt; color: #001d3f !important; font-weight: 600; }
           .rx-sig-role { font-size: 7.5pt; color: #666 !important; }
 
           /* ── Footer ── */
           .rx-footer {
-            background: #f0f6fb !important;
-            border-top: 1pt solid #c5d8e8 !important;
+            background: #f5f7f8 !important;
+            border-top: 1pt solid #cfd6dd !important;
             padding: 4mm 14mm;
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 7pt;
-            color: #5a7a96 !important;
+            color: #6b7f96 !important;
             margin-top: 10mm;
           }
-          .rx-footer-conf { font-weight: 700; color: #c0392b !important; }
+          .rx-footer-conf { font-weight: 700; color: #d92b20 !important; }
 
           /* page break helpers */
           .rx-page-break { page-break-before: always; }
@@ -1216,7 +1216,7 @@ export default function PatientDetailPage() {
                       <div className="rx-section-body">
                         {currentMeds.map((rx, i) => (
                           <div key={rx._id} className="rx-row" style={{ display: 'flex', gap: 12 }}>
-                            <span style={{ minWidth: 18, color: '#5a7a96', fontSize: '7.5pt', paddingTop: 1 }}>{i + 1}.</span>
+                            <span style={{ minWidth: 18, color: '#6b7f96', fontSize: '7.5pt', paddingTop: 1 }}>{i + 1}.</span>
                             <span><b>{rx.medication}</b></span>
                             <span style={{ color: '#555' }}>{rx.dose} · {rx.frequency}{rx.duration ? ` · ${rx.duration}` : ''}{rx.route ? ` · ${rx.route}` : ''}</span>
                           </div>
@@ -1254,19 +1254,19 @@ export default function PatientDetailPage() {
                       <div className="rx-section-body">
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
                           <thead>
-                            <tr style={{ background: '#f0f6fb' }}>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Test</th>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Result</th>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Unit</th>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Reference</th>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #c5d8e8', fontWeight: 700 }}>Date</th>
+                            <tr style={{ background: '#f5f7f8' }}>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Test</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Result</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Unit</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Reference</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Date</th>
                             </tr>
                           </thead>
                           <tbody>
                             {patientLabs.map((l, i) => (
-                              <tr key={i} style={{ borderBottom: '0.5pt solid #dde8f0', background: l.abnormal ? '#fff8f8' : 'transparent' }}>
+                              <tr key={i} style={{ borderBottom: '0.5pt solid #e2e6eb', background: l.abnormal ? '#fceeed' : 'transparent' }}>
                                 <td style={{ padding: '3pt 8pt', fontWeight: 600 }}>{l.testName}</td>
-                                <td style={{ padding: '3pt 8pt', color: l.abnormal ? '#c0392b' : '#1a1a1a', fontWeight: l.abnormal ? 700 : 400 }}>{l.result}{l.abnormal ? ' ↑' : ''}</td>
+                                <td style={{ padding: '3pt 8pt', color: l.abnormal ? '#d92b20' : '#001d3f', fontWeight: l.abnormal ? 700 : 400 }}>{l.result}{l.abnormal ? ' ↑' : ''}</td>
                                 <td style={{ padding: '3pt 8pt', color: '#555' }}>{l.unit || '—'}</td>
                                 <td style={{ padding: '3pt 8pt', color: '#555' }}>{l.referenceRange || '—'}</td>
                                 <td style={{ padding: '3pt 8pt', color: '#555' }}>{formatDate(l.completedAt || l.orderedAt || l.createdAt)}</td>
@@ -1852,8 +1852,8 @@ export default function PatientDetailPage() {
                       const sourceStyle = entry.source === 'Triage'
                         ? { background: 'var(--accent-light)', color: 'var(--accent-primary)' }
                         : entry.source === 'Nursing'
-                          ? { background: 'rgba(124,58,237,0.12)', color: 'var(--accent-purple)' }
-                          : { background: 'rgba(31,157,111,0.14)', color: 'var(--color-success)' };
+                          ? { background: 'rgba(166, 83, 0,0.12)', color: 'var(--accent-purple)' }
+                          : { background: 'rgba(15, 160, 106,0.14)', color: 'var(--color-success)' };
                       return (
                         <tr key={entry.id}>
                           <td className="font-mono text-xs">{formatDate(entry.at)}</td>

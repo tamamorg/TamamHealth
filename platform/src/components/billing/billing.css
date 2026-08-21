@@ -8,11 +8,11 @@
  */
 
 .bl-root {
-  --bl-teal: #007d79;
-  --bl-teal-dark: #005d5d;
-  --bl-teal-soft: rgba(0, 125, 121, 0.08);
+  --bl-teal: #1174b4;
+  --bl-teal-dark: #015697;
+  --bl-teal-soft: rgba(17, 116, 180, 0.08);
   font-size: 13px;
-  color: var(--ehr-text, #102634);
+  color: var(--ehr-text, #113055);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -33,7 +33,7 @@
   align-items: center;
   gap: 14px;
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 8px;
   padding: 14px 20px;
 }
@@ -51,13 +51,13 @@
 .bl-eyebrow {
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
   margin: 0 0 2px;
 }
 .bl-title {
   font-size: 19px;
   font-weight: 700;
-  color: var(--ehr-text-title, #132C44);
+  color: var(--ehr-text-title, #113055);
   margin: 0;
   line-height: 1.2;
 }
@@ -69,7 +69,7 @@
   align-items: center;
   gap: 10px;
   font-size: 12.5px;
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
 }
 .bl-filter-row span { white-space: nowrap; }
 .bl-filter-row select {
@@ -77,9 +77,9 @@
   flex: 0 0 auto;
   font: inherit;
   font-weight: 600;
-  color: var(--ehr-text-title, #132C44);
+  color: var(--ehr-text-title, #113055);
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 6px;
   padding: 6px 10px;
   cursor: pointer;
@@ -89,7 +89,7 @@
 
 .bl-card {
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -99,12 +99,12 @@
 .bl-card-title {
   font-size: 14px;
   font-weight: 700;
-  color: var(--ehr-text-title, #132C44);
+  color: var(--ehr-text-title, #113055);
   margin: 0 0 4px;
 }
 .bl-card-sub {
   font-size: 12px;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
   margin: 0 0 6px;
 }
 .bl-underline {
@@ -152,9 +152,9 @@
   padding: 0 34px 0 12px;
   font: inherit;
   font-size: 13px;
-  color: var(--ehr-text, #102634);
+  color: var(--ehr-text, #113055);
   appearance: none;
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 8px;
   cursor: pointer;
 }
@@ -170,7 +170,7 @@
 }
 .bl-toolbar-select:hover:not(:disabled):not(:focus) { border-color: var(--bl-teal); }
 .bl-toolbar-select:disabled {
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
   background-color: var(--ehr-page-bg, #FFFFFF);
   cursor: not-allowed;
 }
@@ -200,7 +200,7 @@
 }
 .bl-draft-note {
   font-size: 11.5px;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
 }
 /* The ticket is already a tinted panel — the shared table's grey head and
    hover tint would read as a second table inside it. The `.bl-draft` ancestor
@@ -209,12 +209,12 @@
 .bl-root .bl-draft .bl-draft-table thead th {
   background: transparent !important;
   padding: 0 10px 6px;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
   font-weight: 600;
 }
 .bl-root .bl-draft .bl-draft-table tbody td {
   padding: 7px 10px;
-  border-bottom-color: rgba(0, 125, 121, 0.16);
+  border-bottom-color: rgba(17, 116, 180, 0.16);
 }
 .bl-root .bl-draft .bl-draft-table tbody tr:hover td { background: transparent; }
 .bl-draft-table .bl-center { text-align: center; }
@@ -231,9 +231,9 @@
   font: inherit;
   font-size: 12.5px;
   text-align: center;
-  color: var(--ehr-text, #102634);
+  color: var(--ehr-text, #113055);
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 4px;
 }
 .bl-draft-remove {
@@ -243,10 +243,10 @@
   padding: 4px;
   border: none;
   background: none;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
   cursor: pointer;
 }
-.bl-draft-remove:hover { color: var(--color-danger, #DC2626); }
+.bl-draft-remove:hover { color: var(--color-danger, #D92B20); }
 .bl-draft-foot {
   display: flex;
   align-items: flex-end;
@@ -255,7 +255,7 @@
   flex-wrap: wrap;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid var(--ehr-border, #DDEAF3);
+  border-top: 1px solid var(--ehr-border, #E2E6EB);
 }
 .bl-draft-totals {
   margin: 0;
@@ -266,19 +266,19 @@
   display: flex;
   justify-content: space-between;
   gap: 24px;
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
 }
 .bl-draft-totals dt, .bl-draft-totals dd { margin: 0; }
 .bl-draft-totals dd { font-variant-numeric: tabular-nums; }
-.bl-draft-abn { color: #B45309; }
+.bl-draft-abn { color: #B35900; }
 .bl-draft-total {
   font-weight: 700;
-  color: var(--ehr-text-title, #132C44);
+  color: var(--ehr-text-title, #113055);
 }
 .bl-draft-hint {
   margin: 8px 0 0;
   font-size: 11px;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
 }
 .bl-draft-posted {
   margin: 0;
@@ -289,21 +289,21 @@
 .bl-draft-error {
   margin: 8px 0 0;
   font-size: 12px;
-  color: var(--color-danger, #DC2626);
+  color: var(--color-danger, #D92B20);
 }
 
 /* Write-off / adjustment stays the destructive action once it's icon-only.
    The <Icon> shim paints a `color` attribute on the SVG, so the glyph rule
    has to be explicit — same escape hatch `.listpage-icon-btn-primary` uses. */
-.bl-icon-btn--danger { color: var(--color-danger, #DC2626); }
+.bl-icon-btn--danger { color: var(--color-danger, #D92B20); }
 .bl-icon-btn--danger svg,
 .bl-icon-btn--danger svg.lucide {
-  color: var(--color-danger, #DC2626);
+  color: var(--color-danger, #D92B20);
   stroke: currentColor;
 }
 .bl-icon-btn--danger:hover {
-  background: rgba(218, 30, 40, 0.08);
-  border-color: var(--color-danger, #DC2626);
+  background: rgba(217, 43, 32, 0.08);
+  border-color: var(--color-danger, #D92B20);
 }
 
 /* ── Search ──────────────────────────────────────────────────────── */
@@ -315,9 +315,9 @@
   margin: 0 18px 0;
   padding: 0 12px;
   background: var(--ehr-page-bg, #FFFFFF);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 6px;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
 }
 .bl-search:focus-within {
   border-color: var(--bl-teal);
@@ -329,12 +329,12 @@
   background: transparent;
   font: inherit;
   font-size: 13px;
-  color: var(--ehr-text, #102634);
+  color: var(--ehr-text, #113055);
   padding: 10px 0;
   outline: none;
   min-width: 0;
 }
-.bl-search input::placeholder { color: var(--ehr-muted, #8395A8); }
+.bl-search input::placeholder { color: var(--ehr-muted, #5D728B); }
 /* Inside the patient chart, `.ehr-chart-page input` repaints every field with
    its own white box (and globals.css adds a blue focus ring), so the input drew
    a second border inside this one — one search box looking like two. `.bl-root`
@@ -368,8 +368,8 @@
   font-weight: 700;
   text-transform: none;
   letter-spacing: normal;
-  color: var(--ehr-text-title, #132C44);
-  background: #E3E9EF !important;
+  color: var(--ehr-text-title, #113055);
+  background: #E2E6EB !important;
   padding: 10px 18px;
   white-space: nowrap;
 }
@@ -381,19 +381,19 @@
   font-weight: 700;
   text-transform: none;
   letter-spacing: normal;
-  color: var(--ehr-text-title, #132C44);
-  background: #E3E9EF !important;
+  color: var(--ehr-text-title, #113055);
+  background: #E2E6EB !important;
   padding: 10px 18px;
   white-space: nowrap;
 }
 .bl-table tbody td {
   padding: 11px 18px;
-  color: var(--ehr-text, #102634);
-  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
+  color: var(--ehr-text, #113055);
+  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
   vertical-align: middle;
 }
 .bl-table tbody tr:last-child td { border-bottom: none; }
-.bl-table tbody tr:hover td { background: var(--ehr-hover, #FAFCFE); }
+.bl-table tbody tr:hover td { background: var(--ehr-hover, #FAFBFC); }
 .bl-table .bl-num { font-variant-numeric: tabular-nums; }
 
 /* The one seam that crowds: a right-aligned column followed by a left-aligned
@@ -429,7 +429,7 @@
 .bl-table--rows-open tbody tr { cursor: pointer; }
 
 .bl-link {
-  color: var(--accent-primary, #144972);
+  color: var(--accent-primary, #015697);
   font-weight: 600;
   text-decoration: none;
   background: none;
@@ -458,10 +458,10 @@
 .bl-chip--unpaid   { background: var(--color-danger-bg);  color: var(--color-danger-text); }
 .bl-chip--partial  { background: var(--color-warning-bg);  color: var(--color-warning-text); }
 .bl-chip--paid     { background: var(--color-success-bg);  color: var(--color-success-text); }
-.bl-chip--waived   { background: var(--ehr-soft, #E9F0F5); color: var(--ehr-text-body, #39536B); }
-.bl-chip--cancelled{ background: var(--ehr-soft, #E9F0F5); color: var(--ehr-muted, #8395A8); text-decoration: line-through; }
-.bl-chip--visit    { background: var(--accent-primary, #144972); color: #fff; text-transform: none; letter-spacing: 0; font-size: 11px; }
-.bl-chip--ontime   { background: var(--ehr-soft, #E9F0F5); color: var(--ehr-text-body, #39536B); text-transform: none; letter-spacing: 0; font-size: 11px; }
+.bl-chip--waived   { background: var(--ehr-soft, #ECEEF1); color: var(--ehr-text-body, #3C5574); }
+.bl-chip--cancelled{ background: var(--ehr-soft, #ECEEF1); color: var(--ehr-muted, #5D728B); text-decoration: line-through; }
+.bl-chip--visit    { background: var(--accent-primary, #015697); color: #fff; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.bl-chip--ontime   { background: var(--ehr-soft, #ECEEF1); color: var(--ehr-text-body, #3C5574); text-transform: none; letter-spacing: 0; font-size: 11px; }
 
 /* ── Pagination footer ───────────────────────────────────────────── */
 
@@ -472,16 +472,16 @@
   flex-wrap: wrap;
   gap: 10px 18px;
   padding: 8px 18px;
-  border-top: 1px solid var(--ehr-border, #DDEAF3);
+  border-top: 1px solid var(--ehr-border, #E2E6EB);
   font-size: 12px;
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
 }
 .bl-pagination span { white-space: nowrap; }
 .bl-pagination select {
   font: inherit;
-  color: var(--ehr-text-title, #132C44);
+  color: var(--ehr-text-title, #113055);
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 5px;
   padding: 4px 6px;
   cursor: pointer;
@@ -495,13 +495,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 5px;
   background: var(--ehr-panel, #fff);
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
   cursor: pointer;
 }
-.bl-pager-btn:hover:not(:disabled) { background: var(--ehr-hover, #FAFCFE); }
+.bl-pager-btn:hover:not(:disabled) { background: var(--ehr-hover, #FAFBFC); }
 .bl-pager-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* ── Patient banner (detail page) ────────────────────────────────── */
@@ -511,7 +511,7 @@
   align-items: flex-start;
   gap: 14px;
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 8px;
   padding: 14px 20px;
 }
@@ -536,29 +536,29 @@
 .bl-banner-name {
   font-size: 17px;
   font-weight: 700;
-  color: var(--ehr-text-title, #132C44);
+  color: var(--ehr-text-title, #113055);
   margin: 0;
 }
-.bl-gender { font-size: 15px; font-weight: 700; color: var(--ehr-muted, #8395A8); }
-.bl-gender.male { color: var(--accent-primary, #144972); }
-.bl-gender.female { color: #C2408A; }
+.bl-gender { font-size: 15px; font-weight: 700; color: var(--ehr-muted, #5D728B); }
+.bl-gender.male { color: var(--accent-primary, #015697); }
+.bl-gender.female { color: #B35900; }
 .bl-banner-meta {
   margin-top: 4px;
   font-size: 12.5px;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 }
 .bl-id-tag {
-  background: var(--ehr-soft, #E9F0F5);
-  color: var(--ehr-text-body, #39536B);
+  background: var(--ehr-soft, #ECEEF1);
+  color: var(--ehr-text-body, #3C5574);
   border-radius: 4px;
   padding: 1px 8px;
   font-size: 12px;
 }
-.bl-id-tag strong { color: var(--ehr-text-title, #132C44); }
+.bl-id-tag strong { color: var(--ehr-text-title, #113055); }
 .bl-banner-actions { flex-shrink: 0; }
 
 /* ── Detail action row ───────────────────────────────────────────── */
@@ -591,14 +591,14 @@
 .bl-btn--primary:hover:not(:disabled) { background: var(--bl-teal-dark); }
 .bl-btn--outline { background: var(--ehr-panel, #fff); color: var(--bl-teal); border-color: var(--bl-teal); }
 .bl-btn--outline:hover:not(:disabled) { background: var(--bl-teal-soft); }
-.bl-btn--link { background: none; color: var(--accent-primary, #144972); padding: 10px 4px; }
+.bl-btn--link { background: none; color: var(--accent-primary, #015697); padding: 10px 4px; }
 .bl-btn--link:hover:not(:disabled) { text-decoration: underline; }
-.bl-btn--danger-link { background: none; color: var(--color-danger, #DC2626); padding: 10px 4px; }
+.bl-btn--danger-link { background: none; color: var(--color-danger, #D92B20); padding: 10px 4px; }
 .bl-btn--danger-link:hover:not(:disabled) { text-decoration: underline; }
-.bl-btn--dark { background: #393939; color: #fff; }
-.bl-btn--dark:hover:not(:disabled) { background: #262626; }
-.bl-btn--ghost { background: var(--ehr-panel, #fff); color: var(--ehr-text-body, #39536B); border-color: var(--ehr-border, #DDEAF3); }
-.bl-btn--ghost:hover:not(:disabled) { background: var(--ehr-hover, #FAFCFE); }
+.bl-btn--dark { background: #113055; color: #fff; }
+.bl-btn--dark:hover:not(:disabled) { background: #001D3F; }
+.bl-btn--ghost { background: var(--ehr-panel, #fff); color: var(--ehr-text-body, #3C5574); border-color: var(--ehr-border, #E2E6EB); }
+.bl-btn--ghost:hover:not(:disabled) { background: var(--ehr-hover, #FAFBFC); }
 
 /* ── Summary strip ───────────────────────────────────────────────── */
 
@@ -610,13 +610,13 @@
 }
 .bl-summary-label {
   font-size: 12.5px;
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
   margin: 0 0 8px;
 }
 .bl-summary-value {
   font-size: 19px;
   font-weight: 600;
-  color: var(--ehr-text-title, #132C44);
+  color: var(--ehr-text-title, #113055);
   margin: 0;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -634,19 +634,19 @@
   border: none;
   border-radius: 5px;
   background: transparent;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
   cursor: pointer;
 }
-.bl-row-menu-btn:hover { background: var(--ehr-soft, #E9F0F5); color: var(--ehr-text-title, #132C44); }
+.bl-row-menu-btn:hover { background: var(--ehr-soft, #ECEEF1); color: var(--ehr-text-title, #113055); }
 .bl-menu {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
   width: 180px;
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(16, 38, 52, 0.14);
+  box-shadow: 0 8px 24px rgba(17, 48, 85, 0.14);
   z-index: 30;
   overflow: hidden;
   padding: 4px;
@@ -659,15 +659,15 @@
   padding: 8px 10px;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
   background: transparent;
   border: none;
   border-radius: 5px;
   text-align: left;
   cursor: pointer;
 }
-.bl-menu button:hover { background: var(--ehr-hover, #FAFCFE); color: var(--ehr-text-title, #132C44); }
-.bl-menu button.bl-menu-danger { color: var(--color-danger, #DC2626); }
+.bl-menu button:hover { background: var(--ehr-hover, #FAFBFC); color: var(--ehr-text-title, #113055); }
+.bl-menu button.bl-menu-danger { color: var(--color-danger, #D92B20); }
 .bl-menu-backdrop { position: fixed; inset: 0; z-index: 29; }
 
 /* ── Payments + totals layout ────────────────────────────────────── */
@@ -682,7 +682,7 @@
    width, its account totals already living in the summary strip above. */
 .bl-pay-single { padding: 16px 18px 18px; min-width: 0; }
 .bl-pay-aside {
-  border-left: 1px solid var(--ehr-border, #DDEAF3);
+  border-left: 1px solid var(--ehr-border, #E2E6EB);
   padding: 18px 20px;
   display: flex;
   flex-direction: column;
@@ -690,14 +690,14 @@
 }
 @media (max-width: 860px) {
   .bl-pay-layout { grid-template-columns: 1fr; }
-  .bl-pay-aside { border-left: none; border-top: 1px solid var(--ehr-border, #DDEAF3); }
+  .bl-pay-aside { border-left: none; border-top: 1px solid var(--ehr-border, #E2E6EB); }
 }
 
 .bl-totals { display: flex; flex-direction: column; gap: 9px; font-size: 13px; }
 .bl-totals-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.bl-totals-row dt { color: var(--ehr-text-body, #39536B); font-weight: 600; }
-.bl-totals-row dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--ehr-text-title, #132C44); }
-.bl-totals-rule { border: none; border-top: 1px solid var(--ehr-border, #DDEAF3); margin: 4px 0; }
+.bl-totals-row dt { color: var(--ehr-text-body, #3C5574); font-weight: 600; }
+.bl-totals-row dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--ehr-text-title, #113055); }
+.bl-totals-rule { border: none; border-top: 1px solid var(--ehr-border, #E2E6EB); margin: 4px 0; }
 .bl-totals-row--due dt, .bl-totals-row--due dd { font-weight: 700; font-size: 14px; }
 
 /* ── Empty state ─────────────────────────────────────────────────── */
@@ -710,9 +710,9 @@
   gap: 10px;
   padding: 48px 16px;
 }
-.bl-empty h3 { font-size: 15px; font-weight: 700; color: var(--ehr-text-title, #132C44); margin: 0; }
-.bl-empty p { font-size: 12.5px; color: var(--ehr-muted, #8395A8); margin: 0; max-width: 340px; }
-.bl-empty svg { color: var(--ehr-muted, #8395A8); opacity: 0.45; }
+.bl-empty h3 { font-size: 15px; font-weight: 700; color: var(--ehr-text-title, #113055); margin: 0; }
+.bl-empty p { font-size: 12.5px; color: var(--ehr-muted, #5D728B); margin: 0; max-width: 340px; }
+.bl-empty svg { color: var(--ehr-muted, #5D728B); opacity: 0.45; }
 
 /* ── Forms (payment entry, modals) ───────────────────────────────── */
 
@@ -725,16 +725,16 @@
 .bl-field label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
 }
 .bl-field input,
 .bl-field select,
 .bl-field textarea {
   font: inherit;
   font-size: 13px;
-  color: var(--ehr-text, #102634);
+  color: var(--ehr-text, #113055);
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 6px;
   padding: 9px 10px;
   outline: none;
@@ -748,15 +748,15 @@
 }
 
 .bl-modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
-.bl-modal-title { font-size: 15px; font-weight: 700; color: var(--ehr-text-title, #132C44); margin: 0; }
-.bl-modal-sub { font-size: 12.5px; color: var(--ehr-muted, #8395A8); margin: -8px 0 0; }
+.bl-modal-title { font-size: 15px; font-weight: 700; color: var(--ehr-text-title, #113055); margin: 0; }
+.bl-modal-sub { font-size: 12.5px; color: var(--ehr-muted, #5D728B); margin: -8px 0 0; }
 .bl-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
 
 /* Fee-schedule picker inside "Add items to bill" */
 .bl-fee-list {
   max-height: 240px;
   overflow-y: auto;
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 6px;
 }
 .bl-fee-row {
@@ -765,14 +765,14 @@
   justify-content: space-between;
   gap: 12px;
   padding: 9px 12px;
-  border-bottom: 1px solid var(--ehr-border-soft, #E7EEF5);
+  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
   font-size: 12.5px;
 }
 .bl-fee-row:last-child { border-bottom: none; }
-.bl-fee-row:hover { background: var(--ehr-hover, #FAFCFE); }
-.bl-fee-name { font-weight: 600; color: var(--ehr-text-title, #132C44); }
-.bl-fee-cat { color: var(--ehr-muted, #8395A8); font-size: 11.5px; }
-.bl-fee-price { font-variant-numeric: tabular-nums; color: var(--ehr-text-body, #39536B); white-space: nowrap; }
+.bl-fee-row:hover { background: var(--ehr-hover, #FAFBFC); }
+.bl-fee-name { font-weight: 600; color: var(--ehr-text-title, #113055); }
+.bl-fee-cat { color: var(--ehr-muted, #5D728B); font-size: 11.5px; }
+.bl-fee-price { font-variant-numeric: tabular-nums; color: var(--ehr-text-body, #3C5574); white-space: nowrap; }
 .bl-fee-add {
   border: 1px solid var(--bl-teal);
   color: var(--bl-teal);
@@ -798,10 +798,10 @@
   justify-content: center;
   gap: 10px;
   height: 280px;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
 }
-.bl-muted { color: var(--ehr-muted, #8395A8); }
-.bl-danger { color: var(--color-danger, #DC2626); }
+.bl-muted { color: var(--ehr-muted, #5D728B); }
+.bl-danger { color: var(--color-danger, #D92B20); }
 .bl-right { text-align: right; }
 
 /* ══════════════ Shared money-screen furniture ══════════════
@@ -821,14 +821,14 @@
   gap: 12px 28px;
   padding: 16px 20px;
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 8px;
 }
 
 .bl-stat-label {
   display: block;
   font-size: 12px;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
   margin-bottom: 4px;
 }
 
@@ -836,26 +836,26 @@
   display: block;
   font-size: 19px;
   font-weight: 600;
-  color: var(--ehr-text, #102634);
+  color: var(--ehr-text, #113055);
   font-variant-numeric: tabular-nums;
 }
 
 .bl-stat-sub {
   display: block;
   font-size: 12px;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
   margin-top: 2px;
 }
 
 /* A stat that is itself the alarm — an overdue balance, a denied claim. */
-.bl-stat-value--danger { color: var(--color-danger, #DC2626); }
+.bl-stat-value--danger { color: var(--color-danger, #D92B20); }
 .bl-stat-value--good { color: var(--color-success-text); }
 
 /* Section card — the `bl-card` head treatment (teal underline under the title)
    without assuming a table follows. */
 .bl-section {
   background: var(--ehr-panel, #fff);
-  border: 1px solid var(--ehr-border, #DDEAF3);
+  border: 1px solid var(--ehr-border, #E2E6EB);
   border-radius: 8px;
   padding: 16px 20px;
 }
@@ -871,7 +871,7 @@
 .bl-section-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--ehr-text, #102634);
+  color: var(--ehr-text, #113055);
   margin: 0;
 }
 
@@ -914,7 +914,7 @@
 .bl-meter-track {
   height: 8px;
   border-radius: 4px;
-  background: var(--ehr-soft, #E9F0F5);
+  background: var(--ehr-soft, #ECEEF1);
   overflow: hidden;
 }
 
@@ -926,7 +926,7 @@
 
 .bl-meter-value {
   font-variant-numeric: tabular-nums;
-  color: var(--ehr-text-body, #39536B);
+  color: var(--ehr-text-body, #3C5574);
   white-space: nowrap;
 }
 
@@ -940,7 +940,7 @@
   gap: 6px;
   padding: 40px 20px;
   text-align: center;
-  color: var(--ehr-muted, #8395A8);
+  color: var(--ehr-muted, #5D728B);
 }
 
-.bl-empty strong { color: var(--ehr-text, #102634); font-size: 14px; }
+.bl-empty strong { color: var(--ehr-text, #113055); font-size: 14px; }

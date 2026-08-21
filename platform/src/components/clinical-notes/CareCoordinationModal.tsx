@@ -204,7 +204,7 @@ export default function CareCoordinationModal({
           <input type="checkbox" checked disabled readOnly />
           <span style={{ fontWeight: 700 }}>Summary of Care (mandatory)</span>
         </label>
-        <p style={{ fontSize: 12.5, color: 'var(--color-text-muted, #64748b)', margin: '0 0 14px 26px' }}>
+        <p style={{ fontSize: 12.5, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 14px 26px' }}>
           Attaching the Summary of Care is mandatory, but you choose which information travels with it.
         </p>
 
@@ -302,7 +302,7 @@ export default function CareCoordinationModal({
           )}
         </div>
 
-        <p style={{ fontSize: 12, color: 'var(--color-text-muted, #64748b)', margin: '4px 0 14px' }}>
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted, #5d728b)', margin: '4px 0 14px' }}>
           This platform has no Direct Messaging or eFax gateway connected. The referral is created
           here with your chosen channel recorded on it, so the receiving provider sees it in their
           referral queue.

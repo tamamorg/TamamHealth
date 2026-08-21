@@ -23,10 +23,10 @@ export default async function ProductsPage() {
       {/* Hero: the claim on the left, the thing itself on the right. The six
           acronyms sit under the lede as jump links, so the page is navigable
           before the reader scrolls into the cards. */}
-      <section style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "62px 32px 70px" }}>
+      <section style={{ background: "#113055", color: "#FFFFFF", padding: "62px 32px 70px" }}>
         <div className="tm-split" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.06fr 1fr", gap: 56, alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-            <span className="fs115" style={{ fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7FC4EA" }}>{t("Products")}</span>
+            <span className="fs115" style={{ fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Products")}</span>
             <h1 style={{ fontSize: "clamp(32px, 5.4vw, 58px)", margin: "14px 0 14px", color: "#FFFFFF", maxWidth: 900 }}>{t("Six products, one connected encounter")}</h1>
             <p style={{ margin: 0, maxWidth: 640, fontSize: 16.5, lineHeight: 1.65, color: "rgba(255,255,255,0.76)" }}>
               {t("From referral hospitals to single-room clinics — every product ties back to the same record, built for intermittent connectivity. Deployed first in South Sudan, designed for health systems across sub-Saharan Africa.")}

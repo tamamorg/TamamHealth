@@ -723,7 +723,7 @@ export default function BloodBankPage() {
                       onClick={() => setCrossmatchChoice('compatible')}
                       className="flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all inline-flex items-center justify-center gap-1.5"
                       style={crossmatchChoice === 'compatible'
-                        ? { background: 'var(--color-success-bg, rgba(21,121,92,0.12))', color: 'var(--color-success-text)', border: '1px solid var(--color-success)' }
+                        ? { background: 'var(--color-success-bg, rgba(10, 110, 74,0.12))', color: 'var(--color-success-text)', border: '1px solid var(--color-success)' }
                         : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
                     >
                       <CheckCircle2 className="w-4 h-4" /> Compatible

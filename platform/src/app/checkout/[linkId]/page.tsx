@@ -31,11 +31,11 @@ interface CheckoutLink {
 type UiMethod = 'mpesa' | 'mtn' | 'airtel' | 'card' | 'bank' | 'cash';
 
 const PAYMENT_METHODS: { key: UiMethod; name: string; icon: typeof Phone; desc: string; color: string }[] = [
-  { key: 'mpesa', name: 'M-Pesa', icon: Phone, desc: 'Pay via M-Pesa mobile money', color: '#4CAF50' },
-  { key: 'mtn', name: 'MTN Mobile Money', icon: Phone, desc: 'Pay via MTN MoMo', color: '#FFC107' },
-  { key: 'airtel', name: 'Airtel Money', icon: Phone, desc: 'Pay via Airtel Money', color: '#E53935' },
+  { key: 'mpesa', name: 'M-Pesa', icon: Phone, desc: 'Pay via M-Pesa mobile money', color: '#0FA06A' },
+  { key: 'mtn', name: 'MTN Mobile Money', icon: Phone, desc: 'Pay via MTN MoMo', color: '#FFD2A6' },
+  { key: 'airtel', name: 'Airtel Money', icon: Phone, desc: 'Pay via Airtel Money', color: '#E03127' },
   { key: 'card', name: 'Card Payment', icon: CreditCard, desc: 'Pay with a debit or credit card', color: 'var(--accent-primary)' },
-  { key: 'bank', name: 'Bank Transfer', icon: Banknote, desc: 'Pay via bank transfer', color: '#00897B' },
+  { key: 'bank', name: 'Bank Transfer', icon: Banknote, desc: 'Pay via bank transfer', color: '#0B8557' },
   { key: 'cash', name: 'Cash at Facility', icon: Wallet, desc: 'Pay in cash at the facility desk', color: 'var(--accent-primary)' },
 ];
 
@@ -140,7 +140,7 @@ export default function CheckoutPage() {
     return (
       <Shell>
         <div className="card-elevated" style={{ textAlign: 'center', padding: '40px 28px', borderTop: '4px solid var(--color-danger)' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(218,18,48,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(217, 43, 32,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
             <XCircle size={56} style={{ color: 'var(--color-danger)' }} />
           </div>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
@@ -198,7 +198,7 @@ export default function CheckoutPage() {
     return (
       <Shell>
         <div className="card-elevated" style={{ textAlign: 'center', padding: '40px 28px', borderTop: `4px solid ${used ? 'var(--color-success)' : 'var(--color-warning)'}` }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: used ? 'rgba(31,157,111,0.1)' : 'rgba(217,119,6,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: used ? 'rgba(15, 160, 106,0.1)' : 'rgba(230, 114, 0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
             {used
               ? <CheckCircle2 size={56} style={{ color: 'var(--color-success)' }} />
               : <AlertTriangle size={56} style={{ color: 'var(--color-warning)' }} />}
@@ -222,7 +222,7 @@ export default function CheckoutPage() {
     <Shell>
       {/* Amount banner */}
       <div style={{
-        background: 'linear-gradient(135deg, #015697 0%, #2191D0 60%, #369FDA 100%)',
+        background: 'linear-gradient(135deg, #015697 0%, #2191D0 60%, #2191D0 100%)',
         borderRadius: 14, padding: '22px 24px', color: '#fff', marginBottom: 16, position: 'relative', overflow: 'hidden',
       }}>
         <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
@@ -284,8 +284,8 @@ export default function CheckoutPage() {
         )}
 
         {submitError && (
-          <div role="alert" style={{ padding: 10, borderRadius: 8, background: 'rgba(218,18,48,0.06)', border: '1px solid rgba(218,18,48,0.15)', marginBottom: 14 }}>
-            <p style={{ fontSize: 12, color: '#DA1230', fontWeight: 600 }}>{submitError}</p>
+          <div role="alert" style={{ padding: 10, borderRadius: 8, background: 'rgba(217, 43, 32,0.06)', border: '1px solid rgba(217, 43, 32,0.15)', marginBottom: 14 }}>
+            <p style={{ fontSize: 12, color: '#D92B20', fontWeight: 600 }}>{submitError}</p>
           </div>
         )}
 

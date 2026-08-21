@@ -75,7 +75,7 @@ export function accessibleOnColor(hex: string): string {
 
 const WHITE_INK = '#FFFFFF';
 /** --color-slate-900, the app's darkest text. */
-const DARK_INK = '#0E2A4A';
+const DARK_INK = '#113055';
 const DARK_INK_LUMINANCE = 0.0219;
 
 export function brandingToCSSVars(branding: OrgBranding): Record<string, string> {

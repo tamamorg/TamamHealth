@@ -14,13 +14,13 @@
 
 .labord {
   --labord-rail: 250px;
-  --labord-line: var(--ehr-border, #DDEAF3);
+  --labord-line: var(--ehr-border, #E2E6EB);
   --labord-surface: var(--bg-card-solid, #FFFFFF);
-  --labord-surface-soft: #F6F9FC;
+  --labord-surface-soft: #F5F7F8;
   /* Cards read as one system: a tinted header bar over a white body, with a
      slightly firmer border than the page's hairlines so a box is a box. */
-  --labord-card-head: #EDF3F8;
-  --labord-card-line: #C9D8E5;
+  --labord-card-head: #F1F3F5;
+  --labord-card-line: #CFD6DD;
 
   display: flex;
   flex-direction: column;
@@ -142,9 +142,9 @@
 /* STAT is the one fact on this row that changes what the bench does with the
    order, so it is the one that carries colour. */
 .labord-tag--stat {
-  border-color: var(--color-danger, #DC2626);
-  background: #FDECEC;
-  color: var(--color-danger, #DC2626);
+  border-color: var(--color-danger, #D92B20);
+  background: #FCEEED;
+  color: var(--color-danger, #D92B20);
 }
 
 .labord-close {
@@ -282,7 +282,7 @@
   min-width: 112px;
   padding: 11px 18px 11px 24px;
   border: 0;
-  background: #EDF2F7;
+  background: #F1F3F5;
   color: var(--text-muted);
   font-family: inherit;
   font-size: 0.75rem;
@@ -311,7 +311,7 @@
 }
 
 .labord-step--current {
-  background: var(--accent-hover, #012C4E);
+  background: var(--accent-hover, #001D3F);
   color: #fff;
 }
 
@@ -357,7 +357,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border-light, #E3EBF2);
+  border-bottom: 1px solid var(--border-light, #ECEEF1);
   font-size: 0.8125rem;
 }
 
@@ -391,7 +391,7 @@
   border-radius: 3px;
 }
 
-.labord-x:hover { color: var(--color-danger, #DC2626); background: var(--labord-surface-soft); }
+.labord-x:hover { color: var(--color-danger, #D92B20); background: var(--labord-surface-soft); }
 
 /* ══════════════════ CHECKBOX GRIDS (tests, diagnoses) ══════════════════ */
 
@@ -523,7 +523,7 @@
 }
 
 .labord-toggle--danger.labord-toggle--on {
-  background: var(--color-danger, #DC2626);
+  background: var(--color-danger, #D92B20);
 }
 
 /* ══════════════════ PICK LISTS ══════════════════ */
@@ -556,7 +556,7 @@
   width: 100%;
   padding: 8px 12px;
   border: 0;
-  border-bottom: 1px solid var(--border-light, #E3EBF2);
+  border-bottom: 1px solid var(--border-light, #ECEEF1);
   background: transparent;
   font-family: inherit;
   text-align: left;
@@ -614,7 +614,7 @@
   padding: 0;
 }
 
-.labord-chip button:hover { color: var(--color-danger, #DC2626); }
+.labord-chip button:hover { color: var(--color-danger, #D92B20); }
 
 /* ══════════════════ LINE ROWS (selected tests, AOEs, review) ══════════════════ */
 
@@ -624,7 +624,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border-light, #E3EBF2);
+  border-bottom: 1px solid var(--border-light, #ECEEF1);
 }
 
 .labord-row:last-child { border-bottom: 0; }
@@ -649,15 +649,15 @@
 }
 
 .labord-required {
-  color: var(--color-danger, #DC2626);
+  color: var(--color-danger, #D92B20);
   font-size: 0.75rem;
   font-weight: 700;
 }
 
-.labord-missing label { color: var(--color-danger, #DC2626); }
+.labord-missing label { color: var(--color-danger, #D92B20); }
 .labord-missing select,
 .labord-missing input,
-.labord-missing textarea { border-color: var(--color-danger, #DC2626); }
+.labord-missing textarea { border-color: var(--color-danger, #D92B20); }
 
 /* ══════════════════ FOOTER ══════════════════ */
 
@@ -710,8 +710,8 @@
 }
 
 .labord-btn--primary:hover:not(:disabled) {
-  background: var(--accent-hover, #012C4E);
-  border-color: var(--accent-hover, #012C4E);
+  background: var(--accent-hover, #001D3F);
+  border-color: var(--accent-hover, #001D3F);
 }
 
 .labord-btn--ghost { border-color: transparent; }
@@ -804,7 +804,7 @@
 .labord-req-table th {
   text-align: left;
   padding: 6px 8px;
-  background: #FCF6D8;
+  background: #FFF7DC;
   border: 1px solid #999;
   font-size: 0.6875rem;
   text-transform: uppercase;
@@ -820,8 +820,8 @@
 .labord-req-stat {
   display: inline-block;
   padding: 2px 8px;
-  border: 1px solid #C22B2B;
-  color: #C22B2B;
+  border: 1px solid #D92B20;
+  color: #D92B20;
   font-size: 0.6875rem;
   font-weight: 800;
   letter-spacing: 0.08em;

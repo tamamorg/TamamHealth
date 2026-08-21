@@ -106,10 +106,10 @@ describe('day/week block layout', () => {
 
 describe('the day view is two days', () => {
   const statusConfig = {
-    scheduled: { color: '#0F6FA8', bg: '#E7F1F8', label: 'Scheduled' },
+    scheduled: { color: '#1174B4', bg: '#ECEEF1', label: 'Scheduled' },
   } as unknown as Record<AppointmentStatus, { color: string; bg: string; label: string }>;
   const priorityConfig = {
-    routine: { color: '#0B7A54', label: 'Routine' },
+    routine: { color: '#0B8557', label: 'Routine' },
   } as unknown as Record<AppointmentPriority, { color: string; label: string }>;
 
   const booking = {
@@ -195,10 +195,10 @@ describe('the day view is two days', () => {
  */
 describe('an overflowing month day opens in place', () => {
   const statusConfig = {
-    scheduled: { color: '#0F6FA8', bg: '#E7F1F8', label: 'Scheduled' },
+    scheduled: { color: '#1174B4', bg: '#ECEEF1', label: 'Scheduled' },
   } as unknown as Record<AppointmentStatus, { color: string; bg: string; label: string }>;
   const priorityConfig = {
-    routine: { color: '#0B7A54', label: 'Routine' },
+    routine: { color: '#0B8557', label: 'Routine' },
   } as unknown as Record<AppointmentPriority, { color: string; label: string }>;
 
   const dayEvents = Array.from({ length: 12 }, (_, i) => ({

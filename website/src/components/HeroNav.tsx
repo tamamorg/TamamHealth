@@ -34,7 +34,7 @@ export default function HeroNav({
         type="button"
         onClick={onPrev}
         aria-label={prevLabel}
-        style={{ width: 62, height: 58, flexShrink: 0, border: 0, background: "#CCDDEA", color: "#015697", cursor: "pointer", fontSize: 22, lineHeight: 1 }}
+        style={{ width: 62, height: 58, flexShrink: 0, border: 0, background: "#D9DEE4", color: "#015697", cursor: "pointer", fontSize: 22, lineHeight: 1 }}
       >
         ‹
       </button>

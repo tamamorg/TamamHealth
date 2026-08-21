@@ -16,32 +16,76 @@
 /* ── 1. Tokens + base ── */
 
 :root {
+  /* ═══════════════════════════════════════════════════════════════════
+     THE TAMAM PALETTE — nine colours, and nothing else
+     ═══════════════════════════════════════════════════════════════════
+     Declared identically in platform/src/app/globals.css. These nine
+     hexes (plus pure white) are the entire colour supply for the site
+     and the product; every other value below is one of them or a
+     measured mix of two. A visitor crossing from tamamhealth.org into
+     the app never changes palette, the same way they never change
+     typeface.
+
+     White is pure white. Cream is the ground the white sits ON; it is
+     never a surface colour. */
+  --tm-cream:  #fcfef3;  /* page ground                                  */
+  --tm-ice:    #c9f4ff;  /* pale brand wash                              */
+  --tm-gold:   #fdd95f;  /* attention fill — stat accents, markers       */
+  --tm-orange: #ff7f00;  /* second accent hue                            */
+  --tm-dodger: #1e90ff;  /* bright brand                                 */
+  --tm-blue:   #2191d0;  /* brand                                        */
+  --tm-deep:   #015697;  /* links, buttons, primary action               */
+  --tm-navy:   #113055;  /* body ink and dark bands                      */
+  --tm-ink:    #001d3f;  /* deepest ink, and the foreground ON gold/orange */
+
   --color-bg: #ffffff;
-  --color-surface: #f2f8fc;
-  --color-text: #0e2a4a;
-  --color-accent: #2191d0;
-  --color-divider: rgba(14, 42, 74, 0.3);
-  --color-accent-100: #f5fbfe;
-  --color-accent-200: #ddf2fb;
-  --color-accent-300: #7fc4ea;
-  --color-accent-400: #52adde;
-  --color-accent-500: #2191d0;
-  --color-accent-600: #1774a8;
-  --color-accent-700: #015697;
-  --color-accent-800: #013d6b;
-  --color-accent-900: #015697;
-  --color-neutral-300: #d4d4d7;
-  --color-neutral-600: #6c7c8e;
-  --color-neutral-700: #5b6b7e;
-  --color-neutral-800: #3d5166;
-  --color-neutral-900: #2b2b2d;
+  --color-surface: var(--tm-cream);
+  --color-text: var(--tm-navy);
+  --color-accent: var(--tm-blue);
+  --color-divider: rgba(17, 48, 85, 0.3);
+
+  /* Blue ramp — seven of its ten rungs ARE palette colours. Measured on
+     white: 400 3.24:1, 500 3.49:1, 600 5.02:1, 700 7.56:1. Body text
+     needs 600 or darker; below that is fills, icons and borders. */
+  --color-accent-100: #f2fcff;          /* ice 25% on white */
+  --color-accent-200: var(--tm-ice);
+  --color-accent-300: #7cc7ff;          /* ice → dodger     */
+  --color-accent-400: var(--tm-dodger);
+  --color-accent-500: var(--tm-blue);
+  --color-accent-600: #1174b4;          /* blue → deep      */
+  --color-accent-700: var(--tm-deep);
+  --color-accent-800: var(--tm-navy);
+  --color-accent-900: var(--tm-ink);    /* was a duplicate of 700 */
+
+  /* Warm accents, for stat numerals, card washes and section tints —
+     never for links or buttons, which stay the blue. Orange and gold
+     carry DARK ink, not white: #001d3f on #ff7f00 is 6.64:1. */
+  --color-warm-100: #fff5eb;
+  --color-warm-200: #ffe3c7;
+  --color-warm-500: var(--tm-orange);
+  --color-warm-700: #b35900;            /* 4.83:1 — orange as text */
+  --color-gold-100: #fffae9;
+  --color-gold-200: #fff7dc;
+  --color-gold-500: var(--tm-gold);
+
+  /* Neutrals — the navy diluted into white, so every grey on the site is
+     the brand's own hue at low strength. 600 is 4.12:1 (borders and
+     icons only); 700 is 4.95:1, the first rung safe for body text. */
+  --color-neutral-100: #eceef1;
+  --color-neutral-200: #d9dee4;
+  --color-neutral-300: #cfd6dd;
+  --color-neutral-600: #6b7f96;
+  --color-neutral-700: #5d728b;
+  --color-neutral-800: #3c5574;
+  --color-neutral-900: var(--tm-navy);
+
   --font-heading: "Barlow Condensed", system-ui, sans-serif;
   --font-heading-weight: 600;
   --font-body: "Barlow", system-ui, sans-serif;
   --radius-md: 4px;
-  --shadow-sm: 0 1px 2px rgba(43, 43, 45, 0.14);
-  --shadow-md: 0 3px 10px rgba(43, 43, 45, 0.16);
-  --shadow-lg: 0 12px 32px rgba(43, 43, 45, 0.22);
+  --shadow-sm: 0 1px 2px rgba(17, 48, 85, 0.14);
+  --shadow-md: 0 3px 10px rgba(17, 48, 85, 0.16);
+  --shadow-lg: 0 12px 32px rgba(17, 48, 85, 0.22);
 }
 
 *,
@@ -96,7 +140,7 @@ a:hover { color: var(--color-accent-800); }
 img { display: block; max-width: 100%; }
 figure { margin: 0; }
 
-.text-muted { color: rgba(14, 42, 74, 0.55); }
+.text-muted { color: rgba(17, 48, 85, 0.55); }
 
 :focus { outline: none; }
 :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
@@ -120,7 +164,7 @@ section[id] { scroll-margin-top: 130px; }
   position: absolute;
   width: 11px;
   height: 11px;
-  color: rgba(14, 42, 74, 0.55);
+  color: rgba(17, 48, 85, 0.55);
 }
 .blueprint > .corner::before,
 .blueprint > .corner::after {
@@ -198,18 +242,18 @@ section[id] { scroll-margin-top: 130px; }
    on this site is structural — links, headings, the navy grounds, the header
    chrome — so a blue button dissolved into the page it sat on. Amber is the
    only warm colour here and fills nothing else. */
-.btn-primary { background: #e8863a; border-color: #e8863a; color: #0e2a4a; }
-.btn-primary:hover { background: #d2712a !important; border-color: #d2712a !important; color: #0e2a4a; }
+.btn-primary { background: #ff7f00; border-color: #ff7f00; color: #113055; }
+.btn-primary:hover { background: #e67200 !important; border-color: #e67200 !important; color: #113055; }
 .btn-secondary { border-color: var(--color-divider); }
-.btn-secondary:hover { background: rgba(14, 42, 74, 0.07); }
-.btn-secondary:active { background: rgba(14, 42, 74, 0.14); }
+.btn-secondary:hover { background: rgba(17, 48, 85, 0.07); }
+.btn-secondary:active { background: rgba(17, 48, 85, 0.14); }
 .btn-icon { width: 36px; height: 36px; padding: 0; }
 
 .field > label {
   display: block;
   font-size: 12px;
   margin-bottom: 5px;
-  color: rgba(14, 42, 74, 0.7);
+  color: rgba(17, 48, 85, 0.7);
 }
 .input {
   width: 100%;
@@ -223,16 +267,16 @@ section[id] { scroll-margin-top: 130px; }
   border: 1px solid var(--color-divider);
   border-radius: 0;
 }
-.input:hover { border-color: rgba(14, 42, 74, 0.45); }
+.input:hover { border-color: rgba(17, 48, 85, 0.45); }
 .input:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
 textarea.input { min-height: 90px; resize: vertical; }
 
 /* On the navy contact/donate forms the inputs carry translucent-white inline
    styles; keep their placeholder legible on both light and dark grounds. */
-.input::placeholder { color: rgba(14, 42, 74, 0.45); }
+.input::placeholder { color: rgba(17, 48, 85, 0.45); }
 .input-dark::placeholder { color: rgba(255, 255, 255, 0.55); }
 .input-dark:hover { border-color: rgba(255, 255, 255, 0.6); }
-select.input-dark option { color: #0e2a4a; background: #ffffff; }
+select.input-dark option { color: #113055; background: #ffffff; }
 
 .tag {
   display: inline-flex;
@@ -242,7 +286,7 @@ select.input-dark option { color: #0e2a4a; background: #ffffff; }
   padding: 3px 10px;
   border-radius: 0;
 }
-.tag-accent { background: #ddf2fb; color: #015697; }
+.tag-accent { background: #e1f9ff; color: #015697; }
 .tag-outline { border: 1px solid var(--color-accent); color: var(--color-accent); }
 
 /* ── Foldable step rows ──────────────────────────────────────────────
@@ -319,7 +363,7 @@ select.input-dark option { color: #0e2a4a; background: #ffffff; }
 .tm-tab:hover { color: #ffffff !important; }
 .tm-utilink:hover { color: #015697 !important; }
 
-.tm-products-band { background: linear-gradient(to right, #0e2a4a 0 50%, #eff5f9 50% 100%); }
+.tm-products-band { background: linear-gradient(to right, #113055 0 50%, #f1f3f5 50% 100%); }
 
 /* No scrollbar under the challenge rail — the ‹ › buttons above it are the
    affordance, and the bar read as a stray rule across the navy band. */
@@ -336,11 +380,11 @@ select.input-dark option { color: #0e2a4a; background: #ffffff; }
 .tm-chalstep:hover { background: rgba(255, 255, 255, 0.12) !important; }
 .tm-chalstep-lit:hover { background: #ffffff !important; }
 .tm-cost:hover { background: var(--color-accent-100) !important; }
-.tm-prodcard:hover { background: #f2f8fc !important; }
+.tm-prodcard:hover { background: #f2fcff !important; }
 /* /products hero: the six acronym jump chips on the navy band. */
 .tm-prodchip:hover { background: rgba(255, 255, 255, 0.14) !important; border-color: rgba(255, 255, 255, 0.6) !important; }
 /* The whole failure/fix card is the link, so it lifts on hover like the rest. */
-.tm-solution-card:hover { background: #e8f2f9 !important; }
+.tm-solution-card:hover { background: #f1f3f5 !important; }
 .tm-handled:hover { background: #ffffff !important; }
 .tm-guard:hover { background: var(--color-accent-100) !important; }
 .tm-lvlbtn:hover { background: var(--color-accent-100) !important; }
@@ -390,7 +434,7 @@ header > div { min-width: 0; }
   .tm-sticky { position: static !important; top: auto !important; }
   .tm-prod-card { margin-top: 0 !important; margin-inline-start: 0 !important; }
   .tm-prod-photo { min-height: 320px !important; }
-  .tm-products-band { background: #0e2a4a; }
+  .tm-products-band { background: #113055; }
   .tm-prod-grid { grid-template-columns: 1fr !important; }
   .tm-prod-card { grid-template-columns: 1fr !important; }
   .tm-prod-card > div:first-of-type { min-height: 260px !important; }

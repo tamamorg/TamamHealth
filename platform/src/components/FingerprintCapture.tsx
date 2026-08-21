@@ -173,7 +173,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
                 <span
                   key={c.finger}
                   className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-md"
-                  style={{ background: 'rgba(34,197,94,0.10)', color: '#15803d', border: '1px solid rgba(34,197,94,0.25)' }}
+                  style={{ background: 'rgba(79, 199, 155,0.10)', color: '#0b8557', border: '1px solid rgba(79, 199, 155,0.25)' }}
                 >
                   <Check className="w-3 h-3" />
                   {t(FINGER_OPTIONS.find(o => o.value === c.finger)?.labelKey || c.finger)}

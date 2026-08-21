@@ -102,7 +102,7 @@ function normalizeToHex(raw: string): string | null {
  * Resolve a CSS custom property (e.g. "--accent-primary") to a concrete hex
  * colour by reading the live cascade — globals.css defines these tokens as
  * chains of var() references (--accent-primary -> --tb-blue-900 ->
- * --brand-accent -> #144972), and getComputedStyle() on :root fully
+ * --brand-accent -> #015697), and getComputedStyle() on :root fully
  * substitutes that chain down to the literal value, unlike a static read of
  * the stylesheet text. Falls back to `fallbackHex` outside the browser (SSR)
  * or if the token can't be resolved.

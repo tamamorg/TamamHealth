@@ -67,20 +67,20 @@ export function generateReceiptHTML(receipt: ReceiptData): string {
 <style>
   @page { margin: 10mm; size: 80mm auto; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: system-ui, sans-serif; color: #1A2C2A; background: #fff; max-width: 320px; margin: 0 auto; padding: 16px; }
+  body { font-family: system-ui, sans-serif; color: #08573A; background: #fff; max-width: 320px; margin: 0 auto; padding: 16px; }
   .header { text-align: center; padding-bottom: 12px; border-bottom: 2px dashed #ccc; margin-bottom: 12px; }
   .header h1 { font-size: 16px; font-weight: 800; color: #015697; letter-spacing: 0.5px; }
-  .header p { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .header p { font-size: 11px; color: #5d728b; margin-top: 2px; }
   .receipt-title { text-align: center; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #2191D0; margin-bottom: 12px; }
   .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
-  .row .label { color: #64748b; }
+  .row .label { color: #5d728b; }
   .row .value { font-weight: 600; text-align: right; max-width: 55%; }
   .amount-row { padding: 10px 0; margin: 8px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
   .amount-row .value { font-size: 18px; font-weight: 800; color: #2191D0; }
   .amount-row .label { font-size: 13px; font-weight: 600; }
   .footer { text-align: center; margin-top: 16px; padding-top: 12px; border-top: 2px dashed #ccc; }
-  .footer p { font-size: 10px; color: #64748b; line-height: 1.5; }
-  .status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #E8F5E9; color: #2E7D32; text-transform: uppercase; letter-spacing: 0.5px; }
+  .footer p { font-size: 10px; color: #5d728b; line-height: 1.5; }
+  .status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #ECF6F3; color: #0B8557; text-transform: uppercase; letter-spacing: 0.5px; }
   @media print { body { padding: 0; } }
 </style>
 </head>

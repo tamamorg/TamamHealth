@@ -11,9 +11,9 @@ import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import Select from '@/components/Select';
 
 const CRIT_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
-  severe:   { bg: 'var(--color-danger-bg, rgba(196,69,54,0.12))', fg: 'var(--color-danger-text)',  label: 'Severe'   },
-  moderate: { bg: 'rgba(217,119,6,0.12)',                         fg: 'var(--color-warning-text)',              label: 'Moderate' },
-  mild:     { bg: 'rgba(21,121,92,0.12)',                         fg: 'var(--color-success-text)', label: 'Mild'     },
+  severe:   { bg: 'var(--color-danger-bg, rgba(224, 49, 39,0.12))', fg: 'var(--color-danger-text)',  label: 'Severe'   },
+  moderate: { bg: 'rgba(230, 114, 0,0.12)',                         fg: 'var(--color-warning-text)',              label: 'Moderate' },
+  mild:     { bg: 'rgba(10, 110, 74,0.12)',                         fg: 'var(--color-success-text)', label: 'Mild'     },
   unknown:  { bg: 'var(--overlay-subtle)',                        fg: 'var(--text-muted)',    label: 'Unknown'  },
 };
 

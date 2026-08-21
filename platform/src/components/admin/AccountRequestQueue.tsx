@@ -341,7 +341,7 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
         }
         .arq-buttons { display: flex; gap: 8px; }
         .arq-btn {
-          padding: 9px 16px; font-size: 13.5px; font-weight: 600; color: #0E2A4A; background: #E8863A;
+          padding: 9px 16px; font-size: 13.5px; font-weight: 600; color: #113055; background: #FF7F00;
           border: none; border-radius: 999px; cursor: pointer;
         }
         .arq-btn:disabled { opacity: 0.5; cursor: not-allowed; }

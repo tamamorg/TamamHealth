@@ -788,8 +788,8 @@ export function SystemAdminStyles() {
         background: var(--overlay-subtle);
       }
       .sysadm-sidebar-item.is-active {
-        background: #EFF8FD;
-        color: #013D6B;
+        background: #F2FCFF;
+        color: #113055;
       }
       .sysadm-sidebar-item span {
         flex: 1;
@@ -803,14 +803,14 @@ export function SystemAdminStyles() {
         height: 17px;
         padding: 0 5px;
         border-radius: 999px;
-        background: #E7EDF2;
-        color: #144972;
+        background: #ECEEF1;
+        color: #015697;
         font-family: var(--font-condensed);
         font-size: 10px;
         font-weight: 600;
       }
       .sysadm-sidebar-item.is-active b {
-        background: #E7EDF2;
+        background: #ECEEF1;
       }
       .sysadm-content {
         display: flex;
@@ -856,13 +856,13 @@ export function SystemAdminStyles() {
         gap: 8px;
         height: 36px;
         padding: 0 12px;
-        border: 1px solid #E3EBF2;
+        border: 1px solid #ECEEF1;
         border-radius: 8px;
-        background: #F7FAFC;
-        color: #5B6B7E;
+        background: #F5F7F8;
+        color: #5D728B;
       }
       .sysadm-search:focus-within {
-        border-color: #7FC4EA;
+        border-color: #7CC7FF;
       }
       .sysadm-search input {
         flex: 1;
@@ -898,7 +898,7 @@ export function SystemAdminStyles() {
         align-items: center;
         gap: 8px;
         margin-bottom: 4px;
-        color: #5B6B7E;
+        color: #5D728B;
         font-family: var(--font-condensed);
         font-size: 11px;
         font-weight: 600;
@@ -915,10 +915,10 @@ export function SystemAdminStyles() {
         justify-content: space-between;
         gap: 16px;
         padding: 12px 4px;
-        border-bottom: 1px solid #EDF2F7;
+        border-bottom: 1px solid #F1F3F5;
       }
       .sysadm-row:hover {
-        background: #FBFDFE;
+        background: #F2FCFF;
       }
       .sysadm-list .sysadm-row:last-child {
         border-bottom: 0;
@@ -929,13 +929,13 @@ export function SystemAdminStyles() {
       }
       .sysadm-row-main strong {
         display: block;
-        color: #0E2A4A;
+        color: #113055;
         font-size: 13.5px;
         font-weight: 600;
       }
       .sysadm-row-main p {
         margin: 2px 0 0;
-        color: #5B6B7E;
+        color: #5D728B;
         font-size: 12px;
         line-height: 1.5;
       }
@@ -983,10 +983,10 @@ export function SystemAdminStyles() {
         gap: 5px;
         height: 28px;
         padding: 0 11px;
-        border: 1px solid #E3EBF2;
+        border: 1px solid #ECEEF1;
         border-radius: 6px;
         background: #FFFFFF;
-        color: #144972;
+        color: #015697;
         font-family: var(--font-condensed);
         font-size: 11px;
         font-weight: 600;
@@ -997,7 +997,7 @@ export function SystemAdminStyles() {
         white-space: nowrap;
       }
       .sysadm-action-btn:hover {
-        background: #EFF8FD;
+        background: #F2FCFF;
       }
       .sysadm-open-link {
         display: inline-flex;
@@ -1019,12 +1019,12 @@ export function SystemAdminStyles() {
         flex: 0 0 auto;
         border: 0;
         border-radius: 999px;
-        background: #C7D5E0;
+        background: #CFD6DD;
         cursor: pointer;
         transition: background 0.15s ease;
       }
       .sysadm-toggle[data-on="true"] {
-        background: #144972;
+        background: #015697;
       }
       .sysadm-toggle:disabled {
         opacity: 0.5;
@@ -1038,7 +1038,7 @@ export function SystemAdminStyles() {
         height: 17px;
         border-radius: 50%;
         background: #fff;
-        box-shadow: 0 1px 2px rgba(14,42,74,0.25);
+        box-shadow: 0 1px 2px rgba(17, 48, 85,0.25);
         transition: transform 0.15s ease;
       }
       .sysadm-toggle[data-on="true"] .sysadm-toggle-thumb {
@@ -1058,7 +1058,7 @@ export function SystemAdminStyles() {
         border-bottom: 1px solid var(--border-light);
       }
       .sysadm-table-head {
-        color: #5B6B7E;
+        color: #5D728B;
         font-family: var(--font-condensed);
         font-size: 10.5px;
         font-weight: 600;

@@ -211,7 +211,7 @@ export default function HandoffWorkflow({
     { icon: BedDouble, label: t('nurse.totalPatients'), value: totalPatients, color: 'var(--accent-primary)' },
     { icon: AlertCircle, label: t('nurse.criticalPatients'), value: criticalCount, color: 'var(--color-danger-text)' },
     { icon: Pill, label: t('nurse.medicationsOverdue'), value: overdueMarCount, color: 'var(--color-danger-text)' },
-    { icon: Pill, label: t('nurse.medicationsDueNow'), value: dueMarCount, color: '#B55E13' },
+    { icon: Pill, label: t('nurse.medicationsDueNow'), value: dueMarCount, color: '#B35900' },
   ];
 
   // Previous-handoff read panel for the oncoming nurse.

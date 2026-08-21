@@ -187,7 +187,7 @@ export default function OrgBrandingPage() {
           </div>
         )}
         {error && (
-          <div className="mb-4 p-3 rounded-lg text-sm font-medium" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(229,46,66,0.2)' }}>
+          <div className="mb-4 p-3 rounded-lg text-sm font-medium" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(224, 49, 39,0.2)' }}>
             {error}
           </div>
         )}
@@ -374,7 +374,7 @@ export default function OrgBrandingPage() {
               <div className="rounded-xl overflow-hidden shadow-lg" style={{ border: '1px solid var(--border-light)' }}>
                 <div className="flex" style={{ height: 360 }}>
                   {/* Sidebar preview */}
-                  <div className="w-[200px] flex flex-col" style={{ background: '#0B0F1A' }}>
+                  <div className="w-[200px] flex flex-col" style={{ background: '#001D3F' }}>
                     {/* Sidebar header */}
                     <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                       {logoUrl ? (

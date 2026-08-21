@@ -108,7 +108,7 @@ export default function CheckoutModal({
           {balance === null ? (
             <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Checking balance…</p>
           ) : owes ? (
-            <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
+            <div className="rounded-xl p-3" style={{ background: 'rgba(224, 49, 39,0.06)', border: '1px solid rgba(224, 49, 39,0.18)' }}>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-danger-text)' }}>Outstanding balance</span>
                 <Wallet className="w-4 h-4" style={{ color: 'var(--color-danger-text)' }} />
@@ -144,7 +144,7 @@ export default function CheckoutModal({
               click that lets a patient go home without their vitamins must not
               read the same as sending someone home without their insulin. */}
           {gate && gate.tier1Outstanding.length > 0 && (
-            <div className="rounded-xl p-3" style={{ background: 'rgba(229,46,66,0.08)', border: '1px solid rgba(229,46,66,0.35)' }}>
+            <div className="rounded-xl p-3" style={{ background: 'rgba(224, 49, 39,0.08)', border: '1px solid rgba(224, 49, 39,0.35)' }}>
               <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-danger)' }}>
                 Life-sustaining medication not dispensed
               </p>
@@ -162,7 +162,7 @@ export default function CheckoutModal({
           )}
 
           {gate && gate.blocking.length > 0 && (
-            <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
+            <div className="rounded-xl p-3" style={{ background: 'rgba(255, 127, 0,0.07)', border: '1px solid rgba(255, 127, 0,0.25)' }}>
               <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-warning-text)' }}>
                 Checkout blocked — unresolved items
               </p>

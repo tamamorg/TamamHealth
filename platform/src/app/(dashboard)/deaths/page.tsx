@@ -311,7 +311,7 @@ export default function DeathsPage() {
                   <td className="text-xs font-mono">{d.dateOfDeath}</td>
                   <td>
                     <div>
-                      {d.underlyingICD11 && <span className="font-mono text-[10px] px-1.5 py-0.5 rounded me-1" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.underlyingICD11}</span>}
+                      {d.underlyingICD11 && <span className="font-mono text-[10px] px-1.5 py-0.5 rounded me-1" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>{d.underlyingICD11}</span>}
                       <span className="text-xs">{d.underlyingCause || d.immediateCause}</span>
                     </div>
                   </td>
@@ -355,13 +355,13 @@ export default function DeathsPage() {
                           <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>{t('deaths.placeOfDeath')}</span>{d.placeOfDeath || d.facilityName}</div>
                         </div>
                         <hr className="section-divider" />
-                        <div className="p-3 rounded-lg" style={{ background: 'rgba(229,46,66,0.06)', border: '1px solid rgba(229,46,66,0.15)' }}>
+                        <div className="p-3 rounded-lg" style={{ background: 'rgba(224, 49, 39,0.06)', border: '1px solid rgba(224, 49, 39,0.15)' }}>
                           <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-danger-text)' }}>{t('deaths.causeChain')}</p>
                           <div className="data-row-divider-sm text-xs">
-                            <p><span className="font-semibold">{t('deaths.causeImmediate')}</span> {d.immediateCause} {d.immediateICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.immediateICD11}</span>}</p>
-                            {d.antecedentCause1 && <p><span className="font-semibold">{t('deaths.causeDueTo')}</span> {d.antecedentCause1} {d.antecedentICD11_1 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.antecedentICD11_1}</span>}</p>}
-                            {d.antecedentCause2 && <p><span className="font-semibold">{t('deaths.causeDueToC')}</span> {d.antecedentCause2} {d.antecedentICD11_2 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.antecedentICD11_2}</span>}</p>}
-                            {d.underlyingCause && <p><span className="font-semibold">{t('deaths.causeUnderlying')}</span> {d.underlyingCause} {d.underlyingICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{d.underlyingICD11}</span>}</p>}
+                            <p><span className="font-semibold">{t('deaths.causeImmediate')}</span> {d.immediateCause} {d.immediateICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>{d.immediateICD11}</span>}</p>
+                            {d.antecedentCause1 && <p><span className="font-semibold">{t('deaths.causeDueTo')}</span> {d.antecedentCause1} {d.antecedentICD11_1 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>{d.antecedentICD11_1}</span>}</p>}
+                            {d.antecedentCause2 && <p><span className="font-semibold">{t('deaths.causeDueToC')}</span> {d.antecedentCause2} {d.antecedentICD11_2 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>{d.antecedentICD11_2}</span>}</p>}
+                            {d.underlyingCause && <p><span className="font-semibold">{t('deaths.causeUnderlying')}</span> {d.underlyingCause} {d.underlyingICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>{d.underlyingICD11}</span>}</p>}
                             {d.contributingConditions && <p><span className="font-semibold">{t('deaths.causeContributing')}</span> {d.contributingConditions}</p>}
                           </div>
                         </div>
@@ -392,7 +392,7 @@ export default function DeathsPage() {
               </div>
               <div className="p-4 space-y-4">
                 {/* Link to existing patient (optional) */}
-                <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(59, 130, 246,0.2))' }}>
+                <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33, 145, 208,0.2))' }}>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent-primary)' }}>
                     <UserCheck className="w-3 h-3" />
                     {t('deaths.linkPatient')}
@@ -458,7 +458,7 @@ export default function DeathsPage() {
 
                 <hr className="section-divider" />
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('deaths.causeChainWhoFormat')}</h3>
-                <div data-tour="death-cause-chain" className="p-3 rounded-lg space-y-3" style={{ background: 'rgba(229,46,66,0.05)', border: '1px solid rgba(229,46,66,0.15)' }}>
+                <div data-tour="death-cause-chain" className="p-3 rounded-lg space-y-3" style={{ background: 'rgba(224, 49, 39,0.05)', border: '1px solid rgba(224, 49, 39,0.15)' }}>
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.lineAImmediate')}</label><input type="text" value={form.immediateCause} onChange={e => setForm({ ...form, immediateCause: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} placeholder={t('deaths.lineAImmediatePlaceholder')} /></div>
                     <ICD11Select value={form.immediateICD11} onChange={v => setForm({ ...form, immediateICD11: v })} label={t('deaths.icd11LineA')} />

@@ -58,9 +58,9 @@ const STAGE_PILL: Record<ReturnType<typeof pharmacyStageTone>, React.CSSProperti
   scheduled: { background: 'var(--overlay-subtle)', color: 'var(--text-secondary)' },
   ready: { background: 'rgba(33,145,208,0.12)', color: 'var(--accent-primary)' },
   active: { background: 'rgba(33,145,208,0.12)', color: 'var(--accent-primary)' },
-  done: { background: 'rgba(5,150,105,0.12)', color: 'var(--color-success)' },
-  warning: { background: 'rgba(217,119,6,0.12)', color: 'var(--color-warning)' },
-  danger: { background: 'rgba(220,38,38,0.12)', color: 'var(--color-danger)' },
+  done: { background: 'rgba(14, 148, 99,0.12)', color: 'var(--color-success)' },
+  warning: { background: 'rgba(230, 114, 0,0.12)', color: 'var(--color-warning)' },
+  danger: { background: 'rgba(217, 43, 32,0.12)', color: 'var(--color-danger)' },
 };
 
 /** Portal modal + the shared panel chrome (title, close), which `Modal` itself

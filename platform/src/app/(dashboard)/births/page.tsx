@@ -181,7 +181,7 @@ export default function BirthsPage() {
                   >
                     <td className="font-mono text-xs">{b.certificateNumber}</td>
                     <td className="font-semibold text-sm">{b.childFirstName} {b.childSurname}</td>
-                    <td><span className="badge text-[10px]" style={{ background: b.childGender === 'Male' ? 'rgba(33, 145, 208, 0.12)' : 'rgba(229,46,66,0.12)', color: b.childGender === 'Male' ? 'var(--accent-primary)' : 'var(--color-danger-text)' }}>{b.childGender}</span></td>
+                    <td><span className="badge text-[10px]" style={{ background: b.childGender === 'Male' ? 'rgba(33, 145, 208, 0.12)' : 'rgba(224, 49, 39,0.12)', color: b.childGender === 'Male' ? 'var(--accent-primary)' : 'var(--color-danger-text)' }}>{b.childGender}</span></td>
                     <td className="text-xs font-mono">{b.dateOfBirth}</td>
                     <td className="text-sm">{b.birthWeight}g</td>
                     <td className="text-xs capitalize">{b.deliveryType}</td>

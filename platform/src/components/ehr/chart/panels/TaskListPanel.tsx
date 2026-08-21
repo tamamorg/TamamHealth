@@ -100,7 +100,7 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
               onChange={e => setSendDate(e.target.value)}
             />
             <div className="flex items-center gap-2" style={{ marginTop: 10 }}>
-              <button type="button" className="omrs-btn-ghost" style={{ background: 'var(--ehr-soft, #E9F0F5)', color: 'var(--ehr-text-body, #39536B)' }} onClick={() => { setAdding(false); setMessage(''); }}>
+              <button type="button" className="omrs-btn-ghost" style={{ background: 'var(--ehr-soft, #ECEEF1)', color: 'var(--ehr-text-body, #3C5574)' }} onClick={() => { setAdding(false); setMessage(''); }}>
                 Cancel
               </button>
               <button type="button" className="omrs-btn-primary" disabled={!message.trim() || submitting} onClick={handleAdd}>

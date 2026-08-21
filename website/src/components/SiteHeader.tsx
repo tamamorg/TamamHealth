@@ -140,7 +140,7 @@ export default function SiteHeader() {
 
   const iconBtn = (key: UtilKey): React.CSSProperties => ({
     appearance: "none",
-    background: util === key ? "#DDF2FB" : "transparent",
+    background: util === key ? "#E1F9FF" : "transparent",
     border: 0,
     cursor: "pointer",
     width: 34,
@@ -198,7 +198,7 @@ export default function SiteHeader() {
                     is no client-side route to prefetch across origins. */}
                 {PORTAL_LINKS.map((p) => (
                   <a key={p.label} href={p.href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 17, color: "#0E2A4A" }}>{p.label} &nbsp;›</span>
+                    <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 17, color: "#113055" }}>{p.label} &nbsp;›</span>
                     <span className="fs125" style={{ color: "var(--color-neutral-600)" }}>{p.note}</span>
                   </a>
                 ))}
@@ -228,7 +228,7 @@ export default function SiteHeader() {
                         appearance: "none", border: 0, background: "none", cursor: "pointer", textAlign: "start", padding: "9px 20px",
                         fontFamily: "var(--font-body)", fontSize: 14.5,
                         fontWeight: active ? 700 : 400,
-                        color: active ? "#015697" : "#0E2A4A",
+                        color: active ? "#015697" : "#113055",
                         textDecoration: active ? "underline" : "none",
                         textUnderlineOffset: 4,
                       }}
@@ -270,7 +270,7 @@ export default function SiteHeader() {
                 aria-current={activeHref === item.href ? "page" : undefined}
                 style={{
                   fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, letterSpacing: "0.01em",
-                  color: activeHref === item.href ? "#015697" : "#0E2A4A",
+                  color: activeHref === item.href ? "#015697" : "#113055",
                   textDecoration: "none",
                   padding: `${navPadY}px 14px`,
                   borderBottom: `3px solid ${activeHref === item.href ? "#2191D0" : "transparent"}`,
@@ -282,7 +282,7 @@ export default function SiteHeader() {
             ))}
             {/* The rail's one call to action, in the brand accent rather than
                 the deep blue the header itself is drawn in. */}
-            <Link href="/contact" className="btn blueprint" style={{ marginInlineStart: 14, padding: "11px 20px", fontSize: 15, color: "#0E2A4A", whiteSpace: "nowrap", background: "#E8863A", borderColor: "#E8863A" }}>
+            <Link href="/contact" className="btn blueprint" style={{ marginInlineStart: 14, padding: "11px 20px", fontSize: 15, color: "#113055", whiteSpace: "nowrap", background: "#FF7F00", borderColor: "#FF7F00" }}>
               {t("Get in touch")}
               <Corners />
             </Link>
@@ -324,12 +324,12 @@ export default function SiteHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 19, color: activeHref === item.href ? "#015697" : "#0E2A4A", textDecoration: "none", padding: "15px 28px", borderBottom: "1px solid var(--color-divider)" }}
+                style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 19, color: activeHref === item.href ? "#015697" : "#113055", textDecoration: "none", padding: "15px 28px", borderBottom: "1px solid var(--color-divider)" }}
               >
                 {item.label}
               </Link>
             ))}
-            <Link href="/contact" className="btn btn-primary" style={{ margin: "16px 28px 0", padding: "14px 0", fontSize: 16, color: "#0E2A4A" }}>
+            <Link href="/contact" className="btn btn-primary" style={{ margin: "16px 28px 0", padding: "14px 0", fontSize: 16, color: "#113055" }}>
               {t("Get in touch")}
             </Link>
           </div>
@@ -363,7 +363,7 @@ export default function SiteHeader() {
                   aria-activedescendant={hits.length ? `tm-search-opt-${active}` : undefined}
                   aria-autocomplete="list"
                   autoComplete="off"
-                  style={{ flex: 1, border: 0, outline: "none", background: "none", fontFamily: "var(--font-body)", fontSize: 17, color: "#0E2A4A", padding: "12px 0" }}
+                  style={{ flex: 1, border: 0, outline: "none", background: "none", fontFamily: "var(--font-body)", fontSize: 17, color: "#113055", padding: "12px 0" }}
                 />
                 <button type="submit" aria-label={t("Run search")} style={{ appearance: "none", border: 0, background: "none", cursor: "pointer", width: 40, height: 40, display: "grid", placeItems: "center", color: "#015697" }}>
                   <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>

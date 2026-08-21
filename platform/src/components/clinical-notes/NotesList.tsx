@@ -191,7 +191,7 @@ export default function NotesList({
       </div>
 
       {unsignedCount > 0 && (
-        <p style={{ fontSize: 12.5, color: 'var(--color-text-muted, #64748b)', margin: '0 0 10px' }}>
+        <p style={{ fontSize: 12.5, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 10px' }}>
           {unsignedCount} unsigned {unsignedCount === 1 ? 'note' : 'notes'} — unsigned notes are not
           yet part of the record.
         </p>

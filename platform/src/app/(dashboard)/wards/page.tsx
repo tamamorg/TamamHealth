@@ -257,7 +257,7 @@ export default function WardsPage() {
                     style={{
                       gridTemplateColumns: ADMISSION_GRID,
                       borderBottom: '1px solid var(--border-light)',
-                      background: a.severity === 'critical' ? 'rgba(196, 69, 54, 0.04)' : 'transparent',
+                      background: a.severity === 'critical' ? 'rgba(224, 49, 39, 0.04)' : 'transparent',
                     }}
                   >
                     {/* Patient */}

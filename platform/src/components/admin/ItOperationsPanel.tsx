@@ -302,7 +302,7 @@ export default function ItOperationsPanel({ embedded = false }: {
       <style>{`
         .it-group-label {
           margin: 0;
-          color: #5B6B7E;
+          color: #5D728B;
           font-family: var(--font-condensed);
           font-size: 10.5px;
           font-weight: 600;
@@ -314,20 +314,20 @@ export default function ItOperationsPanel({ embedded = false }: {
           align-items: center;
           gap: 12px;
           padding: 11px 2px;
-          border-bottom: 1px solid #EDF2F7;
+          border-bottom: 1px solid #F1F3F5;
         }
         .it-job-row:last-child { border-bottom: 0; }
         .it-job-text { min-width: 0; flex: 1; }
         .it-job-text strong {
           display: block;
-          color: #0E2A4A;
+          color: #113055;
           font-size: 13.5px;
           font-weight: 600;
         }
         .it-job-text span {
           display: block;
           margin-top: 1px;
-          color: #5B6B7E;
+          color: #5D728B;
           font-size: 12px;
         }
         .it-tile {
@@ -349,7 +349,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           align-items: center;
           gap: 12px;
           padding: 9px 0;
-          border-bottom: 1px solid #EDF2F7;
+          border-bottom: 1px solid #F1F3F5;
         }
         .it-store-row:last-child { border-bottom: 0; }
         .it-store-label { color: var(--text-secondary); font-size: 13px; font-weight: 600; }
@@ -367,7 +367,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           justify-content: space-between;
           gap: 12px;
           min-height: 42px;
-          border-bottom: 1px solid #EDF2F7;
+          border-bottom: 1px solid #F1F3F5;
           font-size: 13px;
         }
         .it-kv-row:last-child { border-bottom: 0; }
@@ -378,10 +378,10 @@ export default function ItOperationsPanel({ embedded = false }: {
           gap: 6px;
           min-height: 22px;
           padding: 0 9px;
-          border: 1px solid #52ADDE;
+          border: 1px solid #1E90FF;
           border-radius: 999px;
-          background: #EFF8FD;
-          color: #013D6B;
+          background: #F2FCFF;
+          color: #113055;
           font-family: var(--font-condensed);
           font-size: 10.5px;
           font-weight: 600;

@@ -43,28 +43,28 @@ export const LEAVE_STATUSES: LeaveStatus[] = ['pending', 'approved', 'rejected',
 export interface StatusToken { label: string; color: string; bg: string; border: string }
 
 export const STATUS_TOKENS: Record<LeaveRequestDoc['status'], StatusToken> = {
-  pending:   { label: 'Pending',   color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)', border: 'rgba(228, 168, 75, 0.45)' },
-  approved:  { label: 'Approved',  color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)', border: 'rgba(27, 158, 119, 0.40)' },
-  rejected:  { label: 'Rejected',  color: 'var(--color-danger-500)', bg: 'rgba(196, 69, 54, 0.14)', border: 'rgba(196, 69, 54, 0.40)' },
-  cancelled: { label: 'Cancelled', color: '#5A7370', bg: 'rgba(90, 115, 112, 0.14)', border: 'rgba(90, 115, 112, 0.40)' },
+  pending:   { label: 'Pending',   color: 'var(--color-warning-text)', bg: 'rgba(254, 230, 151, 0.16)', border: 'rgba(254, 230, 151, 0.45)' },
+  approved:  { label: 'Approved',  color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.12)', border: 'rgba(15, 160, 106, 0.40)' },
+  rejected:  { label: 'Rejected',  color: 'var(--color-danger-500)', bg: 'rgba(224, 49, 39, 0.14)', border: 'rgba(224, 49, 39, 0.40)' },
+  cancelled: { label: 'Cancelled', color: '#5D728B', bg: 'rgba(93, 114, 139, 0.14)', border: 'rgba(93, 114, 139, 0.40)' },
   taken:     { label: 'Taken',     color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
 };
 
 export const PAYROLL_STATUS_TOKENS: Record<PayrollEntryDoc['status'], StatusToken> = {
-  draft:    { label: 'Draft',    color: '#5A7370', bg: 'rgba(90, 115, 112, 0.14)', border: 'rgba(90, 115, 112, 0.40)' },
+  draft:    { label: 'Draft',    color: '#5D728B', bg: 'rgba(93, 114, 139, 0.14)', border: 'rgba(93, 114, 139, 0.40)' },
   approved: { label: 'Approved', color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
-  paid:     { label: 'Paid',     color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.14)', border: 'rgba(27, 158, 119, 0.40)' },
-  reversed: { label: 'Reversed', color: 'var(--color-danger-500)', bg: 'rgba(196, 69, 54, 0.14)', border: 'rgba(196, 69, 54, 0.40)' },
+  paid:     { label: 'Paid',     color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.14)', border: 'rgba(15, 160, 106, 0.40)' },
+  reversed: { label: 'Reversed', color: 'var(--color-danger-500)', bg: 'rgba(224, 49, 39, 0.14)', border: 'rgba(224, 49, 39, 0.40)' },
 };
 
 /** Shift lifecycle — `StaffScheduleDoc.status`, surfaced by the schedule list's
  *  Status column (the old table dropped it entirely). */
 export const SCHEDULE_STATUS_TOKENS: Record<StaffScheduleDoc['status'], StatusToken> = {
   scheduled: { label: 'Scheduled', color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
-  confirmed: { label: 'Confirmed', color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)', border: 'rgba(27, 158, 119, 0.40)' },
-  completed: { label: 'Completed', color: '#5A7370', bg: 'rgba(90, 115, 112, 0.14)', border: 'rgba(90, 115, 112, 0.40)' },
-  absent:    { label: 'Absent',    color: 'var(--color-danger-500)', bg: 'rgba(196, 69, 54, 0.14)', border: 'rgba(196, 69, 54, 0.40)' },
-  swapped:   { label: 'Swapped',   color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)', border: 'rgba(228, 168, 75, 0.45)' },
+  confirmed: { label: 'Confirmed', color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.12)', border: 'rgba(15, 160, 106, 0.40)' },
+  completed: { label: 'Completed', color: '#5D728B', bg: 'rgba(93, 114, 139, 0.14)', border: 'rgba(93, 114, 139, 0.40)' },
+  absent:    { label: 'Absent',    color: 'var(--color-danger-500)', bg: 'rgba(224, 49, 39, 0.14)', border: 'rgba(224, 49, 39, 0.40)' },
+  swapped:   { label: 'Swapped',   color: 'var(--color-warning-text)', bg: 'rgba(254, 230, 151, 0.16)', border: 'rgba(254, 230, 151, 0.45)' },
 };
 
 /** Tint a shared `.appointment-status-pill` with a status token — the pill
@@ -80,8 +80,8 @@ export const SHIFT_TYPES: StaffScheduleDoc['shiftType'][] = ['morning', 'afterno
 /** Per-shift accent, shared by the schedule list's shift chip and the header
  *  stat dots so a shift reads the same colour in both places. */
 export const SHIFT_TOKENS: Record<StaffScheduleDoc['shiftType'], StatusToken> = {
-  morning:   { label: 'Morning',   color: 'var(--color-success-text)', bg: 'rgba(27, 158, 119, 0.12)', border: 'rgba(27, 158, 119, 0.40)' },
-  afternoon: { label: 'Afternoon', color: 'var(--color-warning-text)', bg: 'rgba(228, 168, 75, 0.16)', border: 'rgba(228, 168, 75, 0.45)' },
+  morning:   { label: 'Morning',   color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.12)', border: 'rgba(15, 160, 106, 0.40)' },
+  afternoon: { label: 'Afternoon', color: 'var(--color-warning-text)', bg: 'rgba(254, 230, 151, 0.16)', border: 'rgba(254, 230, 151, 0.45)' },
   night:     { label: 'Night',     color: 'var(--accent-hover)', bg: 'rgba(1, 86, 151, 0.12)', border: 'rgba(1, 86, 151, 0.35)' },
   on_call:   { label: 'On call',   color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
 };

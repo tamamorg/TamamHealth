@@ -150,7 +150,7 @@
 
    This block used to name `--color-border` / `--color-surface` /
    `--color-primary`, none of which exist in globals.css, so every control fell
-   through to a hardcoded literal (#cbd5e1 on #fff) — off-palette, and a white
+   through to a hardcoded literal (#cfd6dd on #fff) — off-palette, and a white
    ground that ignored the theme. */
 .cn-select,
 .cn-input,
@@ -261,11 +261,11 @@ select.cn-select {
   padding: 0 12px 14px;
   overflow-y: auto;
   background: #fff;
-  border-right: 1px solid #eceae5;
+  border-right: 1px solid #eceef1;
 }
 
 .cn-sidebar-card {
-  border: 1px solid #eceae5;
+  border: 1px solid #eceef1;
   border-radius: 10px;
   background: #fff;
   padding: 0;
@@ -282,8 +282,8 @@ select.cn-select {
   padding: 11px 14px;
   font-size: 13.5px;
   font-weight: 700;
-  color: #3d4a52;
-  border-bottom: 1px solid #eceae5;
+  color: #2e4969;
+  border-bottom: 1px solid #eceef1;
 }
 
 .cn-card-head-action {
@@ -308,7 +308,7 @@ select.cn-select {
   text-align: center;
   font-size: 13px;
   line-height: 1.55;
-  color: #98a09b;
+  color: #94a2b3;
 }
 
 .cn-patient-id {
@@ -324,19 +324,19 @@ select.cn-select {
   border-radius: 6px;
   object-fit: cover;
   flex: 0 0 auto;
-  background: #edecea;
+  background: #eceef1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
   font-weight: 700;
-  color: #a2aaa5;
+  color: #94a2b3;
 }
 
 .cn-patient-line {
   font-size: 12.5px;
   line-height: 1.6;
-  color: #55605c;
+  color: #3c5574;
   margin: 0;
 }
 
@@ -359,7 +359,7 @@ select.cn-select {
   text-align: left;
 }
 .cn-sidebar-link:hover { text-decoration: underline; }
-.cn-sidebar-link svg { color: #adb4af; flex: 0 0 auto; }
+.cn-sidebar-link svg { color: #b3bdc9; flex: 0 0 auto; }
 
 /* Date/lab rows in the Patient Notes and Labs/Studies cards. */
 .cn-rail-row {
@@ -387,7 +387,7 @@ select.cn-select {
 .cn-rail-row-meta {
   flex: 0 0 auto;
   font-size: 11.5px;
-  color: #98a09b;
+  color: #94a2b3;
 }
 
 .cn-section-nav { display: flex; flex-direction: column; gap: 2px; }
@@ -411,7 +411,7 @@ select.cn-select {
   background: none;
   font: inherit;
   font-size: 13.5px;
-  color: #3d4a52;
+  color: #2e4969;
   cursor: pointer;
   text-align: left;
 }
@@ -435,11 +435,11 @@ select.cn-select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e0ddd7;
+  border: 1px solid #d9dee4;
   border-radius: 4px;
   background: none;
   cursor: pointer;
-  color: #a2aaa5;
+  color: #94a2b3;
   padding: 0;
 }
 .cn-section-nav-remove:hover {
@@ -763,9 +763,9 @@ select.cn-select {
   padding: 9px 12px;
   margin-bottom: 12px;
   border-radius: var(--radius-card);
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #065f46;
+  background: #ecf6f3;
+  border: 1px solid #d8eee6;
+  color: #08573a;
   font-size: 13px;
 }
 
@@ -864,10 +864,10 @@ select.cn-select {
   color: var(--text-secondary);
 }
 
-.cn-badge.is-signed { background: #dcfce7; color: #166534; }
-.cn-badge.is-draft { background: #fef3c7; color: #92400e; }
-.cn-badge.is-amended { background: #e0e7ff; color: #3730a3; }
-.cn-badge.is-cosign { background: #ffedd5; color: #9a3412; }
+.cn-badge.is-signed { background: #ecf6f3; color: #0A6E4A; }
+.cn-badge.is-draft { background: #fef2c7; color: #a65300; }
+.cn-badge.is-amended { background: #c9f4ff; color: #015697; }
+.cn-badge.is-cosign { background: #ffeddb; color: #a65300; }
 
 /* ── Care coordination ──────────────────────────────────────────────────── */
 .cn-coord-section { margin-bottom: 16px; }
@@ -930,9 +930,9 @@ select.cn-select {
    under .cn-split so the note editor's Sign/Save .cn-btn-primary keeps the
    standard action color; the neutral (toolbar) tone keeps its square look. */
 .cn-split .cn-btn-primary {
-  --cn-split-fill: #e8937e;
-  --cn-split-fill-hover: #e28169;
-  --cn-split-ink: #33424b;
+  --cn-split-fill: #f26d64;
+  --cn-split-fill-hover: #f26d64;
+  --cn-split-ink: #2e4969;
   background: var(--cn-split-fill);
   border-color: var(--cn-split-fill);
   color: var(--cn-split-ink);
@@ -945,7 +945,7 @@ select.cn-select {
 .cn-split .cn-btn-primary.cn-split-main {
   border-radius: 999px 0 0 999px;
   padding-left: 16px;
-  border-right-color: rgba(51, 66, 75, 0.28);
+  border-right-color: rgba(46, 73, 105, 0.28);
 }
 .cn-split .cn-btn-primary.cn-split-caret {
   border-radius: 0 999px 999px 0;
@@ -979,7 +979,7 @@ select.cn-select {
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-card);
   background: var(--bg-card-solid);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 12px 32px rgba(0, 29, 63, 0.18);
 }
 
 .cn-type-item {
@@ -1435,7 +1435,7 @@ select.cn-select {
 }
 .cn-rail-row-sub {
   font-size: 12px;
-  color: #55605c;
+  color: #3c5574;
 }
 
 /* ── Problems / Allergies popups (share the Medications chrome) ─────────── */
@@ -1599,7 +1599,7 @@ select.cn-select {
   right: 0;
   margin: 4px 0 0;
   z-index: 30;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 10px 26px rgba(0, 29, 63, 0.14);
 }
 
 .cn-rx-reason {
@@ -1762,23 +1762,23 @@ select.cn-select {
 
 /* ═══════════════ Design alignment — "Encounter Note" (dashboard redesign) ═══════════════
    The note editor measured against Encounter Note.dc.html in the Claude Design
-   project: white chrome on #E3EBF2 hairlines, chip-fields in the header, a
-   #F7FAFC canvas of flat white block cards with condensed-caps titles, and the
-   sidebar as labelled cards with #F7FAFC head bands. Stated last, as one
+   project: white chrome on #ECEEF1 hairlines, chip-fields in the header, a
+   #F5F7F8 canvas of flat white block cards with condensed-caps titles, and the
+   sidebar as labelled cards with #F5F7F8 head bands. Stated last, as one
    layer, so the design wins over the module's older warm-gray rules above
    without re-fighting their specificity notes. */
 
 .cn-editor {
-  --cn-ink: #0E2A4A;
-  --cn-accent: #144972;
-  --cn-accent-deep: #013D6B;
-  --cn-line: #E3EBF2;
-  --cn-line-soft: #EDF2F7;
-  --cn-band: #F7FAFC;
-  --cn-tint: #EFF8FD;
-  --cn-tint-border: #52ADDE;
-  --cn-muted: #5B6B7E;
-  --cn-ghost: #94A3B8;
+  --cn-ink: #113055;
+  --cn-accent: #015697;
+  --cn-accent-deep: #113055;
+  --cn-line: #ECEEF1;
+  --cn-line-soft: #F1F3F5;
+  --cn-band: #F5F7F8;
+  --cn-tint: #F2FCFF;
+  --cn-tint-border: #1E90FF;
+  --cn-muted: #5D728B;
+  --cn-ghost: #94A2B3;
   color: var(--cn-ink);
 }
 
@@ -1902,7 +1902,7 @@ select.cn-select {
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: #E7EDF2;
+  background: #ECEEF1;
   color: var(--cn-accent);
   font-size: 15px;
 }
@@ -1934,9 +1934,9 @@ select.cn-select {
   line-height: 1;
   white-space: nowrap;
 }
-.cn-pill-danger { background: rgba(139, 46, 36, 0.08); border-color: rgba(139, 46, 36, 0.42); color: #8B2E24; }
+.cn-pill-danger { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: #9E1B14; }
 .cn-pill-info { background: var(--cn-tint); border-color: var(--cn-tint-border); color: var(--cn-accent-deep); }
-.cn-pill-success { background: rgba(21, 121, 92, 0.08); border-color: rgba(21, 121, 92, 0.42); color: #15795C; }
+.cn-pill-success { background: rgba(10, 110, 74, 0.08); border-color: rgba(10, 110, 74, 0.42); color: #0A6E4A; }
 
 /* ── Quick links: three icon tiles ── */
 .cn-quick-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -1983,7 +1983,7 @@ select.cn-select {
   height: 6px;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: #15795C;
+  background: #0A6E4A;
   overflow: hidden;
   color: transparent;
   font-size: 0;
@@ -2038,10 +2038,10 @@ select.cn-select {
   background: #FFFFFF;
   border: 1px solid var(--cn-line);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(14, 42, 74, 0.05);
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
-.cn-section.is-active { background: #FFFFFF; border-color: #B5D9FD; }
+.cn-section.is-active { background: #FFFFFF; border-color: #7CC7FF; }
 
 .cn-section-head {
   margin-bottom: 0;
@@ -2140,7 +2140,7 @@ select.cn-select {
   border-color: #015697;
   color: #FFFFFF;
 }
-.cn-footer .cn-btn-save:hover:not(:disabled) { background: #013D6B; border-color: #013D6B; }
+.cn-footer .cn-btn-save:hover:not(:disabled) { background: #113055; border-color: #113055; }
 .cn-saved { font-size: 11.5px; color: var(--cn-muted); }
 
 /* ── Locked banner on the band ── */

@@ -118,7 +118,7 @@ export default function ClinicalStep({ controller }: { controller: LabOrderContr
               </span>
             )
             : schedule.length > 0 && (
-              <span className="labord-pick-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--color-success, #059669)' }}>
+              <span className="labord-pick-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--color-success, #0E9463)' }}>
                 <CheckCircle2 className="w-3.5 h-3.5" aria-hidden />
                 {t('labOrder.aoeComplete')}
               </span>

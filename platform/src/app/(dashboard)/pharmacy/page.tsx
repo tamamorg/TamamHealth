@@ -720,7 +720,7 @@ export default function PharmacyPage() {
     ).join('');
     const html = `<html><head><title>${escapeHtml(t('pharmacy.purchaseOrder'))}</title><style>
       body{font-family:system-ui,sans-serif;padding:30px;} h1{font-size:18px;margin-bottom:4px;} h2{font-size:13px;color:#666;margin-bottom:18px;}
-      table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:8px;text-align:left;font-size:13px;} th{background:#f3f4f6;}
+      table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:8px;text-align:left;font-size:13px;} th{background:#f1f3f5;}
       .footer{margin-top:36px;font-size:12px;color:#888;}
     </style></head><body>
       <h1>${escapeHtml(t('pharmacy.purchaseOrderRestock'))}</h1>
@@ -1011,7 +1011,7 @@ export default function PharmacyPage() {
                           <div className="flex items-center gap-2">
                             {rx.medication}
                             {rx.urgency === 'immediate' && (
-                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(217,119,6,0.12)', color: 'var(--color-warning-text)' }}>Immediate</span>
+                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(230, 114, 0,0.12)', color: 'var(--color-warning-text)' }}>Immediate</span>
                             )}
                           </div>
                         </td>
@@ -1226,7 +1226,7 @@ export default function PharmacyPage() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>{cat.category}</span>
                       <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{
-                        background: okPct > 80 ? 'rgba(74,222,128,0.15)' : okPct > 60 ? 'rgba(251,191,36,0.15)' : 'rgba(248,113,113,0.15)',
+                        background: okPct > 80 ? 'rgba(79, 199, 155,0.15)' : okPct > 60 ? 'rgba(255, 210, 166,0.15)' : 'rgba(242, 109, 100,0.15)',
                         color: okPct > 80 ? 'var(--color-success-text)' : okPct > 60 ? 'var(--color-warning-text)' : 'var(--color-danger-text)',
                       }}>{okPct}%</span>
                     </div>

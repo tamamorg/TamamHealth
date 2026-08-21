@@ -29,10 +29,10 @@ import type { ImmunizationDoc, PatientDoc } from '@/lib/db-types';
 const SITES: ImmunizationDoc['site'][] = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  completed: { bg: 'rgba(31,157,111,0.14)', color: 'var(--color-success)' },
+  completed: { bg: 'rgba(15, 160, 106,0.14)', color: 'var(--color-success)' },
   scheduled: { bg: 'var(--accent-light)', color: 'var(--accent-primary)' },
-  overdue: { bg: 'rgba(229,46,66,0.14)', color: 'var(--color-danger)' },
-  missed: { bg: 'rgba(252,211,77,0.16)', color: 'var(--color-warning)' },
+  overdue: { bg: 'rgba(224, 49, 39,0.14)', color: 'var(--color-danger)' },
+  missed: { bg: 'rgba(253, 217, 95,0.16)', color: 'var(--color-warning)' },
 };
 
 interface ImmunizationsSectionProps {

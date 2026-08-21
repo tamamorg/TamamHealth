@@ -11,8 +11,8 @@
  *
  * `src/__tests__/design/color-tokens.test.ts` parses globals.css and fails if
  * any value below drifts from its token, so the two cannot disagree again.
- * They previously did: `danger` was #C44536 while `--color-danger` was
- * #DC2626, and `success` was #1B9E77 while `--color-success` was #059669 —
+ * They previously did: `danger` was #E03127 while `--color-danger` was
+ * #D92B20, and `success` was #0FA06A while `--color-success` was #0E9463 —
  * one meaning, two colours, depending on which file you happened to read.
  *
  * ── The two-tone rule ────────────────────────────────────────────────────
@@ -28,48 +28,48 @@
  *     and white words on a coloured background (toasts, banners, pills).
  *
  * Getting this backwards is how "critical" ended up as the least readable
- * text on the page: #F87171 scored 2.77:1 in 58 places.
+ * text on the page: #F26D64 scored 2.77:1 in 58 places.
  */
 
 export const THEME_COLORS = {
   // ── Brand. Mirrors --tb-blue-*; org branding replaces --accent-primary at
   // runtime, so prefer var(--accent-primary) over BRAND_PRIMARY in the UI.
-  brandPrimary: '#144972',
-  brandSecondary: '#012C4E',
-  brandDarker: '#144972',
-  brandOrange: '#CA4D1C',
-  brandPurple: '#7847EB',
+  brandPrimary: '#015697',
+  brandSecondary: '#001D3F',
+  brandDarker: '#015697',
+  brandOrange: '#FF7F00',
+  brandPurple: '#B35900',
 
   // ── Status. base = --color-X, strong = --color-X-text, bg = --color-X-bg
   // flattened onto white (the tints are rgba in CSS; a literal is needed here).
   info: '#2191D0',            // --color-info
   infoStrong: '#015697',      // --color-info-text
-  infoLight: '#DDF2FB',       // --tb-blue-100
-  success: '#059669',         // --color-success
-  successStrong: '#15795C',   // --color-success-text
-  successBg: '#E7F5F0',       // --color-success-bg on white
-  warning: '#D97706',         // --color-warning
-  warningStrong: '#9C5E16',   // --color-warning-text
-  warningBg: '#FBEFE2',       // --color-warning-bg on white
-  danger: '#DC2626',          // --color-danger
-  dangerStrong: '#8B2E24',    // --color-danger-text
-  dangerBg: '#F9EAE8',        // --color-danger-bg on white
+  infoLight: '#C9F4FF',       // --tb-blue-100
+  success: '#0E9463',         // --color-success
+  successStrong: '#0A6E4A',   // --color-success-text
+  successBg: '#E2F2EC',       // --color-success-bg on white
+  warning: '#E67200',         // --color-warning
+  warningStrong: '#B35900',   // --color-warning-text
+  warningBg: '#FFF7DC',       // --color-warning-bg on white
+  danger: '#D92B20',          // --color-danger
+  dangerStrong: '#9E1B14',    // --color-danger-text
+  dangerBg: '#FAE6E4',        // --color-danger-bg on white
 
   // ── Neutrals. Mirrors the --ehr-* / --text-* / --border-* families.
-  neutralText: '#39536B',
-  neutralMuted: '#8395A8',
-  neutralBorder: '#DDEAF3',
-  neutralDivider: '#E7EEF5',
-  neutralHover: '#FAFCFE',
-  neutralPanelHead: '#F7FAFC',
+  neutralText: '#3C5574',
+  neutralMuted: '#5D728B',
+  neutralBorder: '#E2E6EB',
+  neutralDivider: '#ECEEF1',
+  neutralHover: '#FAFBFC',
+  neutralPanelHead: '#F5F7F8',
   neutralPanelBg: '#FFFFFF',
-  neutralSurface: '#E9F0F5',
-  clinicalInfoBg: '#EAF2F8',
-  missionBlue: '#2191D0',
+  neutralSurface: '#ECEEF1',
+  clinicalInfoBg: '#F2FCFF',
+  missionBlue: '#015697',
   white: '#FFFFFF',
-  slate900: '#111827',
-  slate700: '#475569',
-  slate500: '#64748B',
+  slate900: '#113055',
+  slate700: '#3C5574',
+  slate500: '#5D728B',
 } as const;
 
 export const BRAND_PRIMARY = THEME_COLORS.brandPrimary;

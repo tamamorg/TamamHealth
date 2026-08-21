@@ -251,7 +251,7 @@ function NotificationsPageInner() {
                             gap: 12,
                             padding: '13px 15px',
                             background: n.read ? 'transparent' : 'var(--bg-card-solid)',
-                            border: `1px solid ${n.severity === 'critical' && !n.read ? 'rgba(196, 69, 54, 0.28)' : 'var(--border-light)'}`,
+                            border: `1px solid ${n.severity === 'critical' && !n.read ? 'rgba(224, 49, 39, 0.28)' : 'var(--border-light)'}`,
                             opacity: n.read ? 0.7 : 1,
                           }}
                         >

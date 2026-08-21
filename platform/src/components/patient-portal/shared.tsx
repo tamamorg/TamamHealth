@@ -23,8 +23,8 @@ export function shortDate(iso: string): string {
 export function Empty({ icon: Icon, text, action, onAction }: { icon: typeof User; text: string; action?: string; onAction?: () => void }) {
   return (
     <div className="pp-card" style={{ textAlign: 'center', padding: 40 }}>
-      <Icon size={44} style={{ color: '#94A3B8', opacity: 0.5, margin: '0 auto 10px' }} />
-      <p style={{ margin: 0, fontSize: 13, color: '#5B6B7E' }}>{text}</p>
+      <Icon size={44} style={{ color: '#94A2B3', opacity: 0.5, margin: '0 auto 10px' }} />
+      <p style={{ margin: 0, fontSize: 13, color: '#5D728B' }}>{text}</p>
       {action && onAction && (
         <button type="button" onClick={onAction} className="pp-btn pp-btn-primary" style={{ marginTop: 14 }}>
           <Plus size={14} /> {action}

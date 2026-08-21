@@ -32,10 +32,10 @@ const SITES: Array<'left arm' | 'right arm' | 'left thigh' | 'right thigh' | 'or
 const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 
 const statusConfig = {
-  completed: { color: 'var(--color-success-text)', bg: 'rgba(5,150,105,0.12)', icon: CheckCircle2, label: 'Completed' },
-  scheduled: { color: 'var(--color-warning)', bg: 'rgba(252,211,77,0.12)', icon: Clock, label: 'Scheduled' },
-  overdue: { color: 'var(--color-danger)', bg: 'rgba(229,46,66,0.12)', icon: AlertTriangle, label: 'Overdue' },
-  missed: { color: 'var(--text-muted)', bg: 'rgba(100,116,139,0.12)', icon: XCircle, label: 'Missed' },
+  completed: { color: 'var(--color-success-text)', bg: 'rgba(14, 148, 99,0.12)', icon: CheckCircle2, label: 'Completed' },
+  scheduled: { color: 'var(--color-warning)', bg: 'rgba(253, 217, 95,0.12)', icon: Clock, label: 'Scheduled' },
+  overdue: { color: 'var(--color-danger)', bg: 'rgba(224, 49, 39,0.12)', icon: AlertTriangle, label: 'Overdue' },
+  missed: { color: 'var(--text-muted)', bg: 'rgba(93, 114, 139,0.12)', icon: XCircle, label: 'Missed' },
 };
 
 export default function ImmunizationsPage() {
@@ -440,7 +440,7 @@ export default function ImmunizationsPage() {
           style={{ color: activeTab === 'defaulters' ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
           {t('immun.tabDefaulters', { count: defaulterStats?.uniqueChildren || 0 })}
           {defaulterStats && defaulterStats.critical > 0 && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(229,46,66,0.15)', color: 'var(--color-danger-text)' }}>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(224, 49, 39,0.15)', color: 'var(--color-danger-text)' }}>
               {t('immun.criticalBadge', { count: defaulterStats.critical })}
             </span>
           )}
@@ -470,11 +470,11 @@ export default function ImmunizationsPage() {
                         <Syringe className="w-4 h-4" style={{ color: 'var(--color-success-text)' }} />
                       </span>
                       <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{vaccine}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(5,150,105,0.1)', color: 'var(--color-success-text)' }}>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(14, 148, 99,0.1)', color: 'var(--color-success-text)' }}>
                         {total} completed
                       </span>
                       {overdueCount > 0 && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)' }}>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)' }}>
                           {overdueCount} overdue
                         </span>
                       )}
@@ -503,7 +503,7 @@ export default function ImmunizationsPage() {
                                       {new Date(i.dateGiven).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                     </span>
                                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{
-                                      background: scheduledOnTime ? 'rgba(5,150,105,0.1)' : 'rgba(245,158,11,0.1)',
+                                      background: scheduledOnTime ? 'rgba(14, 148, 99,0.1)' : 'rgba(255, 127, 0,0.1)',
                                       color: scheduledOnTime ? 'var(--color-success-text)' : 'var(--color-warning-text)',
                                     }}>
                                       {scheduledOnTime ? 'On schedule' : 'Late'}
@@ -531,13 +531,13 @@ export default function ImmunizationsPage() {
                               const overdueMo = Math.floor(overdueDays / 30);
                               const overdueLabel = overdueMo >= 1 ? `Overdue by ${overdueMo}mo` : `Overdue by ${overdueDays}d`;
                               return (
-                                <div key={`${d.patientId}-${d.vaccine}-${d.doseNumber}`} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg" style={{ background: 'rgba(229,46,66,0.05)', border: '1px solid rgba(229,46,66,0.15)' }}>
+                                <div key={`${d.patientId}-${d.vaccine}-${d.doseNumber}`} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg" style={{ background: 'rgba(224, 49, 39,0.05)', border: '1px solid rgba(224, 49, 39,0.15)' }}>
                                   <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                                     {d.patientName || 'Unknown'}
                                   </span>
                                   <div className="flex items-center gap-3">
                                     <span style={{ color: 'var(--text-muted)' }}>Due: {new Date(d.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>
                                       {overdueLabel}
                                     </span>
                                   </div>
@@ -629,7 +629,7 @@ export default function ImmunizationsPage() {
                         if (!cell || cell.total === 0) {
                           return <td key={c} className="text-center p-2 text-[10px]" style={{ color: 'var(--text-muted)' }}>—</td>;
                         }
-                        const bg = cell.pct >= 90 ? 'rgba(5,150,105,0.85)' : cell.pct >= 70 ? 'rgba(13,148,136,0.65)' : cell.pct >= 50 ? 'rgba(252,211,77,0.55)' : cell.pct >= 25 ? 'rgba(245,158,11,0.5)' : 'rgba(229,46,66,0.45)';
+                        const bg = cell.pct >= 90 ? 'rgba(14, 148, 99,0.85)' : cell.pct >= 70 ? 'rgba(13,148,136,0.65)' : cell.pct >= 50 ? 'rgba(253, 217, 95,0.55)' : cell.pct >= 25 ? 'rgba(255, 127, 0,0.5)' : 'rgba(224, 49, 39,0.45)';
                         const fg = cell.pct >= 50 ? '#fff' : 'var(--text-primary)';
                         return (
                           <td key={c} className="p-1">
@@ -900,7 +900,7 @@ export default function ImmunizationsPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Link to existing patient (recommended) */}
-                <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(59, 130, 246,0.25))' }}>
+                <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33, 145, 208,0.25))' }}>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
                     <Users className="w-3 h-3" />
                     {t('immun.linkToExistingChild')}

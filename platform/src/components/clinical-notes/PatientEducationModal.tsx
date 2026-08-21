@@ -64,7 +64,7 @@ export default function PatientEducationModal({
             <X size={14} />
           </button>
         </div>
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted, #64748b)', margin: '0 0 14px' }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 14px' }}>
           Sent as a message to the patient and filed under the chart&rsquo;s Documents ▸ Patient education.
         </p>
 
@@ -89,7 +89,7 @@ export default function PatientEducationModal({
         />
 
         {error && (
-          <p style={{ color: 'var(--color-danger, #dc2626)', fontSize: 12.5, margin: '8px 0 0' }}>{error}</p>
+          <p style={{ color: 'var(--color-danger, #d92b20)', fontSize: 12.5, margin: '8px 0 0' }}>{error}</p>
         )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>

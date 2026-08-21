@@ -108,7 +108,7 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
     active: 'var(--accent-primary)',
     trial: 'var(--color-warning)',
     suspended: 'var(--color-danger)',
-    cancelled: '#6B7280',
+    cancelled: '#6B7F96',
   };
 
   const featureFlags = org?.featureFlags ? [
@@ -198,7 +198,7 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
           <div className="org-set-grid two">
             <OrgInfoCard title="Plan" icon={<CreditCard />}>
               <InfoRow label={t('orgSettings.fieldPlan')} value={planLabels[org?.subscriptionPlan || ''] || '-'} badge badgeColor={brandColor} />
-              <InfoRow label={t('orgSettings.fieldStatus')} value={org?.subscriptionStatus || '-'} badge badgeColor={statusColors[org?.subscriptionStatus || ''] || '#6B7280'} />
+              <InfoRow label={t('orgSettings.fieldStatus')} value={org?.subscriptionStatus || '-'} badge badgeColor={statusColors[org?.subscriptionStatus || ''] || '#6B7F96'} />
               <InfoRow label={t('orgSettings.fieldMaxUsers')} value={String(org?.maxUsers || '-')} />
               <InfoRow label={t('orgSettings.fieldMaxHospitals')} value={String(org?.maxHospitals || '-')} />
             </OrgInfoCard>
@@ -289,13 +289,13 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
           {header(goButton('Open branding editor', 'org-branding-editor'))}
           <div className="org-set-grid two">
             <OrgInfoCard title="Brand identity" icon={<Palette />}>
-              <InfoRow label="Logo" value={org?.logoUrl ? 'Configured' : 'Not configured'} badge badgeColor={org?.logoUrl ? 'var(--accent-primary)' : '#6B7280'} />
+              <InfoRow label="Logo" value={org?.logoUrl ? 'Configured' : 'Not configured'} badge badgeColor={org?.logoUrl ? 'var(--accent-primary)' : '#6B7F96'} />
               <InfoRow label="Primary color" value={org?.primaryColor || '-'} mono />
               <InfoRow label="Secondary color" value={org?.secondaryColor || '-'} mono />
               <InfoRow label="Accent color" value={org?.accentColor || '-'} mono />
             </OrgInfoCard>
             <OrgInfoCard title="Patient-facing billing details" icon={<CreditCard />}>
-              <InfoRow label="Bank transfer details" value={org?.bankDetails ? 'Configured' : 'Not configured'} badge badgeColor={org?.bankDetails ? 'var(--accent-primary)' : '#6B7280'} />
+              <InfoRow label="Bank transfer details" value={org?.bankDetails ? 'Configured' : 'Not configured'} badge badgeColor={org?.bankDetails ? 'var(--accent-primary)' : '#6B7F96'} />
               <p className="org-set-copy">Bank instructions appear in patient payment surfaces. Keep them in the branding editor so there is one source of truth.</p>
             </OrgInfoCard>
           </div>
@@ -348,7 +348,7 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
           </div>
           <OrgInfoCard title="Pricing source of truth" icon={<ExternalLink />}>
             <p className="org-set-copy">Service prices are edited in the service pricing page. Settings only summarizes catalog health so billing controls are not duplicated.</p>
-            <InfoRow label="Bank details" value={org?.bankDetails ? 'Configured' : 'Not configured'} badge badgeColor={org?.bankDetails ? 'var(--accent-primary)' : '#6B7280'} />
+            <InfoRow label="Bank details" value={org?.bankDetails ? 'Configured' : 'Not configured'} badge badgeColor={org?.bankDetails ? 'var(--accent-primary)' : '#6B7F96'} />
           </OrgInfoCard>
         </>
       )}

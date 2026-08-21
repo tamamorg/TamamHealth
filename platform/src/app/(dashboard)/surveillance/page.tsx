@@ -482,7 +482,7 @@ export default function SurveillancePage() {
 
                         {/* Main dot */}
                         <circle cx={pos.x} cy={pos.y} r={isHovered ? radius + 2 : radius}
-                          fill={dotColor} stroke="#0F1A2E" strokeWidth="2.5"
+                          fill={dotColor} stroke="#001D3F" strokeWidth="2.5"
                           style={{ transition: 'r 0.15s ease' }} />
 
                         {/* National referral indicator */}
@@ -495,16 +495,16 @@ export default function SurveillancePage() {
                         {isHovered && (
                           <g>
                             <rect x={pos.x - 80} y={pos.y - 58} width="160" height="48"
-                              rx="6" ry="6" fill="#0F1A2E" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                              rx="6" ry="6" fill="#001D3F" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
                             <polygon
                               points={`${pos.x - 5},${pos.y - 10} ${pos.x + 5},${pos.y - 10} ${pos.x},${pos.y - 3}`}
-                              fill="#0F1A2E" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                              fill="#001D3F" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
                             <rect x={pos.x - 80} y={pos.y - 58} width="160" height="48"
-                              rx="6" ry="6" fill="#0F1A2E" />
+                              rx="6" ry="6" fill="#001D3F" />
                             <text x={pos.x} y={pos.y - 40} textAnchor="middle" fontSize="10.5"
-                              fontWeight="600" fill="#D4CFC5">{h.name}</text>
+                              fontWeight="600" fill="#CFD6DD">{h.name}</text>
                             <text x={pos.x} y={pos.y - 27} textAnchor="middle" fontSize="9"
-                              fill="#8A9E9A">{h.state}</text>
+                              fill="#94A2B3">{h.state}</text>
                             <text x={pos.x} y={pos.y - 15} textAnchor="middle" fontSize="9"
                               fill={dotColor} fontWeight="500">
                               {alertLevel.toUpperCase()} -- {h.patientCount.toLocaleString()} patients

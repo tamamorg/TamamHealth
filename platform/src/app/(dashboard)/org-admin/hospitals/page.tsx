@@ -136,9 +136,9 @@ export default function OrgHospitalsPage() {
       state_hospital: 'var(--accent-primary)',
       county_hospital: 'var(--accent-primary)',
       phcc: 'var(--accent-primary)',
-      phcu: '#369FDA',
+      phcu: '#2191D0',
     };
-    return map[ft] || '#6B7280';
+    return map[ft] || '#6B7F96';
   };
 
   if (loading) {
@@ -159,7 +159,7 @@ export default function OrgHospitalsPage() {
           </div>
         )}
         {error && !showCreateModal && (
-          <div className="mb-4 p-3 rounded-lg text-sm font-medium" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(229,46,66,0.2)' }}>
+          <div className="mb-4 p-3 rounded-lg text-sm font-medium" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(224, 49, 39,0.2)' }}>
             {error}
           </div>
         )}
@@ -278,7 +278,7 @@ export default function OrgHospitalsPage() {
             </div>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg text-sm flex items-center gap-2" style={{ background: 'rgba(229,46,66,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(229,46,66,0.2)' }}>
+              <div className="mb-4 p-3 rounded-lg text-sm flex items-center gap-2" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(224, 49, 39,0.2)' }}>
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>

@@ -166,7 +166,7 @@ export default function ConditionsSection({
             <tbody>
               {ordered.map(p => (
                 <tr key={p._id}>
-                  <td style={{ fontWeight: 600 }}>{p.name}{p.icd11Code ? <span style={{ color: 'var(--ehr-muted, #597386)', fontWeight: 400 }}> · {p.icd11Code}</span> : null}</td>
+                  <td style={{ fontWeight: 600 }}>{p.name}{p.icd11Code ? <span style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400 }}> · {p.icd11Code}</span> : null}</td>
                   <td>{p.onsetDate ? formatDate(p.onsetDate) : '—'}</td>
                   <td>
                     {/* The badge IS the control: a condition is retired from the

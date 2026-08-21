@@ -18,7 +18,7 @@ export default async function AboutPage() {
   return (
     <main>
       {/* Crisis / origin */}
-      <section id="crisis" style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "74px 32px 86px" }}>
+      <section id="crisis" style={{ background: "#113055", color: "#FFFFFF", padding: "74px 32px 86px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div className="tm-origin" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 52 }}>
             <div>
@@ -33,8 +33,8 @@ export default async function AboutPage() {
             <div className="blueprint tm-award" style={{ borderColor: "rgba(255,255,255,0.28)", display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch", alignSelf: "start" }}>
               <Corners light />
               <div style={{ padding: "32px 28px", display: "flex", flexDirection: "column", gap: 10 }}>
-                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7FC4EA" }}>{t("Recognition")}</span>
-                <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(34px, 4vw, 48px)", lineHeight: 0.95, color: "#7FC4EA" }}>$10,000</span>
+                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Recognition")}</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(34px, 4vw, 48px)", lineHeight: 0.95, color: "#7CC7FF" }}>$10,000</span>
                 <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.35, color: "#FFFFFF" }}>{t("Second place, Healthcare & Life Science track — Tufts New Ventures Competition")}</span>
                 <p style={{ margin: "6px 0 0", fontSize: 14.5, lineHeight: 1.6, color: "rgba(255,255,255,0.76)" }}>
                   {t("Our first venture competition — judged on a working platform, not a slide deck. The award funds the first deployments: tablets, solar power and training for the pilot clinics.")}
@@ -54,7 +54,7 @@ export default async function AboutPage() {
           <div style={{ marginTop: 64, borderTop: "1px solid rgba(255,255,255,0.28)", paddingTop: 26 }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "12px 24px", marginBottom: 26 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7FC4EA" }}>{t("From the competition")}</span>
+                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("From the competition")}</span>
                 <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(20px, 2.6vw, 28px)", lineHeight: 1.15, color: "#FFFFFF" }}>
                   {t("April 10, 2026 — the night the pilot got its first funding")}
                 </span>

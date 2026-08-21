@@ -133,30 +133,30 @@ function buildStatementHTML(opts: {
 <style>
   @page { margin: 14mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: system-ui, sans-serif; color: #1A2C2A; background: #fff; max-width: 720px; margin: 0 auto; padding: 24px; }
+  body { font-family: system-ui, sans-serif; color: #08573A; background: #fff; max-width: 720px; margin: 0 auto; padding: 24px; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 2px solid var(--accent-primary); margin-bottom: 16px; }
   .header h1 { font-size: 18px; font-weight: 800; color: var(--accent-hover); }
-  .header p { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .header p { font-size: 11px; color: #5d728b; margin-top: 2px; }
   .doc-title { text-align: right; }
   .doc-title .label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-primary); }
-  .doc-title .date { font-size: 11px; color: #64748b; margin-top: 2px; }
-  .patient-block { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; margin-bottom: 20px; }
-  .patient-block .field .label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.4px; }
+  .doc-title .date { font-size: 11px; color: #5d728b; margin-top: 2px; }
+  .patient-block { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px 14px; background: #fafbfc; border-radius: 8px; margin-bottom: 20px; }
+  .patient-block .field .label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #5d728b; letter-spacing: 0.4px; }
   .patient-block .field .value { font-size: 12.5px; font-weight: 600; margin-top: 2px; }
   h2.section { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-hover); margin: 18px 0 8px; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: #64748b; padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
-  td { padding: 7px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: #5d728b; padding: 6px 8px; border-bottom: 1px solid #e2e6eb; }
+  td { padding: 7px 8px; border-bottom: 1px solid #f1f3f5; vertical-align: top; }
   td.num { text-align: right; font-weight: 600; white-space: nowrap; }
-  td.pos { color: #2E7D32; }
-  td.empty { text-align: center; color: #94a3b8; padding: 14px 8px; }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #eef2f7; color: #475569; text-transform: capitalize; }
-  .muted { color: #94a3b8; font-size: 11px; }
+  td.pos { color: #0B8557; }
+  td.empty { text-align: center; color: #94a2b3; padding: 14px 8px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #f1f3f5; color: #3C5574; text-transform: capitalize; }
+  .muted { color: #94a2b3; font-size: 11px; }
   .summary { margin-top: 20px; margin-left: auto; width: 260px; }
   .summary .row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12.5px; }
   .summary .row.total { border-top: 2px solid var(--accent-primary); margin-top: 6px; padding-top: 8px; font-size: 15px; font-weight: 800; color: var(--accent-hover); }
-  .footer { text-align: center; margin-top: 28px; padding-top: 12px; border-top: 1px dashed #cbd5e1; }
-  .footer p { font-size: 10px; color: #64748b; line-height: 1.6; }
+  .footer { text-align: center; margin-top: 28px; padding-top: 12px; border-top: 1px dashed #cfd6dd; }
+  .footer p { font-size: 10px; color: #5d728b; line-height: 1.6; }
   @media print { body { padding: 0; } }
 </style>
 </head>
@@ -487,7 +487,7 @@ export default function BillingTab({
     return (
       <div className="bl-root">
         <div className="bl-loading">
-          <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--ehr-border, #DDEAF3)', borderTopColor: 'var(--bl-teal)' }} />
+          <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--ehr-border, #E2E6EB)', borderTopColor: 'var(--bl-teal)' }} />
           {t('billing.loadingBillingInfo')}
         </div>
       </div>
@@ -890,10 +890,10 @@ export default function BillingTab({
                 </dl>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 10px', borderRadius: 6, background: 'var(--ehr-page-bg, #FFFFFF)', border: '1px solid var(--ehr-border, #DDEAF3)',
+                  padding: '8px 10px', borderRadius: 6, background: 'var(--ehr-page-bg, #FFFFFF)', border: '1px solid var(--ehr-border, #E2E6EB)',
                 }}>
                   <ExternalLink size={14} className="bl-muted" style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: 'var(--ehr-text, #102634)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  <span style={{ fontSize: 12, color: 'var(--ehr-text, #113055)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                     {createdLink.url}
                   </span>
                   <button type="button" className="bl-btn bl-btn--outline" style={{ padding: '4px 10px', fontSize: 11 }} onClick={handleCopyPaymentLink} title={t('billing.copyLink')}>

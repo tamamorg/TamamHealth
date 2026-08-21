@@ -31,17 +31,17 @@ export function Corners() {
 export const loginStyles = (
   <style jsx global>{`
     .lg-root {
-      --lg-text: #0E2A4A;
-      --lg-divider: rgba(14, 42, 74, 0.3);
-      --lg-surface: #F2F8FC;
+      --lg-text: #113055;
+      --lg-divider: rgba(17, 48, 85, 0.3);
+      --lg-surface: #F2FCFF;
       --lg-accent: #2191D0;
-      --lg-accent-100: #F5FBFE;
+      --lg-accent-100: #F2FCFF;
       --lg-accent-700: #015697;
-      --lg-cta: #E8863A;
-      --lg-cta-hover: #D2712A;
-      --lg-neutral-600: #6C7C8E;
-      --lg-neutral-700: #5B6B7E;
-      --lg-neutral-800: #3D5166;
+      --lg-cta: #FF7F00;
+      --lg-cta-hover: #E67200;
+      --lg-neutral-600: #6B7F96;
+      --lg-neutral-700: #5D728B;
+      --lg-neutral-800: #3C5574;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -59,7 +59,7 @@ export const loginStyles = (
 
     /* Blueprint frame + its four registration marks. */
     .blueprint { position: relative; border: 1px solid var(--lg-divider); border-radius: 0; }
-    .lg-corner { position: absolute; width: 11px; height: 11px; color: rgba(14, 42, 74, 0.55); }
+    .lg-corner { position: absolute; width: 11px; height: 11px; color: rgba(17, 48, 85, 0.55); }
     .lg-corner::before, .lg-corner::after { content: ''; position: absolute; background: currentColor; }
     .lg-corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
     .lg-corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
@@ -86,7 +86,7 @@ export const loginStyles = (
     .lg-form { display: flex; flex-direction: column; gap: 20px; }
     .lg-field { display: block; }
     .lg-field--rel { position: relative; }
-    .lg-field > label { display: block; font-size: 12px; margin-bottom: 5px; color: rgba(14, 42, 74, 0.7); text-transform: none; letter-spacing: normal; }
+    .lg-field > label { display: block; font-size: 12px; margin-bottom: 5px; color: rgba(17, 48, 85, 0.7); text-transform: none; letter-spacing: normal; }
     /* The .lg-root scoping is load-bearing: globals.css paints every
        input[type=...] with --bg-card-solid at specificity 0,1,1, which
        outranks a bare .lg-input and left the fields a pale grey. The site's
@@ -96,9 +96,9 @@ export const loginStyles = (
       color: var(--lg-text); caret-color: var(--lg-accent); background: #FFFFFF;
       border: 1px solid var(--lg-divider); border-radius: 0; box-shadow: none;
     }
-    .lg-input:hover { border-color: rgba(14, 42, 74, 0.45); }
+    .lg-input:hover { border-color: rgba(17, 48, 85, 0.45); }
     .lg-input:focus, .lg-input:focus-visible { border-color: var(--lg-accent); outline: none; box-shadow: none; }
-    .lg-input::placeholder { color: rgba(14, 42, 74, 0.45); }
+    .lg-input::placeholder { color: rgba(17, 48, 85, 0.45); }
     .lg-inputwrap { display: flex; align-items: center; border: 1px solid var(--lg-divider); background: #FFFFFF; }
     .lg-inputwrap:focus-within { border-color: var(--lg-accent); }
     .lg-input--bare { border: 0 !important; background: transparent !important; }
@@ -113,7 +113,7 @@ export const loginStyles = (
     .lg-rolelist {
       position: absolute; top: 100%; left: 0; right: 0; z-index: 40; background: #FFFFFF;
       border: 1px solid var(--lg-divider); border-top: 0; max-height: 232px; overflow-y: auto;
-      box-shadow: 0 3px 10px rgba(43, 43, 45, 0.16);
+      box-shadow: 0 3px 10px rgba(17, 48, 85, 0.16);
     }
     .lg-rolerow {
       appearance: none; border: 0; border-bottom: 1px solid var(--lg-divider); background: #FFFFFF;
@@ -137,7 +137,7 @@ export const loginStyles = (
     .lg-btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 6px;
       width: 100%; padding: 15px 0; font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif;
-      font-weight: 600; font-size: 16px; color: #0E2A4A; background: var(--lg-cta);
+      font-weight: 600; font-size: 16px; color: #113055; background: var(--lg-cta);
       border: 1px solid var(--lg-cta); border-radius: 0; cursor: pointer;
     }
     .lg-btn:hover:not(:disabled) { background: var(--lg-cta-hover); border-color: var(--lg-cta-hover); }
@@ -148,7 +148,7 @@ export const loginStyles = (
     .lg-error { font-size: 14px; line-height: 1.55; color: var(--color-danger); border-left: 3px solid var(--color-danger); padding-left: 12px; }
     .lg-boot { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--lg-neutral-700); }
     .lg-spin, .lg-redirect-mark {
-      width: 14px; height: 14px; border: 2px solid rgba(14, 42, 74, 0.2);
+      width: 14px; height: 14px; border: 2px solid rgba(17, 48, 85, 0.2);
       border-top-color: var(--lg-accent-700); border-radius: 50%; animation: lg-spin 0.8s linear infinite;
     }
     @keyframes lg-spin { to { transform: rotate(360deg); } }

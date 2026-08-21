@@ -147,7 +147,7 @@ function AllDoneBanner({ onFinish }: { onFinish: () => void }) {
       style={{ borderColor: 'var(--border-medium)', background: 'var(--bg-card-solid)' }}
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: 'rgba(31, 157, 111,0.12)' }}>
+        <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: 'rgba(15, 160, 106,0.12)' }}>
           <Star className="w-5 h-5" style={{ color: 'var(--color-success-text)' }} />
         </div>
         <div>

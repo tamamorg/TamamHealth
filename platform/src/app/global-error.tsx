@@ -15,15 +15,15 @@ export default function GlobalError({
   reset: () => void;
 }) {
   const colors = {
-    bg: '#0F1117',
-    text: '#F1F5F9',
-    muted: '#94A3B8',
-    dangerBg: 'rgba(229,46,66,0.12)',
-    dangerBorder: 'rgba(229,46,66,0.25)',
+    bg: '#001D3F',
+    text: '#F1F3F5',
+    muted: '#94A2B3',
+    dangerBg: 'rgba(224, 49, 39,0.12)',
+    dangerBorder: 'rgba(224, 49, 39,0.25)',
     primary: '#2191D0',
     white: '#FFFFFF',
     secondaryBorder: 'rgba(255,255,255,0.18)',
-    secondaryText: '#CBD5E1',
+    secondaryText: '#CFD6DD',
   };
 
   return (

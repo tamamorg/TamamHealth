@@ -625,7 +625,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
         <div className="bl-root" style={{ flex: 1, minHeight: 0 }}>
           {error && (
             <div className="bl-card" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <AlertCircle size={16} style={{ color: 'var(--color-danger, #DC2626)', flexShrink: 0 }} />
+              <AlertCircle size={16} style={{ color: 'var(--color-danger, #D92B20)', flexShrink: 0 }} />
               <span className="bl-danger" style={{ fontSize: 13 }}>{error}</span>
             </div>
           )}
@@ -926,7 +926,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
       {collectPickerOpen && (
         <Modal onClose={() => setCollectPickerOpen(false)} width={460}>
           <div className="bl-root" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            <div className="px-5 py-4 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #DDEAF3)' }}>
+            <div className="px-5 py-4 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
               <div className="flex items-center gap-2">
                 <Banknote size={18} style={{ color: 'var(--bl-teal)' }} />
                 <h2 className="bl-modal-title">{t('billing.collectPayment')}</h2>
@@ -936,7 +936,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                 onClick={() => setCollectPickerOpen(false)}
                 aria-label="Close"
                 style={{
-                  background: 'transparent', border: '1px solid var(--ehr-border, #DDEAF3)', borderRadius: 6,
+                  background: 'transparent', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6,
                   width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                 }}
               >
@@ -1009,7 +1009,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                 onClick={() => setRecordPlanFor(null)}
                 aria-label="Close"
                 style={{
-                  background: 'transparent', border: '1px solid var(--ehr-border, #DDEAF3)', borderRadius: 6,
+                  background: 'transparent', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6,
                   width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
                 }}
               >
@@ -1116,7 +1116,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
         }}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #DDEAF3)' }}>
+        <div className="px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
           <div>
             <button
               onClick={() => router.push(`/patients/${line.patientId}?tab=billing`)}
@@ -1134,7 +1134,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
             onClick={onClose}
             aria-label="Close"
             style={{
-              background: 'transparent', border: '1px solid var(--ehr-border, #DDEAF3)', borderRadius: 6,
+              background: 'transparent', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6,
               width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
             }}
           >
@@ -1143,7 +1143,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
         </div>
 
         {/* Balance summary — flat, no gradient tint; colour carries the state. */}
-        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #DDEAF3)' }}>
+        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
           <div className="flex items-end justify-between gap-3 flex-wrap">
             <div>
               <span className="bl-stat-label" style={{ color: owing ? 'var(--color-danger-text)' : 'var(--color-success-text)' }}>
@@ -1154,7 +1154,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
               </span>
             </div>
             <div className="bl-muted" style={{ fontSize: 11, textAlign: 'end' }}>
-              <div>{t('payments.charged')}: <span style={{ color: 'var(--ehr-text, #102634)', fontFamily: 'monospace' }}>{formatMoney(line.totalCharged)}</span></div>
+              <div>{t('payments.charged')}: <span style={{ color: 'var(--ehr-text, #113055)', fontFamily: 'monospace' }}>{formatMoney(line.totalCharged)}</span></div>
               <div>{t('payments.collected')}: <span style={{ color: 'var(--color-success-text)', fontFamily: 'monospace' }}>{formatMoney(line.totalCollected)}</span></div>
             </div>
           </div>
@@ -1202,7 +1202,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                     <div className="bl-fee-cat">{(b.encounterDate || b.createdAt).slice(0, 10)} · {b.facilityName}</div>
                   </div>
                   <div style={{ textAlign: 'end' }}>
-                    <div className="bl-num" style={{ fontWeight: 600, color: 'var(--ehr-text, #102634)' }}>{formatMoney(b.totalAmount)}</div>
+                    <div className="bl-num" style={{ fontWeight: 600, color: 'var(--ehr-text, #113055)' }}>{formatMoney(b.totalAmount)}</div>
                     <div style={{ fontSize: 10.5, color: b.balanceDue > 0 ? 'var(--color-danger-text)' : 'var(--color-success-text)' }}>
                       {b.balanceDue > 0 ? t('payments.amountDue', { amount: formatMoney(b.balanceDue) }) : t('payments.paid')}
                     </div>
@@ -1316,7 +1316,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                 return (
                   <div
                     key={p._id}
-                    style={{ padding: '9px 12px', borderBottom: idx === plans.length - 1 ? 'none' : '1px solid var(--ehr-border-soft, #E7EEF5)' }}
+                    style={{ padding: '9px 12px', borderBottom: idx === plans.length - 1 ? 'none' : '1px solid var(--ehr-border-soft, #ECEEF1)' }}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -1331,10 +1331,10 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                         {p.status}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-3 mt-2 pt-2" style={{ borderTop: '1px solid var(--ehr-border-soft, #E7EEF5)' }}>
+                    <div className="flex items-center justify-between gap-3 mt-2 pt-2" style={{ borderTop: '1px solid var(--ehr-border-soft, #ECEEF1)' }}>
                       <div className="bl-fee-cat">
                         {t('payments.paid')}: <span style={{ color: 'var(--color-success-text)' }}>{formatMoney(p.paidToDate)}</span>
-                        {' · '}{t('billing.kpiOutstanding')}: <span style={{ color: planOutstanding > 0 ? 'var(--color-danger-text)' : 'var(--ehr-text-body, #39536B)' }}>{formatMoney(planOutstanding)}</span>
+                        {' · '}{t('billing.kpiOutstanding')}: <span style={{ color: planOutstanding > 0 ? 'var(--color-danger-text)' : 'var(--ehr-text-body, #3C5574)' }}>{formatMoney(planOutstanding)}</span>
                       </div>
                       {p.status === 'active' && (
                         <button
@@ -1357,7 +1357,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
         </div>{/* /scrollable account sections */}
 
         {/* Footer actions */}
-        <div className="px-5 py-3 border-t flex items-center gap-2" style={{ borderColor: 'var(--ehr-border, #DDEAF3)' }}>
+        <div className="px-5 py-3 border-t flex items-center gap-2" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
           <button onClick={() => router.push(`/patients/${line.patientId}?tab=billing`)} className="bl-btn bl-btn--outline" style={{ flex: 1 }}>
             {t('payments.openPatientRecord')} <ExternalLink className="w-3.5 h-3.5" />
           </button>
@@ -1376,15 +1376,15 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
 
 function Section({ title, icon, count, children }: { title: string; icon: React.ReactNode; count: number; children: React.ReactNode }) {
   return (
-    <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--ehr-border, #DDEAF3)' }}>
+    <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'transparent', color: 'var(--bl-teal)' }}>
             {icon}
           </div>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--ehr-text-title, #132C44)' }}>{title}</h3>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--ehr-text-title, #113055)' }}>{title}</h3>
         </div>
-        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--ehr-muted, #597386)' }}>{count}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--ehr-muted, #5D728B)' }}>{count}</span>
       </div>
       {children}
     </div>
@@ -1393,6 +1393,6 @@ function Section({ title, icon, count, children }: { title: string; icon: React.
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[12px] py-3 px-2" style={{ color: 'var(--ehr-muted, #597386)' }}>{children}</div>
+    <div className="text-[12px] py-3 px-2" style={{ color: 'var(--ehr-muted, #5D728B)' }}>{children}</div>
   );
 }

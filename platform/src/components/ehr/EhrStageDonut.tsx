@@ -23,7 +23,7 @@ export type StageSegment = {
 };
 
 /* The design's slice order: accent, amber, green — waiting, in office, done. */
-const DEFAULT_COLORS = ['#144972', '#9C5E16', '#15795C', '#C2410C', '#5B6B7E'];
+const DEFAULT_COLORS = ['#015697', '#B35900', '#0A6E4A', '#CC6600', '#5D728B'];
 
 export default function EhrStageDonut({
   segments,
@@ -51,7 +51,7 @@ export default function EhrStageDonut({
   // its shape instead of collapsing to a legend with nothing above it.
   const gradient = total > 0
     ? `conic-gradient(${stops.join(', ')})`
-    : 'conic-gradient(var(--ehr-border, #DDEAF3) 0deg 360deg)';
+    : 'conic-gradient(var(--ehr-border, #E2E6EB) 0deg 360deg)';
 
   return (
     <div className="ehr-side-card ehr-stage-donut">

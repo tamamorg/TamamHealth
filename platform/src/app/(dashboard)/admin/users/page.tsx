@@ -406,8 +406,8 @@ export default function AdminUsersPage() {
                       <span
                         className="appointment-status-pill"
                         style={u.isActive
-                          ? { borderColor: 'rgba(25,158,112,0.45)', background: 'rgba(25,158,112,0.10)', color: 'var(--color-success-text)' }
-                          : { borderColor: 'rgba(227,73,72,0.45)', background: 'rgba(227,73,72,0.10)', color: 'var(--color-danger-text)' }}
+                          ? { borderColor: 'rgba(15, 160, 106,0.45)', background: 'rgba(15, 160, 106,0.10)', color: 'var(--color-success-text)' }
+                          : { borderColor: 'rgba(224, 49, 39,0.45)', background: 'rgba(224, 49, 39,0.10)', color: 'var(--color-danger-text)' }}
                       >
                         {u.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')}
                       </span>

@@ -17,15 +17,15 @@
   /* Re-pointed per practice from OrganizationDoc.primaryColor. The reference
      design uses the practice's own colour for this bar; ours defaults to the
      platform blue so booking looks like the rest of TamamHealth. */
-  --booking-accent: var(--accent-primary, #144972);
-  --booking-accent-strong: var(--tb-blue-800, #012C4E);
-  --booking-accent-soft: #E8F3FB;
-  --booking-ink: #0F2436;
-  --booking-ink-muted: #5B7186;
-  --booking-line: #DDE7EF;
-  --booking-line-soft: #EDF2F7;
+  --booking-accent: var(--accent-primary, #015697);
+  --booking-accent-strong: var(--tb-blue-800, #001D3F);
+  --booking-accent-soft: #E1F9FF;
+  --booking-ink: #001D3F;
+  --booking-ink-muted: #5D728B;
+  --booking-line: #E2E6EB;
+  --booking-line-soft: #F1F3F5;
   --booking-surface: #FFFFFF;
-  --booking-surface-sunk: #F4F7FA;
+  --booking-surface-sunk: #F5F7F8;
   --booking-radius: 12px;
 
   min-height: 100vh;
@@ -334,7 +334,7 @@
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #B42318;
+  color: #B4180F;
 }
 
 .booking-hint {
@@ -563,8 +563,8 @@
   align-self: flex-start;
   padding: 3px 9px;
   border-radius: 999px;
-  background: #F1ECFD;
-  color: #5B36C9;
+  background: #FFEDDB;
+  color: #A65300;
   font-size: 12px;
   font-weight: 700;
 }

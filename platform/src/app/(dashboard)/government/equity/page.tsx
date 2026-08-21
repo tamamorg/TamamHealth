@@ -286,7 +286,7 @@ export default function EquityPlanningPage() {
                         <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.ratePer100Cases === null ? '—' : r.ratePer100Cases}</td>
                         <td className="px-4 py-2.5">
                           {r.accessGap && (
-                            <span className="gov-chip gap-1" style={{ background: 'rgba(237,161,0,0.14)', color: '#a06700', border: '1px solid rgba(237,161,0,0.4)' }}>
+                            <span className="gov-chip gap-1" style={{ background: 'rgba(255, 153, 51,0.14)', color: '#b35900', border: '1px solid rgba(255, 153, 51,0.4)' }}>
                               <AlertTriangle className="w-3 h-3" /> Access gap
                             </span>
                           )}

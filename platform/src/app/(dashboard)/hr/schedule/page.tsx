@@ -137,8 +137,8 @@ export default function HrSchedulePage() {
             ref={gapsRef}
             className="mx-4 mt-3 mb-1 p-3 rounded-xl flex flex-wrap items-center gap-3"
             style={{
-              background: 'rgba(196, 69, 54, 0.06)',
-              border: gapsParam ? '2px solid var(--color-danger-500)' : '1px solid rgba(196, 69, 54, 0.25)',
+              background: 'rgba(224, 49, 39, 0.06)',
+              border: gapsParam ? '2px solid var(--color-danger-500)' : '1px solid rgba(224, 49, 39, 0.25)',
             }}
           >
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-danger-text)' }}>
@@ -167,7 +167,7 @@ export default function HrSchedulePage() {
           <div
             ref={gapsRef}
             className="mx-4 mt-3 mb-1 p-3 rounded-xl text-[11px] font-semibold"
-            style={{ background: 'rgba(27, 158, 119, 0.08)', border: '1px solid rgba(27, 158, 119, 0.3)', color: 'var(--color-success-text)' }}
+            style={{ background: 'rgba(15, 160, 106, 0.08)', border: '1px solid rgba(15, 160, 106, 0.3)', color: 'var(--color-success-text)' }}
           >
             Fully staffed — every shift type meets its configured minimum for {date}.
           </div>

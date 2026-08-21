@@ -99,7 +99,7 @@ export default function KeyboardShortcuts() {
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ background: 'rgba(15,23,42,0.6)' }}
+      style={{ background: 'rgba(0, 29, 63,0.6)' }}
       onClick={() => setShowHelp(false)}
     >
       <div

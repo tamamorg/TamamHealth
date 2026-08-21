@@ -8,18 +8,40 @@ const CARD_WIDTH = 300;
 const GAP = 14;
 const MARGIN = 12;
 
+export type TourTail = 'top' | 'bottom' | 'left' | 'right' | null;
+
 // Position the card next to its target, auto-flipping to the opposite side when
 // the preferred side would push it off-screen, and always clamping it fully
 // within the viewport using the card's measured height.
-function cardPosition(rect: DOMRect, placement: TourStep['placement'], cardH: number) {
+//
+// The clamp is what makes a tour survive a target taller than the window — the
+// national dashboard's map panel is `grid-row: 1 / -1`, so it runs past both
+// edges of the viewport and NEITHER side fits. Placing the card at
+// `rect.bottom + GAP` then puts it below the fold: the spotlight is drawn, the
+// card is not reachable, and Next can never be clicked, which strands the whole
+// journey on step one. So every branch commits its preferred coordinates and
+// then clamps them onto the screen.
+export function cardPosition(rect: DOMRect, placement: TourStep['placement'], cardH: number) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const style: React.CSSProperties = { position: 'fixed', width: CARD_WIDTH };
   const clampX = (x: number) => Math.min(Math.max(x, MARGIN), Math.max(MARGIN, vw - CARD_WIDTH - MARGIN));
   const clampY = (y: number) => Math.min(Math.max(y, MARGIN), Math.max(MARGIN, vh - cardH - MARGIN));
 
-  const centerX = clampX(rect.left + rect.width / 2 - CARD_WIDTH / 2);
-  const centerY = clampY(rect.top + rect.height / 2 - cardH / 2);
+  // Commit a placement: clamp it onto the screen, and drop the tail if the
+  // clamp had to move it. An arrow that no longer touches the edge it names
+  // points at nothing, which reads as a rendering fault rather than a nudge.
+  const place = (left: number, top: number, tail: Exclude<TourTail, null>) => {
+    const x = clampX(left);
+    const y = clampY(top);
+    style.left = x;
+    style.top = y;
+    const moved = Math.abs(x - left) > 1 || Math.abs(y - top) > 1;
+    return { style, tail: (moved ? null : tail) as TourTail };
+  };
+
+  const centerX = rect.left + rect.width / 2 - CARD_WIDTH / 2;
+  const centerY = rect.top + rect.height / 2 - cardH / 2;
 
   const fitsBelow = rect.bottom + GAP + cardH <= vh - MARGIN;
   const fitsAbove = rect.top - GAP - cardH >= MARGIN;
@@ -28,18 +50,18 @@ function cardPosition(rect: DOMRect, placement: TourStep['placement'], cardH: nu
 
   switch (placement) {
     case 'top':
-      if (fitsAbove || !fitsBelow) { style.left = centerX; style.top = rect.top - GAP - cardH; return { style, tail: 'bottom' as const }; }
-      style.left = centerX; style.top = rect.bottom + GAP; return { style, tail: 'top' as const };
+      if (fitsAbove || !fitsBelow) return place(centerX, rect.top - GAP - cardH, 'bottom');
+      return place(centerX, rect.bottom + GAP, 'top');
     case 'left':
-      if (fitsLeft || !fitsRight) { style.left = rect.left - GAP - CARD_WIDTH; style.top = centerY; return { style, tail: 'right' as const }; }
-      style.left = rect.right + GAP; style.top = centerY; return { style, tail: 'left' as const };
+      if (fitsLeft || !fitsRight) return place(rect.left - GAP - CARD_WIDTH, centerY, 'right');
+      return place(rect.right + GAP, centerY, 'left');
     case 'right':
-      if (fitsRight || !fitsLeft) { style.left = rect.right + GAP; style.top = centerY; return { style, tail: 'left' as const }; }
-      style.left = rect.left - GAP - CARD_WIDTH; style.top = centerY; return { style, tail: 'right' as const };
+      if (fitsRight || !fitsLeft) return place(rect.right + GAP, centerY, 'left');
+      return place(rect.left - GAP - CARD_WIDTH, centerY, 'right');
     case 'bottom':
     default:
-      if (fitsBelow || !fitsAbove) { style.left = centerX; style.top = rect.bottom + GAP; return { style, tail: 'top' as const }; }
-      style.left = centerX; style.top = rect.top - GAP - cardH; return { style, tail: 'bottom' as const };
+      if (fitsBelow || !fitsAbove) return place(centerX, rect.bottom + GAP, 'top');
+      return place(centerX, rect.top - GAP - cardH, 'bottom');
   }
 }
 
@@ -95,7 +117,7 @@ export default function TourCard({
           }}
         />
       ) : (
-        <div aria-hidden style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.62)', pointerEvents: 'none', zIndex: 9998 }} />
+        <div aria-hidden style={{ position: 'fixed', inset: 0, background: 'rgba(0, 29, 63, 0.62)', pointerEvents: 'none', zIndex: 9998 }} />
       )}
       <div
         ref={cardRef}

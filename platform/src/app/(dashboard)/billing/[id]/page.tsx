@@ -316,15 +316,15 @@ export default function BillDetailPage() {
       <tr><td>${escapeHtml(new Date(p.receivedAt).toLocaleString())}</td><td>${escapeHtml(PAYMENT_METHOD_LABELS[p.method] || p.method)}</td>
       <td>${escapeHtml(p.reference || '—')}</td><td>${escapeHtml(p.receivedByName)}</td><td class="r">${escapeHtml(money(p.amount))}</td></tr>`).join('');
     const html = `<!doctype html><html><head><title>${escapeHtml(bill.invoiceNumber)}</title><style>
-      body { font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #102634; margin: 32px; font-size: 13px; }
+      body { font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #113055; margin: 32px; font-size: 13px; }
       h1 { font-size: 18px; margin: 0; } h2 { font-size: 13px; margin: 24px 0 8px; }
       .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--chart-4); padding-bottom: 12px; }
       .muted { color: #667; } table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-      th { text-align: left; background: #eef2f5; padding: 6px 8px; font-size: 11px; text-transform: uppercase; }
-      td { padding: 6px 8px; border-bottom: 1px solid #e5ebf0; } .r { text-align: right; }
+      th { text-align: left; background: #f1f3f5; padding: 6px 8px; font-size: 11px; text-transform: uppercase; }
+      td { padding: 6px 8px; border-bottom: 1px solid #eceef1; } .r { text-align: right; }
       .totals { margin-top: 14px; margin-left: auto; width: 260px; }
       .totals div { display: flex; justify-content: space-between; padding: 3px 0; }
-      .totals .due { font-weight: 700; border-top: 1px solid #102634; margin-top: 4px; padding-top: 6px; }
+      .totals .due { font-weight: 700; border-top: 1px solid #113055; margin-top: 4px; padding-top: 6px; }
     </style></head><body>
       <div class="head">
         <div><h1>${escapeHtml(bill.facilityName)}</h1><div class="muted">Invoice ${escapeHtml(bill.invoiceNumber)} · ${escapeHtml(formatBillDate(bill.createdAt))}</div></div>
@@ -753,7 +753,7 @@ export default function BillDetailPage() {
                         const qty = Math.max(1, parseInt(e.target.value, 10) || 1);
                         setPendingItems(prev => prev.map(p => (p.id === item.id ? { ...p, quantity: qty, totalPrice: qty * p.unitPrice } : p)));
                       }}
-                      style={{ font: 'inherit', border: '1px solid var(--ehr-border, #DDEAF3)', borderRadius: 5 }}
+                      style={{ font: 'inherit', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 5 }}
                     />
                     <span className="bl-fee-price">{money(item.totalPrice)}</span>
                     <button type="button" className="bl-fee-add" onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}>Remove</button>
@@ -800,7 +800,7 @@ export default function BillDetailPage() {
             </p>
             <div className="bl-modal-actions">
               <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
-              <button type="button" className="bl-btn bl-btn--dark" style={{ background: 'var(--color-danger, #DC2626)' }} onClick={handleDelete} disabled={busy}>
+              <button type="button" className="bl-btn bl-btn--dark" style={{ background: 'var(--color-danger, #D92B20)' }} onClick={handleDelete} disabled={busy}>
                 {busy ? 'Deleting…' : 'Delete bill'}
               </button>
             </div>

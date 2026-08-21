@@ -134,7 +134,7 @@ export default function FollowUpModal({
         </label>
 
         {error && (
-          <p style={{ color: 'var(--color-danger, #dc2626)', fontSize: 12.5, margin: '8px 0 0' }}>{error}</p>
+          <p style={{ color: 'var(--color-danger, #d92b20)', fontSize: 12.5, margin: '8px 0 0' }}>{error}</p>
         )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>

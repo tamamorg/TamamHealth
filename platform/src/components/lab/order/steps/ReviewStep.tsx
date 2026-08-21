@@ -186,7 +186,7 @@ export default function ReviewStep({
                     style={{ padding: '2px 8px' }}
                     onClick={() => onEditStep('clinical')}
                   >
-                    <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-warning, #D97706)' }} aria-hidden />
+                    <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-warning, #E67200)' }} aria-hidden />
                     {t('labOrder.completeInfo')}
                   </button>
                 )}

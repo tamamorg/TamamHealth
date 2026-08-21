@@ -43,7 +43,7 @@ const TONE_CHIP: Record<Tone, string> = {
 const TONE_SIGNAL: Record<Tone, string> = {
   ok: 'sadb-signal--green', warn: 'sadb-signal--yellow', danger: 'sadb-signal--red', muted: '',
 };
-/* Readiness arc stroke — fill rung of each tone (the design's #15795C green). */
+/* Readiness arc stroke — fill rung of each tone (the design's #0A6E4A green). */
 const TONE_STROKE: Record<Tone, string> = {
   ok: 'var(--color-success-800)', warn: 'var(--color-warning-600)',
   danger: 'var(--color-danger-500)', muted: 'var(--text-muted)',
@@ -624,7 +624,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className="sadb-readiness-body">
               <svg width={92} height={92} viewBox="0 0 92 92" className="flex-shrink-0" role="img" aria-label={`Platform readiness ${readiness}%`}>
-                <circle cx={46} cy={46} r={38} fill="none" stroke="var(--ehr-row-rule, #EDF2F7)" strokeWidth={9} />
+                <circle cx={46} cy={46} r={38} fill="none" stroke="var(--ehr-row-rule, #F1F3F5)" strokeWidth={9} />
                 <circle
                   cx={46} cy={46} r={38} fill="none"
                   stroke={TONE_STROKE[readinessTone]} strokeWidth={9} strokeLinecap="round"

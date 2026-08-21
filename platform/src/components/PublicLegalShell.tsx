@@ -128,21 +128,21 @@ export default function PublicLegalShell({
   display: flex; flex-direction: column;
   background: var(--bg-app, #FFFFFF);
   font-family: var(--font-platform, var(--font-dm-sans), 'DM Sans', system-ui, sans-serif);
-  color: var(--text-primary, #0E2A4A);
+  color: var(--text-primary, #113055);
 }
 .lg-container { max-width: 860px; margin: 0 auto; padding: 0 24px; width: 100%; }
 
 /* Header */
 .lg-header {
   background: var(--bg-card-solid, #FFFFFF);
-  border-bottom: 1px solid var(--border-light, #E3EBF2);
+  border-bottom: 1px solid var(--border-light, #ECEEF1);
   padding: 14px 0;
 }
 .lg-header__inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .lg-logo { display: inline-flex; align-items: center; }
 .lg-header__nav { display: flex; align-items: center; gap: 14px; }
 .lg-header__stamp {
-  font-size: 12px; font-weight: 600; color: var(--text-muted, #5B6B7E);
+  font-size: 12px; font-weight: 600; color: var(--text-muted, #5D728B);
   letter-spacing: -0.01em; white-space: nowrap;
 }
 .lg-print-btn {
@@ -150,47 +150,47 @@ export default function PublicLegalShell({
   padding: 7px 14px; border-radius: var(--btn-radius, 10px);
   font-size: 0.8rem; font-weight: 600; letter-spacing: -0.01em;
   font-family: inherit; cursor: pointer;
-  color: var(--text-secondary, #3D5166);
+  color: var(--text-secondary, #3C5574);
   background: var(--bg-card-solid, #FFFFFF);
-  border: 1px solid var(--border-medium, #D9E4EE);
+  border: 1px solid var(--border-medium, #D9DEE4);
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 .lg-print-btn:hover {
   background: var(--overlay-subtle, rgba(33,145,208,0.07));
   border-color: var(--color-brand-500, #2191D0);
-  color: var(--text-primary, #0E2A4A);
+  color: var(--text-primary, #113055);
 }
 @media (max-width: 560px) {
   .lg-header__stamp { display: none; }
 }
 .lg-header__link {
-  font-size: 14px; font-weight: 500; color: var(--text-secondary, #3D5166);
+  font-size: 14px; font-weight: 500; color: var(--text-secondary, #3C5574);
   text-decoration: none; padding: 6px 10px; border-radius: 8px;
   transition: color 0.18s ease, background-color 0.18s ease;
 }
-.lg-header__link:hover { color: var(--accent-hover, #012C4E); background: var(--overlay-subtle, rgba(33,145,208,0.07)); }
+.lg-header__link:hover { color: var(--accent-hover, #001D3F); background: var(--overlay-subtle, rgba(33,145,208,0.07)); }
 .lg-btn-secondary {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 8px 18px; border-radius: var(--btn-radius, 10px);
   font-size: 0.82rem; font-weight: 600; letter-spacing: -0.01em;
-  color: var(--text-secondary, #3D5166); text-decoration: none;
+  color: var(--text-secondary, #3C5574); text-decoration: none;
   background: var(--bg-card-solid, #FFFFFF);
-  border: 1px solid var(--border-medium, #D9E4EE);
+  border: 1px solid var(--border-medium, #D9DEE4);
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 .lg-btn-secondary:hover {
   background: var(--overlay-subtle, rgba(33,145,208,0.07));
   border-color: var(--color-brand-500, #2191D0);
-  color: var(--text-primary, #0E2A4A);
+  color: var(--text-primary, #113055);
 }
 
 /* Content card */
 .lg-main { flex: 1; padding: 48px 0 72px; }
 .lg-card {
   background: var(--bg-card-solid, #FFFFFF);
-  border: 1px solid var(--border-light, #E3EBF2);
+  border: 1px solid var(--border-light, #ECEEF1);
   border-radius: var(--card-radius, 14px);
-  box-shadow: var(--card-shadow, 0 1px 2px rgba(16, 42, 67, 0.05));
+  box-shadow: var(--card-shadow, 0 1px 2px rgba(17, 48, 85, 0.05));
   padding: clamp(28px, 5vw, 56px);
 }
 .lg-eyebrow {
@@ -202,36 +202,36 @@ export default function PublicLegalShell({
 }
 .lg-title {
   font-size: 1.875rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15;
-  color: var(--text-primary, #0E2A4A); margin: 0;
+  color: var(--text-primary, #113055); margin: 0;
 }
-.lg-subtitle { font-size: 13.5px; color: var(--text-muted, #5B6B7E); margin: 8px 0 0; }
+.lg-subtitle { font-size: 13.5px; color: var(--text-muted, #5D728B); margin: 8px 0 0; }
 
 /* Version / effective date — the stamp that makes this a document you can
    cite rather than a page that quietly changes under the reader. */
 .lg-meta {
   display: flex; flex-wrap: wrap; gap: 8px 28px;
   margin: 18px 0 0; padding: 14px 0 0;
-  border-top: 1px solid var(--border-light, #E3EBF2);
+  border-top: 1px solid var(--border-light, #ECEEF1);
   font-size: 12.5px;
 }
 .lg-meta dt {
   font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-  font-size: 10.5px; color: var(--text-muted, #5B6B7E);
+  font-size: 10.5px; color: var(--text-muted, #5D728B);
   align-self: center; margin-right: -20px;
 }
-.lg-meta dd { margin: 0; color: var(--text-secondary, #3D5166); font-weight: 600; align-self: center; }
+.lg-meta dd { margin: 0; color: var(--text-secondary, #3C5574); font-weight: 600; align-self: center; }
 
 /* Contents */
 .lg-toc {
   margin-top: 24px; padding: 18px 22px;
   background: var(--overlay-subtle, rgba(33,145,208,0.07));
-  border: 1px solid var(--border-light, #E3EBF2);
+  border: 1px solid var(--border-light, #ECEEF1);
   border-radius: var(--btn-radius, 10px);
 }
 .lg-toc__title {
   margin: 0 0 10px; font-size: 11px; font-weight: 800;
   letter-spacing: 0.07em; text-transform: uppercase;
-  color: var(--text-muted, #5B6B7E);
+  color: var(--text-muted, #5D728B);
 }
 .lg-toc ol {
   margin: 0; padding: 0; list-style: none;
@@ -240,22 +240,22 @@ export default function PublicLegalShell({
 }
 .lg-toc a {
   display: flex; gap: 7px; font-size: 13.5px; line-height: 1.5;
-  color: var(--text-secondary, #3D5166); text-decoration: none;
+  color: var(--text-secondary, #3C5574); text-decoration: none;
 }
 .lg-toc a:hover { color: var(--link-color, #015697); text-decoration: underline; }
-.lg-toc__num { color: var(--text-muted, #5B6B7E); font-variant-numeric: tabular-nums; }
+.lg-toc__num { color: var(--text-muted, #5D728B); font-variant-numeric: tabular-nums; }
 
-.lg-body { margin-top: 28px; font-size: 15px; line-height: 1.7; color: var(--text-secondary, #3D5166); }
+.lg-body { margin-top: 28px; font-size: 15px; line-height: 1.7; color: var(--text-secondary, #3C5574); }
 .lg-body ul { margin: 0 0 12px; padding-left: 22px; }
 .lg-body li { margin: 0 0 6px; }
-.lg-body strong { color: var(--text-primary, #0E2A4A); font-weight: 700; }
+.lg-body strong { color: var(--text-primary, #113055); font-weight: 700; }
 /* Anchored sections land clear of the top of the window. */
 .lg-body h2[id] { scroll-margin-top: 24px; }
 .lg-body h2 {
   font-size: 1.1875rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25;
-  color: var(--text-primary, #0E2A4A);
+  color: var(--text-primary, #113055);
   margin: 28px 0 8px; padding-top: 20px;
-  border-top: 1px solid var(--border-light, #E3EBF2);
+  border-top: 1px solid var(--border-light, #ECEEF1);
 }
 .lg-body h2:first-of-type { border-top: none; padding-top: 0; margin-top: 24px; }
 .lg-body p { margin: 0 0 12px; }
@@ -263,15 +263,15 @@ export default function PublicLegalShell({
 .lg-body a:hover { text-decoration: underline; }
 .lg-note {
   margin-top: 28px; padding: 14px 18px;
-  font-size: 12.5px; line-height: 1.6; color: var(--text-muted, #5B6B7E);
+  font-size: 12.5px; line-height: 1.6; color: var(--text-muted, #5D728B);
   background: var(--overlay-subtle, rgba(33,145,208,0.07));
-  border: 1px solid var(--border-light, #E3EBF2);
+  border: 1px solid var(--border-light, #ECEEF1);
   border-radius: var(--btn-radius, 10px);
 }
 
 /* Footer */
 .lg-footer {
-  background: #071e30; color: rgba(255,255,255,0.6);
+  background: #001d3f; color: rgba(255,255,255,0.6);
   padding: 22px 0; font-size: 13px;
 }
 .lg-footer__inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }

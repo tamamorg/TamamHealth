@@ -716,7 +716,7 @@ export default function ReferralsPage() {
                         </div>
                       </td>
                       <td>
-                        <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: ref.urgency === 'emergency' ? '#C24435' : ref.urgency === 'urgent' ? '#8F6823' : '#157E5F' }}>
+                        <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: ref.urgency === 'emergency' ? '#D92B20' : ref.urgency === 'urgent' ? '#B35900' : '#0B8557' }}>
                           {t(`referrals.urgency_${ref.urgency}`)}
                         </span>
                         </td>
@@ -778,7 +778,7 @@ export default function ReferralsPage() {
 
               <div style={{ overflowY: 'auto', minHeight: 0 }}>
                 {detailReferral.outcome && (
-                  <div className="mb-3 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                  <div className="mb-3 p-3 rounded-lg" style={{ background: 'rgba(79, 199, 155,0.08)', border: '1px solid rgba(79, 199, 155,0.25)' }}>
                     <div className="flex items-center gap-2 mb-2">
                       <ClipboardCheck className="w-4 h-4" style={{ color: 'var(--color-success-text)' }} />
                       <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-success-text)' }}>{t('referrals.outcomeReceived')}</p>

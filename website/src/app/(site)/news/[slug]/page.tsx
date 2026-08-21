@@ -62,13 +62,13 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
   return (
     <main>
       {/* Hero band */}
-      <section style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "30px 32px 74px" }}>
+      <section style={{ background: "#113055", color: "#FFFFFF", padding: "30px 32px 74px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <Link href="/news" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7FC4EA", textDecoration: "none" }}>{t("← All news")}</Link>
+          <Link href="/news" style={{ fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7CC7FF", textDecoration: "none" }}>{t("← All news")}</Link>
           <div className="tm-split" style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 48, alignItems: "center", marginTop: 26 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "flex-start" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7FC4EA", fontWeight: 700 }}>{n.tag}</span>
+                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF", fontWeight: 700 }}>{n.tag}</span>
                 <time dateTime={n.dateISO} className="fs12" style={{ letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.72)" }}>{n.date}</time>
               </div>
               <h1 style={{ fontSize: "clamp(29px, 4.4vw, 48px)", margin: 0, color: "#FFFFFF" }}>{n.title}</h1>

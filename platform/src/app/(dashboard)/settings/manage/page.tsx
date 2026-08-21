@@ -475,15 +475,15 @@ export default function SettingsPage() {
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
   };
   const btnPrimary: React.CSSProperties = {
-    background: '#144972', color: 'white',
-    border: '1px solid #144972', borderRadius: '8px', padding: '9px 16px',
+    background: '#015697', color: 'white',
+    border: '1px solid #015697', borderRadius: '8px', padding: '9px 16px',
     fontFamily: 'var(--font-condensed)', fontSize: '13.5px', fontWeight: 600,
     letterSpacing: '0.02em', cursor: 'pointer',
     display: 'flex', alignItems: 'center', gap: '8px',
   };
   const btnSecondary: React.CSSProperties = {
-    background: '#fff', color: '#0E2A4A',
-    border: '1px solid #E3EBF2', borderRadius: '8px', padding: '9px 16px',
+    background: '#fff', color: '#113055',
+    border: '1px solid #ECEEF1', borderRadius: '8px', padding: '9px 16px',
     fontFamily: 'var(--font-condensed)', fontSize: '13.5px', fontWeight: 600,
     letterSpacing: '0.02em', cursor: 'pointer',
   };
@@ -574,7 +574,7 @@ export default function SettingsPage() {
                       <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No users found</td></tr>
                     ) : filteredUsers.map(u => (
                       <tr key={u._id} style={{ borderBottom: '1px solid var(--border-light)' }}
-                          className="hover:bg-[rgba(0,119,215,0.03)] transition-colors">
+                          className="hover:bg-[rgba(17, 116, 180,0.03)] transition-colors">
                         <td className="px-4 py-3">
                           <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{u.name}</span>
                         </td>
@@ -583,7 +583,7 @@ export default function SettingsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{
-                            background: u.role === 'government' ? 'rgba(0,119,215,0.12)' : 'rgba(0,119,215,0.12)',
+                            background: u.role === 'government' ? 'rgba(17, 116, 180,0.12)' : 'rgba(17, 116, 180,0.12)',
                             color: u.role === 'government' ? 'var(--accent-primary)' : 'var(--accent-primary)',
                           }}>{roleLabel(u.role)}</span>
                         </td>
@@ -663,14 +663,14 @@ export default function SettingsPage() {
                       return matchSearch && matchType;
                     }).map(h => (
                       <tr key={h._id} style={{ borderBottom: '1px solid var(--border-light)' }}
-                          className="hover:bg-[rgba(0,119,215,0.03)] transition-colors">
+                          className="hover:bg-[rgba(17, 116, 180,0.03)] transition-colors">
                         <td className="px-4 py-3">
                           <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{h.name}</span>
                         </td>
                         <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{h.state}</td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{
-                            background: h.facilityType === 'national_referral' ? 'rgba(0,119,215,0.12)' : h.facilityType === 'state_hospital' ? 'rgba(0,119,215,0.12)' : 'rgba(0,119,215,0.12)',
+                            background: h.facilityType === 'national_referral' ? 'rgba(17, 116, 180,0.12)' : h.facilityType === 'state_hospital' ? 'rgba(17, 116, 180,0.12)' : 'rgba(17, 116, 180,0.12)',
                             color: h.facilityType === 'national_referral' ? 'var(--accent-primary)' : h.facilityType === 'state_hospital' ? 'var(--accent-primary)' : 'var(--accent-primary)',
                           }}>
                             {FACILITY_TYPES.find(f => f.value === h.facilityType)?.label || h.facilityType}
@@ -737,8 +737,8 @@ export default function SettingsPage() {
                 <div
                   className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl"
                   style={
-                    overallStatus === 'synced' ? { background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' }
-                    : overallStatus === 'error' ? { background: 'rgba(196,69,54,0.08)', border: '1px solid rgba(196,69,54,0.2)' }
+                    overallStatus === 'synced' ? { background: 'rgba(14, 148, 99,0.08)', border: '1px solid rgba(14, 148, 99,0.2)' }
+                    : overallStatus === 'error' ? { background: 'rgba(224, 49, 39,0.08)', border: '1px solid rgba(224, 49, 39,0.2)' }
                     : { background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }
                   }
                 >
@@ -777,9 +777,9 @@ export default function SettingsPage() {
 
                   {elementGroups.map(g => {
                     const s =
-                      overallStatus === 'synced' ? { bg: 'rgba(5,150,105,0.1)', fg: 'var(--color-success-text)', label: 'Synced' }
-                      : overallStatus === 'error' ? { bg: 'rgba(196,69,54,0.1)', fg: 'var(--color-danger-text)', label: 'Error' }
-                      : { bg: 'rgba(245,158,11,0.1)', fg: 'var(--color-warning-text)', label: 'Pending' };
+                      overallStatus === 'synced' ? { bg: 'rgba(14, 148, 99,0.1)', fg: 'var(--color-success-text)', label: 'Synced' }
+                      : overallStatus === 'error' ? { bg: 'rgba(224, 49, 39,0.1)', fg: 'var(--color-danger-text)', label: 'Error' }
+                      : { bg: 'rgba(255, 127, 0,0.1)', fg: 'var(--color-warning-text)', label: 'Pending' };
                     return (
                       <div key={g.label} className="flex items-start justify-between py-2.5" style={{ borderBottom: '1px solid var(--border-light)' }}>
                         <div className="min-w-0">
@@ -810,7 +810,7 @@ export default function SettingsPage() {
               <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
                 {editingUser ? 'Edit User' : 'Create New User'}
               </h3>
-              <button onClick={() => setShowUserForm(false)} className="p-1 rounded-lg hover:bg-[rgba(100,116,139,0.1)]" style={{ color: 'var(--text-muted)' }}>
+              <button onClick={() => setShowUserForm(false)} className="p-1 rounded-lg hover:bg-[rgba(93, 114, 139,0.1)]" style={{ color: 'var(--text-muted)' }}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -905,7 +905,7 @@ export default function SettingsPage() {
           <div style={{ ...modalStyle, maxWidth: '440px' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Reset Password</h3>
-              <button onClick={() => setResetUserId(null)} className="p-1 rounded-lg hover:bg-[rgba(100,116,139,0.1)]" style={{ color: 'var(--text-muted)' }}>
+              <button onClick={() => setResetUserId(null)} className="p-1 rounded-lg hover:bg-[rgba(93, 114, 139,0.1)]" style={{ color: 'var(--text-muted)' }}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -933,7 +933,7 @@ export default function SettingsPage() {
                 </button>
               </div>
               {showNewPassword && newPassword && (
-                <div className="mt-2 p-3 rounded-lg" style={{ background: 'rgba(252,211,77,0.1)', border: '1px solid rgba(252,211,77,0.2)' }}>
+                <div className="mt-2 p-3 rounded-lg" style={{ background: 'rgba(253, 217, 95,0.1)', border: '1px solid rgba(253, 217, 95,0.2)' }}>
                   <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Share this with the user:</p>
                   <p className="text-sm font-mono font-bold mt-1" style={{ color: 'var(--text-primary)', userSelect: 'all' }}>{newPassword}</p>
                 </div>
@@ -955,7 +955,7 @@ export default function SettingsPage() {
           <div style={{ ...modalStyle, maxWidth: '720px' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Add New Hospital</h3>
-              <button onClick={() => setShowHospitalForm(false)} className="p-1 rounded-lg hover:bg-[rgba(100,116,139,0.1)]" style={{ color: 'var(--text-muted)' }}>
+              <button onClick={() => setShowHospitalForm(false)} className="p-1 rounded-lg hover:bg-[rgba(93, 114, 139,0.1)]" style={{ color: 'var(--text-muted)' }}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1089,9 +1089,9 @@ export default function SettingsPage() {
                     <button key={svc} type="button" onClick={() => toggleService(svc)}
                       className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer"
                       style={{
-                        background: hospitalForm.services.includes(svc) ? 'rgba(0,119,215,0.15)' : 'var(--input-bg)',
+                        background: hospitalForm.services.includes(svc) ? 'rgba(17, 116, 180,0.15)' : 'var(--input-bg)',
                         color: hospitalForm.services.includes(svc) ? 'var(--accent-primary)' : 'var(--text-muted)',
-                        border: `1px solid ${hospitalForm.services.includes(svc) ? 'rgba(0,119,215,0.3)' : 'var(--border-light)'}`,
+                        border: `1px solid ${hospitalForm.services.includes(svc) ? 'rgba(17, 116, 180,0.3)' : 'var(--border-light)'}`,
                       }}>
                       {hospitalForm.services.includes(svc) && <Check className="w-3 h-3 inline me-1" />}
                       {svc}

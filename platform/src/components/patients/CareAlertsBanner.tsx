@@ -68,7 +68,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
     <div className="lg:col-span-3 lg:order-1 space-y-2">
       {active.map((a) => {
         const high = a.priority === 'high';
-        const bg = high ? 'rgba(229,46,66,0.12)' : 'rgba(217,119,6,0.12)';
+        const bg = high ? 'rgba(224, 49, 39,0.12)' : 'rgba(230, 114, 0,0.12)';
         const color = high ? 'var(--color-danger)' : 'var(--color-warning-text)';
         return (
           <div key={a.id} className="card-elevated p-3 flex items-center gap-3" style={{ background: bg, border: `1px solid ${color}40` }}>

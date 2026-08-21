@@ -48,7 +48,7 @@ export default function ProductsBand() {
 
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div className="tm-desk-steppers" style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "41px 0 0" }}>
-              <button onClick={() => step(-1)} aria-label={t("Previous product")} style={{ appearance: "none", cursor: "pointer", width: 38, height: 38, border: 0, background: "#BBD9EC", color: "#FFFFFF", fontSize: 16, display: "grid", placeItems: "center" }}>‹</button>
+              <button onClick={() => step(-1)} aria-label={t("Previous product")} style={{ appearance: "none", cursor: "pointer", width: 38, height: 38, border: 0, background: "#7CC7FF", color: "#FFFFFF", fontSize: 16, display: "grid", placeItems: "center" }}>‹</button>
               <button onClick={() => step(1)} aria-label={t("Next product")} style={{ appearance: "none", cursor: "pointer", width: 38, height: 38, border: 0, background: "#015697", color: "#FFFFFF", fontSize: 16, display: "grid", placeItems: "center" }}>›</button>
             </div>
           </div>

@@ -32,7 +32,7 @@ export default async function PlatformPage() {
                   {t("Get in touch")}
                   <Corners />
                 </Link>
-                <Link href="/products" style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, color: "#7FC4EA", textDecoration: "none" }}>
+                <Link href="/products" style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, color: "#7CC7FF", textDecoration: "none" }}>
                   {t("See the six products →")}
                 </Link>
               </div>
@@ -62,7 +62,7 @@ export default async function PlatformPage() {
             {PLATFORM_FACTS.map((f) => (
               <div key={f.value} className="blueprint tm-fact" style={{ padding: "20px 24px", borderColor: "rgba(255,255,255,0.28)" }}>
                 <Corners light />
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: 30, lineHeight: 1, color: "#7FC4EA" }}>{f.value}</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: 30, lineHeight: 1, color: "#7CC7FF" }}>{f.value}</span>
                 <p style={{ margin: "8px 0 0", fontSize: 14.5, lineHeight: 1.6, color: "rgba(255,255,255,0.82)" }}>{f.label}</p>
               </div>
             ))}
@@ -136,11 +136,11 @@ export default async function PlatformPage() {
 
       {/* "How it works" and "DHIS2 reporting" both resolve here: the seven-step
           flow ends at step 07, the DHIS2-ready national report. */}
-      <section id="how-it-works" style={{ padding: "66px 32px 70px", background: "#0E2A4A" }}>
+      <section id="how-it-works" style={{ padding: "66px 32px 70px", background: "#113055" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap", paddingBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.24)" }}>
             <div>
-              <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7FC4EA" }}>{t("How it works")}</span>
+              <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("How it works")}</span>
               <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "10px 0 0", color: "#FFFFFF" }}>{t("A patient day, end to end")}</h2>
             </div>
             <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", maxWidth: 420 }}>{t("Seven steps, one record — from the front desk to the national report.")}</span>
@@ -154,10 +154,10 @@ export default async function PlatformPage() {
             {PLATFORM_FLOW.map((s) => (
               <div key={s.n} className="tm-flow-step" style={{ flex: "1 1 0", minWidth: 0, padding: "0 22px 4px 0", display: "flex", flexDirection: "column", gap: 11 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ width: 11, height: 11, background: "#7FC4EA", flexShrink: 0 }} />
+                  <span style={{ width: 11, height: 11, background: "#7CC7FF", flexShrink: 0 }} />
                   <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.28)" }} />
                 </div>
-                <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 15, letterSpacing: "0.1em", color: "#7FC4EA" }}>{s.n}</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 15, letterSpacing: "0.1em", color: "#7CC7FF" }}>{s.n}</span>
                 <h3 style={{ fontSize: 17.5, margin: 0, lineHeight: 1.25, color: "#FFFFFF" }}>{s.t}</h3>
                 <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "rgba(255,255,255,0.72)" }}>{s.b}</p>
               </div>

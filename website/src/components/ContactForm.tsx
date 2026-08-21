@@ -25,7 +25,7 @@ const field: React.CSSProperties = {
   fontSize: 15.5,
   color: "var(--color-text)",
   background: "#FFFFFF",
-  border: "1px solid var(--color-neutral-400, #a9b4c0)",
+  border: "1px solid var(--color-neutral-400, #b3bdc9)",
   borderRadius: 0,
   outlineOffset: 2,
 };
@@ -39,9 +39,9 @@ const primaryBtn: React.CSSProperties = {
   fontSize: 17,
   letterSpacing: "0.02em",
   padding: "16px 0",
-  background: "#e8863a",
-  border: "1px solid #e8863a",
-  color: "#0e2a4a",
+  background: "#ff7f00",
+  border: "1px solid #ff7f00",
+  color: "#113055",
 };
 
 export default function ContactForm() {
@@ -105,7 +105,7 @@ export default function ContactForm() {
         {t("Step {{step}} of 2", { step })}
       </span>
       <div style={{ height: 5, background: "var(--color-neutral-300)", marginTop: 8 }}>
-        <span style={{ display: "block", height: "100%", width: step === 2 ? "100%" : "50%", background: "#0e2a4a", transition: "width .2s ease" }} />
+        <span style={{ display: "block", height: "100%", width: step === 2 ? "100%" : "50%", background: "#113055", transition: "width .2s ease" }} />
       </div>
 
       {step === 1 ? (
@@ -158,7 +158,7 @@ export default function ContactForm() {
           <div style={{ display: "grid", gridTemplateColumns: "62px 1fr", gap: 12, marginTop: 6 }}>
             <button
               type="button" onClick={() => { setStep(1); setState("idle"); }} aria-label={t("Back")} className="blueprint"
-              style={{ appearance: "none", cursor: "pointer", fontSize: 18, padding: "16px 0", background: "transparent", border: "1px solid var(--color-neutral-400, #a9b4c0)", color: "var(--color-text)" }}
+              style={{ appearance: "none", cursor: "pointer", fontSize: 18, padding: "16px 0", background: "transparent", border: "1px solid var(--color-neutral-400, #b3bdc9)", color: "var(--color-text)" }}
             >
               ←
               <Corners />
@@ -169,7 +169,7 @@ export default function ContactForm() {
             </button>
           </div>
           {state === "error" && (
-            <span style={{ fontSize: 14, lineHeight: 1.5, color: "#b3251e" }}>
+            <span style={{ fontSize: 14, lineHeight: 1.5, color: "#b4180f" }}>
               {t("Something went wrong sending that — please email support.tamam@gmail.com directly.")}
             </span>
           )}

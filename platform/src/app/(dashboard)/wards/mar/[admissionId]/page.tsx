@@ -82,11 +82,11 @@ function findAdministration(
 }
 
 const STATUS_TINT: Record<MedicationAdministration['status'], { bg: string; color: string; ring: string; label: string }> = {
-  given:     { bg: 'rgba(31, 157, 111,0.12)',  color: 'var(--color-success-text)',                ring: 'rgba(31, 157, 111,0.30)', label: 'Given' },
-  missed:    { bg: 'rgba(196,69,54,0.12)',   color: 'var(--tamamhealth-red)', ring: 'rgba(196,69,54,0.30)',  label: 'Missed' },
-  refused:   { bg: 'rgba(228,168,75,0.18)',  color: 'var(--color-warning)',   ring: 'rgba(228,168,75,0.32)', label: 'Refused' },
-  held:      { bg: 'rgba(100,116,139,0.12)', color: '#475569',                ring: 'rgba(100,116,139,0.26)', label: 'Held' },
-  corrected: { bg: 'rgba(124,58,237,0.12)',  color: '#6D28D9',                ring: 'rgba(124,58,237,0.26)', label: 'Corrected' },
+  given:     { bg: 'rgba(15, 160, 106,0.12)',  color: 'var(--color-success-text)',                ring: 'rgba(15, 160, 106,0.30)', label: 'Given' },
+  missed:    { bg: 'rgba(224, 49, 39,0.12)',   color: 'var(--tamamhealth-red)', ring: 'rgba(224, 49, 39,0.30)',  label: 'Missed' },
+  refused:   { bg: 'rgba(254, 230, 151,0.18)',  color: 'var(--color-warning)',   ring: 'rgba(254, 230, 151,0.32)', label: 'Refused' },
+  held:      { bg: 'rgba(93, 114, 139,0.12)', color: '#3C5574',                ring: 'rgba(93, 114, 139,0.26)', label: 'Held' },
+  corrected: { bg: 'rgba(166, 83, 0,0.12)',  color: '#A65300',                ring: 'rgba(166, 83, 0,0.26)', label: 'Corrected' },
 };
 
 const STATUS_LABEL_KEY: Record<MedicationAdministration['status'], string> = {
@@ -321,8 +321,8 @@ export default function MARPage() {
               <div
                 className="card-elevated px-4 py-3 flex items-start gap-3"
                 style={{
-                  background: 'rgba(196,69,54,0.05)',
-                  borderColor: 'rgba(196,69,54,0.30)',
+                  background: 'rgba(224, 49, 39,0.05)',
+                  borderColor: 'rgba(224, 49, 39,0.30)',
                 }}
               >
                 <div className="icon-box-sm shrink-0">
@@ -344,8 +344,8 @@ export default function MARPage() {
               <div
                 className="card-elevated px-4 py-3 flex items-start gap-3"
                 style={{
-                  background: 'rgba(228,168,75,0.08)',
-                  borderColor: 'rgba(228,168,75,0.30)',
+                  background: 'rgba(254, 230, 151,0.08)',
+                  borderColor: 'rgba(254, 230, 151,0.30)',
                 }}
               >
                 <div className="icon-box-sm shrink-0">
@@ -486,7 +486,7 @@ export default function MARPage() {
         {modalRx && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(10,18,16,0.55)', backdropFilter: 'blur(2px)' }}
+            style={{ background: 'rgba(0, 29, 63,0.55)', backdropFilter: 'blur(2px)' }}
             onClick={closeModal}
           >
             <div

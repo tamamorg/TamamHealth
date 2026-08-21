@@ -195,7 +195,7 @@ export default function DataQualityPage() {
                 </p>
                 <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.facilitiesWithTrainedStaff', { trained: data.facilitiesWithTrainedStaff, total: data.totalFacilities })}</p>
               </div>
-              <div className="p-3 rounded-lg" style={{ background: data.dhis2Adoption >= 50 ? 'rgba(33, 145, 208, 0.08)' : 'rgba(229,46,66,0.08)' }}>
+              <div className="p-3 rounded-lg" style={{ background: data.dhis2Adoption >= 50 ? 'rgba(33, 145, 208, 0.08)' : 'rgba(224, 49, 39,0.08)' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Wifi className="w-3.5 h-3.5" style={{ color: scoreColor(data.dhis2Adoption) }} />
                   <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.electronicReporting')}</p>

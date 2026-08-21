@@ -626,7 +626,7 @@ export default function TriageWorkflow({
         {!lockedPatientId && (
           <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" style={{ color: '#FB923C' }} />
+              <AlertTriangle className="w-4 h-4" style={{ color: '#FF9933' }} />
               <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.etatTriageAssessment')}</h3>
             </div>
             <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
@@ -643,7 +643,7 @@ export default function TriageWorkflow({
           <div id="triage-section-patient" className="relative scroll-mt-3">
             <label className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nurse.patient')}</label>
             {selectedTriagePatient ? (
-              <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(59, 130, 246,0.25))' }}>
+              <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33, 145, 208,0.25))' }}>
                 <div className="flex items-baseline gap-2 min-w-0">
                   <p className="text-sm font-semibold flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
                     {patientFullName(selectedTriagePatient)}
@@ -715,8 +715,8 @@ export default function TriageWorkflow({
               className="p-3 rounded-xl"
               style={{
                 background: Object.keys(vitalErrors).length > 0 || vitalWarnings.some(item => item.urgency === 'RED')
-                  ? 'rgba(239,68,68,0.10)'
-                  : 'rgba(245,158,11,0.12)',
+                  ? 'rgba(224, 49, 39,0.10)'
+                  : 'rgba(255, 127, 0,0.12)',
                 border: `1px solid ${Object.keys(vitalErrors).length > 0 || vitalWarnings.some(item => item.urgency === 'RED')
                   ? 'var(--color-danger)'
                   : 'var(--color-warning)'}`,
@@ -797,13 +797,13 @@ export default function TriageWorkflow({
                     className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
                     style={{
                       background: triageData.airway === opt
-                        ? (opt === 'clear' ? 'rgba(74,222,128,0.2)' : 'rgba(239,68,68,0.2)')
+                        ? (opt === 'clear' ? 'rgba(79, 199, 155,0.2)' : 'rgba(224, 49, 39,0.2)')
                         : 'var(--bg-card)',
                       color: triageData.airway === opt
                         ? (opt === 'clear' ? 'var(--color-success)' : 'var(--color-danger)')
                         : 'var(--text-secondary)',
                       border: `1px solid ${triageData.airway === opt
-                        ? (opt === 'clear' ? 'rgba(74,222,128,0.3)' : 'rgba(239,68,68,0.3)')
+                        ? (opt === 'clear' ? 'rgba(79, 199, 155,0.3)' : 'rgba(224, 49, 39,0.3)')
                         : 'var(--border-light)'}`,
                     }}
                   >
@@ -828,13 +828,13 @@ export default function TriageWorkflow({
                     className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
                     style={{
                       background: triageData.breathing === opt
-                        ? (opt === 'normal' ? 'rgba(74,222,128,0.2)' : opt === 'distressed' ? 'rgba(251,191,36,0.2)' : 'rgba(239,68,68,0.2)')
+                        ? (opt === 'normal' ? 'rgba(79, 199, 155,0.2)' : opt === 'distressed' ? 'rgba(255, 210, 166,0.2)' : 'rgba(224, 49, 39,0.2)')
                         : 'var(--bg-card)',
                       color: triageData.breathing === opt
                         ? (opt === 'normal' ? 'var(--color-success)' : opt === 'distressed' ? 'var(--color-warning)' : 'var(--color-danger)')
                         : 'var(--text-secondary)',
                       border: `1px solid ${triageData.breathing === opt
-                        ? (opt === 'normal' ? 'rgba(74,222,128,0.3)' : opt === 'distressed' ? 'rgba(251,191,36,0.3)' : 'rgba(239,68,68,0.3)')
+                        ? (opt === 'normal' ? 'rgba(79, 199, 155,0.3)' : opt === 'distressed' ? 'rgba(255, 210, 166,0.3)' : 'rgba(224, 49, 39,0.3)')
                         : 'var(--border-light)'}`,
                     }}
                   >
@@ -859,13 +859,13 @@ export default function TriageWorkflow({
                     className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
                     style={{
                       background: triageData.circulation === opt
-                        ? (opt === 'normal' ? 'rgba(74,222,128,0.2)' : opt === 'impaired' ? 'rgba(251,191,36,0.2)' : 'rgba(239,68,68,0.2)')
+                        ? (opt === 'normal' ? 'rgba(79, 199, 155,0.2)' : opt === 'impaired' ? 'rgba(255, 210, 166,0.2)' : 'rgba(224, 49, 39,0.2)')
                         : 'var(--bg-card)',
                       color: triageData.circulation === opt
                         ? (opt === 'normal' ? 'var(--color-success)' : opt === 'impaired' ? 'var(--color-warning)' : 'var(--color-danger)')
                         : 'var(--text-secondary)',
                       border: `1px solid ${triageData.circulation === opt
-                        ? (opt === 'normal' ? 'rgba(74,222,128,0.3)' : opt === 'impaired' ? 'rgba(251,191,36,0.3)' : 'rgba(239,68,68,0.3)')
+                        ? (opt === 'normal' ? 'rgba(79, 199, 155,0.3)' : opt === 'impaired' ? 'rgba(255, 210, 166,0.3)' : 'rgba(224, 49, 39,0.3)')
                         : 'var(--border-light)'}`,
                     }}
                   >
@@ -895,13 +895,13 @@ export default function TriageWorkflow({
                     className="px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
                     style={{
                       background: triageData.consciousness === opt.key
-                        ? (opt.key === 'alert' ? 'rgba(74,222,128,0.2)' : opt.key === 'verbal' ? 'rgba(251,191,36,0.2)' : 'rgba(239,68,68,0.2)')
+                        ? (opt.key === 'alert' ? 'rgba(79, 199, 155,0.2)' : opt.key === 'verbal' ? 'rgba(255, 210, 166,0.2)' : 'rgba(224, 49, 39,0.2)')
                         : 'var(--bg-card)',
                       color: triageData.consciousness === opt.key
                         ? (opt.key === 'alert' ? 'var(--color-success)' : opt.key === 'verbal' ? 'var(--color-warning)' : 'var(--color-danger)')
                         : 'var(--text-secondary)',
                       border: `1px solid ${triageData.consciousness === opt.key
-                        ? (opt.key === 'alert' ? 'rgba(74,222,128,0.3)' : opt.key === 'verbal' ? 'rgba(251,191,36,0.3)' : 'rgba(239,68,68,0.3)')
+                        ? (opt.key === 'alert' ? 'rgba(79, 199, 155,0.3)' : opt.key === 'verbal' ? 'rgba(255, 210, 166,0.3)' : 'rgba(224, 49, 39,0.3)')
                         : 'var(--border-light)'}`,
                     }}
                   >

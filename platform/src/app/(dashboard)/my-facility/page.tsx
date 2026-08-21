@@ -147,10 +147,10 @@ export default function MyFacilityPage() {
   }
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    functional: { bg: 'rgba(74,222,128,0.12)', color: 'var(--color-success)', label: t('myFacility.statusFunctional') },
-    partially_functional: { bg: 'rgba(252,211,77,0.12)', color: 'var(--color-warning)', label: t('myFacility.statusPartiallyFunctional') },
-    non_functional: { bg: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)', label: t('myFacility.statusNonFunctional') },
-    closed: { bg: 'rgba(148,163,184,0.12)', color: 'var(--text-muted)', label: t('myFacility.statusClosed') },
+    functional: { bg: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success)', label: t('myFacility.statusFunctional') },
+    partially_functional: { bg: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning)', label: t('myFacility.statusPartiallyFunctional') },
+    non_functional: { bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', label: t('myFacility.statusNonFunctional') },
+    closed: { bg: 'rgba(148, 162, 179,0.12)', color: 'var(--text-muted)', label: t('myFacility.statusClosed') },
   };
 
   const sectionClass = 'card-elevated p-5 space-y-4';
@@ -221,7 +221,7 @@ export default function MyFacilityPage() {
               className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white transition-all"
               style={{
                 background: saving ? 'var(--text-muted)' : 'linear-gradient(135deg, #2191D0, #015697)',
-                boxShadow: '0 2px 8px rgba(0,119,215,0.3)',
+                boxShadow: '0 2px 8px rgba(17, 116, 180,0.3)',
               }}
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -269,7 +269,7 @@ export default function MyFacilityPage() {
 
           {/* Bed Capacity */}
           <div className={sectionClass}>
-            {sectionTitle(<BedDouble className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />, t('myFacility.bedCapacity'), 'rgba(252,211,77,0.12)')}
+            {sectionTitle(<BedDouble className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />, t('myFacility.bedCapacity'), 'rgba(253, 217, 95,0.12)')}
             <div className="grid grid-cols-2 gap-3">
               {numberInput(t('dataEntry.totalBeds'), totalBeds, setTotalBeds)}
               {numberInput(t('dataEntry.icuBeds'), icuBeds, setIcuBeds)}
@@ -292,7 +292,7 @@ export default function MyFacilityPage() {
 
           {/* Infrastructure */}
           <div className={sectionClass}>
-            {sectionTitle(<Zap className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />, t('myFacility.infrastructure'), 'rgba(252,211,77,0.12)')}
+            {sectionTitle(<Zap className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />, t('myFacility.infrastructure'), 'rgba(253, 217, 95,0.12)')}
             <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
               {toggle(t('myFacility.hasElectricity'), hasElectricity, setHasElectricity)}
               {hasElectricity && (
@@ -337,7 +337,7 @@ export default function MyFacilityPage() {
           {/* Services */}
           <div className="lg:col-span-2">
             <div className={sectionClass}>
-              {sectionTitle(<CheckCircle className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} />, t('myFacility.servicesOffered'), 'rgba(74,222,128,0.12)')}
+              {sectionTitle(<CheckCircle className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} />, t('myFacility.servicesOffered'), 'rgba(79, 199, 155,0.12)')}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1 data-row-divider-sm">
                 {toggle(t('myFacility.serviceEpi'), serviceFlags.epi, () => toggleService('epi'))}
                 {toggle(t('anc.title'), serviceFlags.anc, () => toggleService('anc'))}
@@ -372,17 +372,17 @@ export default function MyFacilityPage() {
 
                     <div className="flex items-center gap-2 text-xs">
                       {!submittedAt ? (
-                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(148,163,184,0.12)', color: 'var(--text-muted)' }}>
+                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(148, 162, 179,0.12)', color: 'var(--text-muted)' }}>
                           <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--text-muted)' }} />
                           Not yet submitted
                         </span>
                       ) : hasPendingChanges ? (
-                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(252,211,77,0.12)', color: 'var(--color-warning-text)' }}>
+                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning-text)' }}>
                           <Clock className="w-3 h-3" />
                           Changes pending submission
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: 'var(--color-success-text)' }}>
+                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success-text)' }}>
                           <CheckCircle className="w-3 h-3" />
                           Submitted to Ministry of Health
                         </span>
@@ -405,7 +405,7 @@ export default function MyFacilityPage() {
                         className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
                           background: submitting ? 'var(--text-muted)' : 'linear-gradient(135deg, #2191D0, #015697)',
-                          boxShadow: '0 2px 8px rgba(0,119,215,0.3)',
+                          boxShadow: '0 2px 8px rgba(17, 116, 180,0.3)',
                         }}
                       >
                         {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

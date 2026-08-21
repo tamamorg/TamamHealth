@@ -74,7 +74,7 @@ const WeeklyActivityChart = dynamic(() => import('./_FacilityCharts').then(m => 
 
 // Kept from the Cash Flow donut this chart replaced, so received/pending read
 // in the same two colours everywhere in the product.
-const CASH_RECEIVED = '#0ca30c';
+const CASH_RECEIVED = '#0fa06a';
 const CASH_PENDING = 'var(--color-warning)';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -857,8 +857,8 @@ export default function FacilityManagementDashboard() {
         <div
           className="flex items-center gap-3 rounded-xl px-4 py-3 mb-3"
           style={retrying
-            ? { background: 'var(--surface-muted, rgba(20,73,114,0.06))', border: '1px solid var(--border-light)' }
-            : { background: 'rgba(196,69,54,0.08)', border: '1px solid rgba(196,69,54,0.25)' }}
+            ? { background: 'var(--surface-muted, rgba(1, 86, 151,0.06))', border: '1px solid var(--border-light)' }
+            : { background: 'rgba(224, 49, 39,0.08)', border: '1px solid rgba(224, 49, 39,0.25)' }}
           aria-live="polite"
         >
           {retrying ? (

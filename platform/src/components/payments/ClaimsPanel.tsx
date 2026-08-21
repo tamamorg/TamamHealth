@@ -379,7 +379,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       {openClaim && (
         <Modal onClose={() => setOpenClaim(null)} width={560} labelledBy="claim-detail-title">
           <div className="bl-root" style={{ display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden', maxHeight: 'calc(100vh - 32px)' }}>
-            <div className="px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #DDEAF3)' }}>
+            <div className="px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
               <div className="min-w-0">
                 <h2 className="bl-modal-title" id="claim-detail-title">{openClaim.claimNumber || 'Claim'}</h2>
                 <p className="bl-card-sub" style={{ margin: '4px 0 0' }}>
@@ -390,7 +390,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             </div>
 
             <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
-              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #DDEAF3)' }}>
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
                 <div className="bl-stats" style={{ border: 'none', padding: 0 }}>
                   <div>
                     <span className="bl-stat-label">{t('claims.colBilled')}</span>
@@ -415,7 +415,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 </div>
               </div>
 
-              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #DDEAF3)' }}>
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
                 <dl className="bl-totals">
                   <div className="bl-totals-row">
                     <dt>{t('claims.colPatientName')}</dt>
@@ -445,10 +445,10 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
               </div>
 
               {(openClaim.denialReasons?.length || openClaim.adjudicationNotes || openClaim.appealNote) && (
-                <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #DDEAF3)' }}>
+                <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
                   {!!openClaim.denialReasons?.length && (
                     <p className="bl-modal-sub" style={{ margin: 0 }}>
-                      <strong style={{ color: 'var(--color-danger, #DC2626)' }}>Denial reason:</strong> {openClaim.denialReasons.join(', ')}
+                      <strong style={{ color: 'var(--color-danger, #D92B20)' }}>Denial reason:</strong> {openClaim.denialReasons.join(', ')}
                     </p>
                   )}
                   {openClaim.adjudicationNotes && (
@@ -461,7 +461,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
               )}
             </div>
 
-            <div className="px-5 py-3 border-t flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--ehr-border, #DDEAF3)' }}>
+            <div className="px-5 py-3 border-t flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
               {openClaim.patientId && !openClaim.patientId.startsWith('demo-') && !openClaim.patientId.includes('_demo') && (
                 <button
                   type="button"
@@ -521,7 +521,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '10px 12px', borderRadius: 6,
-                    border: '1px solid var(--ehr-border, #DDEAF3)', background: 'var(--ehr-page-bg, #FFFFFF)',
+                    border: '1px solid var(--ehr-border, #E2E6EB)', background: 'var(--ehr-page-bg, #FFFFFF)',
                   }}
                 >
                   <span className={`bl-chip ${CLAIM_STATUS_CHIP[adjPreview]}`}>{t(`claims.status_${adjPreview}`)}</span>

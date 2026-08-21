@@ -32,7 +32,7 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 
 /* Same hues as the facility/org dashboards so a user moving between them
    reads the identical colour for the identical meaning. */
-const CASH_RECEIVED = '#0ca30c';
+const CASH_RECEIVED = '#0fa06a';
 const CASH_PENDING = 'var(--color-warning)';
 const CASH_PENDING_TEXT = 'var(--color-warning)'; // legible amber for text on a light card
 const CHART_BLUE = 'var(--chart-1)';
@@ -187,11 +187,11 @@ export default function BillingOverviewCards({
             </div>
           </div>
           <div className="flex-1 min-w-0 space-y-2">
-            <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(12,163,12,0.10)', border: '1px solid rgba(12,163,12,0.28)' }}>
+            <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(15, 160, 106,0.10)', border: '1px solid rgba(15, 160, 106,0.28)' }}>
               <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Received</p>
               <p className="text-[13px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_RECEIVED }}>{formatMoney(cash.received)}</p>
             </div>
-            <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(237,161,0,0.12)', border: '1px solid rgba(237,161,0,0.35)' }}>
+            <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(255, 153, 51,0.12)', border: '1px solid rgba(255, 153, 51,0.35)' }}>
               <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Pending</p>
               <p className="text-[13px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_PENDING_TEXT }}>{formatMoney(cash.pending)}</p>
             </div>

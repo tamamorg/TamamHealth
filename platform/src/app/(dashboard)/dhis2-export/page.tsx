@@ -318,9 +318,9 @@ export default function DHIS2ExportPage() {
                       disabled={syncing}
                       className="text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                       style={{
-                        background: 'rgba(16,185,68,0.08)',
+                        background: 'rgba(79, 199, 155,0.08)',
                         color: 'var(--color-success-text)',
-                        border: '1px solid rgba(16,185,68,0.15)',
+                        border: '1px solid rgba(79, 199, 155,0.15)',
                         cursor: syncing ? 'not-allowed' : 'pointer',
                       }}
                     >

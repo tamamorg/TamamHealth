@@ -35,15 +35,15 @@ export type MobileMoneyProvider = typeof MOBILE_MONEY_PROVIDERS[number];
 
 export const PAYMENT_METHOD_CONFIG: Record<string, PaymentMethodConfig> = {
   cash: { label: 'Cash', shortLabel: 'Cash', icon: Banknote, color: 'var(--color-success)' },
-  mpesa: { label: 'M-Pesa', shortLabel: 'M-Pesa', icon: Smartphone, color: '#4CAF50' },
-  airtel: { label: 'Airtel Money', shortLabel: 'Airtel', icon: Smartphone, color: '#E53935' },
-  mtn_momo: { label: 'MTN Mobile Money', shortLabel: 'MTN MoMo', icon: Smartphone, color: '#FFC107' },
-  m_gurush: { label: 'm-GURUSH', shortLabel: 'm-GURUSH', icon: Smartphone, color: '#0EA5A4' },
+  mpesa: { label: 'M-Pesa', shortLabel: 'M-Pesa', icon: Smartphone, color: '#0FA06A' },
+  airtel: { label: 'Airtel Money', shortLabel: 'Airtel', icon: Smartphone, color: '#E03127' },
+  mtn_momo: { label: 'MTN Mobile Money', shortLabel: 'MTN MoMo', icon: Smartphone, color: '#FFD2A6' },
+  m_gurush: { label: 'm-GURUSH', shortLabel: 'm-GURUSH', icon: Smartphone, color: '#1E90FF' },
   card: { label: 'Card (Flutterwave)', shortLabel: 'Card', icon: CreditCard, color: 'var(--accent-primary)' },
-  bank_transfer: { label: 'Bank Transfer', shortLabel: 'Bank', icon: Building2, color: '#607D8B' },
-  insurance: { label: 'Insurance Payment', shortLabel: 'Insurance', icon: Shield, color: '#9C27B0' },
-  waiver: { label: 'Fee Waiver', shortLabel: 'Waiver', icon: Gift, color: '#FF9800' },
-  payment_plan: { label: 'Payment Plan', shortLabel: 'Plan', icon: FileText, color: '#00BCD4' },
+  bank_transfer: { label: 'Bank Transfer', shortLabel: 'Bank', icon: Building2, color: '#6B7F96' },
+  insurance: { label: 'Insurance Payment', shortLabel: 'Insurance', icon: Shield, color: '#A65300' },
+  waiver: { label: 'Fee Waiver', shortLabel: 'Waiver', icon: Gift, color: '#FF9933' },
+  payment_plan: { label: 'Payment Plan', shortLabel: 'Plan', icon: FileText, color: '#7CC7FF' },
 };
 
 export function getMethodConfig(method: string): PaymentMethodConfig {

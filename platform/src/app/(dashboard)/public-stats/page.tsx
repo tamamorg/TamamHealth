@@ -70,7 +70,7 @@ export default function PublicStatsPage() {
           <section style={{ flex: 1, minWidth: 0 }}>
             {/* National Overview */}
             {section === 'overview' && (
-              <div data-tour="public-stats-overview" className="card-elevated p-5 mb-6" style={{ background: 'rgba(59, 130, 246,0.04)' }}>
+              <div data-tour="public-stats-overview" className="card-elevated p-5 mb-6" style={{ background: 'rgba(33, 145, 208,0.04)' }}>
                 <div className="flex items-center gap-2 mb-4">
                   <Shield className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
                   <h2 className="font-semibold text-sm">{t('publicStats.nationalOverview')}</h2>
@@ -79,8 +79,8 @@ export default function PublicStatsPage() {
                   {[
                     { label: t('publicStats.healthFacilities'), value: hospitals.length, icon: Building2, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
                     { label: t('patients.kpiTotalPatients'), value: totalPop.toLocaleString(), icon: Users, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
-                    { label: t('publicStats.hospitalBeds'), value: totalBeds.toLocaleString(), icon: BedDouble, color: 'var(--color-warning-text)', bg: 'rgba(252,211,77,0.12)' },
-                    { label: t('publicStats.healthWorkers'), value: totalStaff.toLocaleString(), icon: Stethoscope, color: 'var(--accent-primary)', bg: 'rgba(56,189,248,0.12)' },
+                    { label: t('publicStats.hospitalBeds'), value: totalBeds.toLocaleString(), icon: BedDouble, color: 'var(--color-warning-text)', bg: 'rgba(253, 217, 95,0.12)' },
+                    { label: t('publicStats.healthWorkers'), value: totalStaff.toLocaleString(), icon: Stethoscope, color: 'var(--accent-primary)', bg: 'rgba(124, 199, 255,0.12)' },
                     { label: t('publicStats.dhis2Coverage'), value: `${dqData?.dhis2Adoption ?? 0}%`, icon: Wifi, color: scoreColor(dqData?.dhis2Adoption ?? 0), bg: 'rgba(33, 145, 208, 0.12)' },
                   ].map(stat => (
                     <div key={stat.label} className="kpi">
@@ -155,7 +155,7 @@ export default function PublicStatsPage() {
                   <h2 className="font-semibold text-sm">{t('publicStats.mortalityStatistics')}</h2>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="p-3 rounded-lg" style={{ background: 'rgba(229,46,66,0.08)' }}>
+                  <div className="p-3 rounded-lg" style={{ background: 'rgba(224, 49, 39,0.08)' }}>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('publicStats.totalDeaths')}</p>
                     <p className="text-xl font-bold" style={{ color: 'var(--color-danger-text)' }}>{deathStats.total}</p>
                   </div>
@@ -197,7 +197,7 @@ export default function PublicStatsPage() {
                       {deathStats.topCauses.slice(0, 5).map((c, i) => (
                         <div key={c.code} className="flex items-center gap-2">
                           <span className="text-[10px] font-bold w-4" style={{ color: 'var(--text-muted)' }}>{i + 1}</span>
-                          <span className="font-mono text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{c.code}</span>
+                          <span className="font-mono text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>{c.code}</span>
                           <span className="text-[10px] flex-1 truncate">{c.cause}</span>
                           <span className="text-xs font-bold">{c.count}</span>
                         </div>

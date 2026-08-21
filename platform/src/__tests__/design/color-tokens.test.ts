@@ -3,13 +3,18 @@
  *
  * The colour system's invariants, enforced rather than documented.
  *
- * Three things kept going wrong before this suite existed:
+ * Four things kept going wrong before this suite existed:
  *   1. `lib/theme-colors.ts` and `globals.css` drifted — `danger` was #C44536
  *      in one and #DC2626 in the other, so the same word meant two reds.
  *   2. One meaning acquired many colours: ten distinct reds, eleven greens and
  *      ten ambers were in use across the app for success/warning/danger.
  *   3. Status colours were used at the wrong strength, so the most urgent text
  *      on a screen was the least readable (#F87171 as text scores 2.77:1).
+ *   4. Colours entered from nowhere. The app carried 344 distinct hexes — six
+ *      unrelated blues, a Tailwind slate, three teals, two violets and a rose,
+ *      none of them a brand decision. `the palette holds` below is the gate:
+ *      globals.css may only contain the nine palette colours, the ramps mixed
+ *      from them, and the two documented exceptions.
  *
  * Each test below fails on exactly one of those.
  */
@@ -122,7 +127,7 @@ describe('the two-tone rule holds', () => {
 describe('var() fallbacks tell the truth', () => {
   // `var(--token, #hex)` is the right way to hold a literal, but only while the
   // literal matches the token. Forty-five did not: --color-danger fell back to
-  // #DA1E28 in the payment pages, and worst, EmptyState fell back to #f1f5f9
+  // #DC2626 in the payment pages, and worst, EmptyState fell back to #F1F5F9
   // for --text-primary — near-white text on a white card if the var ever
   // failed to resolve.
   function resolve(name: string, depth = 0): string | null {
@@ -166,8 +171,8 @@ describe('the chart scale', () => {
   });
 
   test('every slot clears 3:1 on the card surface', () => {
-    // Cards are a 4% wash of the accent on white.
-    const CARD = '#F6F8F9';
+    // Cards are pure white; the cream ground is behind them.
+    const CARD = '#FFFFFF';
     for (const hex of CHART_SERIES_HEX) {
       expect(contrast(hex, CARD)).toBeGreaterThanOrEqual(3);
     }
@@ -191,15 +196,15 @@ describe('one meaning, one colour', () => {
   // The retired hexes. Each was a second (or tenth) way to say success,
   // warning or danger; several also failed contrast where they were used.
   const RETIRED: Record<string, string> = {
-    '#EF4444': 'danger', '#F87171': 'danger', '#E34948': 'danger',
-    '#DA1E28': 'danger', '#C44536': 'danger', '#C24135': 'danger',
-    '#B3251E': 'danger', '#B91C1C': 'danger',
-    '#199E70': 'success', '#1B9E77': 'success', '#14713A': 'success',
-    '#10B944': 'success', '#1F9D6F': 'success', '#167755': 'success',
-    '#16A34A': 'success', '#22C55E': 'success', '#047857': 'success',
-    '#B8741C': 'warning', '#EDA100': 'warning', '#B45309': 'warning',
-    '#F59E0B': 'warning', '#B26A00': 'warning', '#CA8A04': 'warning',
-    '#A16207': 'warning', '#8A5A00': 'warning',
+    '#C44536': 'danger', '#F87171': 'danger', '#EF4444': 'danger',
+    '#DC2626': 'danger', '#C0392B': 'danger', '#E53935': 'danger',
+    '#B91C1C': 'danger', '#8B2E24': 'danger', '#B93328': 'danger',
+    '#059669': 'success', '#1B9E77': 'success', '#047857': 'success',
+    '#A7F3D0': 'success', '#4CAF50': 'success', '#22C55E': 'success',
+    '#16A34A': 'success', '#15795C': 'success', '#167755': 'success',
+    '#D97706': 'warning', '#FB923C': 'warning', '#B8741C': 'warning',
+    '#F59E0B': 'warning', '#C2410C': 'warning', '#E4A84B': 'warning',
+    '#9C5E16': 'warning', '#92400E': 'warning', '#B45309': 'warning',
   };
 
   /** Files that legitimately hold colour literals — see theme-colors.ts. */
@@ -231,5 +236,90 @@ describe('one meaning, one colour', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('the palette holds', () => {
+  // The nine, and only the nine. Every other colour in the product is one of
+  // these or a measured mix of two, so "what colour is this?" always has an
+  // answer that points back here.
+  const NINE = [
+    '#FCFEF3', '#C9F4FF', '#FDD95F', '#FF7F00', '#1E90FF',
+    '#2191D0', '#015697', '#113055', '#001D3F',
+  ];
+
+  // Rungs mixed from the nine. Each is a documented step of one ramp; the
+  // comment beside it in globals.css says which two colours produced it.
+  const DERIVED = [
+    // blue ramp
+    '#F2FCFF', '#E1F9FF', '#7CC7FF', '#1174B4',
+    // neutrals — the navy diluted into white
+    '#FAFBFC', '#F5F7F8', '#F1F3F5', '#ECEEF1', '#E2E6EB', '#D9DEE4',
+    '#CFD6DD', '#B3BDC9', '#94A2B3', '#6B7F96', '#5D728B', '#546A85',
+    '#3C5574', '#2E4969',
+    // deep surfaces — the navy lifted toward the deep blue
+    '#1B4270', '#244B75', '#35608C',
+    // orange, darkened toward black so it stays saturated
+    '#FFF5EB', '#FFEDDB', '#FFE3C7', '#FFD2A6', '#FF9933',
+    '#E67200', '#CC6600', '#B35900', '#A65300',
+    // gold, diluted into white
+    '#FFFCF2', '#FFFAE9', '#FFF7DC', '#FEF2C7', '#FEE697', '#B19843',
+    // cream, the ground
+    '#FEFFFB', '#F7FBE4',
+  ];
+
+  // Exception 1: clinical safety. Red/amber/green is how ETAT triage, allergy
+  // alerts and abnormal labs are read at a glance, and the palette has no red
+  // or green. Exception 2: the chart scale needs six hues that stay apart
+  // under colour-vision deficiency, which six steps of one blue cannot do.
+  const CLINICAL = [
+    '#4FC79B', '#0FA06A', '#0E9463', '#0B8557', '#0A6E4A', '#08573A',
+    '#ECF6F3', '#E2F2EC', '#D8EEE6',
+    '#F26D64', '#E03127', '#D92B20', '#B4180F', '#9E1B14', '#7E150F',
+    '#FCEEED', '#FAE6E4', '#F9DDDB',
+  ];
+  const CHART_EXCEPTION = ['#BE185D', '#0D9488', '#6D45C2'];
+
+  const ALLOWED = new Set([
+    '#FFFFFF', '#000000',
+    ...NINE, ...DERIVED, ...CLINICAL, ...CHART_EXCEPTION,
+  ]);
+
+  test('globals.css introduces no colour outside the palette', () => {
+    const stray = [...new Set(
+      (CSS.match(/#[0-9A-Fa-f]{6}\b/g) ?? []).map(h => h.toUpperCase()),
+    )].filter(h => !ALLOWED.has(h));
+    expect(stray).toEqual([]);
+  });
+
+  test('no component introduces a colour globals.css does not know', () => {
+    const root = path.join(process.cwd(), 'src');
+    const offenders: string[] = [];
+    for (const file of walkFiles(root)) {
+      const rel = path.relative(root, file);
+      if (rel.includes('__tests__')) continue;
+      const source = fs.readFileSync(file, 'utf8');
+      for (const hex of new Set((source.match(/#[0-9A-Fa-f]{6}\b/g) ?? []).map(h => h.toUpperCase()))) {
+        if (!ALLOWED.has(hex)) offenders.push(`${rel}: ${hex}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test('the nine are reachable as tokens', () => {
+    const NAMED: [string, string][] = [
+      ['tm-cream', '#FCFEF3'], ['tm-ice', '#C9F4FF'], ['tm-gold', '#FDD95F'],
+      ['tm-orange', '#FF7F00'], ['tm-dodger', '#1E90FF'], ['tm-blue', '#2191D0'],
+      ['tm-deep', '#015697'], ['tm-navy', '#113055'], ['tm-ink', '#001D3F'],
+    ];
+    for (const [name, hex] of NAMED) expect(token(name)).toBe(hex);
+  });
+
+  test('the accent carries white text and the warm pair carries dark ink', () => {
+    // Orange and gold are used at full strength; accessibility comes from
+    // flipping the foreground, not from darkening the brand colour.
+    expect(contrast(token('accent-primary'), WHITE)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(token('accent-orange'), token('accent-orange-on'))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(token('accent-gold'), token('accent-gold-on'))).toBeGreaterThanOrEqual(4.5);
   });
 });

@@ -45,13 +45,13 @@ const AppointmentsCalendar = dynamic(() => import('./_AppointmentsCalendar'), {
 const appointmentTypes: { value: AppointmentType; label: string; icon: typeof Calendar; color: string; bg: string }[] = [
   { value: 'general',      label: 'General Consultation', icon: Stethoscope,   color: 'var(--accent-primary)', bg: 'rgba(33,145,208,0.10)' },
   { value: 'follow_up',    label: 'Follow-Up',            icon: RefreshCw,     color: 'var(--accent-hover)', bg: 'rgba(1,86,151,0.10)' },
-  { value: 'specialist',   label: 'Specialist',           icon: User,          color: 'var(--accent-hover)', bg: 'rgba(3,105,161,0.10)' },
-  { value: 'anc',          label: 'Antenatal Care',       icon: HeartPulse,    color: 'var(--color-success-text)', bg: 'rgba(4,120,87,0.10)' },
-  { value: 'immunization', label: 'Immunization',         icon: Syringe,       color: 'var(--color-success-text)', bg: 'rgba(5,150,105,0.10)' },
-  { value: 'lab',          label: 'Laboratory',           icon: FlaskConical,  color: 'var(--accent-primary)', bg: 'rgba(8,145,178,0.10)' },
-  { value: 'surgical',     label: 'Surgical',             icon: Stethoscope,   color: 'var(--color-danger-text)', bg: 'rgba(220,38,38,0.10)' },
-  { value: 'dental',       label: 'Dental',               icon: Stethoscope,   color: 'var(--accent-hover)', bg: 'rgba(29,78,216,0.10)' },
-  { value: 'mental_health',label: 'Mental Health',        icon: HeartPulse,    color: 'var(--color-warning-text)', bg: 'rgba(217,119,6,0.10)' },
+  { value: 'specialist',   label: 'Specialist',           icon: User,          color: 'var(--accent-hover)', bg: 'rgba(17, 116, 180,0.10)' },
+  { value: 'anc',          label: 'Antenatal Care',       icon: HeartPulse,    color: 'var(--color-success-text)', bg: 'rgba(10, 110, 74,0.10)' },
+  { value: 'immunization', label: 'Immunization',         icon: Syringe,       color: 'var(--color-success-text)', bg: 'rgba(14, 148, 99,0.10)' },
+  { value: 'lab',          label: 'Laboratory',           icon: FlaskConical,  color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208,0.10)' },
+  { value: 'surgical',     label: 'Surgical',             icon: Stethoscope,   color: 'var(--color-danger-text)', bg: 'rgba(217, 43, 32,0.10)' },
+  { value: 'dental',       label: 'Dental',               icon: Stethoscope,   color: 'var(--accent-hover)', bg: 'rgba(1, 86, 151,0.10)' },
+  { value: 'mental_health',label: 'Mental Health',        icon: HeartPulse,    color: 'var(--color-warning-text)', bg: 'rgba(230, 114, 0,0.10)' },
   { value: 'walk_in',      label: 'Walk-In',              icon: UserPlus,      color: 'var(--accent-primary)', bg: 'rgba(33,145,208,0.10)' },
 ];
 

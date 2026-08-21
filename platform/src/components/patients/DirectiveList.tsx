@@ -99,7 +99,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               {d.signature ? (
                 <span
                   className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap"
-                  style={{ background: 'rgba(21,121,92,0.12)', color: 'var(--color-success-text)' }}
+                  style={{ background: 'rgba(10, 110, 74,0.12)', color: 'var(--color-success-text)' }}
                   title={`Signed by ${d.signature.name}${d.signature.signedBy === 'patient' ? '' : ` (${d.signature.relationship || d.signature.signedBy})`} · ${formatDateTime(d.signature.signedAt)}${d.signature.witnessName ? ` · witnessed by ${d.signature.witnessName}` : ''}`}
                 >
                   <Lock className="w-2.5 h-2.5" /> Signed
@@ -107,7 +107,7 @@ export default function DirectiveList({ patient, hideAddButton = false }: { pati
               ) : (
                 <span
                   className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap"
-                  style={{ background: 'rgba(252,211,77,0.18)', color: 'var(--color-warning-text)' }}
+                  style={{ background: 'rgba(253, 217, 95,0.18)', color: 'var(--color-warning-text)' }}
                 >
                   Unsigned
                 </span>

@@ -62,8 +62,8 @@ export default function VitalStatisticsPage() {
                     { label: t('vitalStats.totalBirths'), value: birthStats.total, icon: Baby, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
                     { label: t('births.statThisMonth'), value: birthStats.thisMonth, icon: Activity, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
                     { label: t('vitalStats.maleBirths'), value: birthStats.byGender.male, icon: Baby, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
-                    { label: t('vitalStats.femaleBirths'), value: birthStats.byGender.female, icon: Baby, color: 'var(--color-danger-text)', bg: 'rgba(229,46,66,0.12)' },
-                    { label: t('births.statCaesareanRate'), value: `${birthStats.total ? Math.round(birthStats.byDeliveryType.caesarean / birthStats.total * 100) : 0}%`, icon: Activity, color: 'var(--color-warning-text)', bg: 'rgba(252,211,77,0.12)' },
+                    { label: t('vitalStats.femaleBirths'), value: birthStats.byGender.female, icon: Baby, color: 'var(--color-danger-text)', bg: 'rgba(224, 49, 39,0.12)' },
+                    { label: t('births.statCaesareanRate'), value: `${birthStats.total ? Math.round(birthStats.byDeliveryType.caesarean / birthStats.total * 100) : 0}%`, icon: Activity, color: 'var(--color-warning-text)', bg: 'rgba(253, 217, 95,0.12)' },
                   ].map(stat => (
                     <div key={stat.label} className="kpi">
                       <div className="icon-box-sm">
@@ -104,10 +104,10 @@ export default function VitalStatisticsPage() {
                 <h2 className="font-semibold text-sm flex items-center gap-2 mb-3"><Skull className="w-4 h-4" style={{ color: 'var(--color-danger)' }} /> {t('vitalStats.mortalityStatistics')}</h2>
                 <div className="kpi-grid mb-6">
                   {[
-                    { label: t('deaths.statTotalDeaths'), value: deathStats.total, icon: Skull, color: 'var(--color-danger-text)', bg: 'rgba(229,46,66,0.12)' },
-                    { label: t('deaths.statMaternalDeaths'), value: deathStats.maternalDeaths, icon: Skull, color: 'var(--color-danger-text)', bg: 'rgba(229,46,66,0.12)' },
-                    { label: t('deaths.statUnder5Deaths'), value: deathStats.under5Deaths, icon: AlertTriangle, color: 'var(--color-warning-text)', bg: 'rgba(252,211,77,0.12)' },
-                    { label: t('vitalStats.neonatalDeaths'), value: deathStats.neonatalDeaths, icon: AlertTriangle, color: 'var(--color-warning-text)', bg: 'rgba(252,211,77,0.12)' },
+                    { label: t('deaths.statTotalDeaths'), value: deathStats.total, icon: Skull, color: 'var(--color-danger-text)', bg: 'rgba(224, 49, 39,0.12)' },
+                    { label: t('deaths.statMaternalDeaths'), value: deathStats.maternalDeaths, icon: Skull, color: 'var(--color-danger-text)', bg: 'rgba(224, 49, 39,0.12)' },
+                    { label: t('deaths.statUnder5Deaths'), value: deathStats.under5Deaths, icon: AlertTriangle, color: 'var(--color-warning-text)', bg: 'rgba(253, 217, 95,0.12)' },
+                    { label: t('vitalStats.neonatalDeaths'), value: deathStats.neonatalDeaths, icon: AlertTriangle, color: 'var(--color-warning-text)', bg: 'rgba(253, 217, 95,0.12)' },
                     { label: t('vitalStats.icd11Coded'), value: `${deathStats.total ? Math.round(deathStats.withICD11Code / deathStats.total * 100) : 0}%`, icon: Activity, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
                   ].map(stat => (
                     <div key={stat.label} className="kpi">
@@ -129,7 +129,7 @@ export default function VitalStatisticsPage() {
                     {deathStats.topCauses.slice(0, 5).map((c, i) => (
                       <div key={c.code} className="flex items-center gap-2">
                         <span className="text-xs font-bold w-5" style={{ color: 'var(--text-muted)' }}>{i + 1}</span>
-                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(229,46,66,0.12)', color: 'var(--color-danger-text)' }}>{c.code}</span>
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>{c.code}</span>
                         <span className="text-xs flex-1 truncate">{c.cause}</span>
                         <span className="text-sm font-bold">{c.count}</span>
                       </div>

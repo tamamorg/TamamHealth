@@ -268,10 +268,10 @@ function EmptyBlock({ icon: Icon, label }: { icon: typeof Building2; label: stri
 function StatusPill({ status }: { status: string }) {
   const { t } = useTranslation();
   const map: Record<string, { bg: string; color: string; label: string }> = {
-    functional: { bg: 'rgba(74,222,128,0.12)', color: 'var(--color-success)', label: t('hospitals.statusFunctional') },
-    partially_functional: { bg: 'rgba(252,211,77,0.12)', color: 'var(--color-warning)', label: t('hospitals.statusPartiallyFunctional') },
-    non_functional: { bg: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)', label: t('hospitals.statusNonFunctional') },
-    closed: { bg: 'rgba(148,163,184,0.12)', color: 'var(--text-muted)', label: t('hospitals.statusClosed') },
+    functional: { bg: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success)', label: t('hospitals.statusFunctional') },
+    partially_functional: { bg: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning)', label: t('hospitals.statusPartiallyFunctional') },
+    non_functional: { bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', label: t('hospitals.statusNonFunctional') },
+    closed: { bg: 'rgba(148, 162, 179,0.12)', color: 'var(--text-muted)', label: t('hospitals.statusClosed') },
   };
   const tok = map[status] || map.closed;
   return (
@@ -817,14 +817,14 @@ function InventoryTab({ scope, hospitalId }: { scope: DataScope | undefined; hos
             const ratio = i.reorderLevel ? i.stockLevel / i.reorderLevel : 1;
             const expired = i.expiryDate && i.expiryDate < todayIso();
             const status: { label: string; bg: string; color: string } = expired
-              ? { label: t('hospitals.stockExpired'), bg: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }
+              ? { label: t('hospitals.stockExpired'), bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)' }
               : i.stockLevel <= 0
-                ? { label: t('hospitals.stockOut'), bg: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }
+                ? { label: t('hospitals.stockOut'), bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)' }
                 : ratio < 0.3
-                  ? { label: t('hospitals.stockCritical'), bg: 'rgba(229,46,66,0.12)', color: 'var(--color-danger)' }
+                  ? { label: t('hospitals.stockCritical'), bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)' }
                   : ratio < 1
-                    ? { label: t('hospitals.stockLow'), bg: 'rgba(252,211,77,0.12)', color: 'var(--color-warning)' }
-                    : { label: t('hospitals.stockOk'), bg: 'rgba(74,222,128,0.12)', color: 'var(--color-success)' };
+                    ? { label: t('hospitals.stockLow'), bg: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning)' }
+                    : { label: t('hospitals.stockOk'), bg: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success)' };
             return (
               <tr key={i._id}>
                 <td style={{ fontWeight: 600 }}>{i.medicationName}</td>
@@ -1043,7 +1043,7 @@ function PerformanceTab({ scope, hospitalId }: { scope: DataScope | undefined; h
 
   const cards: { label: string; value: number | string; icon: typeof Calendar; tint: string }[] = [
     { label: t('hospitals.kpiVisitsToday'),       value: kpis.visitsToday,                  icon: Calendar,    tint: 'var(--accent-primary)' },
-    { label: t('hospitals.kpiActiveAdmissions'),  value: kpis.activeAdmissions,             icon: BedDouble,   tint: '#A78BFA' },
+    { label: t('hospitals.kpiActiveAdmissions'),  value: kpis.activeAdmissions,             icon: BedDouble,   tint: '#FFD2A6' },
     { label: t('hospitals.kpiDischargesToday'),   value: kpis.dischargesToday,              icon: CheckCircle, tint: 'var(--color-success)' },
     { label: t('hospitals.kpiTransfersToday'),    value: kpis.transfersToday,               icon: ArrowLeft,   tint: 'var(--accent-primary)' },
     { label: t('hospitals.kpiAvgLabTat'),         value: kpis.labTatHours || '—',           icon: FlaskConical, tint: 'var(--color-warning)' },
@@ -1142,7 +1142,7 @@ function SettingsTab({ hospital, canWrite, onSaved }: {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {!canWrite && (
-        <div className="card-elevated lg:col-span-2" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(252,211,77,0.10)' }}>
+        <div className="card-elevated lg:col-span-2" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(253, 217, 95,0.10)' }}>
           <AlertTriangle style={{ width: 16, height: 16, color: 'var(--color-warning)' }} />
           <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {t('hospitals.readOnlyNotice')}

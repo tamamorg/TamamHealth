@@ -77,9 +77,9 @@ function flagResult(testName: string, value: string): { flag: 'NORMAL' | 'ABNORM
 }
 
 const FLAG_COLORS = {
-  NORMAL: { bg: 'rgba(74,222,128,0.12)', color: 'var(--color-success)', border: 'rgba(74,222,128,0.25)' },
-  ABNORMAL: { bg: 'rgba(251,191,36,0.12)', color: 'var(--color-warning)', border: 'rgba(251,191,36,0.25)' },
-  CRITICAL: { bg: 'rgba(239,68,68,0.12)', color: 'var(--color-danger)', border: 'rgba(239,68,68,0.25)' },
+  NORMAL: { bg: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success)', border: 'rgba(79, 199, 155,0.25)' },
+  ABNORMAL: { bg: 'rgba(255, 210, 166,0.12)', color: 'var(--color-warning)', border: 'rgba(255, 210, 166,0.25)' },
+  CRITICAL: { bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', border: 'rgba(224, 49, 39,0.25)' },
 };
 
 function labStatusLabel(status: 'pending' | 'in_progress' | 'completed'): string {

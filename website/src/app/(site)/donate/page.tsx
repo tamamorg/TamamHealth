@@ -17,7 +17,7 @@ export default async function DonatePage() {
   const GOALS = content(GOALS_EN);
   return (
     <main>
-      <section id="donate" style={{ background: "#0E2A4A", color: "#FFFFFF", padding: "74px 32px 80px" }}>
+      <section id="donate" style={{ background: "#113055", color: "#FFFFFF", padding: "74px 32px 80px" }}>
         <div className="tm-donate-hero" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 64, alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px", color: "#FFFFFF" }}>{t("$100,000 puts ten clinics on one record")}</h1>
@@ -27,7 +27,7 @@ export default async function DonatePage() {
             <div className="tm-goal-row" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28, paddingTop: 30, borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               {GOALS.map((g) => (
                 <div key={g.value} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(26px, 3.8vw, 42px)", lineHeight: 1, color: "#7FC4EA" }}>{g.value}</span>
+                  <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(26px, 3.8vw, 42px)", lineHeight: 1, color: "#7CC7FF" }}>{g.value}</span>
                   <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "rgba(255,255,255,0.78)" }}>{g.label}</span>
                 </div>
               ))}

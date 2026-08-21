@@ -392,7 +392,7 @@ export default function RadiologyDashboard() {
       )}
 
       {study.findings && (
-        <div className="p-3 rounded-lg" style={{ background: '#05966908', border: '1px solid #05966920' }}>
+        <div className="p-3 rounded-lg" style={{ background: '#0E946314', border: '1px solid #0E946333' }}>
           <span className="text-[9px] font-bold uppercase" style={{ color: 'var(--color-success-text)' }}>{t('radiology.findings')}</span>
           <p className="text-xs mt-1" style={{ color: 'var(--text-primary)' }}>{study.findings}</p>
         </div>
@@ -437,7 +437,7 @@ export default function RadiologyDashboard() {
                   onClick={(e) => { e.stopPropagation(); removeAttachment(study.id, att.url); }}
                   title={t('radiology.removeImage')}
                   className="absolute top-1 end-1 flex items-center justify-center rounded-full"
-                  style={{ width: 18, height: 18, background: 'rgba(15,23,42,0.65)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
+                  style={{ width: 18, height: 18, background: 'rgba(0, 29, 63,0.65)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
                 >
                   ×
                 </button>
@@ -471,7 +471,7 @@ export default function RadiologyDashboard() {
         <div
           role="status"
           className="mb-3 flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold"
-          style={{ background: 'rgba(5,150,105,0.10)', border: '1px solid rgba(5,150,105,0.25)', color: 'var(--color-success-text)' }}
+          style={{ background: 'rgba(14, 148, 99,0.10)', border: '1px solid rgba(14, 148, 99,0.25)', color: 'var(--color-success-text)' }}
         >
           <CheckCircle2 className="w-3.5 h-3.5" /> {submitToast}
         </div>

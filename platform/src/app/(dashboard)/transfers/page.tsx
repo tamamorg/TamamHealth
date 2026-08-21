@@ -44,9 +44,9 @@ function initials(name?: string): string {
 }
 
 const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
-  requested: { bg: 'rgba(217, 119, 6, 0.14)', fg: 'var(--color-warning-text)' },
-  accepted: { bg: 'rgba(31, 107, 74, 0.14)', fg: 'var(--color-success-text)' },
-  rejected: { bg: 'rgba(196, 69, 54, 0.14)', fg: 'var(--color-danger-500)' },
+  requested: { bg: 'rgba(230, 114, 0, 0.14)', fg: 'var(--color-warning-text)' },
+  accepted: { bg: 'rgba(10, 110, 74, 0.14)', fg: 'var(--color-success-text)' },
+  rejected: { bg: 'rgba(224, 49, 39, 0.14)', fg: 'var(--color-danger-500)' },
   withdrawn: { bg: 'var(--overlay-subtle)', fg: 'var(--text-muted)' },
   expired: { bg: 'var(--overlay-subtle)', fg: 'var(--text-muted)' },
 };
@@ -237,7 +237,7 @@ export default function TransfersPage() {
                       style={{
                         width: 40, height: 40, borderRadius: 999, flexShrink: 0,
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        background: overdue ? 'rgba(196,69,54,0.12)' : 'var(--overlay-subtle)',
+                        background: overdue ? 'rgba(224, 49, 39,0.12)' : 'var(--overlay-subtle)',
                         color: overdue ? 'var(--color-danger-500)' : 'var(--text-secondary)',
                         fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
                       }}

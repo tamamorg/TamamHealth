@@ -83,7 +83,7 @@ export default function BalanceBanner({ patientId, compact, onPayClick }: Balanc
 
       {summary.nextPlanPaymentDate && (
         <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span className="icon-box-sm" style={{ color: 'var(--indigo, #6366f1)', width: 20, height: 20 }}>
+          <span className="icon-box-sm" style={{ color: 'var(--indigo, #1174b4)', width: 20, height: 20 }}>
             <Calendar size={11} />
           </span>
           {t('balanceBanner.nextPlanPayment', { amount: (summary.nextPlanPaymentAmount ?? 0).toLocaleString(), date: summary.nextPlanPaymentDate })}
