@@ -19,7 +19,7 @@ describe('role dashboard preview links', () => {
 
   it.each([
     ['app/(dashboard)/admin/page.tsx', 'org=', 'app/(dashboard)/admin/organizations/page.tsx', "get('org')"],
-    ['app/(dashboard)/admin/page.tsx', 'log=', 'app/(dashboard)/admin/audit/page.tsx', "get('log')"],
+    ['app/(dashboard)/admin/security/page.tsx', 'log=', 'app/(dashboard)/admin/audit/page.tsx', "get('log')"],
     ['components/dashboards/SuperintendentDashboard.tsx', 'alert=', 'app/(dashboard)/surveillance/page.tsx', "get('alert')"],
     ['components/dashboards/FacilityManagementDashboard.tsx', 'inquiry=', 'app/(dashboard)/inquiries/page.tsx', "get('inquiry')"],
     ['components/dashboards/FacilityManagementDashboard.tsx', 'request=', 'app/(dashboard)/hr/leave/page.tsx', "get('request')"],
@@ -50,8 +50,21 @@ describe('role dashboard preview links', () => {
   it('keeps admin preview URLs limited to validated opaque tokens', () => {
     const dashboard = source('app/(dashboard)/admin/page.tsx');
     expect(dashboard).toContain("openPreview(`tenant:${row.org._id}`)");
-    expect(dashboard).toContain("openPreview(`audit:${log._id}`)");
-    expect(dashboard).toContain("riskQueue.find(item => item.token === previewToken)");
+    expect(dashboard).toContain("openPreview(`kpi:${k.key}`)");
+    expect(dashboard).toContain("openPreview('signal:risk')");
+    expect(dashboard).toContain("organizations.find(item => item._id === orgId)");
     expect(dashboard).not.toContain('setPreview(');
+  });
+
+  it('keeps the queues the dashboard dropped reachable from their own modules', () => {
+    const dashboard = source('app/(dashboard)/admin/page.tsx');
+    // The risk queue and the security watchlist are owned by Risk Center and
+    // Security & Compliance now — the dashboard keeps only the signals.
+    expect(dashboard).not.toContain('title="Risk & incident queue"');
+    expect(dashboard).not.toContain('title="Security watchlist"');
+    expect(dashboard).toContain("href: '/admin/risk'");
+    expect(dashboard).toContain("router.push('/admin/sync')");
+    expect(source('app/(dashboard)/admin/risk/page.tsx')).toContain('title="Risk & incident queue"');
+    expect(source('app/(dashboard)/admin/security/page.tsx')).toContain('title="Security watchlist"');
   });
 });

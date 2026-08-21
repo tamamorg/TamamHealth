@@ -276,13 +276,13 @@ export default function AdminDashboardPage() {
     for (const log of failedAudits.slice(0, 3)) signals.push(classifyAuditRisk(log.action, log.success));
     if (syncStats.failed > 0) signals.push('high');
     if (conflictCount > 0) signals.push('medium');
-    for (const _org of suspendedOrgs) signals.push('medium');
+    signals.push(...suspendedOrgs.map((): SaSeverity => 'medium'));
     // "Overdue" and "we cannot tell" are different problems, and both are
     // worth an administrator's attention — they just aren't the same weight.
     if (backupOverdue) signals.push('high');
     else if (backupUnknown) signals.push('medium');
     if (config?.maintenanceMode) signals.push('medium');
-    for (const _org of trialOrgs) signals.push('low');
+    signals.push(...trialOrgs.map((): SaSeverity => 'low'));
     const order: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
     return signals.sort((a, b) => order.indexOf(a) - order.indexOf(b)).slice(0, 8);
   }, [failedAudits, syncStats.failed, conflictCount, suspendedOrgs, trialOrgs, backupOverdue, backupUnknown, config?.maintenanceMode]);

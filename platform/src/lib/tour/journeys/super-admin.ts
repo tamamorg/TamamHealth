@@ -28,8 +28,8 @@ export const SUPER_ADMIN_STEPS: TourStep[] = [
     id: 'readiness',
     route: '/admin',
     target: '.sadb-row-2',
-    title: 'Readiness, business, and activity',
-    body: 'A single readiness score built from open risk, sync health, and backups; your subscription mix; and fourteen days of encounters versus audit failures — the three signals that tell you whether today is normal.',
+    title: 'Readiness, business, and sync',
+    body: 'A single readiness score built from open risk, sync health, and backups; your subscription mix; and the state of replication and DHIS2 export — the three signals that tell you whether today is normal. Tap a signal to see what is behind it, then open the module that owns it.',
     placement: 'bottom',
   },
   {
@@ -101,7 +101,7 @@ export const SUPER_ADMIN_STEPS: TourStep[] = [
     route: '/admin/security',
     target: '.sadb-rail',
     title: 'Security & compliance',
-    body: 'MFA, PHI export controls, break-glass access, and backup objectives — set the policy defaults here and every tenant inherits them until it’s changed again.',
+    body: 'MFA, PHI export controls, break-glass access, and backup objectives — set the policy defaults here and every tenant inherits them until it’s changed again. The Security watchlist section lists every high-risk action from the last seven days.',
     placement: 'right',
   },
   {
