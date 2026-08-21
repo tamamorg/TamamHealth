@@ -22,7 +22,7 @@ import {
   X, Eye, EyeOff, RefreshCw, Check, Bell, LayoutDashboard, Trash2,
   Settings as SettingsIcon, Globe, Lock, Save, User as UserIcon,
 } from '@/components/icons/lucide';
-import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
 import { FacilitySettingsView } from '@/components/settings/FacilitySettingsView';
@@ -585,7 +585,9 @@ export default function SettingsPage() {
                       <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No users found</td></tr>
                     ) : filteredUsers.map(u => (
                       <tr key={u._id} style={{ borderBottom: '1px solid var(--border-light)', cursor: 'pointer' }}
+                          tabIndex={0}
                           onClick={e => setRowMenu(rowActionsAt(e, userActions(u)))}
+                          onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, userActions(u))); } }}
                           className="hover:bg-[rgba(17, 116, 180,0.03)] transition-colors">
                         <td className="px-4 py-3">
                           <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{u.name}</span>

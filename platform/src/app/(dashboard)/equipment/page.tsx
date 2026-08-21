@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Modal from '@/components/Modal';
 import { Plus, X, CheckCircle2, Settings as Wrench } from '@/components/icons/lucide';
-import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { useApp } from '@/lib/context';
 import { useAssets } from '@/lib/hooks/useAssets';
@@ -186,7 +186,6 @@ export default function AssetsPage() {
                 <th>{t('equipment.colLocation')}</th>
                 <th>{t('equipment.colStatus')}</th>
                 <th>{t('equipment.colService')}</th>
-
               </tr>
             </thead>
             <tbody>
@@ -197,7 +196,9 @@ export default function AssetsPage() {
                 const tok = STATUS_TOKENS[a.status];
                 const dueSoon = a.nextServiceDueAt && (new Date(a.nextServiceDueAt).getTime() - Date.now()) < 30 * 86400000;
                 return (
-                  <tr key={a._id} onClick={e => setRowMenu(rowActionsAt(e, actionsFor(a)))} style={{ cursor: 'pointer' }}>
+                  <tr key={a._id} style={{ cursor: 'pointer' }} tabIndex={0}
+                      onClick={e => setRowMenu(rowActionsAt(e, actionsFor(a)))}
+                      onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, actionsFor(a))); } }}>
                     <td>
                       <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{a.name}</div>
                       <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>

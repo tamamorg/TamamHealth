@@ -32,9 +32,39 @@ const MENU_WIDTH = 200;
 const ROW_HEIGHT = 34;
 const EDGE_GAP = 8;
 
-/** Open state for a click event — call from a row's `onClick`. */
-export function rowActionsAt(event: { clientX: number; clientY: number }, actions: RowAction[]): RowActionsPopupState {
+/**
+ * Open state for a click event — call from a row's `onClick`.
+ *
+ * A row activated from the keyboard still fires `click`, but with no pointer
+ * behind it: `detail` is 0 and the coordinates read (0, 0), which would park
+ * the menu in the top-left corner of the screen. In that case anchor to the
+ * row's own box instead, so keyboard and mouse land in the same place.
+ */
+export function rowActionsAt(
+  event: { clientX: number; clientY: number; detail?: number; currentTarget?: unknown },
+  actions: RowAction[],
+): RowActionsPopupState {
+  const fromKeyboard = event.detail === 0 && event.clientX === 0 && event.clientY === 0;
+  if (fromKeyboard && event.currentTarget instanceof HTMLElement) {
+    return rowActionsFromElement(event.currentTarget, actions);
+  }
   return { actions, x: event.clientX, y: event.clientY };
+}
+
+/**
+ * The same menu opened from the keyboard, anchored to the row's own bottom-right.
+ *
+ * Without this the actions would be mouse-only: the trailing button that used
+ * to be a tab stop is gone, so the row itself has to be one.
+ */
+export function rowActionsFromElement(el: HTMLElement, actions: RowAction[]): RowActionsPopupState {
+  const r = el.getBoundingClientRect();
+  return { actions, x: r.right - MENU_WIDTH, y: r.bottom };
+}
+
+/** Enter/Space on a focused row opens its menu; other keys are left alone. */
+export function isRowActivationKey(key: string): boolean {
+  return key === 'Enter' || key === ' ';
 }
 
 export default function RowActionsPopup({

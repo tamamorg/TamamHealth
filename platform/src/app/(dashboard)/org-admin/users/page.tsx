@@ -10,7 +10,7 @@ import {
   UserX, UserCheck, X, Eye, EyeOff, ChevronDown, AlertCircle,
   Copy, Check, RefreshCw, ShieldCheck,
 } from '@/components/icons/lucide';
-import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { avatarTint } from '@/lib/patient-utils';
 import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS, ehrTabId, ehrTabPanelId } from '@/components/ehr/EhrListHeader';
@@ -471,11 +471,14 @@ export default function OrgUsersPage() {
                     <div
                       key={user._id}
                       id={`org-user-${user._id}`}
-                      tabIndex={focusedUserId === user._id ? 0 : undefined}
+                      // Every row is a tab stop now that the row itself is the
+                      // control; the roving tabindex went with the pencil button.
+                      tabIndex={0}
                       aria-current={focusedUserId === user._id ? 'true' : undefined}
                       className="ehr-appointment-row appointment-card-row"
                       role="button"
                       onClick={e => setRowMenu(rowActionsAt(e, actionsFor(user)))}
+                      onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, actionsFor(user))); } }}
                       style={{
                         gridTemplateColumns: USER_GRID,
                         background: focusedUserId === user._id ? 'var(--overlay-subtle)' : undefined,

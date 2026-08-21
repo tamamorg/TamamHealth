@@ -12,7 +12,7 @@ import {
   UserX, UserCheck, UserPlus, Shield,
   KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Info,
 } from '@/components/icons/lucide';
-import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
 import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
 import { generateTempPassword } from '@/lib/temp-password';
@@ -419,12 +419,11 @@ export default function AdminUsersPage() {
                     tabIndex={0}
                     onClick={e => setRowMenu(rowActionsAt(e, actionsFor(u)))}
                     onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (isRowActivationKey(e.key)) {
                         e.preventDefault();
                         // Keyboard has no pointer to anchor to — open against the
                         // row's own box so the menu still lands beside it.
-                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        setRowMenu({ actions: actionsFor(u), x: r.right - 200, y: r.bottom });
+                        setRowMenu(rowActionsFromElement(e.currentTarget, actionsFor(u)));
                       }
                     }}
                   >

@@ -23,7 +23,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import ReferralFilters, { type ReferralFilterState } from '@/components/referrals/ReferralFilters';
-import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/referrals/RowActionsMenu';
 import ReferralFormModal from '@/components/referrals/ReferralFormModal';
 import type { Attachment, TransferPackage, ReferralDisposition } from '@/data/mock';
@@ -683,7 +683,9 @@ export default function ReferralsPage() {
                   <Fragment key={ref._id}>
                     <tr
                       className="cursor-pointer hover:bg-[var(--table-row-hover)]"
+                      tabIndex={0}
                       onClick={e => setRowMenu(rowActionsAt(e, rowActions))}
+                      onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, rowActions)); } }}
                     >
                       {/* Same identity cell the lab queue and the registry use:
                           avatar, name, facility ID beneath — which is what the

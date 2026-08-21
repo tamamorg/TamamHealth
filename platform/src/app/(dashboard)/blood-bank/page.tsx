@@ -19,7 +19,7 @@ import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { formatDate } from '@/lib/format-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -465,7 +465,9 @@ export default function BloodBankPage() {
                   const expiringSoon = !expired && days < 7;
                   const expiryColor = expired ? 'var(--color-danger)' : expiringSoon ? 'var(--color-warning)' : 'var(--text-muted)';
                   return (
-                    <tr key={u._id} onClick={e => setRowMenu(rowActionsAt(e, rowActions(u)))} style={{ cursor: 'pointer' }}>
+                    <tr key={u._id} style={{ cursor: 'pointer' }} tabIndex={0}
+                        onClick={e => setRowMenu(rowActionsAt(e, rowActions(u)))}
+                        onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, rowActions(u))); } }}>
                       <td className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{u.unitId}</td>
                       <td>
                         <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>
