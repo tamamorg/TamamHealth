@@ -56,7 +56,7 @@ const states = Object.keys(statesAndCounties);
 
 export default function SettingsPage() {
   const { currentUser, isOnline, syncPaused, toggleOnline, syncNow, lastSync } = useApp();
-  const { users, loading: usersLoading, create: createUser, update: updateUser, resetPassword, deactivate } = useUsers();
+  const { users, loading: usersLoading, create: createUser, update: updateUser, resetPassword, deactivate, reactivate } = useUsers();
   const { hospitals, loading: hospitalsLoading, create: createHospital, reload: reloadHospitals } = useHospitals();
   const { canManageUsers, canAccess } = usePermissions();
   const router = useRouter();
@@ -394,7 +394,8 @@ export default function SettingsPage() {
         await deactivate(userId, currentUser._id, currentUser.username);
         showToast('User deactivated', 'success');
       } else {
-        await updateUser(userId, { isActive: true }, currentUser._id, currentUser.username);
+        // Not `updateUser({ isActive: true })` — see the note on `reactivate`.
+        await reactivate(userId, currentUser._id, currentUser.username);
         showToast('User activated', 'success');
       }
     } catch {
