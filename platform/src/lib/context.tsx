@@ -62,6 +62,21 @@ interface AppUser {
   branding: OrgBranding;
 }
 
+/**
+ * Why the server refused the last sign-in attempt.
+ *
+ * `login()` collapses every failure into `false`, which left the sign-in form
+ * labelling a database outage or a lockout as "Invalid credentials" — the one
+ * message that tells the user to retype a password that was never wrong.
+ */
+export interface LoginFailure {
+  status: number;
+  /** The server's own error text, when it sent one. */
+  message?: string;
+  /** Seconds until a rate-limited account may try again (from Retry-After). */
+  retryAfterSeconds?: number;
+}
+
 interface AppState {
   isAuthenticated: boolean;
   currentUser: AppUser | null;
@@ -80,6 +95,8 @@ interface AppState {
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
   login: (username: string, password: string, hospitalId?: string, requestedRole?: UserRole) => Promise<UserRole | false>;
+  /** Why the most recent `login()` returned false, or null if the server was never reached. */
+  lastLoginFailure: () => LoginFailure | null;
   logout: () => void;
   toggleOnline: () => void;
   /** Sync state from the SyncManager (null when sync is disabled) */
@@ -137,6 +154,7 @@ interface AuthSlice {
   currentUser: AppUser | null;
   dbReady: boolean;
   login: AppState['login'];
+  lastLoginFailure: AppState['lastLoginFailure'];
   logout: AppState['logout'];
 }
 
@@ -491,7 +509,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Set whenever /api/auth/login answers non-OK, read by the sign-in form
+  // right after a false return. A ref, not state: the form reads it in the
+  // same tick it gets the result, before a state update would have landed.
+  const loginFailureRef = useRef<LoginFailure | null>(null);
+  const lastLoginFailure = useCallback(() => loginFailureRef.current, []);
+
   const login = useCallback(async (username: string, password: string, hospitalId?: string, requestedRole?: UserRole): Promise<UserRole | false> => {
+    loginFailureRef.current = null;
     try {
       const sanitizedUsername = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
 
@@ -572,12 +597,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 console.warn(`[sync] CouchDB session unavailable — offline-only this session (${err instanceof Error ? err.message : String(err)})`);
               });
           }
-        } else if (res.status === 401 || res.status === 403 || res.status === 429) {
-          // Server explicitly rejected — do not fall back silently.
-          await logAudit('login_failed', undefined, sanitizedUsername, `API rejected (${res.status})`, false);
-          return false;
+        } else {
+          // Record why before branching: a 503 falls through to the offline
+          // path below and may still end in `false`, and by then the status
+          // that explains it is gone.
+          let message: string | undefined;
+          try {
+            const body = await res.json();
+            if (typeof body?.error === 'string') message = body.error;
+          } catch {
+            // Non-JSON body (proxy error page). The status still classifies it.
+          }
+          const retryAfter = Number(res.headers.get('Retry-After'));
+          loginFailureRef.current = {
+            status: res.status,
+            message,
+            retryAfterSeconds: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+          };
+
+          if (res.status === 401 || res.status === 403 || res.status === 429) {
+            // Server explicitly rejected — do not fall back silently.
+            await logAudit('login_failed', undefined, sanitizedUsername, `API rejected (${res.status})`, false);
+            return false;
+          }
+          // Any other status (500, 502, 503) falls through to the offline path.
         }
-        // Any other status (500, 502, etc.) falls through to the offline path.
       } catch {
         // Network error — fall through to PouchDB.
       }
@@ -881,8 +925,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // these values actually changes. setState setters and the useCallback'd
   // actions are stable, so they don't need to be in the dependency list.
   const authValue = useMemo<AuthSlice>(() => ({
-    isAuthenticated, currentUser, dbReady, login, logout,
-  }), [isAuthenticated, currentUser, dbReady, login, logout]);
+    isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout,
+  }), [isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout]);
 
   const syncValue = useMemo<SyncSlice>(() => ({
     isOnline, isNetworkUp, syncPaused, lastSync, syncStatus, syncNow, toggleOnline,
