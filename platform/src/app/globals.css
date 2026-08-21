@@ -28357,6 +28357,39 @@ button.sadb-signal { cursor: pointer; }
   align-items: center;
   gap: 10px;
   padding: 12px 16px 0;
+  /* Wrap rather than squeeze: on a narrow window the filters drop to a second
+     line at full height instead of compressing into slivers. */
+  flex-wrap: wrap;
+}
+
+/* One control height for everything on the row.
+   The search box and the selects were each given 38px by hand while the action
+   button was left at `.btn-sm`, whose height comes from padding (~31px) — so
+   the button sat visibly short of the controls beside it on every console page
+   that uses this row. Set here rather than per page so the nine toolbars
+   sharing it cannot drift apart again. */
+.sadb-search-row > .sadb-search,
+.sadb-search-row > select,
+.sadb-search-row > button,
+.sadb-search-row > .btn {
+  height: 38px;
+  flex-shrink: 0;
+}
+
+/* The search is the one element that should absorb the leftover width. */
+.sadb-search-row > .sadb-search {
+  flex: 1 1 240px;
+}
+
+/* A fixed height needs the vertical padding out of the way, or the label sits
+   off-centre inside it. */
+.sadb-search-row > button,
+.sadb-search-row > .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-block: 0;
 }
 /* A <label>, so clicking anywhere focuses the input — text-transform is
    reset because globals uppercases every label (see the form-trap note). */

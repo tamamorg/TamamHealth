@@ -147,7 +147,6 @@ const en: TranslationMap = {
   'adminUsers.handoffResetTitle': 'Password reset',
   'adminUsers.loadingUsers': 'Loading users...',
   'adminUsers.noUsersFound': 'No users found',
-  'adminUsers.roleDistribution': 'Role Distribution',
   'adminUsers.role_cashier': 'Cashier',
   'adminUsers.role_clinical_officer': 'Clinical Officer',
   'adminUsers.role_county_health_director': 'County Health Director',

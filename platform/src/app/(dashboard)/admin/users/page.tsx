@@ -18,7 +18,7 @@ import { generateTempPassword } from '@/lib/temp-password';
 import { avatarTint } from '@/lib/patient-utils';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
-import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbChip, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
+import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 
 // Column template for the user list header + rows:
@@ -226,12 +226,20 @@ export default function AdminUsersPage() {
   const handleToggleActive = async (userId: string, currentlyActive: boolean, userLabel: string) => {
     if (!currentUser) return;
     try {
+      // Both directions go through their own dedicated action. Activation used
+      // to call `updateUser({ isActive: true })`, which lands on the generic
+      // `update` handler — and that re-validates the account's organization and
+      // hospital before saving anything. Re-activating someone whose org had
+      // since been deactivated (or deleted) therefore failed with "Assigned
+      // organization was not found or is inactive", a check that has nothing to
+      // do with turning a login back on. Deactivation never had the problem
+      // because it always used its own action; this makes the pair symmetric.
       if (currentlyActive) {
         const { deactivateUser } = await import('@/lib/services/user-service');
         await deactivateUser(userId, currentUser._id, currentUser.username);
       } else {
-        const { updateUser } = await import('@/lib/services/user-service');
-        await updateUser(userId, { isActive: true }, currentUser._id, currentUser.username);
+        const { reactivateUser } = await import('@/lib/services/user-service');
+        await reactivateUser(userId, currentUser._id, currentUser.username);
       }
       // Update the row in place — refetching the entire user list after every
       // toggle is wasteful and causes flicker. The service has already
@@ -307,13 +315,13 @@ export default function AdminUsersPage() {
         <div style={{ display: activeTab === 'people' ? undefined : 'none' }}>
           <div className="sadb-search-row">
             <SadbSearch value={search} onChange={setSearch} placeholder={t('adminUsers.searchPlaceholder')} />
-            <Select value={filterRole} onChange={e => setFilterRole(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 180, height: 38 }}>
+            <Select value={filterRole} onChange={e => setFilterRole(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 200 }}>
               <option value="all">{t('adminUsers.allRoles')}</option>
               {ALL_ROLES.map(value => (
                 <option key={value} value={value}>{roleLabel(value)} ({roleCounts[value] || 0})</option>
               ))}
             </Select>
-            <Select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 200, height: 38 }}>
+            <Select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 200 }}>
               <option value="all">{t('adminUsers.allOrganizations')}</option>
               {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
             </Select>
@@ -469,17 +477,6 @@ export default function AdminUsersPage() {
             opens it. */}
         <div style={{ display: activeTab === 'requests' ? 'block' : 'none', padding: '4px 14px 14px' }}>
           <AccountRequestQueue viewerRole="super_admin" embedded onCountsChange={setRequestCounts} />
-        </div>
-      </SadbCard>
-
-      {/* ═══ Role distribution ═══ */}
-      <SadbCard title={t('adminUsers.roleDistribution')}>
-        <div className="flex flex-wrap gap-2" style={{ padding: '12px 14px' }}>
-          {ALL_ROLES.map(role => {
-            const count = roleCounts[role] || 0;
-            if (count === 0) return null;
-            return <SadbChip key={role} tone="neutral">{roleLabel(role)} · {count}</SadbChip>;
-          })}
         </div>
       </SadbCard>
 

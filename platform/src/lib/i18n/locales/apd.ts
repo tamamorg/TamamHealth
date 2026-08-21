@@ -157,7 +157,6 @@ const apd: TranslationMap = {
   'adminUsers.handoffResetTitle': 'إعادة تعيين كلمة السر',
   'adminUsers.loadingUsers': 'بحمّل المستخدمين...',
   'adminUsers.noUsersFound': 'ما في مستخدمين متلقين',
-  'adminUsers.roleDistribution': 'توزيع الأدوار',
   'adminUsers.role_cashier': 'أمين الصندوق',
   'adminUsers.role_clinical_officer': 'مساعد طبي',
   'adminUsers.role_county_health_director': 'مدير صحة المقاطعة',

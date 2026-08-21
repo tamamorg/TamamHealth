@@ -107,5 +107,21 @@ export function useUsers() {
     await loadUsers();
   }, [loadUsers]);
 
-  return { users, loading, error, create, update, resetPassword, deactivate, reload: loadUsers };
+  /**
+   * Turn a login back on. Its own call, not `update({ isActive: true })`: the
+   * generic update path re-validates the account's organization and hospital,
+   * so re-activating someone whose org had since been deactivated failed on a
+   * check that has nothing to do with restoring access.
+   */
+  const reactivate = useCallback(async (
+    id: string,
+    actorId?: string,
+    actorUsername?: string
+  ) => {
+    const { reactivateUser } = await import('../services/user-service');
+    await reactivateUser(id, actorId, actorUsername);
+    await loadUsers();
+  }, [loadUsers]);
+
+  return { users, loading, error, create, update, resetPassword, deactivate, reactivate, reload: loadUsers };
 }
