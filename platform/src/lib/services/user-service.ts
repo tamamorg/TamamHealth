@@ -1,5 +1,6 @@
 import { usersDB } from '../db';
 import type { UserDoc, UserRole } from '../db-types';
+import type { InvitationOutcome } from '../user-invite';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
@@ -35,7 +36,14 @@ export type ClientSafeUser = Omit<UserDoc, 'passwordHash' | 'pinHash'>;
 
 /** Strip credential verifiers before a user document crosses an API boundary. */
 export function redactUserForClient(user: UserDoc): ClientSafeUser {
-  const { passwordHash: _passwordHash, pinHash: _pinHash, ...safe } = user;
+  const {
+    passwordHash: _passwordHash, pinHash: _pinHash,
+    // An outstanding invitation hash is a credential: anyone holding it can
+    // set this account's password. It must never reach a browser, even one
+    // that is already an administrator's.
+    inviteTokenHash: _inviteTokenHash,
+    ...safe
+  } = user;
   void _passwordHash;
   void _pinHash;
   return safe;
@@ -116,6 +124,47 @@ interface CreateUserData {
   email?: string;
 }
 
+/**
+ * The single browser→server provisioning call. Both `createUser` and
+ * `createUserWithInvitation` go through it so a field added here reaches the
+ * API from every entry point — `email` was previously collected by the form
+ * and dropped on this boundary.
+ */
+async function provisionViaApi(data: CreateUserData): Promise<Record<string, unknown>> {
+  return postUsersApi({
+    username: data.username,
+    password: data.password,
+    name: data.name,
+    role: data.role,
+    hospitalId: data.hospitalId,
+    hospitalName: data.hospitalName,
+    orgId: data.orgId,
+    photoUrl: data.photoUrl,
+    department: data.department,
+    specialty: data.specialty,
+    phone: data.phone,
+    email: data.email,
+  });
+}
+
+/**
+ * Create a user AND report whether the invitation email actually went out.
+ *
+ * Browser-only, and separate from `createUser` because that function's return
+ * type is relied on by six call sites. An administrator needs the real answer:
+ * told an email was sent when it was not, they will not hand over the
+ * temporary password, and the account is stranded.
+ */
+export async function createUserWithInvitation(
+  data: CreateUserData,
+): Promise<{ user: UserDoc; invitation: InvitationOutcome }> {
+  const body = await provisionViaApi(data);
+  return {
+    user: body.user as UserDoc,
+    invitation: (body.invitation as InvitationOutcome) ?? { sent: false, reason: 'send_failed' },
+  };
+}
+
 export async function createUser(
   data: CreateUserData,
   actorId?: string,
@@ -125,19 +174,7 @@ export async function createUser(
   // The server route authenticates the actor and re-runs this function on the
   // Node side, where the direct DB path below writes to CouchDB.
   if (isBrowserRuntime()) {
-    const body = await postUsersApi({
-      username: data.username,
-      password: data.password,
-      name: data.name,
-      role: data.role,
-      hospitalId: data.hospitalId,
-      hospitalName: data.hospitalName,
-      orgId: data.orgId,
-      photoUrl: data.photoUrl,
-      department: data.department,
-      specialty: data.specialty,
-      phone: data.phone,
-    });
+    const body = await provisionViaApi(data);
     return body.user as UserDoc;
   }
 
@@ -279,6 +316,92 @@ export async function updateUser(
   const { logAudit } = await import('./audit-service');
   await logAudit('user_updated', actorId, actorUsername, `Updated user "${existing.username}"`, true);
   return updated;
+}
+
+/**
+ * Mint (or replace) an account invitation and return the raw token ONCE.
+ *
+ * Server-only: the token is generated here, hashed onto the document, and
+ * handed back to the caller to put in an email. Re-issuing overwrites any
+ * outstanding invitation, so a re-sent invite silently invalidates the first —
+ * which is what an administrator means by "send it again".
+ */
+export async function issueUserInvite(id: string): Promise<{ token: string; expiresAt: string } | null> {
+  if (isBrowserRuntime()) {
+    throw new Error('issueUserInvite is server-only');
+  }
+  const db = usersDB();
+  let existing: UserDoc;
+  try {
+    existing = await db.get(id) as UserDoc;
+  } catch {
+    return null;
+  }
+  const { issueInvite } = await import('../user-invite');
+  const invite = issueInvite();
+  const updated: UserDoc = {
+    ...existing,
+    inviteTokenHash: invite.tokenHash,
+    inviteExpiresAt: invite.expiresAt,
+    updatedAt: new Date().toISOString(),
+  };
+  await db.put(updated);
+  return { token: invite.token, expiresAt: invite.expiresAt };
+}
+
+/**
+ * Redeem an invitation: set the password the user chose and burn the token.
+ *
+ * Returns a discriminated result rather than throwing, because this runs on an
+ * UNAUTHENTICATED endpoint and every failure must look identical from outside.
+ * The caller maps them all to one generic message — the distinction exists for
+ * the audit log, not for the response body.
+ *
+ * Clears `mustChangePassword` as well: the whole point of choosing your own
+ * password is that you are not then asked to change it again at first login.
+ */
+export type InviteRedemption =
+  | { ok: true; user: UserDoc }
+  | { ok: false; reason: 'not_found' | 'expired' | 'weak_password' };
+
+export async function redeemUserInvite(token: string, newPassword: string): Promise<InviteRedemption> {
+  if (isBrowserRuntime()) {
+    throw new Error('redeemUserInvite is server-only');
+  }
+  if (!token || newPassword.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, reason: 'weak_password' };
+  }
+
+  const { hashInviteToken, inviteHashMatches, isInviteExpired } = await import('../user-invite');
+  const candidateHash = hashInviteToken(token);
+
+  // Scanned rather than queried by index: `inviteTokenHash` is sparse (only
+  // accounts with an outstanding invite carry one) and the staff roster is
+  // small. A secondary index on a credential is also one more place it exists.
+  const all = await findByType<UserDoc>(usersDB(), 'user');
+  const match = all.find(u => u.inviteTokenHash && inviteHashMatches(u.inviteTokenHash, candidateHash));
+  if (!match) return { ok: false, reason: 'not_found' };
+  if (isInviteExpired(match.inviteExpiresAt)) return { ok: false, reason: 'expired' };
+  // A disabled account must not be reachable through an old invitation.
+  if (match.isActive === false) return { ok: false, reason: 'not_found' };
+
+  const { hashPassword } = await import('../auth');
+  const now = new Date().toISOString();
+  const updated: UserDoc = {
+    ...match,
+    passwordHash: await hashPassword(newPassword),
+    passwordUpdatedAt: now,
+    mustChangePassword: false,
+    inviteTokenHash: undefined,
+    inviteExpiresAt: undefined,
+    updatedAt: now,
+  };
+  const resp = await usersDB().put(updated);
+  updated._rev = resp.rev;
+  const { logAudit } = await import('./audit-service');
+  await logAudit('user_invite_redeemed', match._id, match.username,
+    `${match.username} set their password from an invitation`, true);
+  return { ok: true, user: updated };
 }
 
 export async function resetPassword(

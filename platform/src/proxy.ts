@@ -58,6 +58,10 @@ const CSRF_EXEMPT_API_PATHS = new Set<string>([
   // has no session, so there is none to ride. The route grants nothing and
   // is rate-limited by IP.
   '/api/account-requests',
+  // Invitation redemption. Same reasoning: the caller has no session yet —
+  // that is what they are here to earn. Authorisation is the single-use token
+  // in the body, and the route is rate-limited by IP.
+  '/api/auth/accept-invite',
 ]);
 
 /**
@@ -196,11 +200,13 @@ export async function proxy(request: NextRequest) {
     return nextWithCsp(request);
   }
 
-  // Auth API routes — always public (needed for login/logout flow)
+  // Auth API routes — always public (needed for login/logout flow, and for a
+  // new user redeeming an invitation, who has no session by definition).
   if (
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/logout' ||
-    pathname === '/api/auth/me'
+    pathname === '/api/auth/me' ||
+    pathname === '/api/auth/accept-invite'
   ) {
     return nextWithCsp(request);
   }
@@ -318,6 +324,14 @@ export async function proxy(request: NextRequest) {
     pathname === '/privacy' ||
     pathname === '/request-account'
   ) {
+    return nextWithCsp(request);
+  }
+
+  // Account invitation — a new staff member opening the link from their email
+  // has no session yet, and bouncing them to /login is a dead end: they have no
+  // password, which is the entire reason they are here. The page and its API
+  // are guarded by the single-use token itself, not by a session.
+  if (pathname === '/accept-invite') {
     return nextWithCsp(request);
   }
 

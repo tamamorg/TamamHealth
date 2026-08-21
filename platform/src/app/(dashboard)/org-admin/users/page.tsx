@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import type { InvitationOutcome } from '@/lib/user-invite';
 import {
   Plus, KeyRound, Users,
   UserX, UserCheck, X, Eye, EyeOff, ChevronDown, AlertCircle,
@@ -58,6 +59,11 @@ export default function OrgUsersPage() {
   const [formUsername, setFormUsername] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formName, setFormName] = useState('');
+  // Optional on purpose: plenty of staff here have no work address, and an
+  // account must not be blocked on one. With an address the person is
+  // emailed a link to set their own password; without one the admin hands
+  // over the temporary password shown after creation, exactly as before.
+  const [formEmail, setFormEmail] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('doctor');
   const [formHospitalId, setFormHospitalId] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -69,7 +75,14 @@ export default function OrgUsersPage() {
 
   // Credential hand-off panel — shown after create/reset so the admin can copy
   // the temporary password to give to the new user.
-  const [handoff, setHandoff] = useState<{ username: string; password: string; kind: 'created' | 'reset' } | null>(null);
+  const [handoff, setHandoff] = useState<{
+    username: string;
+    password: string;
+    kind: 'created' | 'reset';
+    /** What actually happened to the invitation email, straight from the
+     *  server. Absent for a password reset, which sends nothing. */
+    invitation?: InvitationOutcome;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const brandColor = currentUser?.branding?.primaryColor || 'var(--accent-primary)';
@@ -175,30 +188,28 @@ export default function OrgUsersPage() {
 
     setCreating(true);
     try {
-      const { createUser } = await import('@/lib/services/user-service');
+      const { createUserWithInvitation } = await import('@/lib/services/user-service');
       const selectedHospital = hospitals.find(h => h._id === formHospitalId);
       const newUsername = formUsername.trim().toLowerCase();
       const tempPassword = formPassword;
-      await createUser(
-        {
-          username: newUsername,
-          password: tempPassword,
-          name: formName.trim(),
-          role: formRole,
-          hospitalId: needsHospital ? formHospitalId : undefined,
-          hospitalName: needsHospital ? selectedHospital?.name : undefined,
-          orgId: currentUser?.orgId,
-        },
-        currentUser?._id,
-        currentUser?.username
-      );
+      const { invitation } = await createUserWithInvitation({
+        username: newUsername,
+        password: tempPassword,
+        name: formName.trim(),
+        role: formRole,
+        hospitalId: needsHospital ? formHospitalId : undefined,
+        hospitalName: needsHospital ? selectedHospital?.name : undefined,
+        orgId: currentUser?.orgId,
+        email: formEmail.trim() || undefined,
+      });
       setShowCreateModal(false);
       // Surface the credentials so the admin can hand them off. The new user
       // will be forced to change this temporary password at first login.
-      setHandoff({ username: newUsername, password: tempPassword, kind: 'created' });
+      setHandoff({ username: newUsername, password: tempPassword, kind: 'created', invitation });
       setFormUsername('');
       setFormPassword('');
       setFormName('');
+      setFormEmail('');
       setFormRole('doctor');
       setFormHospitalId('');
       await loadData();
@@ -559,6 +570,26 @@ export default function OrgUsersPage() {
                 />
               </div>
 
+              {/* Email — optional. Present means the new user gets an invitation
+                  link and chooses their own password; absent means the admin
+                  reads them the temporary one. */}
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  {t('orgUsers.fieldEmail')}
+                </label>
+                <input
+                  type="email"
+                  value={formEmail}
+                  onChange={e => setFormEmail(e.target.value)}
+                  placeholder={t('orgUsers.emailPlaceholder')}
+                  className="w-full px-3 py-2 rounded-lg text-sm"
+                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
+                />
+                <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  {t('orgUsers.emailHint')}
+                </p>
+              </div>
+
               {/* Username */}
               <div>
                 <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldUsername')}</label>
@@ -722,7 +753,13 @@ export default function OrgUsersPage() {
                   {handoff.kind === 'created' ? 'User created' : 'Password reset'}
                 </h2>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Share these credentials securely. The user must change the password at first login.
+                  {handoff.invitation?.sent
+                    ? `An invitation was emailed to ${handoff.invitation.to}. They choose their own password from it — you only need to share the one below if the email does not arrive.`
+                    : handoff.invitation?.reason === 'not_configured'
+                      ? 'Email is not configured on this deployment, so no invitation was sent. Share these credentials securely — the user must change the password at first login.'
+                      : handoff.invitation?.reason === 'send_failed'
+                        ? 'The invitation email could not be sent. Share these credentials securely — the user must change the password at first login.'
+                        : 'Share these credentials securely. The user must change the password at first login.'}
                 </p>
               </div>
             </div>

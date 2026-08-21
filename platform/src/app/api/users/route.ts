@@ -9,7 +9,8 @@ import {
   type AuthPayload,
 } from '@/lib/api-auth';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import type { UserRole } from '@/lib/db-types';
+import type { UserRole, UserDoc } from '@/lib/db-types';
+import type { InvitationOutcome } from '@/lib/user-invite';
 import { STAFF_DIRECTORY_READ_ROLES } from '@/lib/staff-directory-access';
 // Reading the staff directory is org-scoped (buildScopeFromAuth) and the rows
 // come back through redactUserForClient — it is a colleague list, not PHI.
@@ -141,6 +142,52 @@ function targetMutationError(
   }
   return null;
 }
+/**
+ * Issue an invitation and mail it. Never throws: a mail gateway being down,
+ * unconfigured, or missing a base URL must not fail account creation — the
+ * account is the thing that matters, and the temporary password shown to the
+ * administrator remains a working fallback.
+ */
+async function inviteNewUser(user: UserDoc): Promise<InvitationOutcome> {
+  const to = user.email?.trim();
+  if (!to) return { sent: false, reason: 'no_email' };
+  try {
+    const { issueUserInvite } = await import('@/lib/services/user-service');
+    const { buildInviteUrl, INVITE_TTL_HOURS } = await import('@/lib/user-invite');
+    const { sendWelcomeEmail } = await import('@/lib/email/user-welcome');
+    const { ROLE_LABEL } = await import('@/lib/role-display');
+
+    const invite = await issueUserInvite(user._id);
+    if (!invite) return { sent: false, reason: 'send_failed' };
+
+    const inviteUrl = buildInviteUrl(invite.token);
+    // Without a base URL the link would be relative and useless in a mail
+    // client, so say so rather than sending a broken invitation.
+    if (!inviteUrl) return { sent: false, reason: 'no_app_url' };
+
+    const { wasDelivered } = await import('@/lib/email');
+    const result = await sendWelcomeEmail({
+      to,
+      name: user.name,
+      username: user.username,
+      roleLabel: ROLE_LABEL[user.role as UserRole] || user.role.replace(/_/g, ' '),
+      facilityName: user.hospitalName,
+      organisationName: user.orgName,
+      inviteUrl,
+      expiresInHours: INVITE_TTL_HOURS,
+    });
+    // `result.ok` is true even from the log provider, which delivers nothing.
+    // Reporting that as sent is the one failure mode this whole fallback exists
+    // to avoid: the administrator would not hand over the temporary password
+    // and the account would be unreachable.
+    if (wasDelivered(result)) return { sent: true, to, expiresAt: invite.expiresAt };
+    return { sent: false, reason: result.ok ? 'not_configured' : 'send_failed' };
+  } catch (err) {
+    logApiError('[API /users] invitation', err);
+    return { sent: false, reason: 'send_failed' };
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);
@@ -451,12 +498,29 @@ async function postHandler(request: NextRequest) {
         department: body.department as string | undefined,
         specialty: body.specialty as string | undefined,
         phone: body.phone as string | undefined,
+        email: body.email as string | undefined,
       },
       auth.sub,
       auth.username
     );
+
+    // Invite the new user to set their own password.
+    //
+    // Deliberately NOT emailing the temporary password: a plaintext credential
+    // lands in a mailbox that is often shared at a facility and survives in
+    // sent-mail and backups. The link is single-use and expires, so nothing
+    // reusable sits in an inbox. See lib/user-invite.ts.
+    //
+    // Entirely best-effort. The account exists either way, and the response
+    // reports what happened so the administrator knows whether to hand the
+    // temporary password over another way instead of assuming mail arrived.
+    const invitation = await inviteNewUser(user);
+
     const { redactUserForClient } = await import('@/lib/services/user-service');
-    return NextResponse.json({ user: redactUserForClient(user) }, { status: 201 });
+    return NextResponse.json(
+      { user: redactUserForClient(user), invitation },
+      { status: 201 },
+    );
   } catch (err) {
     // The user-service throws plain `Error` for validation problems
     // ("Invalid role", "Clinical users must be assigned to a hospital",
