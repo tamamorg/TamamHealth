@@ -3928,6 +3928,8 @@ const apd: TranslationMap = {
   'patientNew.errNokPhoneRequired': 'تلفون أقرب قريب مطلوب',
   'patientNew.errRelationshipRequired': 'صلة القرابة مطلوبة',
   'patientNew.errStateRequired': 'الولاية مطلوبة',
+  'patientNew.errPhoneRequired': 'رقم التلفون مطلوب في هذه المنشأة',
+  'patientNew.errGeocodeRequired': 'رقم البيت / الجيوكود مطلوب في هذه المنشأة',
   'patientNew.errSurnameRequired': 'اسم العائلة مطلوب',
   'patientNew.email': 'الإيميل',
   'patientNew.emailPlaceholder': 'اختياري',

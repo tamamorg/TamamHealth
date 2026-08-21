@@ -3936,6 +3936,8 @@ const en: TranslationMap = {
   'patientNew.errNokPhoneRequired': 'Next of kin phone is required',
   'patientNew.errRelationshipRequired': 'Relationship is required',
   'patientNew.errStateRequired': 'State is required',
+  'patientNew.errPhoneRequired': 'Phone number is required at this facility',
+  'patientNew.errGeocodeRequired': 'Household / geocode ID is required at this facility',
   'patientNew.errSurnameRequired': 'Surname is required',
   'patientNew.email': 'Email',
   'patientNew.emailPlaceholder': 'Optional',

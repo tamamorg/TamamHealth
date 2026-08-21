@@ -61,6 +61,12 @@ export default function PrescribeModal({
   const [problems, setProblems] = useState<ProblemDoc[]>([]);
   const [activeRx, setActiveRx] = useState<PrescriptionDoc[]>([]);
   const [inventory, setInventory] = useState<PharmacyInventoryDoc[]>([]);
+  // Names the pharmacy can actually fill right now — what the prescriber's
+  // "Show only in-stock medicines by default" filters the typeahead against.
+  const inStockNames = useMemo(
+    () => new Set(inventory.filter(i => i.stockLevel > 0).map(i => i.medicationName.toLowerCase())),
+    [inventory],
+  );
   const [observations, setObservations] = useState('');
   const [balance, setBalance] = useState<number | null>(null);
 
@@ -310,6 +316,7 @@ export default function PrescribeModal({
                 onToggleSigs={() => setShowSigs(v => !v)}
                 showReasons={showReasons}
                 onToggleReasons={() => setShowReasons(v => !v)}
+                inStockNames={inStockNames}
               />
             </CollapsibleSection>
 

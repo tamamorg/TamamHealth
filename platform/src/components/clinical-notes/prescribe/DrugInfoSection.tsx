@@ -12,6 +12,7 @@
 import { useMemo } from 'react';
 import { Star } from '@/components/icons/lucide';
 import { FORMULARY, type FormularyDrug } from '@/lib/data/formulary';
+import { useRoleFlag } from '@/lib/settings/useRoleSetting';
 import type { ProblemDoc } from '@/lib/db-types';
 import type { RxDraft } from './types';
 import Select from '@/components/Select';
@@ -42,21 +43,44 @@ interface DrugInfoSectionProps {
   onToggleSigs: () => void;
   showReasons: boolean;
   onToggleReasons: () => void;
+  /** Medication names the pharmacy currently holds, lower-cased. Drives the
+   *  prescriber's "Show only in-stock medicines by default" setting. */
+  inStockNames?: Set<string>;
+}
+
+/** Inventory records the drug's stem ("Amoxicillin 500mg" vs "Amoxicillin"),
+ *  so match on the first word rather than requiring an exact name. */
+function stockedName(drugName: string, inStock: Set<string>): boolean {
+  const stem = drugName.toLowerCase().split(/[\s(]/)[0];
+  if (!stem) return false;
+  for (const held of inStock) if (held.includes(stem)) return true;
+  return false;
 }
 
 export default function DrugInfoSection({
   draft, onChange, query, onQueryChange, advanced, onToggleAdvanced,
   problems, serviceLocations, isFavorite, onToggleFavorite, showSigs, onToggleSigs,
-  showReasons, onToggleReasons,
+  showReasons, onToggleReasons, inStockNames,
 }: DrugInfoSectionProps) {
+  // "Show only in-stock medicines by default" (`rx.inStockOnly`). Advanced
+  // search deliberately ignores it: that mode exists to find anything, and a
+  // prescriber who has widened the search is asking for the full formulary.
+  const inStockOnly = useRoleFlag('rx.inStockOnly', true);
   const results = useMemo<FormularyDrug[]>(() => {
     const q = query.trim().toLowerCase();
     if (q.length < 2 || draft.drug) return [];
     const match = (d: FormularyDrug) => (advanced
       ? d.name.toLowerCase().includes(q) || d.category.toLowerCase().includes(q) || d.atc.toLowerCase().startsWith(q)
       : d.name.toLowerCase().includes(q));
-    return FORMULARY.filter(match).slice(0, advanced ? 16 : 8);
-  }, [query, draft.drug, advanced]);
+    const found = FORMULARY.filter(match);
+    // Filter, but never to nothing: if the pharmacy stocks none of the
+    // matches, showing the full list beats an empty box that reads as "this
+    // drug does not exist".
+    const stocked = (!advanced && inStockOnly && inStockNames)
+      ? found.filter(d => stockedName(d.name, inStockNames))
+      : found;
+    return (stocked.length ? stocked : found).slice(0, advanced ? 16 : 8);
+  }, [query, draft.drug, advanced, inStockOnly, inStockNames]);
 
   return (
     <>

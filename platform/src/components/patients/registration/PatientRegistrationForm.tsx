@@ -29,6 +29,7 @@ import BiometricsSection from './sections/BiometricsSection';
 import ContactSection, { geocodeIdFor } from './sections/ContactSection';
 import NextOfKinSection from './sections/NextOfKinSection';
 import CoverageSection from './sections/CoverageSection';
+import { useRoleFlag, useRoleChoice } from '@/lib/settings/useRoleSetting';
 import {
   EMPTY_REGISTRATION_FORM, MAX_ADDITIONAL_NOK,
   type AdditionalNok, type CoverageType, type RegistrationTextField,
@@ -261,6 +262,12 @@ export function PatientRegistrationForm({
   }, t), [sectionLabels, form, additionalNok, fingerprints, geocodeId, facilityRequired, facilities, t]);
 
   /** The errors one section is carrying, keyed by form field. */
+  // Registration desk settings (design 11, "Registration"). Read live so a
+  // change in Settings applies to the very next patient, not the next reload.
+  const requirePhone = useRoleFlag('reg.phone', true);
+  const requireGeocode = useRoleFlag('reg.geocode', false);
+  const warnDuplicates = useRoleFlag('reg.duplicates', true);
+
   const validateSection = (section: number): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (section === DEMOGRAPHICS_SECTION) {
@@ -277,11 +284,17 @@ export function PatientRegistrationForm({
       }
       if (!form.primaryLanguage) errs.primaryLanguage = t('patientNew.errPrimaryLanguageRequired');
     } else if (section === CONTACT_SECTION) {
+      if (requireGeocode && !form.householdNumber.trim()) {
+        errs.householdNumber = t('patientNew.errGeocodeRequired');
+      }
       if (!form.state) errs.state = t('patientNew.errStateRequired');
       if (form.state && !form.county) errs.county = t('patientNew.errCountyRequired');
-      // Phone/altPhone/whatsapp/email are optional — the validators return true
-      // for empty, so this only flags something typed wrong.
-      if (!isValidPhone(form.phone)) errs.phone = t('validation.errPhone');
+      // Phone is optional by default — the validators return true for empty,
+      // so this only flags something typed wrong. The desk's "Require phone
+      // number" setting (`reg.phone`) makes it mandatory, which is what that
+      // row has always claimed to do.
+      if (requirePhone && !form.phone.trim()) errs.phone = t('patientNew.errPhoneRequired');
+      else if (!isValidPhone(form.phone)) errs.phone = t('validation.errPhone');
       if (!isValidPhone(form.altPhone)) errs.altPhone = t('validation.errPhone');
       if (!isValidPhone(form.whatsapp)) errs.whatsapp = t('validation.errPhone');
       if (!isValidEmail(form.email)) errs.email = t('validation.errEmail');

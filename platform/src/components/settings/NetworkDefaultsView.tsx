@@ -18,7 +18,6 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import type { HospitalDoc } from '@/lib/db-types';
 import {
   Stethoscope, Database, Server, Wallet, ShieldCheck, Clock, AlertTriangle,
 } from '@/components/icons/lucide';
@@ -88,6 +87,11 @@ export const NETWORK_MODULES: Array<{
   { key: 'security',     label: 'Security',           title: 'Security',                icon: ShieldCheck, blurb: 'Idle auto-lock for every shared device on the network.' },
 ];
 
+/** Checkbox sets carry no meaning in their order — two facilities that ticked
+ *  the same boxes in a different sequence are not "divergent". Ordered lists
+ *  (the consultation prompts) are deliberately left alone. */
+const asSet = (list: readonly string[]) => [...list].sort();
+
 /** The settings keys each shared module owns — also what divergence compares. */
 function moduleValue(s: FacilitySettings, key: NetworkModuleKey): unknown {
   switch (key) {
@@ -95,12 +99,16 @@ function moduleValue(s: FacilitySettings, key: NetworkModuleKey): unknown {
     case 'consultation': return s.consultationProfiles;
     // dhis2OrgUnitId is the one per-facility field inside a shared block, so
     // it is deliberately excluded from both the comparison and the save.
-    case 'reporting':    return { ...s.reporting, dhis2OrgUnitId: undefined };
-    case 'it':           return s.itOperations;
+    case 'reporting':    return {
+      ...s.reporting,
+      dhis2OrgUnitId: undefined,
+      aggregateSources: asSet(s.reporting.aggregateSources),
+    };
+    case 'it':           return { ...s.itOperations, integrations: asSet(s.itOperations.integrations) };
     case 'billing':      return {
       currency: s.currency,
-      paymentMethods: s.paymentMethods,
-      payors: s.payors,
+      paymentMethods: asSet(s.paymentMethods),
+      payors: asSet(s.payors),
       collectionStageDays: s.collectionStageDays,
       taxRatePercent: s.taxRatePercent,
     };
@@ -125,10 +133,10 @@ function modulePatch(draft: FacilitySettings, key: NetworkModuleKey, current: Fa
   }
 }
 
-export default function NetworkDefaultsView({ module, hospitals, sessionHospitalId }: {
+export default function NetworkDefaultsView({ module, targets, sessionHospitalId }: {
   module: NetworkModuleKey;
   /** Every facility this account governs — the fan-out target of a save. */
-  hospitals: HospitalDoc[];
+  targets: Array<{ _id: string; orgId?: string }>;
   sessionHospitalId?: string;
 }) {
   const { showToast } = useToast();
@@ -137,7 +145,7 @@ export default function NetworkDefaultsView({ module, hospitals, sessionHospital
   const [draft, setDraft] = useState<FacilitySettings>(DEFAULT_FACILITY_SETTINGS);
   const [saving, setSaving] = useState(false);
 
-  const ids = useMemo(() => hospitals.map(h => h._id), [hospitals]);
+  const ids = useMemo(() => targets.map(t => t._id), [targets]);
   const idsKey = ids.join(',');
 
   const load = useCallback(async () => {
@@ -164,8 +172,8 @@ export default function NetworkDefaultsView({ module, hospitals, sessionHospital
   }, [perFacility, draft, module]);
 
   const orgIdByHospital = useCallback(
-    (hospitalId: string) => hospitals.find(h => h._id === hospitalId)?.orgId,
-    [hospitals],
+    (hospitalId: string) => targets.find(t => t._id === hospitalId)?.orgId,
+    [targets],
   );
 
   const save = async () => {

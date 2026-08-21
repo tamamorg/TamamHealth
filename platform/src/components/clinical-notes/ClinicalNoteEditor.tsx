@@ -48,6 +48,7 @@ import {
   listClinicalNotes,
 } from '@/lib/clinical-notes/note-service';
 import { formatPhoneDisplay } from '@/lib/field-formats';
+import { getRoleFlag } from '@/lib/settings/role-settings-store';
 import type { PatientDoc, PatientDocumentDoc, UserRole } from '@/lib/db-types';
 import { loadChartSnapshot, snapshotForSection, formatProblems } from '@/lib/clinical-notes/chart-snapshot';
 import { stripTemplateMarkers } from '@/lib/clinical-notes/section-templates';
@@ -203,12 +204,16 @@ export default function ClinicalNoteEditor({
     return () => { cancelled = true; };
   }, [note?.patientId, noteId, scope]);
 
-  // Flush any pending autosave when the editor unmounts (or switches to a
+  // Flush any pending edit when the editor unmounts (or switches to a
   // different note), so navigating away mid-keystroke does not drop the last
   // edit — clearing the timer alone discarded up to AUTOSAVE_MS of typing.
+  //
+  // Iterates the PENDING edits, not the timers: with auto-save switched off
+  // (`consult.autosave`) there is no timer for a section, and keying off the
+  // timers would then throw the very edits this flush exists to rescue.
   useEffect(() => {
     return () => {
-      for (const sectionId of Object.keys(timers.current)) {
+      for (const sectionId of Object.keys(pendingSaves.current)) {
         clearTimeout(timers.current[sectionId]);
         const toSave = pendingSaves.current[sectionId];
         if (toSave) void saveNoteSection(noteId, sectionId as NoteSectionId, toSave).catch(() => undefined);
@@ -256,6 +261,11 @@ export default function ClinicalNoteEditor({
 
     pendingSaves.current[sectionId] = { ...pendingSaves.current[sectionId], ...patch };
     clearTimeout(timers.current[sectionId]);
+    // "Auto-save notes" (`consult.autosave`) — on by default, because the row
+    // that offers it is about protecting work through a power cut. Switched
+    // off, edits are held and written on blur/unmount by the flush below
+    // instead of on a timer; nothing is lost either way.
+    if (!getRoleFlag('consult.autosave', true)) return;
     timers.current[sectionId] = setTimeout(() => {
       const toSave = pendingSaves.current[sectionId];
       delete pendingSaves.current[sectionId];

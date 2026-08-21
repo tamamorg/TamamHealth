@@ -568,21 +568,31 @@ export default function SettingsPage() {
         {/* ═══════════════ USER MANAGEMENT TAB ═══════════════ */}
         {activeTab === 'users' && (
           <div className="space-y-4">
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-3">
-              <Select value={filterRole} onChange={e => setFilterRole(e.target.value)} style={selectStyle}>
-                <option value="all">All Roles</option>
-                {roleOptions.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </Select>
-              <Select value={filterHospital} onChange={e => setFilterHospital(e.target.value)} style={{ ...selectStyle, maxWidth: '220px' }}>
-                <option value="all">All Hospitals</option>
-                {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
-              </Select>
-              <div className="flex-1" />
+            {/* Toolbar — the same FilterBar shell the Hospital tab uses. The
+                two filters were raw <Select>s carrying the form field style,
+                whose width:100% stretched the role filter across the whole
+                row and wrapped everything after it onto its own line. */}
+            <FilterBar>
+              <FilterSelect
+                value={filterRole}
+                onChange={setFilterRole}
+                options={[{ value: 'all', label: 'All Roles' }, ...roleOptions]}
+                aria-label="Filter by role"
+              />
+              <FilterSelect
+                value={filterHospital}
+                onChange={setFilterHospital}
+                options={[
+                  { value: 'all', label: 'All Hospitals' },
+                  ...hospitals.map(h => ({ value: h._id, label: h.name })),
+                ]}
+                aria-label="Filter by hospital"
+              />
+              <FilterBar.Spacer />
               <button onClick={openCreateUser} style={btnPrimary}>
                 <Plus className="w-4 h-4" /> Add User
               </button>
-            </div>
+            </FilterBar>
 
             {/* Users table */}
             <div style={card}>

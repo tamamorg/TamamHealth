@@ -25,6 +25,7 @@ import { prescription as rxLifecycle } from '@/lib/clinical-flow/order-lifecycle
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { useRoleChoice } from '@/lib/settings/useRoleSetting';
 
 const UNITS = ['tablets', 'vials', 'bottles', 'sachets', 'tubes', 'ampoules', 'sachet', 'ml'];
 
@@ -52,6 +53,8 @@ function prescriptionSig(rx: { dose?: string; frequency?: string; duration?: str
 export default function PharmacyPage() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<PharmacyTab>(() => searchParams.get('panel') === 'stock' ? 'inventory' : 'queue');
+  const stockExpiryChoice = useRoleChoice('stock.expiry', '30 days');
+  const stockReorderChoice = useRoleChoice('stock.reorder', '');
   // Per-column filters: queue table (q*) + inventory table (medication name).
   // Category / stock-status filtering now lives in the shared header + table
   // toolbar (categoryFilter / statusFilter below) rather than per-column funnels.
@@ -638,13 +641,21 @@ export default function PharmacyPage() {
 
   // ── Derived data for the Reorder / Expiry / Overview / Patients tabs ──
   const todayStr = todayIso();
+  // Pharmacist stock settings (design 11, "Stock & reorder").
+  const expiryWarningDays = Number(/^(\d+)/.exec(stockExpiryChoice)?.[1] ?? 90);
+  const reorderCoverDays = Number(/(\d+)/.exec(stockReorderChoice)?.[1] ?? 0);
   const daysUntil = (date?: string) =>
     date ? Math.ceil((new Date(date).getTime() - new Date(todayStr).getTime()) / 86400000) : Infinity;
 
-  // Reorder: anything at or below its reorder level (low or critical), neediest first.
+  // Reorder: anything at or below its reorder level (low or critical), neediest
+  // first. The pharmacist's "Reorder trigger" (`stock.reorder`) widens this to
+  // anything with less than that many days of cover, using the item's reorder
+  // level as the daily-usage proxy the inventory record actually carries.
   const reorderList = useMemo(() =>
     inventory
-      .filter(i => i.status === 'low' || i.status === 'critical')
+      .filter(i => i.status === 'low' || i.status === 'critical'
+        || (reorderCoverDays > 0 && i.reorderLevel > 0
+            && i.stockLevel < (i.reorderLevel / 30) * reorderCoverDays))
       .filter(i => !q || i.medicationName.toLowerCase().includes(q.toLowerCase()) || i.category.toLowerCase().includes(q.toLowerCase()))
       .filter(i => categoryFilter === 'all' || i.category === categoryFilter)
       .filter(i => statusFilter === 'all' || i.status === statusFilter)
@@ -667,7 +678,10 @@ export default function PharmacyPage() {
   const expiryStatusFor = (item: typeof inventory[number]) => {
     const days = daysUntil(item.expiryDate);
     const expired = item.status === 'expired' || days <= 0;
-    const soon = !expired && days <= 90;
+    // The pharmacist's "Expiry warning window" (`stock.expiry`) decides how
+    // early a batch is flagged. 90 days was hard-coded before, which is still
+    // the widest option offered.
+    const soon = !expired && days <= expiryWarningDays;
     return { days, expired, soon };
   };
 

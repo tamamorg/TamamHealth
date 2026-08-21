@@ -21183,37 +21183,472 @@ textarea.ehr-handoff-input {
   font-weight: 800;
 }
 
-.fs-facility-tile {
+/* ── Facility settings: module rail + one module body ──────────────────────
+   The editor used to be a single stacked column of every section for every
+   facility. It is now a two-pane navigator — a rail of modules on the left,
+   one module's card on the right — split into what belongs to this facility
+   and what the whole network shares. */
+.fs-shell {
+  display: grid;
+  grid-template-columns: 214px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.fs-nav {
+  position: sticky;
+  top: 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 12px 14px;
-  border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  padding: 6px;
   background: #fff;
-  color: inherit;
-  text-decoration: none;
+  border: 1px solid var(--ehr-border);
+  border-radius: 12px;
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
-  font: inherit;
+}
+
+.fs-nav-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 10px 6px;
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5D728B;
+}
+
+.fs-nav-group small {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: end;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #8A9BAC;
+}
+
+.fs-nav button,
+.fs-nav-foot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  font-family: var(--font-condensed);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--tb-blue-800, #113055);
   text-align: start;
+  text-decoration: none;
   cursor: pointer;
 }
 
-.fs-facility-tile:hover {
-  border-color: rgba(33, 145, 208, 0.45);
-  background: rgba(33, 145, 208, 0.05);
+.fs-nav button > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.fs-facility-tile strong {
+.fs-nav button svg,
+.fs-nav-foot svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: #5D728B;
+}
+
+.fs-nav button:hover,
+.fs-nav-foot:hover {
+  background: #F2FCFF;
+}
+
+.fs-nav button.is-active {
+  background: rgba(33, 145, 208, 0.10);
+  border-color: rgba(33, 145, 208, 0.35);
+}
+
+.fs-nav button.is-active svg {
+  color: var(--ehr-blue);
+}
+
+/* Quiet dot on a facility module while no facility is chosen — it opens the
+   picker rather than a form, and says so before the click. */
+.fs-nav-lock {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #C7D0DA;
+}
+
+.fs-nav-foot {
+  margin-top: 6px;
+  color: #5D728B;
+}
+
+.fs-shell-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Which facility the per-facility modules are editing, plus the two ways out
+   of it: switch facility, or open the facility's own profile page. */
+.fs-ctx {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--ehr-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
+}
+
+.fs-ctx-plate,
+.fs-fac-plate {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(33, 145, 208, 0.10);
   color: var(--tb-blue-800, #113055);
-  font-size: 13px;
-  font-weight: 800;
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.fs-facility-tile span {
-  color: var(--ehr-muted);
+.fs-ctx-plate { width: 34px; height: 34px; font-size: 12px; }
+.fs-fac-plate { width: 30px; height: 30px; border-radius: 8px; font-size: 11px; }
+
+.fs-ctx-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.fs-ctx-name strong {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--tb-blue-800, #113055);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-ctx-name span {
   font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ehr-muted);
+  text-transform: capitalize;
+}
+
+/* ── Facility picker: a list, on the shared flat row language ──────────── */
+.fs-fac-pick {
+  background: #fff;
+  border: 1px solid var(--ehr-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
+}
+
+.fs-fac-pick-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--ehr-border);
+}
+
+.fs-fac-pick-head h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tb-blue-800, #113055);
+}
+
+.fs-fac-pick-head p {
+  margin-top: 4px;
+  max-width: 62ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ehr-muted);
+}
+
+.fs-fac-pick-head p b {
+  font-weight: 700;
+  color: var(--tb-blue-800, #113055);
+}
+
+.fs-fac-search {
+  position: relative;
+  flex: 0 0 262px;
+  margin-inline-start: auto;
+}
+
+.fs-fac-search svg {
+  position: absolute;
+  inset-inline-start: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ehr-muted);
+  pointer-events: none;
+}
+
+.fs-fac-search input {
+  width: 100%;
+  padding: 8px 14px;
+  padding-inline-start: 33px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  color: var(--tb-blue-800, #113055);
+}
+
+.fs-fac-search input:focus {
+  outline: none;
+  border-color: var(--ehr-blue);
+  box-shadow: 0 0 0 3px rgba(33, 145, 208, 0.10);
+}
+
+.fs-fac-colhead,
+.fs-fac-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 178px 136px 112px;
+  gap: 12px;
+  align-items: center;
+  padding-inline: 16px;
+}
+
+.fs-fac-colhead {
+  padding-block: 10px;
+  background: #F5F7F8;
+  border-bottom: 1px solid #EDF2F7;
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5D728B;
+}
+
+.fs-fac-count {
+  text-align: end;
+  letter-spacing: 0.04em;
+  color: #8A9BAC;
+}
+
+.fs-fac-group-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: #FAFBFC;
+  border-bottom: 1px solid #EDF2F7;
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5D728B;
+}
+
+.fs-fac-group-label b { color: #8A9BAC; }
+
+/* Rows meet on hairlines, no per-row card edge — the flat list language the
+   worklists use. The divider is dropped on the last row of the last group
+   (never per-row `:last-child`, which erases every divider). */
+.fs-fac-row {
+  position: relative;
+  border-bottom: 1px solid #EDF2F7;
+}
+
+.fs-fac-group:last-child .fs-fac-row:last-child { border-bottom: 0; }
+
+.fs-fac-row:hover { background: #F2FCFF; }
+
+.fs-fac-ident {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-block: 9px;
+}
+
+/* Stretched hit area: the whole row selects the facility, while the profile
+   link keeps its own click (it is raised above this pseudo-element). */
+.fs-fac-open {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
   font-weight: 650;
+  color: var(--tb-blue-800, #113055);
+  text-align: start;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-fac-open::after { content: ''; position: absolute; inset: 0; }
+
+.fs-fac-open:focus-visible {
+  outline: 2px solid var(--ehr-blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.fs-fac-loc {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ehr-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-fac-chip {
+  justify-self: start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #F1F5F9;
+  color: #5D728B;
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.fs-fac-act {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fs-fac-profile {
+  position: relative;
+  z-index: 1;
+  padding: 4px 10px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 999px;
+  background: #fff;
+  font-family: var(--font-condensed);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #5D728B;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.fs-fac-profile:hover {
+  border-color: var(--ehr-blue);
+  color: var(--ehr-blue);
+}
+
+.fs-fac-chev { flex: none; color: #C7D0DA; }
+.fs-fac-row:hover .fs-fac-chev { color: var(--ehr-blue); }
+
+.fs-fac-empty {
+  padding: 22px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ehr-muted);
+}
+
+/* Saving a shared module aligns every facility — say so when some differ. */
+.fs-net-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border: 1px solid #F5E3C0;
+  border-radius: 10px;
+  background: #FDF8EE;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #7A5B1E;
+}
+
+.fs-net-warn svg { color: #C98A15; margin-top: 1px; }
+
+/* Base form controls for both settings editors (they used to be a <style>
+   block inside FacilitySettingsView, which only one of the two rendered). */
+.fs-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
+
+.fs-grouplabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* Explains a setting whose consequence isn't obvious from its label — used
+   where getting it wrong has a real effect on patients. */
+.fs-hint {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: -2px 0 14px;
+  max-width: 62ch;
+}
+
+@media (max-width: 900px) {
+  .fs-shell { grid-template-columns: minmax(0, 1fr); }
+  .fs-nav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 8px;
+  }
+  .fs-nav-group { width: 100%; padding-block: 8px 2px; }
+  .fs-nav button,
+  .fs-nav-foot { width: auto; }
+}
+
+@media (max-width: 720px) {
+  .fs-fac-colhead,
+  .fs-fac-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .fs-fac-colhead span:nth-child(2),
+  .fs-fac-colhead span:nth-child(3),
+  .fs-fac-row .fs-fac-loc,
+  .fs-fac-row .fs-fac-chip { display: none; }
+  .fs-fac-search { flex: 1 1 100%; margin-inline-start: 0; }
 }
 
 .settings-embedded-page .settings-manage-shell,
@@ -27265,9 +27700,6 @@ table.patient-data-table.patient-data-table {
 .settings-manage-shell textarea {
   border-color: #ECEEF1 !important;
 }
-.fs-facility-tile { border-radius: 8px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
-.fs-facility-tile:hover { border-color: #7CC7FF; background: #F2FCFF; }
-.fs-facility-tile strong { font-size: 13.5px; font-weight: 600; color: #113055; }
 
 /* Users & roles table: flat band head, condensed columns, toned chips. */
 .ehr-set-users-head {
