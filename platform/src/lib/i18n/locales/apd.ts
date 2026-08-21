@@ -5160,6 +5160,7 @@ const apd: TranslationMap = {
   'referralChain.activeReferrals': 'تحويلات فعّالة',
   'referralChain.title': 'سلسلة التحويل',
   'referralChain.viewAll': 'شوف الكل',
+  'referrals.openPatientChart': 'افتح ملف المريض',
   'referrals.accept': 'اقبل',
   'referrals.acceptDone': '{{accept}}% قبول · {{done}}% خلص',
   'referrals.acceptTitle': 'اقبل التحويل وحوّل العيان للمستشفى دي',

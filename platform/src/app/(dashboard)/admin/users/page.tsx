@@ -10,9 +10,10 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import type { UserDoc, UserRole } from '@/lib/db-types';
 import {
   UserX, UserCheck, UserPlus, Shield,
-  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff,
+  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Info,
 } from '@/components/icons/lucide';
-import RowActionsMenu from '@/components/RowActionsMenu';
+import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import type { RowAction } from '@/components/RowActionsMenu';
 import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
 import { generateTempPassword } from '@/lib/temp-password';
 import { avatarTint } from '@/lib/patient-utils';
@@ -27,7 +28,9 @@ import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 // (minmax(320px, 1.6fr) + minmax(150px, 1fr) columns) so this list lines up
 // with the clinical worklist and patient registry; only the trailing actions
 // gutter is narrower, since it holds a lone kebab instead of a data column.
-const USER_GRID = 'minmax(320px, 1.6fr) repeat(4, minmax(150px, 1fr)) 44px';
+// Five tracks, no trailing action gutter: the row itself opens the actions,
+// so the 44px that column used to hold goes back to the data.
+const USER_GRID = 'minmax(320px, 1.6fr) repeat(4, minmax(150px, 1fr))';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -85,6 +88,9 @@ export default function AdminUsersPage() {
   // with no confirmation at all; it now goes through the same danger-confirm
   // pattern as every other destructive admin action.
   const [deactivateTarget, setDeactivateTarget] = useState<UserDoc | null>(null);
+  // One popup for the whole list — the row that was clicked supplies its own
+  // actions and the pointer position, so a hundred rows cost one portal.
+  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
   const [deactivating, setDeactivating] = useState(false);
   // Roster and account requests are two views of one card: approving a request
   // IS creating a user, so it belongs where users are managed rather than in a
@@ -223,6 +229,45 @@ export default function AdminUsersPage() {
     }
   };
 
+  /**
+   * What a row offers. Lifted out of the row so the same set serves the click
+   * handler and the keyboard handler, and so the row markup stays a table row
+   * rather than a table row plus a menu definition.
+   *
+   * "View details" carries the expandable panel that clicking the row used to
+   * open. Row-click now opens the actions, and losing the detail panel to make
+   * room for them would have been a trade, not a fix.
+   */
+  const actionsFor = (u: UserDoc): RowAction[] => [
+    {
+      key: 'details',
+      label: expandedId === u._id ? 'Hide details' : 'View details',
+      icon: <Info className="w-4 h-4" />,
+      onClick: () => setExpandedId(expandedId === u._id ? null : u._id),
+    },
+    {
+      key: 'change-role',
+      label: 'Change Role',
+      icon: <Shield className="w-4 h-4" />,
+      onClick: () => { setChangeRoleUser(u); setNewRole(u.role); },
+    },
+    {
+      key: 'reset-password',
+      label: 'Reset Password',
+      icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
+      onClick: () => { setResetUser(u); setResetPasswordValue(generateTempPassword()); setResetError(null); setShowResetPassword(true); },
+    },
+    {
+      key: 'toggle',
+      label: u.isActive ? t('adminUsers.deactivate') : t('adminUsers.activate'),
+      tone: u.isActive ? 'danger' : 'success',
+      icon: u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />,
+      // Deactivating is destructive — route it through the confirm modal.
+      // Reactivating is reversible with one click, so it stays immediate.
+      onClick: () => u.isActive ? setDeactivateTarget(u) : handleToggleActive(u._id, false, u.name),
+    },
+  ];
+
   const handleToggleActive = async (userId: string, currentlyActive: boolean, userLabel: string) => {
     if (!currentUser) return;
     try {
@@ -347,10 +392,8 @@ export default function AdminUsersPage() {
               <span>{t('adminUsers.colOrganization')}</span>
               <span>{t('adminUsers.colHospital')}</span>
               {/* Status values right-align (shared .appointment-card-status),
-                  so its label right-aligns too — the last-child rule only
-                  covers the empty actions gutter here. */}
+                  so its label right-aligns to the same edge. */}
               <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('adminUsers.colStatus')}</span>
-              <span />
             </div>
             {loading && (
               <div className="appointment-card-empty">{t('adminUsers.loadingUsers')}</div>
@@ -374,11 +417,13 @@ export default function AdminUsersPage() {
                     aria-current={focusedUserId === u._id ? 'true' : undefined}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setExpandedId(isExpanded ? null : u._id)}
+                    onClick={e => setRowMenu(rowActionsAt(e, actionsFor(u)))}
                     onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (isRowActivationKey(e.key)) {
                         e.preventDefault();
-                        setExpandedId(isExpanded ? null : u._id);
+                        // Keyboard has no pointer to anchor to — open against the
+                        // row's own box so the menu still lands beside it.
+                        setRowMenu(rowActionsFromElement(e.currentTarget, actionsFor(u)));
                       }
                     }}
                   >
@@ -422,36 +467,6 @@ export default function AdminUsersPage() {
                       <small>{u.mustChangePassword ? 'Password reset required' : 'Credentials current'}</small>
                     </div>
 
-                    {/* Row actions */}
-                    <div className="flex justify-end" onClick={e => e.stopPropagation()}>
-                      <RowActionsMenu
-                        ariaLabel={t('adminUsers.colActions')}
-                        actions={[
-                          {
-                            key: 'change-role',
-                            label: 'Change Role',
-                            icon: <Shield className="w-4 h-4" />,
-                            onClick: () => { setChangeRoleUser(u); setNewRole(u.role); },
-                          },
-                          {
-                            key: 'reset-password',
-                            label: 'Reset Password',
-                            icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
-                            onClick: () => { setResetUser(u); setResetPasswordValue(generateTempPassword()); setResetError(null); setShowResetPassword(true); },
-                          },
-                          {
-                            key: 'toggle',
-                            label: u.isActive ? t('adminUsers.deactivate') : t('adminUsers.activate'),
-                            tone: u.isActive ? 'danger' : 'success',
-                            icon: u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />,
-                            // Deactivating is destructive — route it through the
-                            // confirm modal. Reactivating is reversible with one
-                            // click, so it stays immediate as before.
-                            onClick: () => u.isActive ? setDeactivateTarget(u) : handleToggleActive(u._id, false, u.name),
-                          },
-                        ]}
-                      />
-                    </div>
                   </div>
                   {isExpanded && (
                     <div className="px-4 py-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
@@ -479,6 +494,8 @@ export default function AdminUsersPage() {
           <AccountRequestQueue viewerRole="super_admin" embedded onCountsChange={setRequestCounts} />
         </div>
       </SadbCard>
+
+      <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
 
       {/* Add User Modal */}
       {showAddUser && (

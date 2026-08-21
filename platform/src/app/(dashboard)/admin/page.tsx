@@ -22,7 +22,6 @@ import { apiFetch } from '@/lib/api-fetch';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
-import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import { tooltipStyle, axisTick } from '@/components/ChartCard';
 import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
@@ -565,7 +564,6 @@ export default function AdminDashboardPage() {
   };
 
   const CIRC = 2 * Math.PI * 38;
-  const todayLong = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const legendProps = {
     iconType: 'circle' as const,
@@ -583,16 +581,6 @@ export default function AdminDashboardPage() {
 
   return (
     <main className="page-container page-enter sadb-scope">
-      <DashboardGreetingHeader
-        subtitle={`Command Center · All tenants · ${todayLong}`}
-        actions={(
-          <>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/audit')}>Audit logs</button>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push('/admin/risk')}>Open Risk Center</button>
-          </>
-        )}
-      />
-
       <div className="sadb-page">
 
         {/* ═══ KPI tile row ═══ */}

@@ -232,7 +232,8 @@ export function SadbGridList({ template, minWidth = 760, head, children, empty }
 /** One row of a SadbGridList; clickable when onClick is given. Pass the same
  *  `template` as the list. */
 export function SadbGridRow({ template, onClick, children }: {
-  template: string; onClick?: () => void; children: ReactNode;
+  /** Receives the event so a caller can anchor a menu to the pointer. */
+  template: string; onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void; children: ReactNode;
 }) {
   if (!onClick) {
     return <div className="sadb-tenant-grid sadb-tenant-row" style={{ gridTemplateColumns: template, cursor: 'default' }}>{children}</div>;
