@@ -9,7 +9,7 @@
 | Delivered | Where |
 |---|---|
 | Booking document types | `platform/src/lib/db-types-booking.ts`; additive fields on `AvailabilityDoc` + `AppointmentDoc` |
-| Slot engine (pure, 57 tests) | `platform/src/lib/booking/slot-engine.ts`, `src/__tests__/slot-engine.test.ts` |
+| Slot engine (pure, 41 tests) | `platform/src/lib/booking/slot-engine.ts`, `platform/src/__tests__/booking/slot-engine.test.ts` |
 | Data layer + holds | `booking-service.ts`, `booking-policy-service.ts`, `visit-reason-service.ts` |
 | Recurring availability | `AvailabilityDoc.recurrence`; `appliesOnDate` / `getAvailabilityOnDate` in `availability-service.ts` |
 | **Parallel clinicians** | Conflict guard now provider+room scoped; calendar draws concurrency clusters side by side; seed, sweep and integrity test all re-scoped |
@@ -329,7 +329,28 @@ Pipeline, in order:
 
 **Timezone rule.** Every date/time in the engine is a facility-local wall-clock string; `now` and `timeZone` are injected. Do not mix `jubaDate()` ([time-juba.ts](../platform/src/lib/time-juba.ts)) with the client-side `toIsoDate()` ([EhrMiniCalendar.tsx:5](../platform/src/components/ehr/EhrMiniCalendar.tsx#L5)) inside the engine — the caller converts once at the edge.
 
-Tests: `slot-engine.test.ts` — recurrence expansion, DST-free wall-clock arithmetic, buffer overlap, capacity > 1, lead-time boundary (exactly at the cutoff is excluded), reason-duration override, cancelled/no-show releasing a slot, hold expiry, empty-day → `—`.
+Tests: `platform/src/__tests__/booking/slot-engine.test.ts` — recurrence expansion
+(including exceptions and series bounds), wall-clock arithmetic across a month
+boundary, buffer overlap before and after, capacity > 1, the lead-time boundary,
+the booking horizon, reason-duration override, cancelled/no-show/rescheduled
+releasing a slot, hold expiry and consumption, empty-day → no slots.
+
+> The original suite (57 tests) was deleted in `e581d4b6` as part of a
+> "remove obsolete test files" sweep and never replaced, leaving this engine —
+> which serves the public `/api/booking/slots` endpoint — with no coverage at
+> all while this table went on claiming 57 tests. Rewriting it from the case
+> list above immediately surfaced a real defect: `addDays()` built a UTC date
+> and formatted it with the LOCAL getters, so on any machine west of UTC it
+> returned the day it was given. Recurring windows expanded to the wrong dates
+> or none, and the public booking horizon was short. Africa/Juba is UTC+2,
+> which is why a server in Juba never showed it and every CI runner did.
+>
+> One line here was also wrong rather than stale: the lead-time boundary is
+> **inclusive**. `minLeadTimeMinutes` is defined as "no booking may start
+> sooner than this many minutes from now", and a slot exactly that far away is
+> not sooner than it — so it is offered. The engine has always behaved this
+> way; the parenthetical claiming otherwise has been removed rather than the
+> rule changed.
 
 Thin data-loading wrapper alongside it: `platform/src/lib/services/booking-service.ts` (fetch → `computeSlots` → return), so both the API route and any staff-side "find me a slot" reuse one path.
 
@@ -551,7 +572,13 @@ Eligibility pre-check on insurance submit; reschedule/cancel by link; waitlist f
 
 ## 11. The 11-step tour
 
-Reuses [tour/types.ts](../platform/src/lib/tour/types.ts) verbatim. New file `platform/src/lib/tour/booking-tour.ts`, registered in `journey-tours.ts`, launched from `/org-admin/booking`. Note `TourCard` renders `Step 3 of 11` (deliberately, per its own comment) rather than the reference's `3/11` — keep our wording.
+**Not built.** This section is a design, not a description: there is no
+`booking-tour.ts` and `journey-tours.ts` has no booking entry. It is kept as the
+plan for whoever picks it up.
+
+The design: reuse [tour/types.ts](../platform/src/lib/tour/types.ts) verbatim, add
+`platform/src/lib/tour/booking-tour.ts`, register it in `journey-tours.ts`, launch
+it from `/org-admin/booking`. Note `TourCard` renders `Step 3 of 11` (deliberately, per its own comment) rather than the reference's `3/11` — keep our wording.
 
 | # | Route | Anchor | Message |
 |---|---|---|---|

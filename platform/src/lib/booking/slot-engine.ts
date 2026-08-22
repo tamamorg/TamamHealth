@@ -26,7 +26,6 @@ import type {
   BookingPolicyDoc, PatientClass, SlotHoldDoc, VisitReasonDoc,
 } from '../db-types-booking';
 import { APPOINTMENT_SLOT_RELEASED_STATUSES } from '../appointment-status';
-import { toIsoDate } from '@/lib/date-utils';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Public shapes
@@ -104,11 +103,31 @@ export function dayOfWeek(date: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
-/** Walk forward n days from a YYYY-MM-DD string. */
+/**
+ * Walk forward n days from a YYYY-MM-DD string.
+ *
+ * UTC in, UTC out. It used to build the date with `Date.UTC(...)` and then
+ * format it with `toIsoDate()`, which reads the LOCAL getters — so on any
+ * machine west of UTC the two cancelled out and the function returned the day
+ * it was given. `addDays('2026-08-31', 1)` was `'2026-08-31'` in EDT.
+ *
+ * That is not a cosmetic off-by-one. `datesBetween` advances its cursor with
+ * this function, so it stopped advancing and filled to its 400-date cap with
+ * copies of one day; `expandWindows` then produced the wrong dates (or none)
+ * for every recurring availability window, and the public booking horizon
+ * (`addDays(now, maxAdvanceDays)`) was short. Africa/Juba is UTC+2, which is
+ * why a correctly-configured server in Juba never showed it — and why every
+ * developer machine and CI runner west of UTC did.
+ *
+ * `dayOfWeek` above already used `getUTCDay()` for exactly this reason. This
+ * makes the pair consistent.
+ */
 export function addDays(date: string, n: number): string {
   const [y, m, d] = date.split('-').map(Number);
   const shifted = new Date(Date.UTC(y, m - 1, d + n));
-  return toIsoDate(shifted);
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(shifted.getUTCDate()).padStart(2, '0');
+  return `${shifted.getUTCFullYear()}-${month}-${day}`;
 }
 
 /** Every date from `from` to `to` inclusive. Capped so a bad range can't hang. */

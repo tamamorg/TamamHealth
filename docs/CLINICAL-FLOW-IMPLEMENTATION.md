@@ -12,8 +12,12 @@ capabilities, payment model, and patient identity. Every UI station and API
 guard must validate moves against this layer (e.g. `canTransition()`), so an
 encounter or order can never enter a state the document doesn't allow.
 
-Guarded by `platform/src/__tests__/clinical-flow/state-machines.test.ts`
-(closed-machine + invariant checks).
+Guarded by `platform/src/__tests__/clinical/encounter-state-machine.test.ts`
+(closed-machine + invariant checks). It moved there from
+`__tests__/clinical-flow/state-machines.test.ts`; this line went on naming the
+old path for long enough to be worth saying out loud, because a doc that cites
+a test file nobody can open is indistinguishable from one citing coverage that
+does not exist.
 
 ## Phase 0/1 — DONE this iteration (spec layer)
 
