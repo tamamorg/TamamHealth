@@ -1,6 +1,6 @@
 'use client';
 
-import { ForcePasswordChange, MfaEnrolment } from '@/modules/identity/client';
+import { ForcePasswordChange } from '@/modules/identity/client';
 import { Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
@@ -63,26 +63,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Force a password change before any app content when the account is still on
   // an admin-issued temporary credential (freshly created or reset).
   //
-  // Both gates are mirrored by a 403 at the Edge proxy, so they are what the
-  // user SEES rather than what stops them: a client-only gate blocks browsing
-  // and nothing else, which is exactly what `mustChangePassword` did for a
-  // year while the session drove /api/* perfectly well.
+  // Mirrored by a 403 at the Edge proxy, so this gate is what the user SEES
+  // rather than what stops them: a client-only gate blocks browsing and
+  // nothing else, which is exactly what `mustChangePassword` did for a year
+  // while the session drove /api/* perfectly well.
   if (currentUser?.mustChangePassword) {
     return <ForcePasswordChange userName={currentUser.name} onLogout={logout} />;
-  }
-
-  // Same shape for the second factor: a role that must hold one and has not
-  // enrolled it yet gets the enrolment panel instead of the application.
-  if (currentUser?.mfaPending) {
-    return (
-      <MfaEnrolment
-        mode="gate"
-        onLogout={logout}
-        // The API re-issued the session cookie without the pending claim, so a
-        // reload lifts the gate the same way the password gate lifts.
-        onEnrolled={() => window.location.assign('/')}
-      />
-    );
   }
 
   return (

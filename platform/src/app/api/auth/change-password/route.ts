@@ -102,10 +102,6 @@ export async function POST(request: NextRequest) {
       county: auth.county,
       state: auth.state,
       mustChangePassword: false,
-      // Carried forward rather than cleared: replacing a temporary password
-      // does not enrol a second factor, and dropping the claim here would let
-      // an account that owes one walk straight past the proxy gate.
-      mfaPending: auth.mfaPending,
       passwordUpdatedAt: updatedUser.passwordUpdatedAt,
     });
 

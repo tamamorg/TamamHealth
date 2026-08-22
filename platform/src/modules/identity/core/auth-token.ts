@@ -93,7 +93,7 @@ export function pwdAtClaim(passwordUpdatedAt?: string): number | undefined {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : undefined;
 }
 
-export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; facilityIds?: string[]; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; mfaPending?: boolean; passwordUpdatedAt?: string; pwdAt?: number; ttlSeconds?: number }): Promise<string> {
+export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; facilityIds?: string[]; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; passwordUpdatedAt?: string; pwdAt?: number; ttlSeconds?: number }): Promise<string> {
   const payload = {
     sub: user._id,
     username: user.username,
@@ -119,7 +119,6 @@ export async function createToken(user: { _id: string; username: string; role: s
     // same mistake `mustChangePassword` made for a year. Re-minted the moment
     // enrolment completes, so it cannot go stale in the direction that locks
     // somebody out.
-    mfaPending: user.mfaPending,
     // Password epoch: tokens minted before the account's latest password
     // change are rejected by getAuthPayload / /api/auth/me, so a password
     // change or admin reset revokes every other session immediately.
@@ -166,7 +165,6 @@ export interface VerifiedTokenPayload {
   state?: string;
   mustChangePassword?: boolean;
   /** Second-factor enrolment is required for this role and not yet done. */
-  mfaPending?: boolean;
   /** Password epoch (unix seconds) — see createToken. */
   pwdAt?: number;
   /** Issued-at (unix seconds) — drives sliding session renewal. */
@@ -213,71 +211,3 @@ export async function verifyToken(token: string): Promise<VerifiedTokenPayload |
 
 // ─── Second-factor hand-off token ───────────────────────────────────────────
 
-/**
- * A DIFFERENT audience from the session token, and that is the whole design.
- *
- * Between "your password is correct" and "you are signed in" there is a state
- * the server has to remember across two requests. The patient portal solves it
- * with a server-side challenge store; staff sign-in cannot, because the
- * platform runs on multiple replicas and a challenge in one instance's memory
- * is a coin-flip on the next request.
- *
- * So the state travels with the client, signed. The audience claim is what
- * keeps it from being a session: `verifyToken` demands `tamamhealth-web` and
- * will not accept this token for any authenticated request, no matter where it
- * is presented. It proves one thing — that a password was verified for this
- * subject, minutes ago — and it is exchanged for a real session only by
- * /api/auth/verify-mfa, after a code is checked.
- */
-const MFA_AUDIENCE = 'tamamhealth-mfa-pending';
-
-/**
- * Five minutes. Long enough to open an authenticator app, find the entry and
- * type six digits on a phone with a cracked screen; short enough that a token
- * left in a browser's network log is not a standing half-credential.
- */
-export const MFA_PENDING_TTL_SEC = 300;
-
-export interface MfaPendingClaims {
-  sub: string;
-  /** The role the user asked to sign in AS — the login role picker's choice,
-   *  which must survive the second-factor step or a super-admin would be
-   *  silently dropped back into their own role after entering a code. */
-  requestedRole?: string;
-  /** Facility the login form pinned, carried for the same reason. */
-  hospitalId?: string;
-}
-
-export async function createMfaPendingToken(claims: MfaPendingClaims): Promise<string> {
-  if (!hasCryptoSubtle()) {
-    // No unsigned fallback here, in production or out of it. An unsigned
-    // second-factor hand-off is a token anyone can mint for any subject, which
-    // would turn MFA into a formality rather than a factor.
-    throw new Error('[SECURITY] Cannot issue a second-factor token without Web Crypto');
-  }
-  return new SignJWT({ ...claims })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setIssuer(JWT_ISSUER)
-    .setAudience(MFA_AUDIENCE)
-    .setExpirationTime(`${MFA_PENDING_TTL_SEC}s`)
-    .sign(JWT_SECRET);
-}
-
-export async function verifyMfaPendingToken(token: string): Promise<MfaPendingClaims | null> {
-  if (!hasCryptoSubtle()) return null;
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, {
-      issuer: JWT_ISSUER,
-      audience: MFA_AUDIENCE,
-    });
-    if (typeof payload.sub !== 'string' || !payload.sub) return null;
-    return {
-      sub: payload.sub,
-      requestedRole: typeof payload.requestedRole === 'string' ? payload.requestedRole : undefined,
-      hospitalId: typeof payload.hospitalId === 'string' ? payload.hospitalId : undefined,
-    };
-  } catch {
-    return null;
-  }
-}

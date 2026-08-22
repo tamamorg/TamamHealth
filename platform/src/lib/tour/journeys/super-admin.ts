@@ -101,7 +101,7 @@ export const SUPER_ADMIN_STEPS: TourStep[] = [
     route: '/admin/security',
     target: '.sadb-rail',
     title: 'Security & compliance',
-    body: 'MFA, PHI export controls, break-glass access, and backup objectives — set the policy defaults here and every tenant inherits them until it’s changed again. The Security watchlist section lists every high-risk action from the last seven days.',
+    body: 'PHI export controls, break-glass access, and backup objectives — set the policy defaults here and every tenant inherits them until it’s changed again. The Security watchlist section lists every high-risk action from the last seven days.',
     placement: 'right',
   },
   {

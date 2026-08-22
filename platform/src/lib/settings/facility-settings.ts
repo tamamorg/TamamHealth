@@ -151,8 +151,6 @@ export interface FacilitySettings {
   userPolicy: {
     /** New accounts need an administrator's approval (no self-registration). */
     requireAdminApproval: boolean;
-    /** Two-factor authentication is mandatory for administrator accounts. */
-    requireAdminTwoFactor: boolean;
     /** Deactivate accounts after this many idle days. 0 disables the sweep. */
     deactivateAfterIdleDays: number;
   };
@@ -305,7 +303,6 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
   },
   userPolicy: {
     requireAdminApproval: true,
-    requireAdminTwoFactor: true,
     deactivateAfterIdleDays: 60,
   },
   reportingSchedule: {

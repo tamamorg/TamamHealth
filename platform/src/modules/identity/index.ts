@@ -11,7 +11,6 @@
  *
  *   core/         sessions, tokens, CSRF, the request-time auth guard
  *   policy/       password rules, role/scope rules, who may approve what
- *   mfa/          the second factor
  *   provisioning/ invitations, temporary credentials, bulk import
  *   services/     the write paths and their data access
  *   email/        the messages this domain sends
@@ -43,8 +42,7 @@ export {
 // ── Sessions and tokens ─────────────────────────────────────────────────────
 export {
   createToken, verifyToken, pwdAtClaim,
-  createMfaPendingToken, verifyMfaPendingToken, MFA_PENDING_TTL_SEC,
-  type VerifiedTokenPayload, type MfaPendingClaims,
+  type VerifiedTokenPayload,
 } from './core/auth-token';
 export { hashPassword, verifyPassword, bcryptCost } from './core/auth';
 export {
@@ -92,14 +90,6 @@ export {
   accountRequestFacilityMatchesOrg, roleRequiresRegistrationNumber, isValidAttestation,
 } from './policy/account-request-roles';
 
-// ── Second factor ───────────────────────────────────────────────────────────
-export {
-  generateTotpSecret, totpCode, totpCodeForStep, totpStep, verifyTotpCode,
-  buildOtpauthUri, formatSecretForDisplay, base32Encode, base32Decode,
-  generateRecoveryCodes, hashRecoveryCode, consumeRecoveryCode,
-  TOTP_STEP_SECONDS, TOTP_DIGITS, TOTP_WINDOW_STEPS, RECOVERY_CODE_COUNT,
-} from './mfa/totp';
-
 // ── Provisioning ────────────────────────────────────────────────────────────
 export {
   issueInvite, hashInviteToken, inviteHashMatches, isInviteExpired,
@@ -142,7 +132,7 @@ export {
 //     const { createUser } = await import('@/modules/identity/services/user-service');
 //
 // The lint rules allow `@/modules/identity/services/*` for exactly this reason
-// and block every other deep path. `core/`, `policy/`, `mfa/`, `provisioning/`
+// and block every other deep path. `core/`, `policy/`, `provisioning/`
 // and `email/` stay private behind this file.
 
 // ── Email this domain sends ─────────────────────────────────────────────────

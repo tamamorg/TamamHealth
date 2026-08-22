@@ -1,14 +1,10 @@
 /**
  * Turning a verified staff identity into a session.
  *
- * Extracted from `/api/auth/login` when sign-in stopped being a single
- * request. With a second factor there are two ways to arrive at "this person
- * is who they say": a password alone (no MFA on the account), or a password
- * followed by a code. Both must produce EXACTLY the same session — the same
- * claims, the same cookies, the same role-picker handling — or the two paths
- * drift and one of them quietly grants something the other does not.
- *
- * So the decision lives here once and both routes call it.
+ * Every caller that has decided "this person is who they say" arrives here, so
+ * they all produce EXACTLY the same session — the same claims, the same
+ * cookies, the same role-picker handling. Building one inline anywhere else is
+ * how two sign-in paths drift and one quietly grants what the other does not.
  */
 
 import { NextResponse } from 'next/server';
@@ -152,18 +148,6 @@ export async function issueSessionResponse(
     }
   }
 
-  let mfaPending = false;
-  try {
-    const { isMfaRequiredFor } = await import('@/modules/identity/services/mfa-service');
-    const { getUserById } = await import('@/modules/identity/services/user-service');
-    const account = await getUserById(user._id);
-    if (account) mfaPending = await isMfaRequiredFor(account);
-  } catch {
-    // A deployment with no users database (the standalone demo) cannot enrol
-    // anything, so it cannot owe anything either.
-    mfaPending = false;
-  }
-
   const token = await createToken({
     _id: user._id,
     username: user.username,
@@ -186,7 +170,6 @@ export async function issueSessionResponse(
     // Carry the forced-change flag so the client can route a freshly created
     // or reset user straight to the "set your password" screen.
     mustChangePassword: user.mustChangePassword,
-    mfaPending,
     ttlSeconds,
     // Password epoch — a later change/reset invalidates this token.
     passwordUpdatedAt: user.passwordUpdatedAt,
@@ -211,8 +194,7 @@ export async function issueSessionResponse(
       // organization name next to a borrowed org id would be a lie.
       orgName: effective.actualRole ? undefined : (user.orgName || await lookupOrgName(user.orgId)),
       mustChangePassword: user.mustChangePassword,
-      mfaPending,
-    },
+      },
     ...extra,
   });
 

@@ -9,7 +9,6 @@ import type { PlatformConfigDoc } from '@/lib/db-types';
 export type SuperAdminPolicies = NonNullable<PlatformConfigDoc['superAdminPolicies']>;
 
 export const DEFAULT_POLICIES: SuperAdminPolicies = {
-  mfaRequired: true,
   passwordMinLength: 12,
   sessionTimeoutMinutes: 15,
   emergencyAccessEnabled: true,

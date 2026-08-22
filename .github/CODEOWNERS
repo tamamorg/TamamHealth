@@ -71,12 +71,11 @@
 #
 # The identity module's `core/` and `policy/` directories are where the
 # credentials live — sessions, tokens, CSRF, the request-time guard, the
-# password rules. `mfa/` is the second factor. These three are the reason this
-# block exists; the rest of the module is ordinary domain code covered above.
+# password rules. They are the reason this block exists; the rest of the module
+# is ordinary domain code covered above.
 /platform/src/proxy.ts                          @makuachteny
 /platform/src/modules/identity/core/            @makuachteny
 /platform/src/modules/identity/policy/          @makuachteny
-/platform/src/modules/identity/mfa/             @makuachteny
 /platform/src/modules/identity/provisioning/    @makuachteny
 /platform/src/lib/field-encryption.ts           @makuachteny
 /platform/src/lib/config-validation.ts          @makuachteny

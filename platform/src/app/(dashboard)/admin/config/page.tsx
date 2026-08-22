@@ -254,7 +254,6 @@ export default function AdminConfigPage() {
                           which is which matters more here than anywhere,
                           because this is the screen that reads as a summary of
                           the deployment's posture. */}
-                      <SadbKvRow label="MFA required" value={policies.mfaRequired ? 'Yes' : 'No'} />
                       <SadbKvRow label="Password minimum length" value={policies.passwordMinLength} />
                       <SadbKvRow label="Session timeout" value={`${policies.sessionTimeoutMinutes}m`} />
                       <SadbKvRow

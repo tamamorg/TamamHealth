@@ -121,8 +121,6 @@ export default function AdminUsersPage() {
   const [openWorkNotice, setOpenWorkNotice] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
-  const [mfaResetTarget, setMfaResetTarget] = useState<UserDoc | null>(null);
-  const [resettingMfa, setResettingMfa] = useState(false);
 
   // Deep-link support: /admin/users?q=<name> arrives pre-filtered (the audit
   // log's "View in User Management" action), while ?user=<id> isolates and
@@ -361,28 +359,6 @@ export default function AdminUsersPage() {
       showToast(err instanceof Error ? err.message : 'Could not send the invitation.', 'error');
     } finally {
       setResendingId(null);
-    }
-  };
-
-  /**
-   * Clear a colleague's second factor so they can enrol a new one.
-   *
-   * Behind a confirm, because the person on the phone claiming to have lost
-   * their handset is exactly who an attacker would claim to be — the dialog
-   * says so rather than leaving it to the administrator to remember.
-   */
-  const handleResetMfa = async (user: UserDoc) => {
-    setResettingMfa(true);
-    try {
-      const { resetUserMfa } = await import('@/modules/identity/services/user-service');
-      const { message } = await resetUserMfa(user._id);
-      setUsers(prev => prev.map(u => u._id === user._id ? { ...u, totpEnabledAt: undefined } : u));
-      showToast(message || `Two-factor authentication cleared for ${user.name}.`, 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not clear two-factor authentication.', 'error');
-    } finally {
-      setResettingMfa(false);
-      setMfaResetTarget(null);
     }
   };
 
@@ -651,10 +627,6 @@ export default function AdminUsersPage() {
                 <span>{describeAccountState(detailUser).label}</span>
               </div>
               <div className="sadb-usercard-row">
-                <span>Two-factor</span>
-                <span>{detailUser.totpEnabledAt ? 'On' : 'Not set up'}</span>
-              </div>
-              <div className="sadb-usercard-row">
                 <span>Last sign-in</span>
                 <span>
                   {detailUser.lastLoginAt
@@ -702,17 +674,6 @@ export default function AdminUsersPage() {
                 >
                   <KeyRound className="w-4 h-4" /> Reset password
                 </button>
-                {/* The lost-phone path. Only shown when there is a factor to
-                    clear — see `reset_mfa` in /api/users for why it exists. */}
-                {detailUser.totpEnabledAt && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => { const u = detailUser; closeDetail(); setMfaResetTarget(u); }}
-                  >
-                    <ShieldCheck className="w-4 h-4" /> Reset two-factor
-                  </button>
-                )}
                 {/* Preferred over a reset: the person sets their own password
                     from a single-use link, so no plaintext credential has to
                     be relayed. Offered only when there is an address to send
@@ -996,20 +957,6 @@ export default function AdminUsersPage() {
           // filter is what says which tenant these accounts are for.
           orgId={filterOrg === 'all' ? undefined : filterOrg}
           orgName={organizations.find(o => o._id === filterOrg)?.name}
-        />
-      )}
-
-      {mfaResetTarget && (
-        <SadbConfirmModal
-          title={`Reset two-factor for ${mfaResetTarget.name}?`}
-          body={`${mfaResetTarget.name} will be able to sign in with their password alone, and will be `
-            + 'asked to set up a new authenticator app. Anyone who knows their password could do the same, '
-            + 'so confirm you are speaking to the right person first — in person, or by calling the number '
-            + 'on their staff record rather than one they have just given you.'}
-          confirmLabel={resettingMfa ? 'Clearing…' : 'Reset two-factor'}
-          onCancel={() => setMfaResetTarget(null)}
-          onConfirm={() => handleResetMfa(mfaResetTarget)}
-          busy={resettingMfa}
         />
       )}
 

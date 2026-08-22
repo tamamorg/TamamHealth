@@ -59,7 +59,6 @@ interface AppUser {
   /** True when the user must set a new password before using the app. */
   mustChangePassword?: boolean;
   /** Role requires a second factor that has not been enrolled yet. */
-  mfaPending?: boolean;
   branding: OrgBranding;
 }
 
@@ -175,18 +174,7 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
-  login: (username: string, password: string, hospitalId?: string, requestedRole?: UserRole, mfaCode?: string) => Promise<UserRole | false>;
-  /**
-   * Set when the last `login()` returned false because the account holds a
-   * second factor and the code has not been supplied yet.
-   *
-   * Reported through an accessor rather than widening `login()`'s return type,
-   * matching `lastLoginFailure` above: six call sites depend on the
-   * `UserRole | false` contract, and "not signed in yet" is honestly false.
-   * Call `login()` again with the same username and password plus `mfaCode`
-   * to finish.
-   */
-  lastLoginChallenge: () => { method: 'totp' } | null;
+  login: (username: string, password: string, hospitalId?: string, requestedRole?: UserRole) => Promise<UserRole | false>;
   /** Deployment-wide policy this client must honour — see `PlatformClientPolicy`. */
   platformPolicy: PlatformClientPolicy;
   /** Why the most recent `login()` returned false, or null if the server was never reached. */
@@ -252,7 +240,6 @@ interface AuthSlice {
   dbReady: boolean;
   login: AppState['login'];
   lastLoginFailure: AppState['lastLoginFailure'];
-  lastLoginChallenge: AppState['lastLoginChallenge'];
   platformPolicy: AppState['platformPolicy'];
   logout: AppState['logout'];
   refreshCurrentUser: AppState['refreshCurrentUser'];
@@ -590,13 +577,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * screen shipped and read by nothing.
    */
   const [platformPolicy, setPlatformPolicy] = useState<PlatformClientPolicy>({});
-  const mfaChallengeRef = useRef<{ mfaToken: string; username: string } | null>(null);
-  const lastLoginChallenge = useCallback(
-    () => (mfaChallengeRef.current ? { method: 'totp' as const } : null),
-    [],
-  );
-
-  const login = useCallback(async (username: string, password: string, hospitalId?: string, requestedRole?: UserRole, mfaCode?: string): Promise<UserRole | false> => {
+  const login = useCallback(async (username: string, password: string, hospitalId?: string, requestedRole?: UserRole): Promise<UserRole | false> => {
     loginFailureRef.current = null;
     try {
       const sanitizedUsername = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
@@ -609,7 +590,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Only if the request itself fails (offline / network error) do we fall
       // back to the PouchDB-local path so previously-logged-in users can still
       // sign in without connectivity.
-      type LoginUser = Pick<UserDoc, '_id' | 'username' | 'name' | 'role' | 'hospitalId' | 'hospitalName' | 'facilityIds' | 'orgId' | 'isActive' | 'passwordHash' | 'mustChangePassword' | 'department'> & { actualRole?: UserRole; mfaPending?: boolean };
+      type LoginUser = Pick<UserDoc, '_id' | 'username' | 'name' | 'role' | 'hospitalId' | 'hospitalName' | 'facilityIds' | 'orgId' | 'isActive' | 'passwordHash' | 'mustChangePassword' | 'department'> & { actualRole?: UserRole };
       let user: LoginUser | null = null;
       let usedApi = false;
 
@@ -619,31 +600,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // would have had to duplicate the offline-credential caching, the
         // legacy-store purge, the CouchDB session refresh and the device
         // handover wipe that all follow a successful login.
-        const pendingMfa = mfaChallengeRef.current;
-        const answeringChallenge = Boolean(
-          mfaCode && pendingMfa && pendingMfa.username === sanitizedUsername,
-        );
-        const res = answeringChallenge
-          ? await fetch('/api/auth/verify-mfa', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mfaToken: pendingMfa!.mfaToken, code: mfaCode }),
-          })
-          : await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: sanitizedUsername, password, hospitalId, role: requestedRole }),
-          });
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: sanitizedUsername, password, hospitalId, role: requestedRole }),
+        });
         if (res.ok) {
           const body = await res.json();
-          // The password was right but it is not the whole credential. No
-          // session cookie was issued, so nothing below should run.
-          if (body?.mfaRequired && typeof body.mfaToken === 'string') {
-            mfaChallengeRef.current = { mfaToken: body.mfaToken, username: sanitizedUsername };
-            loginFailureRef.current = null;
-            return false;
-          }
-          mfaChallengeRef.current = null;
           user = {
             _id: body.user._id,
             username: body.user.username,
@@ -659,7 +622,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // for online logins — admin-issued temporary passwords were
             // silently accepted as permanent credentials.
             mustChangePassword: body.user.mustChangePassword,
-            mfaPending: body.user.mfaPending,
             facilityIds: body.user.facilityIds,
           };
           usedApi = true;
@@ -744,11 +706,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           };
 
           if (res.status === 401 || res.status === 403 || res.status === 429) {
-            // Server explicitly rejected — do not fall back silently. A
-            // rejected CODE also ends the challenge: the hand-off token is
-            // single-use in practice and the user starts from the password
-            // again, which is the honest thing to show them.
-            if (answeringChallenge) mfaChallengeRef.current = null;
+            // Server explicitly rejected — do not fall back silently.
             await logAudit('login_failed', undefined, sanitizedUsername, `API rejected (${res.status})`, false);
             return false;
           }
@@ -933,7 +891,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // response shape. Read defensively so we still populate them when the
       // server-side login returns them but the local PouchDB record doesn't.
       const geo = user as unknown as {
-        payam?: string; county?: string; state?: string; mustChangePassword?: boolean; mfaPending?: boolean; orgName?: string;
+        payam?: string; county?: string; state?: string; mustChangePassword?: boolean; orgName?: string;
       };
       setCurrentUser({
         _id: user._id,
@@ -952,7 +910,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         county: geo.county,
         state: geo.state,
         mustChangePassword: geo.mustChangePassword,
-        mfaPending: geo.mfaPending,
         branding,
       });
       // Same as the restore path: the login redirect reads the user's
@@ -1131,9 +1088,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // these values actually changes. setState setters and the useCallback'd
   // actions are stable, so they don't need to be in the dependency list.
   const authValue = useMemo<AuthSlice>(() => ({
-    isAuthenticated, currentUser, dbReady, login, lastLoginFailure, lastLoginChallenge, logout, refreshCurrentUser,
+    isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout, refreshCurrentUser,
     platformPolicy,
-  }), [isAuthenticated, currentUser, dbReady, login, lastLoginFailure, lastLoginChallenge, logout, refreshCurrentUser,
+  }), [isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout, refreshCurrentUser,
     platformPolicy]);
 
   const syncValue = useMemo<SyncSlice>(() => ({

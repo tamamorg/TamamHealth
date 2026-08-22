@@ -108,7 +108,6 @@ describe('credential-bearing code stays under security review', () => {
     'platform/src/modules/identity/core/token-blacklist.ts',
     'platform/src/modules/identity/core/server-users.ts',
     'platform/src/modules/identity/policy/password-policy.ts',
-    'platform/src/modules/identity/mfa/totp.ts',
     'platform/src/modules/identity/provisioning/user-invite.ts',
     'platform/src/lib/field-encryption.ts',
     'platform/src/lib/config-validation.ts',

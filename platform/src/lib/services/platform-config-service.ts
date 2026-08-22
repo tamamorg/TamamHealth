@@ -16,7 +16,6 @@ const DEFAULT_CONFIG: Omit<PlatformConfigDoc, '_id' | '_rev' | 'createdAt' | 'up
   defaultPrimaryColor: BRAND_PRIMARY,
   defaultSecondaryColor: BRAND_SECONDARY,
   superAdminPolicies: {
-    mfaRequired: true,
     passwordMinLength: 12,
     sessionTimeoutMinutes: 15,
     emergencyAccessEnabled: true,

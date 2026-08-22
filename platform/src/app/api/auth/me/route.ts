@@ -68,8 +68,7 @@ export async function GET(request: NextRequest) {
   const isProduction = process.env.NODE_ENV === 'production';
   let fresh: {
     name?: string; role?: string; actualRole?: string; hospitalId?: string; hospitalName?: string;
-    orgId?: string; orgName?: string; mustChangePassword?: boolean; mfaPending?: boolean;
-    /** Staff department — routes department-addressed patient transfers to the
+    orgId?: string; orgName?: string; mustChangePassword?: boolean;    /** Staff department — routes department-addressed patient transfers to the
      *  right inbox. Not a JWT claim, so it is only populated from the live user
      *  record; a JWT-only fallback leaves it undefined rather than stale. */
     department?: string;
@@ -81,7 +80,6 @@ export async function GET(request: NextRequest) {
     hospitalName: payload.hospitalName,
     orgId: payload.orgId,
     mustChangePassword: payload.mustChangePassword,
-    mfaPending: payload.mfaPending,
   };
   // Set when the live record was loaded — gates session renewal below, and
   // carries the current password epoch into any re-minted token.
@@ -128,18 +126,6 @@ export async function GET(request: NextRequest) {
         // fixed on their next page load, with nothing to run.
         orgName: impersonating ? undefined : (user.orgName || await lookupOrgName(user.orgId)),
         mustChangePassword: user.mustChangePassword,
-        // Re-derived from the live record on every app load, exactly like the
-        // deactivation and password-epoch checks above. A policy switched on
-        // this morning starts applying to an existing session on its next
-        // reload, and a factor enrolled five minutes ago stops blocking it.
-        mfaPending: await (async () => {
-          try {
-            const { isMfaRequiredFor } = await import('@/modules/identity/services/mfa-service');
-            return await isMfaRequiredFor(user);
-          } catch {
-            return payload.mfaPending;
-          }
-        })(),
         department: user.department,
       };
     } else if (isProduction && payload.sub !== 'admin' && process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
@@ -165,7 +151,6 @@ export async function GET(request: NextRequest) {
       orgId: fresh.orgId,
       orgName: fresh.orgName,
       mustChangePassword: fresh.mustChangePassword,
-      mfaPending: fresh.mfaPending,
       department: fresh.department,
     },
     // Deployment-wide operational policy, sent with the session because every
@@ -201,10 +186,6 @@ export async function GET(request: NextRequest) {
         county: payload.county,
         state: payload.state,
         mustChangePassword: fresh.mustChangePassword,
-        // Re-evaluated from the live record below, so a renewed session cannot
-        // carry a stale "you still owe us a second factor" claim past the
-        // moment someone enrols one.
-        mfaPending: fresh.mfaPending,
         passwordUpdatedAt: liveUser?.passwordUpdatedAt,
         // Demo deployments have no live record; carry the claim forward.
         pwdAt: liveUser ? undefined : payload.pwdAt,

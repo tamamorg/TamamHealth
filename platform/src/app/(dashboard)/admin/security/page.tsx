@@ -38,7 +38,7 @@ type Policy = NonNullable<PlatformConfigDoc['superAdminPolicies']>;
  * Whether the platform actually DOES anything with a setting.
  *
  * This screen shipped with sixteen controls and enforced none of them. An
- * operator reading it believed the platform imposed an MFA requirement, a
+ * operator reading it believed the platform imposed a requirement, a
  * password minimum, an idle timeout and a cap on support sessions; the code
  * read none of those values, and a governance screen that overstates the
  * posture will be read as an assurance by whoever procures and audits it.
@@ -65,11 +65,6 @@ interface SettingField {
 }
 
 const ACCESS_FIELDS: SettingField[] = [
-  {
-    kind: 'toggle', key: 'mfaRequired', label: 'Require MFA',
-    sub: 'Platform and organization admins, medical superintendents and hospital managers must set up an authenticator app before using the platform.',
-    enforcement: 'enforced', enforcedBy: 'lib/services/mfa-service.ts',
-  },
   {
     kind: 'number', key: 'passwordMinLength', label: 'Password minimum',
     sub: 'Minimum password length, characters. Applies wherever a password is set or reset.',
@@ -273,7 +268,6 @@ export default function SecurityCompliancePage() {
   /* ── Posture (reads the persisted policy, not the draft) ────────────── */
 
   const postureRows = useMemo(() => [
-    { label: 'MFA required', tone: (persisted.mfaRequired ? 'ok' : 'warn') as Tone, chip: persisted.mfaRequired ? 'On' : 'Off' },
     { label: 'Audit retention ≥ 6 years', tone: (persisted.auditRetentionYears >= 6 ? 'ok' : 'warn') as Tone, chip: `${persisted.auditRetentionYears}y` },
     { label: 'PHI export control', tone: (persisted.phiExportRequiresReason ? 'ok' : 'warn') as Tone, chip: persisted.phiExportRequiresReason ? 'On' : 'Off' },
     { label: 'Deletion approval', tone: (persisted.dataDeletionRequiresApproval ? 'ok' : 'warn') as Tone, chip: persisted.dataDeletionRequiresApproval ? 'On' : 'Off' },

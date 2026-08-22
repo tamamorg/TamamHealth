@@ -35,7 +35,7 @@ export type RoleSettingRow =
   | { kind: 'select'; key: string; label: string; hint: string; def: string; options: string[]; pending?: true }
   | { kind: 'text'; key: string; label: string; hint: string; def: string }
   | { kind: 'locked'; label: string; hint: string; value: string }
-  | { kind: 'action'; label: string; hint: string; action: 'password' | 'pin' | 'mfa'; buttonLabel: string };
+  | { kind: 'action'; label: string; hint: string; action: 'password' | 'pin'; buttonLabel: string };
 
 export type RoleSettingSection = {
   id: string;
@@ -97,11 +97,6 @@ function securitySection(idle: string, mask: boolean): RoleSettingSection {
   return {
     id: 'security', title: 'Security & sessions', icon: 'shield', note: 'Policy set by the facility admin',
     rows: [
-      // Was a `pending` toggle — declared, rendered "Not available yet", and
-      // backed by nothing, while /admin/security separately advertised
-      // "Require MFA: On". It is a real action now: an authenticator-app code
-      // at sign-in, set up from this row. See `components/MfaEnrolment.tsx`.
-      { kind: 'action', label: 'Two-factor authentication', hint: 'A code from your phone at sign-in', action: 'mfa', buttonLabel: 'Set up' },
       sel('security.idle', 'Auto sign-out after inactivity', 'Shared-workstation protection', idle, ['5 min', '10 min', '15 min', '30 min']),
       tg('security.mask', 'Hide patient identifiers on shared screens', 'Masks phone and address in queues', mask),
       { kind: 'action', label: 'Password', hint: 'Change the password you sign in with', action: 'password', buttonLabel: 'Change password' },

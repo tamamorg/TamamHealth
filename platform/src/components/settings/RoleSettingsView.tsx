@@ -61,7 +61,6 @@ import {
   RefreshCw, Server, Settings, Shield, Stethoscope, Trash2, User, Users, Zap, type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
-import { MfaEnrolment } from '@/modules/identity/client';
 const SECTION_ICONS: Record<string, LucideIcon> = {
   user: User, bell: Bell, shield: Shield, steth: Stethoscope, pill: Pill,
   flask: FlaskConical, card: CreditCard, bed: BedDouble, clock: Clock,
@@ -223,7 +222,6 @@ export default function RoleSettingsView() {
   // Second-factor setup. The panel is the same component the enrolment gate
   // renders — one implementation, so voluntary enrolment and required
   // enrolment cannot describe the same thing differently.
-  const [mfaOpen, setMfaOpen] = useState(false);
   const [pinForm, setPinForm] = useState({ next: '', confirm: '' });
   const [pinIsSet, setPinIsSet] = useState(false);
   const [pinSaving, setPinSaving] = useState(false);
@@ -583,7 +581,6 @@ export default function RoleSettingsView() {
           className="ehr-queue-action-pill"
           onClick={() => {
             if (row.action === 'password') setPwOpen(true);
-            else if (row.action === 'mfa') setMfaOpen(true);
             else setPinOpen(true);
           }}
         >
@@ -1063,13 +1060,6 @@ export default function RoleSettingsView() {
               </button>
             </div>
           </div>
-        </Modal>
-      )}
-
-      {/* ── Two-factor setup popup ── */}
-      {mfaOpen && (
-        <Modal onClose={() => setMfaOpen(false)} width={480} labelledBy="mfa-modal-title">
-          <MfaEnrolment mode="settings" onEnrolled={() => setMfaOpen(false)} />
         </Modal>
       )}
 

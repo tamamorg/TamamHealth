@@ -1,16 +1,11 @@
 /**
  * API: POST /api/auth/login
  *
- * Step one of sign-in: prove the password. On an account with no second
- * factor that is the whole of it and a session comes back. On an account with
- * TOTP enabled it is half — the response carries a short-lived hand-off token
- * and NO session, and /api/auth/verify-mfa exchanges a code for the real one.
- *
- * The session itself is built in `lib/login-session.ts`, shared with that
- * second route, so the two paths cannot drift into issuing different sessions.
+ * Prove the password, get a session. The session itself is built in
+ * `lib/login-session.ts` so every path that issues one issues the same one.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { ROLES_WITHOUT_HOSPITAL, createMfaPendingToken, issueSessionResponse, logApiError, resolveEffectiveIdentity } from '@/modules/identity';
+import { ROLES_WITHOUT_HOSPITAL, issueSessionResponse, logApiError, resolveEffectiveIdentity } from '@/modules/identity';
 import { getClientIp } from '@/lib/request-utils';
 
 import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
@@ -95,36 +90,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // The password was right. Clear both failed-attempt streaks now, before
-    // the second factor: a correct password should not leave a lockout counter
-    // ticking, and the MFA step has its own limits.
+    // The password was right, so clear both failed-attempt streaks.
     await Promise.all([resetRateLimit(userRateKey), resetRateLimit(ipRateKey)]);
-
-    // ── Second factor ───────────────────────────────────────────────────
-    // Stop here when the account carries one. No session token is issued and
-    // no `lastLoginAt` is stamped: a password alone is not a sign-in on an
-    // account that has said it needs two things, and recording it as one
-    // would make every dormancy report wrong in the direction that matters.
-    //
-    // Read from the users DB rather than from `ServerUser`, which is a
-    // narrower projection — a standalone demo has no document at all, and on
-    // that deployment nothing can enrol a factor in the first place.
-    const { getUserById } = await import('@/modules/identity/services/user-service');
-    const account = await getUserById(user._id).catch(() => null);
-    if (account?.totpEnabledAt) {
-      const mfaToken = await createMfaPendingToken({
-        sub: user._id,
-        requestedRole,
-        hospitalId,
-      });
-      return NextResponse.json({
-        mfaRequired: true,
-        mfaToken,
-        // Named so the form can say something true about where the code comes
-        // from, without naming the app or leaking anything about the account.
-        method: 'totp',
-      });
-    }
 
     const identity = await resolveEffectiveIdentity(user, requestedRole);
     if (!identity.ok) {

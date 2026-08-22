@@ -50,9 +50,6 @@ jest.mock('@/modules/identity/services/user-service', () => ({
   getAllUsers: jest.fn(async () => Object.values(users)),
   redactUserForClient: jest.fn((user: Record<string, unknown>) => user),
 }));
-jest.mock('@/modules/identity/services/mfa-service', () => ({
-  disableTotp: jest.fn(async () => undefined),
-}));
 jest.mock('@/modules/identity/services/invite-delivery', () => ({
   deliverAccountInvite: jest.fn(async () => ({ sent: true, to: 'x@example.org', expiresAt: 'later' })),
 }));
@@ -71,7 +68,6 @@ jest.mock('@/lib/services/tenant-control-service', () => ({
 import { POST } from '@/app/api/users/route';
 import { deactivateUser, deleteUser } from '@/modules/identity/services/user-service';
 import { deliverAccountInvite } from '@/modules/identity/services/invite-delivery';
-import { disableTotp } from '@/modules/identity/services/mfa-service';
 
 const post = (body: Record<string, unknown>) => new NextRequest('https://app.example.org/api/users', {
   method: 'POST',
@@ -167,42 +163,6 @@ describe('the audit verb', () => {
       'user.deactivate', 'user.reactivate', 'user.delete',
       'user.password_reset', 'user.invite_resend',
     ]);
-  });
-});
-
-describe('clearing a locked-out colleague\'s second factor', () => {
-  // Enrolment issues ten recovery codes so a lost phone is survivable, but
-  // somebody who loses the handset AND the paper has no way back — and on this
-  // platform that may be the only clinician at the facility.
-  beforeEach(() => { users['user-nurse'].totpEnabledAt = '2026-08-01T00:00:00.000Z'; });
-
-  it('clears it and says what happens next', async () => {
-    const response = await POST(post({ action: 'reset_mfa', userId: 'user-nurse' }));
-    expect(response.status).toBe(200);
-    expect(disableTotp).toHaveBeenCalledWith('user-nurse', 'org.admin');
-    expect((await response.json()).message).toMatch(/set up a new authenticator/i);
-    expect(auditActions).toEqual(['user.mfa_reset']);
-  });
-
-  it('refuses when there is nothing to clear', async () => {
-    delete users['user-nurse'].totpEnabledAt;
-    const response = await POST(post({ action: 'reset_mfa', userId: 'user-nurse' }));
-    expect(response.status).toBe(400);
-    expect(disableTotp).not.toHaveBeenCalled();
-  });
-
-  it('is confined by the same tenant and privilege guards as every other mutation', async () => {
-    users['user-outsider'] = {
-      _id: 'user-outsider', username: 'outsider', name: 'Outsider',
-      role: 'nurse', orgId: 'org-b', isActive: true, totpEnabledAt: '2026-08-01T00:00:00.000Z',
-    };
-    users['user-platform'] = {
-      _id: 'user-platform', username: 'platform', name: 'Platform Operator',
-      role: 'super_admin', isActive: true, totpEnabledAt: '2026-08-01T00:00:00.000Z',
-    };
-    expect((await POST(post({ action: 'reset_mfa', userId: 'user-outsider' }))).status).toBe(403);
-    expect((await POST(post({ action: 'reset_mfa', userId: 'user-platform' }))).status).toBe(403);
-    expect(disableTotp).not.toHaveBeenCalled();
   });
 });
 

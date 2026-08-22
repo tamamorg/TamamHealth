@@ -107,7 +107,6 @@ export { usePasswordPolicy } from './hooks/usePasswordPolicy';
 // ── The screens this domain owns ────────────────────────────────────────────
 // Named rather than default so the barrel reads as one vocabulary, and so a
 // consumer's import line says which module the component came from.
-export { default as MfaEnrolment } from './components/MfaEnrolment';
 export { default as ForcePasswordChange } from './components/ForcePasswordChange';
 export { default as CreateUserModal, type CreatedCredentials } from './components/CreateUserModal';
 export { default as CredentialHandoffModal, formatCredentialHandoffText } from './components/CredentialHandoffModal';

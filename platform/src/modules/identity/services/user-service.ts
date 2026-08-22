@@ -37,16 +37,8 @@ const VALID_ROLES = Object.keys(ROLE_LABEL) as UserRole[];
 // DB path against mocked databases.
 const isBrowserRuntime = () => typeof window !== 'undefined' && !process.env.JEST_WORKER_ID;
 
-/**
- * A user document with every credential verifier removed.
- *
- * `totpEnabledAt` deliberately survives: WHEN a second factor was switched on
- * is a fact about the account, not a secret, and it is what the rosters read
- * to show who is protected. The secret, the recovery hashes and the spent-step
- * counter are the credential, and they never cross this boundary.
- */
-export type ClientSafeUser =
-  Omit<UserDoc, 'passwordHash' | 'pinHash' | 'totpSecret' | 'totpRecoveryCodeHashes' | 'totpLastUsedStep'>;
+/** A user document with every credential verifier removed. */
+export type ClientSafeUser = Omit<UserDoc, 'passwordHash' | 'pinHash'>;
 
 /** Strip credential verifiers before a user document crosses an API boundary. */
 export function redactUserForClient(user: UserDoc): ClientSafeUser {
@@ -56,14 +48,6 @@ export function redactUserForClient(user: UserDoc): ClientSafeUser {
     // set this account's password. It must never reach a browser, even one
     // that is already an administrator's.
     inviteTokenHash: _inviteTokenHash,
-    // The TOTP secret is a second credential — anyone holding it can generate
-    // this account's codes forever, which is strictly worse than a password
-    // because nothing prompts the user to change it. The recovery hashes are
-    // the same class of material, and the spent-step counter is only useful to
-    // someone trying to replay a code.
-    totpSecret: _totpSecret,
-    totpRecoveryCodeHashes: _totpRecoveryCodeHashes,
-    totpLastUsedStep: _totpLastUsedStep,
     ...safe
   } = user;
   return safe;
@@ -691,18 +675,6 @@ export async function deactivateUserReportingOpenWork(
  * `invite-delivery.deliverAccountInvite`, which this ends up calling through
  * `POST /api/users`.
  */
-/**
- * Administratively clear a colleague's second factor.
- *
- * For the lost phone whose owner also lost the recovery codes — see the note
- * on `reset_mfa` in `/api/users`. Browser-only: the server-side equivalent is
- * `mfa-service.disableTotp`, which this reaches through the API.
- */
-export async function resetUserMfa(id: string): Promise<{ message?: string }> {
-  const body = await postUsersApi({ action: 'reset_mfa', userId: id });
-  return { message: body.message as string | undefined };
-}
-
 export async function resendUserInvite(id: string): Promise<InvitationOutcome> {
   const body = await postUsersApi({ action: 'resend_invite', userId: id });
   return (body.invitation as InvitationOutcome) ?? { sent: false, reason: 'send_failed' };

@@ -99,30 +99,6 @@ export interface UserDoc extends BaseDoc {
    * on success only; a failed attempt must never move it.
    */
   lastLoginAt?: string;
-  /**
-   * Base32 TOTP shared secret. Server-side-only secret material — it is
-   * stripped by `redactUserForClient` and must never appear in an API
-   * response, exactly like `passwordHash`.
-   *
-   * Present but with no `totpEnabledAt` means enrolment was started and never
-   * confirmed, so the factor is NOT active: a secret alone must not be able
-   * to lock someone out of their own account.
-   */
-  totpSecret?: string;
-  /** Set when the user confirms enrolment with a valid code. The presence of
-   *  this field — not `totpSecret` — is what makes the second factor live. */
-  totpEnabledAt?: string;
-  /**
-   * The last counter step spent by a successful verification.
-   *
-   * A TOTP code stays valid for its whole window, so without recording the
-   * step a code read over someone's shoulder can be replayed for the next
-   * thirty seconds. See `verifyTotpCode`.
-   */
-  totpLastUsedStep?: number;
-  /** SHA-256 of each unused single-use recovery code. Secret material —
-   *  redacted like the secret itself. */
-  totpRecoveryCodeHashes?: string[];
   /** Who deactivated this account and when — offboarding needs a paper trail
    *  that `isActive: false` alone does not carry. */
   deactivatedAt?: string;
@@ -2095,7 +2071,6 @@ export interface PlatformConfigDoc extends BaseDoc {
   defaultPrimaryColor: string;
   defaultSecondaryColor: string;
   superAdminPolicies?: {
-    mfaRequired: boolean;
     passwordMinLength: number;
     sessionTimeoutMinutes: number;
     emergencyAccessEnabled: boolean;

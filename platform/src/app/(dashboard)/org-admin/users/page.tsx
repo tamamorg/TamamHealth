@@ -63,7 +63,6 @@ export default function OrgUsersPage() {
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [openWorkNotice, setOpenWorkNotice] = useState<string | null>(null);
-  const [mfaResetTarget, setMfaResetTarget] = useState<UserDoc | null>(null);
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [hospitals, setHospitals] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,14 +97,6 @@ export default function OrgUsersPage() {
       icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
       onClick: () => { setError(''); setShowResetModal(user._id); setResetPassword(''); },
     },
-    ...(user.totpEnabledAt
-      ? [{
-        key: 'reset-mfa',
-        label: t('orgUsers.resetTwoFactor'),
-        icon: <ShieldCheck className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
-        onClick: () => setMfaResetTarget(user),
-      }]
-      : []),
     ...(user.isActive && user._id !== currentUser?._id
       ? [{ key: 'deactivate', label: t('orgUsers.deactivate'), tone: 'danger' as const, icon: <UserX className="w-4 h-4" />, onClick: () => handleDeactivate(user._id) }]
       : []),
@@ -259,20 +250,6 @@ export default function OrgUsersPage() {
     } catch (err: unknown) {
       const e = err as Error;
       showToast(e.message || t('orgUsers.errorDeactivateFailed'), 'error');
-    }
-  };
-
-  /** Clear a colleague's second factor — the lost-phone path. */
-  const handleResetMfa = async (user: UserDoc) => {
-    try {
-      const { resetUserMfa } = await import('@/modules/identity/services/user-service');
-      const { message } = await resetUserMfa(user._id);
-      showToast(message || t('orgUsers.resetTwoFactorDone', { name: user.name }), 'success');
-      await loadData();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : t('orgUsers.resetTwoFactorFailed'), 'error');
-    } finally {
-      setMfaResetTarget(null);
     }
   };
 
@@ -575,16 +552,6 @@ export default function OrgUsersPage() {
           confirmLabel={t('orgUsers.reassignConfirm')}
           onCancel={() => setOpenWorkNotice(null)}
           onConfirm={() => setOpenWorkNotice(null)}
-        />
-      )}
-
-      {mfaResetTarget && (
-        <SadbConfirmModal
-          title={t('orgUsers.resetTwoFactorTitle', { name: mfaResetTarget.name })}
-          body={t('orgUsers.resetTwoFactorBody', { name: mfaResetTarget.name })}
-          confirmLabel={t('orgUsers.resetTwoFactor')}
-          onCancel={() => setMfaResetTarget(null)}
-          onConfirm={() => handleResetMfa(mfaResetTarget)}
         />
       )}
 
