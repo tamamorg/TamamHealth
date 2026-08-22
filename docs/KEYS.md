@@ -49,9 +49,9 @@ the optional payment/SMS/email/DHIS2 integration keys.
 ### 1. JWT Authentication Secret
 
 - **Variable:** `JWT_SECRET`
-- **Used in:** `src/lib/auth-token.ts`
+- **Used in:** `src/modules/identity/core/auth-token.ts`
 - **Algorithm:** HS256 (HMAC SHA256)
-- **Token lifetime:** 30 days by default (`DEFAULT_TTL_HOURS` in `src/lib/session.ts`), overridable with the `SESSION_TTL_HOURS` env var. A session that's still active gets silently re-minted on every `/api/auth/me` call (sliding renewal), so it doesn't expire mid-shift; changing or resetting the account's password invalidates every outstanding token immediately regardless of remaining life.
+- **Token lifetime:** 30 days by default (`DEFAULT_TTL_HOURS` in `src/modules/identity/core/session.ts`), overridable with the `SESSION_TTL_HOURS` env var. A session that's still active gets silently re-minted on every `/api/auth/me` call (sliding renewal), so it doesn't expire mid-shift; changing or resetting the account's password invalidates every outstanding token immediately regardless of remaining life.
 - **Cookie name:** `tamamhealth-token` (HTTP-only, SameSite=lax)
 - **Fallback secret:** `tamamhealth-south-sudan-health-2026-secret-key` (development only — **NEVER use in production**)
 
@@ -124,7 +124,7 @@ and [`DEPLOY-PRODUCTION.md`](DEPLOY-PRODUCTION.md).
 
 - **Library:** `bcryptjs` v3.0.3
 - **Rounds:** 12
-- **Location:** `src/lib/auth.ts`
+- **Location:** `src/modules/identity/core/auth.ts`
 - **Storage:** User passwords are stored as bcrypt hashes in PouchDB/CouchDB under the `passwordHash` field
 - **No additional credentials needed** — bcrypt is self-contained
 
@@ -147,7 +147,7 @@ and [`DEPLOY-PRODUCTION.md`](DEPLOY-PRODUCTION.md).
 - **Cookie:** `tamamhealth-token` (JWT)
 - **Protected:** All routes except `/`, `/api/auth/*`, static assets
 - **RBAC:** Role-based access enforced per route in `src/proxy.ts` — Next.js
-  16's renamed `middleware.ts` entry point (`src/middleware.ts` no longer
+  16's renamed `middleware.ts` entry point (`src/proxy.ts` no longer
   exists)
 
 ### Content Security Policy

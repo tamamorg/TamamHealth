@@ -214,7 +214,7 @@ the same `await import()` boundary `@/data/mock` already uses, then add the
 bundle-grep assertion to CI.
 
 **P1-2 · Single-replica constraint is undocumented.**
-`platform/src/lib/token-blacklist.ts` persists revoked JWTs to a local file via
+`platform/src/modules/identity/core/token-blacklist.ts` persists revoked JWTs to a local file via
 `node:fs` (`.token-blacklist.json`). Rate limiting moved to Upstash Redis and
 warns loudly on the in-process fallback; the blacklist did not. **[verified]**
 With more than one platform container, a logged-out token stays valid on the

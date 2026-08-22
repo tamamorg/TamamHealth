@@ -86,7 +86,7 @@ deploy — it now enforces several of the gates below automatically.
 
 - Online login is server-issued (`/api/auth/login`) HS256 JWT, 30 days by
   default (`SESSION_TTL_HOURS` override, sliding renewal on every
-  `/api/auth/me` call — see `src/lib/session.ts`), with revocation enforced
+  `/api/auth/me` call — see `src/modules/identity/core/session.ts`), with revocation enforced
   at `/api/auth/me` and every `/api/*` route. CSRF is a two-layer gate
   (Origin/Host check + HMAC double-submit) in `src/proxy.ts` (Next.js 16's
   `middleware.ts` equivalent).

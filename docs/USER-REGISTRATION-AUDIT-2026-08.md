@@ -93,7 +93,7 @@ request while substituting a national role on the way through.
   Token is 32 random bytes, stored as a SHA-256 hash, TTL 72h, single-use, redeemed at an
   unauthenticated endpoint that answers identically for every failure mode and **issues no
   session** (`api/auth/accept-invite/route.ts`).
-- **Without email:** 14-character temp password from `lib/temp-password.ts` (CSPRNG,
+- **Without email:** 14-character temp password from `modules/identity/provisioning/temp-password.ts` (CSPRNG,
   look-alike characters excluded so it can be read aloud in a clinic), shown once.
 - **First login:** `(dashboard)/layout.tsx:59` renders `ForcePasswordChange` full-screen while
   `mustChangePassword` is set.
@@ -123,7 +123,7 @@ Worth stating plainly, because the fixes below should not disturb any of it.
    create, `targetMutationError` on every mutation of an existing account, and the
    granted-role re-check at approval.
 3. **Credentials never travel in mail.** The invite-link design is correct and the reasoning
-   is documented at the top of `lib/user-invite.ts`.
+   is documented at the top of `modules/identity/provisioning/user-invite.ts`.
 4. **Delivery is reported honestly.** `wasDelivered()` refuses to count the `log` provider as
    a send, so an admin is never told mail went out when it did not.
 5. **Sessions die when they should.** `getAuthPayload` checks live `isActive`, a
@@ -158,7 +158,7 @@ There is no forgot-password flow at all — `login.forgotPassword` exists in bot
 (`en.ts:3029`, `apd.ts:3021`) and is rendered nowhere.
 
 Consequence: every forgotten password in the field becomes a phone call and a spoken
-credential, which is exactly the failure mode `lib/user-invite.ts` was written to avoid.
+credential, which is exactly the failure mode `modules/identity/provisioning/user-invite.ts` was written to avoid.
 
 **Fix:** `action: 'resend_invite'` on `/api/users` (reuses `issueUserInvite`, which already
 overwrites the outstanding token), plus an email-based reset that reuses the same token
@@ -387,22 +387,22 @@ Every finding above, with the code that answers it.
 
 | # | Finding | Fix |
 |---|---|---|
-| P0-1 | Approval never sent the invitation | `lib/services/invite-delivery.ts` — one delivery path, called by `/api/users`, `/api/account-requests/:id` and the new forgot-password route |
+| P0-1 | Approval never sent the invitation | `modules/identity/services/invite-delivery.ts` — one delivery path, called by `/api/users`, `/api/account-requests/:id` and the new forgot-password route |
 | P0-2 | No resend, no password self-service | `resend_invite` action on `/api/users`; `POST /api/auth/forgot-password` + `/forgot-password` page; `/accept-invite?reset=1` re-words the same redemption page |
-| P0-3 | Security console enforced nothing | `lib/totp.ts` + `lib/services/mfa-service.ts` + `/api/auth/mfa` + `/api/auth/verify-mfa`; `lib/password-policy.ts` makes `passwordMinLength` real; impersonation now checks `impersonationEnabled` and writes an audit row |
+| P0-3 | Security console enforced nothing | `modules/identity/mfa/totp.ts` + `modules/identity/services/mfa-service.ts` + `/api/auth/mfa` + `/api/auth/verify-mfa`; `modules/identity/policy/password-policy.ts` makes `passwordMinLength` real; impersonation now checks `impersonationEnabled` and writes an audit row |
 | P0-4 | Silent email failure on deploy | `productionConfigWarnings()` now names a missing mail provider, its API key, and `NEXT_PUBLIC_APP_URL` |
 | P1-5 | No identity proofing | Email round-trip (`/api/account-requests/verify`); `professionalRegistrationNumber` on the form and in the queue; `identityAttestation` required to approve |
-| P1-6 | Nobody told a request was waiting | `lib/services/account-request-notify.ts` mails the resolved approver tier; the queue shows how long each request has waited |
+| P1-6 | Nobody told a request was waiting | `modules/identity/services/account-request-notify.ts` mails the resolved approver tier; the queue shows how long each request has waited |
 | P1-7 | Self-deactivation and last-admin lockout | `lastAdminLockoutError()` in `/api/users`, covering deactivate, delete and demotion |
 | P1-8 | Every action logged as `user.create` | `AUDIT_ACTION_HEADER` — the handler names the verb it ran |
 | P1-9 | Seven roles could not be requested | The six clinical-flow station roles added to `REQUESTABLE_ROLES` |
 | P1-10 | Partial seat enforcement | Seat check now runs on reactivate as well as create |
 | P2-11 | Forced change was a UI gate only | Edge-proxy 403 for `mustChangePassword` and the new `mfaPending`, with a remediation allow-list |
-| P2-12 | No invitation state, no last login | `UserDoc.lastLoginAt` + `lib/account-state.ts`; both rosters and the account card read it |
-| P2-13 | No bulk onboarding | `lib/bulk-user-import.ts` + `POST /api/users/import` + `BulkUserImportModal`, with a dry run that must agree with the commit |
+| P2-12 | No invitation state, no last login | `UserDoc.lastLoginAt` + `modules/identity/provisioning/account-state.ts`; both rosters and the account card read it |
+| P2-13 | No bulk onboarding | `modules/identity/provisioning/bulk-user-import.ts` + `POST /api/users/import` + `BulkUserImportModal`, with a dry run that must agree with the commit |
 | P2-14 | Temp password shown in cleartext | `CreateUserModal` opens with it hidden |
 | P2-15 | Smaller items | Public request write audited; per-email dedupe; `summarizeOpenWork()` reports a leaver's unfinished work after access is revoked |
-| §4.3 | Patient portal had no enrolment | `lib/services/patient-portal-enrolment.ts`, `/api/patients/portal-access`, `/api/patient-portal/activate`, `/patient-portal/activate`, and a card on the chart's Demographics tab |
+| §4.3 | Patient portal had no enrolment | `modules/identity/services/patient-portal-enrolment.ts`, `/api/patients/portal-access`, `/api/patient-portal/activate`, `/patient-portal/activate`, and a card on the chart's Demographics tab |
 
 ### Second pass — finishing what the first left half-done
 

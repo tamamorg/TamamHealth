@@ -8,6 +8,19 @@
 # That box is NOT ticked yet — until it is, these are suggestions, not gates.
 #
 # ---------------------------------------------------------------------------
+# A pattern that matches nothing is worse than no pattern.
+#
+# It reads as coverage and provides none, and GitHub says nothing about it —
+# a rule for a path that no longer exists simply never fires. Five auth paths
+# in this file went that way when `identity` moved into `src/modules/`
+# (ADR 0003): the security-review routing looked intact and had silently
+# stopped applying to every file it named.
+#
+# `platform/src/__tests__/architecture/codeowners.test.ts` now fails the build
+# when a pattern here resolves to nothing, so the next move cannot repeat it.
+# ---------------------------------------------------------------------------
+#
+# ---------------------------------------------------------------------------
 # ACTION REQUIRED: per-area owners still route to one person.
 #
 # Repo collaborators are @makuachteny, @senyomd and @ikyalo01. Every path below
@@ -30,26 +43,51 @@
 /mobile/                    @makuachteny
 /website/                   @makuachteny
 
+# --- Domain modules --------------------------------------------------------
+# One entry per module, so ownership follows the boundary rather than a list of
+# scattered files that goes stale the moment anything moves. A module is a
+# reviewable unit: its public surface is one file, and everything behind that
+# surface belongs to whoever owns the domain.
+#
+# Add a line here when a domain lands. Ordering within this block does not
+# matter — the modules do not overlap, which is the point of them.
+/platform/src/modules/identity/       @makuachteny
+/platform/src/modules/communication/  @makuachteny
+
 # --- Data & sync -----------------------------------------------------------
 # Patient data, CouchDB→Postgres projection and the offline sync engine.
 # Changes here can silently corrupt or drop PHI — keep a second pair of eyes.
 /sync-worker/                    @makuachteny
 /platform/src/app/api/sync/      @makuachteny
 /platform/src/lib/db/            @makuachteny
+/platform/src/lib/db.ts          @makuachteny
+/platform/src/lib/sync/          @makuachteny
 
 # --- Security-sensitive paths ----------------------------------------------
 # Auth, proxy (Next 16's middleware), CSRF and token handling. Listed AFTER the
-# application-code block on purpose: last match wins, so these override
-# /platform/ and keep auth changes routed to security review.
-/platform/src/proxy.ts           @makuachteny
-/platform/src/lib/auth.ts        @makuachteny
-/platform/src/lib/auth-token.ts  @makuachteny
-/platform/src/lib/csrf.ts        @makuachteny
-/platform/src/lib/api-auth.ts    @makuachteny
-/platform/src/lib/token-blacklist.ts  @makuachteny
-/platform/src/lib/field-encryption.ts @makuachteny
-/platform/src/lib/config-validation.ts @makuachteny
-/fingerprint-bridge/             @makuachteny
+# application-code and module blocks on purpose: last match wins, so these
+# override /platform/ and /platform/src/modules/identity/ and keep auth changes
+# routed to security review.
+#
+# The identity module's `core/` and `policy/` directories are where the
+# credentials live — sessions, tokens, CSRF, the request-time guard, the
+# password rules. `mfa/` is the second factor. These three are the reason this
+# block exists; the rest of the module is ordinary domain code covered above.
+/platform/src/proxy.ts                          @makuachteny
+/platform/src/modules/identity/core/            @makuachteny
+/platform/src/modules/identity/policy/          @makuachteny
+/platform/src/modules/identity/mfa/             @makuachteny
+/platform/src/modules/identity/provisioning/    @makuachteny
+/platform/src/lib/field-encryption.ts           @makuachteny
+/platform/src/lib/config-validation.ts          @makuachteny
+/fingerprint-bridge/                            @makuachteny
+
+# --- Architecture boundaries -----------------------------------------------
+# The rules that keep the modules apart, and the tests that prove they hold.
+# A change here changes what the whole codebase is allowed to do.
+/docs/adr/                                          @makuachteny
+/platform/eslint.config.mjs                         @makuachteny
+/platform/src/__tests__/architecture/               @makuachteny
 
 # --- Infrastructure, CI/CD and deploy --------------------------------------
 # A bad change here can take down staging/production or leak secrets.
@@ -65,4 +103,3 @@
 /.lintstagedrc.mjs          @makuachteny
 /.husky/                    @makuachteny
 /.nvmrc                     @makuachteny
-/CODEOWNERS                 @makuachteny

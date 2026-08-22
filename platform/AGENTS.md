@@ -37,12 +37,42 @@ Never rewrite `package-lock.json` casually; the repo regenerates lockfiles with 
 - `src/app/` also holds `(booking)/book`, `patient-portal/`, `checkout/[linkId]`, `request-account/`, `login/`, `privacy/`, `terms/`, and `api/`.
 - `src/proxy.ts` — Edge middleware (auth gate, role routing, CSRF). Next 16 name for `middleware.ts`. Only import Edge-safe modules from it.
 - `src/instrumentation.ts` — server boot: fail-closed config validation, Sentry, Postgres migrations.
-- `src/lib/services/**` (100+) — all business logic and DB access. `src/lib/hooks/**` (60+) — one hook per service area.
+- `src/modules/<domain>/**` — **domain modules, and where new code goes.** The
+  codebase is migrating from by-kind to by-domain (ADR 0003). `identity` (auth,
+  sessions, provisioning, MFA, account requests) and `communication` (messages,
+  announcements, the notification bell) have landed; ten domains remain.
+- `src/lib/services/**` (95 left) — business logic and DB access for domains that
+  have not moved yet. `src/lib/hooks/**` — one hook per service area.
 - `src/lib/db.ts` — 76 `tamamhealth_*` PouchDB databases; `src/lib/sync/**` — replication, tenant DBs, CouchDB auth/policy.
 - `src/app/globals.css` — the single source of design tokens.
-- `src/__tests__/**` — 59 Jest test files.
+- `src/__tests__/**` — Jest test files, including `architecture/` which asserts the module boundaries hold.
 
 ## Conventions
+
+**Domain modules.** A module has exactly three public entrypoints, and ESLint
+makes anything else an **error** (`eslint.config.mjs`, `docs/adr/0003-domain-modules.md`):
+
+```
+@/modules/<name>              server surface — guards, policy, the domain's vocabulary
+@/modules/<name>/client       browser-safe surface (components, hooks, pure rules)
+@/modules/<name>/services/*   one service at a time
+```
+
+Three things to know before you touch one, each of which broke something once:
+
+- **Never import a module's server barrel from a client component.** It reaches
+  `node:crypto` and the database; doing so put `node:fs` in the browser bundle
+  and failed the production build. Use `/client`.
+- **Never add a service to a barrel.** A barrel is eager, so re-exporting a
+  service made every route that wanted `getAuthPayload` load PouchDB at
+  module-init. Name the service: `await import('@/modules/identity/services/user-service')`.
+- **Keep `await import()` pointed at the specific file.** Routing a lazy import
+  through a barrel is the same eager-loading bug. The lint rules govern the
+  static graph only, and that is deliberate.
+
+When you finish migrating a domain, add its name to `MIGRATED_MODULES` in
+`eslint.config.mjs` and a line to `.github/CODEOWNERS` — the boundary is not
+enforced until the first, and review routing is not either until the second.
 
 **Data access.** The browser calls services directly (hooks → `lib/services/*` → local PouchDB); that is what makes the app work offline, and CouchDB replication carries writes to the server. `/api/*` is for consumers with no browser — mobile, integrations, cron. Do not route UI writes through `/api`.
 

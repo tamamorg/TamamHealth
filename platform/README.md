@@ -149,7 +149,7 @@ Seeded usernames include:
 | `org.admin` / `dr.mercy` / `nurse.mercy` | Private-org accounts (Mercy General Hospital) |
 
 The full roster lives in `DEMO_USER_PROFILES` in
-[`src/lib/seed-credentials.ts`](src/lib/seed-credentials.ts).
+[`src/modules/identity/core/seed-credentials.ts`](src/lib/seed-credentials.ts).
 
 ### Docker Installation
 
