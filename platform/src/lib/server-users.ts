@@ -9,6 +9,7 @@
  */
 
 import bcrypt from 'bcryptjs';
+import { hashPassword } from './auth';
 import { DEMO_USER_PROFILES, getOrCreateSeedCredentials } from './seed-credentials';
 
 export interface ServerUser {
@@ -239,7 +240,7 @@ const DUMMY_PASSWORD_HASH = '$2b$12$gNB1VUNmx6fi4XsavwguR.3iwu6bqFy0LDcaFxb4ygNt
 async function getHash(username: string, plaintext: string): Promise<string> {
   const cached = hashCache[username];
   if (cached && cached.plaintext === plaintext) return cached.hash;
-  const hash = await bcrypt.hash(plaintext, 12);
+  const hash = await hashPassword(plaintext);
   hashCache[username] = { plaintext, hash };
   return hash;
 }

@@ -28746,13 +28746,17 @@ table.patient-data-table.patient-data-table {
   .pp-main { padding: 14px 14px 26px; }
 }
 
-/* ============ Super-admin dashboard (sadb-*) ============
-   The /admin command center, per "Super Admin Dashboard.dc.html" in the
-   Claude Design project: white 8px-radius cards, condensed uppercase card
-   titles, tonal status chips, a clickable KPI tile row, and the tenant
-   health matrix drawn as a grid list. The design's palette is the app's own
-   ramp — its navy is --accent-primary, its inks and rules the slate ramp —
-   so everything here reads tokens. */
+/* ============ Admin console kit (sadb-*) ============
+   The shared console language for BOTH admin consoles — the /admin command
+   center AND the org-admin surfaces (/org-admin/*, /facility-management) —
+   per "Super Admin Dashboard.dc.html" in the Claude Design project: white
+   8px-radius cards, condensed uppercase card titles, tonal status chips, a
+   clickable KPI tile row, and the tenant health matrix drawn as a grid
+   list. The prefix is historical (the kit was born on the super-admin
+   console); the rules are deliberately unscoped so any console page can
+   compose them. The design's palette is the app's own ramp — its navy is
+   --accent-primary, its inks and rules the slate ramp — so everything here
+   reads tokens. */
 
 .sadb-scope .ehr-care-header-subtitle {
   font-family: var(--font-condensed);

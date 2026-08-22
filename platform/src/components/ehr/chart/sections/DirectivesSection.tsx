@@ -5,7 +5,6 @@
  * `patient.directives`, in the same ChartSection table language as Allergies
  * and Conditions.
  *
- * The shared `DirectiveList` widget stays as it is: it renders in the mobile
  * facesheet and ChartSummaryPanel, where a compact strip is right and a
  * five-column table is not. Same relationship AllergiesSection has with
  * AllergyList, and both read and write the same `directive-service` — no

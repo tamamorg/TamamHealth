@@ -1,12 +1,17 @@
 'use client';
 
 /**
- * Super-admin design-language kit (sadb-*), per the two Claude Design files
- * "Super Admin Dashboard.dc.html" and "Super Admin Settings.dc.html".
- * Every super-admin page composes these primitives so cards, chips, rows,
- * rails and modals stay identical across Command / Tenants / Operations /
- * Business / Governance. CSS lives in the sadb-* block of globals.css;
- * every colour is a token — no literals here.
+ * Admin console design-language kit (sadb-*), per the two Claude Design
+ * files "Super Admin Dashboard.dc.html" and "Super Admin Settings.dc.html".
+ * Born on the super-admin console (hence the prefix — kept to avoid churning
+ * ~1400 CSS lines and 17 pages for a rename), it is now the shared language
+ * for BOTH admin consoles: every /admin/* page and every org-admin surface
+ * (/org-admin/*, /facility-management) composes these primitives so cards,
+ * chips, rows, rails and modals stay identical across the two consoles.
+ * CSS lives in the sadb-* block of globals.css; every colour is a token —
+ * no literals here. Console chrome is deliberately token-blue: tenant
+ * branding colours belong to login, print headers and the branding preview,
+ * not to admin buttons.
  *
  * Succeeds sa-ui.tsx (which keeps the shared risk/severity helpers).
  */
@@ -17,6 +22,7 @@ import { useAuth } from '@/lib/context';
 import Modal from '@/components/Modal';
 import { AlertTriangle, ChevronRight, Pencil, Search } from '@/components/icons/lucide';
 import type { SaSeverity } from '@/components/admin/sa-ui';
+import type { UserRole } from '@/lib/db-types';
 
 /* ── Tones ─────────────────────────────────────────────────────────── */
 
@@ -43,17 +49,22 @@ export function statusChip(status: string): ChipTone {
 
 /* ── Page scaffold ─────────────────────────────────────────────────── */
 
-/** Full-page scaffold with the super-admin role guard (defense-in-depth on
- *  top of the Edge proxy check). */
-export function SadbPage({ actions, children }: { actions?: ReactNode; children: ReactNode }) {
+/** Full-page scaffold with a role guard (defense-in-depth on top of the
+ *  Edge proxy check). Defaults to super_admin so the 17 existing /admin/*
+ *  call sites are unchanged; org-admin console pages pass
+ *  `roles={['org_admin', 'super_admin']}`. */
+export function SadbPage({ actions, roles = ['super_admin'], children }: {
+  actions?: ReactNode; roles?: UserRole[]; children: ReactNode;
+}) {
   const { currentUser } = useAuth();
   const router = useRouter();
+  const allowed = !!currentUser && roles.includes(currentUser.role);
 
   useEffect(() => {
-    if (currentUser && currentUser.role !== 'super_admin') router.replace('/dashboard');
-  }, [currentUser, router]);
+    if (currentUser && !allowed) router.replace('/dashboard');
+  }, [currentUser, allowed, router]);
 
-  if (!currentUser || currentUser.role !== 'super_admin') return null;
+  if (!allowed) return null;
 
   return (
     <main className="page-container page-enter sadb-scope">

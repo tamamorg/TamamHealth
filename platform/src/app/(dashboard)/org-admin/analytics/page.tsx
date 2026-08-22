@@ -1,15 +1,27 @@
 'use client';
 
+/**
+ * Organization usage analytics, on the shared admin console kit (sadb-*) —
+ * the org-scoped sibling of /admin/analytics, which reads the same
+ * /api/usage endpoints and draws the same charts platform-wide. Restyled
+ * from the hand-rolled dash-card layout 2026-08-21 so both consoles speak
+ * one design language: KPI tile row, sadb cards, KV rows for the top-N
+ * lists, and the activity log as a grid list whose header row survives an
+ * empty result.
+ */
+
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { Activity, Users, BarChart3, LayoutDashboard } from '@/components/icons/lucide';
+import { Activity } from '@/components/icons/lucide';
 import EmptyState from '@/components/EmptyState';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts';
-import ChartCard, { tooltipStyle as chartTooltipStyle, axisTick, AreaGradients } from '@/components/ChartCard';
+import { tooltipStyle as chartTooltipStyle, axisTick, AreaGradients } from '@/components/ChartCard';
+import {
+  SadbPage, SadbPanelHeader, SadbKpiTile, SadbCard, SadbKvRow, SadbGridList, SadbGridRow,
+} from '@/components/admin/sadb-ui';
 
 interface UsageSummary {
   dau: number;
@@ -32,19 +44,15 @@ interface UsageEventRow {
   ts: string;
 }
 
+/* Date · User · Action · Path */
+const EVENT_GRID = 'minmax(150px, 0.9fr) minmax(120px, 0.8fr) minmax(160px, 1.1fr) minmax(160px, 1.1fr)';
+
 export default function OrgAdminAnalyticsPage() {
   const { t } = useTranslation();
-  const router = useRouter();
   const { currentUser } = useApp();
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [events, setEvents] = useState<UsageEventRow[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (currentUser && currentUser.role !== 'org_admin' && currentUser.role !== 'super_admin') {
-      router.push('/dashboard');
-    }
-  }, [currentUser, router]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -78,155 +86,114 @@ export default function OrgAdminAnalyticsPage() {
     return () => { cancelled = true; };
   }, [currentUser]);
 
-  if (!currentUser || (currentUser.role !== 'org_admin' && currentUser.role !== 'super_admin')) {
-    return null;
+  const orgName = currentUser?.organization?.name || t('orgAnalytics.yourOrganization');
+
+  function renderDauChart() {
+    if (loading) {
+      return <div className="flex items-center justify-center h-64"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('analytics.loadingChartData')}</p></div>;
+    }
+    if (!usage?.dauTrend?.length || usage.dauTrend.every(d => !d.users && !d.events)) {
+      return (
+        <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <EmptyState icon={Activity} title={t('analytics.noUsageYet')} message={t('analytics.noDataShort')} />
+        </div>
+      );
+    }
+    return (
+      <ResponsiveContainer width="100%" height={260}>
+        <AreaChart data={usage.dauTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+          <AreaGradients />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
+          <XAxis dataKey="date" tick={axisTick} tickFormatter={(v: string) => v.slice(5)} />
+          <YAxis tick={axisTick} />
+          <Tooltip {...chartTooltipStyle} />
+          <Legend wrapperStyle={{ fontSize: '11px' }} />
+          <Area type="monotone" dataKey="users" name={t('analytics.legendUsers')} stroke="var(--accent-primary)" fill="url(#grad1)" strokeWidth={2} />
+          <Area type="monotone" dataKey="events" name={t('analytics.events')} stroke="var(--color-success)" fill="var(--color-success)" fillOpacity={0.12} strokeWidth={2} />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
   }
 
-  const orgName = currentUser.organization?.name || t('orgAnalytics.yourOrganization');
-
   return (
-    <main className="page-container page-enter">
-      <div className="dash-card mb-4" style={{ padding: '16px 20px' }}>
-        <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, color: 'var(--text-primary)' }}>
-          {t('orgAnalytics.topBarTitle')}
-        </span>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          {t('orgAnalytics.subtitle', { org: orgName })}
-        </p>
+    <SadbPage roles={['org_admin', 'super_admin']}>
+      <SadbPanelHeader
+        title={t('orgAnalytics.topBarTitle')}
+        note={t('orgAnalytics.subtitle', { org: orgName })}
+      />
+
+      {/* ═══ 30-day usage vitals ═══ */}
+      <div className="sadb-kpi-row" data-tour="org-analytics-stats">
+        <SadbKpiTile label={t('analytics.dau')} value={loading || !usage ? '—' : usage.dau.toLocaleString()} />
+        <SadbKpiTile label={t('analytics.wau')} value={loading || !usage ? '—' : usage.wau.toLocaleString()} />
+        <SadbKpiTile label={t('analytics.sessions')} value={loading || !usage ? '—' : usage.sessionCount.toLocaleString()} />
+        <SadbKpiTile label={t('analytics.events')} value={loading || !usage ? '—' : usage.eventCount.toLocaleString()} />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4" data-tour="org-analytics-stats">
-        {[
-          { label: t('analytics.dau'), value: usage?.dau, icon: Users, color: 'var(--accent-primary)' },
-          { label: t('analytics.wau'), value: usage?.wau, icon: Activity, color: 'var(--accent-primary)' },
-          { label: t('analytics.sessions'), value: usage?.sessionCount, icon: LayoutDashboard, color: 'var(--color-success-text)' },
-          { label: t('analytics.events'), value: usage?.eventCount, icon: BarChart3, color: 'var(--color-warning-text)' },
-        ].map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="dash-card" style={{ padding: '14px 16px' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="icon-box-sm">
-                  <Icon className="w-3.5 h-3.5" style={{ color: stat.color }} />
-                </div>
-                <span className="kpi-card-title">{stat.label}</span>
-              </div>
-              <div className="stat-value text-3xl" style={{ color: 'var(--text-primary)', lineHeight: 1, fontWeight: 800 }}>
-                {loading || stat.value === undefined ? '—' : Number(stat.value).toLocaleString()}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+        <SadbCard
+          title={t('analytics.dauTrend')}
+          meta={usage
+            ? `${t('analytics.dau')} ${usage.dau} · ${t('analytics.wau')} ${usage.wau} · ${t('analytics.last30Days')}`
+            : t('analytics.last30Days')}
+        >
+          <div className="px-3 pt-3 pb-1">{renderDauChart()}</div>
+        </SadbCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <ChartCard title={t('analytics.dauTrend')} defaultType="area" defaultPeriod="month">
-          {() => {
-            if (loading) {
-              return <div className="flex items-center justify-center h-64"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('analytics.loadingChartData')}</p></div>;
-            }
-            if (!usage?.dauTrend?.length || usage.dauTrend.every(d => !d.users && !d.events)) {
-              return (
-                <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <EmptyState icon={Activity} title={t('analytics.noUsageYet')} message={t('analytics.noDataShort')} />
-                </div>
-              );
-            }
-            return (
-              <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={usage.dauTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <AreaGradients />
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
-                  <XAxis dataKey="date" tick={axisTick} tickFormatter={(v: string) => v.slice(5)} />
-                  <YAxis tick={axisTick} />
-                  <Tooltip {...chartTooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: '11px' }} />
-                  <Area type="monotone" dataKey="users" name={t('analytics.legendUsers')} stroke="var(--accent-primary)" fill="url(#grad1)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="events" name={t('analytics.events')} stroke="var(--color-success)" fill="var(--color-success)" fillOpacity={0.12} strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            );
-          }}
-        </ChartCard>
-
-        <div className="dash-card overflow-hidden">
-          <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('analytics.topModules')}</h3>
-          </div>
-          <div className="p-4 space-y-2">
-            {(usage?.topPaths || []).slice(0, 8).map((row) => (
-              <div key={row.path} className="flex justify-between gap-2 text-xs">
-                <span className="truncate font-mono" style={{ color: 'var(--text-secondary)' }}>{row.path}</span>
-                <span className="font-bold">{row.count}</span>
-              </div>
-            ))}
-            {!usage?.topPaths?.length && (
-              <p className="text-xs text-center py-6" style={{ color: 'var(--text-muted)' }}>{t('analytics.noDataShort')}</p>
+        <SadbCard title={t('analytics.topModules')} meta={t('analytics.last30Days')}>
+          <div className="p-2">
+            {!usage?.topPaths?.length ? (
+              <p className="sadb-empty">{t('analytics.noDataShort')}</p>
+            ) : (
+              usage.topPaths.slice(0, 8).map(row => (
+                <SadbKvRow
+                  key={row.path}
+                  label={<span className="font-mono truncate block">{row.path}</span>}
+                  value={row.count.toLocaleString()}
+                />
+              ))
             )}
           </div>
-        </div>
+        </SadbCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div className="dash-card overflow-hidden">
-          <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('analytics.topActions')}</h3>
-          </div>
-          <div className="p-4 space-y-2">
-            {(usage?.topActions || []).slice(0, 10).map((row) => (
-              <div key={row.action} className="flex justify-between gap-2 text-xs">
-                <span className="truncate" style={{ color: 'var(--text-secondary)' }}>{row.action}</span>
-                <span className="font-bold">{row.count}</span>
-              </div>
-            ))}
-            {!usage?.topActions?.length && (
-              <p className="text-xs text-center py-6" style={{ color: 'var(--text-muted)' }}>{t('analytics.noDataShort')}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+        <SadbCard title={t('analytics.topActions')} meta={t('analytics.last30Days')}>
+          <div className="p-2">
+            {!usage?.topActions?.length ? (
+              <p className="sadb-empty">{t('analytics.noDataShort')}</p>
+            ) : (
+              usage.topActions.slice(0, 10).map(row => (
+                <SadbKvRow
+                  key={row.action}
+                  label={<span className="truncate block">{row.action}</span>}
+                  value={row.count.toLocaleString()}
+                />
+              ))
             )}
           </div>
-        </div>
+        </SadbCard>
 
-        <div className="dash-card overflow-hidden">
-          <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('orgAdmin.userActivityLog')}</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full" style={{ minWidth: 480 }}>
-              <thead>
-                <tr>
-                  {[t('orgAnalytics.colDate'), t('analytics.colUsers'), t('analytics.colAction'), t('analytics.colPath')].map(h => (
-                    <th key={h} className="text-start px-3 py-2 text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((ev) => (
-                  <tr key={ev._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td className="px-3 py-2 text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
-                      {ev.ts ? new Date(ev.ts).toLocaleString() : '—'}
-                    </td>
-                    <td className="px-3 py-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      {ev.username || ev.userId || '—'}
-                    </td>
-                    <td className="px-3 py-2 text-xs truncate max-w-[160px]" style={{ color: 'var(--text-primary)' }}>
-                      {ev.element || ev.eventName}
-                    </td>
-                    <td className="px-3 py-2 text-xs font-mono truncate max-w-[140px]" style={{ color: 'var(--text-muted)' }}>
-                      {ev.path}
-                    </td>
-                  </tr>
-                ))}
-                {!events.length && (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {t('analytics.noDataShort')}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <SadbCard title={t('orgAdmin.userActivityLog')} meta={`${events.length}`}>
+          <SadbGridList
+            template={EVENT_GRID}
+            minWidth={560}
+            head={[t('orgAnalytics.colDate'), t('analytics.colUsers'), t('analytics.colAction'), t('analytics.colPath')]}
+            empty={t('analytics.noDataShort')}
+          >
+            {events.map(ev => (
+              <SadbGridRow key={ev._id} template={EVENT_GRID}>
+                <span className="sadb-tenant-sub" style={{ whiteSpace: 'nowrap' }}>
+                  {ev.ts ? new Date(ev.ts).toLocaleString() : '—'}
+                </span>
+                <span className="truncate">{ev.username || ev.userId || '—'}</span>
+                <span className="truncate">{ev.element || ev.eventName}</span>
+                <span className="sadb-tenant-sub font-mono truncate">{ev.path}</span>
+              </SadbGridRow>
+            ))}
+          </SadbGridList>
+        </SadbCard>
       </div>
-    </main>
+    </SadbPage>
   );
 }

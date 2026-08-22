@@ -4,37 +4,42 @@ import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 
 /**
  * Super-admin → Risk Center.
+ *
  * Unifies open risk signals from every subsystem into a single queue: no
  * fabricated owners or due-dates — each row is derived from a real service
- * call, and severity is computed the same way the dashboard classifies it.
+ * call by `buildRiskRows`, the same derivation the dashboard scores its
+ * readiness donut from, so the two screens cannot disagree about what is open.
+ *
+ * The queue is also *workable*. Because every row is derived, nothing here used
+ * to be clearable: an operator who fixed the problem had no way to say so, and
+ * a signal whose source never changes — a failed login last Tuesday — sat in
+ * the queue until it aged out on its own. Resolving writes a small record
+ * against that occurrence (see `risk-resolution-service`), which drops the row
+ * out of Open, into Resolved, and out of the dashboard's readiness cost.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
+import { useAuth } from '@/lib/context';
+import { useToast } from '@/components/Toast';
+import Modal from '@/components/Modal';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { apiFetch } from '@/lib/api-fetch';
-import type { AuditLogDoc, ConflictQueueDoc, SyncEventDoc } from '@/lib/db-types';
+import type { AuditLogDoc, ConflictQueueDoc, RiskResolutionDoc, SyncEventDoc } from '@/lib/db-types';
 import {
-  SaTable, classifyAuditRisk, formatWhen,
+  SaTable, formatWhen,
   type SaSeverity,
 } from '@/components/admin/sa-ui';
-import { SadbPage, SadbCard, SadbSearch, SadbChip, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
+import { buildRiskRows, type RiskRow, type RiskSource } from '@/components/admin/risk-signals';
+import {
+  getRiskResolutions, indexResolutions, isRiskResolved, reopenRisk, resolveRisks,
+  type ResolveRiskInput,
+} from '@/lib/services/risk-resolution-service';
+import { SadbPage, SadbCard, SadbSearch, SadbChip, SadbTabs, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 
-type Source = 'Audit' | 'Sync' | 'Data' | 'Tenants' | 'Continuity' | 'Platform';
-
-interface RiskRow {
-  id: string;
-  severity: SaSeverity;
-  signal: string;
-  source: Source;
-  detail: string;
-  when?: string;
-  status: string;
-}
-
-const SOURCE_HREF: Record<Source, string> = {
+const SOURCE_HREF: Record<RiskSource, string> = {
   Audit: '/admin/audit',
   Sync: '/admin/sync',
   Data: '/admin/conflicts',
@@ -43,12 +48,20 @@ const SOURCE_HREF: Record<Source, string> = {
   Platform: '/admin/system',
 };
 
-const SEVERITY_ORDER: Record<SaSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+/** Where a row goes when you click it. Audit rows open the exact entry rather
+ *  than the log's front page — the whole point of the row is that one event. */
+function rowHref(row: RiskRow): string {
+  if (row.source === 'Audit') return `/admin/audit?log=${encodeURIComponent(row.id.slice('audit-'.length))}`;
+  return SOURCE_HREF[row.source];
+}
+
 const SEVERITIES: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
-const SOURCES: Source[] = ['Audit', 'Sync', 'Data', 'Tenants', 'Continuity', 'Platform'];
+const SOURCES: RiskSource[] = ['Audit', 'Sync', 'Data', 'Tenants', 'Continuity', 'Platform'];
 
 export default function RiskCenterPage() {
   const router = useRouter();
+  const { currentUser } = useAuth();
+  const { showToast } = useToast();
   const { organizations } = useOrganizations();
   const { config } = usePlatformConfig();
 
@@ -56,11 +69,21 @@ export default function RiskCenterPage() {
   const [syncFailed, setSyncFailed] = useState(0);
   const [pendingSyncEvents, setPendingSyncEvents] = useState<SyncEventDoc[]>([]);
   const [conflicts, setConflicts] = useState<ConflictQueueDoc[]>([]);
+  const [resolutions, setResolutions] = useState<RiskResolutionDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [tab, setTab] = useState<'open' | 'resolved'>('open');
   const [severityFilter, setSeverityFilter] = useState<'all' | SaSeverity>('all');
-  const [sourceFilter, setSourceFilter] = useState<'all' | Source>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | RiskSource>('all');
   const [search, setSearch] = useState('');
+  /** Rows queued for the resolve dialog — one row, or everything shown. */
+  const [resolving, setResolving] = useState<RiskRow[] | null>(null);
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const reloadResolutions = useCallback(async () => {
+    setResolutions(await getRiskResolutions());
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -70,13 +93,15 @@ export default function RiskCenterPage() {
           import('@/lib/services/audit-service'),
           import('@/lib/services/sync-event-service'),
         ]);
-        const [logs, stats] = await Promise.all([
+        const [logs, stats, saved] = await Promise.all([
           getRecentAuditLogs(1000),
           getSyncEventStats(),
+          getRiskResolutions(),
         ]);
         if (!mounted) return;
         setAuditLogs(logs);
         setSyncFailed(stats.failed);
+        setResolutions(saved);
         if (stats.failed > 0) {
           const pending = await getPendingSyncEvents(200);
           if (mounted) setPendingSyncEvents(pending);
@@ -105,155 +130,125 @@ export default function RiskCenterPage() {
   // so missing data produced a clean bill of health, while /admin reported the
   // same absence as a definite overdue backup.
   const backupStatus = useBackupStatus();
-  const backupAgeHours = backupStatus?.ageHours ?? null;
 
-  const rows: RiskRow[] = useMemo(() => {
-    const out: RiskRow[] = [];
-    const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
+  const rows = useMemo(() => buildRiskRows({
+    auditLogs,
+    syncFailed,
+    pendingSyncEvents,
+    conflicts,
+    organizations,
+    maintenanceMode: !!config?.maintenanceMode,
+    configUpdatedAt: config?.updatedAt,
+    backupRpoHours: config?.superAdminPolicies?.backupRpoHours,
+    backupAgeHours: backupStatus?.ageHours ?? null,
+    backupLastAt: backupStatus?.lastBackupAt,
+  }), [auditLogs, syncFailed, pendingSyncEvents, conflicts, organizations, config, backupStatus]);
 
-    // (a) failed audit events, last 7 days
-    for (const log of auditLogs) {
-      if (log.success) continue;
-      const t = log.createdAt ? new Date(log.createdAt).getTime() : 0;
-      if (!t || t < cutoff) continue;
-      out.push({
-        id: `audit-${log._id}`,
-        severity: classifyAuditRisk(log.action, log.success),
-        signal: log.action,
-        source: 'Audit',
-        detail: log.details || log.username || 'No detail recorded',
-        when: log.createdAt,
-        status: 'failed',
-      });
-    }
+  const resolutionIndex = useMemo(() => indexResolutions(resolutions), [resolutions]);
 
-    // (b) sync backlog — only surfaced once the aggregate stats show a real
-    // failure count; rows are the currently pending backlog behind it.
-    if (syncFailed > 0) {
-      for (const ev of pendingSyncEvents) {
-        out.push({
-          id: `sync-${ev._id}`,
-          severity: 'medium',
-          signal: `${ev.operation} ${ev.resourceType}`,
-          source: 'Sync',
-          detail: `${ev.resourceId.slice(0, 24)} · ${ev.syncStatus}`,
-          when: ev.occurredAt,
-          status: ev.syncStatus,
-        });
-      }
-    }
+  /* Open = derived and not resolved. Resolved reads from the resolution
+     records rather than the derived rows, so a signal whose source has since
+     cleared still shows what was done about it instead of vanishing. */
+  const openRows = useMemo(
+    () => rows.filter(r => !isRiskResolved(resolutionIndex, r.id, r.signature)),
+    [rows, resolutionIndex],
+  );
+  const resolvedDocs = useMemo(
+    () => [...resolutions].sort((a, b) => (b.resolvedAt || '').localeCompare(a.resolvedAt || '')),
+    [resolutions],
+  );
 
-    // (c) pending conflicts
-    for (const c of conflicts) {
-      if (c.status !== 'pending') continue;
-      out.push({
-        id: `conflict-${c._id}`,
-        severity: c.risk === 'high' ? 'high' : c.risk === 'medium' ? 'medium' : 'low',
-        signal: `${c.resourceType} conflict`,
-        source: 'Data',
-        detail: `${c.losingRevs.length} competing revision${c.losingRevs.length === 1 ? '' : 's'}`,
-        when: c.createdAt,
-        status: 'pending',
-      });
-    }
-
-    // (d) tenant risk
-    for (const org of organizations) {
-      if (org.subscriptionStatus === 'suspended' || org.subscriptionStatus === 'cancelled' || !org.isActive) {
-        out.push({
-          id: `org-status-${org._id}`,
-          severity: 'medium',
-          signal: `${org.name} — ${org.subscriptionStatus}`,
-          source: 'Tenants',
-          detail: org.isActive ? 'Subscription is not active' : 'Organization deactivated',
-          when: org.updatedAt,
-          status: org.subscriptionStatus,
-        });
-      } else if (org.subscriptionStatus === 'trial') {
-        out.push({
-          id: `org-trial-${org._id}`,
-          severity: 'low',
-          signal: `${org.name} — trial`,
-          source: 'Tenants',
-          detail: `${org.subscriptionPlan} plan on trial subscription`,
-          when: org.createdAt,
-          status: 'trial',
-        });
-      }
-    }
-
-    // (e) backup overdue vs policy RPO
-    const rpo = config?.superAdminPolicies?.backupRpoHours;
-    if (rpo) {
-      if (backupAgeHours === null) {
-        out.push({
-          id: 'continuity-backup-missing',
-          severity: 'high',
-          signal: 'No backup on record',
-          source: 'Continuity',
-          detail: `Recovery point objective is ${rpo}h`,
-          status: 'unknown',
-        });
-      } else if (backupAgeHours > rpo) {
-        out.push({
-          id: 'continuity-backup-overdue',
-          severity: backupAgeHours > rpo * 2 ? 'high' : 'medium',
-          signal: 'Backup overdue',
-          source: 'Continuity',
-          detail: `Last backup ${Math.round(backupAgeHours)}h ago, RPO is ${rpo}h`,
-          status: 'overdue',
-        });
-      }
-    }
-
-    // (f) maintenance mode
-    if (config?.maintenanceMode) {
-      out.push({
-        id: 'platform-maintenance',
-        severity: 'low',
-        signal: 'Maintenance mode is on',
-        source: 'Platform',
-        detail: 'Platform is restricted to admin-only access',
-        status: 'on',
-      });
-    }
-
-    out.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
-    return out;
-  }, [auditLogs, syncFailed, pendingSyncEvents, conflicts, organizations, config, backupAgeHours]);
-
-  const filtered = useMemo(() => {
+  const matches = useCallback((severity: SaSeverity, source: string, haystack: string) => {
     const q = search.trim().toLowerCase();
-    return rows.filter(r => {
-      if (severityFilter !== 'all' && r.severity !== severityFilter) return false;
-      if (sourceFilter !== 'all' && r.source !== sourceFilter) return false;
-      if (q && !`${r.signal} ${r.detail} ${r.source}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [rows, severityFilter, sourceFilter, search]);
+    if (severityFilter !== 'all' && severity !== severityFilter) return false;
+    if (sourceFilter !== 'all' && source !== sourceFilter) return false;
+    if (q && !haystack.toLowerCase().includes(q)) return false;
+    return true;
+  }, [search, severityFilter, sourceFilter]);
+
+  const filteredOpen = useMemo(
+    () => openRows.filter(r => matches(r.severity, r.source, `${r.signal} ${r.detail} ${r.source}`)),
+    [openRows, matches],
+  );
+  const filteredResolved = useMemo(
+    () => resolvedDocs.filter(d => matches(d.severity, d.source, `${d.signal} ${d.note || ''} ${d.source}`)),
+    [resolvedDocs, matches],
+  );
 
   const counts = useMemo(() => {
     const c: Record<SaSeverity, number> = { critical: 0, high: 0, medium: 0, low: 0 };
-    for (const r of rows) c[r.severity]++;
+    for (const r of openRows) c[r.severity]++;
     return c;
-  }, [rows]);
+  }, [openRows]);
 
   // Filters live in a popover (same control as wards/hospitals/org users)
   // rather than as full-width selects stacked above the table.
   const activeFilterCount = (severityFilter !== 'all' ? 1 : 0) + (sourceFilter !== 'all' ? 1 : 0);
+
+  const actor = { _id: currentUser?._id, username: currentUser?.username, name: currentUser?.name };
+
+  const confirmResolve = async () => {
+    if (!resolving) return;
+    setSaving(true);
+    try {
+      const inputs: ResolveRiskInput[] = resolving.map(r => ({
+        riskId: r.id,
+        signature: r.signature,
+        severity: r.severity,
+        source: r.source,
+        signal: r.signal,
+        note,
+      }));
+      const { resolved, failed } = await resolveRisks(inputs, actor);
+      await reloadResolutions();
+      setResolving(null);
+      setNote('');
+      if (failed > 0) {
+        showToast(`Resolved ${resolved.length}; ${failed} could not be saved.`, 'error');
+      } else {
+        showToast(`Resolved ${resolved.length} risk signal${resolved.length === 1 ? '' : 's'}.`, 'success');
+      }
+    } catch (err) {
+      console.error('Failed to resolve risks:', err);
+      showToast('Could not save the resolution.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReopen = async (doc: RiskResolutionDoc) => {
+    try {
+      await reopenRisk(doc.riskId, actor);
+      await reloadResolutions();
+      showToast('Risk reopened.', 'success');
+    } catch (err) {
+      console.error('Failed to reopen risk:', err);
+      showToast('Could not reopen this risk.', 'error');
+    }
+  };
 
   return (
     <SadbPage>
       <SadbCard
         title="Risk & incident queue"
         action={
-          <div className="sadb-legend">
-            <span><i style={{ background: 'var(--text-muted)' }} />Open ({rows.length})</span>
-            <span><i style={{ background: 'var(--color-danger-500)' }} />Critical ({counts.critical})</span>
-            <span><i style={{ background: 'var(--color-danger-500)' }} />High ({counts.high})</span>
-            <span><i style={{ background: 'var(--color-warning-600)' }} />Medium ({counts.medium})</span>
-            <span><i style={{ background: 'var(--text-muted)' }} />Low ({counts.low})</span>
-          </div>
+          <>
+            <SadbTabs
+              ariaLabel="Risk queue view"
+              active={tab}
+              onChange={key => setTab(key as 'open' | 'resolved')}
+              tabs={[
+                { key: 'open', label: 'Open', count: openRows.length },
+                { key: 'resolved', label: 'Resolved', count: resolvedDocs.length },
+              ]}
+            />
+            <div className="sadb-legend">
+              <span><i style={{ background: 'var(--color-danger-500)' }} />Critical ({counts.critical})</span>
+              <span><i style={{ background: 'var(--color-danger-500)' }} />High ({counts.high})</span>
+              <span><i style={{ background: 'var(--color-warning-600)' }} />Medium ({counts.medium})</span>
+              <span><i style={{ background: 'var(--text-muted)' }} />Low ({counts.low})</span>
+            </div>
+          </>
         }
       >
         <div className="sadb-search-row">
@@ -273,29 +268,107 @@ export default function RiskCenterPage() {
             <FilterSelect
               label="Source"
               value={sourceFilter}
-              onChange={value => setSourceFilter(value as 'all' | Source)}
+              onChange={value => setSourceFilter(value as 'all' | RiskSource)}
               neutralValue="all"
               size="sm"
               options={[{ value: 'all', label: 'All sources' }, ...SOURCES.map(x => ({ value: x, label: x }))]}
             />
           </EhrListFilters>
+          {/* Deliberately "all shown", not "all": whatever the filters have
+              narrowed to is what an operator has actually just looked at. */}
+          {tab === 'open' && filteredOpen.length > 0 && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => { setNote(''); setResolving(filteredOpen); }}>
+              Resolve all shown ({filteredOpen.length})
+            </button>
+          )}
         </div>
-        <SaTable
-          columns={['Severity', 'Signal', 'Source', 'Detail', 'Age', 'Status']}
-          empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
-        >
-          {filtered.map(r => (
-            <tr key={r.id} onClick={() => router.push(SOURCE_HREF[r.source])} style={{ cursor: 'pointer' }}>
-              <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity.toUpperCase()}</SadbChip></td>
-              <td><strong>{r.signal}</strong></td>
-              <td>{r.source}</td>
-              <td>{r.detail}</td>
-              <td>{formatWhen(r.when)}</td>
-              <td>{r.status}</td>
-            </tr>
-          ))}
-        </SaTable>
+
+        {tab === 'open' ? (
+          <SaTable
+            columns={['Severity', 'Signal', 'Source', 'Detail', 'Age', 'Status', '']}
+            empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
+          >
+            {filteredOpen.map(r => (
+              <tr key={r.id} onClick={() => router.push(rowHref(r))} style={{ cursor: 'pointer' }}>
+                <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity.toUpperCase()}</SadbChip></td>
+                <td><strong>{r.signal}</strong></td>
+                <td>{r.source}</td>
+                <td>{r.detail}</td>
+                <td>{formatWhen(r.when)}</td>
+                <td>{r.status}</td>
+                <td onClick={e => e.stopPropagation()} style={{ textAlign: 'end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => { setNote(''); setResolving([r]); }}
+                  >
+                    Resolve
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </SaTable>
+        ) : (
+          <SaTable
+            columns={['Severity', 'Signal', 'Source', 'What was done', 'Resolved', 'By', '']}
+            empty={loading ? 'Loading…' : 'Nothing has been resolved yet.'}
+          >
+            {filteredResolved.map(d => (
+              <tr key={d._id}>
+                <td><SadbChip tone={SEVERITY_CHIP[d.severity]}>{d.severity.toUpperCase()}</SadbChip></td>
+                <td><strong>{d.signal}</strong></td>
+                <td>{d.source}</td>
+                <td>{d.note || <span style={{ color: 'var(--text-muted)' }}>Acknowledged, no note</span>}</td>
+                <td>{formatWhen(d.resolvedAt)}</td>
+                <td>{d.resolvedByName || '—'}</td>
+                <td style={{ textAlign: 'end' }}>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleReopen(d)}>
+                    Reopen
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </SaTable>
+        )}
       </SadbCard>
+
+      {resolving && (
+        <Modal onClose={() => setResolving(null)} width={480} labelledBy="resolve-risk-title">
+          <div className="sadb-modal">
+            <div className="sadb-modal-copy">
+              <h2 id="resolve-risk-title" className="sadb-modal-title">
+                {resolving.length === 1 ? 'Resolve this risk' : `Resolve ${resolving.length} risks`}
+              </h2>
+              <p className="sadb-modal-sub">
+                {resolving.length === 1
+                  ? resolving[0].signal
+                  : `${resolving.length} signals currently shown in the queue.`}
+                {' '}Resolving records that it has been dealt with — it does not change the
+                underlying data. If the condition happens again it comes back on its own.
+              </p>
+            </div>
+            <label htmlFor="resolve-risk-note" style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+              What was done (optional)
+            </label>
+            <textarea
+              id="resolve-risk-note"
+              className="sadb-modal-input"
+              rows={3}
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="e.g. Reset the account and confirmed the login succeeded"
+            />
+            <div className="sadb-modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setResolving(null)} disabled={saving}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary" onClick={confirmResolve} disabled={saving}>
+                {saving ? 'Saving…' : resolving.length === 1 ? 'Resolve' : `Resolve ${resolving.length}`}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </SadbPage>
   );
 }

@@ -77,8 +77,6 @@ export interface NavItem {
   label: string;
   icon: NavIcon;
   section?: string;
-  /** Key used to look up live badge count from useSidebarBadges (e.g. 'messages', 'referrals'). */
-  badgeKey?: string;
   /**
    * When set, the item is rendered as an in-place trigger rather than a route
    * link. 'availability' opens the "Add availability" modal so providers can
@@ -232,13 +230,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     allowedRoutes: [...ROLE_ROUTE_TABLE.doctor.allowed],
     navItems: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/messages', label: 'Messages', icon: MessageSquare, badgeKey: 'messages' },
+      { href: '/messages', label: 'Messages', icon: MessageSquare },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
-      { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL', badgeKey: 'referrals' },
+      { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/alerts', label: 'Alerts', icon: Siren, section: 'CLINICAL' },
       { href: '/lab', label: 'Lab Results', icon: Microscope, section: 'SERVICES' },
       { href: '/pharmacy', label: 'Pharmacy', icon: Pill, section: 'SERVICES' },
@@ -260,13 +258,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     allowedRoutes: [...ROLE_ROUTE_TABLE.clinical_officer.allowed],
     navItems: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/messages', label: 'Messages', icon: MessageSquare, badgeKey: 'messages' },
+      { href: '/messages', label: 'Messages', icon: MessageSquare },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
-      { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL', badgeKey: 'referrals' },
+      { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/alerts', label: 'Alerts', icon: Siren, section: 'CLINICAL' },
       { href: '/lab', label: 'Lab Results', icon: Microscope, section: 'SERVICES' },
       { href: '/pharmacy', label: 'Pharmacy', icon: Pill, section: 'SERVICES' },

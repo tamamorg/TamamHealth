@@ -920,8 +920,12 @@ export default function ReportsPage() {
                 color: periodDotColor[p],
               })),
             ]}
+            /* Pushed right so they sit under the stat dots. With the search
+               input gone, EhrListHeader lays a lone `actions` group out from
+               the start of the row, which left the whole band empty to its
+               right. */
             actions={
-              <>
+              <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div
                   className={`listpage-icon-select ${categoryFilter !== 'all' ? 'is-active' : ''}`}
                   title={t('reports.filterByCategory')}
@@ -947,7 +951,7 @@ export default function ReportsPage() {
                   neutralValue="feb2026"
                   aria-label={t('reports.pageTitle')}
                 />
-              </>
+              </div>
             }
           />
         </div>

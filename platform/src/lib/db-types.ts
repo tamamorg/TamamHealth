@@ -2053,6 +2053,47 @@ export interface PlatformConfigDoc extends BaseDoc {
   };
 }
 
+/**
+ * An operator's record that a risk signal has been dealt with.
+ *
+ * The Risk Center derives its queue from live signals — a failed audit entry, a
+ * pending conflict, a suspended tenant, an overdue backup. Nothing in those
+ * sources can say "someone looked at this and fixed it", so before this
+ * existed the only way to clear a row was for the underlying data to change,
+ * and rows that never change (a login failure last Tuesday) sat in the queue
+ * until they aged out. This document is that missing acknowledgement.
+ *
+ * Stored in `tamamhealth_platform_config` beside the platform config and the
+ * backup marker: it is global operational state read by the same admin
+ * screens, not tenant data, and it needs no database of its own.
+ */
+export interface RiskResolutionDoc extends BaseDoc {
+  type: 'risk_resolution';
+  /** The derived row's stable id — `audit-<id>`, `continuity-backup-overdue`. */
+  riskId: string;
+  /**
+   * Which occurrence of the signal was resolved.
+   *
+   * Event-shaped risks (an audit failure, a conflict) carry a document id that
+   * never recurs, so their signature is the id itself. Condition-shaped risks
+   * (backup overdue, maintenance mode, a suspended tenant) reuse one id every
+   * time they occur, so their signature is the state that was true when the
+   * operator resolved it. When the condition returns in a different state the
+   * signature no longer matches and the row reopens by itself, rather than
+   * staying silently suppressed by a resolution from weeks ago.
+   */
+  signature: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  source: string;
+  /** Copied from the row so the resolved list reads without re-deriving it. */
+  signal: string;
+  /** What was done about it. Optional — an operator may just acknowledge. */
+  note?: string;
+  resolvedAt: string;
+  resolvedById?: string;
+  resolvedByName?: string;
+}
+
 // ===== Staff Scheduling =====
 export interface StaffScheduleDoc extends BaseDoc {
   type: 'staff_schedule';

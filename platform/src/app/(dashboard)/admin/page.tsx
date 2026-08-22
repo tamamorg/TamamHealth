@@ -31,13 +31,17 @@ import { apiFetch } from '@/lib/api-fetch';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
-import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
+import { formatWhen } from '@/components/admin/sa-ui';
+import { buildRiskRows, readinessFromRisks } from '@/components/admin/risk-signals';
+import { getRiskResolutions, indexResolutions, isRiskResolved } from '@/lib/services/risk-resolution-service';
 import { SadbChip, SadbGridList, SadbGridRow, statusChip } from '@/components/admin/sadb-ui';
 import { OrgFacilities, ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import Modal from '@/components/Modal';
 import { ChevronDown, ChevronRight, X } from '@/components/icons/lucide';
-import type { AuditLogDoc, EncounterDoc, HospitalDoc, UserDoc } from '@/lib/db-types';
+import type {
+  AuditLogDoc, ConflictQueueDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
+} from '@/lib/db-types';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
 
@@ -147,7 +151,12 @@ export default function AdminDashboardPage() {
   const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogDoc[]>([]);
   const [syncStats, setSyncStats] = useState({ total: 0, pending: 0, synced: 0, failed: 0, oldestPending: undefined as string | undefined });
-  const [conflictCount, setConflictCount] = useState(0);
+  /* The conflict documents, not just their count: the risk queue is derived
+     from the same rows the Risk Center derives, and a count cannot be turned
+     back into rows. */
+  const [conflicts, setConflicts] = useState<ConflictQueueDoc[]>([]);
+  const [pendingSyncEvents, setPendingSyncEvents] = useState<SyncEventDoc[]>([]);
+  const [riskResolutions, setRiskResolutions] = useState<RiskResolutionDoc[]>([]);
   const [dhis2, setDhis2] = useState<{ configured: boolean; host: string; lastPush?: string }>({ configured: false, host: 'Not configured' });
   const [loading, setLoading] = useState(true);
   /* Which tenant rows have their facility list open. A set, not a single id:
@@ -171,10 +180,12 @@ export default function AdminDashboardPage() {
             import('@/lib/services/audit-service'),
             import('@/lib/services/sync-event-service'),
           ]);
-        const [allUsers, allPatients, allEncounters, logs, sync] = await Promise.all([
+        const [allUsers, allPatients, allEncounters, logs, sync, resolutions] = await Promise.all([
           getAllUsers(), getAllPatients(), getAllEncounters(), getRecentAuditLogs(500), getSyncEventStats(),
+          getRiskResolutions(),
         ]);
         if (cancelled) return;
+        setRiskResolutions(resolutions);
         setUsers(allUsers);
         const byOrg = new Map<string, number>();
         const weekAgo = Date.now() - 7 * 86400000;
@@ -187,6 +198,11 @@ export default function AdminDashboardPage() {
         setEncounters(allEncounters);
         setAuditLogs(logs);
         setSyncStats({ total: sync.total, pending: sync.pending, synced: sync.synced, failed: sync.failed, oldestPending: sync.oldestPending });
+        if (sync.failed > 0) {
+          const { getPendingSyncEvents } = await import('@/lib/services/sync-event-service');
+          const backlog = await getPendingSyncEvents(200);
+          if (!cancelled) setPendingSyncEvents(backlog);
+        }
       } catch (err) {
         console.error('Failed to load platform dashboard data:', err);
       } finally {
@@ -199,9 +215,10 @@ export default function AdminDashboardPage() {
         const res = await apiFetch('/api/admin/conflicts?status=pending');
         if (res.ok) {
           const data = await res.json();
-          if (!cancelled) setConflictCount(Array.isArray(data.conflicts) ? data.conflicts.length : Array.isArray(data) ? data.length : 0);
+          const list = Array.isArray(data.conflicts) ? data.conflicts : Array.isArray(data) ? data : [];
+          if (!cancelled) setConflicts(list as ConflictQueueDoc[]);
         }
-      } catch { /* offline — conflicts stay 0 */ }
+      } catch { /* offline — conflicts stay empty */ }
     })();
 
     (async () => {
@@ -257,39 +274,32 @@ export default function AdminDashboardPage() {
   // about something never measured.
   const rpoHours = config?.superAdminPolicies?.backupRpoHours ?? 24;
   const backupStatus = useBackupStatus(rpoHours);
-  const backupOverdue = backupStatus?.state === 'overdue';
-  const backupUnknown = backupStatus?.state === 'unknown';
 
-  const readiness = Math.max(0, Math.min(100,
-    100
-    - suspendedOrgs.length * 8
-    - failedAudits.length * 5
-    - syncStats.failed * 6
-    - conflictCount * 4
-    - (syncStats.pending > 0 ? 4 : 0)
-    - (backupOverdue ? 6 : 0)
-    - (config?.maintenanceMode ? 10 : 0),
-  ));
+  /* The open-risk queue, derived exactly as /admin/risk derives it — same
+     module, same rows, minus anything an operator has resolved there.
+     Previously this screen kept its own parallel tally (the first three audit
+     failures, a flat +1 for sync, one per suspended tenant) and scored
+     readiness from a third set of weights again, so the donut, this card, and
+     the Risk Center could each report a different number for one platform. */
+  const openRisks = useMemo(() => {
+    const rows = buildRiskRows({
+      auditLogs,
+      syncFailed: syncStats.failed,
+      pendingSyncEvents,
+      conflicts,
+      organizations,
+      maintenanceMode: !!config?.maintenanceMode,
+      configUpdatedAt: config?.updatedAt,
+      backupRpoHours: config?.superAdminPolicies?.backupRpoHours,
+      backupAgeHours: backupStatus?.ageHours ?? null,
+      backupLastAt: backupStatus?.lastBackupAt,
+    });
+    const index = indexResolutions(riskResolutions);
+    return rows.filter(r => !isRiskResolved(index, r.id, r.signature));
+  }, [auditLogs, syncStats.failed, pendingSyncEvents, conflicts, organizations, config, backupStatus, riskResolutions]);
+
+  const readiness = readinessFromRisks(openRisks);
   const readinessTone: Tone = readiness >= 88 ? 'ok' : readiness >= 70 ? 'warn' : 'danger';
-
-  /* Open risk signals behind the readiness card. The queue itself — with
-     every row's detail and its jump-off link — lives on /admin/risk; here we
-     only need how many are open and how severe the worst of them is. */
-  const riskSignals = useMemo(() => {
-    const signals: SaSeverity[] = [];
-    for (const log of failedAudits.slice(0, 3)) signals.push(classifyAuditRisk(log.action, log.success));
-    if (syncStats.failed > 0) signals.push('high');
-    if (conflictCount > 0) signals.push('medium');
-    signals.push(...suspendedOrgs.map((): SaSeverity => 'medium'));
-    // "Overdue" and "we cannot tell" are different problems, and both are
-    // worth an administrator's attention — they just aren't the same weight.
-    if (backupOverdue) signals.push('high');
-    else if (backupUnknown) signals.push('medium');
-    if (config?.maintenanceMode) signals.push('medium');
-    signals.push(...trialOrgs.map((): SaSeverity => 'low'));
-    const order: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
-    return signals.sort((a, b) => order.indexOf(a) - order.indexOf(b)).slice(0, 8);
-  }, [failedAudits, syncStats.failed, conflictCount, suspendedOrgs, trialOrgs, backupOverdue, backupUnknown, config?.maintenanceMode]);
 
   /* KPI deltas we can actually compute. */
   const now = new Date();
@@ -351,9 +361,9 @@ export default function AdminDashboardPage() {
     return next;
   });
 
-  const openRiskTone: Tone = riskSignals.some(sev => sev === 'critical' || sev === 'high')
+  const openRiskTone: Tone = openRisks.some(r => r.severity === 'critical' || r.severity === 'high')
     ? 'danger'
-    : riskSignals.length ? 'warn' : 'ok';
+    : openRisks.length ? 'warn' : 'ok';
 
   const kpis: Array<{ key: string; label: string; value: string; delta: string; deltaClass?: string; href?: string }> = [
     {
@@ -419,7 +429,7 @@ export default function AdminDashboardPage() {
         title: 'Platform risk',
         context: 'Readiness signal',
         details: [
-          { label: 'Open risks', value: riskSignals.length },
+          { label: 'Open risks', value: openRisks.length },
           { label: 'Audit failures', value: `${failedAudits.length} in the last 7 days` },
         ],
         href: '/admin/risk',
@@ -508,7 +518,7 @@ export default function AdminDashboardPage() {
               </svg>
               <div className="sadb-readiness-signals">
                 <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => openPreview('signal:risk')}>
-                  <b>{riskSignals.length ? `${riskSignals.length} open risk${riskSignals.length === 1 ? '' : 's'}` : 'No open risks'}</b>
+                  <b>{openRisks.length ? `${openRisks.length} open risk${openRisks.length === 1 ? '' : 's'}` : 'No open risks'}</b>
                   <span>{failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days</span>
                 </button>
                 <div className={`sadb-signal ${TONE_SIGNAL[syncTone]}`}>

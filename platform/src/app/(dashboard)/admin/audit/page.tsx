@@ -13,12 +13,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
+import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
-import type { AuditLogDoc } from '@/lib/db-types';
+import type { AuditLogDoc, RiskResolutionDoc } from '@/lib/db-types';
 import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
 import { X } from '@/components/icons/lucide';
+import {
+  getRiskResolutions, indexResolutions, reopenRisk, resolveRisk,
+} from '@/lib/services/risk-resolution-service';
 import { SaTable, classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { SadbPage, SadbCard, SadbChip, SadbSearch, SadbKvRow, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 import { todayIso } from '@/lib/date-utils';
@@ -41,6 +45,7 @@ function csvCell(v: string): string {
 
 export default function AuditLogsPage() {
   const router = useRouter();
+  const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { organizations } = useOrganizations();
   const [logs, setLogs] = useState<AuditLogDoc[]>([]);
@@ -54,14 +59,26 @@ export default function AuditLogsPage() {
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
   const [orgFilter, setOrgFilter] = useState<'all' | string>('all');
   const [search, setSearch] = useState('');
+  /**
+   * "Show this user's activity" — a real scope, not a search term.
+   *
+   * It used to write the username into the free-text box, which matched the
+   * action/username/details haystack: an admin who *acted on* a user showed up
+   * inside that user's "activity", and an entry carrying only a `userId` (no
+   * username) matched nothing at all, so the log reported that a user with
+   * plenty of history had none. Both identifiers are kept and either one
+   * matching is enough.
+   */
+  const [userScope, setUserScope] = useState<{ id?: string; name?: string } | null>(null);
+  const [resolutions, setResolutions] = useState<RiskResolutionDoc[]>([]);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         const { getRecentAuditLogs } = await import('@/lib/services/audit-service');
-        const data = await getRecentAuditLogs(1000);
-        if (mounted) setLogs(data);
+        const [data, saved] = await Promise.all([getRecentAuditLogs(1000), getRiskResolutions()]);
+        if (mounted) { setLogs(data); setResolutions(saved); }
       } catch (err) {
         console.error('Failed to load audit logs:', err);
       } finally {
@@ -79,6 +96,9 @@ export default function AuditLogsPage() {
     const log = logs.find(entry => entry._id === focusId);
     if (log) setSelected({ log, risk: classifyAuditRisk(log.action, log.success) });
   }, [logs]);
+
+  const resolutionIndex = useMemo(() => indexResolutions(resolutions), [resolutions]);
+  const actor = { _id: currentUser?._id, username: currentUser?.username, name: currentUser?.name };
 
   const orgNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -114,13 +134,18 @@ export default function AuditLogsPage() {
       if (successFilter === 'failure' && log.success) return false;
       if (riskFilter !== 'all' && risk !== riskFilter) return false;
       if (orgFilter !== 'all' && log.orgId !== orgFilter) return false;
+      if (userScope) {
+        const byId = !!userScope.id && log.userId === userScope.id;
+        const byName = !!userScope.name && log.username === userScope.name;
+        if (!byId && !byName) return false;
+      }
       if (q) {
         const haystack = `${log.action} ${log.username || ''} ${log.details || ''}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
     });
-  }, [inRange, successFilter, riskFilter, orgFilter, search]);
+  }, [inRange, successFilter, riskFilter, orgFilter, search, userScope]);
 
   const exportCsv = () => {
     const header = ['timestamp', 'user', 'org', 'action', 'details', 'success', 'risk'];
@@ -147,7 +172,8 @@ export default function AuditLogsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const activeFilterCount =
+  const scopeFilterCount = userScope ? 1 : 0;
+  const activeFilterCount = scopeFilterCount +
     (successFilter !== 'all' ? 1 : 0) +
     (riskFilter !== 'all' ? 1 : 0) +
     (orgFilter !== 'all' ? 1 : 0) +
@@ -168,8 +194,21 @@ export default function AuditLogsPage() {
       >
         <div className="sadb-search-row">
           <SadbSearch value={search} onChange={setSearch} placeholder="Search action, user, or details…" ariaLabel="Search audit log" />
+          {/* The scope is a visible, removable state — not an invisible filter
+              and not text silently typed into the search box on the reviewer's
+              behalf, which is what it used to be. */}
+          {userScope && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm flex-shrink-0"
+              onClick={() => setUserScope(null)}
+              title="Show every user again"
+            >
+              Activity: {userScope.name || userScope.id} <X className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button type="button" className="btn btn-primary btn-sm flex-shrink-0" onClick={exportCsv}>Export evidence (CSV)</button>
-          <EhrListFilters activeCount={activeFilterCount} onClear={() => { setSuccessFilter('all'); setRiskFilter('all'); setOrgFilter('all'); setRange('7d'); }}>
+          <EhrListFilters activeCount={activeFilterCount} onClear={() => { setSuccessFilter('all'); setRiskFilter('all'); setOrgFilter('all'); setRange('7d'); setUserScope(null); }}>
             <FilterSelect
               label="Result"
               value={successFilter}
@@ -245,8 +284,12 @@ export default function AuditLogsPage() {
           orgName={orgNameById.get(selected.log.orgId || '')}
           onClose={() => setSelected(null)}
           onFilterUser={() => {
-            setSearch(selected.log.username || selected.log.userId || '');
-            setSuccessFilter('all'); setRiskFilter('all');
+            // Scope to the account, then get out of the way: the result/risk
+            // filters and the seven-day window would each hide part of the
+            // very thing the reviewer just asked to see. The search box is
+            // left alone — it is the reviewer's, not this button's.
+            setUserScope({ id: selected.log.userId, name: selected.log.username });
+            setSuccessFilter('all'); setRiskFilter('all'); setOrgFilter('all'); setRange('all');
             setSelected(null);
           }}
           onOpenPatient={selected.log.patientId
@@ -255,6 +298,34 @@ export default function AuditLogsPage() {
           onOpenUser={(selected.log.username || selected.log.userId)
             ? () => router.push(`/admin/users?q=${encodeURIComponent(selected.log.username || selected.log.userId || '')}`)
             : undefined}
+          resolution={resolutionIndex.get(`audit-${selected.log._id}`)}
+          onResolve={async note => {
+            try {
+              await resolveRisk({
+                riskId: `audit-${selected.log._id}`,
+                signature: selected.log._id,
+                severity: selected.risk,
+                source: 'Audit',
+                signal: selected.log.action,
+                note,
+              }, actor);
+              setResolutions(await getRiskResolutions());
+              showToast('Marked resolved — it has left the Risk Center queue.', 'success');
+            } catch (err) {
+              console.error('Failed to resolve audit risk:', err);
+              showToast('Could not save the resolution.', 'error');
+            }
+          }}
+          onReopen={async () => {
+            try {
+              await reopenRisk(`audit-${selected.log._id}`, actor);
+              setResolutions(await getRiskResolutions());
+              showToast('Reopened — it is back in the Risk Center queue.', 'success');
+            } catch (err) {
+              console.error('Failed to reopen audit risk:', err);
+              showToast('Could not reopen this entry.', 'error');
+            }
+          }}
           onCopyJson={async () => {
             try {
               await navigator.clipboard.writeText(JSON.stringify(selected.log, null, 2));
@@ -292,17 +363,22 @@ function EntryKv({ label, value, mono }: { label: string; value?: string | numbe
 }
 
 function AuditEntryDialog({
-  log, risk, orgName, onClose, onFilterUser, onOpenPatient, onOpenUser, onCopyJson,
+  log, risk, orgName, resolution, onClose, onFilterUser, onOpenPatient, onOpenUser, onResolve, onReopen, onCopyJson,
 }: {
   log: AuditLogDoc;
   risk: SaSeverity;
   orgName?: string;
   onClose: () => void;
+  /** Present when this entry has already been marked resolved. */
+  resolution?: RiskResolutionDoc;
   onFilterUser: () => void;
   onOpenPatient?: () => void;
   onOpenUser?: () => void;
+  onResolve: (note?: string) => void | Promise<void>;
+  onReopen: () => void | Promise<void>;
   onCopyJson: () => void;
 }) {
+  const [noteDraft, setNoteDraft] = useState('');
   const when = log.createdAt
     ? `${new Date(log.createdAt).toLocaleString()} (${formatWhen(log.createdAt)})`
     : undefined;
@@ -330,7 +406,16 @@ function AuditEntryDialog({
         <div className="flex items-center flex-wrap gap-2" style={{ margin: '16px 0' }}>
           {log.success ? <SadbChip tone="green">Success</SadbChip> : <SadbChip tone="red">Failure</SadbChip>}
           <SadbChip tone={SEVERITY_CHIP[risk]}>{risk.toUpperCase()} RISK</SadbChip>
+          {resolution && <SadbChip tone="green">RESOLVED</SadbChip>}
         </div>
+
+        {resolution && (
+          <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 16px' }}>
+            Resolved {formatWhen(resolution.resolvedAt)}
+            {resolution.resolvedByName ? ` by ${resolution.resolvedByName}` : ''}
+            {resolution.note ? ` — ${resolution.note}` : ''}
+          </p>
+        )}
 
         {/* Full details line first — it is the sentence the row truncated. */}
         {log.details && (
@@ -355,9 +440,34 @@ function AuditEntryDialog({
           <EntryKv label="Entry id" value={log._id} mono />
         </div>
 
+        {/* An optional line on what was done, written before resolving. It
+            lands on the resolution record and shows in the Risk Center's
+            Resolved list, which is where the next reviewer will look. */}
+        {!log.success && !resolution && (
+          <div style={{ marginBottom: 14 }}>
+            <label htmlFor="audit-resolve-note" style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+              What was done about it (optional)
+            </label>
+            <input
+              id="audit-resolve-note"
+              className="sadb-modal-input"
+              value={noteDraft}
+              onChange={e => setNoteDraft(e.target.value)}
+              placeholder="e.g. Reset the account and confirmed the next login succeeded"
+            />
+          </div>
+        )}
+
         {/* Next steps — where an investigation goes from one log line. */}
         <div className="sadb-modal-actions" style={{ justifyContent: 'flex-start', flexWrap: 'wrap', borderTop: '1px solid var(--border-light)', paddingTop: 14, marginTop: 0 }}>
           <button type="button" className="btn btn-secondary btn-sm" onClick={onFilterUser}>Show this user&apos;s activity</button>
+          {/* Only failures reach the Risk Center, so only failures can be
+              resolved from here — offering it on a successful entry would
+              imply a queue row that does not exist. */}
+          {!log.success && (resolution
+            ? <button type="button" className="btn btn-secondary btn-sm" onClick={() => onReopen()}>Reopen risk</button>
+            : <button type="button" className="btn btn-primary btn-sm" onClick={() => onResolve(noteDraft)}>Mark resolved</button>
+          )}
           {onOpenUser && <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenUser}>View in User Management</button>}
           {onOpenPatient && <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenPatient}>Open patient chart</button>}
           <button type="button" className="btn btn-secondary btn-sm" onClick={onCopyJson}>Copy entry JSON</button>
