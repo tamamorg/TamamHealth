@@ -55,7 +55,19 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
 
   // The triage form lives on the nursing route, which reception cannot open —
   // gate the row rather than letting the click land on "Access Restricted".
-  const canTriage = isPathAllowed(currentUser?.role || '', '/triage');
+  //
+  // Every row that leaves the chart needs the same gate. Three did not have
+  // one and were marked `enabled: true` for everybody who can open a chart:
+  // a radiologist, lab technician or pharmacist reading a chart was offered
+  // "ANC Visit" and "Ward Admission", and clicking either landed them on
+  // "Access Restricted". The nutrition row is the same shape and additionally
+  // pointed at another role's whole station console — the hand-off
+  // PatientDispenseModal was built to stop the pharmacy version of.
+  const role = currentUser?.role || '';
+  const canTriage = isPathAllowed(role, '/triage');
+  const canOpenAnc = isPathAllowed(role, '/anc');
+  const canOpenNutrition = isPathAllowed(role, '/dashboard/nutrition');
+  const canAdmit = isPathAllowed(role, '/wards');
 
   // The Ward Admission row deep-links into /wards so admitting from the chart
   // can close the OPD visit it grew out of (wards reads ?encounterId=). The
@@ -110,14 +122,16 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
         name: 'ANC Visit',
         lastCompleted: lastANC ? formatDate(lastANC.visitDate) : 'Never',
         href: `/anc?patientId=${patient._id}`,
-        enabled: true,
+        enabled: canOpenAnc,
+        disabledReason: 'Requires antenatal care access',
       },
       {
         id: 'nutrition',
         name: 'Nutrition Screening',
         lastCompleted: lastScreening ? formatDate(lastScreening.screeningDate) : 'Never',
         href: `/dashboard/nutrition?patientId=${patient._id}`,
-        enabled: true,
+        enabled: canOpenNutrition,
+        disabledReason: 'Requires the nutrition module',
       },
       {
         id: 'ward-admission',
@@ -127,10 +141,12 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
         // meant this link never actually pre-filled the admit modal. The
         // encounterId (when an open visit was found) lets admission close it.
         href: `/wards?admitPatientId=${patient._id}${openEncounterId ? `&encounterId=${openEncounterId}` : ''}`,
-        enabled: true,
+        enabled: canAdmit,
+        disabledReason: 'Requires ward access',
       },
     ];
-  }, [records, triages, patientANC, patientScreenings, patientAdmissions, patient._id, canConsult, canTriage, openEncounterId]);
+  }, [records, triages, patientANC, patientScreenings, patientAdmissions, patient._id,
+      canConsult, canTriage, canOpenAnc, canOpenNutrition, canAdmit, openEncounterId]);
 
   const filtered = forms.filter(f => f.name.toLowerCase().includes(search.trim().toLowerCase()));
 

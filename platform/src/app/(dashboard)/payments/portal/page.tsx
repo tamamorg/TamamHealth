@@ -700,7 +700,13 @@ export default function PatientPortalPage() {
                 background: 'var(--ehr-page-bg, #F5F8FB)', borderRadius: 6, padding: '14px 18px',
                 marginBottom: 22, border: '1px solid var(--ehr-border, #E2E6EB)', textAlign: 'start',
               }}>
-                <div className="bl-totals-row"><dt>{t('lab.reference')}</dt><dd style={{ fontFamily: 'var(--font-platform-mono)' }}>{selectedBill?.id}</dd></div>
+                {/* The payment reference, not the invoice id. `completedReference`
+                    is minted when the payment is recorded and was being captured
+                    and discarded, while this row showed the bill's id under a
+                    "Reference" label — the wrong number for a patient to quote
+                    back about a mobile-money transfer. Both are shown now. */}
+                <div className="bl-totals-row"><dt>{t('portal.paymentReference')}</dt><dd style={{ fontFamily: 'var(--font-platform-mono)' }}>{completedReference || '—'}</dd></div>
+                <div className="bl-totals-row"><dt>{t('portal.invoiceNumber')}</dt><dd style={{ fontFamily: 'var(--font-platform-mono)' }}>{selectedBill?.id}</dd></div>
                 <div className="bl-totals-row"><dt>{t('portal.amount')}</dt><dd>{formatMoney(Number(paymentAmount))}</dd></div>
                 <div className="bl-totals-row"><dt>{t('portal.method')}</dt><dd>{PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label}</dd></div>
               </dl>

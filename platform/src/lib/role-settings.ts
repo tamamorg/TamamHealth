@@ -18,12 +18,24 @@ export type RoleSettingRow =
    * medication-administration context that is a safety affordance that lies: a
    * nurse could reasonably believe the system verifies patient and drug before
    * a dose. Marking it keeps the roadmap visible without the claim.
+   *
+   * An audit in Aug 2026 found `mar.barcode` was not the exception. Of 92
+   * declared keys, 56 appeared nowhere in the codebase outside this file —
+   * `security.twoFactor` ("One-time code at sign-in"), `lab.secondReview` ("A
+   * colleague verifies before release"), `cs.discrepancy` ("Notifies the
+   * facility admin immediately"), `disp.paymentGate` ("Block dispensing until
+   * payment"). Each renders as a live switch a user can turn on, and each does
+   * nothing in either position. They are all marked now.
+   *
+   * `settings-are-wired.test.ts` holds the line: a key is either read
+   * somewhere or marked `pending`. Wiring one up means deleting its marker,
+   * which is the direction this should move in.
    */
   | { kind: 'toggle'; key: string; label: string; hint: string; def: boolean; pending?: true }
-  | { kind: 'select'; key: string; label: string; hint: string; def: string; options: string[] }
+  | { kind: 'select'; key: string; label: string; hint: string; def: string; options: string[]; pending?: true }
   | { kind: 'text'; key: string; label: string; hint: string; def: string }
   | { kind: 'locked'; label: string; hint: string; value: string }
-  | { kind: 'action'; label: string; hint: string; action: 'password' | 'pin'; buttonLabel: string };
+  | { kind: 'action'; label: string; hint: string; action: 'password' | 'pin' | 'mfa'; buttonLabel: string };
 
 export type RoleSettingSection = {
   id: string;
@@ -52,8 +64,8 @@ export type RoleSettingsSpec = {
 
 const tg = (key: string, label: string, hint: string, def: boolean, pending?: true): RoleSettingRow =>
   ({ kind: 'toggle', key, label, hint, def, ...(pending ? { pending } : {}) });
-const sel = (key: string, label: string, hint: string, def: string, options: string[]): RoleSettingRow =>
-  ({ kind: 'select', key, label, hint, def, options });
+const sel = (key: string, label: string, hint: string, def: string, options: string[], pending?: true): RoleSettingRow =>
+  ({ kind: 'select', key, label, hint, def, options, ...(pending ? { pending } : {}) });
 const lock = (label: string, hint: string, value: string): RoleSettingRow =>
   ({ kind: 'locked', label, hint, value });
 
@@ -78,7 +90,11 @@ function securitySection(twoFactor: boolean, idle: string, mask: boolean): RoleS
   return {
     id: 'security', title: 'Security & sessions', icon: 'shield', note: 'Policy set by the facility admin',
     rows: [
-      tg('security.twoFactor', 'Two-factor authentication', 'One-time code at sign-in', twoFactor),
+      // Was a `pending` toggle — declared, rendered "Not available yet", and
+      // backed by nothing, while /admin/security separately advertised
+      // "Require MFA: On". It is a real action now: an authenticator-app code
+      // at sign-in, set up from this row. See `components/MfaEnrolment.tsx`.
+      { kind: 'action', label: 'Two-factor authentication', hint: 'A code from your phone at sign-in', action: 'mfa', buttonLabel: 'Set up' },
       sel('security.idle', 'Auto sign-out after inactivity', 'Shared-workstation protection', idle, ['5 min', '10 min', '15 min', '30 min']),
       tg('security.mask', 'Hide patient identifiers on shared screens', 'Masks phone and address in queues', mask),
       { kind: 'action', label: 'Password', hint: 'Change the password you sign in with', action: 'password', buttonLabel: 'Change password' },
@@ -99,9 +115,9 @@ const DOCTOR: RoleSettingsSpec = {
       id: 'consultation', title: 'Consultation defaults', icon: 'steth', note: 'Applied to each new consultation you open',
       rows: [
         sel('consult.length', 'Default appointment length', 'Used when you book from your calendar', '20 min', ['10 min', '15 min', '20 min', '30 min', '45 min']),
-        sel('consult.template', 'Note template', 'Pre-loaded structure for new notes', 'SOAP', ['SOAP', 'Free text', 'Problem-oriented']),
-        sel('consult.coding', 'Diagnosis coding', 'Facility standard is ICD-11', 'ICD-11', ['ICD-11', 'ICD-10']),
-        tg('consult.requireDx', 'Require a diagnosis before closing', 'Blocks closing a visit without a code', true),
+        sel('consult.template', 'Note template', 'Pre-loaded structure for new notes', 'SOAP', ['SOAP', 'Free text', 'Problem-oriented'], true),
+        sel('consult.coding', 'Diagnosis coding', 'Facility standard is ICD-11', 'ICD-11', ['ICD-11', 'ICD-10'], true),
+        tg('consult.requireDx', 'Require a diagnosis before closing', 'Blocks closing a visit without a code', true, true),
         tg('consult.autosave', 'Auto-save notes every 30 seconds', 'Protects work during power cuts', true),
       ],
     },
@@ -143,20 +159,20 @@ const NURSE: RoleSettingsSpec = {
     {
       id: 'ward', title: 'Ward & shift', icon: 'bed', note: 'Drives your station view and handoff',
       rows: [
-        sel('ward.default', 'Default ward', 'Loaded when you sign in', 'Maternity', ['Medical', 'Surgical', 'Maternity', 'Pediatric']),
-        sel('ward.shift', 'Shift pattern', 'Used for handoff timing', 'Day · 07:00–19:00', ['Day · 07:00–19:00', 'Evening · 15:00–23:00', 'Night · 19:00–07:00']),
-        tg('ward.myBeds', 'Show only my assigned beds', 'Hides the rest of the ward', false),
-        tg('ward.handoffPrompt', 'Prompt handoff at end of shift', 'Opens the handoff form 30 min before', true),
+        sel('ward.default', 'Default ward', 'Loaded when you sign in', 'Maternity', ['Medical', 'Surgical', 'Maternity', 'Pediatric'], true),
+        sel('ward.shift', 'Shift pattern', 'Used for handoff timing', 'Day · 07:00–19:00', ['Day · 07:00–19:00', 'Evening · 15:00–23:00', 'Night · 19:00–07:00'], true),
+        tg('ward.myBeds', 'Show only my assigned beds', 'Hides the rest of the ward', false, true),
+        tg('ward.handoffPrompt', 'Prompt handoff at end of shift', 'Opens the handoff form 30 min before', true, true),
       ],
     },
     {
       id: 'vitals', title: 'Vitals & rounds', icon: 'clock', note: 'Rounding reminders per acuity',
       rows: [
-        sel('vitals.critical', 'Critical patients', 'Vitals interval for red acuity', 'Every 1 hour', ['Every 30 min', 'Every 1 hour', 'Every 2 hours']),
-        sel('vitals.watch', 'Watch patients', 'Vitals interval for yellow acuity', 'Every 4 hours', ['Every 2 hours', 'Every 4 hours', 'Every 6 hours']),
-        sel('vitals.stable', 'Stable patients', 'Vitals interval for green acuity', 'Every 8 hours', ['Every 6 hours', 'Every 8 hours', 'Every 12 hours']),
-        tg('vitals.rangeWarn', 'Warn on out-of-range vitals', 'Flags values outside the age-based range', true),
-        sel('vitals.units', 'Vitals units', 'Facility standard is metric', 'Metric (kg · °C)', ['Metric (kg · °C)', 'Imperial (lb · °F)']),
+        sel('vitals.critical', 'Critical patients', 'Vitals interval for red acuity', 'Every 1 hour', ['Every 30 min', 'Every 1 hour', 'Every 2 hours'], true),
+        sel('vitals.watch', 'Watch patients', 'Vitals interval for yellow acuity', 'Every 4 hours', ['Every 2 hours', 'Every 4 hours', 'Every 6 hours'], true),
+        sel('vitals.stable', 'Stable patients', 'Vitals interval for green acuity', 'Every 8 hours', ['Every 6 hours', 'Every 8 hours', 'Every 12 hours'], true),
+        tg('vitals.rangeWarn', 'Warn on out-of-range vitals', 'Flags values outside the age-based range', true, true),
+        sel('vitals.units', 'Vitals units', 'Facility standard is metric', 'Metric (kg · °C)', ['Metric (kg · °C)', 'Imperial (lb · °F)'], true),
       ],
     },
     {
@@ -165,8 +181,8 @@ const NURSE: RoleSettingsSpec = {
         // Not wired: the platform has no bedside barcode scanning, and nothing
         // reads this key. Shown as unavailable rather than as a live safety check.
         tg('mar.barcode', 'Barcode scan before administering', 'Confirms patient and drug', true, true),
-        sel('mar.reminder', 'Dose-due reminder', 'How early the MAR alerts you', '15 min before', ['5 min before', '15 min before', '30 min before']),
-        tg('mar.missedReason', 'Require a reason for a missed dose', 'Recorded in the audit log', true),
+        sel('mar.reminder', 'Dose-due reminder', 'How early the MAR alerts you', '15 min before', ['5 min before', '15 min before', '30 min before'], true),
+        tg('mar.missedReason', 'Require a reason for a missed dose', 'Recorded in the audit log', true, true),
         lock('Controlled substance witness', 'Second signature at administration', 'Facility-managed'),
       ],
     },
@@ -174,7 +190,7 @@ const NURSE: RoleSettingsSpec = {
       tg('notify.vitals', 'Deteriorating vitals', 'Immediate alert on the station screen', true),
       tg('notify.overdueDoses', 'Overdue medication doses', 'Alerts once a dose passes its window', true),
       tg('notify.admissions', 'New admissions to my ward', 'When a patient is assigned a bed', true),
-      tg('notify.discharge', 'Discharge paperwork ready', 'Daily summary', false),
+      tg('notify.discharge', 'Discharge paperwork ready', 'Daily summary', false, true),
     ]),
     securitySection(false, '10 min', true),
   ],
@@ -190,11 +206,11 @@ const PHARMACIST: RoleSettingsSpec = {
     {
       id: 'dispensing', title: 'Dispensing', icon: 'pill', note: 'Applies to every prescription you fill',
       rows: [
-        tg('disp.paymentGate', 'Block dispensing until payment or exemption', 'Payment-gated queue', true),
-        tg('disp.generic', 'Offer generic substitution', 'Suggests an in-stock equivalent', true),
-        tg('disp.labels', 'Print a label for every item', 'Patient name, drug, dose, date', true),
-        sel('disp.batch', 'Batch selection', 'Which batch is picked by default', 'Earliest expiry first', ['Earliest expiry first', 'Oldest stock first', 'Manual']),
-        tg('disp.counsel', 'Counsel prompt for new medicines', 'Shows key counselling points', true),
+        tg('disp.paymentGate', 'Block dispensing until payment or exemption', 'Payment-gated queue', true, true),
+        tg('disp.generic', 'Offer generic substitution', 'Suggests an in-stock equivalent', true, true),
+        tg('disp.labels', 'Print a label for every item', 'Patient name, drug, dose, date', true, true),
+        sel('disp.batch', 'Batch selection', 'Which batch is picked by default', 'Earliest expiry first', ['Earliest expiry first', 'Oldest stock first', 'Manual'], true),
+        tg('disp.counsel', 'Counsel prompt for new medicines', 'Shows key counselling points', true, true),
       ],
     },
     {
@@ -202,23 +218,23 @@ const PHARMACIST: RoleSettingsSpec = {
       rows: [
         sel('stock.reorder', 'Reorder trigger', 'When an item is flagged low', 'Below 30 days of cover', ['Below 14 days of cover', 'Below 30 days of cover', 'Below 60 days of cover']),
         sel('stock.expiry', 'Expiry warning window', 'How early a batch is flagged', '30 days', ['14 days', '30 days', '60 days', '90 days']),
-        tg('stock.autoPo', 'Auto-draft purchase orders', 'Creates a PO when items fall below level', true),
-        tg('stock.adjustReason', 'Require a reason for stock adjustment', 'Recorded in the audit log', true),
+        tg('stock.autoPo', 'Auto-draft purchase orders', 'Creates a PO when items fall below level', true, true),
+        tg('stock.adjustReason', 'Require a reason for stock adjustment', 'Recorded in the audit log', true, true),
       ],
     },
     {
       id: 'controlled', title: 'Controlled substances', icon: 'shield', note: 'Register kept for inspection',
       rows: [
         lock('Witness signature required', 'Second staff member at dispensing', 'Facility-managed'),
-        tg('cs.reconcile', 'Daily register reconciliation', 'Prompts a count at close of day', true),
-        tg('cs.discrepancy', 'Alert on any discrepancy', 'Notifies the facility admin immediately', true),
+        tg('cs.reconcile', 'Daily register reconciliation', 'Prompts a count at close of day', true, true),
+        tg('cs.discrepancy', 'Alert on any discrepancy', 'Notifies the facility admin immediately', true, true),
       ],
     },
     notifySection([
-      tg('notify.stockOut', 'Stock-out risk', 'When an item falls below reorder level', true),
-      tg('notify.expiring', 'Expiring batches', 'Weekly summary of batches within 30 days', true),
+      tg('notify.stockOut', 'Stock-out risk', 'When an item falls below reorder level', true, true),
+      tg('notify.expiring', 'Expiring batches', 'Weekly summary of batches within 30 days', true, true),
       tg('notify.newRx', 'New prescriptions to dispense', 'Live queue notification', true),
-      tg('notify.po', 'Purchase order status', 'When a PO is approved or delivered', true),
+      tg('notify.po', 'Purchase order status', 'When a PO is approved or delivered', true, true),
     ]),
     securitySection(true, '10 min', false),
   ],
@@ -235,7 +251,7 @@ const LAB: RoleSettingsSpec = {
       id: 'worklist', title: 'Worklist', icon: 'list', note: 'How orders are presented to you',
       rows: [
         sel('lab.sort', 'Sort orders by', 'Default order in the worklist', 'Urgency, then oldest', ['Urgency, then oldest', 'Oldest first', 'Newest first']),
-        sel('lab.bench', 'Bench filter', 'Only show tests you run', 'Chemistry · Microscopy', ['All benches', 'Chemistry · Microscopy', 'Haematology', 'Serology']),
+        sel('lab.bench', 'Bench filter', 'Only show tests you run', 'Chemistry · Microscopy', ['All benches', 'Chemistry · Microscopy', 'Haematology', 'Serology'], true),
         tg('lab.statTop', 'Show STAT orders at the top', 'Pins urgent orders regardless of sort', true),
         sel('lab.tat', 'Turnaround target', 'Drives the overdue highlight', '60 min', ['30 min', '60 min', '120 min']),
       ],
@@ -243,26 +259,26 @@ const LAB: RoleSettingsSpec = {
     {
       id: 'samples', title: 'Sample handling', icon: 'flask', note: 'Collection and labelling',
       rows: [
-        tg('lab.barcode', 'Barcode label at collection', 'Prints a sample label on accession', true),
-        tg('lab.collector', 'Require collector identity', 'Records who drew the sample', true),
-        tg('lab.sampleAge', 'Warn on sample age', 'Flags samples past stability window', true),
-        sel('lab.reject', 'Reject reason list', 'Options offered when rejecting a sample', 'National standard', ['National standard', 'Facility list']),
+        tg('lab.barcode', 'Barcode label at collection', 'Prints a sample label on accession', true, true),
+        tg('lab.collector', 'Require collector identity', 'Records who drew the sample', true, true),
+        tg('lab.sampleAge', 'Warn on sample age', 'Flags samples past stability window', true, true),
+        sel('lab.reject', 'Reject reason list', 'Options offered when rejecting a sample', 'National standard', ['National standard', 'Facility list'], true),
       ],
     },
     {
       id: 'results', title: 'Results & verification', icon: 'doc', note: 'Before a result reaches the clinician',
       rows: [
-        tg('lab.secondReview', 'Second review for critical values', 'A colleague verifies before release', true),
-        tg('lab.autoFlag', 'Auto-flag out-of-range values', 'Against the facility reference ranges', true),
-        tg('lab.notifyClinician', 'Notify the ordering clinician on release', 'In-app alert plus SMS if critical', true),
+        tg('lab.secondReview', 'Second review for critical values', 'A colleague verifies before release', true, true),
+        tg('lab.autoFlag', 'Auto-flag out-of-range values', 'Against the facility reference ranges', true, true),
+        tg('lab.notifyClinician', 'Notify the ordering clinician on release', 'In-app alert plus SMS if critical', true, true),
         lock('Reference ranges', 'Age and sex-specific ranges', 'Facility-managed'),
       ],
     },
     notifySection([
       tg('notify.stat', 'New STAT orders', 'Immediate alert on the bench screen', true),
       tg('notify.criticalUnacked', 'Unacknowledged critical results', 'Escalates after 15 minutes', true),
-      tg('notify.analyser', 'Analyser errors', 'When an instrument reports a fault', true),
-      tg('notify.reagent', 'Reagent stock low', 'Weekly summary', false),
+      tg('notify.analyser', 'Analyser errors', 'When an instrument reports a fault', true, true),
+      tg('notify.reagent', 'Reagent stock low', 'Weekly summary', false, true),
     ]),
     securitySection(true, '15 min', true),
   ],
@@ -281,34 +297,34 @@ const FRONTDESK: RoleSettingsSpec = {
         tg('reg.phone', 'Require phone number', 'Unless the patient has none on record', true),
         tg('reg.geocode', 'Require geocode ID', 'Household identifier for follow-up', false),
         tg('reg.duplicates', 'Warn on possible duplicates', 'Matches name, age, and locality', true),
-        tg('reg.card', 'Print a patient card with QR code', 'Speeds up return visits', true),
-        sel('reg.district', 'Default district', 'Pre-filled on new registrations', 'Juba', ['Juba', 'Wau', 'Malakal', 'Bor', 'Bentiu']),
+        tg('reg.card', 'Print a patient card with QR code', 'Speeds up return visits', true, true),
+        sel('reg.district', 'Default district', 'Pre-filled on new registrations', 'Juba', ['Juba', 'Wau', 'Malakal', 'Bor', 'Bentiu'], true),
       ],
     },
     {
       id: 'routing', title: 'Check-in routing', icon: 'list', note: 'Where arrivals are sent',
       rows: [
-        sel('route.department', 'Default department', 'Applied when none is chosen', 'OPD', ['OPD', 'Emergency', 'ANC', 'Under-five clinic']),
-        sel('route.acuity', 'Default acuity', 'Clerk may raise it, never lower it', 'Routine', ['Routine', 'Urgent']),
-        tg('route.triageFirst', 'Send every arrival to triage first', 'Nurse sets the final acuity', true),
-        tg('route.queueLength', 'Show live queue length per department', 'Helps balance the load', true),
+        sel('route.department', 'Default department', 'Applied when none is chosen', 'OPD', ['OPD', 'Emergency', 'ANC', 'Under-five clinic'], true),
+        sel('route.acuity', 'Default acuity', 'Clerk may raise it, never lower it', 'Routine', ['Routine', 'Urgent'], true),
+        tg('route.triageFirst', 'Send every arrival to triage first', 'Nurse sets the final acuity', true, true),
+        tg('route.queueLength', 'Show live queue length per department', 'Helps balance the load', true, true),
       ],
     },
     {
       id: 'payments', title: 'Payments & receipts', icon: 'card', note: 'Cash, mobile money, and exemptions',
       rows: [
         sel('pay.method', 'Default payment method', 'Most common at this desk', 'Cash', ['Cash', 'Mobile money', 'Insurance']),
-        tg('pay.mgurush', 'm-Gurush mobile money', 'Confirmations post to billing automatically', true),
-        tg('pay.receipt', 'Print a receipt for every payment', 'Duplicate kept for reconciliation', true),
-        tg('pay.reconcile', 'Prompt end-of-shift reconciliation', 'Cash count against recorded takings', true),
+        tg('pay.mgurush', 'm-Gurush mobile money', 'Confirmations post to billing automatically', true, true),
+        tg('pay.receipt', 'Print a receipt for every payment', 'Duplicate kept for reconciliation', true, true),
+        tg('pay.reconcile', 'Prompt end-of-shift reconciliation', 'Cash count against recorded takings', true, true),
         lock('Exemption categories', 'ANC, EPI, and under-five exemptions', 'Facility-managed'),
       ],
     },
     notifySection([
-      tg('notify.unpaid', 'Unpaid invoices at discharge', 'Alerts before a patient leaves', true),
-      tg('notify.claims', 'Insurance claim rejections', 'When a payer rejects a claim', true),
+      tg('notify.unpaid', 'Unpaid invoices at discharge', 'Alerts before a patient leaves', true, true),
+      tg('notify.claims', 'Insurance claim rejections', 'When a payer rejects a claim', true, true),
       tg('notify.queue', 'Queue over capacity', 'When waits pass the target', true),
-      tg('notify.collections', 'Daily collection summary', 'Sent at close of shift', true),
+      tg('notify.collections', 'Daily collection summary', 'Sent at close of shift', true, true),
     ]),
     securitySection(false, '5 min', true),
   ],
@@ -347,10 +363,10 @@ const ADMIN: RoleSettingsSpec = {
       rows: [],
     },
     notifySection([
-      tg('notify.syncConflicts', 'Sync conflicts', 'When a record cannot merge automatically', true),
+      tg('notify.syncConflicts', 'Sync conflicts', 'When a record cannot merge automatically', true, true),
       tg('notify.surveillance', 'Surveillance signals', 'IDSR alert thresholds reached', true),
-      tg('notify.integrations', 'Failed integrations', 'Credential or connection errors', true),
-      tg('notify.weekly', 'Weekly facility summary', 'Attendance, collections, and stock', true),
+      tg('notify.integrations', 'Failed integrations', 'Credential or connection errors', true, true),
+      tg('notify.weekly', 'Weekly facility summary', 'Attendance, collections, and stock', true, true),
     ]),
     securitySection(true, '15 min', false),
   ],
@@ -366,8 +382,8 @@ const GENERIC: RoleSettingsSpec = {
     accountSection('My dashboard', ['My dashboard', 'Patients']),
     notifySection([
       tg('notify.assigned', 'Work assigned to me', 'When an item lands in my queue', true),
-      tg('notify.mentions', 'Messages and mentions', 'When a colleague messages me', true),
-      tg('notify.summary', 'Daily summary', 'Sent at the start of the day', false),
+      tg('notify.mentions', 'Messages and mentions', 'When a colleague messages me', true, true),
+      tg('notify.summary', 'Daily summary', 'Sent at the start of the day', false, true),
     ]),
     securitySection(false, '15 min', false),
   ],

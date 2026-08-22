@@ -104,6 +104,15 @@ export async function POST(req: NextRequest) {
     if (!found || !passwordOk) {
       return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 });
     }
+    // A suspended account keeps its credential on purpose — suspension is
+    // usually reversible and re-enrolling from scratch is a poor answer to a
+    // temporary problem. This is the check that makes it mean something, and
+    // it answers exactly like a wrong password so the response cannot be used
+    // to discover whose access was withdrawn.
+    const { portalSignInBlocked } = await import('@/lib/services/patient-portal-enrolment');
+    if (portalSignInBlocked(found as { portalDisabledAt?: string })) {
+      return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 });
+    }
 
     // A successful password proof clears both failed-attempt streaks. OTP has
     // its own shared IP/challenge limits, so retaining password failures here
@@ -143,6 +152,12 @@ export async function POST(req: NextRequest) {
       }
       console.warn('[patient-portal/login] OTP enabled but patient has no phone on file — allowing password-only login.');
     }
+
+    // "Is anyone actually using the portal we enrolled them in?" was
+    // unanswerable — nothing recorded a portal sign-in. Best-effort, and never
+    // in the way of a patient reaching their own records.
+    const { recordPortalLogin } = await import('@/lib/services/patient-portal-enrolment');
+    await recordPortalLogin(found._id);
 
     // Issue a patient-scoped JWT (8 hour expiry)
     const token = await createPatientToken({

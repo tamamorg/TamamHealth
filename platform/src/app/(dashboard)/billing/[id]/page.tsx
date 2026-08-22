@@ -658,8 +658,10 @@ export default function BillDetailPage() {
       {discountOpen && (
         <Modal onClose={() => setDiscountOpen(false)} width={440} labelledBy="bl-discount-title">
           <div className="bl-root bl-modal-body">
-            <h3 className="bl-modal-title" id="bl-discount-title">Request discount</h3>
-            <p className="bl-modal-sub">Applies to invoice {bill.invoiceNumber} — subtotal {money(bill.subtotal)}.</p>
+            <div className="bl-modal-head">
+              <h3 className="bl-modal-title" id="bl-discount-title">Request discount</h3>
+              <p className="bl-modal-sub">Applies to invoice {bill.invoiceNumber} — subtotal {money(bill.subtotal)}.</p>
+            </div>
             <div className="bl-field">
               <label htmlFor="bl-disc-amount">Discount amount ({currency})</label>
               <input id="bl-disc-amount" type="number" min={0} step="0.01" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} autoFocus />
@@ -682,8 +684,10 @@ export default function BillDetailPage() {
       {addItemsOpen && (
         <Modal onClose={() => setAddItemsOpen(false)} width={560} labelledBy="bl-add-title">
           <div className="bl-root bl-modal-body">
-            <h3 className="bl-modal-title" id="bl-add-title">Add items to bill</h3>
-            <p className="bl-modal-sub">Pick from the fee schedule or add a custom charge.</p>
+            <div className="bl-modal-head">
+              <h3 className="bl-modal-title" id="bl-add-title">Add items to bill</h3>
+              <p className="bl-modal-sub">Pick from the fee schedule or add a custom charge.</p>
+            </div>
 
             <div className="bl-field">
               <label htmlFor="bl-fee-search">Search fee schedule</label>
@@ -776,10 +780,12 @@ export default function BillDetailPage() {
       {confirmFinalize && (
         <Modal onClose={() => setConfirmFinalize(false)} width={420} labelledBy="bl-finalize-title">
           <div className="bl-root bl-modal-body">
-            <h3 className="bl-modal-title" id="bl-finalize-title">Finalize bill {bill.invoiceNumber}?</h3>
-            <p className="bl-modal-sub">
-              Once finalized, line items and the bill itself can no longer be changed or deleted — only payments and discounts can be applied.
-            </p>
+            <div className="bl-modal-head">
+              <h3 className="bl-modal-title" id="bl-finalize-title">Finalize bill {bill.invoiceNumber}?</h3>
+              <p className="bl-modal-sub">
+                Once finalized, line items and the bill itself can no longer be changed or deleted — only payments and discounts can be applied.
+              </p>
+            </div>
             <div className="bl-modal-actions">
               <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setConfirmFinalize(false)}>Cancel</button>
               <button type="button" className="bl-btn bl-btn--primary" onClick={handleFinalize} disabled={busy}>
@@ -794,10 +800,12 @@ export default function BillDetailPage() {
       {confirmDelete && (
         <Modal onClose={() => setConfirmDelete(false)} width={420} labelledBy="bl-delete-title">
           <div className="bl-root bl-modal-body">
-            <h3 className="bl-modal-title" id="bl-delete-title">Delete bill {bill.invoiceNumber}?</h3>
-            <p className="bl-modal-sub">
-              The bill will be cancelled and the {money(bill.totalAmount)} charge reversed from {bill.patientName}&rsquo;s balance. This cannot be undone.
-            </p>
+            <div className="bl-modal-head">
+              <h3 className="bl-modal-title" id="bl-delete-title">Delete bill {bill.invoiceNumber}?</h3>
+              <p className="bl-modal-sub">
+                The bill will be cancelled and the {money(bill.totalAmount)} charge reversed from {bill.patientName}&rsquo;s balance. This cannot be undone.
+              </p>
+            </div>
             <div className="bl-modal-actions">
               <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
               <button type="button" className="bl-btn bl-btn--dark" style={{ background: 'var(--color-danger, #D92B20)' }} onClick={handleDelete} disabled={busy}>

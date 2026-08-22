@@ -88,7 +88,7 @@ export default function PopupSelect({
       {open && (
         <Modal onClose={close} width={440}>
           <div className="modal-content card-elevated popup-select-panel" style={{ width: '100%' }}>
-            <div className="popup-select-head">
+            <div className="popup-select-head modal-headband">
               {activeGroup ? (
                 <button type="button" className="popup-select-back" onClick={() => { setActiveGroup(null); setQuery(''); }}>
                   <ChevronLeft className="w-4 h-4" /> Back

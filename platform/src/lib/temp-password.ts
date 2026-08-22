@@ -14,6 +14,19 @@
 
 export const TEMP_PASSWORD_LENGTH = 14;
 
+/**
+ * A length that satisfies this deployment's policy.
+ *
+ * The generator's own default is 14, which clears the shipped minimum of 12 —
+ * but an operator can raise `passwordMinLength` on /admin/security, and a
+ * generated credential the server then rejects would make the create-user
+ * dialog look broken. Never shorter than the default: a policy of 8 does not
+ * mean the temporary password should get weaker.
+ */
+export function tempPasswordLengthFor(minLength: number): number {
+  return Math.max(TEMP_PASSWORD_LENGTH, Math.trunc(minLength) || 0);
+}
+
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
 
 export function generateTempPassword(length = TEMP_PASSWORD_LENGTH): string {

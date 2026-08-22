@@ -23,9 +23,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverError, logApiError } from '@/lib/api-auth';
 
-/** Same floor the rest of the platform enforces. */
-const MIN_PASSWORD_LENGTH = 8;
-
 /** One message for every failure mode — see rule 1 above. */
 const GENERIC_FAILURE =
   'This invitation link is no longer valid. Ask your administrator to send a new one.';
@@ -51,26 +48,18 @@ export async function POST(request: NextRequest) {
     }
     // Password complaints ARE specific: the person is choosing a password and
     // has to be told what is wrong with it. This leaks nothing about the token,
-    // which is checked afterwards.
-    if (password !== password.trim()) {
-      return NextResponse.json(
-        { error: 'Password cannot start or end with spaces' },
-        { status: 400 },
-      );
-    }
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return NextResponse.json(
-        { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` },
-        { status: 400 },
-      );
-    }
-
+    // which is checked afterwards. The rules — length, blocklist, and "not
+    // built from your own name" — live in `lib/password-policy.ts` and are
+    // applied inside `redeemUserInvite`, which is the only place that knows
+    // WHOSE account the token belongs to.
     const { redeemUserInvite } = await import('@/lib/services/user-service');
     const result = await redeemUserInvite(token, password);
 
     if (!result.ok) {
-      // `weak_password` cannot reach here — length is checked above — so every
-      // remaining reason is a token problem and answers identically.
+      if (result.reason === 'weak_password') {
+        return NextResponse.json({ error: result.message }, { status: 400 });
+      }
+      // Every remaining reason is a token problem and answers identically.
       return NextResponse.json({ error: GENERIC_FAILURE }, { status: 400 });
     }
 

@@ -33,8 +33,10 @@ const HEADER_SHORTCUT_DUPLICATE_ROUTES: Partial<Record<UserRole, string[]>> = {
 };
 
 const PRIMARY_SHORTCUT_PRIORITY = [
+  // /payments only. Claims is a tab inside that same workspace, not a
+  // destination of its own — ranking it here is what once put two adjacent
+  // money glyphs at the head of the rail for one page.
   '/payments',
-  '/payments/claims',
   '/consultation',
   '/patients',
   '/appointments',
@@ -270,4 +272,53 @@ export function navItemLabel(item: NavItem, translate: (key: string) => string):
     if (translated !== key) return translated;
   }
   return item.label;
+}
+
+/**
+ * The top rail's two centre lines — one shape for every role, matching the
+ * one the platform operator always had ("TAMAMHEALTH PLATFORM ADMIN /
+ * COMMAND CENTER"): the organization on the main line, the signed-in user's
+ * workspace on the quieter line under it — "MERCY HOSPITAL GROUP / MEDICAL
+ * RECEPTIONIST". The workspace name comes in as `roleLabel` (the role's
+ * written label from ROLE_PERMISSIONS, the one source covering all 25
+ * roles) rather than being looked up here, so this stays a pure function a
+ * test can drive without the permissions table's icon imports.
+ *
+ * The facility deliberately does not take a line: it rides in the rail's
+ * tooltip so a multi-site org's staff can still see which site their
+ * session is scoped to.
+ */
+export function railCenterLabels(input: {
+  role?: UserRole;
+  /** The signed-in user's display name — the platform operator's main line. */
+  name?: string;
+  orgName?: string;
+  facilityName?: string;
+  /** getRoleConfig(role).label — the workspace line. */
+  roleLabel?: string;
+}): { centerLabel?: string; centerSubLabel?: string } {
+  const { role, name, orgName, facilityName, roleLabel } = input;
+  if (!role) return {};
+  // The platform administrator belongs to no tenant, so the only true answer
+  // for the main line is who they are: their own display name, which they can
+  // change in Settings and see reflected here (it seeds as "TamamHealth
+  // Platform Admin", so the console reads the same until they rename it).
+  if (role === 'super_admin') {
+    return { centerLabel: name || 'TamamHealth Platform Admin', centerSubLabel: 'Command Center' };
+  }
+  // The facility console names itself, because its dashboard no longer prints
+  // a title above its own numbers: for org_admin and hospital_manager the
+  // useful workspace line is the console they are standing in ("Facility
+  // Management"), not their own role label ("Organization Admin"), which the
+  // organization name above it already implies.
+  const workspace = role === 'org_admin' || role === 'hospital_manager'
+    ? 'Facility Management'
+    : roleLabel;
+  const centerLabel = orgName
+    || (role === 'government' ? 'Ministry of Health' : facilityName || workspace);
+  // Only a second line when it would say something the main line doesn't — a
+  // role with no organization at all falls back to the workspace as the main
+  // line, and repeating it underneath would be noise.
+  const centerSubLabel = centerLabel !== workspace ? workspace : undefined;
+  return { centerLabel, centerSubLabel };
 }

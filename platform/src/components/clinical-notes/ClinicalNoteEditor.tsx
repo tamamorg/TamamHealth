@@ -32,14 +32,15 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import IncludeProblemsModal from './assessment/IncludeProblemsModal';
 import AllergiesModal from './AllergiesModal';
 import CareCoordinationModal, {
-  type CareCoordinationResult, type SummaryProblem, type SummarySocialHistory,
+  type CareCoordinationResult, type SummaryProblem,
 } from './CareCoordinationModal';
 import FollowUpModal, { type FollowUpModalResult } from './FollowUpModal';
 import PatientEducationModal, { type PatientEducationModalResult } from './PatientEducationModal';
+import { socialHistoryRows } from '@/lib/clinical-notes/social-history-summary';
 import {
   NOTE_TYPE_ORDER, NOTE_TYPES, getNoteType, getSectionLabel,
   availableOptionalSections, isNoteTypeId,
-  type NoteTypeId, type NoteSectionId,
+  type NoteSectionId,
 } from '@/lib/clinical-notes/note-catalog';
 import {
   getClinicalNoteById, updateClinicalNote, saveNoteSection, addNoteSection,
@@ -50,7 +51,7 @@ import {
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import { getRoleFlag } from '@/lib/settings/role-settings-store';
 import type { PatientDoc, PatientDocumentDoc, UserRole } from '@/lib/db-types';
-import { loadChartSnapshot, snapshotForSection, formatProblems } from '@/lib/clinical-notes/chart-snapshot';
+import { loadChartSnapshot, snapshotForSection } from '@/lib/clinical-notes/chart-snapshot';
 import { stripTemplateMarkers } from '@/lib/clinical-notes/section-templates';
 import type {
   ClinicalNoteDoc, NoteSectionContent, NoteDiagnosis,
@@ -115,7 +116,6 @@ export default function ClinicalNoteEditor({
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [showPatientEducation, setShowPatientEducation] = useState(false);
   const [problems, setProblems] = useState<SummaryProblem[]>([]);
-  const [socialHistory, setSocialHistory] = useState<SummarySocialHistory[]>([]);
 
   // Left-rail chart context: the patient record (photo/sex/phone), the
   // patient's other notes, and their most recent resulted labs.
@@ -147,6 +147,14 @@ export default function ClinicalNoteEditor({
   }, [noteId]);
 
   // Problems + social history back the Care Coordination summary.
+  /**
+   * Social History rows for the care-coordination summary, read off the note's
+   * own narrative section. This was a `useState([])` that nothing ever set, so
+   * the modal's `socialHistory.length > 0` guard never opened and a referral
+   * could not carry social history at all.
+   */
+  const socialHistory = useMemo(() => socialHistoryRows(note), [note]);
+
   useEffect(() => {
     if (!note?.patientId) return;
     let cancelled = false;
@@ -876,6 +884,7 @@ export default function ClinicalNoteEditor({
                 readOnly={locked}
                 userId={currentUser?._id || ''}
                 orgId={currentUser?.orgId}
+                role={currentUser?.role}
                 active={activeSection === section.sectionId}
                 onFocus={() => setActiveSection(section.sectionId)}
                 onChange={patch => handleSectionChange(section.sectionId, patch)}
@@ -994,7 +1003,9 @@ export default function ClinicalNoteEditor({
       {showAddOptional && (
         <Modal onClose={() => setShowAddOptional(false)} width={420}>
           <div style={{ padding: 18 }}>
-            <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Add a section</h2>
+            <div className="modal-headband">
+              <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Add a section</h2>
+            </div>
             {optionalAvailable.length === 0 && (
               <p className="cn-popover-empty">Every optional section is already in this note.</p>
             )}
@@ -1019,14 +1030,16 @@ export default function ClinicalNoteEditor({
       {showSignConfirm && (
         <Modal onClose={() => setShowSignConfirm(false)} width={460}>
           <div style={{ padding: 20 }}>
-            <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle size={16} /> Sign this note?
-            </h2>
-            <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: '0 0 16px' }}>
-              Signing attests that this note is a true record of the encounter. It locks the note —
-              afterwards, corrections can only be recorded as an addendum, which stays visible
-              alongside the original.
-            </p>
+            <div className="modal-headband">
+              <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={16} /> Sign this note?
+              </h2>
+              <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: '0 0 16px' }}>
+                Signing attests that this note is a true record of the encounter. It locks the note —
+                afterwards, corrections can only be recorded as an addendum, which stays visible
+                alongside the original.
+              </p>
+            </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" className="cn-btn" onClick={() => setShowSignConfirm(false)}>Cancel</button>
               <button type="button" className="cn-btn cn-btn-primary" onClick={handleSign}>
@@ -1041,10 +1054,12 @@ export default function ClinicalNoteEditor({
       {showAddendum && (
         <Modal onClose={() => setShowAddendum(false)} width={520}>
           <div style={{ padding: 20 }}>
-            <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700 }}>Add an addendum</h2>
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 10px' }}>
-              The original note is not changed. Your correction is appended and attributed to you.
-            </p>
+            <div className="modal-headband">
+              <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700 }}>Add an addendum</h2>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 10px' }}>
+                The original note is not changed. Your correction is appended and attributed to you.
+              </p>
+            </div>
             <textarea
               className="cn-textarea"
               value={addendumText}

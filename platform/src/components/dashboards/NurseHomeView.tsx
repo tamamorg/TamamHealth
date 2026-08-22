@@ -363,7 +363,6 @@ export default function NurseHomeView() {
     <main className="page-container page-enter">
       <EhrClinicalDashboard
         clinicianName={currentUser.name || 'nurse'}
-        facilityName={currentUser.hospitalName}
         patients={worklist.patients}
         // No appointment board of this view's own yet — midwife ANC visits
         // are the one nurse-family appointment type, and nothing here surfaces

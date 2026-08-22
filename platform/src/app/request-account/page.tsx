@@ -13,11 +13,14 @@
  * they have left the building.
  */
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Corners, loginStyles } from '@/components/login/login-chrome';
 import { getRoleConfig } from '@/lib/permissions';
-import { REQUESTABLE_ROLES, accountRequestRoleNeedsFacility } from '@/lib/account-request-roles';
+import {
+  REQUESTABLE_ROLES, accountRequestRoleNeedsFacility, roleRequiresRegistrationNumber,
+} from '@/lib/account-request-roles';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface Org { id: string; name: string }
@@ -27,8 +30,64 @@ const ROLE_OPTIONS = REQUESTABLE_ROLES
   .map(value => ({ value, label: getRoleConfig(value).label }))
   .sort((a, b) => a.label.localeCompare(b.label));
 
-export default function RequestAccountPage() {
+/**
+ * The confirmation half of the flow.
+ *
+ * The link in the "is this really your address?" email comes back here with a
+ * token. Redeeming it is what makes the request visible to an approver — until
+ * then it is an unchecked claim about somebody else's mailbox, and nobody's
+ * queue should be spending attention on it.
+ */
+function VerifyPanel({ token }: { token: string }) {
+  const [state, setState] = useState<'working' | 'done' | 'failed'>('working');
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/account-requests/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+      .then(async res => {
+        const body = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok) {
+          setMessage(body.message || 'Your address is confirmed.');
+          setState('done');
+        } else {
+          setMessage(body.error || 'That confirmation link is no longer valid.');
+          setState('failed');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMessage('Could not reach the server. Open the link again in a moment.');
+          setState('failed');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [token]);
+
+  return (
+    <>
+      <h1 className="lg-h1">
+        {state === 'working' ? 'Confirming…' : state === 'done' ? 'Address confirmed' : 'Link not valid'}
+      </h1>
+      <p className="lg-lede">
+        {state === 'working' ? 'One moment.' : message}
+      </p>
+      <div className="lg-links">
+        <Link href="/login">Back to sign in</Link>
+        {state === 'failed' && <Link href="/request-account">Ask again</Link>}
+      </div>
+    </>
+  );
+}
+
+function RequestAccountForm() {
   const { t } = useTranslation();
+  const verifyToken = useSearchParams().get('verify') || '';
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [fullName, setFullName] = useState('');
@@ -38,9 +97,11 @@ export default function RequestAccountPage() {
   const [orgId, setOrgId] = useState('');
   const [hospitalId, setHospitalId] = useState('');
   const [note, setNote] = useState('');
+  const [registrationNumber, setRegistrationNumber] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const needsRegistration = roleRequiresRegistrationNumber(requestedRole);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +134,7 @@ export default function RequestAccountPage() {
           orgName: orgs.find(o => o.id === orgId)?.name,
           hospitalId: hospitalId || undefined,
           hospitalName: facilities.find(f => f.id === hospitalId)?.name,
+          professionalRegistrationNumber: needsRegistration ? registrationNumber : undefined,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -88,23 +150,17 @@ export default function RequestAccountPage() {
     }
   };
 
-  return (
-    <div className="lg-root">
-      <header className="lg-topbar">
-        <a href="https://tamamhealth.org" className="lg-topbar-link">
-          {/* eslint-disable-next-line @next/next/no-img-element -- brand mark, fixed size */}
-          <img src="/assets/tamamhealth-logo-full.svg" alt="Tamam Healthcare System" className="lg-topbar-logo" />
-        </a>
-      </header>
+  // Arriving from the confirmation email rather than from the login page.
+  if (verifyToken) return <VerifyPanel token={verifyToken} />;
 
-      <div className="lg-grid">
-        <div className="lg-col">
+  return (
+    <>
           {sent ? (
             <>
-              <h1 className="lg-h1">Request sent</h1>
+              <h1 className="lg-h1">Check your email</h1>
               <p className="lg-lede">
-                An administrator will review it. If it is approved, they will contact you and securely
-                give you a username and one-time password to change when you first sign in.
+                We have sent a link to confirm your address. Nobody sees your request until you open
+                it. Once you do, an administrator reviews it and contacts you if it is approved.
               </p>
               <div className="lg-links">
                 <Link href="/login">Back to sign in</Link>
@@ -171,6 +227,22 @@ export default function RequestAccountPage() {
                   </div>
                 )}
 
+                {/* Free text, and human-checked against the council register
+                    rather than validated by shape — see the field's own note
+                    in db-types. It exists so the approver has something real
+                    to verify, not to gate the form. */}
+                {needsRegistration && (
+                  <div className="lg-field">
+                    <label htmlFor="ra-reg">Council registration number</label>
+                    <input id="ra-reg" className="lg-input" value={registrationNumber} required
+                      onChange={e => setRegistrationNumber(e.target.value)}
+                      placeholder="As it appears on your practising certificate" />
+                    <span className="lg-hint">
+                      Your administrator checks this against the register before granting clinical access.
+                    </span>
+                  </div>
+                )}
+
                 <div className="lg-field">
                   <label htmlFor="ra-note">Anything the administrator should know <span className="lg-hint">(optional)</span></label>
                   <textarea id="ra-note" className="lg-input" rows={3} value={note} maxLength={1000}
@@ -196,6 +268,28 @@ export default function RequestAccountPage() {
               </span>
             </>
           )}
+    </>
+  );
+}
+
+export default function RequestAccountPage() {
+  const { t } = useTranslation();
+  return (
+    <div className="lg-root">
+      <header className="lg-topbar">
+        <a href="https://tamamhealth.org" className="lg-topbar-link">
+          {/* eslint-disable-next-line @next/next/no-img-element -- brand mark, fixed size */}
+          <img src="/assets/tamamhealth-logo-full.svg" alt="Tamam Healthcare System" className="lg-topbar-logo" />
+        </a>
+      </header>
+
+      <div className="lg-grid">
+        <div className="lg-col">
+          {/* useSearchParams needs a Suspense boundary in the App Router — the
+              confirmation link arrives here with a token in the query. */}
+          <Suspense fallback={<div className="lg-boot"><span className="lg-spin" /> Loading…</div>}>
+            <RequestAccountForm />
+          </Suspense>
         </div>
 
         {/* Keep the account-request doorway paired with the same product

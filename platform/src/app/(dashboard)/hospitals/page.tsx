@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   Building2, BedDouble, Users, Stethoscope, WifiOff,
   Zap, ZapOff, Sun, Truck, Signal, Clock, Activity,
-  MapPin, HeartPulse, X,
+  MapPin, HeartPulse, X, Phone, Mail,
   FlaskConical, Download, Eye, Settings, Plus, Edit3, Ban, RotateCcw,
   Syringe, Baby, Pill, ShieldCheck, Microscope,
 } from '@/components/icons/lucide';
@@ -24,11 +23,19 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { FilterSelect } from '@/components/filters';
 import EhrListHeader, { EhrListFilters, EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Modal from '@/components/Modal';
+import RowActionsPopup, { rowActionsFromElement, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import FacilityManageTabs, {
+  FACILITY_MANAGE_TABS, FACILITY_SETTINGS_WRITE_ROLES, type FacilityTabId,
+} from '@/components/facilities/FacilityManageTabs';
+import type { DataScope } from '@/lib/services/data-scope';
 import type { HospitalDoc, UserRole } from '@/lib/db-types';
 
-// Roles that can open the per-hospital management dashboard. The route itself
-// gates again (defence-in-depth), but hiding the button for unauthorized
-// roles keeps the UI clean.
+// Roles that can work a facility (Staff, Wards, Equipment, Inventory,
+// Schedules, Performance, Settings). Those tabs live on this page now — the
+// separate /hospitals/[id]/manage screen they used to occupy redirects here —
+// so this list decides whether the profile shows them at all. Every service
+// call underneath is still scoped, so hiding the tabs is presentation, not
+// the barrier.
 const MANAGE_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'medical_superintendent', 'hrio',
 ];
@@ -136,6 +143,9 @@ function HospitalsPageInner() {
   const stateParam = searchParams.get('state');
   const countyParam = searchParams.get('county');
   const [selectedHospital, setSelectedHospital] = useState<HospitalDoc | null>(null);
+  // Which tab the profile should open on when it was reached from the list's
+  // gear menu rather than from a row click or a ?tab= link.
+  const [pendingTab, setPendingTab] = useState<ProfileTabId | undefined>(undefined);
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState(() => stateParam || 'all');
 
@@ -144,6 +154,9 @@ function HospitalsPageInner() {
   // after the first auto-select, so navigating back to the page with a new
   // ?facility= silently kept the old card open.
   const facilityIdParam = searchParams.get('facility');
+  // `?tab=` opens the profile on one of its management tabs. The old
+  // /hospitals/[hospitalId]/manage route redirects here carrying it.
+  const profileTabParam = parseProfileTab(searchParams.get('tab'));
   useEffect(() => {
     if (!facilityIdParam || hospitals.length === 0) return;
     const found = hospitals.find(h => h._id === facilityIdParam);
@@ -275,11 +288,13 @@ function HospitalsPageInner() {
           {selectedHospital ? (
             <FacilityProfile
               hospital={selectedHospital}
-              onClose={() => setSelectedHospital(null)}
+              onClose={() => { setSelectedHospital(null); setPendingTab(undefined); }}
               canManage={canManage}
               canCreate={canCreate}
               onEdit={() => setEditingFacility(selectedHospital)}
               onRetire={() => setRetireTarget(selectedHospital)}
+              initialTab={pendingTab ?? profileTabParam}
+              onHospitalSaved={(saved) => { setSelectedHospital(saved); reloadHospitals(); }}
             />
           ) : (
             <>
@@ -333,7 +348,15 @@ function HospitalsPageInner() {
                   </>
                 }
               />
-              <FacilityList hospitals={filteredHospitals} colorMetric={colorMetric} onSelect={setSelectedHospital} />
+              <FacilityList
+                hospitals={filteredHospitals}
+                colorMetric={colorMetric}
+                // A plain row click opens the facility on Overview, so the tab
+                // a gear picked earlier must not follow the next facility in.
+                onSelect={h => { setPendingTab(undefined); setSelectedHospital(h); }}
+                canManage={canManage}
+                onOpenTab={(h, tabId) => { setPendingTab(tabId); setSelectedHospital(h); }}
+              />
             </>
           )}
         </div>
@@ -478,12 +501,19 @@ function FilterDropdown({ label, value, onChange, options }: {
  */
 const ELLIPSIS = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const;
 
-function FacilityList({ hospitals, colorMetric, onSelect }: {
+function FacilityList({ hospitals, colorMetric, onSelect, canManage, onOpenTab }: {
   hospitals: HospitalDoc[];
   colorMetric: PerformanceMetricKey;
   onSelect: (h: HospitalDoc) => void;
+  /** Whether this role has the facility's management tabs at all. */
+  canManage: boolean;
+  /** Open a facility straight on one of its tabs. */
+  onOpenTab: (hospital: HospitalDoc, tab: ProfileTabId) => void;
 }) {
   const { t } = useTranslation();
+  // One popup for the whole list — the clicked row supplies its actions and
+  // position, so a hundred facilities cost one portal, not a hundred.
+  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
   if (hospitals.length === 0) {
     return (
       <div style={{ padding: 48, textAlign: 'center' }}>
@@ -515,7 +545,11 @@ function FacilityList({ hospitals, colorMetric, onSelect }: {
             after the Manage column was removed. */}
         <colgroup>
           <col style={{ width: '4%' }} />
-          {Array.from({ length: 8 }, (_, i) => <col key={i} style={{ width: '12%' }} />)}
+          {Array.from({ length: 8 }, (_, i) => <col key={i} style={{ width: canManage ? '11.5%' : '12%' }} />)}
+          {/* Actions gutter — only when the role has tabs to jump to. Widths
+              must stay exhaustive (see above), so the data columns give up
+              half a point each to pay for it. */}
+          {canManage && <col style={{ width: '4%' }} />}
         </colgroup>
         <thead>
           <tr>
@@ -530,6 +564,7 @@ function FacilityList({ hospitals, colorMetric, onSelect }: {
             {/* Last column: aligned to the row's right edge so the sync badges
                 form a single column at the end rather than floating. */}
             <th style={{ textAlign: 'right' }}>{t('hospitals.colSync')}</th>
+            {canManage && <th aria-label={t('hospitals.manage')} />}
           </tr>
         </thead>
         <tbody>
@@ -587,11 +622,42 @@ function FacilityList({ hospitals, colorMetric, onSelect }: {
                     {h.syncStatus}
                   </span>
                 </td>
+                {canManage && (
+                  /* The gear is a shortcut, not the only way in: the row still
+                     opens the facility on Overview. This is for the times you
+                     already know you want its roster or its stock, and would
+                     otherwise open the profile just to click a tab. */
+                  <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      aria-label={t('hospitals.manageTitle', { name: h.name })}
+                      aria-haspopup="menu"
+                      data-action="facility-tab-menu"
+                      data-tour="facility-row-tabs"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setRowMenu(rowActionsFromElement(e.currentTarget, PROFILE_TABS.map(tabItem => ({
+                          key: tabItem.id,
+                          label: t(tabItem.labelKey),
+                          onClick: () => onOpenTab(h, tabItem.id),
+                        }))));
+                      }}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 26, height: 26, borderRadius: 7, cursor: 'pointer',
+                        background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)',
+                      }}
+                    >
+                      <Settings style={{ width: 13, height: 13, color: 'var(--text-muted)' }} />
+                    </button>
+                  </td>
+                )}
               </tr>
             );
           })}
         </tbody>
       </table>
+      <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
     </div>
   );
 }
@@ -599,7 +665,21 @@ function FacilityList({ hospitals, colorMetric, onSelect }: {
 // ═══════════════════════════════════════════
 //  Facility Profile Panel (with selection)
 // ═══════════════════════════════════════════
-function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRetire }: {
+
+/** The profile's own content is the first tab; the rest are the facility
+ *  management tabs that used to be a page of their own. */
+type ProfileTabId = 'overview' | FacilityTabId;
+
+const PROFILE_TABS: { id: ProfileTabId; labelKey: string; icon: React.ElementType }[] = [
+  { id: 'overview', labelKey: 'hospitals.tabOverview', icon: Eye },
+  ...FACILITY_MANAGE_TABS,
+];
+
+/** `?tab=` is only honoured for a tab that exists. */
+function parseProfileTab(value: string | null): ProfileTabId | undefined {
+  return PROFILE_TABS.some(item => item.id === value) ? value as ProfileTabId : undefined;
+}
+function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRetire, initialTab, onHospitalSaved }: {
   hospital: HospitalDoc;
   onClose: () => void;
   canManage: boolean;
@@ -607,8 +687,28 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
   canCreate: boolean;
   onEdit: () => void;
   onRetire: () => void;
+  /** Tab to open on — `?tab=` on the URL, including the redirect the old
+   *  /hospitals/[id]/manage route sends here. */
+  initialTab?: ProfileTabId;
+  /** The Settings tab writes the facility; the list above it must not keep
+   *  rendering the stale record. */
+  onHospitalSaved: (hospital: HospitalDoc) => void;
 }) {
   const { t } = useTranslation();
+  const { currentUser } = useApp();
+  const [tab, setTab] = useState<ProfileTabId>(initialTab ?? 'overview');
+  // A late-arriving ?tab= (the manage-route redirect lands before the
+  // facility list has loaded) still opens the tab it asked for.
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
+
+  // Scope every service call the tabs make to this facility, in this org, as
+  // this role — the same object the standalone manage page built from the URL.
+  const scope: DataScope | undefined = useMemo(() => {
+    if (!currentUser) return undefined;
+    return { role: currentUser.role, orgId: currentUser.orgId, hospitalId: hospital._id };
+  }, [currentUser, hospital._id]);
+  const canWriteSettings = !!currentUser && FACILITY_SETTINGS_WRITE_ROLES.includes(currentUser.role);
+
   const formatLastSync = (iso: string) => {
     if (!iso) return t('hospitals.syncUnknown');
     const d = new Date(iso);
@@ -623,6 +723,11 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
   };
 
   const totalStaff = (hospital.doctors || 0) + (hospital.clinicalOfficers || 0) + (hospital.nurses || 0) + (hospital.labTechnicians || 0) + (hospital.pharmacists || 0);
+  const contact = hospital as unknown as { phone?: string; email?: string };
+  // Best-available proxy, labelled as an estimate wherever it is shown — the
+  // ward bed counts are the only occupancy signal the hospital record carries.
+  const occupiedBeds = (hospital.icuBeds || 0) + (hospital.maternityBeds || 0) + (hospital.pediatricBeds || 0);
+  const occupancyPct = hospital.totalBeds ? Math.round((occupiedBeds / hospital.totalBeds) * 100) : 0;
 
   return (
     <div style={{ padding: 20, overflowY: 'auto', flex: 1, minHeight: 0 }}>
@@ -644,6 +749,19 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
                 {t(STATUS_LABEL_KEYS[hospital.operationalStatus])}
               </span>
             )}
+            {/* How to reach the facility. Only the manage screen carried these,
+                and that screen no longer exists — the address is already on
+                this line, so this is the phone and inbox behind it. */}
+            {contact.phone && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--text-muted)' }}>
+                <Phone style={{ width: 12, height: 12 }} />{contact.phone}
+              </span>
+            )}
+            {contact.email && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--text-muted)' }}>
+                <Mail style={{ width: 12, height: 12 }} />{contact.email}
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -662,15 +780,6 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
               </button>
             </>
           )}
-          {canManage && (
-            <Link
-              href={`/hospitals/${hospital._id}/manage`}
-              className="btn btn-primary btn-sm"
-              style={{ gap: 4 }}
-            >
-              <Settings style={{ width: 13, height: 13 }} /> {t('hospitals.manage')}
-            </Link>
-          )}
           <button onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X style={{ width: 14, height: 14, color: 'var(--text-muted)' }} />
           </button>
@@ -679,6 +788,39 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
 
       <hr className="section-divider" />
 
+      {/* The facility's record and the work done on it, on one screen. These
+          tabs were a separate page reached by a "Manage" button; the record you
+          were reading was then two navigations away from the roster, ward list
+          or stock you opened it to check. Roles without the management grant
+          see the profile alone, exactly as before. */}
+      {canManage && (
+        <nav className="fac-tabs" aria-label={t('hospitals.manageTitle', { name: hospital.name })} style={{ marginBottom: 16 }}>
+          {PROFILE_TABS.map(tabItem => (
+            <button
+              key={tabItem.id}
+              type="button"
+              className={`fac-tab${tab === tabItem.id ? ' is-active' : ''}`}
+              aria-current={tab === tabItem.id ? 'page' : undefined}
+              onClick={() => setTab(tabItem.id)}
+              data-tab={tabItem.id}
+            >
+              <tabItem.icon />
+              {t(tabItem.labelKey)}
+            </button>
+          ))}
+        </nav>
+      )}
+
+      {tab !== 'overview' && canManage ? (
+        <FacilityManageTabs
+          hospital={hospital}
+          tab={tab}
+          scope={scope}
+          canWriteSettings={canWriteSettings}
+          onHospitalSaved={onHospitalSaved}
+        />
+      ) : (
+      <>
       {/* Quick stats row */}
       <div className="kpi-grid" style={{ marginBottom: 16 }}>
         <div className="kpi"><div className="icon-box-sm"><Users style={{ color: 'var(--accent-primary)' }} /></div><div className="kpi__body"><div className="kpi__value">{hospital.patientCount.toLocaleString()}</div><div className="kpi__label">{t('hospitals.statPatients')}</div></div></div>
@@ -752,6 +894,9 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
               { label: t('hospitals.bedsMaternity'), value: hospital.maternityBeds },
               { label: t('hospitals.bedsPediatric'), value: hospital.pediatricBeds },
               { label: t('hospitals.bedsGeneral'), value: Math.max(0, hospital.totalBeds - hospital.icuBeds - hospital.maternityBeds - hospital.pediatricBeds) },
+              // Carried over from the manage screen's header facts, which is
+              // the only place this estimate used to appear.
+              { label: t('hospitals.occupancyEstimated'), value: `${occupancyPct}%` as number | string },
             ].map(b => (
               <div key={b.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{b.label}</span>
@@ -840,6 +985,8 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
         </span>
         <span className="font-mono">{(hospital.lat ?? 0).toFixed(4)}°N, {(hospital.lng ?? 0).toFixed(4)}°E{hospital.county && ` | ${hospital.county}`}</span>
       </div>
+      </>
+      )}
     </div>
   );
 }

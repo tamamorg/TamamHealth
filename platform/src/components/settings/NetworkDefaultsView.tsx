@@ -181,7 +181,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
     try {
       const { saved, failed } = await saveFacilitySettingsToMany(
         ids,
-        (current, hospitalId) => modulePatch(draft, module, current) ?? {},
+        (current, _hospitalId) => modulePatch(draft, module, current) ?? {},
         orgIdByHospital,
         sessionHospitalId,
       );

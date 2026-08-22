@@ -12,6 +12,7 @@ import {
   Plus,
   Search,
   Settings,
+  UserCheck,
   UserPlus,
   Users,
   X,
@@ -28,6 +29,8 @@ import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils
 import { formatPhoneShared } from '@/lib/field-formats';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrModuleMenu from './EhrModuleMenu';
+import EhrRailMenu, { type RailMenuItem } from './EhrRailMenu';
+import { buildAddMenuEntries, usersHrefForRole } from '@/lib/people-nav';
 import EhrTopActions from './EhrTopActions';
 import QuickActions from '@/components/QuickActions';
 import {
@@ -36,6 +39,7 @@ import {
   groupNavItemsBySection,
   navItemLabel,
   isHrefAllowed,
+  railCenterLabels,
   uniqueAllowedNavItems,
 } from './ehr-navigation';
 import { moduleBadgeCounts } from '@/lib/module-badges';
@@ -55,29 +59,25 @@ export default function EhrTopRail() {
   // show the ministry name in the rail's center and give it the header search,
   // so the National Dashboard page doesn't need its own title + search row.
   const isNationalRole = currentUser?.role === 'government';
-  // The platform administrator belongs to no facility and no single tenant, so
-  // the rail's centre was blank for them — the one role signed into everything
-  // and told so nowhere. The console names itself here instead of on the
-  // dashboard page, which now opens straight into its numbers.
+  // Gates the rail's register-patient shortcut below — the platform operator
+  // has no facility to register a patient into.
   const isPlatformAdmin = currentUser?.role === 'super_admin';
-  // Who the signed-in user works for. Org-wide roles (org_admin above all)
-  // have no facility at all, so a facility-only header left them with a blank
-  // centre — signed into an organization the app never named anywhere.
-  const orgName = currentUser?.orgName;
-  // Facility first when there is one: it is the narrower, more useful answer to
-  // "where am I". The organization then rides underneath as context rather than
-  // replacing it, and stands alone when there is no facility to show.
-  // The platform administrator belongs to neither, so the only true answer for
-  // them is who they are: their own display name, which they can change in
-  // Settings and see reflected here (it seeds as "TamamHealth Platform Admin",
-  // so the console reads the same until they rename it).
-  const centerLabel = isPlatformAdmin
-    ? currentUser?.name || 'TamamHealth Platform Admin'
-    : facilityName || orgName || (isNationalRole ? 'Ministry of Health' : undefined);
-  // Only a second line when it would say something the main line doesn't.
-  const centerSubLabel = isPlatformAdmin
-    ? 'Command Center'
-    : facilityName && orgName && orgName !== facilityName ? orgName : undefined;
+  // Every role reads the same two-line shape the platform operator always had
+  // ("TAMAMHEALTH PLATFORM ADMIN / COMMAND CENTER"): the organization on the
+  // main line, the signed-in user's workspace on the quieter line under it —
+  // "MERCY HOSPITAL GROUP / MEDICAL RECEPTIONIST". The derivation (including
+  // the facility-console and Ministry special cases) lives in ehr-navigation's
+  // railCenterLabels, pure and unit-tested per role shape. The facility no
+  // longer competes for the main line — it rides in the tooltip below, so a
+  // multi-site org's staff can still see which site their session is scoped
+  // to.
+  const { centerLabel, centerSubLabel } = railCenterLabels({
+    role: currentUser?.role,
+    name: currentUser?.name,
+    orgName: currentUser?.orgName,
+    facilityName,
+    roleLabel: currentUser ? getRoleConfig(currentUser.role).label : undefined,
+  });
   const { canRegisterPatients } = usePermissions();
   // Reception already carries "Register new patient" as a header action on its
   // own dashboard, so the rail's person-plus was the same act offered twice on
@@ -125,6 +125,11 @@ export default function EhrTopRail() {
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
   const allowedRoutes = useMemo(() => roleConfig?.allowedRoutes || [], [roleConfig]);
   const homeHref = roleConfig?.defaultDashboard || '/dashboard';
+  // Whether this rail is sitting on the facility-management console, which is
+  // the roles' own default dashboard (role-routes.ts:123). Drives the two
+  // decisions below: two header shortcuts instead of four, and whether the
+  // roster / "Add a record" entries appear at all.
+  const isFacilityConsole = homeHref === '/facility-management';
   const roleLabel = roleConfig?.label || currentUser?.role.replace(/_/g, ' ') || 'Workspace';
   const canSearchPatients = isHrefAllowed('/patients', allowedRoutes);
 
@@ -136,10 +141,25 @@ export default function EhrTopRail() {
   // Keep four high-frequency destinations visible in the header as shortcuts.
   // `homeHref` is passed so the role's own dashboard never takes one of the
   // four — the module trigger to the left of this row already goes there.
+  // Two shortcuts, not four, on the facility console: the two slots go to the
+  // record actions below, which came off that dashboard's own header. By
+  // priority the pair being displaced is Laboratory and Prescriptions — both
+  // still one tap away in the module menu.
   const headerShortcutItems = useMemo(
-    () => getPrimaryShortcutItems(navItems, currentUser?.role, 4, homeHref),
-    [navItems, currentUser?.role, homeHref],
+    () => getPrimaryShortcutItems(navItems, currentUser?.role, isFacilityConsole ? 2 : 4, homeHref),
+    [navItems, currentUser?.role, homeHref, isFacilityConsole],
   );
+
+  // Staff roster + "Add a record", moved here from the Facility Management
+  // dashboard so they are reachable from every page of the console rather than
+  // only its landing screen. Every entry navigates: the rail is global, so it
+  // cannot open a dialog that belongs to one page.
+  const staffListHref = currentUser ? usersHrefForRole(currentUser.role) : null;
+  const addMenuItems: RailMenuItem[] = useMemo(() => {
+    if (!currentUser || !isFacilityConsole) return [];
+    return buildAddMenuEntries({ role: currentUser.role, allowedRoutes })
+      .map(entry => ({ key: entry.key, label: entry.label, onSelect: () => router.push(entry.href) }));
+  }, [currentUser, allowedRoutes, router, isFacilityConsole]);
   const headerShortcutHrefs = useMemo(
     () => new Set(headerShortcutItems.map(item => item.href)),
     [headerShortcutItems],
@@ -262,6 +282,29 @@ export default function EhrTopRail() {
           badges={moduleBadges}
         />
 
+        {isFacilityConsole && staffListHref && (
+          <button
+            type="button"
+            className="relative"
+            onClick={() => router.push(staffListHref)}
+            title="View staff accounts"
+            aria-label="View staff accounts"
+            data-track="nav.staff_accounts"
+          >
+            <UserCheck className="w-4 h-4" />
+          </button>
+        )}
+        {addMenuItems.length > 0 && (
+          <EhrRailMenu
+            variant="rail"
+            label=""
+            icon={Plus}
+            hideChevron
+            ariaLabel="Add a new record"
+            items={addMenuItems}
+          />
+        )}
+
 
       </nav>
 
@@ -271,7 +314,10 @@ export default function EhrTopRail() {
         <div className="ehr-top-center">
           <div
             className="ehr-top-facility"
-            title={centerSubLabel ? `${centerLabel} · ${centerSubLabel}` : centerLabel}
+            /* The facility rides here now that the two visible lines are
+               organization · workspace — hover still answers "which site". */
+            title={[centerLabel, centerSubLabel, facilityName !== centerLabel ? facilityName : undefined]
+              .filter(Boolean).join(' · ')}
           >
             <span>{centerLabel}</span>
             {centerSubLabel && <em className="ehr-top-facility-org">{centerSubLabel}</em>}

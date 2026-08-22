@@ -22,6 +22,8 @@ import { isValidPhone, isValidEmail, isValidNationalId } from '@/lib/field-forma
 import { isPathAllowed } from '@/lib/role-routes';
 import RegistrationJumpNav from './RegistrationJumpNav';
 import RegistrationReview from './RegistrationReview';
+import DuplicateWarning from './DuplicateWarning';
+import { findPossibleDuplicates } from '@/lib/patients/duplicate-match';
 import { buildReviewGroups } from './review-groups';
 import { buildPatientDoc } from './build-patient-doc';
 import DemographicsSection from './sections/DemographicsSection';
@@ -29,7 +31,7 @@ import BiometricsSection from './sections/BiometricsSection';
 import ContactSection, { geocodeIdFor } from './sections/ContactSection';
 import NextOfKinSection from './sections/NextOfKinSection';
 import CoverageSection from './sections/CoverageSection';
-import { useRoleFlag, useRoleChoice } from '@/lib/settings/useRoleSetting';
+import { useRoleFlag } from '@/lib/settings/useRoleSetting';
 import {
   EMPTY_REGISTRATION_FORM, MAX_ADDITIONAL_NOK,
   type AdditionalNok, type CoverageType, type RegistrationTextField,
@@ -68,7 +70,7 @@ export function PatientRegistrationForm({
   ], [t]);
 
   const router = useRouter();
-  const { create: createPatient } = usePatients();
+  const { patients, create: createPatient } = usePatients();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   // "Register & check in" hands off to the appointments page's walk-in dialog.
@@ -267,6 +269,30 @@ export function PatientRegistrationForm({
   const requirePhone = useRoleFlag('reg.phone', true);
   const requireGeocode = useRoleFlag('reg.geocode', false);
   const warnDuplicates = useRoleFlag('reg.duplicates', true);
+
+  /**
+   * Possible duplicates, computed only on the Review step.
+   *
+   * Not per keystroke: this scans every patient replicated to the device, and
+   * a half-typed name matches nothing useful anyway. Review is also where the
+   * answer is actionable — the clerk still has the person in front of them and
+   * nothing has been written yet.
+   */
+  const duplicateMatches = useMemo(() => {
+    if (!warnDuplicates || !reviewMode) return [];
+    return findPossibleDuplicates({
+      firstName: form.firstName,
+      middleName: form.middleName,
+      surname: form.surname,
+      dateOfBirth: form.dateOfBirth,
+      estimatedAge: form.estimatedAge ? parseInt(form.estimatedAge, 10) : undefined,
+      gender: form.gender,
+      state: form.state,
+      county: form.county,
+    }, patients);
+  }, [warnDuplicates, reviewMode, patients,
+      form.firstName, form.middleName, form.surname, form.dateOfBirth,
+      form.estimatedAge, form.gender, form.state, form.county]);
 
   const validateSection = (section: number): Record<string, string> => {
     const errs: Record<string, string> = {};
@@ -603,6 +629,12 @@ export function PatientRegistrationForm({
                   groups={reviewGroups}
                   editLabel={t('action.edit')}
                   onEdit={goToSection}
+                  notice={(
+                    <DuplicateWarning
+                      matches={duplicateMatches}
+                      onOpen={id => router.push(`/patients/${id}`)}
+                    />
+                  )}
                 />
               )}
             </div>

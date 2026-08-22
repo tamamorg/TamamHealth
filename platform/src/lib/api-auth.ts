@@ -30,6 +30,8 @@ export interface AuthPayload {
   state?: string;
   /** True when the user must set a new password before using the app. */
   mustChangePassword?: boolean;
+  /** True when the user's role requires a second factor they have not set up. */
+  mfaPending?: boolean;
 }
 
 /**
@@ -161,7 +163,10 @@ const STATION_ROLE_EQUIVALENT: Readonly<Partial<Record<UserRole, UserRole>>> = {
  * always preferred, so a route that lists a station role explicitly keeps
  * working unchanged.
  */
-export function hasRole(auth: AuthPayload, allowed: UserRole[]): boolean {
+// `readonly` so a route can pass a canonical group from write-permissions.ts
+// directly. The function only reads the list; requiring a mutable array was
+// the last thing forcing routes to retype what already exists there.
+export function hasRole(auth: AuthPayload, allowed: readonly UserRole[]): boolean {
   // The platform super-admin passes every role gate by design ("total
   // access"). Every hand-maintained allow-list under src/app/api already
   // names super_admin explicitly; this wildcard turns that convention into a

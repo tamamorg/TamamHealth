@@ -59,6 +59,12 @@ export async function POST(req: NextRequest) {
     const db = patientsDB() as any;
     const patient = await db.get(challengeId);
 
+    // "Is anyone actually using the portal we enrolled them in?" was
+    // unanswerable — nothing recorded a portal sign-in. Best-effort, and never
+    // in the way of a patient reaching their own records.
+    const { recordPortalLogin } = await import('@/lib/services/patient-portal-enrolment');
+    await recordPortalLogin(patient._id);
+
     const token = await createPatientToken({
       sub: patient._id,
       name: `${patient.firstName} ${patient.surname}`,

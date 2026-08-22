@@ -23,7 +23,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import type { InvitationOutcome } from '@/lib/user-invite';
 import {
-  Plus, KeyRound, UserX, UserCheck, Eye, EyeOff, RefreshCw, ShieldCheck, Building2,
+  Plus, KeyRound, UserX, UserCheck, Eye, EyeOff, RefreshCw, Mail, Upload,
 } from '@/components/icons/lucide';
 import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
@@ -32,17 +32,19 @@ import Modal from '@/components/Modal';
 import Select from '@/components/Select';
 import { generateTempPassword } from '@/lib/temp-password';
 import { canCreateUsers, canCreateFacilities } from '@/lib/people-nav';
-import { roleNeedsFacility } from '@/lib/user-scope-rules';
 import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
 import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
+import CreateUserModal from '@/components/admin/CreateUserModal';
 import { activeFacilities } from '@/lib/services/hospital-service';
 import { getRoleConfig, labelRolesDistinctly } from '@/lib/permissions';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
+import BulkUserImportModal from '@/components/admin/BulkUserImportModal';
 import {
   SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbTabs,
 } from '@/components/admin/sadb-ui';
-
-const MIN_PASSWORD_LENGTH = 8;
+import { describeAccountState, canResendInvite } from '@/lib/account-state';
+import { describeInvitationOutcome } from '@/lib/invitation-copy';
+import { usePasswordPolicy } from '@/lib/hooks/usePasswordPolicy';
 import type { UserDoc, HospitalDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 
@@ -58,13 +60,19 @@ export default function OrgUsersPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const { showToast } = useToast();
+  // Security settings → Password minimum. This page carried its own literal 8.
+  const { minLength: MIN_PASSWORD_LENGTH, tempLength } = usePasswordPolicy();
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [hospitals, setHospitals] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   // Registering the organization's first facility without leaving the
-  // half-filled account form.
+  // half-filled account form. The id lands back on the create dialog so the
+  // account being filled in has somewhere to be assigned.
   const [showAddFacility, setShowAddFacility] = useState(false);
+  const [presetHospitalId, setPresetHospitalId] = useState<string | undefined>(undefined);
   const [showResetModal, setShowResetModal] = useState<string | null>(null);
   // One popup for the list; the clicked row supplies its actions and position.
   const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
@@ -72,6 +80,18 @@ export default function OrgUsersPage() {
   /** What a row offers. Deactivate is hidden for your own account — locking
    *  yourself out of the console is never the intent behind that click. */
   const actionsFor = (user: UserDoc): RowAction[] => [
+    // Listed FIRST, above the reset, because it is the better answer to the
+    // same problem: the person sets their own password from a single-use link
+    // and no plaintext credential has to be read down a phone line. Offered
+    // only when there is an address to send it to.
+    ...(canResendInvite(user)
+      ? [{
+        key: 'resend',
+        label: resendingId === user._id ? 'Sending…' : 'Send invitation again',
+        icon: <Mail className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />,
+        onClick: () => { void handleResendInvite(user); },
+      }]
+      : []),
     {
       key: 'reset',
       label: t('orgUsers.resetPassword'),
@@ -85,6 +105,23 @@ export default function OrgUsersPage() {
       ? [{ key: 'reactivate', label: t('orgUsers.reactivate'), tone: 'success' as const, icon: <UserCheck className="w-4 h-4" />, onClick: () => handleReactivate(user._id) }]
       : []),
   ];
+  /** Re-issue the set-your-password link, invalidating any outstanding one. */
+  const handleResendInvite = async (user: UserDoc) => {
+    setResendingId(user._id);
+    try {
+      const { resendUserInvite } = await import('@/lib/services/user-service');
+      const invitation = await resendUserInvite(user._id);
+      showToast(describeInvitationOutcome(invitation).message, invitation.sent ? 'success' : 'error');
+      setUsers(prev => prev.map(u => u._id === user._id
+        ? { ...u, inviteTokenHash: 'pending', inviteExpiresAt: invitation.sent ? invitation.expiresAt : u.inviteExpiresAt }
+        : u));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not send the invitation.', 'error');
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   // Modal-scoped error copy (create / reset dialogs render it inline; list
   // actions report through toasts).
   const [error, setError] = useState('');
@@ -99,19 +136,10 @@ export default function OrgUsersPage() {
   const [activeTab, setActiveTab] = useState<'people' | 'requests'>('people');
   const [requestCounts, setRequestCounts] = useState({ pending: 0, decided: 0 });
 
-  // Create form state
-  const [formUsername, setFormUsername] = useState('');
-  const [formPassword, setFormPassword] = useState('');
-  const [formName, setFormName] = useState('');
-  // Optional on purpose: plenty of staff here have no work address, and an
-  // account must not be blocked on one. With an address the person is
-  // emailed a link to set their own password; without one the admin hands
-  // over the temporary password shown after creation, exactly as before.
-  const [formEmail, setFormEmail] = useState('');
-  const [formRole, setFormRole] = useState<UserRole>('doctor');
-  const [formHospitalId, setFormHospitalId] = useState('');
+  // The create form itself lives in the shared CreateUserModal — the facility
+  // profile's Staff tab opens the same dialog, so the fields, the validation
+  // and the provisioning call have one home rather than two that drift.
   const [showPassword, setShowPassword] = useState(false);
-  const [creating, setCreating] = useState(false);
 
   // Reset password state
   const [resetPassword, setResetPassword] = useState('');
@@ -204,68 +232,8 @@ export default function OrgUsersPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setFocusedUserId(params.get('user'));
-    if (params.has('new')) {
-      setFormPassword(generateTempPassword());
-      setShowPassword(true);
-      setShowCreateModal(true);
-    }
+    if (params.has('new')) setShowCreateModal(true);
   }, []);
-
-  // The facility requirement is `lib/user-scope-rules.ts`'s to state — this
-  // page used to keep its own list, and it had drifted: it omitted
-  // `county_health_director`, so that role was shown a facility picker the
-  // server strips on save.
-  const needsHospital = roleNeedsFacility(formRole);
-
-  const handleCreate = async () => {
-    setError('');
-    if (!formUsername.trim() || !formPassword.trim() || !formName.trim()) {
-      setError(t('orgUsers.errorRequiredFields'));
-      return;
-    }
-    if (needsHospital && !formHospitalId) {
-      setError(t('orgUsers.errorSelectHospital'));
-      return;
-    }
-    if (formPassword.length < MIN_PASSWORD_LENGTH) {
-      setError(t('orgUsers.errorPasswordLength'));
-      return;
-    }
-
-    setCreating(true);
-    try {
-      const { createUserWithInvitation } = await import('@/lib/services/user-service');
-      const selectedHospital = hospitals.find(h => h._id === formHospitalId);
-      const newUsername = formUsername.trim().toLowerCase();
-      const tempPassword = formPassword;
-      const { invitation } = await createUserWithInvitation({
-        username: newUsername,
-        password: tempPassword,
-        name: formName.trim(),
-        role: formRole,
-        hospitalId: needsHospital ? formHospitalId : undefined,
-        hospitalName: needsHospital ? selectedHospital?.name : undefined,
-        orgId: currentUser?.orgId,
-        email: formEmail.trim() || undefined,
-      });
-      setShowCreateModal(false);
-      // Surface the credentials so the admin can hand them off. The new user
-      // will be forced to change this temporary password at first login.
-      setHandoff({ username: newUsername, password: tempPassword, kind: 'created', invitation });
-      setFormUsername('');
-      setFormPassword('');
-      setFormName('');
-      setFormEmail('');
-      setFormRole('doctor');
-      setFormHospitalId('');
-      await loadData();
-    } catch (err: unknown) {
-      const e = err as Error;
-      setError(e.message || t('orgUsers.errorCreateFailed'));
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const handleDeactivate = async (userId: string) => {
     try {
@@ -440,14 +408,25 @@ export default function OrgUsersPage() {
                 list as their staff roster, but /api/users' WRITE_ROLES is
                 super_admin + org_admin, so anyone else would just 403. */}
             {canCreateUsers(currentUser?.role || '') && (
-              <button
-                type="button"
-                className="btn btn-primary btn-sm flex-shrink-0"
-                data-tour="org-users-create-btn"
-                onClick={() => { setError(''); setFormPassword(generateTempPassword()); setShowPassword(true); setShowCreateModal(true); }}
-              >
-                <Plus className="w-4 h-4" /> {t('orgUsers.createUser')}
-              </button>
+              <>
+                {/* An organisation going live has a spreadsheet, not a queue of
+                    modal visits. See lib/bulk-user-import.ts. */}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm flex-shrink-0"
+                  onClick={() => setShowImport(true)}
+                >
+                  <Upload className="w-4 h-4" /> {t('bui.importList')}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm flex-shrink-0"
+                  data-tour="org-users-create-btn"
+                  onClick={() => { setError(''); setShowCreateModal(true); }}
+                >
+                  <Plus className="w-4 h-4" /> {t('orgUsers.createUser')}
+                </button>
+              </>
             )}
           </div>
 
@@ -527,7 +506,13 @@ export default function OrgUsersPage() {
                     >
                       {user.isActive ? t('orgUsers.statusActive') : t('orgUsers.statusInactive')}
                     </span>
-                    <small>{user.mustChangePassword ? 'Password reset required' : 'Credentials current'}</small>
+                    {/* Three states one line could not tell apart before —
+                        see lib/account-state.ts. */}
+                    <small style={describeAccountState(user).needsAttention
+                      ? { color: 'var(--color-warning-text, var(--text-secondary))' }
+                      : undefined}>
+                      {describeAccountState(user).label}
+                    </small>
                   </div>
 
                 </div>
@@ -546,138 +531,32 @@ export default function OrgUsersPage() {
         )}
       </SadbCard>
 
-      {/* Create User Modal */}
+      {/* Create User Modal — the shared dialog, also opened from a facility's
+          Staff tab with that facility locked in. */}
+
+      {showImport && (
+        <BulkUserImportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => { void loadData(); }}
+          orgId={currentUser?.orgId}
+          orgName={currentUser?.orgName ?? currentUser?.organization?.name}
+        />
+      )}
+
       {showCreateModal && (
-        <Modal onClose={() => setShowCreateModal(false)} width={440} labelledBy="org-create-user-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="org-create-user-title" className="sadb-modal-title">{t('orgUsers.createNewUser')}</h2>
-            </div>
-            <div className="space-y-3">
-              {/* Name */}
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldFullName')}</label>
-                <input type="text" value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('orgUsers.fullNamePlaceholder')} style={inputStyle} />
-              </div>
-
-              {/* Email — optional. Present means the new user gets an invitation
-                  link and chooses their own password; absent means the admin
-                  reads them the temporary one. */}
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldEmail')}</label>
-                <input type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} placeholder={t('orgUsers.emailPlaceholder')} style={inputStyle} autoComplete="off" />
-                <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                  {t('orgUsers.emailHint')}
-                </p>
-              </div>
-
-              {/* Username */}
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldUsername')}</label>
-                <input type="text" value={formUsername} onChange={e => setFormUsername(e.target.value)} placeholder={t('orgUsers.usernamePlaceholder')} style={inputStyle} autoComplete="off" />
-              </div>
-
-              {/* Password */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold block" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldPassword')}</label>
-                  <button
-                    type="button"
-                    onClick={() => { setFormPassword(generateTempPassword()); setShowPassword(true); }}
-                    className="flex items-center gap-1 text-xs font-semibold"
-                    style={{ color: 'var(--accent-text)' }}
-                  >
-                    <RefreshCw className="w-3 h-3" /> Generate
-                  </button>
-                </div>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={formPassword}
-                    onChange={e => setFormPassword(e.target.value)}
-                    placeholder={t('orgUsers.passwordPlaceholder')}
-                    style={{ ...inputStyle, paddingInlineEnd: 40, fontFamily: showPassword ? 'var(--font-mono, monospace)' : undefined }}
-                    autoComplete="new-password"
-                  />
-                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2">
-                    {showPassword
-                      ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                      : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
-                  </button>
-                </div>
-                <p className="mt-1.5 text-[11px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                  <ShieldCheck className="w-3 h-3" /> Temporary — the user must set their own password at first login.
-                </p>
-              </div>
-
-              {/* Role */}
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldRole')}</label>
-                <Select value={formRole} onChange={e => setFormRole(e.target.value as UserRole)} style={selectStyle}>
-                  {roleOptions.map(o => (
-                    <option key={o.role} value={o.role}>{o.label}</option>
-                  ))}
-                </Select>
-              </div>
-
-              {/* Hospital (conditional) */}
-              {needsHospital && hospitals.length === 0 && (
-                /* A facility-scoped role with no facility to scope it to. The
-                   picker used to render empty here and the submit answered
-                   "Please select a hospital for this role" — an instruction the
-                   admin had no way to follow. An organisation's first facility
-                   has to exist before its clinical staff can, so say that and
-                   point at the page that creates one. */
-                <div
-                  className="rounded-lg px-3 py-2.5 text-xs"
-                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}
-                  data-field="no-facilities"
-                >
-                  <p className="mb-1.5" style={{ color: 'var(--text-primary)' }}>{t('orgUsers.noFacilitiesTitle')}</p>
-                  <p className="mb-2">{t('orgUsers.noFacilitiesBody')}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Create it here. Routing away used to discard the
-                      // half-filled account — including its generated
-                      // temporary password — and there was no route back.
-                      if (canCreateFacilities(currentUser?.role ?? '')) setShowAddFacility(true);
-                      else router.push('/hospitals');
-                    }}
-                    className="btn btn-secondary btn-sm"
-                    data-action="add-facility-inline"
-                  >
-                    <Building2 className="w-4 h-4" /> {t('orgUsers.noFacilitiesAction')}
-                  </button>
-                </div>
-              )}
-              {needsHospital && hospitals.length > 0 && (
-                <div>
-                  <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldAssignedHospital')}</label>
-                  <Select value={formHospitalId} onChange={e => setFormHospitalId(e.target.value)} style={selectStyle}>
-                    <option value="">{t('orgUsers.selectHospitalOption')}</option>
-                    {hospitals.map(h => (
-                      <option key={h._id} value={h._id}>{h.name}</option>
-                    ))}
-                  </Select>
-                </div>
-              )}
-
-              {error && (
-                <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{error}</p>
-              )}
-            </div>
-
-            <div className="sadb-modal-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowCreateModal(false)} disabled={creating}>
-                {t('action.cancel')}
-              </button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={handleCreate} disabled={creating}>
-                {creating ? t('orgHospitals.creating') : t('orgUsers.createUser')}
-              </button>
-            </div>
-          </div>
-        </Modal>
+        <CreateUserModal
+          hospitals={hospitals}
+          presetHospitalId={presetHospitalId}
+          onClose={() => setShowCreateModal(false)}
+          onAddFacility={() => setShowAddFacility(true)}
+          onCreated={async ({ username, password, invitation }) => {
+            setShowCreateModal(false);
+            // Surface the credentials so the admin can hand them off. The new
+            // user is forced to change this temporary password at first login.
+            setHandoff({ username, password, kind: 'created', invitation });
+            await loadData();
+          }}
+        />
       )}
 
       {/* Credential hand-off — shown after create or reset. The password is
@@ -713,7 +592,7 @@ export default function OrgUsersPage() {
             <div className="flex justify-end mb-1.5">
               <button
                 type="button"
-                onClick={() => { setResetPassword(generateTempPassword()); setShowPassword(true); }}
+                onClick={() => { setResetPassword(generateTempPassword(tempLength)); setShowPassword(true); }}
                 className="flex items-center gap-1 text-xs font-semibold"
                 style={{ color: 'var(--accent-text)' }}
               >
@@ -756,7 +635,7 @@ export default function OrgUsersPage() {
             await loadData();
             // Preselect it — the operator opened this dialog precisely so the
             // account they were filling in has somewhere to be assigned.
-            setFormHospitalId(hospital._id);
+            setPresetHospitalId(hospital._id);
           }}
           orgId={currentUser?.orgId}
           actor={{ _id: currentUser?._id, username: currentUser?.username }}

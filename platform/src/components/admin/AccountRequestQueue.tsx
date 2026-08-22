@@ -15,8 +15,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AccountRequestDoc, UserRole } from '@/lib/db-types';
 import { getRoleConfig } from '@/lib/permissions';
+import { describeInvitationOutcome } from '@/lib/invitation-copy';
+import type { InvitationOutcome } from '@/lib/user-invite';
 import {
   PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES, accountRequestRoleNeedsFacility,
+  IDENTITY_ATTESTATION_METHODS, roleRequiresRegistrationNumber,
 } from '@/lib/account-request-roles';
 
 interface Props {
@@ -40,9 +43,32 @@ interface Granted {
   requestId: string;
   username: string;
   temporaryPassword: string;
+  /** What became of the invitation email — see `describeInvitationOutcome`. */
+  invitation?: InvitationOutcome;
 }
 
 interface FacilityOption { id: string; name: string; orgId: string }
+
+/**
+ * How long a request has been waiting.
+ *
+ * Shown because the failure mode of this queue is not a wrong decision, it is
+ * no decision: a request nobody opens is a clinician who eventually borrows a
+ * colleague's login. A date alone does not read as urgency; "waiting 9 days"
+ * does.
+ */
+function describeAge(createdAt?: string): string {
+  const at = Date.parse(createdAt || '');
+  if (!Number.isFinite(at)) return '';
+  const days = Math.floor((Date.now() - at) / 86_400_000);
+  if (days <= 0) return ' · today';
+  if (days === 1) return ' · waiting 1 day';
+  return ` · waiting ${days} days`;
+}
+
+function attestationLabel(value: string): string {
+  return IDENTITY_ATTESTATION_METHODS.find(m => m.value === value)?.label ?? value;
+}
 
 function roleLabel(role: UserRole): string {
   try {
@@ -66,6 +92,10 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
   const [roleFor, setRoleFor] = useState<Record<string, UserRole>>({});
   const [facilityFor, setFacilityFor] = useState<Record<string, string>>({});
   const [noteFor, setNoteFor] = useState<Record<string, string>>({});
+  // How the approver satisfied themselves this is who they say they are.
+  // Required to approve — the public form checks nothing, so this is the only
+  // identity check in the whole flow and the only evidence it happened.
+  const [attestFor, setAttestFor] = useState<Record<string, string>>({});
 
   const grantableRoles = REQUESTABLE_ROLES.filter(
     r => viewerRole === 'super_admin' || !PLATFORM_APPROVAL_ROLES.includes(r),
@@ -112,6 +142,10 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
         setError('Choose a valid facility before approving this account.');
         return;
       }
+      if (action === 'approve' && !attestFor[doc._id]) {
+        setError('Record how you confirmed this person\'s identity before approving.');
+        return;
+      }
       const res = await fetch(`/api/account-requests/${encodeURIComponent(doc._id)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,6 +156,7 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
           hospitalId: selectedFacility?.id,
           hospitalName: selectedFacility?.name,
           decisionNote: noteFor[doc._id],
+          identityAttestation: attestFor[doc._id],
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -132,7 +167,12 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
       if (action === 'approve' && body.temporaryPassword) {
         // Shown once. It is not stored in plaintext anywhere, so if the
         // approver loses it the only way forward is a password reset.
-        setGranted({ requestId: doc._id, username: body.username, temporaryPassword: body.temporaryPassword });
+        setGranted({
+          requestId: doc._id,
+          username: body.username,
+          temporaryPassword: body.temporaryPassword,
+          invitation: body.invitation,
+        });
       }
       await load();
     } catch {
@@ -191,10 +231,17 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
       {granted && (
         <div role="status" className="arq-granted">
           <strong>Account created — {granted.username}</strong>
-          <p>
-            Give this one-time password to {granted.username}. They must change it when they first sign in.
-            It is shown once and is not stored anywhere in readable form.
-          </p>
+          {/* Approval now sends the same invitation an admin-created account
+              gets, so the honest thing to say depends on whether it actually
+              left the building — `wasDelivered` refuses to count the log
+              provider, and this copy follows it. */}
+          <p>{describeInvitationOutcome(granted.invitation).message}</p>
+          {describeInvitationOutcome(granted.invitation).mustSharePassword && (
+            <p>
+              It is shown once and is not stored anywhere in readable form. They must change it
+              when they first sign in.
+            </p>
+          )}
           <code className="arq-password">{granted.temporaryPassword}</code>
           <button className="arq-btn arq-btn--quiet" onClick={() => setGranted(null)}>Done</button>
         </div>
@@ -224,9 +271,20 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
                 {doc.orgName || 'No organisation given'}
                 {doc.hospitalName ? ` · ${doc.hospitalName}` : ''}
               </span>
-              <span className="arq-meta">{(doc.createdAt || '').slice(0, 10)}</span>
+              <span className="arq-meta">
+                {(doc.createdAt || '').slice(0, 10)}
+                {doc.status === 'pending' && <em className="arq-age">{describeAge(doc.createdAt)}</em>}
+              </span>
               <span className={`arq-status arq-status--${doc.status}`}>{doc.status}</span>
             </div>
+
+            {doc.professionalRegistrationNumber && (
+              <p className="arq-reg">
+                <strong>Registration number</strong> {doc.professionalRegistrationNumber}
+                {roleRequiresRegistrationNumber(roleFor[doc._id] ?? doc.requestedRole)
+                  && ' — check it against the council register before approving.'}
+              </p>
+            )}
 
             {doc.note && <p className="arq-note">“{doc.note}”</p>}
 
@@ -257,6 +315,16 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
                   </select>
                 </label>
                 <label className="arq-ctl arq-ctl--wide">
+                  <span>Identity confirmed by</span>
+                  <select value={attestFor[doc._id] ?? ''}
+                    onChange={e => setAttestFor(m => ({ ...m, [doc._id]: e.target.value }))}>
+                    <option value="" disabled>Choose how you checked…</option>
+                    {IDENTITY_ATTESTATION_METHODS.map(method => (
+                      <option key={method.value} value={method.value}>{method.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="arq-ctl arq-ctl--wide">
                   <span>Note</span>
                   <input value={noteFor[doc._id] ?? ''}
                     placeholder="Recorded with the decision"
@@ -279,6 +347,7 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
                   ? `Approved by ${doc.decidedByName || doc.decidedBy} — account ${doc.createdUsername}`
                   : `Rejected by ${doc.decidedByName || doc.decidedBy}`}
                 {doc.decisionNote ? ` · ${doc.decisionNote}` : ''}
+                {doc.identityAttestation ? ` · identity: ${attestationLabel(doc.identityAttestation)}` : ''}
               </p>
             )}
           </article>
@@ -328,6 +397,12 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
         .arq-who { display: flex; flex-direction: column; gap: 1px; }
         .arq-meta { font-size: 12.5px; color: var(--text-muted); }
         .arq-note { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); font-style: italic; }
+        .arq-reg { margin: 0 0 8px; font-size: 12.5px; color: var(--text-secondary); }
+        .arq-reg strong { color: var(--text-muted); font-weight: 600; margin-inline-end: 6px; }
+        /* A request ageing in the queue is the failure mode this panel exists
+           to prevent, so the count is set apart from the date rather than
+           reading as more of the same metadata. */
+        .arq-age { font-style: normal; color: var(--color-warning-text, var(--text-secondary)); }
         .arq-status { font-size: 12px; text-transform: capitalize; }
         .arq-status--pending { color: var(--text-muted); }
         .arq-status--approved { color: var(--color-success); }

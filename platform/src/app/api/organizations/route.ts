@@ -3,6 +3,7 @@
  * GET  — List organizations, get by ID or slug, get stats
  * POST — Create organization, update organization, or deactivate organization
  */
+import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
@@ -10,9 +11,7 @@ import {
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole, OrganizationDoc } from '@/lib/db-types';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
-const READ_ROLES: UserRole[] = [
-  'super_admin', 'org_admin',
-];
+const READ_ROLES = ADMIN;
 const WRITE_ROLES: UserRole[] = [
   'super_admin',
 ];

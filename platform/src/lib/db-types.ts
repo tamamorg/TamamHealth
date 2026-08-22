@@ -88,6 +88,45 @@ export interface UserDoc extends BaseDoc {
   inviteExpiresAt?: string;
   /** ISO timestamp of the last password change (admin reset or self-service). */
   passwordUpdatedAt?: string;
+  /**
+   * ISO timestamp of the last successful sign-in.
+   *
+   * Absent means "has never signed in" — which for a freshly provisioned
+   * account is the difference between an invitation that worked and one that
+   * silently never arrived. Nothing recorded this before, so the roster could
+   * not distinguish the two, dormant accounts could not be found, and a
+   * periodic access review had no data to run on. Written by the login route
+   * on success only; a failed attempt must never move it.
+   */
+  lastLoginAt?: string;
+  /**
+   * Base32 TOTP shared secret. Server-side-only secret material — it is
+   * stripped by `redactUserForClient` and must never appear in an API
+   * response, exactly like `passwordHash`.
+   *
+   * Present but with no `totpEnabledAt` means enrolment was started and never
+   * confirmed, so the factor is NOT active: a secret alone must not be able
+   * to lock someone out of their own account.
+   */
+  totpSecret?: string;
+  /** Set when the user confirms enrolment with a valid code. The presence of
+   *  this field — not `totpSecret` — is what makes the second factor live. */
+  totpEnabledAt?: string;
+  /**
+   * The last counter step spent by a successful verification.
+   *
+   * A TOTP code stays valid for its whole window, so without recording the
+   * step a code read over someone's shoulder can be replayed for the next
+   * thirty seconds. See `verifyTotpCode`.
+   */
+  totpLastUsedStep?: number;
+  /** SHA-256 of each unused single-use recovery code. Secret material —
+   *  redacted like the secret itself. */
+  totpRecoveryCodeHashes?: string[];
+  /** Who deactivated this account and when — offboarding needs a paper trail
+   *  that `isActive: false` alone does not carry. */
+  deactivatedAt?: string;
+  deactivatedBy?: string;
   /** Hashed 4-6 digit PIN for screen-lock quick unlock */
   pinHash?: string;
   /** Staff directory: department (e.g. "Cardiology", "Pediatrics", "OPD"). */
@@ -131,6 +170,28 @@ export interface OnboardingState {
 export interface PatientDoc extends BaseDoc, Omit<Patient, 'id'> {
   type: 'patient';
   orgId?: string;
+  /**
+   * Patient-portal enrolment.
+   *
+   * `portalUsername` / `portalPasswordHash` (on `Patient`) are what the portal
+   * login route reads. Nothing in the platform ever WROTE them — the only
+   * account that had them was a seeded demo patient, so the portal was a
+   * working front door with no way to issue a key. These fields are the
+   * missing half: front-desk staff enrol a patient, which mints a single-use
+   * activation token exactly like a staff invitation, and the patient chooses
+   * their own password from it.
+   */
+  portalEnabledAt?: string;
+  /** Who enrolled them, for the audit trail. */
+  portalEnabledBy?: string;
+  /** SHA-256 of the outstanding portal activation token, and its expiry. */
+  portalInviteTokenHash?: string;
+  portalInviteExpiresAt?: string;
+  /** ISO timestamp of the patient's last portal sign-in; absent means never. */
+  portalLastLoginAt?: string;
+  /** Set when the portal account is suspended without deleting the credential
+   *  (a disputed account, a shared phone, a request from the patient). */
+  portalDisabledAt?: string;
   /** Medications review: clinician attested the patient takes no medications. */
   noKnownMedications?: boolean;
   /** Problems review: clinician attested the patient has no known problems. */
@@ -2236,6 +2297,36 @@ export interface AccountRequestDoc extends BaseDoc {
   decisionNote?: string;
   /** Username minted when approved, so the request records what it produced. */
   createdUsername?: string;
+  /**
+   * Proof that whoever filled the form can read the mailbox they named.
+   *
+   * The form is the only place someone outside the organisation can start a
+   * process that ends in prescribing rights, and every field in it was
+   * self-asserted with nothing checked. An unverified request is still
+   * recorded — losing it would just move the problem — but it does not reach
+   * an approver's queue, so approver attention is spent only on people who
+   * have at least demonstrated control of the address.
+   */
+  emailVerifiedAt?: string;
+  /** SHA-256 of the outstanding verification token, and when it lapses. The
+   *  raw token is emailed and never stored — same construction as the account
+   *  invitation in `lib/user-invite.ts`. */
+  verificationTokenHash?: string;
+  verificationExpiresAt?: string;
+  /**
+   * Council / board registration number, for roles that require one.
+   *
+   * Free text, and deliberately NOT validated against a format: the South
+   * Sudan Medical & Dental Council and the Nursing & Midwifery Council issue
+   * numbers in shapes that have changed over the years, and rejecting a real
+   * clinician's real number because it does not match a regex would be worse
+   * than storing it as typed. It exists to be CHECKED BY A HUMAN against the
+   * register, which is what the attestation below records.
+   */
+  professionalRegistrationNumber?: string;
+  /** How the approver satisfied themselves this is who they say they are.
+   *  Required on approval — see `IDENTITY_ATTESTATION_METHODS`. */
+  identityAttestation?: string;
 }
 
 export type AccountRequestStatus = 'pending' | 'approved' | 'rejected';

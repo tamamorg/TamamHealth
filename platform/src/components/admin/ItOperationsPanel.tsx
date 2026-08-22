@@ -91,7 +91,6 @@ export default function ItOperationsPanel({ embedded = false }: {
   // answer from the same service as every other admin surface, so the four of
   // them can no longer disagree about identical data.
   const backupInfo = useBackupStatus();
-  const backupIso = backupInfo?.lastBackupAt ?? null;
   const backupAgeHours = backupInfo?.ageHours == null ? null : Math.floor(backupInfo.ageHours);
   const backupStatus = backupAgeHours === null
     ? 'unknown'

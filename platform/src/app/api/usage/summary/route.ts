@@ -2,17 +2,15 @@
  * API: /api/usage/summary
  * GET — aggregated DAU/WAU, top paths/actions (super_admin / org_admin)
  */
+import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getAuthPayload, unauthorized, forbidden, hasRole, logApiError,
-} from '@/lib/api-auth';
-import type { UserRole } from '@/lib/db-types';
+  getAuthPayload, unauthorized, forbidden, hasRole, logApiError } from '@/lib/api-auth';
 import {
   aggregateUsageSummary,
-  queryUsageEvents,
-} from '@/lib/services/usage-event-service';
+  queryUsageEvents } from '@/lib/services/usage-event-service';
 
-const READ_ROLES: UserRole[] = ['super_admin', 'org_admin'];
+const READ_ROLES = ADMIN;
 
 export async function GET(request: NextRequest) {
   try {

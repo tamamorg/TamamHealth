@@ -1,30 +1,27 @@
+/**
+ * API: POST /api/auth/login
+ *
+ * Step one of sign-in: prove the password. On an account with no second
+ * factor that is the whole of it and a session comes back. On an account with
+ * TOTP enabled it is half — the response carries a short-lived hand-off token
+ * and NO session, and /api/auth/verify-mfa exchanges a code for the real one.
+ *
+ * The session itself is built in `lib/login-session.ts`, shared with that
+ * second route, so the two paths cannot drift into issuing different sessions.
+ */
 import { NextRequest, NextResponse } from 'next/server';
-import { createToken } from '@/lib/auth-token';
-import { mintCsrfToken } from '@/lib/csrf';
-import { applySessionCookies } from '@/lib/session';
+import { createMfaPendingToken } from '@/lib/auth-token';
 import { getClientIp } from '@/lib/request-utils';
 import { logApiError } from '@/lib/api-auth';
 import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
+import {
+  ROLES_WITHOUT_HOSPITAL, issueSessionResponse, resolveEffectiveIdentity,
+} from '@/lib/login-session';
 
 const USER_LOCK_THRESHOLD = 5;       // failed tries before user lock
 const USER_LOCK_MS = 15 * 60 * 1000; // 15 minutes
 const IP_LOCK_THRESHOLD = 20;        // failed tries from one IP before IP lock
 const IP_LOCK_MS = 15 * 60 * 1000;   // 15 minutes
-
-/**
- * The display name of an organization, for accounts whose own record predates
- * `UserDoc.orgName`. Never throws — a sign-in must not fail because the
- * organizations store is briefly unreachable; the session just carries no name.
- */
-async function lookupOrgName(orgId?: string): Promise<string | undefined> {
-  if (!orgId) return undefined;
-  try {
-    const { getOrganizationById } = await import('@/lib/services/organization-service');
-    return (await getOrganizationById(orgId))?.name;
-  } catch {
-    return undefined;
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -97,108 +94,47 @@ export async function POST(request: NextRequest) {
     }
 
     // Check hospital assignment — super_admin, org_admin, government bypass
-    const ROLES_WITHOUT_HOSPITAL = ['super_admin', 'org_admin', 'government', 'county_health_director'];
     if (!ROLES_WITHOUT_HOSPITAL.includes(user.role) && hospitalId && user.hospitalId && user.hospitalId !== hospitalId) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Role picker on the login form. Everyone signs in as their assigned
-    // role; ONLY the platform super-admin may pick a different role and enter
-    // that role's workspace ("total access"). The session then carries the
-    // chosen role as `role` (so every dashboard, nav, guard, and data scope
-    // behaves natively) plus `actualRole: 'super_admin'` for session restore
-    // and audit. A super-admin account has no facility of its own, so an
-    // impersonated clinical session adopts the platform's demo flagship
-    // facility — otherwise facility-scoped queries fail closed and every
-    // screen renders empty.
-    let effective = {
-      role: user.role,
-      actualRole: undefined as string | undefined,
-      hospitalId: user.hospitalId,
-      hospitalName: user.hospitalName,
-      orgId: user.orgId,
-    };
-    if (requestedRole && requestedRole !== user.role) {
-      const { hasRoleRouteConfig } = await import('@/lib/role-routes');
-      if (user.role !== 'super_admin' || !hasRoleRouteConfig(requestedRole)) {
-        return NextResponse.json(
-          { error: 'You can only sign in as your assigned role.' },
-          { status: 403 },
-        );
-      }
-      const needsFacility = !ROLES_WITHOUT_HOSPITAL.includes(requestedRole);
-      effective = {
-        role: requestedRole,
-        actualRole: user.role,
-        hospitalId: needsFacility ? (user.hospitalId ?? 'hosp-001') : user.hospitalId,
-        hospitalName: needsFacility ? (user.hospitalName ?? 'Juba Teaching Hospital') : user.hospitalName,
-        orgId: user.orgId ?? 'org-moh-ss',
-      };
-    }
-
-    // Clear failed attempts on successful login (both counters)
+    // The password was right. Clear both failed-attempt streaks now, before
+    // the second factor: a correct password should not leave a lockout counter
+    // ticking, and the MFA step has its own limits.
     await Promise.all([resetRateLimit(userRateKey), resetRateLimit(ipRateKey)]);
 
-    // Create JWT
-    const token = await createToken({
-      _id: user._id,
-      username: user.username,
-      role: effective.role,
-      actualRole: effective.actualRole,
-      name: user.name,
-      hospitalId: effective.hospitalId,
-      hospitalName: effective.hospitalName,
-      // Extra facilities this account covers. Read from the account itself, not
-      // from `effective`: a super-admin signing in AS another role borrows a
-      // facility, and must not also inherit somebody's multi-site coverage.
-      facilityIds: user.facilityIds,
-      orgId: effective.orgId,
-      // May be undefined if the user record predates countryId — that's fine.
-      countryId: user.countryId,
-      // Geographic tier fields — undefined for users without sub-org scope.
-      payam: user.payam,
-      county: user.county,
-      state: user.state,
-      // Carry the forced-change flag so the client can route a freshly created
-      // or reset user straight to the "set your password" screen.
-      mustChangePassword: user.mustChangePassword,
-      // Password epoch — a later change/reset invalidates this token.
-      passwordUpdatedAt: user.passwordUpdatedAt,
-    });
+    // ── Second factor ───────────────────────────────────────────────────
+    // Stop here when the account carries one. No session token is issued and
+    // no `lastLoginAt` is stamped: a password alone is not a sign-in on an
+    // account that has said it needs two things, and recording it as one
+    // would make every dormancy report wrong in the direction that matters.
+    //
+    // Read from the users DB rather than from `ServerUser`, which is a
+    // narrower projection — a standalone demo has no document at all, and on
+    // that deployment nothing can enrol a factor in the first place.
+    const { getUserById } = await import('@/lib/services/user-service');
+    const account = await getUserById(user._id).catch(() => null);
+    if (account?.totpEnabledAt) {
+      const mfaToken = await createMfaPendingToken({
+        sub: user._id,
+        requestedRole,
+        hospitalId,
+      });
+      return NextResponse.json({
+        mfaRequired: true,
+        mfaToken,
+        // Named so the form can say something true about where the code comes
+        // from, without naming the app or leaking anything about the account.
+        method: 'totp',
+      });
+    }
 
-    const response = NextResponse.json({
-      user: {
-        _id: user._id,
-        username: user.username,
-        name: user.name,
-        role: effective.role,
-        actualRole: effective.actualRole,
-        hospitalId: effective.hospitalId,
-        hospitalName: effective.hospitalName,
-        facilityIds: user.facilityIds,
-        orgId: effective.orgId,
-        // Denormalised on the user record (see UserDoc.orgName), and resolved
-        // from the organization for accounts created before that field existed
-        // — see the same fallback in /api/auth/me. Suppressed while
-        // impersonating, where `effective.orgId` may be a substituted org the
-        // account itself does not belong to; showing that account's real
-        // organization name next to a borrowed org id would be a lie.
-        orgName: effective.actualRole ? undefined : (user.orgName || await lookupOrgName(user.orgId)),
-        mustChangePassword: user.mustChangePassword,
-      },
-    });
+    const identity = await resolveEffectiveIdentity(user, requestedRole);
+    if (!identity.ok) {
+      return NextResponse.json({ error: identity.error }, { status: identity.status });
+    }
 
-    // Session cookie plus its CSRF twin (non-httpOnly so the browser's
-    // apiFetch wrapper can echo it in the X-CSRF-Token header on every
-    // state-changing request; the HMAC binds it to the JWT subject). Both
-    // share the session TTL, and /api/auth/me silently re-mints the token on
-    // app loads, so the browser stays signed in across restarts until the
-    // session is idle a full TTL, the user logs out, or their password
-    // changes (see lib/session.ts).
-    const csrfToken = await mintCsrfToken(user._id);
-    applySessionCookies(response.cookies, token, csrfToken);
-
-    return response;
+    return await issueSessionResponse(user, identity.effective);
   } catch (err) {
     console.error('Login error:', err instanceof Error ? err.message : 'Unknown error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

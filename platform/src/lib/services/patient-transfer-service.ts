@@ -848,7 +848,6 @@ export async function updateTransferLogistics(
     const response = await wardDb.put(reserved);
     await emitSyncEvent({ resourceType: 'bed', resourceId: bed._id, operation: 'update', resourceVersion: response.rev, hospitalId: bed.facilityId });
   }
-  const now = new Date().toISOString();
   doc.physicalStatus = patch.physicalStatus ?? doc.physicalStatus ?? 'not_scheduled';
   doc.destination = patch.destination ? { ...doc.destination, ...patch.destination } : doc.destination;
   doc.transport = patch.transport ? { ...doc.transport, ...patch.transport } : doc.transport;

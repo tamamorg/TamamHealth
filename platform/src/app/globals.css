@@ -11085,7 +11085,9 @@ svg circle {
 /* Compact density (Settings → Workspace → Spacing): tighten the central page
    spacing so more content fits per screen. Scoped to the shared layout classes
    so it can't distort individual components. */
-[data-density="compact"] .page-container { padding-top: 12px !important; padding-inline-start: 14px; padding-inline-end: 14px; }
+/* Compact keeps a thinner gap than comfortable, but still a gap: 12px here
+   was entirely consumed by the rail's overlap (see above). */
+[data-density="compact"] .page-container { padding-top: 20px !important; padding-inline-start: 14px; padding-inline-end: 14px; }
 [data-density="compact"] .page-header-row { margin-bottom: 22px !important; }
 [data-density="compact"] .space-y-6 > * + * { margin-top: 14px !important; }
 
@@ -12469,7 +12471,12 @@ span:has(> svg:only-child) {
 
 /* Design page frame: 12px top, 16px sides/bottom. */
 .tamam-ehr-app .page-container {
-  padding: 12px 16px 16px;
+  /* The top rail overlaps this container by 12px — the container starts at
+     y=60 and the rail ends at y=72 — so a 12px top padding bought exactly no
+     clearance and the first row of every page (the KPI tiles on the consoles,
+     the list card on the registries) sat flush against the header. The extra
+     12px here is the gap itself. */
+  padding: 24px 16px 16px;
 }
 
 /* The workspace grid keeps reading --rail-col so the header's first column
@@ -25814,6 +25821,98 @@ table.patient-data-table.patient-data-table {
 .omrs-reg-reviewavatar img { width: 100%; height: 100%; object-fit: cover; }
 .omrs-reg-reviewavatar svg { opacity: 0.4; }
 
+/* ── Possible-duplicate warning (registration Review step) ────────────────
+   Sits between the read-back heading and the field groups. Deliberately
+   warning-toned rather than danger: this is a question for the clerk, not an
+   error — twins and namesakes match on all three axes, and the form still
+   submits. The icon takes an explicit colour because globals' global
+   `svg.lucide` recolour would otherwise pull it back to the body ink. */
+.reg-dup {
+  margin-top: 18px;
+  border: 1px solid var(--color-warning-600);
+  border-radius: 12px;
+  background: var(--orange-50);
+  padding: 14px;
+}
+
+.reg-dup-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.reg-dup-head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-warning-700);
+}
+
+.reg-dup-head p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.reg-dup .reg-dup-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-warning-600);
+  stroke: var(--color-warning-600);
+}
+
+.reg-dup-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reg-dup-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light, #ECEEF1);
+  border-radius: 10px;
+  background: var(--bg-card-solid, #FFFFFF);
+}
+
+/* An exact name, the same age to the year and the same county. Marked, not
+   escalated to a different colour — the difference is confidence, not kind. */
+.reg-dup-row.is-strong { border-left: 3px solid var(--color-warning-600); }
+
+.reg-dup-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.reg-dup-who strong { font-size: 13.5px; font-weight: 600; }
+.reg-dup-who span { font-size: 12px; color: var(--text-muted); }
+
+.reg-dup-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  flex: 1 1 200px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+.reg-dup-reasons li { white-space: nowrap; }
+.reg-dup-reasons li + li::before { content: '·'; margin-inline-end: 8px; color: var(--text-muted); }
+
+.reg-dup-row > button { margin-inline-start: auto; flex-shrink: 0; }
+
 .omrs-reg-reviewgroups {
   display: flex;
   flex-direction: column;
@@ -25990,6 +26089,13 @@ table.patient-data-table.patient-data-table {
         title row. `.ehr-handoff-head` is the opposite case — a header that
         DOES have a class of its own, so it paints itself (below) rather than
         going through a fallback whose pull-back assumes a padded panel.
+     5. Two explicit escape hatches, for the cases structure cannot judge:
+        `.modal-headband` opts a band IN when it holds no heading or carries a
+        control (a search field, a date picker) that guard 3 would reject, and
+        `.modal-no-headband` opts one OUT. The second exists because a strip
+        of pinned buttons carrying a visually-hidden `<h2>` for
+        `aria-labelledby` — the patient-registration dialog's — reads to this
+        selector as a title row and was painted as one.
 
    `!important` on the colours is not decoration: every one of those headers
    sets `color: var(--text-primary)` inline on its own `<h2>`, and inline wins
@@ -26016,8 +26122,8 @@ table.patient-data-table.patient-data-table {
    The header's own box is untouched, so every dialog keeps the padding and
    spacing its component chose. */
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)),
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))),
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) {
   position: relative;
   /* Its own stacking context, so the bar can sit behind the header's content
      with `z-index: -1` without falling behind the panel's background. */
@@ -26029,8 +26135,8 @@ table.patient-data-table.patient-data-table {
   color: #fff !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))::before,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))::before {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))::before,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))::before {
   content: '';
   position: absolute;
   z-index: -1;
@@ -26049,8 +26155,8 @@ table.patient-data-table.patient-data-table {
    flush on the bar and the body flush under it. `:where()` contributes no
    specificity, so any padding the component states — a utility class, its own
    rule, an inline style — still wins outright. */
-:where(.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))),
-:where(.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) {
+:where(.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))),
+:where(.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))) {
   padding: 14px 18px;
   margin-bottom: 16px;
 }
@@ -26064,14 +26170,16 @@ table.patient-data-table.patient-data-table {
    separate `:not(:has(…))` rather than reusing the selector above: `:has()`
    may not contain another `:has()`, so the obvious `:has(> HEADER)` form
    parses as invalid and silently drops the whole rule. */
-.modal-portal-backdrop [role="dialog"]:has(> div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title) :is(h2, h3)):not(:has(> div:first-child :is(input, select, textarea, form, table, ul, ol))),
-.modal-portal-backdrop [role="dialog"] > *:has(> div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title) :is(h2, h3)):not(:has(> div:first-child :is(input, select, textarea, form, table, ul, ol))) {
+.modal-portal-backdrop [role="dialog"]:has(> :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband) :is(h2, h3)):not(:has(> :is(div, header):first-child :is(input, select, textarea, form, table, ul, ol))),
+.modal-portal-backdrop [role="dialog"] > *:has(> :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband) :is(h2, h3)):not(:has(> :is(div, header):first-child :is(input, select, textarea, form, table, ul, ol))),
+.modal-portal-backdrop [role="dialog"]:has(> .modal-headband:first-child),
+.modal-portal-backdrop [role="dialog"] > *:has(> .modal-headband:first-child) {
   padding-top: 0 !important;
   overflow-x: clip;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b),
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b) {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) :is(h2, h3, p, span, small, b, strong, em, a, button),
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) :is(h2, h3, p, span, small, b, strong, em, a, button) {
   color: #fff !important;
 }
 
@@ -26124,27 +26232,27 @@ table.patient-data-table.patient-data-table {
 
 /* The subtitle line ("Step 1 of 4 · Visit") is muted grey inline — on blue it
    needs to stay secondary without disappearing. */
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) p,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) p {
   color: rgba(255, 255, 255, 0.82) !important;
 }
 
 /* Close and back buttons: the tinted grey disc they carry inline is invisible
    on blue, so they become a translucent white one. */
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button {
   background: rgba(255, 255, 255, 0.16) !important;
   color: #fff !important;
   border-color: transparent !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button:hover,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button:hover {
   background: rgba(255, 255, 255, 0.28) !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) svg,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) svg {
   color: #fff !important;
   stroke: currentColor !important;
 }
@@ -29076,6 +29184,12 @@ button.sadb-signal { cursor: pointer; }
   color: var(--text-primary);
 }
 .sadb-kv:last-child { border-bottom: 0; }
+/* Key/value rows that fill their card. A card sitting beside a taller one
+   (the operations list next to the cash-flow chart) stretches to match it; its
+   rows then share the extra height instead of leaving a blank half-card under
+   the last one. */
+.sadb-kv-fill { flex: 1; display: flex; flex-direction: column; }
+.sadb-kv-fill .sadb-kv { flex: 1; }
 .sadb-kv-value {
   font-family: var(--font-condensed);
   font-weight: 700;
@@ -29355,6 +29469,17 @@ button.sadb-signal { cursor: pointer; }
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
+}
+/* Title on the left, actions on the right, one line. Centred against the
+   two-line title+note block rather than top-aligned with the title, which
+   left the buttons floating above the greeting. Wraps below on narrow
+   screens because .sadb-panel-head already sets flex-wrap. */
+.sadb-panel-head-end {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 .sadb-panel-title {
   margin: 0;
@@ -30238,73 +30363,23 @@ button.sadb-signal { cursor: pointer; }
    else. Colours are tokens only — chart hues come from --chart-* and the
    stock ring from the reserved status palette; no literal hex belongs here.
 
-   ONE column rhythm runs down the page: four KPI tiles, a full-width
-   statistics panel, and a four-up card grid all sit on the same tracks, so
-   every left edge lines up from the top of the page to the bottom.
+   The page is one panel that sizes to its content — header, insight strip,
+   a plot of bounded height, and (when generated) the table. The plot no
+   longer stretches to fill the viewport: eight ranked marks spread over
+   every pixel below the header read as an ocean of whitespace, not a chart.
    ------------------------------------------------------------------------ */
 
-/* The panel IS the page: one column that fills the dashboard's main area, so
-   the chart gets every pixel below the header instead of a fixed 230px while
-   the rest of the screen sat empty. `min-height: 0` at each level is what lets
-   the plot shrink inside a flex column rather than overflowing it. */
 .rpt-page {
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  height: 100%;
   padding-bottom: 16px;
-}
-
-/* ── Headline figures ── */
-.rpt-kpis {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.rpt-kpi {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 14px;
-  border-radius: 10px;
-  background: var(--bg-card-solid);
-  border: 1px solid var(--border-light);
-}
-.rpt-kpi-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 auto;
-  border-radius: 9px;
-  background: var(--overlay-subtle);
-}
-/* Icon colour is set here rather than inline so the global lucide rule has a
-   more specific selector to lose to. */
-.rpt-kpi-icon svg { width: 16px; height: 16px; color: var(--accent-primary); }
-.rpt-kpi-body { display: flex; flex-direction: column; min-width: 0; }
-.rpt-kpi-body b {
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1.15;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-.rpt-kpi-body span {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  letter-spacing: 0.01em;
 }
 
 /* ── Statistics: one panel, one chart, a picker for the rest ── */
 .rpt-stats {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   border-radius: 10px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
@@ -30402,14 +30477,62 @@ button.sadb-signal { cursor: pointer; }
 .rpt-nav-csv:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--accent-primary); }
 .rpt-nav-csv:disabled { opacity: 0.45; cursor: default; }
 
-/* Fixed height, so switching views never moves the catalogue underneath. */
+/* ── Headline figures, read off the chart below them ──
+   Flat text tiles separated by hairlines — no cards inside the card. */
+.rpt-insights {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 28px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-light);
+}
+.rpt-insight {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rpt-insight + .rpt-insight {
+  border-inline-start: 1px solid var(--border-light);
+  padding-inline-start: 28px;
+}
+/* Stat-tile values keep the font's proportional figures — tabular digits
+   only belong in columns that must align. */
+.rpt-insight b {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+  max-width: 340px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rpt-insight span {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* The card sizes to its content and the plot is bounded rather than
+   stretched: eight ranked marks spread down a whole 1000px viewport read as
+   an empty field, not as a chart. */
 .rpt-stats-body {
   display: flex;
-  flex: 1 1 auto;
-  min-height: 220px;
-  padding: 12px 16px 14px;
+  flex: 0 0 auto;
+  height: clamp(340px, 46vh, 480px);
+  padding: 14px 18px 16px;
 }
-.rpt-plot { width: 100%; height: 100%; min-height: 0; }
+/* The plot holds a considered measure rather than smearing eight marks
+   across an ultrawide panel. Standing columns want the narrower one — the
+   band is what sets their spacing, so a wide plot pushes them apart until
+   the group stops reading as one chart. Horizontal bars want the opposite:
+   length IS the value, so they get every pixel available. */
+.rpt-plot { width: 100%; max-width: 1200px; margin-inline: auto; height: 100%; min-height: 0; }
+.rpt-plot[data-kind='column'] { max-width: 860px; }
+.rpt-plot[data-kind='donut'] { max-width: 900px; }
+.rpt-plot[data-kind='treemap'] { max-width: 1040px; }
 .rpt-panel-empty {
   display: flex;
   align-items: center;
@@ -30503,7 +30626,8 @@ button.sadb-signal { cursor: pointer; }
 .rpt-table-wrap {
   display: flex;
   flex-direction: column;
-  flex: 1 1 45%;
+  flex: 0 0 auto;
+  max-height: 46vh;
   min-height: 0;
   border-top: 1px solid var(--border-light);
 }
@@ -30551,8 +30675,6 @@ button.sadb-signal { cursor: pointer; }
 .rpt-table tbody tr.is-total td { font-weight: 700; color: var(--text-primary); background: var(--overlay-subtle); }
 .rpt-table tbody tr.is-section td { font-weight: 700; color: var(--text-primary); background: var(--overlay-light); }
 
-/* Narrower screens step the shared rhythm down together, so the KPI row and
-   the card grid never disagree about how many columns the page has. */
 @media (max-width: 1280px) {
   /* Below this the header cannot hold the title and every control on one
      line, so let it wrap deliberately rather than squeezing them. */
@@ -30560,5 +30682,51 @@ button.sadb-signal { cursor: pointer; }
   .rpt-stats-nav { flex-wrap: wrap; }
 }
 @media (max-width: 900px) {
-  .rpt-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rpt-insights { flex-wrap: wrap; gap: 14px 22px; }
+  .rpt-insight + .rpt-insight { border-inline-start: none; padding-inline-start: 0; }
+}
+
+/* ── Dashboard lower row: work queue beside the facility matrix ───────────
+   Both lists grow with the data, and stacked full-width they pushed the page
+   into a long scroll where neither could be read against the other. Side by
+   side and capped, the page ends where the viewport does and each list
+   scrolls inside its own card. */
+.sadb-lower-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.sadb-lower-row > .sadb-card {
+  max-height: var(--sadb-lower-height, 520px);
+}
+
+/* A card whose partner is absent takes the whole row rather than leaving a
+   column of empty grid beside it. */
+.sadb-lower-row > .sadb-card.is-wide {
+  grid-column: 1 / -1;
+}
+
+/* The scrolling part of a card. The head, the search row and any footer sit
+   outside it and stay put. */
+.sadb-card-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* A column header inside one of these scrollers is the list's frame, so it
+   stays visible while the rows move under it. */
+.sadb-card-scroll .sadb-tenant-grid--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-card-solid);
+}
+
+@media (max-width: 1100px) {
+  .sadb-lower-row { grid-template-columns: minmax(0, 1fr); }
+  .sadb-lower-row > .sadb-card { max-height: var(--sadb-lower-height, 460px); }
 }

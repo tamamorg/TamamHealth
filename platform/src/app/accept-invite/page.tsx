@@ -17,44 +17,68 @@
  * it is a credential until it is redeemed.
  */
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-
-const MIN_PASSWORD_LENGTH = 8;
+import { DEFAULT_MIN_PASSWORD_LENGTH } from '@/lib/password-policy';
 
 function AcceptInviteForm() {
   const router = useRouter();
-  const token = useSearchParams().get('token') || '';
+  const params = useSearchParams();
+  const token = params.get('token') || '';
+  // Purely cosmetic — see `buildInviteUrl`. Editing it out of the URL changes
+  // the wording and nothing else; the token decides what actually happens.
+  const isReset = params.get('reset') === '1';
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  // What this deployment actually requires. The page used to hard-code 8 while
+  // the server enforced whatever /admin/security said, so someone could type a
+  // password the form accepted and the server refused.
+  const [minLength, setMinLength] = useState(DEFAULT_MIN_PASSWORD_LENGTH);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/password-policy')
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => {
+        if (!cancelled && typeof body?.minLength === 'number') setMinLength(body.minLength);
+      })
+      // The documented default stands, and the server corrects it on submit.
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   // A link with no token at all never reaches the API — the person is told
   // plainly rather than being shown a form that cannot succeed.
   if (!token) {
     return (
-      <div className="lg-form">
+      <>
+        <Heading isReset={isReset} />
+        <div className="lg-form">
         <p className="lg-error" role="alert">
-          This invitation link is incomplete. Open the link from your email again, or ask your
-          administrator to send a new invitation.
-        </p>
-      </div>
+          {isReset
+            ? 'This reset link is incomplete. Open the link from your email again, or ask for a new one from the sign-in page.'
+              : 'This invitation link is incomplete. Open the link from your email again, or ask your administrator to send a new invitation.'}
+          </p>
+        </div>
+      </>
     );
   }
 
   if (done) {
     return (
-      <div className="lg-form">
-        <p className="lg-lede">
-          Your password is set. You can sign in with it now.
-        </p>
-        <button type="button" className="lg-btn" onClick={() => router.push('/login')}>
-          Go to sign in
-        </button>
-      </div>
+      <>
+        <h1 className="lg-h1">Your password is set</h1>
+        <div className="lg-form">
+          <p className="lg-lede">You can sign in with it now.</p>
+          <button type="button" className="lg-btn" onClick={() => router.push('/login')}>
+            Go to sign in
+          </button>
+        </div>
+      </>
     );
   }
 
@@ -64,8 +88,8 @@ function AcceptInviteForm() {
 
     // Checked here as well as on the server so the common mistakes cost no
     // round trip — the server is still the authority.
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+    if (password.length < minLength) {
+      setError(`Password must be at least ${minLength} characters.`);
       return;
     }
     if (password !== confirm) {
@@ -94,7 +118,9 @@ function AcceptInviteForm() {
   };
 
   return (
-    <form onSubmit={submit} className="lg-form">
+    <>
+      <Heading isReset={isReset} />
+      <form onSubmit={submit} className="lg-form">
       <div className="lg-field">
         <label htmlFor="ai-password">New password</label>
         <input
@@ -104,7 +130,7 @@ function AcceptInviteForm() {
           value={password}
           onChange={e => setPassword(e.target.value)}
           autoComplete="new-password"
-          minLength={MIN_PASSWORD_LENGTH}
+          minLength={minLength}
           required
         />
       </div>
@@ -124,10 +150,31 @@ function AcceptInviteForm() {
 
       {error && <p className="lg-error" role="alert">{error}</p>}
 
-      <button type="submit" className="lg-btn" disabled={busy}>
-        {busy ? 'Setting your password…' : 'Set password'}
-      </button>
-    </form>
+        <button type="submit" className="lg-btn" disabled={busy}>
+          {busy ? 'Setting your password…' : 'Set password'}
+        </button>
+      </form>
+    </>
+  );
+}
+
+/**
+ * Setting a password you never had and replacing one you forgot are the same
+ * operation on the same token — only the words differ, and `?reset=1` chooses
+ * them. Rendered INSIDE the Suspense child that reads the query, so the
+ * heading is right on first paint instead of being corrected by an effect
+ * after hydration.
+ */
+function Heading({ isReset }: { isReset: boolean }) {
+  return (
+    <div>
+      <h1 className="lg-h1">{isReset ? 'Choose a new password' : 'Set your password'}</h1>
+      <p className="lg-lede">
+        {isReset
+          ? 'Pick the password you will use from now on. Nobody else can see it, and your old one stops working immediately.'
+          : 'Choose the password you will use to sign in. Your administrator cannot see it.'}
+      </p>
+    </div>
   );
 }
 
@@ -143,13 +190,9 @@ export default function AcceptInvitePage() {
 
       <div className="lg-grid">
         <div className="lg-col">
-          <div>
-            <h1 className="lg-h1">Set your password</h1>
-            <p className="lg-lede">
-              Choose the password you will use to sign in. Your administrator cannot see it.
-            </p>
-          </div>
-          {/* useSearchParams needs a Suspense boundary in the App Router. */}
+          {/* useSearchParams needs a Suspense boundary in the App Router, and
+              the heading lives inside it: the page title depends on the query,
+              so rendering it outside meant the wrong words on first paint. */}
           <Suspense fallback={<div className="lg-boot"><span className="lg-spin" /> Loading…</div>}>
             <AcceptInviteForm />
           </Suspense>

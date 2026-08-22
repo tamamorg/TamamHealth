@@ -21,8 +21,10 @@ import {
   type PracticePayload, type PublicProvider, type PublicSlot,
 } from '@/lib/booking/public-client';
 import {
-  PatientClassToggle, BookingSelect, Field,
-  ProviderAvatar, VirtualBadge,
+  PatientClassToggle,
+  BookingSelect,
+  Field,
+  ProviderAvatar,
 } from './primitives';
 import BookingFlow from './BookingFlow';
 

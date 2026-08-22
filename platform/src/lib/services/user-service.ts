@@ -8,15 +8,17 @@ import { ROLE_LABEL } from '../role-display';
 import {
   roleNeedsFacility, ORG_REQUIRED_MESSAGE, FACILITY_REQUIRED_MESSAGE,
 } from '../user-scope-rules';
+import { assertPasswordForDeployment, screenPasswordForDeployment } from '../password-policy-server';
 
 // Single source of truth: every role defined in ROLE_LABEL (a
 // Record<UserRole, …>) is a valid role. Deriving the list here means new roles
 // can never go stale/missing in user validation again.
 const VALID_ROLES = Object.keys(ROLE_LABEL) as UserRole[];
 
-// Matches the /api/auth/change-password minimum — the "Password …" error
-// prefix is what POST /api/users translates into a 400 for the client.
-const MIN_PASSWORD_LENGTH = 8;
+// The password rules live in `lib/password-policy.ts` and the deployment's
+// enforced minimum in `password-policy-server.ts`. This file used to carry its
+// own literal `8`, as did four other places, while /admin/security displayed a
+// configured minimum of 12 that nothing read.
 
 // ─── Central provisioning ───────────────────────────────────────────────────
 // User accounts are AUTH data: they must live in the central users database or
@@ -35,7 +37,18 @@ const MIN_PASSWORD_LENGTH = 8;
 // DB path against mocked databases.
 const isBrowserRuntime = () => typeof window !== 'undefined' && !process.env.JEST_WORKER_ID;
 
-export type ClientSafeUser = Omit<UserDoc, 'passwordHash' | 'pinHash'>;
+export type ClientSafeUser =
+  Omit<UserDoc, 'passwordHash' | 'pinHash' | 'totpSecret' | 'totpRecoveryCodeHashes' | 'totpLastUsedStep'>
+  & {
+    /**
+     * Whether a second factor is live on this account. Derived, because the
+     * secret itself may never cross this boundary but the roster still has to
+     * be able to show who is protected and who is not.
+     */
+    mfaEnabled: boolean;
+    /** How many single-use recovery codes remain. A count is not a credential. */
+    mfaRecoveryCodesRemaining: number;
+  };
 
 /** Strip credential verifiers before a user document crosses an API boundary. */
 export function redactUserForClient(user: UserDoc): ClientSafeUser {
@@ -45,11 +58,21 @@ export function redactUserForClient(user: UserDoc): ClientSafeUser {
     // set this account's password. It must never reach a browser, even one
     // that is already an administrator's.
     inviteTokenHash: _inviteTokenHash,
+    // The TOTP secret is a second credential — anyone holding it can generate
+    // this account's codes forever, which is strictly worse than a password
+    // because nothing prompts the user to change it. The recovery hashes are
+    // the same class of material, and the spent-step counter is only useful to
+    // someone trying to replay a code.
+    totpSecret: _totpSecret,
+    totpRecoveryCodeHashes: _totpRecoveryCodeHashes,
+    totpLastUsedStep: _totpLastUsedStep,
     ...safe
   } = user;
-  void _passwordHash;
-  void _pinHash;
-  return safe;
+  return {
+    ...safe,
+    mfaEnabled: Boolean(user.totpEnabledAt),
+    mfaRecoveryCodesRemaining: user.totpRecoveryCodeHashes?.length ?? 0,
+  };
 }
 
 /** POST an action to /api/users and translate failures into readable errors. */
@@ -187,13 +210,16 @@ export async function createUser(
   if (!data.username || !data.password || !data.name || !data.role) {
     throw new Error('Missing required fields: username, password, name, role');
   }
-  if (data.password.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-  }
 
   const username = data.username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
   /* istanbul ignore next -- defensive: username is always validated before reaching here */
   if (!username) throw new Error('Invalid username');
+
+  // Screened AFTER the username is normalised, because one of the rules is
+  // "not built out of the account's own identifiers" and it needs the value
+  // that will actually be stored. Raises PasswordPolicyError, which the API
+  // route turns into a 400.
+  await assertPasswordForDeployment(data.password, [username, data.name, data.email ?? '']);
 
   if (!VALID_ROLES.includes(data.role)) {
     throw new Error(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
@@ -366,15 +392,21 @@ export async function issueUserInvite(id: string): Promise<{ token: string; expi
  */
 export type InviteRedemption =
   | { ok: true; user: UserDoc }
-  | { ok: false; reason: 'not_found' | 'expired' | 'weak_password' };
+  | { ok: false; reason: 'not_found' | 'expired' }
+  // A password complaint carries its message: the person is choosing a
+  // password and has to be told what is wrong with it. This leaks nothing
+  // about the token, which is checked afterwards.
+  | { ok: false; reason: 'weak_password'; message: string };
 
 export async function redeemUserInvite(token: string, newPassword: string): Promise<InviteRedemption> {
   if (isBrowserRuntime()) {
     throw new Error('redeemUserInvite is server-only');
   }
-  if (!token || newPassword.length < MIN_PASSWORD_LENGTH) {
-    return { ok: false, reason: 'weak_password' };
+  if (!token) {
+    return { ok: false, reason: 'not_found' };
   }
+  const weak = await screenPasswordForDeployment(newPassword);
+  if (weak) return { ok: false, reason: 'weak_password', message: weak };
 
   const { hashInviteToken, inviteHashMatches, isInviteExpired } = await import('../user-invite');
   const candidateHash = hashInviteToken(token);
@@ -388,6 +420,14 @@ export async function redeemUserInvite(token: string, newPassword: string): Prom
   if (isInviteExpired(match.inviteExpiresAt)) return { ok: false, reason: 'expired' };
   // A disabled account must not be reachable through an old invitation.
   if (match.isActive === false) return { ok: false, reason: 'not_found' };
+
+  // Re-screen now that the account is known: the "not built from your own
+  // name" rule cannot run on the first pass, because at that point the token
+  // has not yet told us whose account this is.
+  const identityWeak = await screenPasswordForDeployment(
+    newPassword, [match.username, match.name, match.email ?? ''],
+  );
+  if (identityWeak) return { ok: false, reason: 'weak_password', message: identityWeak };
 
   const { hashPassword } = await import('../auth');
   const now = new Date().toISOString();
@@ -422,9 +462,10 @@ export async function resetPassword(
   const db = usersDB();
   const existing = await db.get(id) as UserDoc;
 
-  if (newPassword.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-  }
+  // An administrator choosing a temporary password is still choosing a
+  // password, and "Temp1234" typed by a hurried admin is the credential the
+  // account actually holds until the user changes it.
+  await assertPasswordForDeployment(newPassword, [existing.username, existing.name, existing.email ?? '']);
 
   const { hashPassword } = await import('../auth');
   const passwordHash = await hashPassword(newPassword);
@@ -464,6 +505,10 @@ export async function changeOwnPassword(
   const ok = await verifyPassword(currentPassword, existing.passwordHash);
   if (!ok) throw new Error('Current password is incorrect');
 
+  // Screened here rather than only in the route, so the rule holds for every
+  // caller of this function rather than for one HTTP path.
+  await assertPasswordForDeployment(newPassword, [existing.username, existing.name, existing.email ?? '']);
+
   const now = new Date().toISOString();
   const updated: UserDoc = {
     ...existing,
@@ -495,10 +540,15 @@ export async function deactivateUser(
   const db = usersDB();
   const existing = await db.get(id) as UserDoc;
 
+  const now = new Date().toISOString();
   const updated: UserDoc = {
     ...existing,
     isActive: false,
-    updatedAt: new Date().toISOString(),
+    // `isActive: false` alone says an account is closed but not when, or by
+    // whom — the two things an offboarding review asks first.
+    deactivatedAt: now,
+    deactivatedBy: actorUsername ?? actorId,
+    updatedAt: now,
   };
 
   const resp3 = await db.put(updated);
@@ -528,6 +578,10 @@ export async function reactivateUser(
   const updated: UserDoc = {
     ...existing,
     isActive: true,
+    // Clear the closure stamp, so a reactivated account does not read as
+    // deactivated-and-somehow-working in the roster or an access review.
+    deactivatedAt: undefined,
+    deactivatedBy: undefined,
     updatedAt: new Date().toISOString(),
   };
 
@@ -557,4 +611,118 @@ export async function deleteUser(
   await db.remove(existing._id, existing._rev!);
   const { logAudit } = await import('./audit-service');
   await logAudit('user_deleted', actorId, actorUsername, `Deleted user "${existing.username}"`, true);
+}
+
+/**
+ * Stamp a successful sign-in.
+ *
+ * Called from the login route AFTER authentication succeeds, and only then —
+ * a failed attempt must never move this, or the field becomes "last time
+ * somebody guessed at this account" and every review built on it is wrong.
+ *
+ * Best-effort by design: it returns rather than throws on any failure. A
+ * clinician must not be refused entry to a ward because a bookkeeping write
+ * lost a revision race, and this value is a management signal, not a control.
+ */
+export async function recordSuccessfulLogin(id: string, at: string = new Date().toISOString()): Promise<void> {
+  if (isBrowserRuntime()) return;
+  try {
+    const db = usersDB();
+    const existing = await db.get(id) as UserDoc;
+    // Skip a write when the stamp is already within the same minute. Sign-in
+    // is one of the few operations that hits every device every morning, and
+    // a document revision per page-load would bloat the replication log that
+    // every browser then pulls.
+    if (existing.lastLoginAt && at.slice(0, 16) === existing.lastLoginAt.slice(0, 16)) return;
+    await db.put({ ...existing, lastLoginAt: at });
+  } catch {
+    /* never block a sign-in over a bookkeeping write */
+  }
+}
+
+/**
+ * How many ACTIVE administrators an organization would still have if
+ * `excludingUserId` were removed, deactivated or demoted.
+ *
+ * The last-admin guard. Nothing checked this before, so an org_admin could
+ * deactivate the only other one — or themselves, since only `delete` blocked
+ * self-targeting — and the tenant was locked out of its own user management
+ * until a platform operator could be reached. In a deployment where the
+ * platform operator may be in another country and the clinic may be offline
+ * for a day, that is not a small inconvenience.
+ */
+export async function countRemainingOrgAdmins(orgId: string, excludingUserId: string): Promise<number> {
+  const users = await getAllUsers();
+  return users.filter(u =>
+    u.orgId === orgId
+    && u.role === 'org_admin'
+    && u.isActive !== false
+    && u._id !== excludingUserId).length;
+}
+
+/**
+ * Accounts that have never signed in, or have not signed in for `days`.
+ *
+ * The data half of a periodic access review. `lastLoginAt` is absent for an
+ * account that has never been used, which for a freshly provisioned one is the
+ * difference between an invitation that worked and one that silently never
+ * arrived — so the two are reported separately rather than collapsed into a
+ * single "stale" bucket that hides a broken mail gateway.
+ */
+export interface DormantAccounts {
+  neverSignedIn: UserDoc[];
+  dormant: UserDoc[];
+}
+
+export async function findDormantAccounts(
+  scope?: DataScope,
+  days = 90,
+  now: number = Date.now(),
+): Promise<DormantAccounts> {
+  const cutoff = now - days * 86_400_000;
+  const users = (await getAllUsers(scope)).filter(u => u.isActive !== false);
+  return {
+    neverSignedIn: users.filter(u => !u.lastLoginAt),
+    dormant: users.filter(u => {
+      if (!u.lastLoginAt) return false;
+      const at = Date.parse(u.lastLoginAt);
+      return Number.isFinite(at) && at < cutoff;
+    }),
+  };
+}
+
+/**
+ * Deactivate an account AND report what it still had open.
+ *
+ * Separate from `deactivateUser` because that function's `Promise<void>` is
+ * relied on by several call sites, and because the answer only exists on the
+ * API path — the server is where the appointments and encounters live.
+ *
+ * The handover summary is advisory and arrives AFTER the account is closed.
+ * Access has to be revocable the moment someone leaves, whatever is still
+ * assigned to them; the point is that the administrator finds out rather than
+ * the patient who turns up for an appointment with a doctor who has gone.
+ */
+export async function deactivateUserReportingOpenWork(
+  id: string,
+): Promise<{ openWork?: import('./offboarding-service').OpenWorkSummary }> {
+  if (isBrowserRuntime()) {
+    const body = await postUsersApi({ action: 'deactivate', userId: id });
+    return { openWork: body.openWork as import('./offboarding-service').OpenWorkSummary | undefined };
+  }
+  await deactivateUser(id);
+  const { summarizeOpenWork } = await import('./offboarding-service');
+  return { openWork: await summarizeOpenWork(id) };
+}
+
+/**
+ * Re-send the set-your-password invitation, invalidating any outstanding one.
+ *
+ * Browser-only in practice: the server-side equivalent is
+ * `invite-delivery.deliverAccountInvite`, which this ends up calling through
+ * `POST /api/users`.
+ */
+export async function resendUserInvite(id: string): Promise<InvitationOutcome> {
+  const body = await postUsersApi({ action: 'resend_invite', userId: id });
+  return (body.invitation as InvitationOutcome) ?? { sent: false, reason: 'send_failed' };
 }

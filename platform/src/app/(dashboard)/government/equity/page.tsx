@@ -24,10 +24,6 @@ const VIEWS: { key: View; label: string }[] = [
   { key: 'access', label: 'Facility access' },
 ];
 
-const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-condensed)', fontWeight: 800, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
-};
-
 function Th({ children, onClick, active, dir }: { children?: React.ReactNode; onClick?: () => void; active?: boolean; dir?: 'asc' | 'desc' }) {
   return (
     <th

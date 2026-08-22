@@ -40,7 +40,7 @@ function accountRequestsDB() {
 jest.mock('@/lib/db', () => ({ accountRequestsDB }));
 
 import {
-  createAccountRequest, listAccountRequests, canDecide, recordDecision,
+  createAccountRequest, verifyAccountRequestEmail, listAccountRequests, canDecide, recordDecision,
   approverTierFor, suggestUsername, isRequestableRole,
 } from '@/lib/services/account-request-service';
 import {
@@ -93,11 +93,23 @@ describe('who must approve a request', () => {
 });
 
 describe('what an approver can see', () => {
-  const submit = (over: Partial<Parameters<typeof createAccountRequest>[0]> = {}) =>
-    createAccountRequest({
+  // `createAccountRequest` returns `{ doc, verificationToken }` since email
+  // verification was added to the flow. These assertions are about the stored
+  // request, so the helper unwraps to the doc.
+  // `createAccountRequest` returns `{ doc, verificationToken }` since email
+  // verification was added, and an UNVERIFIED request is deliberately hidden
+  // from approvers and undecidable. These tests are about what an approver
+  // sees once a request is real, so the helper redeems the token the way the
+  // emailed link does. The unverified case is covered separately below.
+  const submit = async (over: Partial<Parameters<typeof createAccountRequest>[0]> = {}) => {
+    const { verificationToken } = await createAccountRequest({
       fullName: 'Mary Nyaboth', email: 'mary@example.org', requestedRole: 'nurse',
       orgId: 'org-a', orgName: 'Org A', ...over,
     });
+    const verified = await verifyAccountRequestEmail(verificationToken);
+    if (!verified.ok) throw new Error(`verification failed: ${verified.reason}`);
+    return verified.doc;
+  };
 
   it('shows an org admin only their own tenant', async () => {
     await submit({ orgId: 'org-a' });
@@ -136,9 +148,12 @@ describe('what an approver can see', () => {
 
 describe('who can decide a request', () => {
   it('matches what the list shows', async () => {
-    const doc = await createAccountRequest({
+    const { verificationToken } = await createAccountRequest({
       fullName: 'Peter Deng', email: 'peter@example.org', requestedRole: 'nurse', orgId: 'org-a',
     });
+    const verified = await verifyAccountRequestEmail(verificationToken);
+    if (!verified.ok) throw new Error('verification failed');
+    const doc = verified.doc;
     expect(canDecide(orgAdmin('org-a'), doc)).toBe(true);
     expect(canDecide(orgAdmin('org-b'), doc)).toBe(false);
     expect(canDecide(orgAdmin(undefined), doc)).toBe(false);
@@ -149,7 +164,7 @@ describe('who can decide a request', () => {
 
 describe('deciding', () => {
   it('records who decided and what it produced', async () => {
-    const doc = await createAccountRequest({
+    const { doc } = await createAccountRequest({
       fullName: 'Grace Lado', email: 'grace@example.org', requestedRole: 'nurse', orgId: 'org-a',
     });
     const updated = await recordDecision(doc._id, 'approved', { username: 'admin.a', name: 'Admin A' }, {
@@ -162,7 +177,7 @@ describe('deciding', () => {
 
   it('refuses to decide the same request twice', async () => {
     // A double-click must not be able to mint two accounts for one request.
-    const doc = await createAccountRequest({
+    const { doc } = await createAccountRequest({
       fullName: 'Grace Lado', email: 'grace@example.org', requestedRole: 'nurse', orgId: 'org-a',
     });
     await recordDecision(doc._id, 'approved', { username: 'admin.a' }, { createdUsername: 'grace.lado' });
@@ -174,7 +189,7 @@ describe('deciding', () => {
 
 describe('the submitted claim', () => {
   it('keeps the selected facility id and name together for approval', async () => {
-    const doc = await createAccountRequest({
+    const { doc } = await createAccountRequest({
       fullName: 'A B', email: 'a@b.co', requestedRole: 'nurse', orgId: 'org-a',
       hospitalId: 'hosp-a', hospitalName: 'Facility A',
     });
@@ -205,7 +220,7 @@ describe('the submitted claim', () => {
       fullName: 'A B', email: 'a@b.co', requestedRole: 'nurse', orgId: 'org-a',
       approverTier: 'org_admin', status: 'approved',
     } as unknown as Parameters<typeof createAccountRequest>[0];
-    const doc = await createAccountRequest(forged);
+    const { doc } = await createAccountRequest(forged);
     expect(doc.approverTier).toBe('org_admin');
     expect(doc.status).toBe('pending');
   });

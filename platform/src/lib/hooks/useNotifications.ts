@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useApp } from '../context';
 import { makeCoalescer } from './live-reload';
 import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB } from '../db';
-import { isForViewer } from '../notification-scope';
+import { isForViewer, isKindRelevantToRole } from '../notification-scope';
+import type { NotificationKind } from '../notification-scope';
 import { todayIso as isoToday } from '@/lib/date-utils';
 import {
   NOTIFICATION_READS_EVENT,
@@ -14,7 +15,7 @@ import {
 import { getRoleSettings, subscribeRoleSettings } from '../settings/role-settings-store';
 import { filterNotifications } from '../settings/notification-preferences';
 
-export type NotificationType = 'alert' | 'triage' | 'referral' | 'lab' | 'appointment' | 'prescription' | 'progress' | 'transfer';
+export type NotificationType = NotificationKind;
 /** How hard the item pushes: an outbreak or a breached critical result is not
  *  the same class of thing as "a prescription is waiting". Drives the filter
  *  tabs and row treatment on /notifications. */
@@ -138,8 +139,11 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role }
       : undefined;
     const out: NotificationItem[] = [];
+    // Whole sources that are not this role's job are skipped before their
+    // database read — see KIND_RELEVANT_ROLES in lib/notification-scope.ts.
+    const relevant = (kind: NotificationKind) => isKindRelevantToRole(kind, currentUser?.role);
 
-    try {
+    if (relevant('referral')) try {
       const { getAllReferrals } = await import('../services/referral-service');
       const refs = await getAllReferrals(scope);
       const myHospitalId = currentUser?.hospitalId;
@@ -237,7 +241,10 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
     try {
       const { getActiveAlerts } = await import('../services/surveillance-service');
-      const alerts = await getActiveAlerts();
+      // Scoped: an outbreak alert reaches every role, but only within the
+      // viewer's own tenant — unscoped, every alert in the replicated DB
+      // reached every user on the platform.
+      const alerts = await getActiveAlerts(scope);
       for (const a of alerts.slice(0, perSourceLimit)) {
         out.push({ id: `alert-${a._id}`, type: 'alert', severity: 'critical', title: `${a.disease} outbreak alert`, subtitle: `${a.cases} cases · ${a.county}, ${a.state}`, time: a.reportDate || a.createdAt, href: '/surveillance' });
       }
@@ -253,7 +260,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // results: a triage record names no provider, because the waiting room is
     // the shared pool clinicians pull the next patient from. Filtering it by
     // ownership would empty the queue for everyone — there is no owner yet.
-    try {
+    if (relevant('triage')) try {
       const { getActiveTriage } = await import('../services/triage-service');
       const triages = await getActiveTriage(scope);
       const waiting = triages.filter(x => x.status === 'pending');
@@ -283,7 +290,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     const RECENT_MS = 3 * 24 * 60 * 60 * 1000;
     const nowMsLocal = Date.now();
 
-    try {
+    if (relevant('lab')) try {
       const { getAllLabResults, effectiveOrderStatus } = await import('../services/lab-service');
       const { getResultReviewSLA } = await import('../clinical-flow/order-lifecycles');
       const labs = await getAllLabResults(scope);
@@ -346,7 +353,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     } catch { /* offline */ }
 
     // Appointments — approvals needed + patients checked in and waiting.
-    try {
+    if (relevant('appointment')) try {
       const { getAllAppointments } = await import('../services/appointment-service');
       const appts = await getAllAppointments(scope);
       // Awaiting approval: explicitly requested, or today's scheduled slots that
@@ -378,14 +385,19 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     try {
       const { getAllConsultationProgress } = await import('../services/consultation-progress-service');
       const progress = await getAllConsultationProgress(scope);
+      // Pool items (blocked / unassigned urgent / waiting for provider) are
+      // gated by role relevance; work assigned to THIS user always surfaces,
+      // whatever their role — a task handed to a cashier must still reach them.
+      const poolRelevant = relevant('progress');
       for (const p of progress) {
         const href = `/patients/${encodeURIComponent(p.patientId)}`;
         const assignedToMe = !!currentUser?._id && p.ownerId === currentUser._id;
         const openTasks = p.tasks.filter(t => t.status !== 'completed');
         const relevantTasks = openTasks.filter(t =>
-          t.status === 'blocked' || t.priority === 'urgent' || t.ownerId === currentUser?._id || (!t.ownerId && t.priority === 'high'),
+          t.ownerId === currentUser?._id
+          || (poolRelevant && (t.status === 'blocked' || t.priority === 'urgent' || (!t.ownerId && t.priority === 'high'))),
         );
-        if (assignedToMe || relevantTasks.length > 0 || p.currentStage === 'waiting_for_provider') {
+        if (assignedToMe || relevantTasks.length > 0 || (poolRelevant && p.currentStage === 'waiting_for_provider')) {
           const task = relevantTasks[0];
           out.push({
             id: `progress-${p._id}-${task?.id || p.currentStage}`,
@@ -401,7 +413,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     } catch { /* offline */ }
 
     // Prescriptions awaiting dispensing (pharmacy queue).
-    try {
+    if (relevant('prescription')) try {
       const { getAllPrescriptions } = await import('../services/prescription-service');
       const rxs = await getAllPrescriptions(scope);
       for (const rx of rxs.filter(x => x.status === 'pending').slice(0, perSourceLimit)) {
@@ -448,42 +460,33 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   useEffect(() => {
     let cancelled = false;
     const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const refChanges = referralsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow — offline */ });
-    const apptChanges = appointmentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow — offline */ });
-    // Labs and prescriptions also produce notifications — without these
-    // feeds a new critical result never chimes (or badges) until the page
-    // is reopened.
-    const labChanges = labResultsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow — offline */ });
-    const rxChanges = prescriptionsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow — offline */ });
-    const transferChanges = patientTransfersDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow — offline */ });
-    const progressChanges = consultationProgressDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow — offline */ });
-    // A patient triaged RED must badge the bell now, not on the next reopen.
-    const triageChanges = triageDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow — offline */ });
+    // Only the databases whose source this role actually receives — a write to
+    // the pharmacy queue should not wake a session that will skip that source
+    // anyway. Transfers and progress stay unconditional: both can address any
+    // user directly. Labs and prescriptions matter here because without their
+    // feeds a new critical result never chimes (or badges) until reopen.
+    const role = currentUser?.role;
+    const feeds = [
+      isKindRelevantToRole('referral', role) ? referralsDB() : null,
+      isKindRelevantToRole('appointment', role) ? appointmentsDB() : null,
+      isKindRelevantToRole('lab', role) ? labResultsDB() : null,
+      isKindRelevantToRole('prescription', role) ? prescriptionsDB() : null,
+      patientTransfersDB(),
+      consultationProgressDB(),
+      // A patient triaged RED must badge the bell now, not on the next reopen.
+      isKindRelevantToRole('triage', role) ? triageDB() : null,
+    ].filter((db): db is NonNullable<typeof db> => db !== null)
+      .map(db => db.changes({ since: 'now', live: true, include_docs: false })
+        .on('change', () => reload.trigger())
+        .on('error', () => { /* swallow — offline */ }));
     return () => {
       cancelled = true;
       reload.cancel();
-      try { refChanges.cancel(); } catch { /* noop */ }
-      try { apptChanges.cancel(); } catch { /* noop */ }
-      try { labChanges.cancel(); } catch { /* noop */ }
-      try { rxChanges.cancel(); } catch { /* noop */ }
-      try { progressChanges.cancel(); } catch { /* noop */ }
-      try { transferChanges.cancel(); } catch { /* noop */ }
-      try { triageChanges.cancel(); } catch { /* noop */ }
+      for (const feed of feeds) {
+        try { feed.cancel(); } catch { /* noop */ }
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
   const decorated = useMemo(

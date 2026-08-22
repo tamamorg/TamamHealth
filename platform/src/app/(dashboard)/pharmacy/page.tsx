@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import TableCols from '@/components/TableCols';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
-import { Pill, AlertTriangle, Loader2, Plus, X, Printer, Calendar, ChevronRight, AlertOctagon, Filter, Download, Check, ExternalLink } from '@/components/icons/lucide';
+import { Pill, AlertTriangle, Loader2, Plus, X, Printer, ChevronRight, AlertOctagon, Filter, Download, Check, ExternalLink } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/lib/context';

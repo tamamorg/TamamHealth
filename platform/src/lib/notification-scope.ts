@@ -24,10 +24,78 @@
 import type { UserRole } from './db-types';
 
 /**
+ * The notification sources `useNotifications` aggregates. Defined here rather
+ * than in the hook so the relevance map below and the hook share one union
+ * without a runtime import cycle.
+ */
+export type NotificationKind =
+  | 'alert' | 'triage' | 'referral' | 'lab'
+  | 'appointment' | 'prescription' | 'progress' | 'transfer';
+
+/**
  * Roles that carry a named panel of patients, and so get a feed narrowed to it.
  * Everyone else covers the floor and keeps the facility-wide view.
  */
 const PERSONAL_FEED_ROLES: readonly UserRole[] = ['doctor', 'clinical_officer', 'clinician'] as const;
+
+/**
+ * Which roles each notification KIND is part of the job for.
+ *
+ * Rule 1 above narrows a clinician's feed to their own patients; this map is
+ * the coarser cut that runs first: whole sources that are simply not a role's
+ * work. Before it existed, every pending prescription badged the HR officer,
+ * every waiting triage patient badged the cashier, and a super admin's bell
+ * read "99+" from the operational churn of every facility on the platform —
+ * none of which anyone could act on.
+ *
+ * 'all' means the kind is either universally safety-relevant (a disease
+ * outbreak) or already narrowed to the individual by construction (a transfer
+ * addressed to this user). A role absent from a kind's list never receives
+ * that source — their settings toggles for it stop mattering, which is the
+ * point: relevance is not something each user should have to opt out of.
+ */
+const KIND_RELEVANT_ROLES: Record<NotificationKind, readonly UserRole[] | 'all'> = {
+  // Outbreaks are rare and everyone on the floor should know.
+  alert: 'all',
+  // Addressed to a specific user (accept this transfer / your transfer was
+  // decided) — per-user by construction, so every role keeps it.
+  transfer: 'all',
+  // The shared waiting room: whoever can pick a patient up, plus the desk
+  // that manages the queue.
+  triage: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
+    'triage_nurse', 'rooming_nurse', 'front_desk', 'medical_superintendent'],
+  // Clinical hand-offs between facilities, plus the records/management roles
+  // that steward them.
+  referral: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
+    'front_desk', 'records_hmis_officer', 'medical_superintendent', 'hospital_manager'],
+  // Results reach the people who order and review them, and the bench that
+  // produced them.
+  lab: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
+    'lab_tech', 'medical_superintendent'],
+  // Providers see their own slots (rule 1); scheduling roles see the floor.
+  appointment: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
+    'front_desk', 'clinic_clerk', 'central_registration_clerk', 'data_entry_clerk',
+    'medical_superintendent'],
+  // The dispensing queue is pharmacy work; nurses keep it for overdue doses.
+  prescription: ['pharmacist', 'nurse', 'medical_superintendent'],
+  // Care-progress pool items (blocked / unassigned urgent / waiting for
+  // provider). Tasks assigned to a specific user bypass this list — see
+  // useNotifications — so a task given to a cashier still reaches them.
+  progress: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
+    'triage_nurse', 'rooming_nurse', 'medical_superintendent'],
+};
+
+/**
+ * Is this notification source part of this role's job? A missing/unknown role
+ * keeps everything — failing open here only ever adds noise, never hides a
+ * notification from someone whose role plainly claims it.
+ */
+export function isKindRelevantToRole(kind: NotificationKind, role?: UserRole | string): boolean {
+  if (!role) return true;
+  const relevant = KIND_RELEVANT_ROLES[kind];
+  if (relevant === 'all') return true;
+  return (relevant as readonly string[]).includes(role);
+}
 
 export function hasPersonalFeed(role?: UserRole | string): boolean {
   return !!role && (PERSONAL_FEED_ROLES as readonly string[]).includes(role);

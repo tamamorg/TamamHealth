@@ -21,6 +21,12 @@ function validEnvironment(): ConfigEnv {
     COUCHDB_GATEWAY_SECRET: 'gateway-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
     COUCHDB_WEBHOOK_SECRET: 'webhook-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
     AIRTEL_WEBHOOK_SECRET: 'airtel-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
+    // A correct production deployment sends mail. Left unset, the provider
+    // falls back to "log" and every invitation and password-reset link is
+    // written to the container log instead of being delivered — so this
+    // fixture, which stands for a fully-valid environment, has to set it.
+    EMAIL_PROVIDER: 'sendgrid',
+    SENDGRID_API_KEY: 'SG.test-key-0123456789',
     MPESA_WEBHOOK_SECRET: 'mpesa-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
   };
 }
@@ -103,6 +109,22 @@ describe('production configuration warnings', () => {
     // that silently cost clinicians their replication was visible only to
     // someone reading container logs by hand.
     expect(productionConfigWarnings(env)).toEqual([expect.stringContaining('SENTRY_DSN')]);
+  });
+
+  it('warns when no email provider is configured', () => {
+    // The failure mode is silent and total: onboarding appears to work, the
+    // link is logged rather than sent, and nobody outside the server ever
+    // receives it. That is worth a warning even though it is not fatal.
+    const env: ConfigEnv = { ...validEnvironment(), SENTRY_DSN: 'https://x@sentry.invalid/1' };
+    delete env.EMAIL_PROVIDER;
+    delete env.SENDGRID_API_KEY;
+    expect(productionConfigWarnings(env)).toEqual([expect.stringContaining('EMAIL_PROVIDER')]);
+  });
+
+  it('warns when a provider is named but its key is missing', () => {
+    const env: ConfigEnv = { ...validEnvironment(), SENTRY_DSN: 'https://x@sentry.invalid/1' };
+    delete env.SENDGRID_API_KEY;
+    expect(productionConfigWarnings(env)).toEqual([expect.stringContaining('SENDGRID_API_KEY')]);
   });
 
   it('is satisfied by either the server or the public DSN', () => {

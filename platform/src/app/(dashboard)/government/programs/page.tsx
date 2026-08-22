@@ -8,10 +8,6 @@ import { useANC } from '@/lib/hooks/useANC';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { Syringe, HeartPulse, ArrowUpRight, Info } from '@/components/icons/lucide';
 
-const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-condensed)', fontWeight: 800, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
-};
-
 function StatTile({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
     <div className="px-3 py-2.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>

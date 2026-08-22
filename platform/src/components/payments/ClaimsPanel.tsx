@@ -509,7 +509,9 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       {editingId && adjForm && (
         <Modal onClose={handleCancel} width={480} labelledBy="adj-claim-title">
           <div className="bl-root bl-modal-body">
-            <h3 className="bl-modal-title" id="adj-claim-title">{t('claims.modalTitle')}</h3>
+            <div className="bl-modal-head">
+              <h3 className="bl-modal-title" id="adj-claim-title">{t('claims.modalTitle')}</h3>
+            </div>
 
             <div className="bl-field">
               <label htmlFor="adj-status-preview">{t('claims.colStatus')}</label>

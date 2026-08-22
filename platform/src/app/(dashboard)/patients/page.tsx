@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { patientFullName, patientDisplayName, shortenPersonName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
+import { patientFullName, patientDisplayName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { ScanLine, Hash, X, ArrowRight, Download, UserPlus } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';

@@ -35,8 +35,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  AlertTriangle, RefreshCw, Plus, UserCheck, Loader2, X, MapPin,
-} from '@/components/icons/lucide';
+  AlertTriangle, RefreshCw, Loader2, X, } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -47,20 +46,13 @@ import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
 import {
-  SadbPage, SadbPanelHeader, SadbCard, SadbTabs, SadbSearch, SadbKpiTile, SadbKvRow,
+  SadbPage, SadbCard, SadbTabs, SadbSearch, SadbKpiTile, SadbKvRow,
   SadbChip, SadbQueueRow, SadbGridList, SadbGridRow, SadbHeadLink, type ChipTone,
 } from '@/components/admin/sadb-ui';
-import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
-import { formatDateTitle } from '@/components/ehr/EhrMiniCalendar';
 import { toIsoDate } from '@/lib/date-utils';
-import AddInquiryDialog from '@/components/create-dialogs/AddInquiryDialog';
-import RequestLeaveDialog from '@/components/create-dialogs/RequestLeaveDialog';
-import CreateShiftDialog from '@/components/create-dialogs/CreateShiftDialog';
-import AddPayrollEntryDialog from '@/components/create-dialogs/AddPayrollEntryDialog';
 import { formatMoney, titleCase } from '@/lib/format-utils';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
-import { getRoleConfig } from '@/lib/permissions';
-import { buildAddMenuEntries, usersHrefForRole } from '@/lib/people-nav';
+import { usersHrefForRole } from '@/lib/people-nav';
 import { ROLE_LABEL } from '@/lib/role-display';
 import {
   ENQUIRY_STATUS_LABELS, ENQUIRY_STATUSES, deriveEnquiryStatus, enquiryType, enquiryAssignee,
@@ -400,17 +392,6 @@ type QueueTab = 'inquiries' | 'leave' | 'staff';
 /** The inquiry ladder, as the detail dialog's picker renders it. */
 const ENQUIRY_STATUS_OPTIONS = ENQUIRY_STATUSES.map(value => ({ value, label: ENQUIRY_STATUS_LABELS[value] }));
 
-/** Add-menu entries whose form opens on this page instead of navigating. The
- *  value is where the user lands once the record is written. */
-const ADD_DIALOG_DESTINATIONS = {
-  inquiry: '/inquiries',
-  leave: '/hr/leave',
-  shift: '/hr/schedule',
-  payroll: '/hr/payroll',
-} as const;
-type AddDialogKey = keyof typeof ADD_DIALOG_DESTINATIONS;
-const isAddDialogKey = (key: string): key is AddDialogKey => key in ADD_DIALOG_DESTINATIONS;
-
 const CENTER_TITLES: Record<QueueTab, string> = {
   inquiries: 'Recent Inquiries',
   leave: 'Pending Leave',
@@ -658,24 +639,6 @@ export default function FacilityManagementDashboard() {
   }, [cash.currency]);
 
   // The global "Add" menu — permission-gated entries from people-nav. The three
-  // records this dashboard can create open their dialog HERE, on the page the
-  // user was already looking at, and only route to the destination once the
-  // record exists; anything else (staff accounts) still navigates, because its
-  // form lives on a page of its own.
-  const [addDialog, setAddDialog] = useState<AddDialogKey | null>(null);
-  const addMenuItems: RailMenuItem[] = useMemo(() => {
-    if (!currentUser) return [];
-    const allowedRoutes = getRoleConfig(currentUser.role).allowedRoutes;
-    return buildAddMenuEntries({ role: currentUser.role, allowedRoutes }).map(entry => {
-      const dialogKey = isAddDialogKey(entry.key) ? entry.key : null;
-      return {
-        key: entry.key,
-        label: entry.label,
-        onSelect: dialogKey ? () => setAddDialog(dialogKey) : () => router.push(entry.href),
-      };
-    });
-  }, [currentUser, router]);
-
   const updateEnquiryStatusLocally = (id: string, status: EnquiryStatus) => {
     setEnquiries(prev => prev.map(m => (m._id === id ? { ...m, enquiryStatus: status } : m)));
   };
@@ -792,23 +755,12 @@ export default function FacilityManagementDashboard() {
   }
 
   return (
-    <SadbPage
-      roles={['org_admin', 'hospital_manager', 'super_admin']}
-      actions={
-        <>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push(staffListHref)}>
-            <UserCheck className="w-4 h-4" /> View staff accounts
-          </button>
-          {addMenuItems.length > 0 && (
-            <EhrRailMenu variant="primary" label="Add" icon={Plus} hideChevron ariaLabel="Add a new record" items={addMenuItems} />
-          )}
-        </>
-      }
-    >
-      <SadbPanelHeader
-        title="Facility Management"
-        note={`Welcome back, ${currentUser.name} · ${formatDateTitle(toIsoDate(new Date()))}`}
-      />
+    <SadbPage roles={['org_admin', 'hospital_manager', 'super_admin']}>
+      {/* No panel header. "Facility Management" now rides in the app header
+          under the organization's name, and the two record actions that sat
+          here — the staff roster and Add — moved to the rail beside it, so
+          they are reachable from every page of the console rather than only
+          this one. The page opens straight into its numbers. */}
 
       {/* While a retry is in flight the strip reports THAT, not the stale
           failure: pressing Retry and seeing the same red banner sit there is
@@ -855,7 +807,11 @@ export default function FacilityManagementDashboard() {
       </div>
 
       {/* ═══ Operational row: cash flow + today's operations ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3.5 items-start">
+      {/* No `items-start`: the two cards are one row of the dashboard and read
+          as a pair, so they end on the same line. The chart sets the height —
+          it has a fixed one — and the operations list spreads its four rows to
+          fill rather than stopping halfway down beside it. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3.5">
         <SadbCard title="Weekly Cash Flow" meta={cash.currency}>
           <div className="px-3 pt-3 pb-1">
             <WeeklyActivityChart data={weekly} chartType="bar" series={cashSeries} />
@@ -866,124 +822,133 @@ export default function FacilityManagementDashboard() {
           title="Today's Operations"
           action={<SadbHeadLink onClick={() => router.push(`/hr/schedule?date=${today}`)}>Schedule</SadbHeadLink>}
         >
-          <SadbKvRow label="Today's shifts" value={String(metricByKey('shifts-today')?.value ?? 0)} />
-          <SadbKvRow
-            label="Unfilled shifts"
-            chip={String(unfilledShifts)}
-            chipTone={typeof unfilledShifts === 'number' && unfilledShifts > 0 ? 'red' : 'green'}
-          />
-          <SadbKvRow
-            label="Pending leave"
-            chip={String(pendingLeaveCount)}
-            chipTone={pendingLeaveCount > 0 ? 'yellow' : 'neutral'}
-          />
-          <SadbKvRow label="Staff available now" value={String(overview.activeStaff.count)} valueTone={overview.activeStaff.unavailable ? 'warn' : undefined} />
+          <div className="sadb-kv-fill">
+            <SadbKvRow label="Today's shifts" value={String(metricByKey('shifts-today')?.value ?? 0)} />
+            <SadbKvRow
+              label="Unfilled shifts"
+              chip={String(unfilledShifts)}
+              chipTone={typeof unfilledShifts === 'number' && unfilledShifts > 0 ? 'red' : 'green'}
+            />
+            <SadbKvRow
+              label="Pending leave"
+              chip={String(pendingLeaveCount)}
+              chipTone={pendingLeaveCount > 0 ? 'yellow' : 'neutral'}
+            />
+            <SadbKvRow label="Staff available now" value={String(overview.activeStaff.count)} valueTone={overview.activeStaff.unavailable ? 'warn' : undefined} />
+          </div>
         </SadbCard>
       </div>
 
-      {/* ═══ Work queue — inquiries · pending leave · active staff ═══ */}
-      <SadbCard
-        title={CENTER_TITLES[activeTab]}
-        meta={activeTab === 'inquiries'
-          ? `${overview.inquiryRows.length} of ${overview.inquiryMatchCount}`
-          : activeTab === 'leave'
-            ? `${overview.pendingLeaveRows.length} pending`
-            : `${overview.activeStaff.rows.length} available`}
-        action={
-          <SadbTabs
-            tabs={[
-              { key: 'inquiries', label: 'Inquiries', count: overview.inquiryRows.length },
-              { key: 'leave', label: 'Pending Leave', count: overview.pendingLeaveRows.length },
-              { key: 'staff', label: 'Active Staff', count: overview.activeStaff.rows.length },
-            ]}
-            active={activeTab}
-            onChange={tab => setActiveTab(tab as QueueTab)}
-            ariaLabel="Work queue views"
-          />
-        }
-      >
-        <div className="sadb-search-row" style={{ paddingBottom: 12 }}>
-          <SadbSearch value={queueSearch} onChange={setQueueSearch} placeholder={SEARCH_PLACEHOLDERS[activeTab]} />
-        </div>
-
-        {queueEmpty ? (
-          <div className="sadb-empty" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className="flex-1">{emptyTitle}</span>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={onEmptyAction}>{emptyActionLabel}</button>
-          </div>
-        ) : activeTab === 'inquiries' ? (
-          overview.inquiryRows.map(r => (
-            <SadbQueueRow
-              key={r.id}
-              chip={r.statusLabel}
-              chipTone={enquiryChipTone(r.status)}
-              title={r.name}
-              sub={`${r.type} · ${r.channel} · ${r.assignee || 'Unassigned'}`}
-              when={r.time ? `${r.date} ${r.time}` : r.date}
-              onClick={() => setDetail({ kind: 'inquiry', id: r.id })}
-            />
-          ))
-        ) : activeTab === 'leave' ? (
-          overview.pendingLeaveRows.map(r => (
-            <SadbQueueRow
-              key={r.id}
-              chip={titleCase(r.leaveType)}
-              chipTone="yellow"
-              title={r.requesterName}
-              sub={`${r.days} day${r.days === 1 ? '' : 's'} · ${r.startDate} → ${r.endDate} · ${r.facility}`}
-              when={r.requestedAt.slice(0, 10)}
-              onClick={() => setDetail({ kind: 'leave', id: r.id })}
-            />
-          ))
-        ) : (
-          overview.activeStaff.rows.map(r => (
-            <SadbQueueRow
-              key={r.id}
-              chip={r.shift ? 'On shift' : 'Available'}
-              chipTone={r.shift ? 'green' : 'blue'}
-              title={r.name}
-              sub={`${r.role} · ${r.department}`}
-              when={r.shift || undefined}
-              onClick={() => setDetail({ kind: 'staff', id: r.id })}
-            />
-          ))
-        )}
-      </SadbCard>
-
-      {/* ═══ Facility matrix — the org's registered facilities ═══ */}
-      {hospitals.length > 0 && (
+      {/* ═══ Lower row: the work queue beside the facility matrix ═══
+           Both lists grow with the data; stacked full-width they ran the
+           page into a long scroll. Capped and side by side, each scrolls
+           inside its own card and the dashboard ends with the viewport. */}
+      <div className="sadb-lower-row">
+        {/* ═══ Work queue — inquiries · pending leave · active staff ═══ */}
         <SadbCard
-          title="Facilities"
-          meta={`${hospitals.length}`}
-          action={<SadbHeadLink onClick={() => router.push('/hospitals')}>Directory</SadbHeadLink>}
+          className={hospitals.length > 0 ? undefined : 'is-wide'}
+          title={CENTER_TITLES[activeTab]}
+          meta={activeTab === 'inquiries'
+            ? `${overview.inquiryRows.length} of ${overview.inquiryMatchCount}`
+            : activeTab === 'leave'
+              ? `${overview.pendingLeaveRows.length} pending`
+              : `${overview.activeStaff.rows.length} available`}
+          action={
+            <SadbTabs
+              tabs={[
+                { key: 'inquiries', label: 'Inquiries', count: overview.inquiryRows.length },
+                { key: 'leave', label: 'Pending Leave', count: overview.pendingLeaveRows.length },
+                { key: 'staff', label: 'Active Staff', count: overview.activeStaff.rows.length },
+              ]}
+              active={activeTab}
+              onChange={tab => setActiveTab(tab as QueueTab)}
+              ariaLabel="Work queue views"
+            />
+          }
         >
-          <SadbGridList
-            template={FAC_GRID}
-            minWidth={640}
-            head={['Facility', 'Type', 'Beds', 'Patients', "Today's visits"]}
-          >
-            {hospitals.map((h: HospitalDoc) => (
-              <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/hospitals/${h._id}/manage`)}>
-                <span className="min-w-0">
-                  <span className="sadb-tenant-name truncate">{h.name}</span>
-                  <span className="sadb-tenant-sub flex items-center gap-1">
-                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                    {h.town || h.state || '—'}
-                  </span>
-                </span>
-                <span>
-                  <SadbChip tone={h.facilityType === 'phcc' || h.facilityType === 'phcu' ? 'neutral' : 'blue'}>
-                    {facilityLabel(h.facilityType)}
-                  </SadbChip>
-                </span>
-                <span className="sadb-tenant-num">{h.totalBeds || 0}</span>
-                <span className="sadb-tenant-num">{h.patientCount || 0}</span>
-                <span className="sadb-tenant-num">{h.todayVisits || 0}</span>
-              </SadbGridRow>
-            ))}
-          </SadbGridList>
+          <div className="sadb-search-row" style={{ paddingBottom: 12 }}>
+            <SadbSearch value={queueSearch} onChange={setQueueSearch} placeholder={SEARCH_PLACEHOLDERS[activeTab]} />
+          </div>
+
+          <div className="sadb-card-scroll">
+            {queueEmpty ? (
+              <div className="sadb-empty" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className="flex-1">{emptyTitle}</span>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={onEmptyAction}>{emptyActionLabel}</button>
+              </div>
+            ) : activeTab === 'inquiries' ? (
+              overview.inquiryRows.map(r => (
+                <SadbQueueRow
+                  key={r.id}
+                  chip={r.statusLabel}
+                  chipTone={enquiryChipTone(r.status)}
+                  title={r.name}
+                  sub={`${r.type} · ${r.channel} · ${r.assignee || 'Unassigned'}`}
+                  when={r.time ? `${r.date} ${r.time}` : r.date}
+                  onClick={() => setDetail({ kind: 'inquiry', id: r.id })}
+                />
+              ))
+            ) : activeTab === 'leave' ? (
+              overview.pendingLeaveRows.map(r => (
+                <SadbQueueRow
+                  key={r.id}
+                  chip={titleCase(r.leaveType)}
+                  chipTone="yellow"
+                  title={r.requesterName}
+                  sub={`${r.days} day${r.days === 1 ? '' : 's'} · ${r.startDate} → ${r.endDate} · ${r.facility}`}
+                  when={r.requestedAt.slice(0, 10)}
+                  onClick={() => setDetail({ kind: 'leave', id: r.id })}
+                />
+              ))
+            ) : (
+              overview.activeStaff.rows.map(r => (
+                <SadbQueueRow
+                  key={r.id}
+                  chip={r.shift ? 'On shift' : 'Available'}
+                  chipTone={r.shift ? 'green' : 'blue'}
+                  title={r.name}
+                  sub={`${r.role} · ${r.department}`}
+                  when={r.shift || undefined}
+                  onClick={() => setDetail({ kind: 'staff', id: r.id })}
+                />
+              ))
+            )}
+          </div>
         </SadbCard>
-      )}
+
+        {/* ═══ Facility matrix — the org's registered facilities ═══ */}
+        {hospitals.length > 0 && (
+          <SadbCard
+            title="Facilities"
+            meta={`${hospitals.length}`}
+            action={<SadbHeadLink onClick={() => router.push('/hospitals')}>Directory</SadbHeadLink>}
+          >
+            <div className="sadb-card-scroll">
+              <SadbGridList
+                template={FAC_GRID}
+                minWidth={640}
+                head={['Facility', 'Type', 'Beds', 'Patients', "Today's visits"]}
+              >
+                {hospitals.map((h: HospitalDoc) => (
+                  <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/hospitals/${h._id}/manage`)}>
+                    <span className="min-w-0">
+                      <span className="sadb-tenant-name truncate">{h.name}</span>
+                    </span>
+                    <span>
+                      <SadbChip tone={h.facilityType === 'phcc' || h.facilityType === 'phcu' ? 'neutral' : 'blue'}>
+                        {facilityLabel(h.facilityType)}
+                      </SadbChip>
+                    </span>
+                    <span className="sadb-tenant-num">{h.totalBeds || 0}</span>
+                    <span className="sadb-tenant-num">{h.patientCount || 0}</span>
+                    <span className="sadb-tenant-num">{h.todayVisits || 0}</span>
+                  </SadbGridRow>
+                ))}
+              </SadbGridList>
+            </div>
+          </SadbCard>
+        )}
+      </div>
 
       {metricPreview && (
         <FacilityMetricPreviewDialog
@@ -1084,50 +1049,6 @@ export default function FacilityManagementDashboard() {
         </Modal>
       )}
 
-      {/* Create-in-place, then go. Each dialog writes the record from here and
-          only then routes to the page that owns it, so the user never lands on
-          an empty form somewhere else. */}
-      {addDialog === 'inquiry' && (
-        <AddInquiryDialog
-          onClose={() => setAddDialog(null)}
-          onCreated={created => {
-            setEnquiries(prev => [created, ...prev]);
-            setAddDialog(null);
-            showToast('Inquiry logged.', 'success');
-            router.push(ADD_DIALOG_DESTINATIONS.inquiry);
-          }}
-        />
-      )}
-      {addDialog === 'leave' && (
-        <RequestLeaveDialog
-          onClose={() => setAddDialog(null)}
-          onCreated={() => {
-            setAddDialog(null);
-            retryExtra();
-            router.push(ADD_DIALOG_DESTINATIONS.leave);
-          }}
-        />
-      )}
-      {addDialog === 'shift' && (
-        <CreateShiftDialog
-          onClose={() => setAddDialog(null)}
-          defaultDate={today}
-          onCreated={shiftDate => {
-            setAddDialog(null);
-            retryExtra();
-            router.push(`${ADD_DIALOG_DESTINATIONS.shift}?date=${shiftDate}`);
-          }}
-        />
-      )}
-      {addDialog === 'payroll' && (
-        <AddPayrollEntryDialog
-          onClose={() => setAddDialog(null)}
-          onCreated={() => {
-            setAddDialog(null);
-            router.push(ADD_DIALOG_DESTINATIONS.payroll);
-          }}
-        />
-      )}
     </SadbPage>
   );
 }

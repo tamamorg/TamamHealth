@@ -28,12 +28,17 @@ import type { DataScope } from './data-scope';
 import { findByType } from './db-query';
 import {
   PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES, isRequestableRole, approverTierFor,
+  IDENTITY_ATTESTATION_METHODS, isValidAttestation, roleRequiresRegistrationNumber,
 } from '../account-request-roles';
+import { issueInvite, hashInviteToken, inviteHashMatches, isInviteExpired } from '../user-invite';
 import { v4 as uuidv4 } from 'uuid';
 
 // Re-exported so server callers have one import for the whole feature; the
 // definitions live in a DB-free module the public form can also import.
-export { PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES, isRequestableRole, approverTierFor };
+export {
+  PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES, isRequestableRole, approverTierFor,
+  IDENTITY_ATTESTATION_METHODS, isValidAttestation, roleRequiresRegistrationNumber,
+};
 
 export interface NewAccountRequest {
   fullName: string;
@@ -45,6 +50,8 @@ export interface NewAccountRequest {
   hospitalId?: string;
   hospitalName?: string;
   note?: string;
+  /** Council / board number for clinical roles — free text, human-checked. */
+  professionalRegistrationNumber?: string;
 }
 
 const MAX_NOTE = 1000;
@@ -61,36 +68,92 @@ function clean(value: string | undefined, max: number): string | undefined {
  * Record a request. Callers are unauthenticated, so this validates shape and
  * nothing else — the approver is the check that matters.
  */
-export async function createAccountRequest(input: NewAccountRequest): Promise<AccountRequestDoc> {
+export async function createAccountRequest(
+  input: NewAccountRequest,
+): Promise<{ doc: AccountRequestDoc; verificationToken: string }> {
   const fullName = clean(input.fullName, MAX_FIELD);
   const email = clean(input.email, MAX_FIELD);
   if (!fullName) throw new Error('Full name is required');
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('A valid email address is required');
   if (!isRequestableRole(input.requestedRole)) throw new Error('Choose a role from the list');
 
-  const orgId = clean(input.orgId, MAX_FIELD);
+  const normalisedEmail = email.toLowerCase();
+
+  // One open request per address. Without this the form is a queue-flooding
+  // tool for anyone who can press a button ten times, and the rate limiter
+  // only caps the rate — a person filling an approver's screen with ten
+  // near-identical rows is inside it. Replacing rather than refusing keeps the
+  // honest case working: someone who mistyped their role and submits again
+  // should not be told to wait an hour.
+  const db = accountRequestsDB();
+  const existing = (await findByType<AccountRequestDoc>(db, 'account_request'))
+    .filter(doc => doc.email === normalisedEmail && doc.status === 'pending');
+
+  const invite = issueInvite();
   const now = new Date().toISOString();
   const doc: AccountRequestDoc = {
-    _id: `acctreq-${uuidv4()}`,
+    _id: existing[0]?._id ?? `acctreq-${uuidv4()}`,
+    ...(existing[0] ? { _rev: (existing[0] as AccountRequestDoc & { _rev?: string })._rev } : {}),
     type: 'account_request',
     fullName,
-    email: email.toLowerCase(),
+    email: normalisedEmail,
     phone: clean(input.phone, MAX_FIELD),
     requestedRole: input.requestedRole,
-    orgId,
+    orgId: clean(input.orgId, MAX_FIELD),
     orgName: clean(input.orgName, MAX_FIELD),
     hospitalId: clean(input.hospitalId, MAX_FIELD),
     hospitalName: clean(input.hospitalName, MAX_FIELD),
     note: clean(input.note, MAX_NOTE),
-    approverTier: approverTierFor(input.requestedRole, orgId),
+    professionalRegistrationNumber: clean(input.professionalRegistrationNumber, MAX_FIELD),
+    approverTier: approverTierFor(input.requestedRole, clean(input.orgId, MAX_FIELD)),
     status: 'pending',
-    createdAt: now,
+    // Unverified until the token below comes back. `listAccountRequests` hides
+    // unverified rows, so approver attention is only ever spent on someone who
+    // has at least proved they can read the mailbox they named.
+    emailVerifiedAt: undefined,
+    verificationTokenHash: invite.tokenHash,
+    verificationExpiresAt: invite.expiresAt,
+    createdAt: existing[0]?.createdAt ?? now,
     updatedAt: now,
   };
 
-  const db = accountRequestsDB();
   await db.put(doc as unknown as PouchDB.Core.PutDocument<object>);
-  return doc;
+  return { doc, verificationToken: invite.token };
+}
+
+export type VerificationResult =
+  | { ok: true; doc: AccountRequestDoc }
+  | { ok: false; reason: 'not_found' | 'expired' | 'already_decided' };
+
+/**
+ * Redeem an email-verification token.
+ *
+ * Same construction as the account invitation in `lib/user-invite.ts`: a
+ * random token, only its hash stored, single-use, expiring. Runs on an
+ * UNAUTHENTICATED endpoint, so every failure answers identically to the
+ * caller — the distinction here exists for the audit log, not the response.
+ */
+export async function verifyAccountRequestEmail(token: string): Promise<VerificationResult> {
+  if (!token) return { ok: false, reason: 'not_found' };
+  const db = accountRequestsDB();
+  const candidate = hashInviteToken(token);
+  const docs = await findByType<AccountRequestDoc>(db, 'account_request');
+  const match = docs.find(doc =>
+    doc.verificationTokenHash && inviteHashMatches(doc.verificationTokenHash, candidate));
+  if (!match) return { ok: false, reason: 'not_found' };
+  if (match.status !== 'pending') return { ok: false, reason: 'already_decided' };
+  if (isInviteExpired(match.verificationExpiresAt)) return { ok: false, reason: 'expired' };
+
+  const now = new Date().toISOString();
+  const updated: AccountRequestDoc = {
+    ...match,
+    emailVerifiedAt: now,
+    verificationTokenHash: undefined,
+    verificationExpiresAt: undefined,
+    updatedAt: now,
+  };
+  await db.put(updated as unknown as PouchDB.Core.PutDocument<object>);
+  return { ok: true, doc: updated };
 }
 
 /**
@@ -110,6 +173,13 @@ export async function listAccountRequests(
   const docs = await findByType<AccountRequestDoc>(db, 'account_request');
 
   const visible = docs.filter(doc => {
+    // An unverified request is not yet a request anybody should act on: the
+    // form is the one place someone outside the organisation can start a
+    // process that ends in prescribing rights, and until the token comes back
+    // every field in it is an unchecked claim about somebody else's mailbox.
+    // Decided rows stay visible whatever their verification state, so the
+    // history of what was granted is never silently pruned.
+    if (doc.status === 'pending' && !doc.emailVerifiedAt) return false;
     if (scope.role === 'super_admin') return true;
     if (scope.role !== 'org_admin') return false;
     if (doc.approverTier !== 'org_admin') return false;
@@ -125,6 +195,9 @@ export async function listAccountRequests(
 
 /** Whether this viewer may decide this specific request. */
 export function canDecide(scope: DataScope, doc: AccountRequestDoc): boolean {
+  // Same rule as the list: nobody decides a request whose email has not been
+  // proved, so a guessed request id cannot route round the verification step.
+  if (doc.status === 'pending' && !doc.emailVerifiedAt) return false;
   if (scope.role === 'super_admin') return true;
   if (scope.role !== 'org_admin') return false;
   if (doc.approverTier !== 'org_admin') return false;
@@ -150,7 +223,7 @@ export async function recordDecision(
   id: string,
   decision: Exclude<AccountRequestStatus, 'pending'>,
   actor: { username: string; name?: string },
-  extra: { decisionNote?: string; createdUsername?: string } = {},
+  extra: { decisionNote?: string; createdUsername?: string; identityAttestation?: string } = {},
 ): Promise<AccountRequestDoc> {
   const db = accountRequestsDB();
   const doc = (await db.get(id)) as unknown as AccountRequestDoc & { _rev: string };
@@ -166,6 +239,7 @@ export async function recordDecision(
     decidedAt: now,
     decisionNote: clean(extra.decisionNote, MAX_NOTE),
     createdUsername: extra.createdUsername,
+    identityAttestation: extra.identityAttestation,
     updatedAt: now,
   };
   await db.put(updated as unknown as PouchDB.Core.PutDocument<object>);

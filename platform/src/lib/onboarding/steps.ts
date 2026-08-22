@@ -64,7 +64,7 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   // Read-only for most roles; for super_admin and org_admin this page also
   // hosts the create-a-facility dialog, and registering the first facility is
   // the step every staff account depends on (`roleNeedsFacility`).
-  '/hospitals': { verb: 'Set up your facilities', desc: 'Browse facilities, their status and capacity — and register a new one, which staff accounts have to be assigned to.', est: 2 },
+  '/hospitals': { verb: 'Set up your facilities', desc: 'Browse facilities, their status and capacity, and register a new one. Open a facility for its staff, wards, equipment, inventory, schedules and settings — including adding a staff account straight to it.', est: 3 },
   '/vital-statistics': { verb: 'Review vital statistics', desc: 'See births, deaths, and population-health indicators.', est: 2 },
   '/epidemic-intelligence': { verb: 'Open epidemic intelligence', desc: 'Monitor outbreak signals and early-warning indicators.', est: 2 },
   '/mch-analytics': { verb: 'Open MCH analytics', desc: 'Track maternal and child health programme performance.', est: 2 },
@@ -74,8 +74,10 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   '/public-stats': { verb: 'View public statistics', desc: 'See the figures published for the public dashboard.', est: 1 },
   '/equipment': { verb: 'Track assets & equipment', desc: 'Register equipment and monitor maintenance and availability.', est: 2 },
   '/hr': { verb: 'Manage HR & leave', desc: 'Review staff records and approve leave requests.', est: 2 },
-  '/payments': { verb: 'Take a payment', desc: 'Record a payment, issue a receipt, and view outstanding bills.', est: 2 },
-  '/payments/claims': { verb: 'Submit an insurance claim', desc: 'Create and track claims through to adjudication.', est: 2 },
+  // Bills and claims are one workspace on one route, so they are one step:
+  // /payments/claims opens the same screen on its Claims tab and no role's nav
+  // lists it, which left a step here that no derived plan could ever show.
+  '/payments': { verb: 'Take a payment, then a claim', desc: 'Record a payment, issue a receipt, and view outstanding bills — then switch to Claims to create one and track it through to adjudication.', est: 3 },
   // Admin / org-admin
   '/admin/organizations': { verb: 'Set up organizations', desc: 'Create and configure the organizations on the platform.', est: 2 },
   '/admin/users': { verb: 'Manage all users', desc: 'Create accounts and assign roles across the platform.', est: 2 },

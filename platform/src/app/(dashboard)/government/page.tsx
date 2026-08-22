@@ -202,10 +202,6 @@ export default function GovernmentNationalDashboard() {
     return () => { cancelled = true; };
   }, []);
 
-  const activeAlerts = useMemo(
-    () => alerts.filter(a => a.alertLevel === 'watch' || a.alertLevel === 'warning' || a.alertLevel === 'emergency'),
-    [alerts],
-  );
   // ── Per-state aggregates for the map layers ──
   const stateAgg = useMemo(() => {
     const agg = new Map<string, { alertCases: number; facilities: number; immRecords: number; completenessSum: number; completenessN: number }>();

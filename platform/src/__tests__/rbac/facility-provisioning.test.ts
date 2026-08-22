@@ -248,16 +248,30 @@ describe('the scope a staff account must carry', () => {
   });
 
   test('the rules are stated once — no page or route keeps a private copy', () => {
+    // Files that decide whether an account needs a facility must read the
+    // rule from one module. The org roster stopped being one of them when its
+    // create form moved into the shared CreateUserModal — which is on the
+    // list in its place.
     for (const file of [
       'app/api/users/route.ts',
       'lib/services/user-service.ts',
-      'app/(dashboard)/org-admin/users/page.tsx',
+      'components/admin/CreateUserModal.tsx',
       'app/(dashboard)/admin/users/page.tsx',
     ]) {
       const text = source(file);
       expect(text).not.toMatch(/ROLES_WITHOUT_HOSPITAL\s*:\s*UserRole\[\]\s*=/);
       expect(text).not.toMatch(/rolesWithoutHospital\s*:\s*UserRole\[\]\s*=/);
       expect(text).toContain('user-scope-rules');
+    }
+    // Pages that delegate must not quietly grow their own list back.
+    for (const file of [
+      'app/(dashboard)/org-admin/users/page.tsx',
+      'components/facilities/FacilityManageTabs.tsx',
+    ]) {
+      const text = source(file);
+      expect(text).not.toMatch(/ROLES_WITHOUT_HOSPITAL\s*:\s*UserRole\[\]\s*=/);
+      expect(text).not.toMatch(/rolesWithoutHospital\s*:\s*UserRole\[\]\s*=/);
+      expect(text).not.toMatch(/roleNeedsFacility/);
     }
   });
 

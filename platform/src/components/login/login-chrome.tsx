@@ -233,6 +233,12 @@ export const loginStyles = (
 
     /* Demo credential hint under the fields (the patient portal has one demo
        account, not a roster, so it is a line rather than a panel). */
+    /* Second-factor entry. Monospaced and widely tracked because it is read
+       off a phone one character at a time, often on a cracked screen. */
+    .lg-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 22px; letter-spacing: 0.3em; text-align: center;
+    }
     .lg-hint { margin: -6px 0 0; font-size: 13px; color: var(--lg-neutral-600); }
     .lg-hint strong { font-weight: 700; color: var(--lg-neutral-800); }
 

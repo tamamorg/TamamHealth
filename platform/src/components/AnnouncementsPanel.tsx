@@ -7,10 +7,16 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/context';
-import type { AnnouncementDoc, AnnouncementAudience, AnnouncementPriority } from '@/lib/db-types';
+import type { AnnouncementDoc, AnnouncementAudience, AnnouncementPriority, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
+import { ROLE_PERMISSIONS } from '@/lib/permissions';
 import { Megaphone, X, Loader2, Send, Plus, Check } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+
+/** Roles an announcement can target. National oversight roles are excluded —
+ *  they are not an org's staff, so an org announcement can't reach them. */
+const TARGETABLE_ROLES = (Object.keys(ROLE_PERMISSIONS) as UserRole[])
+  .filter(r => r !== 'super_admin' && r !== 'government' && r !== 'county_health_director');
 
 const PRIORITY_STYLE: Record<AnnouncementPriority, { color: string; bg: string; label: string }> = {
   normal: { color: 'var(--text-secondary)', bg: 'var(--overlay-medium)', label: 'Normal' },
@@ -30,8 +36,35 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
   const [bodyText, setBodyText] = useState('');
   const [audience, setAudience] = useState<AnnouncementAudience>('organization');
   const [priority, setPriority] = useState<AnnouncementPriority>('normal');
+  const [targetRoles, setTargetRoles] = useState<UserRole[]>([]);
+  // Facility-bound authors always post to their own facility. Org-level
+  // authors (no hospitalId — org admins, HQ roles) must pick which facility
+  // they mean, so the post can't fall through as facility-less and leak
+  // org-wide.
+  const [facilities, setFacilities] = useState<{ _id: string; name: string }[]>([]);
+  const [facilityChoice, setFacilityChoice] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const isOrgLevelAuthor = !!currentUser && !currentUser.hospitalId;
+
+  useEffect(() => {
+    if (!composing || audience !== 'facility' || !isOrgLevelAuthor || facilities.length > 0 || !currentUser) return;
+    let cancelled = false;
+    (async () => {
+      const { getAllHospitals } = await import('@/lib/services/hospital-service');
+      const list = await getAllHospitals({
+        role: currentUser.role,
+        orgId: currentUser.orgId,
+        hospitalId: currentUser.hospitalId,
+      });
+      if (!cancelled) setFacilities(list.map(h => ({ _id: h._id, name: h.name })));
+    })().catch(() => { /* offline — the picker just stays empty */ });
+    return () => { cancelled = true; };
+  }, [composing, audience, isOrgLevelAuthor, facilities.length, currentUser]);
+
+  const toggleRole = (role: UserRole) => {
+    setTargetRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]);
+  };
 
   const load = useCallback(async () => {
     if (!currentUser) return;
@@ -62,19 +95,24 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
     setSaving(true);
     try {
       const { createAnnouncement } = await import('@/lib/services/announcement-service');
+      const chosenFacility = isOrgLevelAuthor
+        ? facilities.find(h => h._id === facilityChoice)
+        : { _id: currentUser.hospitalId as string, name: currentUser.hospitalName as string };
       await createAnnouncement({
         title,
         body: bodyText,
         audience,
         priority,
+        targetRoles: audience === 'role' ? targetRoles : undefined,
         authorId: currentUser._id,
         authorName: currentUser.name,
-        facilityId: audience === 'facility' ? currentUser.hospitalId : undefined,
-        facilityName: audience === 'facility' ? currentUser.hospitalName : undefined,
+        facilityId: audience === 'facility' ? chosenFacility?._id : undefined,
+        facilityName: audience === 'facility' ? chosenFacility?.name : undefined,
         orgId: currentUser.orgId,
         payam: currentUser.payam,
       });
       setTitle(''); setBodyText(''); setAudience('organization'); setPriority('normal');
+      setTargetRoles([]); setFacilityChoice('');
       setComposing(false);
       await load();
     } catch (err) {
@@ -119,7 +157,8 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
           <div className="grid grid-cols-2 gap-2">
             <Select value={audience} onChange={e => setAudience(e.target.value as AnnouncementAudience)} className="px-2.5 py-1.5 rounded-md text-sm" style={inputStyle}>
               <option value="organization">Whole organization</option>
-              <option value="facility">My facility</option>
+              <option value="facility">{isOrgLevelAuthor ? 'One facility' : 'My facility'}</option>
+              <option value="role">Specific roles</option>
             </Select>
             <Select value={priority} onChange={e => setPriority(e.target.value as AnnouncementPriority)} className="px-2.5 py-1.5 rounded-md text-sm" style={inputStyle}>
               <option value="normal">Normal</option>
@@ -127,6 +166,33 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
               <option value="urgent">Urgent</option>
             </Select>
           </div>
+          {audience === 'facility' && isOrgLevelAuthor && (
+            <Select value={facilityChoice} onChange={e => setFacilityChoice(e.target.value)} className="w-full px-2.5 py-1.5 rounded-md text-sm" style={inputStyle}>
+              <option value="">Choose a facility…</option>
+              {facilities.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
+            </Select>
+          )}
+          {audience === 'role' && (
+            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto py-0.5">
+              {TARGETABLE_ROLES.map(role => {
+                const on = targetRoles.includes(role);
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => toggleRole(role)}
+                    aria-pressed={on}
+                    className="text-[11px] font-semibold px-2 py-1 rounded-full"
+                    style={on
+                      ? { background: 'var(--accent-primary)', color: 'var(--color-white)' }
+                      : { background: 'var(--overlay-medium)', color: 'var(--text-secondary)' }}
+                  >
+                    {ROLE_PERMISSIONS[role].label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             <button onClick={() => { setComposing(false); setError(''); }} className="btn btn-secondary btn-sm">Cancel</button>
             <button onClick={handlePost} disabled={saving} className="btn btn-primary btn-sm">
@@ -163,6 +229,10 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
                 <p className="text-xs mt-1 whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>{a.body}</p>
                 <p className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
                   {a.authorName} · {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ''}
+                  {a.audience === 'facility' && a.facilityName ? ` · ${a.facilityName}` : ''}
+                  {a.audience === 'role' && (a.targetRoles || []).length > 0
+                    ? ` · ${(a.targetRoles || []).map(r => ROLE_PERMISSIONS[r]?.label || r).join(', ')}`
+                    : ''}
                 </p>
               </div>
             );

@@ -746,7 +746,9 @@ export default function BillingTab({
       {showRefund && (
         <Modal onClose={() => setShowRefund(false)} width={460} labelledBy="bl-refund-title">
           <div className="bl-root bl-modal-body">
-            <h3 className="bl-modal-title" id="bl-refund-title">{t('billing.issueRefund')}</h3>
+            <div className="bl-modal-head">
+              <h3 className="bl-modal-title" id="bl-refund-title">{t('billing.issueRefund')}</h3>
+            </div>
             {refundablePayments.length === 0 ? (
               <div className="bl-empty" style={{ padding: '20px 0' }}>
                 <p>{t('billing.noRefundablePayments')}</p>
@@ -799,7 +801,9 @@ export default function BillingTab({
       {showAdjustment && (
         <Modal onClose={() => setShowAdjustment(false)} width={460} labelledBy="bl-adj-title">
           <div className="bl-root bl-modal-body">
-            <h3 className="bl-modal-title" id="bl-adj-title">{t('billing.adjustmentWriteOff')}</h3>
+            <div className="bl-modal-head">
+              <h3 className="bl-modal-title" id="bl-adj-title">{t('billing.adjustmentWriteOff')}</h3>
+            </div>
             <div className="bl-field">
               <label htmlFor="bl-adj-type">{t('billing.adjustmentType')}</label>
               <Select id="bl-adj-type" value={adjForm.adjustmentType} onChange={e => setAdjForm({ ...adjForm, adjustmentType: e.target.value as AdjustmentType })}>
@@ -851,7 +855,9 @@ export default function BillingTab({
       {showPaymentLink && (
         <Modal onClose={() => setShowPaymentLink(false)} width={440} labelledBy="bl-link-title">
           <div className="bl-root bl-modal-body">
-            <h3 className="bl-modal-title" id="bl-link-title">{t('billing.sendPaymentLink')}</h3>
+            <div className="bl-modal-head">
+              <h3 className="bl-modal-title" id="bl-link-title">{t('billing.sendPaymentLink')}</h3>
+            </div>
 
             {!createdLink ? (
               <>

@@ -22,9 +22,7 @@ import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { appointmentStatusLabel } from '@/lib/appointment-status';
-import { useRouter } from 'next/navigation';
 import { useUsers } from '@/lib/hooks/useUsers';
-import { usePermissions } from '@/lib/hooks/usePermissions';
 import type { AppointmentDoc, AppointmentPriority, AppointmentStatus, AppointmentType, PatientDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 
@@ -89,14 +87,10 @@ export default function AppointmentEditModal({
    */
   inline?: boolean;
 }) {
-  const router = useRouter();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { departments } = useSettings();
   const { users } = useUsers();
-  const { canAccess } = usePermissions();
-  // The same test the Edge proxy applies to the route the Join button opens,
-  // so what the dialog offers and what the router will allow cannot disagree.
   // Providers who can carry a visit at this facility.
   const providerOptions = useMemo(() => users
     .filter(u => (u.role === 'doctor' || u.role === 'clinical_officer')

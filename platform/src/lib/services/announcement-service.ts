@@ -23,7 +23,10 @@ interface Viewer {
 
 /**
  * Announcements visible to a viewer: org-scoped, not expired, not dismissed,
- * and matching the audience (whole org, the viewer's facility, or their role).
+ * and matching the audience (whole org, a specific facility, or specific
+ * roles). Authors always see their own posts — otherwise an org admin who
+ * targets a facility they don't belong to publishes into a void they can't
+ * inspect.
  */
 export async function getVisibleAnnouncements(scope: DataScope, viewer: Viewer): Promise<AnnouncementDoc[]> {
   const db = announcementsDB();
@@ -34,8 +37,13 @@ export async function getVisibleAnnouncements(scope: DataScope, viewer: Viewer):
     .filter(a => !a.expiresAt || a.expiresAt > now)
     .filter(a => !viewer.userId || !(a.dismissedBy || []).includes(viewer.userId))
     .filter(a => {
+      if (!!viewer.userId && a.authorId === viewer.userId) return true;
       if (a.audience === 'organization') return true;
-      if (a.audience === 'facility') return !a.facilityId || a.facilityId === viewer.hospitalId;
+      // Fail closed: a facility-audience post with no facilityId used to show
+      // to EVERY facility in the org — the exact opposite of what its author
+      // chose. createAnnouncement now rejects that shape; legacy docs stay
+      // visible only to their author.
+      if (a.audience === 'facility') return !!a.facilityId && a.facilityId === viewer.hospitalId;
       if (a.audience === 'role') return (a.targetRoles || []).includes(viewer.role);
       return true;
     })
@@ -47,6 +55,14 @@ export async function createAnnouncement(
 ): Promise<AnnouncementDoc> {
   if (!data.title?.trim() || !data.body?.trim()) {
     throw new Error('Title and message are required');
+  }
+  // A targeted audience must actually name its target, or visibility filters
+  // have nothing to match and the post either leaks org-wide or vanishes.
+  if (data.audience === 'facility' && !data.facilityId) {
+    throw new Error('Choose which facility this announcement is for');
+  }
+  if (data.audience === 'role' && !(data.targetRoles || []).length) {
+    throw new Error('Choose at least one role to announce to');
   }
   const db = announcementsDB();
   const now = new Date().toISOString();

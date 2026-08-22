@@ -9,25 +9,24 @@
  * facility ids are different: the public form already lists them, so this
  * route validates their relationship before storing the request.
  */
+import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
-} from '@/lib/api-auth';
+  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError } from '@/lib/api-auth';
 import { buildScopeFromAuth } from '@/lib/services/data-scope';
-import type { UserRole } from '@/lib/db-types';
 import { rateLimit } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/request-utils';
+import { withAuditLog } from '@/lib/audit/with-audit';
 import {
-  createAccountRequest, listAccountRequests, isRequestableRole,
-} from '@/lib/services/account-request-service';
+  createAccountRequest, listAccountRequests, isRequestableRole } from '@/lib/services/account-request-service';
 import {
-  accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility,
-} from '@/lib/account-request-roles';
+  accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility } from '@/lib/account-request-roles';
+import { notifyRequestSubmitted } from '@/lib/services/account-request-notify';
 
 export const runtime = 'nodejs';
 
 /** Only the two roles that can create an account can approve a request. */
-const APPROVER_ROLES: UserRole[] = ['super_admin', 'org_admin'];
+const APPROVER_ROLES = ADMIN;
 
 /**
  * Ten requests per hour per IP. Generous for a clinic behind one NAT address
@@ -37,13 +36,20 @@ const APPROVER_ROLES: UserRole[] = ['super_admin', 'org_admin'];
 const SUBMIT_LIMIT = 10;
 const SUBMIT_WINDOW_MS = 60 * 60 * 1000;
 
-/** Same answer for every outcome — see the note at the top of this file. */
+/**
+ * Same answer for every outcome — see the note at the top of this file.
+ *
+ * It now also has to be the same answer whether or not the address already
+ * has an account or an open request, which is why it describes what the
+ * PERSON should do next rather than what the server did.
+ */
 const ACCEPTED = {
   ok: true,
-  message: 'Request received. An administrator will review it and contact you if it is approved.',
+  message: 'Check your email and open the confirmation link. '
+    + 'Once you confirm your address, an administrator will review your request.',
 };
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     let body: Record<string, unknown>;
     try {
@@ -96,7 +102,7 @@ export async function POST(request: NextRequest) {
       hospitalName = hospital.name;
     }
     try {
-      await createAccountRequest({
+      const { doc, verificationToken } = await createAccountRequest({
         fullName: str(body.fullName) ?? '',
         email: str(body.email) ?? '',
         phone: str(body.phone),
@@ -106,7 +112,12 @@ export async function POST(request: NextRequest) {
         hospitalId,
         hospitalName,
         note: str(body.note),
+        professionalRegistrationNumber: str(body.professionalRegistrationNumber),
       });
+      // Ask the address to prove itself. Awaited rather than fired and
+      // forgotten, because the answer below is the same either way and a
+      // serverless invocation that returns first may never run the tail.
+      await notifyRequestSubmitted(doc, verificationToken);
     } catch (err) {
       // Shape problems the person can fix are worth returning; anything else
       // is an internal fault and must not describe the system to a stranger.
@@ -124,6 +135,14 @@ export async function POST(request: NextRequest) {
     return serverError();
   }
 }
+
+/**
+ * The one public write in the application, and until now the only mutation
+ * that produced no audit row at all. Unauthenticated requests are recorded as
+ * `anonymous`, which is precisely the traffic an auditor wants to be able to
+ * count after the fact.
+ */
+export const POST = withAuditLog(postHandler, { action: 'account_request.submit' });
 
 export async function GET(request: NextRequest) {
   try {

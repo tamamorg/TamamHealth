@@ -20,7 +20,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Loader2, Video } from '@/components/icons/lucide';
+import { ChevronLeft, ChevronRight, Loader2 } from '@/components/icons/lucide';
 import StaffAvatar from '@/components/staff/StaffAvatar';
 import type { Slot } from '@/lib/booking/slot-engine';
 import { addDays, datesBetween } from '@/lib/booking/slot-engine';

@@ -17,6 +17,7 @@
  * handles Edit, so nothing here knows about form state.
  */
 
+import type { ReactNode } from 'react';
 import type { ReviewGroup } from './review-groups';
 
 export interface RegistrationReviewProps {
@@ -33,10 +34,16 @@ export interface RegistrationReviewProps {
   editLabel: string;
   /** Jump back to the form at that section. */
   onEdit: (sectionIndex: number) => void;
+  /**
+   * Rendered above the read-back — the duplicate-record warning. It sits here
+   * rather than at the top of the step because the clerk should see who they
+   * are about to create before being told someone like them already exists.
+   */
+  notice?: ReactNode;
 }
 
 export default function RegistrationReview({
-  title, eyebrow, heading, photoUrl, photoAlt, groups, editLabel, onEdit,
+  title, eyebrow, heading, photoUrl, photoAlt, groups, editLabel, onEdit, notice,
 }: RegistrationReviewProps) {
   return (
     <section className="registration-section omrs-reg-section omrs-reg-review" id="reg-review">
@@ -58,6 +65,8 @@ export default function RegistrationReview({
           <h3>{heading}</h3>
         </div>
       </div>
+
+      {notice}
 
       <div className="omrs-reg-reviewgroups">
         {groups.map(group => (

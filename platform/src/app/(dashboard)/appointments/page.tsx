@@ -12,10 +12,21 @@ import {
 import { useRouter } from 'next/navigation';
 import { getDefaultDashboard } from '@/lib/role-routes';
 import {
-  Calendar, Plus, User, RefreshCw, Clock,
-  Video, Stethoscope, Syringe, HeartPulse, FlaskConical,
-  X, UserPlus, ChevronLeft, ChevronRight,
-  Download, Search,
+  Calendar,
+  Plus,
+  User,
+  RefreshCw,
+  Clock,
+  Stethoscope,
+  Syringe,
+  HeartPulse,
+  FlaskConical,
+  X,
+  UserPlus,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Search,
 } from '@/components/icons/lucide';
 import EhrMiniCalendar, { parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import { calendarPeriodLabel, calendarPeriodRange, countInPeriod } from './_calendar-period';

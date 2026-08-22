@@ -262,5 +262,40 @@ export function productionConfigWarnings(env: ConfigEnv): string[] {
     );
   }
 
+  // Outbound email is how a new member of staff gets their account and how
+  // anyone recovers a forgotten password. The default provider writes the
+  // message to stdout and reports success, and the per-account copy is honest
+  // about it — but only to whoever happens to be looking at that one dialog.
+  // Nothing said it at deploy time, so a production platform could run for
+  // months onboarding every user by telephone, one temporary password at a
+  // time, with no signal that anything was wrong.
+  const provider = (env.EMAIL_PROVIDER || 'log').toLowerCase();
+  if (provider === 'log') {
+    warnings.push(
+      'EMAIL_PROVIDER is unset (defaulting to "log") — invitations, password-reset links '
+      + 'and account-request confirmations are written to the server log and NEVER SENT. '
+      + 'Every new user must be onboarded by hand. Set EMAIL_PROVIDER=sendgrid|resend|smtp '
+      + 'and its API key.',
+    );
+  } else if (provider === 'sendgrid' && !env.SENDGRID_API_KEY) {
+    warnings.push('EMAIL_PROVIDER=sendgrid but SENDGRID_API_KEY is not set — every send will fail.');
+  } else if (provider === 'resend' && !env.RESEND_API_KEY) {
+    warnings.push('EMAIL_PROVIDER=resend but RESEND_API_KEY is not set — every send will fail.');
+  } else if (provider === 'smtp' && !env.SMTP_URL) {
+    warnings.push('EMAIL_PROVIDER=smtp but SMTP_URL is not set — every send will fail.');
+  }
+
+  // Without it, `buildAppUrl` returns null and every emailed link is refused
+  // before it is sent. That is the right behaviour — a relative URL in a mail
+  // client silently does nothing — but it means invitations fail with a
+  // reason nobody sees unless it is said here.
+  if (!env.NEXT_PUBLIC_APP_URL) {
+    warnings.push(
+      'No NEXT_PUBLIC_APP_URL — invitation, password-reset and account-confirmation links '
+      + "cannot be built, so none of those emails will be sent at all. Set it to this "
+      + 'deployment\'s public address (e.g. https://app.example.org).',
+    );
+  }
+
   return warnings;
 }

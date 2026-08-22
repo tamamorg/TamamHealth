@@ -4,9 +4,16 @@ import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import {
-  AlertTriangle, Shield, TrendingUp, TrendingDown,
-  Minus, FileText, ChevronRight,
-  Download, Plus, X, BarChart3,
+  AlertTriangle,
+  Shield,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  FileText,
+  ChevronRight,
+  Download,
+  Plus,
+  X,
 } from '@/components/icons/lucide';
 import EmptyState from '@/components/EmptyState';
 import Badge, { type BadgeTone } from '@/components/Badge';

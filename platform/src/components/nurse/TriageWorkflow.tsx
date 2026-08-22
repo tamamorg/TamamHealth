@@ -16,10 +16,8 @@ import { patientAge, patientFullName, patientGenderAge, initials, shortenPersonN
 import {
   getTriageVitalWarnings,
   isLowerTriagePriority,
-  isVitalInRange,
   recommendTriagePriority,
   validateTriageVitals,
-  VITAL_RANGES,
   type TriageVitalField,
   type TriageVitalWarning,
 } from '@/lib/clinical/vitals';

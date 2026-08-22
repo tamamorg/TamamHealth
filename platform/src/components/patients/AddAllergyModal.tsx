@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { todayIso } from '@/lib/date-utils';
 import { AlertTriangle, X } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import CodedSearchField from '@/components/CodedSearchField';
@@ -95,12 +96,32 @@ export default function AddAllergyModal({
           </div>
         </div>
 
-        <input
-          value={reaction}
-          onChange={e => setReaction(e.target.value)}
-          placeholder="Reaction (e.g. anaphylaxis, rash)"
-          className={inputCls} style={inputStyle}
-        />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reaction</label>
+            <input
+              value={reaction}
+              onChange={e => setReaction(e.target.value)}
+              placeholder="e.g. anaphylaxis, rash"
+              className={inputCls} style={inputStyle}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            {/* The onset date was in the submitted payload from the start and
+                had no field to fill it, so every allergy added here was stored
+                with an empty one. `AllergiesModal` — the same record, reached
+                from a note — has always had this input. */}
+            <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Onset date</label>
+            <input
+              type="date"
+              value={onsetDate}
+              onChange={e => setOnsetDate(e.target.value)}
+              max={todayIso()}
+              aria-label="Onset date"
+              className={inputCls} style={inputStyle}
+            />
+          </div>
+        </div>
 
         {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
 
