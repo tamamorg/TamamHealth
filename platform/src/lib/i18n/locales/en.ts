@@ -2024,6 +2024,7 @@ const en: TranslationMap = {
   'hospitals.infraSolar': 'Solar',
   'hospitals.infrastructure': 'Infrastructure',
   'hospitals.keyStaff': 'Key Staff ({{count}})',
+  'hospitals.noContactDetails': 'No phone or email on record',
   'hospitals.kpiActiveAdmissions': 'Active Admissions',
   'hospitals.kpiAvgLabTat': 'Avg Lab TAT (hrs)',
   'hospitals.kpiDischargesToday': 'Discharges Today',

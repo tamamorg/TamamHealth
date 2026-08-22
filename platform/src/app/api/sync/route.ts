@@ -218,7 +218,14 @@ const WARDS_DB_ALL_TABLES = ['wards', 'beds', 'admissions'];
  * mapping; for multi-type databases (currently only the wards DB) it routes by
  * the document's `type` so each type lands in its own analytics table.
  */
+const NO_NATIONAL_PROJECTION = new Set(['system_config', 'facility_settings']);
+
 function resolveTable(db: string, doc?: Record<string, unknown>): string | undefined {
+  // Configuration is not a clinical record. `system_config` shares the
+  // hospitals database, and without this it would be upserted into the
+  // `hospitals` analytics table by the facility field-mapper — a settings
+  // document filed as a health facility.
+  if (typeof doc?.type === 'string' && NO_NATIONAL_PROJECTION.has(doc.type)) return undefined;
   if (db === 'tamamhealth_wards') {
     const t = typeof doc?.type === 'string' ? WARDS_DB_TABLES[doc.type] : undefined;
     return t || DB_TABLE_MAP[db];
@@ -1263,7 +1270,16 @@ export async function POST(request: NextRequest) {
           // Skip design documents
           if (change.id.startsWith('_design/')) continue;
 
-          const table = resolveTable(db, change.doc) || baseTable;
+          const resolved = resolveTable(db, change.doc);
+          // A type with no national projection is not an error — skip it and
+          // advance the checkpoint, or the worker would retry it forever.
+          if (resolved === undefined && typeof (change.doc as { type?: unknown })?.type === 'string'
+              && NO_NATIONAL_PROJECTION.has((change.doc as { type: string }).type)) {
+            processed++;
+            lastSeq = change.seq;
+            continue;
+          }
+          const table = resolved || baseTable;
           const mapper = FIELD_MAPPERS[table];
           if (!mapper) {
             console.error(`[Sync] No field mapper for table: ${table} (db ${db}, doc ${change.id})`);

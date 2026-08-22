@@ -34,6 +34,7 @@ import {
   activeNavItem,
   getPrimaryShortcutItems,
   groupNavItemsBySection,
+  navItemLabel,
   isHrefAllowed,
   uniqueAllowedNavItems,
 } from './ehr-navigation';
@@ -155,38 +156,7 @@ export default function EhrTopRail() {
   );
 
 
-  const navLabel = (item: NavItem): string => {
-    const keyMap: Record<string, string> = {
-      '/dashboard': 'nav.dashboard',
-      '/patients': 'nav.patients',
-      '/consultation': 'nav.consultation',
-      '/appointments': 'nav.appointments',
-      '/referrals': 'nav.referrals',
-      '/lab': 'nav.lab',
-      '/pharmacy': 'nav.pharmacy',
-      '/immunizations': 'nav.immunizations',
-      '/anc': 'nav.anc',
-      '/births': 'nav.births',
-      '/deaths': 'nav.deaths',
-      '/surveillance': 'nav.surveillance',
-      '/hospitals': 'nav.hospitals',
-      '/reports': 'nav.reports',
-      '/messages': 'nav.messages',
-      '/settings': 'nav.settings',
-      '/government': 'nav.government',
-      '/facility-settings': 'nav.facilitySettings',
-      '/payments': 'nav.payments',
-      '/payments/claims': 'nav.claims',
-      '/wards': 'nav.wards',
-      '/blood-bank': 'nav.bloodBank',
-    };
-    const key = item.href ? keyMap[item.href] : undefined;
-    if (key) {
-      const translated = t(key);
-      if (translated !== key) return translated;
-    }
-    return item.label;
-  };
+  const navLabel = (item: NavItem): string => navItemLabel(item, t);
 
   // Resolved once, then handed to the dropdown and the shortcut row, so all
   // three surfaces name the same module instead of each matching on its own.

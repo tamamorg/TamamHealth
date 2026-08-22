@@ -49,6 +49,32 @@ function emptyConfig(orgId: string): SystemConfigDoc {
   };
 }
 
+/**
+ * Configuration scope for a platform operator, who belongs to no organization.
+ *
+ * `super_admin` accounts carry no `orgId` — that is what makes them
+ * cross-tenant. System administration keyed everything off `orgId` alone, so
+ * for the one role whose actual job is platform configuration the console
+ * loaded nothing and every toggle answered "No organization on this account."
+ * A scope of its own gives the platform its own configuration document,
+ * separate from any tenant's.
+ */
+export const PLATFORM_CONFIG_SCOPE = 'platform';
+
+/**
+ * Which configuration document this session reads and writes.
+ *
+ * An organization always wins when there is one — a super-admin acting inside
+ * a tenant configures that tenant, not the platform. Only a platform operator
+ * with no organization falls back to the platform scope, and every other role
+ * gets an empty scope rather than an invented one, so a nurse cannot be handed
+ * platform configuration by an accident of ordering.
+ */
+export function systemConfigScope(orgId: string | undefined, role: string | undefined): string {
+  if (orgId) return orgId;
+  return role === 'super_admin' ? PLATFORM_CONFIG_SCOPE : '';
+}
+
 /** Read the org's config doc, or a fresh (unsaved) empty one if none exists yet. */
 export async function getSystemConfig(orgId: string): Promise<SystemConfigDoc> {
   if (!orgId) return emptyConfig('');

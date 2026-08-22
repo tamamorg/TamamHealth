@@ -8,7 +8,18 @@
  */
 
 export type RoleSettingRow =
-  | { kind: 'toggle'; key: string; label: string; hint: string; def: boolean }
+  /**
+   * `pending` marks a row that is DECLARED but not WIRED — the control renders
+   * so the intent is visible, and nothing reads its value.
+   *
+   * It exists because `mar.barcode` ("Barcode scan before administering —
+   * Confirms patient and drug") shipped defaulted ON while the platform has no
+   * bedside barcode scanning and nothing anywhere reads the key. In a
+   * medication-administration context that is a safety affordance that lies: a
+   * nurse could reasonably believe the system verifies patient and drug before
+   * a dose. Marking it keeps the roadmap visible without the claim.
+   */
+  | { kind: 'toggle'; key: string; label: string; hint: string; def: boolean; pending?: true }
   | { kind: 'select'; key: string; label: string; hint: string; def: string; options: string[] }
   | { kind: 'text'; key: string; label: string; hint: string; def: string }
   | { kind: 'locked'; label: string; hint: string; value: string }
@@ -39,8 +50,8 @@ export type RoleSettingsSpec = {
   sections: RoleSettingSection[];
 };
 
-const tg = (key: string, label: string, hint: string, def: boolean): RoleSettingRow =>
-  ({ kind: 'toggle', key, label, hint, def });
+const tg = (key: string, label: string, hint: string, def: boolean, pending?: true): RoleSettingRow =>
+  ({ kind: 'toggle', key, label, hint, def, ...(pending ? { pending } : {}) });
 const sel = (key: string, label: string, hint: string, def: string, options: string[]): RoleSettingRow =>
   ({ kind: 'select', key, label, hint, def, options });
 const lock = (label: string, hint: string, value: string): RoleSettingRow =>
@@ -151,7 +162,9 @@ const NURSE: RoleSettingsSpec = {
     {
       id: 'mar', title: 'Medication administration', icon: 'pill', note: 'MAR behaviour at the bedside',
       rows: [
-        tg('mar.barcode', 'Barcode scan before administering', 'Confirms patient and drug', true),
+        // Not wired: the platform has no bedside barcode scanning, and nothing
+        // reads this key. Shown as unavailable rather than as a live safety check.
+        tg('mar.barcode', 'Barcode scan before administering', 'Confirms patient and drug', true, true),
         sel('mar.reminder', 'Dose-due reminder', 'How early the MAR alerts you', '15 min before', ['5 min before', '15 min before', '30 min before']),
         tg('mar.missedReason', 'Require a reason for a missed dose', 'Recorded in the audit log', true),
         lock('Controlled substance witness', 'Second signature at administration', 'Facility-managed'),

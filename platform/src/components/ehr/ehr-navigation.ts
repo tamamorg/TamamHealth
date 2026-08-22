@@ -211,3 +211,63 @@ export function getPageHeaderNavItems(
     .slice(RAIL_SHORTCUT_COUNT)
     .slice(0, count);
 }
+
+
+/**
+ * The canonical name for a destination, whatever a role's nav table calls it.
+ *
+ * The same page is labelled differently by different roles — `/payments` had
+ * six names across the product (Bills · Revenue & Bills · Checkout Payments ·
+ * Collect Payment · Bills & Invoices · Billing & Payments), `/lab` five. Some
+ * of that is deliberate framing worth keeping (a midwife's "Mothers & Babies"
+ * for the patient registry). Most is drift, and it made a support answer
+ * unanswerable: "open Bills" names one of six rows.
+ *
+ * The desktop rail already resolved this through a private keymap. The mobile
+ * module sheet did not — it rendered `item.label` raw, so the two surfaces
+ * disagreed with each other. Sharing the resolver is what makes them agree;
+ * the labels in `permissions.ts` stay the fallback they already were.
+ */
+const NAV_LABEL_KEYS: Record<string, string> = {
+  '/dashboard': 'nav.dashboard',
+  '/patients': 'nav.patients',
+  '/consultation': 'nav.consultation',
+  '/appointments': 'nav.appointments',
+  '/referrals': 'nav.referrals',
+  '/lab': 'nav.lab',
+  '/pharmacy': 'nav.pharmacy',
+  '/immunizations': 'nav.immunizations',
+  '/anc': 'nav.anc',
+  '/births': 'nav.births',
+  '/deaths': 'nav.deaths',
+  '/surveillance': 'nav.surveillance',
+  '/hospitals': 'nav.hospitals',
+  '/reports': 'nav.reports',
+  '/messages': 'nav.messages',
+  '/settings': 'nav.settings',
+  '/government': 'nav.government',
+  '/facility-settings': 'nav.facilitySettings',
+  '/payments': 'nav.payments',
+  '/payments/claims': 'nav.claims',
+  '/wards': 'nav.wards',
+  '/blood-bank': 'nav.bloodBank',
+};
+
+/** Hrefs with one agreed name. Exported so a test can assert the coverage. */
+export const CANONICAL_NAV_HREFS = Object.keys(NAV_LABEL_KEYS);
+
+/**
+ * Resolve a nav item's display name.
+ *
+ * `translate` is the caller's `t`; a missing key returns the key itself, which
+ * is the signal to fall back to the role's own label rather than render
+ * `nav.payments` at somebody.
+ */
+export function navItemLabel(item: NavItem, translate: (key: string) => string): string {
+  const key = item.href ? NAV_LABEL_KEYS[item.href] : undefined;
+  if (key) {
+    const translated = translate(key);
+    if (translated !== key) return translated;
+  }
+  return item.label;
+}

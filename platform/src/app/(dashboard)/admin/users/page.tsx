@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -10,10 +10,9 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import type { UserDoc, UserRole } from '@/lib/db-types';
 import {
   UserX, UserCheck, UserPlus, Shield, Building2,
-  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Info,
+  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff,
 } from '@/components/icons/lucide';
-import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
-import type { RowAction } from '@/components/RowActionsMenu';
+import { isRowActivationKey } from '@/components/RowActionsPopup';
 import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
 import { generateTempPassword } from '@/lib/temp-password';
 import { avatarTint } from '@/lib/patient-utils';
@@ -64,7 +63,6 @@ export default function AdminUsersPage() {
   const [focusedUserId, setFocusedUserId] = useState<string | null>(null);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterOrg, setFilterOrg] = useState<string>('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [changeRoleUser, setChangeRoleUser] = useState<UserDoc | null>(null);
   const [newRole, setNewRole] = useState<UserRole>('nurse');
   const [changingRole, setChangingRole] = useState(false);
@@ -105,7 +103,15 @@ export default function AdminUsersPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<UserDoc | null>(null);
   // One popup for the whole list — the row that was clicked supplies its own
   // actions and the pointer position, so a hundred rows cost one portal.
-  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
+  // Opening a row opens its card: the account's full record and everything
+  // you can do to it in one surface, rather than a menu whose first item
+  // expanded a strip the menu was then covering.
+  //
+  // Held by id, not by document: the roster updates rows in place (activating
+  // an account rewrites its `isActive` without a refetch), and a card holding
+  // its own copy would go on showing the state the row had when it opened. It
+  // also lets ?user=<id> open a card before the roster has finished loading.
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [deactivating, setDeactivating] = useState(false);
   // Roster and account requests are two views of one card: approving a request
   // IS creating a user, so it belongs where users are managed rather than in a
@@ -124,7 +130,7 @@ export default function AdminUsersPage() {
     const user = params.get('user');
     if (user) {
       setFocusedUserId(user);
-      setExpandedId(user);
+      setDetailUserId(user);
     }
     // ?new=1 — the facility dashboards' "Add user" buttons deep-link straight
     // into the create form with a temporary password already generated.
@@ -289,45 +295,6 @@ export default function AdminUsersPage() {
     }
   };
 
-  /**
-   * What a row offers. Lifted out of the row so the same set serves the click
-   * handler and the keyboard handler, and so the row markup stays a table row
-   * rather than a table row plus a menu definition.
-   *
-   * "View details" carries the expandable panel that clicking the row used to
-   * open. Row-click now opens the actions, and losing the detail panel to make
-   * room for them would have been a trade, not a fix.
-   */
-  const actionsFor = (u: UserDoc): RowAction[] => [
-    {
-      key: 'details',
-      label: expandedId === u._id ? 'Hide details' : 'View details',
-      icon: <Info className="w-4 h-4" />,
-      onClick: () => setExpandedId(expandedId === u._id ? null : u._id),
-    },
-    {
-      key: 'change-role',
-      label: 'Change Role',
-      icon: <Shield className="w-4 h-4" />,
-      onClick: () => { setChangeRoleUser(u); setNewRole(u.role); },
-    },
-    {
-      key: 'reset-password',
-      label: 'Reset Password',
-      icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
-      onClick: () => { setResetUser(u); setResetPasswordValue(generateTempPassword()); setResetError(null); setShowResetPassword(true); },
-    },
-    {
-      key: 'toggle',
-      label: u.isActive ? t('adminUsers.deactivate') : t('adminUsers.activate'),
-      tone: u.isActive ? 'danger' : 'success',
-      icon: u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />,
-      // Deactivating is destructive — route it through the confirm modal.
-      // Reactivating is reversible with one click, so it stays immediate.
-      onClick: () => u.isActive ? setDeactivateTarget(u) : handleToggleActive(u._id, false, u.name),
-    },
-  ];
-
   const handleToggleActive = async (userId: string, currentlyActive: boolean, userLabel: string) => {
     if (!currentUser) return;
     try {
@@ -370,6 +337,9 @@ export default function AdminUsersPage() {
 
   const orgNameMap: Record<string, string> = {};
   organizations.forEach(o => { orgNameMap[o._id] = o.name; });
+
+  const detailUser = detailUserId ? users.find(u => u._id === detailUserId) ?? null : null;
+  const closeDetail = () => setDetailUserId(null);
 
   // Role stats
   const roleCounts: Record<string, number> = {};
@@ -461,11 +431,9 @@ export default function AdminUsersPage() {
             {!loading && filteredUsers.length === 0 && (
               <div className="appointment-card-empty">{t('adminUsers.noUsersFound')}</div>
             )}
-            {!loading && filteredUsers.map(u => {
-              const isExpanded = expandedId === u._id;
-              return (
-                <Fragment key={u._id}>
+            {!loading && filteredUsers.map(u => (
                   <div
+                    key={u._id}
                     id={`admin-user-${u._id}`}
                     className="ehr-appointment-row appointment-card-row"
                     style={{
@@ -477,13 +445,12 @@ export default function AdminUsersPage() {
                     aria-current={focusedUserId === u._id ? 'true' : undefined}
                     role="button"
                     tabIndex={0}
-                    onClick={e => setRowMenu(rowActionsAt(e, actionsFor(u)))}
+                    aria-haspopup="dialog"
+                    onClick={() => setDetailUserId(u._id)}
                     onKeyDown={e => {
                       if (isRowActivationKey(e.key)) {
                         e.preventDefault();
-                        // Keyboard has no pointer to anchor to — open against the
-                        // row's own box so the menu still lands beside it.
-                        setRowMenu(rowActionsFromElement(e.currentTarget, actionsFor(u)));
+                        setDetailUserId(u._id);
                       }
                     }}
                   >
@@ -528,23 +495,7 @@ export default function AdminUsersPage() {
                     </div>
 
                   </div>
-                  {isExpanded && (
-                    <div className="px-4 py-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-xs">
-                        <div><span style={{ color: 'var(--text-muted)' }}>{t('adminUsers.colRole')}: </span><span style={{ color: 'var(--text-primary)' }}>{roleLabel(u.role)}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>Department: </span><span style={{ color: 'var(--text-primary)' }}>{u.department || '--'}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>Specialty: </span><span style={{ color: 'var(--text-primary)' }}>{u.specialty || '--'}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>Phone: </span><span style={{ color: 'var(--text-primary)' }}>{u.phone || '--'}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>{t('adminUsers.colOrganization')}: </span><span style={{ color: 'var(--text-primary)' }}>{u.orgId ? (orgNameMap[u.orgId] || u.orgId) : '--'}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>{t('adminUsers.colHospital')}: </span><span style={{ color: 'var(--text-primary)' }}>{u.hospitalName || '--'}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>Created: </span><span style={{ color: 'var(--text-primary)' }}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '--'}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>User ID: </span><code style={{ color: 'var(--text-secondary)' }}>{u._id}</code></div>
-                      </div>
-                    </div>
-                  )}
-                </Fragment>
-              );
-            })}
+                ))}
           </div>
         </div>
 
@@ -555,7 +506,108 @@ export default function AdminUsersPage() {
         </div>
       </SadbCard>
 
-      <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
+      {/* ── Account card — everything the row knows, and everything you can
+             do to it, in one surface. Actions hand off to their own dialogs,
+             so the card closes as each one opens rather than stacking. ── */}
+      {detailUser && (
+        <Modal onClose={closeDetail} width={520} labelledBy="admin-user-card-title">
+          <div className="sadb-modal">
+            <div className="sadb-usercard-head">
+              <div className="ehr-patient-icon" style={avatarTint(detailUser.name)}>
+                {detailUser.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
+              </div>
+              <div className="sadb-usercard-id">
+                <h2 id="admin-user-card-title" className="sadb-modal-title">{detailUser.name}</h2>
+                <p className="sadb-modal-sub">{detailUser.username} · {roleLabel(detailUser.role)}</p>
+              </div>
+            </div>
+
+            <div className="sadb-usercard-rows">
+              <div className="sadb-usercard-row">
+                <span>{t('adminUsers.colStatus')}</span>
+                <span>
+                  <span
+                    className="appointment-status-pill"
+                    style={detailUser.isActive
+                      ? { borderColor: 'rgba(15, 160, 106,0.45)', background: 'rgba(15, 160, 106,0.10)', color: 'var(--color-success-text)' }
+                      : { borderColor: 'rgba(224, 49, 39,0.45)', background: 'rgba(224, 49, 39,0.10)', color: 'var(--color-danger-text)' }}
+                  >
+                    {detailUser.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')}
+                  </span>
+                </span>
+              </div>
+              <div className="sadb-usercard-row"><span>{t('adminUsers.colRole')}</span><span>{roleLabel(detailUser.role)}</span></div>
+              <div className="sadb-usercard-row"><span>Department</span><span>{detailUser.department || '—'}</span></div>
+              <div className="sadb-usercard-row"><span>Specialty</span><span>{detailUser.specialty || '—'}</span></div>
+              <div className="sadb-usercard-row"><span>Email</span><span>{detailUser.email || '—'}</span></div>
+              <div className="sadb-usercard-row"><span>Phone</span><span>{detailUser.phone || '—'}</span></div>
+              <div className="sadb-usercard-row">
+                <span>{t('adminUsers.colOrganization')}</span>
+                <span>{detailUser.orgId ? (orgNameMap[detailUser.orgId] || detailUser.orgId) : 'Platform-level'}</span>
+              </div>
+              <div className="sadb-usercard-row">
+                <span>{t('adminUsers.colHospital')}</span>
+                <span>{detailUser.hospitalName || 'Facility unassigned'}</span>
+              </div>
+              <div className="sadb-usercard-row">
+                <span>Credentials</span>
+                <span>{detailUser.mustChangePassword ? 'Password reset required' : 'Current'}</span>
+              </div>
+              <div className="sadb-usercard-row">
+                <span>Created</span>
+                <span>{detailUser.createdAt ? new Date(detailUser.createdAt).toLocaleDateString() : '—'}</span>
+              </div>
+              <div className="sadb-usercard-row"><span>User ID</span><span><code>{detailUser._id}</code></span></div>
+            </div>
+
+            <div className="sadb-usercard-actions">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={closeDetail}>Close</button>
+              <div>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => { const u = detailUser; closeDetail(); setChangeRoleUser(u); setNewRole(u.role); }}
+                >
+                  <Shield className="w-4 h-4" /> Change role
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    const u = detailUser;
+                    closeDetail();
+                    setResetUser(u);
+                    setResetPasswordValue(generateTempPassword());
+                    setResetError(null);
+                    setShowResetPassword(true);
+                  }}
+                >
+                  <KeyRound className="w-4 h-4" /> Reset password
+                </button>
+                {/* Deactivating is destructive — it routes through the confirm
+                    dialog. Reactivating is one reversible click, so it runs. */}
+                {detailUser.isActive ? (
+                  <button
+                    type="button"
+                    className="btn btn-sm sadb-btn-danger"
+                    onClick={() => { const u = detailUser; closeDetail(); setDeactivateTarget(u); }}
+                  >
+                    <UserX className="w-4 h-4" /> {t('adminUsers.deactivate')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => { const u = detailUser; closeDetail(); handleToggleActive(u._id, false, u.name); }}
+                  >
+                    <UserCheck className="w-4 h-4" /> {t('adminUsers.activate')}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Add User Modal */}
       {showAddUser && (

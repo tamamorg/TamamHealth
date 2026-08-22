@@ -237,15 +237,19 @@ export function SadbGridList({ template, minWidth = 760, head, alignEndLast = fa
 
 /** One row of a SadbGridList; clickable when onClick is given. Pass the same
  *  `template` as the list. */
-export function SadbGridRow({ template, onClick, children }: {
+export function SadbGridRow({ template, onClick, ariaExpanded, children }: {
   /** Receives the event so a caller can anchor a menu to the pointer. */
-  template: string; onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void; children: ReactNode;
+  template: string; onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** For a row that opens a detail panel beneath itself, so the row announces
+   *  its own state rather than expanding silently. */
+  ariaExpanded?: boolean;
+  children: ReactNode;
 }) {
   if (!onClick) {
     return <div className="sadb-tenant-grid sadb-tenant-row" style={{ gridTemplateColumns: template, cursor: 'default' }}>{children}</div>;
   }
   return (
-    <button type="button" className="sadb-tenant-grid sadb-tenant-row" style={{ gridTemplateColumns: template }} onClick={onClick}>
+    <button type="button" className="sadb-tenant-grid sadb-tenant-row" style={{ gridTemplateColumns: template }} onClick={onClick} aria-expanded={ariaExpanded}>
       {children}
     </button>
   );

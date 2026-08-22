@@ -32,10 +32,11 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
+import { SadbChip, SadbGridList, SadbGridRow, statusChip } from '@/components/admin/sadb-ui';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import Modal from '@/components/Modal';
-import { X } from '@/components/icons/lucide';
-import type { AuditLogDoc, EncounterDoc, UserDoc } from '@/lib/db-types';
+import { ChevronDown, ChevronRight, X } from '@/components/icons/lucide';
+import type { AuditLogDoc, EncounterDoc, HospitalDoc, UserDoc } from '@/lib/db-types';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
 
@@ -50,6 +51,21 @@ const TONE_SIGNAL: Record<Tone, string> = {
 const TONE_STROKE: Record<Tone, string> = {
   ok: 'var(--color-success-800)', warn: 'var(--color-warning-600)',
   danger: 'var(--color-danger-500)', muted: 'var(--text-muted)',
+};
+
+/* Same six-column template the tenant registry on /admin/organizations
+   draws, so the two lists of the same thing read as one surface. */
+const ORG_GRID_TEMPLATE = 'minmax(200px,1.6fr) repeat(5, minmax(96px,1fr))';
+/* Nested facility rows: name carries the width, the rest are fixed measures. */
+const ORG_FACILITY_TEMPLATE = 'minmax(180px,1.5fr) minmax(90px,0.7fr) minmax(120px,1fr) minmax(70px,0.5fr) minmax(80px,0.6fr)';
+/* Facility levels spelled out — the console shows two tenants side by side, so
+   the /hospitals abbreviations (NR, PHCC) would need a legend here. */
+const FACILITY_TYPE_LABELS: Record<string, string> = {
+  national_referral: 'National referral',
+  state_hospital: 'State hospital',
+  county_hospital: 'County hospital',
+  phcc: 'PHCC',
+  phcu: 'PHCU',
 };
 
 function dayKey(iso: string): string {
@@ -128,6 +144,77 @@ function KvRow({ label, value, valueClass, chip, chipClass }: {
   );
 }
 
+/**
+ * The facilities behind one tenant, opened from its row above.
+ *
+ * Drawn as a subordinate strip rather than a second SadbGridList: it is detail
+ * inside a row, so it reads at a smaller measure on a tinted ground instead of
+ * competing with the tenant list's own header. Rows open the per-facility
+ * management dashboard, which is where a platform operator can actually act on
+ * what they find here.
+ */
+function OrgFacilities({ facilities, userCounts, loading, onOpen }: {
+  facilities: HospitalDoc[];
+  /** Accounts attached to each facility, keyed by facility id. */
+  userCounts: Map<string, number>;
+  loading: boolean;
+  onOpen: (hospitalId: string) => void;
+}) {
+  const cell: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', minWidth: 0 };
+  return (
+    <div style={{ background: 'var(--ehr-head)', borderBottom: '1px solid var(--border-light)', padding: '8px 16px 10px 40px' }}>
+      {facilities.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+          No facilities registered for this organization yet.
+        </p>
+      ) : (
+        <>
+          <div
+            style={{
+              display: 'grid', gridTemplateColumns: ORG_FACILITY_TEMPLATE, gap: 12, alignItems: 'center',
+              padding: '2px 8px 6px', fontFamily: 'var(--font-condensed)', fontWeight: 700, fontSize: 10,
+              letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)',
+            }}
+          >
+            <span>Facility</span>
+            <span>Type</span>
+            <span>Location</span>
+            <span>Users</span>
+            <span style={{ textAlign: 'end' }}>Sync</span>
+          </div>
+          {facilities.map(f => {
+            const retired = f.isActive === false;
+            return (
+              <button
+                key={f._id}
+                type="button"
+                onClick={() => onOpen(f._id)}
+                style={{
+                  display: 'grid', gridTemplateColumns: ORG_FACILITY_TEMPLATE, gap: 12, alignItems: 'center',
+                  width: '100%', textAlign: 'start', padding: '7px 8px', background: 'transparent',
+                  border: 0, borderTop: '1px solid var(--border-light)', cursor: 'pointer',
+                }}
+              >
+                <span style={{ ...cell, fontSize: 12.5, fontWeight: 600, color: retired ? 'var(--text-muted)' : 'var(--text-primary)' }} className="truncate">
+                  {f.name}{retired ? ' · retired' : ''}
+                </span>
+                <span style={cell} className="truncate">{FACILITY_TYPE_LABELS[f.facilityType] || f.facilityType}</span>
+                <span style={cell} className="truncate">{[f.town, f.state].filter(Boolean).join(', ') || '—'}</span>
+                <span style={{ ...cell, fontVariantNumeric: 'tabular-nums' }}>{loading ? '…' : (userCounts.get(f._id) || 0)}</span>
+                <span style={{ textAlign: 'end' }}>
+                  <SadbChip tone={f.syncStatus === 'online' ? 'green' : f.syncStatus === 'syncing' ? 'yellow' : 'neutral'}>
+                    {f.syncStatus || 'unknown'}
+                  </SadbChip>
+                </span>
+              </button>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -146,6 +233,9 @@ export default function AdminDashboardPage() {
   const [conflictCount, setConflictCount] = useState(0);
   const [dhis2, setDhis2] = useState<{ configured: boolean; host: string; lastPush?: string }>({ configured: false, host: 'Not configured' });
   const [loading, setLoading] = useState(true);
+  /* Which tenant rows have their facility list open. A set, not a single id:
+     comparing two tenants' sites is the reason to open them at all. */
+  const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
 
   // Defense in depth on top of the Edge proxy check (SaPage used to own this).
   useEffect(() => {
@@ -294,6 +384,53 @@ export default function AdminDashboardPage() {
 
   const licensedSeats = organizations.reduce((sum, o) => sum + (o.maxUsers || 0), 0);
 
+  /* Per-tenant rollups for the organizations card. Every one of these comes
+     from data this page already loaded for the KPI row — the card adds no
+     queries, it just stops throwing the per-org breakdown away. */
+  const facilitiesByOrg = useMemo(() => {
+    const map = new Map<string, HospitalDoc[]>();
+    for (const h of hospitals) {
+      if (!h.orgId) continue;
+      const list = map.get(h.orgId);
+      if (list) list.push(h);
+      else map.set(h.orgId, [h]);
+    }
+    for (const list of map.values()) list.sort((a, b) => a.name.localeCompare(b.name));
+    return map;
+  }, [hospitals]);
+
+  const usersByOrg = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const u of users) if (u.orgId) map.set(u.orgId, (map.get(u.orgId) || 0) + 1);
+    return map;
+  }, [users]);
+
+  /* Accounts per facility. Both attachments count — `hospitalId` is the home
+     site and `facilityIds` the extra ones a user covers — deduplicated per
+     user, since a home site listed again among the extras is one account at
+     one facility, not two. */
+  const usersByFacility = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const u of users) {
+      const ids = new Set<string>();
+      if (u.hospitalId) ids.add(u.hospitalId);
+      for (const id of u.facilityIds || []) ids.add(id);
+      for (const id of ids) map.set(id, (map.get(id) || 0) + 1);
+    }
+    return map;
+  }, [users]);
+
+  const orgRows = useMemo(
+    () => [...organizations].sort((a, b) => a.name.localeCompare(b.name)),
+    [organizations],
+  );
+
+  const toggleOrg = (id: string) => setExpandedOrgs(prev => {
+    const next = new Set(prev);
+    if (!next.delete(id)) next.add(id);
+    return next;
+  });
+
   const openRiskTone: Tone = riskSignals.some(sev => sev === 'critical' || sev === 'high')
     ? 'danger'
     : riskSignals.length ? 'warn' : 'ok';
@@ -399,9 +536,14 @@ export default function AdminDashboardPage() {
     router.push(target.href);
   };
 
+  /* The page is a flex column so the last card can claim whatever height the
+     rows above leave and scroll its own list inside it rather than growing the
+     page. .page-container keeps its overflow-y: auto, which is what saves a
+     short viewport: the card cannot shrink past its min-height, so the page
+     scrolls instead of squeezing it away. */
   return (
-    <main className="page-container page-enter sadb-scope">
-      <div className="sadb-page">
+    <main className="page-container page-enter sadb-scope" style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="sadb-page" style={{ flex: '1 1 auto', minHeight: 0 }}>
 
         {/* ═══ KPI tile row ═══ */}
         <div className="sadb-kpi-row">
@@ -488,6 +630,71 @@ export default function AdminDashboardPage() {
               chip={dhis2.configured ? (dhis2.lastPush ? formatWhen(dhis2.lastPush) : 'Never') : 'Not configured'}
               chipClass={dhis2.configured && dhis2.lastPush ? 'sadb-chip--green' : 'sadb-chip--neutral'}
             />
+          </div>
+        </div>
+
+        {/* ═══ ROW 3 — Every tenant, and the facilities behind each ═══
+            The KPI row counts organizations and facilities; this says which.
+            Rows expand in place rather than linking away, because "which sites
+            does this tenant actually run" is the question a count raises and
+            the one the console could not answer without leaving the page. */}
+        <div className="sadb-card" style={{ flex: '1 1 auto', minHeight: 200 }}>
+          <CardHead
+            title="Organizations"
+            meta={loading ? undefined : `${activeOrgs.length} active · ${trialOrgs.length} trial · ${suspendedOrgs.length} suspended`}
+            action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations')}>Manage ›</button>}
+          />
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            <SadbGridList
+              template={ORG_GRID_TEMPLATE}
+              minWidth={880}
+              head={['Organization', 'Plan', 'Facilities', 'Users', 'Patients', 'Status']}
+              alignEndLast
+              empty={loading ? 'Loading tenants…' : 'No organizations on this platform yet.'}
+            >
+              {orgRows.map(org => {
+                const facilities = facilitiesByOrg.get(org._id) || [];
+                const open = expandedOrgs.has(org._id);
+                const onboarded = org.createdAt ? new Date(org.createdAt) : null;
+                const onboardedLabel = onboarded && !isNaN(onboarded.getTime())
+                  ? onboarded.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+                  : null;
+                return (
+                  <div key={org._id}>
+                    <SadbGridRow template={ORG_GRID_TEMPLATE} onClick={() => toggleOrg(org._id)} ariaExpanded={open}>
+                      <span className="min-w-0 flex items-center gap-2">
+                        {open
+                          ? <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                          : <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />}
+                        <span className="min-w-0">
+                          <span className="sadb-tenant-name truncate" style={{ color: org.isActive ? undefined : 'var(--text-muted)' }}>
+                            {org.name}
+                          </span>
+                          <span className="sadb-tenant-sub truncate">
+                            {org.orgType === 'public' ? 'Public' : 'Private'}{onboardedLabel ? ` · onboarded ${onboardedLabel}` : ''}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="capitalize">{org.subscriptionPlan}</span>
+                      <span className="sadb-tenant-num">{facilities.length} / {org.maxHospitals}</span>
+                      <span className="sadb-tenant-num">{loading ? '…' : `${usersByOrg.get(org._id) || 0} / ${org.maxUsers}`}</span>
+                      <span className="sadb-tenant-num">{loading ? '…' : (patientAgg.byOrg.get(org._id) || 0).toLocaleString()}</span>
+                      <span style={{ textAlign: 'end' }}>
+                        <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip>
+                      </span>
+                    </SadbGridRow>
+                    {open && (
+                      <OrgFacilities
+                        facilities={facilities}
+                        userCounts={usersByFacility}
+                        loading={loading}
+                        onOpen={id => router.push(`/hospitals/${id}/manage`)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </SadbGridList>
           </div>
         </div>
 

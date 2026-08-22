@@ -3,8 +3,9 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { getRoleConfig } from '@/lib/permissions';
-import { uniqueAllowedNavItems, groupNavItemsBySection } from '@/components/ehr/ehr-navigation';
+import { uniqueAllowedNavItems, groupNavItemsBySection, navItemLabel } from '@/components/ehr/ehr-navigation';
 import MobileBottomSheet from '../MobileBottomSheet';
 
 interface MobileModulesSheetProps {
@@ -14,6 +15,7 @@ interface MobileModulesSheetProps {
 
 export default function MobileModulesSheet({ open, onClose }: MobileModulesSheetProps) {
   const { currentUser } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : undefined;
   const allowedRoutes = useMemo(() => roleConfig?.allowedRoutes || [], [roleConfig]);
@@ -42,7 +44,7 @@ export default function MobileModulesSheet({ open, onClose }: MobileModulesSheet
                   }}
                 >
                   <span className="mobile-sheet-grid-icon"><ItemIcon className="w-4 h-4" /></span>
-                  {item.label}
+                  {navItemLabel(item, t)}
                 </button>
               );
             })}

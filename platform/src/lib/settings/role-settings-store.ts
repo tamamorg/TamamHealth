@@ -43,6 +43,9 @@ export function roleSettingDefaults(role: UserRole): RoleSettingsValues {
   const defaults: RoleSettingsValues = {};
   for (const section of specForRole(role).sections) {
     for (const row of section.rows) {
+      // A `pending` row is declared but not wired (see RoleSettingRow). Serving
+      // a default would let a reader believe the setting is in force.
+      if (row.kind === 'toggle' && row.pending) continue;
       if (row.kind === 'toggle' || row.kind === 'select') defaults[row.key] = row.def;
       else if (row.kind === 'text') defaults[row.key] = row.def;
     }

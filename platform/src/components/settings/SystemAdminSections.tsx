@@ -23,6 +23,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '@/lib/context';
+import { systemConfigScope } from '@/lib/services/system-config-service';
 import { useToast } from '@/components/Toast';
 import PortalModal from '@/components/Modal';
 import { isPathAllowed } from '@/lib/role-routes';
@@ -121,7 +122,11 @@ function matches(query: string, ...fields: string[]): boolean {
 export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfigData {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const orgId = currentUser?.orgId || '';
+  // A super_admin carries no orgId — that is what makes it cross-tenant — so
+  // keying this console off orgId alone left the one role whose job IS platform
+  // configuration unable to load or save anything: the effect below returned
+  // early, and every toggle answered "No organization on this account."
+  const orgId = systemConfigScope(currentUser?.orgId, currentUser?.role);
 
   const [config, setConfig] = useState<SystemConfigDoc | null>(null);
   const [loading, setLoading] = useState(true);
@@ -170,7 +175,7 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
   );
 
   const toggleApp = async (app: SystemAppDefinition, next: boolean) => {
-    if (!orgId || !currentUser) { showToast('No organization on this account.', 'error'); return; }
+    if (!orgId || !currentUser) { showToast('This account has no configuration scope.', 'error'); return; }
     setBusyId(app.id);
     setConfig(prev => prev ? { ...prev, appOverrides: { ...prev.appOverrides, [app.id]: next } } : prev);
     try {
@@ -187,7 +192,7 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
   };
 
   const toggleExtension = async (ext: SystemExtensionDefinition, next: boolean) => {
-    if (!orgId || !currentUser) { showToast('No organization on this account.', 'error'); return; }
+    if (!orgId || !currentUser) { showToast('This account has no configuration scope.', 'error'); return; }
     setBusyId(ext.id);
     setConfig(prev => prev ? { ...prev, extensionOverrides: { ...prev.extensionOverrides, [ext.id]: next } } : prev);
     try {
@@ -212,7 +217,7 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
 
   const saveEditor = async () => {
     if (!editing) return;
-    if (!orgId || !currentUser) { showToast('No organization on this account.', 'error'); return; }
+    if (!orgId || !currentUser) { showToast('This account has no configuration scope.', 'error'); return; }
     setSaving(true);
     try {
       const { setPropertyValue } = await import('@/lib/services/system-config-service');

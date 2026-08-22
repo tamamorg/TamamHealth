@@ -2027,6 +2027,7 @@ const apd: TranslationMap = {
   'hospitals.infraSolar': 'طاقة شمسية',
   'hospitals.infrastructure': 'البنية التحتية',
   'hospitals.keyStaff': 'العاملين الأساسيين ({{count}})',
+  'hospitals.noContactDetails': 'ما في تلفون ولا إيميل في السجل',
   'hospitals.kpiActiveAdmissions': 'حالات دخول فعّالة',
   'hospitals.kpiAvgLabTat': 'متوسط زمن المعمل (ساعات)',
   'hospitals.kpiDischargesToday': 'حالات خروج اليوم',

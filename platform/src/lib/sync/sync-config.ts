@@ -182,7 +182,11 @@ export const DATABASE_DOCUMENT_TYPES: Readonly<Record<string, readonly string[]>
   tamamhealth_immunizations: ['immunization'],
   tamamhealth_anc: ['anc_visit'],
   tamamhealth_follow_ups: ['follow_up'],
-  tamamhealth_hospitals: ['hospital'],
+  // `system_config` shares the hospitals database (see
+  // services/system-config-service.ts, which writes through `hospitalsDB()`).
+  // It was not listed, so the sync gateway refused it as a type "not permitted
+  // in tamamhealth_hospitals".
+  tamamhealth_hospitals: ['hospital', 'system_config', 'facility_settings'],
   tamamhealth_problems: ['problem'],
   tamamhealth_program_enrollments: ['program_enrollment'],
   tamamhealth_procedures: ['procedure'],

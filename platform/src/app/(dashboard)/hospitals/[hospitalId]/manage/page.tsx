@@ -5,9 +5,14 @@
  *
  * Path: /hospitals/[hospitalId]/manage
  *
+ * The facility's own record — identity, contacts, capacity, staffing, status
+ * and sync — is the page header, not a tab. It used to be an "Overview" tab of
+ * five cards you had to leave to do anything, and whose facts you then could
+ * not see while working in Wards or Inventory. Now it sits above every tab,
+ * in a strip roughly a fifth of the height.
+ *
  * Tabs (one page, lazy-loaded data per active tab — an unopened tab fires no
  * fetch):
- *   • Overview     — HospitalDoc fields (name, type, beds, status, sync)
  *   • Staff        — getAllUsers(scope) filtered to this hospitalId
  *   • Wards        — getAllWards(scope) filtered to this facilityId
  *   • Equipment    — getAllAssets(scope) filtered to this facilityId
@@ -29,11 +34,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
 import {
   Building2, Users, BedDouble, Package, Pill, Calendar,
   Activity, Settings, ArrowLeft, Loader2, AlertTriangle,
-  CheckCircle, Save, Clock, MapPin, Stethoscope, Plus,
+  CheckCircle, Save, Clock, MapPin, Mail, Phone, Stethoscope, Plus,
   FlaskConical, Syringe,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
@@ -61,11 +65,10 @@ const SETTINGS_WRITE_ROLES: UserRole[] = ['super_admin', 'org_admin'];
 
 // ── Tab definitions ─────────────────────────────────────────────────────────
 type TabId =
-  | 'overview' | 'staff' | 'wards' | 'equipment' | 'inventory'
+  | 'staff' | 'wards' | 'equipment' | 'inventory'
   | 'schedules' | 'performance' | 'settings';
 
 const TABS: { id: TabId; labelKey: string; icon: typeof Building2 }[] = [
-  { id: 'overview',    labelKey: 'tab.overview',           icon: Building2 },
   { id: 'staff',       labelKey: 'hospitals.tabStaff',       icon: Users },
   { id: 'wards',       labelKey: 'hospitals.tabWards',       icon: BedDouble },
   { id: 'equipment',   labelKey: 'hospitals.tabEquipment',   icon: Package },
@@ -88,7 +91,7 @@ export default function HospitalManagePage() {
   // ?tab= deep link (e.g. the facility-settings picker opens ?tab=settings).
   const requestedTab = searchParams.get('tab');
   const [tab, setTab] = useState<TabId>(
-    TABS.some(item => item.id === requestedTab) ? requestedTab as TabId : 'overview',
+    TABS.some(item => item.id === requestedTab) ? requestedTab as TabId : 'staff',
   );
 
   // Hospital itself (always loaded — Overview tab needs it, and Settings does too).
@@ -190,34 +193,10 @@ export default function HospitalManagePage() {
   return (
     <>
       <main className="page-container page-enter">
-        <div className="dash-card overflow-hidden mb-4">
-          <EhrListHeader
-            title={t('hospitals.manageTitle', { name: hospital.name })}
-            actions={
-              <Link href="/hospitals" className="btn btn-secondary btn-sm" style={{ gap: 4, marginInlineStart: 'auto' }}>
-                <ArrowLeft style={{ width: 13, height: 13 }} /> {t('hospitals.hospitalNetwork')}
-              </Link>
-            }
-          />
-        </div>
-        {/* Tab bar */}
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {TABS.map(tabItem => (
-            <button
-              key={tabItem.id}
-              onClick={() => setTab(tabItem.id)}
-              className={`btn btn-sm ${tab === tabItem.id ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ gap: 6 }}
-            >
-              <tabItem.icon style={{ width: 13, height: 13 }} />
-              {t(tabItem.labelKey)}
-            </button>
-          ))}
-        </div>
+        <FacilityHeader hospital={hospital} tab={tab} onTab={setTab} />
 
         {/* Tab content — only the active tab is mounted, so its fetch fires only
             when the user opens that tab. */}
-        {tab === 'overview' && <OverviewTab hospital={hospital} />}
         {tab === 'staff' && <StaffTab scope={scope} hospitalId={hospitalId} />}
         {tab === 'wards' && <WardsTab scope={scope} hospitalId={hospitalId} hospital={hospital} />}
         {tab === 'equipment' && <EquipmentTab scope={scope} hospitalId={hospitalId} />}
@@ -297,116 +276,139 @@ function formatRelative(iso?: string, t?: (key: string, vars?: Record<string, st
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  OVERVIEW TAB
+//  FACILITY HEADER — the record, and the tabs that work on it
 // ═══════════════════════════════════════════════════════════════════════════
-function OverviewTab({ hospital }: { hospital: HospitalDoc }) {
-  const { t } = useTranslation();
-  const totalStaff = (hospital.doctors || 0) + (hospital.clinicalOfficers || 0) +
-                     (hospital.nurses || 0) + (hospital.labTechnicians || 0) +
-                     (hospital.pharmacists || 0);
-  const occupiedBeds = (hospital.icuBeds || 0) + (hospital.maternityBeds || 0) +
-                       (hospital.pediatricBeds || 0); // best-available proxy
-  const occupancyPct = hospital.totalBeds ? Math.round((occupiedBeds / hospital.totalBeds) * 100) : 0;
 
+/** One fact in the header strip: a caps label, a figure, and the breakdown
+ *  behind it. The breakdown line is what kept the old Overview cards honest —
+ *  "120 beds" on its own says nothing about how they are split. */
+function Fact({ label, value, sub, tone }: {
+  label: string; value: React.ReactNode; sub?: React.ReactNode; tone?: 'ok' | 'warn' | 'danger';
+}) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Identity */}
-      <div className="card-elevated" style={{ padding: 16 }}>
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{t('hospitals.identity')}</h3>
-        <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
-          <Row label={t('hospitals.fieldName')} value={hospital.name} />
-          <Row label={t('hospitals.fieldType')} value={hospital.facilityType?.replace(/_/g, ' ')} />
-          <Row label={t('hospitals.fieldOwnership')} value={hospital.ownership || '—'} />
-          <Row label={t('hospitals.fieldState')} value={hospital.state || '—'} />
-          <Row label={t('hospitals.fieldCounty')} value={hospital.county || '—'} />
-          <Row label={t('hospitals.fieldTown')} value={hospital.town || '—'} />
-          <Row label={t('hospitals.fieldGps')} value={
-            hospital.lat != null && hospital.lng != null
-              ? `${hospital.lat.toFixed(4)}°N, ${hospital.lng.toFixed(4)}°E`
-              : '—'
-          } />
-        </div>
-      </div>
-
-      {/* Status + Sync */}
-      <div className="card-elevated" style={{ padding: 16 }}>
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{t('hospitals.statusHeading')}</h3>
-        <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('hospitals.operatingStatus')}</span>
-            <StatusPill status={hospital.operationalStatus || 'closed'} />
-          </div>
-          <Row label={t('hospitals.fieldSync')} value={hospital.syncStatus || '—'} />
-          <Row label={t('hospitals.fieldLastSync')} value={
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Clock style={{ width: 11, height: 11 }} /> {formatRelative(hospital.lastSync, t)}
-            </span>
-          } />
-          <Row label={t('hospitals.fieldTodaysVisits')} value={hospital.todayVisits?.toLocaleString() ?? '0'} />
-          <Row label={t('hospitals.fieldRegisteredPatients')} value={hospital.patientCount?.toLocaleString() ?? '0'} />
-        </div>
-      </div>
-
-      {/* Beds */}
-      <div className="card-elevated" style={{ padding: 16 }}>
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{t('hospitals.bedCapacity')}</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-            {hospital.totalBeds || 0}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('hospitals.occupancyEstimated')}</div>
-            <div style={{ height: 6, borderRadius: 3, background: 'var(--overlay-subtle)', marginTop: 4, overflow: 'hidden' }}>
-              <div style={{
-                width: `${Math.min(100, occupancyPct)}%`, height: '100%',
-                background: occupancyPct > 90 ? 'var(--color-danger)' : occupancyPct > 70 ? 'var(--color-warning)' : 'var(--color-success)',
-              }} />
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{occupancyPct}%</div>
-          </div>
-        </div>
-        <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
-          <Row label={t('hospitals.bedsIcu')} value={hospital.icuBeds || 0} />
-          <Row label={t('hospitals.bedsMaternity')} value={hospital.maternityBeds || 0} />
-          <Row label={t('hospitals.bedsPediatric')} value={hospital.pediatricBeds || 0} />
-        </div>
-      </div>
-
-      {/* Staff snapshot */}
-      <div className="card-elevated" style={{ padding: 16 }}>
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{t('hospitals.keyStaff', { count: totalStaff })}</h3>
-        <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
-          <Row label={t('hospitals.staffDoctors')} value={hospital.doctors || 0} />
-          <Row label={t('hospitals.staffClinicalOfficers')} value={hospital.clinicalOfficers || 0} />
-          <Row label={t('hospitals.staffNurses')} value={hospital.nurses || 0} />
-          <Row label={t('hospitals.staffLabTechnicians')} value={hospital.labTechnicians || 0} />
-          <Row label={t('hospitals.staffPharmacists')} value={hospital.pharmacists || 0} />
-        </div>
-      </div>
-
-      {/* Contacts (uses HospitalDoc fields if present; otherwise placeholder) */}
-      <div className="card-elevated lg:col-span-2" style={{ padding: 16 }}>
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{t('hospitals.contacts')}</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-          <Row label={t('hospitals.fieldPhone')} value={(hospital as unknown as { phone?: string }).phone || '—'} />
-          <Row label={t('hospitals.fieldEmail')} value={(hospital as unknown as { email?: string }).email || '—'} />
-          <Row label={t('hospitals.fieldAddress')} value={
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <MapPin style={{ width: 11, height: 11 }} /> {[hospital.town, hospital.county, hospital.state].filter(Boolean).join(', ') || '—'}
-            </span>
-          } />
-        </div>
-      </div>
+    <div className="fac-fact">
+      <span className="fac-fact-label">{label}</span>
+      <span className={`fac-fact-value${tone ? ` is-${tone}` : ''}`}>{value}</span>
+      {sub && <span className="fac-fact-sub">{sub}</span>}
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+function FacilityHeader({ hospital, tab, onTab }: {
+  hospital: HospitalDoc;
+  tab: TabId;
+  onTab: (id: TabId) => void;
+}) {
+  const { t } = useTranslation();
+  const contact = hospital as unknown as { phone?: string; email?: string };
+
+  const totalStaff = (hospital.doctors || 0) + (hospital.clinicalOfficers || 0) +
+                     (hospital.nurses || 0) + (hospital.labTechnicians || 0) +
+                     (hospital.pharmacists || 0);
+  // Best-available proxy, labelled as an estimate wherever it is shown — the
+  // ward bed counts are the only occupancy signal the hospital record carries.
+  const occupiedBeds = (hospital.icuBeds || 0) + (hospital.maternityBeds || 0) +
+                       (hospital.pediatricBeds || 0);
+  const occupancyPct = hospital.totalBeds ? Math.round((occupiedBeds / hospital.totalBeds) * 100) : 0;
+  const occupancyTone = occupancyPct > 90 ? 'danger' : occupancyPct > 70 ? 'warn' : 'ok';
+
+  // Town and county are routinely the same name here (Yei town, Yei county),
+  // which rendered as "Yei, Yei, Central Equatoria".
+  const place = [hospital.town, hospital.county, hospital.state]
+    .filter(Boolean)
+    .filter((part, i, all) => all.indexOf(part) === i)
+    .join(', ');
+  const gps = hospital.lat != null && hospital.lng != null
+    ? `${hospital.lat.toFixed(4)}°N, ${hospital.lng.toFixed(4)}°E`
+    : null;
+
+  /* Identity line: only what this facility actually has. A row reading
+     "Ownership —" taught nobody anything; an absent field just doesn't
+     appear, and the line closes up behind it. */
+  const identity = [
+    hospital.facilityType?.replace(/_/g, ' '),
+    hospital.ownership,
+    place,
+    gps,
+  ].filter(Boolean) as string[];
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', fontSize: 12 }}>
-      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span style={{ fontWeight: 600, color: 'var(--text-primary)', textAlign: 'end', maxWidth: '60%' }}>{value}</span>
-    </div>
+    <section className="fac-head">
+      <div className="fac-head-top">
+        <span className="fac-head-icon"><Building2 /></span>
+        <div className="fac-head-id">
+          <h1 className="fac-head-name">{hospital.name}</h1>
+          <p className="fac-head-meta">
+            {identity.map((part, i) => (
+              <span key={part}>{i > 0 && <i aria-hidden="true">·</i>}{part}</span>
+            ))}
+          </p>
+        </div>
+        <StatusPill status={hospital.operationalStatus || 'closed'} />
+        <Link href="/hospitals" className="btn btn-secondary btn-sm fac-head-back" style={{ gap: 4 }}>
+          <ArrowLeft style={{ width: 13, height: 13 }} /> {t('hospitals.hospitalNetwork')}
+        </Link>
+      </div>
+
+      {/* Contacts sit with the identity rather than in a card of their own two
+          screens further down. The address is already on the line above, so
+          this row is how you reach the facility, not where it is. */}
+      <p className="fac-head-contacts">
+        {contact.phone || contact.email ? (
+          <>
+            {contact.phone && <span><Phone /> {contact.phone}</span>}
+            {contact.email && <span><Mail /> {contact.email}</span>}
+          </>
+        ) : (
+          <span className="fac-head-nocontact"><MapPin /> {t('hospitals.noContactDetails')}</span>
+        )}
+      </p>
+
+      <div className="fac-facts">
+        <Fact
+          label={t('hospitals.bedCapacity')}
+          value={hospital.totalBeds || 0}
+          sub={`${t('hospitals.bedsIcu')} ${hospital.icuBeds || 0} · ${t('hospitals.bedsMaternity')} ${hospital.maternityBeds || 0} · ${t('hospitals.bedsPediatric')} ${hospital.pediatricBeds || 0}`}
+        />
+        <Fact
+          label={t('hospitals.occupancyEstimated')}
+          value={`${occupancyPct}%`}
+          tone={occupancyTone}
+          sub={(
+            <span className="fac-meter" aria-hidden="true">
+              <i className={`is-${occupancyTone}`} style={{ width: `${Math.min(100, occupancyPct)}%` }} />
+            </span>
+          )}
+        />
+        <Fact
+          label={t('hospitals.tabStaff')}
+          value={totalStaff}
+          sub={`${t('hospitals.staffDoctors')} ${hospital.doctors || 0} · ${t('hospitals.staffClinicalOfficers')} ${hospital.clinicalOfficers || 0} · ${t('hospitals.staffNurses')} ${hospital.nurses || 0} · ${t('hospitals.staffLabTechnicians')} ${hospital.labTechnicians || 0} · ${t('hospitals.staffPharmacists')} ${hospital.pharmacists || 0}`}
+        />
+        <Fact label={t('hospitals.fieldTodaysVisits')} value={hospital.todayVisits?.toLocaleString() ?? '0'} />
+        <Fact label={t('hospitals.fieldRegisteredPatients')} value={hospital.patientCount?.toLocaleString() ?? '0'} />
+        <Fact
+          label={t('hospitals.fieldSync')}
+          value={hospital.syncStatus || '—'}
+          sub={<span className="fac-fact-when"><Clock /> {formatRelative(hospital.lastSync, t)}</span>}
+        />
+      </div>
+
+      <nav className="fac-tabs" aria-label={t('hospitals.manageTitle', { name: hospital.name })}>
+        {TABS.map(tabItem => (
+          <button
+            key={tabItem.id}
+            type="button"
+            className={`fac-tab${tab === tabItem.id ? ' is-active' : ''}`}
+            aria-current={tab === tabItem.id ? 'page' : undefined}
+            onClick={() => onTab(tabItem.id)}
+          >
+            <tabItem.icon />
+            {t(tabItem.labelKey)}
+          </button>
+        ))}
+      </nav>
+    </section>
   );
 }
 

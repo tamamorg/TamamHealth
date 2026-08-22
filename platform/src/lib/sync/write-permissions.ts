@@ -250,6 +250,20 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   hospital: [...ADMIN, 'government', 'county_health_director', 'hospital_manager'],
   organization: ADMIN,
   platform_config: ['super_admin'],
+  // System administration: which apps/extensions/privileges are enabled, and
+  // global property overrides. Absent from this matrix entirely, which meant
+  // the CouchDB validator rejected it as an unknown type and the push filter
+  // never even offered it — every change a facility admin made in Settings →
+  // System administration was written to their device and silently stayed
+  // there. Same roles as `organization`: this is tenant configuration.
+  system_config: ADMIN,
+  // Facility configuration — registration rules, clinical policy, reporting
+  // obligations, integrations. Written to the hospitals database by
+  // settings/settings-service.ts and, like system_config, listed nowhere: the
+  // validator rejected it as an unknown type and the push filter never offered
+  // it, so a facility admin's policy changes stayed on their own device. Same
+  // roles as hold the /facility-settings route.
+  facility_settings: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
   // Every role, without exception — see EVERY_ROLE. A role missing here still
   // writes its audit entry locally; it just never replicates.
   audit_log: EVERY_ROLE,

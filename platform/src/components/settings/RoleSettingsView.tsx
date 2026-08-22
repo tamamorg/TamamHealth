@@ -67,7 +67,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
 
 /** Default value for a row, resolving the app-wired specials. */
 function rowDefault(row: RoleSettingRow, wired: { language: string; density: string; displayName: string }): boolean | string | null {
-  if (row.kind === 'toggle') return row.def;
+  if (row.kind === 'toggle') return row.pending ? null : row.def;
   if (row.kind === 'select') {
     if (row.key === 'account.language') return wired.language;
     if (row.key === 'account.density') return wired.density;
@@ -442,6 +442,18 @@ export default function RoleSettingsView() {
 
   const renderControl = (row: RoleSettingRow): ReactNode => {
     if (row.kind === 'toggle') {
+      // A `pending` row is declared but not wired — nothing reads its value.
+      // Rendering a live switch for it invites the reader to believe the
+      // setting is in force, which for `mar.barcode` ("Confirms patient and
+      // drug") is a safety claim the platform cannot keep. Show it as
+      // unavailable, in the same language as a facility-managed row.
+      if (row.pending) {
+        return (
+          <span className="ehr-set-locked" title="Not available in this version">
+            <Lock /> Not available yet
+          </span>
+        );
+      }
       const on = Boolean(draft[row.key]);
       return (
         <button

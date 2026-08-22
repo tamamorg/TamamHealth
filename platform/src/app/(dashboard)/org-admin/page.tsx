@@ -1,4 +1,13 @@
 /**
+ * DEPRECATED REDIRECT — remove after 2027-02-01.
+ *
+ * Kept only so existing bookmarks and any external link keep working;
+ * Org Overview merged into /facility-management.
+ * Nothing in the product links here. Each of these stubs was added without
+ * an end date, and nine of them accumulated — this one has one. If the
+ * date has passed, delete the route.
+ */
+/**
  * The standalone "Org Overview" dashboard was merged into Facility Management
  * on 2026-08-19 and deleted. Its transfer inbox and Quick Actions live on
  * `/facility-management`; its headline KPI/operational-status band came along
