@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import TableCols from '@/components/TableCols';
 import { useSearchParams } from 'next/navigation';
 import { formatCompactDateTime } from '@/lib/format-utils';
 import Modal from '@/components/Modal';
@@ -597,7 +598,8 @@ export default function LabPage() {
                 {importParsed && importParsed.length > 0 && (
                   <div className="mt-3 rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
                     <div className="overflow-x-auto">
-                    <table className="data-table" style={{ minWidth: 720 }}>
+                    <table className="data-table" style={{ minWidth: 720, tableLayout: 'fixed' }}>
+                      <TableCols widths={[1.9, 0.8, 0.7, 1, 0.7, 0.6]} />
                       <thead>
                         <tr>
                           <th>Test</th>

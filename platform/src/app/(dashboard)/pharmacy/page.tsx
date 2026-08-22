@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
+import TableCols from '@/components/TableCols';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
 import { Pill, AlertTriangle, Loader2, Plus, X, Printer, Calendar, ChevronRight, AlertOctagon, Filter, Download, Check, ExternalLink } from '@/components/icons/lucide';
@@ -1074,7 +1075,8 @@ export default function PharmacyPage() {
 
         {activeTab === 'inventory' && (
           <div className="ehr-list-scroll">
-            <table className="data-table" style={{ minWidth: 1080 }}>
+            <table className="data-table" style={{ minWidth: 1080, tableLayout: 'fixed' }}>
+              <TableCols widths={[1.9, 1.1, 0.8, 0.9, 0.9, 1, 1, 0.9, 0.8]} />
               <thead>
                 <tr>
                   <th>{t('pharmacy.medication')}</th>
@@ -1144,7 +1146,8 @@ export default function PharmacyPage() {
 
         {activeTab === 'reorder' && (
           <div className="ehr-list-scroll">
-            <table className="data-table" style={{ minWidth: 720 }}>
+            <table className="data-table" style={{ minWidth: 720, tableLayout: 'fixed' }}>
+              <TableCols widths={[1.9, 1.1, 0.8, 0.9, 0.8, 0.9]} />
               <thead>
                 <tr>
                   <th>{t('pharmacy.medication')}</th>
@@ -1188,7 +1191,8 @@ export default function PharmacyPage() {
 
         {activeTab === 'expiry' && (
           <div className="ehr-list-scroll">
-            <table className="data-table" style={{ minWidth: 600 }}>
+            <table className="data-table" style={{ minWidth: 600, tableLayout: 'fixed' }}>
+              <TableCols widths={[1.9, 1, 0.8, 0.9, 0.9]} />
               <thead>
                 <tr>
                   <th>{t('pharmacy.medication')}</th>
@@ -1315,7 +1319,8 @@ export default function PharmacyPage() {
               <p className="text-center py-10 px-5 text-sm" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.noPrescriptionsFound')}</p>
             ) : (
               <div className="overflow-auto" style={{ maxHeight: 'min(62vh, 520px)' }}>
-                <table className="data-table" style={{ minWidth: 640 }}>
+                <table className="data-table" style={{ minWidth: 640, tableLayout: 'fixed' }}>
+                  <TableCols widths={[1.9, 1.1, 1.3, 0.8, 0.9]} />
                   <thead className="appointment-table-head">
                     <tr>
                       <th>{t('pharmacy.medication')}</th>

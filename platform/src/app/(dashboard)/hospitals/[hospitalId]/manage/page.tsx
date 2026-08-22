@@ -32,6 +32,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import TableCols from '@/components/TableCols';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -493,7 +494,8 @@ function StaffTab({ scope, hospitalId }: { scope: DataScope | undefined; hospita
         </FilterBar>
       </div>
       <div style={{ overflow: 'auto' }}>
-        <table className="data-table" style={{ minWidth: 600 }}>
+        <table className="data-table" style={{ minWidth: 600, tableLayout: 'fixed' }}>
+          <TableCols widths={[1.6, 1.2, 1.1, 0.8, 1.1]} />
           <thead>
             <tr>
               <th>{t('hospitals.colName')}</th>
@@ -627,7 +629,8 @@ function WardsTab({ scope, hospitalId, hospital }: {
         </div>
       ) : (
         <div className="overflow-x-auto">
-        <table className="data-table" style={{ minWidth: 720 }}>
+        <table className="data-table" style={{ minWidth: 720, tableLayout: 'fixed' }}>
+          <TableCols widths={[1.7, 1.1, 0.8, 0.8, 0.9, 1.1]} />
           <thead>
             <tr>
               <th>{t('hospitals.colName')}</th>
@@ -728,7 +731,8 @@ function EquipmentTab({ scope, hospitalId }: { scope: DataScope | undefined; hos
         </span>
       </div>
       <div className="overflow-x-auto">
-      <table className="data-table" style={{ minWidth: 720 }}>
+      <table className="data-table" style={{ minWidth: 720, tableLayout: 'fixed' }}>
+        <TableCols widths={[1.9, 1.1, 1, 0.9, 1, 1.1]} />
         <thead>
           <tr>
             <th>{t('hospitals.colAsset')}</th>
@@ -803,7 +807,8 @@ function InventoryTab({ scope, hospitalId }: { scope: DataScope | undefined; hos
   return (
     <div className="card-elevated" style={{ overflow: 'hidden' }}>
       <div className="overflow-x-auto">
-      <table className="data-table" style={{ minWidth: 720 }}>
+      <table className="data-table" style={{ minWidth: 720, tableLayout: 'fixed' }}>
+        <TableCols widths={[1.9, 1.1, 0.8, 0.9, 1, 1]} />
         <thead>
           <tr>
             <th>{t('hospitals.colMedication')}</th>
@@ -904,7 +909,8 @@ function SchedulesTab({ hospitalId }: { hospitalId: string }) {
          </div>
        ) : (
         <div className="overflow-x-auto">
-        <table className="data-table" style={{ minWidth: 720 }}>
+        <table className="data-table" style={{ minWidth: 720, tableLayout: 'fixed' }}>
+          <TableCols widths={[1.7, 1.1, 1, 1, 1.2, 0.9]} />
           <thead>
             <tr>
               <th>{t('hospitals.colStaff')}</th>

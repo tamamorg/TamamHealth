@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import TableCols from '@/components/TableCols';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import { useMCHAnalytics } from '@/lib/hooks/useMCHAnalytics';
@@ -385,7 +386,8 @@ export default function MCHAnalyticsPage() {
                 <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('mch.ancCoverageByState')}</h3>
               </div>
               <div className="overflow-x-auto">
-              <table className="data-table" style={{ minWidth: 840 }}>
+              <table className="data-table" style={{ minWidth: 840, tableLayout: 'fixed' }}>
+                <TableCols widths={[1.6, 1.2, 0.9, 0.9, 0.9, 1.1, 1.1]} />
                 <thead>
                   <tr>
                     <th>{t('mch.colState')}</th>
@@ -541,7 +543,8 @@ export default function MCHAnalyticsPage() {
                 <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('mch.birthOutcomesByState')}</h3>
               </div>
               <div className="overflow-x-auto">
-              <table className="data-table" style={{ minWidth: 720 }}>
+              <table className="data-table" style={{ minWidth: 720, tableLayout: 'fixed' }}>
+                <TableCols widths={[1.7, 1.1, 1.1, 1, 1.2, 1]} />
                 <thead>
                   <tr>
                     <th>{t('mch.colState')}</th>
@@ -703,7 +706,8 @@ export default function MCHAnalyticsPage() {
                 <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('mch.mortalityByState')}</h3>
               </div>
               <div className="overflow-x-auto">
-              <table className="data-table" style={{ minWidth: 840 }}>
+              <table className="data-table" style={{ minWidth: 840, tableLayout: 'fixed' }}>
+                <TableCols widths={[1.6, 1.1, 1, 1, 1.1, 1, 1]} />
                 <thead>
                   <tr>
                     <th>{t('mch.colState')}</th>
@@ -754,7 +758,8 @@ export default function MCHAnalyticsPage() {
                 </h3>
               </div>
               <div className="overflow-x-auto">
-              <table className="data-table" style={{ minWidth: 840 }}>
+              <table className="data-table" style={{ minWidth: 840, tableLayout: 'fixed' }}>
+                <TableCols widths={[1.9, 1, 1, 1, 0.9, 1, 1]} />
                 <thead>
                   <tr>
                     <th>{t('mch.colVaccine')}</th>
@@ -813,7 +818,7 @@ export default function MCHAnalyticsPage() {
                 <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('mch.immunizationCoverageByState')}</h3>
               </div>
               <div className="p-4 overflow-x-auto">
-                <table className="data-table" style={{ minWidth: 760 }}>
+                <table className="data-table" style={{ minWidth: 760, tableLayout: 'fixed' }}>
                   <thead>
                     <tr>
                       <th>{t('mch.colState')}</th>

@@ -26015,6 +26015,7 @@ table.patient-data-table.patient-data-table {
    vertical bleed (that would need `overflow-y`, and these panels scroll).
    The header's own box is untouched, so every dialog keeps the padding and
    spacing its component chose. */
+
 .modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)),
 .modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
   position: relative;
@@ -26039,6 +26040,19 @@ table.patient-data-table.patient-data-table {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   background: var(--accent-primary, #015697);
+}
+
+/* A floor, at zero specificity, for the spacing the old rule used to force.
+   That rule set `padding: 14px 18px` and an 18px bottom margin on every
+   header it painted; the bleed no longer touches the header's box, so a
+   header that carried no padding of its own would have had its title sitting
+   flush on the bar and the body flush under it. `:where()` contributes no
+   specificity, so any padding the component states — a utility class, its own
+   rule, an inline style — still wins outright. */
+:where(.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))),
+:where(.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) {
+  padding: 14px 18px;
+  margin-bottom: 16px;
 }
 
 /* The panel that hosts such a header: no top padding above the bar, and a
