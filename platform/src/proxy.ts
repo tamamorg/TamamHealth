@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from './lib/auth-token';
-import { SESSION_TTL_SEC } from './lib/session';
-import {
-  CSRF_COOKIE_NAME,
-  CSRF_HEADER_NAME,
-  mintCsrfToken,
-  verifyCsrfToken,
-} from './lib/csrf';
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_TTL_SEC, mintCsrfToken, verifyCsrfToken, verifyToken } from '@/modules/identity';
+
 import { addBreadcrumb } from './lib/observability';
 import { buildContentSecurityPolicy } from './lib/security/content-security-policy';
 import {

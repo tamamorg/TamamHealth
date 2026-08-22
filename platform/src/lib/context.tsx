@@ -9,11 +9,10 @@ import type { AggregateStatus } from './sync/sync-manager';
 // a separate webpack chunk that could 404 if the browser tab outlived a dev
 // rebuild ("Loading chunk _app-pages-browser_src_lib_auth_ts-*.js failed").
 import { usersDB } from './db';
-import { verifyPassword } from './auth';
-import { createToken } from './auth-token';
+import { CSRF_COOKIE_NAME, createToken, verifyPassword } from '@/modules/identity/client';
+
 import { logAudit } from './services/audit-service';
 import { captureException } from './observability';
-import { CSRF_COOKIE_NAME } from './csrf';
 
 /** True when an error came from a failed dynamic-chunk fetch (stale tab after
  *  a hot-reload, network blip, etc.). The recovery for these is always a
@@ -672,7 +671,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // replicated and is purged a few lines below.
           try {
             const signedIn = user;
-            const { cacheOfflineCredential } = await import('./offline-credential');
+            const { cacheOfflineCredential } = await import('@/modules/identity/core/offline-credential');
             await cacheOfflineCredential(password, {
               _id: signedIn._id,
               username: signedIn.username,
@@ -770,7 +769,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       //      in production it is empty and, under tenant databases, purged.
       //      Kept so the demo roster still signs in with the network off.
       if (!user) {
-        const { verifyOfflineCredential } = await import('./offline-credential');
+        const { verifyOfflineCredential } = await import('@/modules/identity/core/offline-credential');
         const cached = await verifyOfflineCredential(sanitizedUsername, password);
         if (cached) {
           // A cached credential already encodes the facility and role the

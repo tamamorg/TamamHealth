@@ -19,7 +19,7 @@
  *      the decision.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { serverError, logApiError } from '@/lib/api-auth';
+import { logApiError, serverError } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 
 const GENERIC_FAILURE =
@@ -41,7 +41,7 @@ async function postHandler(request: NextRequest) {
     const token = (body.token || '').trim();
     if (!token) return NextResponse.json({ error: GENERIC_FAILURE }, { status: 400 });
 
-    const { verifyAccountRequestEmail } = await import('@/lib/services/account-request-service');
+    const { verifyAccountRequestEmail } = await import('@/modules/identity/services/account-request-service');
     const result = await verifyAccountRequestEmail(token);
     if (!result.ok) {
       return NextResponse.json({ error: GENERIC_FAILURE }, { status: 400 });
@@ -51,7 +51,7 @@ async function postHandler(request: NextRequest) {
     // serverless invocation cannot return before the mail is handed off, and
     // non-fatal because a confirmed request that nobody was emailed about is
     // still in the queue for the next person who opens it.
-    const { notifyApproversOfRequest } = await import('@/lib/services/account-request-notify');
+    const { notifyApproversOfRequest } = await import('@/modules/identity/services/account-request-notify');
     await notifyApproversOfRequest(result.doc);
 
     return NextResponse.json({

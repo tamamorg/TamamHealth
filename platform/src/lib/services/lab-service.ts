@@ -208,7 +208,7 @@ export async function updateLabResult(id: string, data: Partial<LabResultDoc>): 
 async function resolveOrderingClinicianId(result: LabResultDoc): Promise<string> {
   if (result.orderedById) return result.orderedById;
   try {
-    const { getAllUsers } = await import('./user-service');
+    const { getAllUsers } = await import('@/modules/identity/services/user-service');
     const users = await getAllUsers();
     const wanted = result.orderedBy.trim().toLowerCase();
     // Candidates are constrained to the ORDER's own org: the local directory

@@ -1,5 +1,6 @@
 'use client';
 
+import { ForcePasswordChange, MfaEnrolment } from '@/modules/identity/client';
 import { Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
@@ -14,8 +15,7 @@ import MessagingDock from '@/components/MessagingDock';
 import { MessagingDockProvider } from '@/lib/messaging-dock-context';
 import { TourProvider } from '@/lib/tour/tour-context';
 import GetStartedCard from '@/components/onboarding/GetStartedCard';
-import ForcePasswordChange from '@/components/ForcePasswordChange';
-import MfaEnrolment from '@/components/MfaEnrolment';
+
 import { useAutoLock } from '@/lib/hooks/useAutoLock';
 import { Loader2 } from '@/components/icons/lucide';
 import { useIsMobileViewport } from '@/lib/hooks/useIsMobileViewport';

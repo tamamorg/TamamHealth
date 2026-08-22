@@ -10,7 +10,7 @@ import {
   totpStep, verifyTotpCode, buildOtpauthUri, formatSecretForDisplay,
   generateRecoveryCodes, hashRecoveryCode, consumeRecoveryCode,
   TOTP_STEP_SECONDS, RECOVERY_CODE_COUNT,
-} from '@/lib/totp';
+} from '@/modules/identity/mfa/totp';
 
 describe('base32', () => {
   it('round-trips', () => {

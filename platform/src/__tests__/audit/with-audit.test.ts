@@ -45,7 +45,7 @@ jest.mock('@/lib/services/audit-service', () => ({
   logDataAccess: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('@/lib/api-auth', () => ({
+jest.mock('@/modules/identity/core/api-auth', () => ({
   getAuthPayload: jest.fn(),
 }));
 
@@ -53,7 +53,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { logAudit } from '@/lib/services/audit-service';
-import { getAuthPayload } from '@/lib/api-auth';
+import { getAuthPayload } from '@/modules/identity/core/api-auth';
 
 const mockedLogAudit = logAudit as jest.MockedFunction<typeof logAudit>;
 const mockedGetAuthPayload = getAuthPayload as jest.MockedFunction<typeof getAuthPayload>;

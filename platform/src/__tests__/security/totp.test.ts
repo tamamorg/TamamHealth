@@ -23,7 +23,7 @@
 import {
   base32Encode, base32Decode, totpCodeForStep, totpStep,
   generateTotpSecret, TOTP_STEP_SECONDS,
-} from '@/lib/totp';
+} from '@/modules/identity/mfa/totp';
 
 /** RFC 4226 Appendix D: ASCII "12345678901234567890", base32-encoded. */
 const RFC_SECRET = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';

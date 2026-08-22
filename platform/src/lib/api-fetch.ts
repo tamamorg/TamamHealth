@@ -11,8 +11,7 @@
  * but they don't require the CSRF dance — using `fetch` directly is fine.
  */
 
-import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from './csrf';
-
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/modules/identity/client';
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const IDEMPOTENCY_HEADER = 'X-Idempotency-Key';
 

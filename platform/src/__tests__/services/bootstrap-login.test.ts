@@ -83,7 +83,7 @@ async function load(env: Record<string, string | undefined>) {
     SEED_CREDENTIALS_SECRET: 'jest-seed-secret-0123456789abcdef0123456789abcdef',
     ...env,
   });
-  const mod = await import('@/lib/server-users');
+  const mod = await import('@/modules/identity/core/server-users');
   return mod;
 }
 

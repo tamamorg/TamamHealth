@@ -19,7 +19,7 @@
  * combined to ~1.3s.
  */
 import bcrypt from 'bcryptjs';
-import { hashPassword, verifyPassword, bcryptCost } from '@/lib/auth';
+import { hashPassword, verifyPassword, bcryptCost } from '@/modules/identity/core/auth';
 
 describe('the reduced cost is confined to the test runner', () => {
   it('uses the low cost here, because Jest is running', () => {
@@ -32,7 +32,7 @@ describe('the reduced cost is confined to the test runner', () => {
     const saved = process.env.JEST_WORKER_ID;
     delete process.env.JEST_WORKER_ID;
     jest.resetModules();
-    const fresh = await import('@/lib/auth');
+    const fresh = await import('@/modules/identity/core/auth');
     expect(fresh.bcryptCost()).toBe(12);
     process.env.JEST_WORKER_ID = saved;
     jest.resetModules();
@@ -45,7 +45,7 @@ describe('the reduced cost is confined to the test runner', () => {
     Object.defineProperty(process.env, 'NODE_ENV', { value: 'test', configurable: true });
     jest.resetModules();
 
-    const fresh = await import('@/lib/auth');
+    const fresh = await import('@/modules/identity/core/auth');
     // NODE_ENV says "test" and the worker id is gone: still the full cost.
     expect(fresh.bcryptCost()).toBe(12);
 

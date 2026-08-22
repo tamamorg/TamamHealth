@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { UserDoc, UserRole } from '../db-types';
 import { useDataScope } from './useDataScope';
-import { canReadStaffDirectory } from '../staff-directory-access';
-
+import { canReadStaffDirectory } from '@/modules/identity/client';
 export function useUsers() {
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +25,7 @@ export function useUsers() {
       return;
     }
     try {
-      const { getAllUsers } = await import('../services/user-service');
+      const { getAllUsers } = await import('@/modules/identity/services/user-service');
       const data = await getAllUsers(scope);
       setUsers(data);
       setError(null);
@@ -71,7 +70,7 @@ export function useUsers() {
     specialty?: string;
     phone?: string;
   }, actorId?: string, actorUsername?: string) => {
-    const { createUser } = await import('../services/user-service');
+    const { createUser } = await import('@/modules/identity/services/user-service');
     const user = await createUser(data, actorId, actorUsername);
     await loadUsers();
     return user;
@@ -89,7 +88,7 @@ export function useUsers() {
     department?: string;
     specialty?: string;
   }, actorId?: string, actorUsername?: string) => {
-    const { updateUser } = await import('../services/user-service');
+    const { updateUser } = await import('@/modules/identity/services/user-service');
     const user = await updateUser(id, data, actorId, actorUsername);
     await loadUsers();
     return user;
@@ -101,7 +100,7 @@ export function useUsers() {
     actorId?: string,
     actorUsername?: string
   ) => {
-    const { resetPassword: resetPw } = await import('../services/user-service');
+    const { resetPassword: resetPw } = await import('@/modules/identity/services/user-service');
     await resetPw(id, newPassword, actorId, actorUsername);
   }, []);
 
@@ -110,7 +109,7 @@ export function useUsers() {
     actorId?: string,
     actorUsername?: string
   ) => {
-    const { deactivateUser } = await import('../services/user-service');
+    const { deactivateUser } = await import('@/modules/identity/services/user-service');
     await deactivateUser(id, actorId, actorUsername);
     await loadUsers();
   }, [loadUsers]);
@@ -126,7 +125,7 @@ export function useUsers() {
     actorId?: string,
     actorUsername?: string
   ) => {
-    const { reactivateUser } = await import('../services/user-service');
+    const { reactivateUser } = await import('@/modules/identity/services/user-service');
     await reactivateUser(id, actorId, actorUsername);
     await loadUsers();
   }, [loadUsers]);

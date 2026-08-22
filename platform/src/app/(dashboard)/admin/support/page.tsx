@@ -7,7 +7,7 @@ import { useToast } from '@/components/Toast';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
-import { getAllUsers } from '@/lib/services/user-service';
+
 import { getRecentAuditLogs } from '@/lib/services/audit-service';
 import {
   getVisibleAnnouncements, createAnnouncement, canPostAnnouncements,
@@ -20,6 +20,7 @@ import {
 import { SaTable, formatWhen } from '@/components/admin/sa-ui';
 import { Send, Building2, Users, ShieldCheck, Megaphone, ClipboardList } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { getAllUsers } from '@/modules/identity/services/user-service';
 
 const SUPPORT_ACTION_RE = /support|impersonat|emergency|break/i;
 

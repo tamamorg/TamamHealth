@@ -12,13 +12,13 @@
 
 export {};
 
-jest.mock('@/lib/token-blacklist', () => ({
+jest.mock('@/modules/identity/core/token-blacklist', () => ({
   isTokenRevoked: jest.fn(async () => false),
   revokeToken: jest.fn(async () => undefined),
 }));
 
 const getUserById = jest.fn();
-jest.mock('@/lib/services/user-service', () => ({ getUserById }));
+jest.mock('@/modules/identity/services/user-service', () => ({ getUserById }));
 
 // api-auth's tenant kill-switch import — tokens below carry no orgId, so this
 // must never be reached; mocking it makes an accidental reach loud.
@@ -27,11 +27,11 @@ jest.mock('@/lib/services/tenant-control-service', () => ({
 }));
 
 import type { NextRequest } from 'next/server';
-import { SESSION_TTL_SEC, SESSION_RENEW_AFTER_SEC, applySessionCookies, SESSION_COOKIE_NAME } from '@/lib/session';
-import { CSRF_COOKIE_NAME } from '@/lib/csrf';
-import { createToken, verifyToken, pwdAtClaim } from '@/lib/auth-token';
-import { getAuthPayload } from '@/lib/api-auth';
-import { generateTempPassword, TEMP_PASSWORD_LENGTH } from '@/lib/temp-password';
+import { SESSION_TTL_SEC, SESSION_RENEW_AFTER_SEC, applySessionCookies, SESSION_COOKIE_NAME } from '@/modules/identity/core/session';
+import { CSRF_COOKIE_NAME } from '@/modules/identity/core/csrf';
+import { createToken, verifyToken, pwdAtClaim } from '@/modules/identity/core/auth-token';
+import { getAuthPayload } from '@/modules/identity/core/api-auth';
+import { generateTempPassword, TEMP_PASSWORD_LENGTH } from '@/modules/identity/provisioning/temp-password';
 
 const BASE_USER = {
   _id: 'user-nurse.jane',

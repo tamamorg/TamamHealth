@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/audit/with-audit', () => ({ withAuditLog: (handler: unknown) => handler }));
 jest.mock('@/lib/api-security', () => ({ checkRateLimit: jest.fn(async () => null) }));
-jest.mock('@/lib/api-auth', () => ({
+jest.mock('@/modules/identity/core/api-auth', () => ({
   getAuthPayload: jest.fn(async () => ({
     sub: 'user-superadmin', username: 'superadmin', name: 'Admin', role: 'super_admin',
   })),

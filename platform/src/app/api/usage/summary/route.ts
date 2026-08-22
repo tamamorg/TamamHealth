@@ -4,8 +4,7 @@
  */
 import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, logApiError } from '@/lib/api-auth';
+import { forbidden, getAuthPayload, hasRole, logApiError, unauthorized } from '@/modules/identity';
 import {
   aggregateUsageSummary,
   queryUsageEvents } from '@/lib/services/usage-event-service';

@@ -16,15 +16,14 @@
  * would be handing over a checklist of what not to try.
  */
 import { NextResponse } from 'next/server';
-import { logApiError } from '@/lib/api-auth';
-import { DEFAULT_MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from '@/lib/password-policy';
+import { DEFAULT_MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, logApiError } from '@/modules/identity';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { getMinPasswordLength } = await import('@/lib/password-policy-server');
+    const { getMinPasswordLength } = await import('@/modules/identity/policy/password-policy-server');
     return NextResponse.json({
       minLength: await getMinPasswordLength(),
       maxLength: MAX_PASSWORD_LENGTH,

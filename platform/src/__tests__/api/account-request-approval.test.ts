@@ -23,7 +23,7 @@ const actor = {
   sub: 'user-org.admin', username: 'org.admin', name: 'Org Admin',
   role: 'org_admin', orgId: 'org-a',
 };
-jest.mock('@/lib/api-auth', () => ({
+jest.mock('@/modules/identity/core/api-auth', () => ({
   getAuthPayload: jest.fn(async () => actor),
   unauthorized: jest.fn(() => Response.json({ error: 'unauthorized' }, { status: 401 })),
   forbidden: jest.fn((error = 'forbidden') => Response.json({ error }, { status: 403 })),
@@ -41,8 +41,8 @@ const requestDoc: Record<string, unknown> = {
 };
 const decisions: Record<string, unknown>[] = [];
 
-jest.mock('@/lib/services/account-request-service', () => {
-  const roles = jest.requireActual('@/lib/account-request-roles');
+jest.mock('@/modules/identity/services/account-request-service', () => {
+  const roles = jest.requireActual('@/modules/identity/policy/account-request-roles');
   return {
     getAccountRequest: jest.fn(async () => requestDoc),
     canDecide: jest.fn(() => true),
@@ -63,22 +63,22 @@ jest.mock('@/lib/services/organization-service', () => ({
 jest.mock('@/lib/services/hospital-service', () => ({
   getHospitalById: jest.fn(async () => ({ _id: 'hosp-a', name: 'Juba Teaching Hospital', orgId: 'org-a' })),
 }));
-jest.mock('@/lib/services/user-service', () => ({
+jest.mock('@/modules/identity/services/user-service', () => ({
   createUser: jest.fn(async (input: Record<string, unknown>) => ({
     _id: `user-${input.username}`, ...input,
   })),
   getAllUsers: jest.fn(async () => []),
 }));
-jest.mock('@/lib/services/invite-delivery', () => ({
+jest.mock('@/modules/identity/services/invite-delivery', () => ({
   deliverAccountInvite: jest.fn(async () => ({
     sent: true, to: 'mary@example.org', expiresAt: '2026-08-25T00:00:00.000Z',
   })),
 }));
-jest.mock('@/lib/password-policy-server', () => ({ getMinPasswordLength: jest.fn(async () => 12) }));
+jest.mock('@/modules/identity/policy/password-policy-server', () => ({ getMinPasswordLength: jest.fn(async () => 12) }));
 
 import { POST } from '@/app/api/account-requests/[id]/route';
-import { deliverAccountInvite } from '@/lib/services/invite-delivery';
-import { createUser } from '@/lib/services/user-service';
+import { deliverAccountInvite } from '@/modules/identity/services/invite-delivery';
+import { createUser } from '@/modules/identity/services/user-service';
 
 const params = Promise.resolve({ id: 'acctreq-1' });
 const post = (body: Record<string, unknown>) => POST(

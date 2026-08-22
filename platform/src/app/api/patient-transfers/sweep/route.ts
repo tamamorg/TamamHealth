@@ -26,9 +26,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
-import {
-  getAuthPayload, unauthorized, forbidden, serverError, logApiError,
-} from '@/lib/api-auth';
+import { forbidden, getAuthPayload, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { hasTransferCapability } from '@/lib/services/patient-transfer-permissions';
 

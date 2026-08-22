@@ -12,7 +12,7 @@
 import {
   issueInvite, hashInviteToken, inviteHashMatches, isInviteExpired,
   buildInviteUrl, INVITE_TTL_HOURS,
-} from '@/lib/user-invite';
+} from '@/modules/identity/provisioning/user-invite';
 
 describe('issuing', () => {
   test('the stored value is a hash, never the token itself', () => {

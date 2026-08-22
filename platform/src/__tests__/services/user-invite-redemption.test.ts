@@ -12,8 +12,8 @@ import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { usersDB } from '@/lib/db';
 import {
   createUser, issueUserInvite, redeemUserInvite, redactUserForClient, getUserById,
-} from '@/lib/services/user-service';
-import { hashInviteToken, issueInvite } from '@/lib/user-invite';
+} from '@/modules/identity/services/user-service';
+import { hashInviteToken, issueInvite } from '@/modules/identity/provisioning/user-invite';
 import type { UserDoc } from '@/lib/db-types';
 
 const GOOD_PASSWORD = 'Kq7mHn2pWx4Z';

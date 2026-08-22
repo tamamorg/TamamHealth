@@ -1,9 +1,9 @@
-import { logApiError } from '@/lib/api-auth';
+import { logApiError, verifyPassword } from '@/modules/identity';
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientIp } from '@/lib/request-utils';
 import { createPatientToken } from '@/lib/patient-portal-auth';
 import { demoFallbackEnabled, logDemoFallback, findDemoPatientByUsername } from '@/lib/patient-portal-demo';
-import { verifyPassword } from '@/lib/auth';
+
 import { otpEnabled, issueOtp } from '@/lib/patient-portal-otp';
 import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
 
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     // temporary problem. This is the check that makes it mean something, and
     // it answers exactly like a wrong password so the response cannot be used
     // to discover whose access was withdrawn.
-    const { portalSignInBlocked } = await import('@/lib/services/patient-portal-enrolment');
+    const { portalSignInBlocked } = await import('@/modules/identity/services/patient-portal-enrolment');
     if (portalSignInBlocked(found as { portalDisabledAt?: string })) {
       return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 });
     }
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
     // "Is anyone actually using the portal we enrolled them in?" was
     // unanswerable — nothing recorded a portal sign-in. Best-effort, and never
     // in the way of a patient reaching their own records.
-    const { recordPortalLogin } = await import('@/lib/services/patient-portal-enrolment');
+    const { recordPortalLogin } = await import('@/modules/identity/services/patient-portal-enrolment');
     await recordPortalLogin(found._id);
 
     // Issue a patient-scoped JWT (8 hour expiry)

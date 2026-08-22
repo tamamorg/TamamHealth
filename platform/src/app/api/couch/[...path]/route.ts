@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthPayload, unauthorized, forbidden, logApiError } from '@/lib/api-auth';
+import { forbidden, getAuthPayload, logApiError, unauthorized } from '@/modules/identity';
 import { ensureCouchGatewayUser } from '@/lib/sync/couch-auth';
 import {
   gatewayRequestAllowed,

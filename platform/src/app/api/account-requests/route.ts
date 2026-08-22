@@ -11,17 +11,13 @@
  */
 import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError } from '@/lib/api-auth';
+import { accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility, forbidden, getAuthPayload, hasRole, isRequestableRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { buildScopeFromAuth } from '@/lib/services/data-scope';
 import { rateLimit } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/request-utils';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import {
-  createAccountRequest, listAccountRequests, isRequestableRole } from '@/lib/services/account-request-service';
-import {
-  accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility } from '@/lib/account-request-roles';
-import { notifyRequestSubmitted } from '@/lib/services/account-request-notify';
+import { notifyRequestSubmitted } from '@/modules/identity/services/account-request-notify';
+import { createAccountRequest, listAccountRequests } from '@/modules/identity/services/account-request-service';
 
 export const runtime = 'nodejs';
 

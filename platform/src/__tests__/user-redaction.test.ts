@@ -1,4 +1,4 @@
-import { redactUserForClient } from '@/lib/services/user-service';
+import { redactUserForClient } from '@/modules/identity/services/user-service';
 import type { UserDoc } from '@/lib/db-types';
 
 describe('user API redaction', () => {

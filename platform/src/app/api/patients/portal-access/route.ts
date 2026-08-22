@@ -13,9 +13,7 @@
  * so it inherits them.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
-} from '@/lib/api-auth';
+import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog, AUDIT_ACTION_HEADER } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 
@@ -48,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { patientsDB } = await import('@/lib/db');
-    const { summarisePortalAccess, suggestPortalUsername } = await import('@/lib/services/patient-portal-enrolment');
+    const { summarisePortalAccess, suggestPortalUsername } = await import('@/modules/identity/services/patient-portal-enrolment');
     const { filterByScope } = await import('@/lib/services/data-scope');
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
 
@@ -107,7 +105,7 @@ async function postHandler(request: NextRequest) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    const enrolment = await import('@/lib/services/patient-portal-enrolment');
+    const enrolment = await import('@/modules/identity/services/patient-portal-enrolment');
 
     if (body.action === 'disable') {
       const ok = await enrolment.disablePortalAccount(body.patientId, auth.username);

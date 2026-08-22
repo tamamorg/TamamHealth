@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createToken, verifyToken } from '@/lib/auth-token';
-import { CSRF_COOKIE_NAME, mintCsrfToken } from '@/lib/csrf';
-import { isTokenRevoked } from '@/lib/token-blacklist';
-import { applySessionCookies, SESSION_RENEW_AFTER_SEC, SESSION_TTL_SEC } from '@/lib/session';
+import { CSRF_COOKIE_NAME, SESSION_RENEW_AFTER_SEC, SESSION_TTL_SEC, applySessionCookies, createToken, isTokenRevoked, mintCsrfToken, verifyToken } from '@/modules/identity';
 
 /**
  * The display name of an organization, for accounts whose own record predates
@@ -90,7 +87,7 @@ export async function GET(request: NextRequest) {
   // carries the current password epoch into any re-minted token.
   let liveUser: { passwordUpdatedAt?: string } | null = null;
   try {
-    const { getUserById } = await import('@/lib/services/user-service');
+    const { getUserById } = await import('@/modules/identity/services/user-service');
     const user = await getUserById(payload.sub);
     if (user) {
       // Deactivated mid-session → drop the session on next load.
@@ -137,7 +134,7 @@ export async function GET(request: NextRequest) {
         // reload, and a factor enrolled five minutes ago stops blocking it.
         mfaPending: await (async () => {
           try {
-            const { isMfaRequiredFor } = await import('@/lib/services/mfa-service');
+            const { isMfaRequiredFor } = await import('@/modules/identity/services/mfa-service');
             return await isMfaRequiredFor(user);
           } catch {
             return payload.mfaPending;

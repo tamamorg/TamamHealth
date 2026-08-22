@@ -1,5 +1,5 @@
-import { generateTempPassword } from './temp-password';
-import { hashPassword } from './auth';
+import { generateTempPassword, hashPassword } from '@/modules/identity/client';
+
 import {
   usersDB, patientsDB, hospitalsDB, referralsDB,
   diseaseAlertsDB, labResultsDB, prescriptionsDB, medicalRecordsDB,
@@ -1412,7 +1412,6 @@ const overflowAppointments: Omit<AppointmentDoc, '_rev' | 'createdBy'>[] = overf
 });
 seedAppointments.push(...overflowAppointments);
 
-
 const overflowTriage: Omit<TriageDoc, '_rev' | 'createdBy'>[] = overflowRoster.map((p, i) => {
   const priorities = ['GREEN', 'YELLOW', 'GREEN', 'YELLOW', 'RED'] as const;
   const priority = priorities[i % priorities.length];
@@ -1600,7 +1599,6 @@ const seedProblems: Omit<ProblemDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'problem-6', type: 'problem', patientId: 'pat-00035', patientName: 'Ladu Tombe Keji', name: 'Community-acquired pneumonia', icd11Code: 'CA40', status: 'resolved', onsetDate: dateAgo(9), resolvedDate: dateAgo(4), severity: 'moderate', notes: 'Treated with antibiotics, recovered.', recordedBy: 'user-co.deng', recordedByName: 'CO Deng Mabior Kuol', hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(9), updatedAt: daysAgo(4) },
   { _id: 'problem-7', type: 'problem', patientId: 'pat-00030', patientName: 'Achol Mayen Ring', name: 'Burns >30% TBSA', icd11Code: 'NE00', status: 'active', onsetDate: dateAgo(2), severity: 'severe', notes: 'ICU admission, isolation for infection control.', recordedBy: 'user-dr.wani', recordedByName: 'Dr. James Wani Igga', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(0) },
 ];
-
 
 const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
 

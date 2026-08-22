@@ -14,8 +14,7 @@
  *      SMS second factor and the portal's own rate limits apply.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { logApiError, serverError } from '@/lib/api-auth';
-import { PORTAL_MIN_PASSWORD_LENGTH } from '@/lib/services/patient-portal-enrolment';
+import { PORTAL_MIN_PASSWORD_LENGTH, logApiError, serverError } from '@/modules/identity';
 
 export const runtime = 'nodejs';
 
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { activatePortalAccount } = await import('@/lib/services/patient-portal-enrolment');
+    const { activatePortalAccount } = await import('@/modules/identity/services/patient-portal-enrolment');
     const result = await activatePortalAccount(body.code || '', password);
     if (!result.ok) {
       return NextResponse.json({ error: GENERIC_FAILURE }, { status: 400 });

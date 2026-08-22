@@ -56,8 +56,7 @@ import {
   ClipboardList,
 } from '@/components/icons/lucide';
 import { BRAND_DARKER, BRAND_PRIMARY, BRAND_SECONDARY } from './theme-colors';
-import { isPlatformOnlyRole } from './user-scope-rules';
-
+import { isPlatformOnlyRole } from '@/modules/identity/client';
 // Lenient shape so either lucide or our duotone wrappers type-check.
 export type NavIcon = ComponentType<
   Omit<SVGProps<SVGSVGElement>, 'color'> & {

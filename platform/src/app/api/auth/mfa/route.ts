@@ -11,7 +11,8 @@
  * for the phone that is genuinely gone.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthPayload, unauthorized, serverError, logApiError, type AuthPayload } from '@/lib/api-auth';
+import { getAuthPayload, logApiError, serverError, unauthorized } from '@/modules/identity';
+import type { AuthPayload } from '@/modules/identity';
 import { withAuditLog, AUDIT_ACTION_HEADER } from '@/lib/audit/with-audit';
 
 export const runtime = 'nodejs';
@@ -30,11 +31,11 @@ function audited(response: NextResponse, action: string): NextResponse {
  */
 async function reissueSession(response: NextResponse, auth: AuthPayload): Promise<void> {
   try {
-    const { getUserById } = await import('@/lib/services/user-service');
-    const { isMfaRequiredFor } = await import('@/lib/services/mfa-service');
-    const { createToken } = await import('@/lib/auth-token');
-    const { mintCsrfToken } = await import('@/lib/csrf');
-    const { applySessionCookies } = await import('@/lib/session');
+    const { getUserById } = await import('@/modules/identity/services/user-service');
+    const { isMfaRequiredFor } = await import('@/modules/identity/services/mfa-service');
+    const { createToken } = await import('@/modules/identity/core/auth-token');
+    const { mintCsrfToken } = await import('@/modules/identity/core/csrf');
+    const { applySessionCookies } = await import('@/modules/identity/core/session');
     const user = await getUserById(auth.sub);
     if (!user) return;
     const token = await createToken({
@@ -65,8 +66,8 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
-    const { getUserById } = await import('@/lib/services/user-service');
-    const { isMfaRequiredFor } = await import('@/lib/services/mfa-service');
+    const { getUserById } = await import('@/modules/identity/services/user-service');
+    const { isMfaRequiredFor } = await import('@/modules/identity/services/mfa-service');
     const user = await getUserById(auth.sub);
     if (!user) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     return NextResponse.json({
@@ -101,7 +102,7 @@ async function postHandler(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    const mfa = await import('@/lib/services/mfa-service');
+    const mfa = await import('@/modules/identity/services/mfa-service');
 
     if (body.action === 'begin') {
       try {
@@ -146,8 +147,8 @@ async function postHandler(request: NextRequest) {
       // second factor is the single most useful thing an attacker can do with
       // a borrowed session, so it is the one self-service change that asks the
       // person to prove they are still there.
-      const { getUserById } = await import('@/lib/services/user-service');
-      const { verifyPassword } = await import('@/lib/auth');
+      const { getUserById } = await import('@/modules/identity/services/user-service');
+      const { verifyPassword } = await import('@/modules/identity/core/auth');
       const user = await getUserById(auth.sub);
       if (!user) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
       if (!body.password || !(await verifyPassword(body.password, user.passwordHash))) {

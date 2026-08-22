@@ -22,7 +22,7 @@ async function loadCredentials(env: Record<string, string | undefined>) {
   for (const [key, value] of Object.entries(env)) {
     if (value === undefined) delete process.env[key];
   }
-  const { getOrCreateSeedCredentials } = await import('@/lib/seed-credentials');
+  const { getOrCreateSeedCredentials } = await import('@/modules/identity/core/seed-credentials');
   return getOrCreateSeedCredentials();
 }
 

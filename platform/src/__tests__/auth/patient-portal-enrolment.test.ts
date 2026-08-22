@@ -42,8 +42,8 @@ import {
   enrolPatientInPortal, activatePortalAccount, disablePortalAccount,
   summarisePortalAccess, suggestPortalUsername, recordPortalLogin, portalSignInBlocked,
   PORTAL_MIN_PASSWORD_LENGTH,
-} from '@/lib/services/patient-portal-enrolment';
-import { verifyPassword } from '@/lib/auth';
+} from '@/modules/identity/services/patient-portal-enrolment';
+import { verifyPassword } from '@/modules/identity/core/auth';
 import type { PatientDoc } from '@/lib/db-types';
 
 const ID = 'patient-1';

@@ -1,5 +1,7 @@
 'use client';
 
+import { AccountRequestQueue, BulkUserImportModal, CredentialHandoffModal, canResendInvite, describeAccountState, describeInvitationOutcome, generateTempPassword, roleNeedsFacility, roleNeedsOrganization, usePasswordPolicy, validateUserScope } from '@/modules/identity/client';
+import type { InvitationOutcome } from '@/modules/identity/client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -12,22 +14,15 @@ import {
   KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Mail, Upload,
 } from '@/components/icons/lucide';
 import { isRowActivationKey } from '@/components/RowActionsPopup';
-import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
-import { generateTempPassword } from '@/lib/temp-password';
+
 import { avatarTint } from '@/lib/patient-utils';
-import { roleNeedsFacility, roleNeedsOrganization, validateUserScope } from '@/lib/user-scope-rules';
-import type { InvitationOutcome } from '@/lib/user-invite';
+
 import { canCreateFacilities } from '@/lib/people-nav';
 import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
 import { activeFacilities } from '@/lib/services/hospital-service';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
 import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
-import { describeAccountState, canResendInvite } from '@/lib/account-state';
-import { describeInvitationOutcome } from '@/lib/invitation-copy';
-import { usePasswordPolicy } from '@/lib/hooks/usePasswordPolicy';
-import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
-import BulkUserImportModal from '@/components/admin/BulkUserImportModal';
 
 // Column template for the user list header + rows:
 // User · Role · Organization · Facility · Status · Actions
@@ -38,8 +33,6 @@ import BulkUserImportModal from '@/components/admin/BulkUserImportModal';
 // Five tracks, no trailing action gutter: the row itself opens the actions,
 // so the 44px that column used to hold goes back to the data.
 const USER_GRID = 'minmax(320px, 1.6fr) repeat(4, minmax(150px, 1fr))';
-
-
 
 // Every UserRole, in the order the role selects/distribution render them.
 // roleLabel() (below) is the single source of display text — this array only
@@ -159,7 +152,7 @@ export default function AdminUsersPage() {
   // patch in one at a time.
   const reloadUsers = useCallback(async () => {
     try {
-      const { getAllUsers } = await import('@/lib/services/user-service');
+      const { getAllUsers } = await import('@/modules/identity/services/user-service');
       setUsers(await getAllUsers());
     } catch (err) {
       console.error('Failed to load users:', err);
@@ -188,7 +181,7 @@ export default function AdminUsersPage() {
     if (!changeRoleUser || !currentUser) return;
     setChangingRole(true);
     try {
-      const { updateUser } = await import('@/lib/services/user-service');
+      const { updateUser } = await import('@/modules/identity/services/user-service');
       await updateUser(changeRoleUser._id, { role: newRole } as Partial<UserDoc>, currentUser._id, currentUser.username);
       setUsers(prev => prev.map(u => u._id === changeRoleUser._id ? { ...u, role: newRole } : u));
       showToast(`${changeRoleUser.name}'s role changed to ${roleLabel(newRole)}.`, 'success');
@@ -258,7 +251,7 @@ export default function AdminUsersPage() {
       // this page used to discard that. An operator was shown a temporary
       // password with no way to know a link had already been mailed — or, with
       // no email field at all, that one never could be.
-      const { createUserWithInvitation } = await import('@/lib/services/user-service');
+      const { createUserWithInvitation } = await import('@/modules/identity/services/user-service');
       const hospital = hospitals.find(h => h._id === addForm.hospitalId);
       const { user: created, invitation } = await createUserWithInvitation({
         name: addForm.name.trim(),
@@ -295,7 +288,7 @@ export default function AdminUsersPage() {
     setResetting(true);
     setResetError(null);
     try {
-      const { resetPassword } = await import('@/lib/services/user-service');
+      const { resetPassword } = await import('@/modules/identity/services/user-service');
       await resetPassword(resetUser._id, resetPasswordValue, currentUser._id, currentUser.username);
       setUsers(prev => prev.map(u => u._id === resetUser._id ? { ...u, mustChangePassword: true } : u));
       showToast(`Password reset for ${resetUser.username}.`, 'success');
@@ -322,14 +315,14 @@ export default function AdminUsersPage() {
       // do with turning a login back on. Deactivation never had the problem
       // because it always used its own action; this makes the pair symmetric.
       if (currentlyActive) {
-        const { deactivateUserReportingOpenWork } = await import('@/lib/services/user-service');
+        const { deactivateUserReportingOpenWork } = await import('@/modules/identity/services/user-service');
         const { openWork } = await deactivateUserReportingOpenWork(userId);
         if (openWork?.hasOpenWork) {
-          const { describeOpenWork } = await import('@/lib/services/offboarding-service');
+          const { describeOpenWork } = await import('@/modules/identity/services/offboarding-service');
           setOpenWorkNotice(describeOpenWork(openWork));
         }
       } else {
-        const { reactivateUser } = await import('@/lib/services/user-service');
+        const { reactivateUser } = await import('@/modules/identity/services/user-service');
         await reactivateUser(userId, currentUser._id, currentUser.username);
       }
       // Update the row in place — refetching the entire user list after every
@@ -353,7 +346,7 @@ export default function AdminUsersPage() {
   const handleResendInvite = async (user: UserDoc) => {
     setResendingId(user._id);
     try {
-      const { resendUserInvite } = await import('@/lib/services/user-service');
+      const { resendUserInvite } = await import('@/modules/identity/services/user-service');
       const invitation = await resendUserInvite(user._id);
       showToast(
         describeInvitationOutcome(invitation).message,
@@ -381,7 +374,7 @@ export default function AdminUsersPage() {
   const handleResetMfa = async (user: UserDoc) => {
     setResettingMfa(true);
     try {
-      const { resetUserMfa } = await import('@/lib/services/user-service');
+      const { resetUserMfa } = await import('@/modules/identity/services/user-service');
       const { message } = await resetUserMfa(user._id);
       setUsers(prev => prev.map(u => u._id === user._id ? { ...u, totpEnabledAt: undefined } : u));
       showToast(message || `Two-factor authentication cleared for ${user.name}.`, 'success');

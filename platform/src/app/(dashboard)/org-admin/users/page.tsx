@@ -1,5 +1,7 @@
 'use client';
 
+import { AccountRequestQueue, BulkUserImportModal, CreateUserModal, CredentialHandoffModal, canResendInvite, describeAccountState, describeInvitationOutcome, generateTempPassword, usePasswordPolicy } from '@/modules/identity/client';
+import type { InvitationOutcome } from '@/modules/identity/client';
 /**
  * The organization's user roster + account requests, on the shared admin
  * console kit (sadb-*) — the org-scoped sibling of /admin/users, which now
@@ -21,7 +23,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
-import type { InvitationOutcome } from '@/lib/user-invite';
+
 import {
   Plus, KeyRound, UserX, UserCheck, Eye, EyeOff, RefreshCw, Mail, Upload, ShieldCheck,
 } from '@/components/icons/lucide';
@@ -30,21 +32,17 @@ import type { RowAction } from '@/components/RowActionsMenu';
 import { avatarTint } from '@/lib/patient-utils';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
-import { generateTempPassword } from '@/lib/temp-password';
+
 import { canCreateUsers, canCreateFacilities } from '@/lib/people-nav';
 import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
-import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
-import CreateUserModal from '@/components/admin/CreateUserModal';
+
 import { activeFacilities } from '@/lib/services/hospital-service';
 import { getRoleConfig, labelRolesDistinctly } from '@/lib/permissions';
-import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
-import BulkUserImportModal from '@/components/admin/BulkUserImportModal';
+
 import {
   SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbTabs, SadbConfirmModal,
 } from '@/components/admin/sadb-ui';
-import { describeAccountState, canResendInvite } from '@/lib/account-state';
-import { describeInvitationOutcome } from '@/lib/invitation-copy';
-import { usePasswordPolicy } from '@/lib/hooks/usePasswordPolicy';
+
 import type { UserDoc, HospitalDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 
@@ -119,7 +117,7 @@ export default function OrgUsersPage() {
   const handleResendInvite = async (user: UserDoc) => {
     setResendingId(user._id);
     try {
-      const { resendUserInvite } = await import('@/lib/services/user-service');
+      const { resendUserInvite } = await import('@/modules/identity/services/user-service');
       const invitation = await resendUserInvite(user._id);
       showToast(describeInvitationOutcome(invitation).message, invitation.sent ? 'success' : 'error');
       setUsers(prev => prev.map(u => u._id === user._id
@@ -187,7 +185,7 @@ export default function OrgUsersPage() {
         userId: currentUser._id,
       };
       const [{ getAllUsers }, { getAllHospitals }, { assignableRolesForOrgAdmin }] = await Promise.all([
-        import('@/lib/services/user-service'),
+        import('@/modules/identity/services/user-service'),
         import('@/lib/services/hospital-service'),
         import('@/lib/permissions'),
       ]);
@@ -250,11 +248,11 @@ export default function OrgUsersPage() {
       // Same path the platform roster uses: revoke first, then say what the
       // leaver still had booked. An org admin needs that at least as much as a
       // platform operator does — they are the one who has to reassign it.
-      const { deactivateUserReportingOpenWork } = await import('@/lib/services/user-service');
+      const { deactivateUserReportingOpenWork } = await import('@/modules/identity/services/user-service');
       const { openWork } = await deactivateUserReportingOpenWork(userId);
       showToast(t('orgUsers.successUserDeactivated'), 'success');
       if (openWork?.hasOpenWork) {
-        const { describeOpenWork } = await import('@/lib/services/offboarding-service');
+        const { describeOpenWork } = await import('@/modules/identity/services/offboarding-service');
         setOpenWorkNotice(describeOpenWork(openWork));
       }
       await loadData();
@@ -267,7 +265,7 @@ export default function OrgUsersPage() {
   /** Clear a colleague's second factor — the lost-phone path. */
   const handleResetMfa = async (user: UserDoc) => {
     try {
-      const { resetUserMfa } = await import('@/lib/services/user-service');
+      const { resetUserMfa } = await import('@/modules/identity/services/user-service');
       const { message } = await resetUserMfa(user._id);
       showToast(message || t('orgUsers.resetTwoFactorDone', { name: user.name }), 'success');
       await loadData();
@@ -280,7 +278,7 @@ export default function OrgUsersPage() {
 
   const handleReactivate = async (userId: string) => {
     try {
-      const { reactivateUser } = await import('@/lib/services/user-service');
+      const { reactivateUser } = await import('@/modules/identity/services/user-service');
       await reactivateUser(userId, currentUser?._id, currentUser?.username);
       showToast(t('orgUsers.successUserReactivated'), 'success');
       await loadData();
@@ -298,7 +296,7 @@ export default function OrgUsersPage() {
     }
     setResetting(true);
     try {
-      const { resetPassword: resetPw } = await import('@/lib/services/user-service');
+      const { resetPassword: resetPw } = await import('@/modules/identity/services/user-service');
       const targetUser = users.find(u => u._id === showResetModal);
       const tempPassword = resetPassword;
       await resetPw(showResetModal, tempPassword, currentUser?._id, currentUser?.username);

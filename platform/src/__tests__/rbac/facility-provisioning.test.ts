@@ -29,7 +29,7 @@ import {
   roleNeedsFacility, roleNeedsOrganization, validateUserScope,
   ROLES_WITHOUT_FACILITY, ROLES_WITHOUT_ORGANIZATION,
   FACILITY_REQUIRED_MESSAGE, ORG_REQUIRED_MESSAGE,
-} from '@/lib/user-scope-rules';
+} from '@/modules/identity/policy/user-scope-rules';
 import { FACILITY_TYPES, DEFAULT_FACILITY_TYPE, isFacilityType } from '@/lib/facility-types';
 import type { UserRole } from '@/lib/db-types';
 
@@ -254,14 +254,18 @@ describe('the scope a staff account must carry', () => {
     // list in its place.
     for (const file of [
       'app/api/users/route.ts',
-      'lib/services/user-service.ts',
-      'components/admin/CreateUserModal.tsx',
+      'modules/identity/services/user-service.ts',
+      'modules/identity/components/CreateUserModal.tsx',
       'app/(dashboard)/admin/users/page.tsx',
     ]) {
       const text = source(file);
       expect(text).not.toMatch(/ROLES_WITHOUT_HOSPITAL\s*:\s*UserRole\[\]\s*=/);
       expect(text).not.toMatch(/rolesWithoutHospital\s*:\s*UserRole\[\]\s*=/);
-      expect(text).toContain('user-scope-rules');
+      // The rule comes from the identity module, whether through its public
+      // surface or (inside the module) the policy file that defines it. What
+      // the assertion is really guarding is that it comes from SOMEWHERE
+      // shared rather than being retyped here.
+      expect(text).toMatch(/@\/modules\/identity(\/client|\/policy\/user-scope-rules)?['"]/);
     }
     // Pages that delegate must not quietly grow their own list back.
     for (const file of [

@@ -13,7 +13,7 @@
  */
 process.env.JWT_SECRET = 'test-secret-test-secret-test-secret-test'; // 40 chars
 
-import { mintCsrfToken, verifyCsrfToken, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/lib/csrf';
+import { mintCsrfToken, verifyCsrfToken, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/modules/identity/core/csrf';
 
 describe('CSRF token', () => {
   it('mint produces a token that verifies for the same subject', async () => {

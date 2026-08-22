@@ -12,7 +12,7 @@ import {
   hasOfflineCredential,
   OFFLINE_CREDENTIAL_TTL_DAYS,
   type OfflineCredentialClaims,
-} from '@/lib/offline-credential';
+} from '@/modules/identity/core/offline-credential';
 
 const claims: OfflineCredentialClaims = {
   _id: 'user-nurse.stella',

@@ -1,4 +1,4 @@
-import { logApiError } from '@/lib/api-auth';
+import { logApiError } from '@/modules/identity';
 /**
  * API: /api/demo-credentials
  * GET — the seeded demo roster with the password for each account, which the
@@ -40,12 +40,12 @@ interface DemoProfileResponse {
 
 export async function GET() {
   try {
-    const { isStandaloneDemo } = await import('@/lib/server-users');
+    const { isStandaloneDemo } = await import('@/modules/identity/core/server-users');
     if (!isStandaloneDemo()) {
       return NextResponse.json({ profiles: [] }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
-    const { getOrCreateSeedCredentials, DEMO_USER_PROFILES } = await import('@/lib/seed-credentials');
+    const { getOrCreateSeedCredentials, DEMO_USER_PROFILES } = await import('@/modules/identity/core/seed-credentials');
     const credentials = await getOrCreateSeedCredentials();
 
     // An account with no generated password is dropped rather than listed

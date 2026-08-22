@@ -42,10 +42,10 @@ jest.mock('@/lib/db', () => ({ accountRequestsDB }));
 import {
   createAccountRequest, verifyAccountRequestEmail, listAccountRequests, canDecide, recordDecision,
   approverTierFor, suggestUsername, isRequestableRole,
-} from '@/lib/services/account-request-service';
+} from '@/modules/identity/services/account-request-service';
 import {
   accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility,
-} from '@/lib/account-request-roles';
+} from '@/modules/identity/policy/account-request-roles';
 import type { DataScope } from '@/lib/services/data-scope';
 
 const orgAdmin = (orgId?: string): DataScope => ({ role: 'org_admin', orgId });

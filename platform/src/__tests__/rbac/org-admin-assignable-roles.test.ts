@@ -13,7 +13,7 @@ import {
   assignableRolesForOrgAdmin,
   getAvailableRoles,
 } from '@/lib/permissions';
-import { PLATFORM_ONLY_ASSIGNABLE_ROLES, isPlatformOnlyRole } from '@/lib/user-scope-rules';
+import { PLATFORM_ONLY_ASSIGNABLE_ROLES, isPlatformOnlyRole } from '@/modules/identity/policy/user-scope-rules';
 
 describe('roles an org admin may assign', () => {
   it('returns a usable list when the organization record has not loaded', () => {

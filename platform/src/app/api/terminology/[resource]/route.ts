@@ -8,7 +8,7 @@
  * Public endpoint — terminology is reference data, no PHI.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { logApiError, serverError } from '@/lib/api-auth';
+import { logApiError, serverError } from '@/modules/identity';
 import { FHIR_NAMESPACE_BASE } from '@/lib/fhir';
 
 const CODE_SYSTEMS = {

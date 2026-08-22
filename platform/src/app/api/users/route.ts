@@ -5,21 +5,16 @@
  */
 import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
-  type AuthPayload,
-} from '@/lib/api-auth';
+import { FACILITY_REQUIRED_MESSAGE, ORG_REQUIRED_MESSAGE, PLATFORM_ONLY_ASSIGNABLE_ROLES, PasswordPolicyError, STAFF_DIRECTORY_READ_ROLES, forbidden, getAuthPayload, hasRole, logApiError, roleNeedsFacility, serverError, unauthorized } from '@/modules/identity';
+import type { AuthPayload } from '@/modules/identity';
 import { withAuditLog, AUDIT_ACTION_HEADER } from '@/lib/audit/with-audit';
-import { PasswordPolicyError } from '@/lib/password-policy';
+
 import type { UserRole, UserDoc } from '@/lib/db-types';
-import { STAFF_DIRECTORY_READ_ROLES } from '@/lib/staff-directory-access';
+
 // The org/facility requirement is stated once, in `lib/user-scope-rules.ts`,
 // and read by this route, `user-service.createUser`, and the two admin UIs —
 // which previously kept four copies of the same list and had already drifted.
-import {
-  roleNeedsFacility, ORG_REQUIRED_MESSAGE, FACILITY_REQUIRED_MESSAGE,
-  PLATFORM_ONLY_ASSIGNABLE_ROLES,
-} from '@/lib/user-scope-rules';
+
 // Reading the staff directory is org-scoped (buildScopeFromAuth) and the rows
 // come back through redactUserForClient — it is a colleague list, not PHI.
 // `hospital_manager` runs the facility's roster, shifts, leave and payroll off
@@ -138,7 +133,7 @@ async function validateSeatAvailable(orgId: string | undefined): Promise<NextRes
     const organization = await getOrganizationById(orgId);
     const max = organization?.maxUsers;
     if (!max || max <= 0) return null;
-    const { getAllUsers } = await import('@/lib/services/user-service');
+    const { getAllUsers } = await import('@/modules/identity/services/user-service');
     const inUse = (await getAllUsers({ orgId, role: 'super_admin' }))
       .filter(u => u.orgId === orgId && u.isActive !== false).length;
     if (inUse >= max) {
@@ -263,7 +258,7 @@ async function lastAdminLockoutError(
   }
   if (target.role !== 'org_admin' || !target.orgId) return null;
 
-  const { countRemainingOrgAdmins } = await import('@/lib/services/user-service');
+  const { countRemainingOrgAdmins } = await import('@/modules/identity/services/user-service');
   const remaining = await countRemainingOrgAdmins(target.orgId, target._id);
   if (remaining > 0) return null;
   return NextResponse.json(
@@ -280,8 +275,8 @@ export async function GET(request: NextRequest) {
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
     if (!hasRole(auth, READ_ROLES)) return forbidden();
-    const { getAllUsers } = await import('@/lib/services/user-service');
-    const { redactUserForClient } = await import('@/lib/services/user-service');
+    const { getAllUsers } = await import('@/modules/identity/services/user-service');
+    const { redactUserForClient } = await import('@/modules/identity/services/user-service');
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
     const scope = buildScopeFromAuth(auth);
     const users = await getAllUsers(scope);
@@ -321,14 +316,14 @@ async function postHandler(request: NextRequest) {
       }
     }
     const action = body.action as string;
-    const { getUserById } = await import('@/lib/services/user-service');
+    const { getUserById } = await import('@/modules/identity/services/user-service');
 
     // Self-service lane: any authenticated user may update their OWN benign
     // profile fields (name, phone) — nothing role- or tenancy-bearing. All
     // other mutations require an admin role below. Password changes go through
     // /api/auth/change-password (which verifies the current password), never here.
     if (action === 'update' && body.userId === auth.sub && !hasRole(auth, WRITE_ROLES)) {
-      const { updateUser } = await import('@/lib/services/user-service');
+      const { updateUser } = await import('@/modules/identity/services/user-service');
       // A staff member's own photo is as benign as their own phone number, and
       // "edit it yourself" is the only way a directory of faces stays current.
       const selfPhoto = normalisePhoto(body.photoUrl);
@@ -347,7 +342,7 @@ async function postHandler(request: NextRequest) {
         auth.sub,
         auth.username
       );
-      const { redactUserForClient } = await import('@/lib/services/user-service');
+      const { redactUserForClient } = await import('@/modules/identity/services/user-service');
       return NextResponse.json({ user: redactUserForClient(updated) });
     }
 
@@ -364,7 +359,7 @@ async function postHandler(request: NextRequest) {
       if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
       const authzError = targetMutationError(auth, target);
       if (authzError) return authzError;
-      const { resetPassword } = await import('@/lib/services/user-service');
+      const { resetPassword } = await import('@/modules/identity/services/user-service');
       await resetPassword(
         body.userId as string,
         body.newPassword as string,
@@ -402,7 +397,7 @@ async function postHandler(request: NextRequest) {
           { status: 400 },
         );
       }
-      const { disableTotp } = await import('@/lib/services/mfa-service');
+      const { disableTotp } = await import('@/modules/identity/services/mfa-service');
       await disableTotp(body.userId as string, auth.username);
       return audited(
         NextResponse.json({
@@ -436,7 +431,7 @@ async function postHandler(request: NextRequest) {
           { status: 400 },
         );
       }
-      const { deliverAccountInvite } = await import('@/lib/services/invite-delivery');
+      const { deliverAccountInvite } = await import('@/modules/identity/services/invite-delivery');
       const invitation = await deliverAccountInvite(target);
       return audited(NextResponse.json({ success: true, invitation }), 'user.invite_resend');
     }
@@ -459,7 +454,7 @@ async function postHandler(request: NextRequest) {
         // create ten, reactivate the ten.
         const seatError = await validateSeatAvailable(target.orgId);
         if (seatError) return seatError;
-        const { reactivateUser } = await import('@/lib/services/user-service');
+        const { reactivateUser } = await import('@/modules/identity/services/user-service');
         await reactivateUser(body.userId as string, auth.sub, auth.username);
         return audited(NextResponse.json({ success: true }), 'user.reactivate');
       }
@@ -472,9 +467,9 @@ async function postHandler(request: NextRequest) {
       const lockoutError = await lastAdminLockoutError(auth, target, 'deactivate');
       if (lockoutError) return lockoutError;
 
-      const { deactivateUser } = await import('@/lib/services/user-service');
+      const { deactivateUser } = await import('@/modules/identity/services/user-service');
       await deactivateUser(body.userId as string, auth.sub, auth.username);
-      const { summarizeOpenWork } = await import('@/lib/services/offboarding-service');
+      const { summarizeOpenWork } = await import('@/modules/identity/services/offboarding-service');
       // Reported AFTER the deactivation, never as a gate on it: access must be
       // revocable the moment someone leaves, whatever is still assigned to
       // them. The caller shows it so the work gets reassigned.
@@ -506,7 +501,7 @@ async function postHandler(request: NextRequest) {
       if (deleteAuthzError) return deleteAuthzError;
       const deleteLockoutError = await lastAdminLockoutError(auth, target, 'delete');
       if (deleteLockoutError) return deleteLockoutError;
-      const { deleteUser } = await import('@/lib/services/user-service');
+      const { deleteUser } = await import('@/modules/identity/services/user-service');
       await deleteUser(body.userId as string, auth.sub, auth.username);
       return audited(NextResponse.json({ success: true }), 'user.delete');
     }
@@ -541,7 +536,7 @@ async function postHandler(request: NextRequest) {
           }
         }
       }
-      const { updateUser } = await import('@/lib/services/user-service');
+      const { updateUser } = await import('@/modules/identity/services/user-service');
       const adminPhoto = normalisePhoto(body.photoUrl);
       if ('error' in adminPhoto) {
         return NextResponse.json({ error: adminPhoto.error }, { status: 400 });
@@ -598,7 +593,7 @@ async function postHandler(request: NextRequest) {
         auth.sub,
         auth.username
       );
-      const { redactUserForClient } = await import('@/lib/services/user-service');
+      const { redactUserForClient } = await import('@/modules/identity/services/user-service');
       return audited(NextResponse.json({ user: redactUserForClient(updated) }), 'user.update');
     }
     // Create new user
@@ -661,7 +656,7 @@ async function postHandler(request: NextRequest) {
     if ('error' in newPhoto) {
       return NextResponse.json({ error: newPhoto.error }, { status: 400 });
     }
-    const { createUser } = await import('@/lib/services/user-service');
+    const { createUser } = await import('@/modules/identity/services/user-service');
     const user = await createUser(
       {
         username: body.username as string,
@@ -694,10 +689,10 @@ async function postHandler(request: NextRequest) {
     // temporary password over another way instead of assuming mail arrived.
     // The same call now serves account-request approval, which used to skip
     // this step entirely — see lib/services/invite-delivery.ts.
-    const { deliverAccountInvite } = await import('@/lib/services/invite-delivery');
+    const { deliverAccountInvite } = await import('@/modules/identity/services/invite-delivery');
     const invitation = await deliverAccountInvite(user);
 
-    const { redactUserForClient } = await import('@/lib/services/user-service');
+    const { redactUserForClient } = await import('@/modules/identity/services/user-service');
     return audited(
       NextResponse.json({ user: redactUserForClient(user), invitation }, { status: 201 }),
       'user.create',

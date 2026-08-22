@@ -1,4 +1,4 @@
-import { logApiError } from '@/lib/api-auth';
+import { logApiError } from '@/modules/identity';
 /**
  * Patient portal — own profile.
  *

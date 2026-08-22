@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, logApiError,
-} from '@/lib/api-auth';
+import { forbidden, getAuthPayload, hasRole, logApiError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { rateLimit } from '@/lib/rate-limit';
 import type { UserRole } from '@/lib/db-types';

@@ -19,8 +19,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { DEFAULT_MIN_PASSWORD_LENGTH } from '@/lib/password-policy';
-
+import { DEFAULT_MIN_PASSWORD_LENGTH } from '@/modules/identity/client';
 function AcceptInviteForm() {
   const router = useRouter();
   const params = useSearchParams();

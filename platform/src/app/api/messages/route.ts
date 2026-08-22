@@ -4,9 +4,7 @@
  * POST — Create, update status, or delete messages
  */
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
-} from '@/lib/api-auth';
+import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 const READ_ROLES: UserRole[] = [
@@ -142,7 +140,7 @@ async function postHandler(request: NextRequest) {
         try {
           let phone = '';
           if (recipientType === 'staff') {
-            const { getUserById } = await import('@/lib/services/user-service');
+            const { getUserById } = await import('@/modules/identity/services/user-service');
             const user = await getUserById(body.patientId as string);
             phone = user?.phone || (body.patientPhone as string) || '';
           } else {

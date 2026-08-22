@@ -26,7 +26,7 @@ const actor = {
   sub: 'user-org.admin', username: 'org.admin', name: 'Org Admin',
   role: 'org_admin', orgId: 'org-a',
 };
-jest.mock('@/lib/api-auth', () => ({
+jest.mock('@/modules/identity/core/api-auth', () => ({
   getAuthPayload: jest.fn(async () => actor),
   unauthorized: jest.fn(() => Response.json({ error: 'unauthorized' }, { status: 401 })),
   forbidden: jest.fn((error = 'forbidden') => Response.json({ error }, { status: 403 })),
@@ -38,7 +38,7 @@ jest.mock('@/lib/api-auth', () => ({
 const users: Record<string, Record<string, unknown>> = {};
 let remainingAdmins = 1;
 
-jest.mock('@/lib/services/user-service', () => ({
+jest.mock('@/modules/identity/services/user-service', () => ({
   getUserById: jest.fn(async (id: string) => users[id] ?? null),
   createUser: jest.fn(async (input: Record<string, unknown>) => ({ _id: `user-${input.username}`, ...input })),
   deactivateUser: jest.fn(async () => undefined),
@@ -50,13 +50,13 @@ jest.mock('@/lib/services/user-service', () => ({
   getAllUsers: jest.fn(async () => Object.values(users)),
   redactUserForClient: jest.fn((user: Record<string, unknown>) => user),
 }));
-jest.mock('@/lib/services/mfa-service', () => ({
+jest.mock('@/modules/identity/services/mfa-service', () => ({
   disableTotp: jest.fn(async () => undefined),
 }));
-jest.mock('@/lib/services/invite-delivery', () => ({
+jest.mock('@/modules/identity/services/invite-delivery', () => ({
   deliverAccountInvite: jest.fn(async () => ({ sent: true, to: 'x@example.org', expiresAt: 'later' })),
 }));
-jest.mock('@/lib/services/offboarding-service', () => ({
+jest.mock('@/modules/identity/services/offboarding-service', () => ({
   summarizeOpenWork: jest.fn(async () => ({
     futureAppointments: 2, openEncounters: 1, examples: ['Mary Lado'], hasOpenWork: true,
   })),
@@ -69,9 +69,9 @@ jest.mock('@/lib/services/tenant-control-service', () => ({
 }));
 
 import { POST } from '@/app/api/users/route';
-import { deactivateUser, deleteUser } from '@/lib/services/user-service';
-import { deliverAccountInvite } from '@/lib/services/invite-delivery';
-import { disableTotp } from '@/lib/services/mfa-service';
+import { deactivateUser, deleteUser } from '@/modules/identity/services/user-service';
+import { deliverAccountInvite } from '@/modules/identity/services/invite-delivery';
+import { disableTotp } from '@/modules/identity/services/mfa-service';
 
 const post = (body: Record<string, unknown>) => new NextRequest('https://app.example.org/api/users', {
   method: 'POST',

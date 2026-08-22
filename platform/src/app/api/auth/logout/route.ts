@@ -1,7 +1,5 @@
-import { logApiError } from '@/lib/api-auth';
+import { CSRF_COOKIE_NAME, logApiError, revokeToken } from '@/modules/identity';
 import { NextRequest, NextResponse } from 'next/server';
-import { CSRF_COOKIE_NAME } from '@/lib/csrf';
-import { revokeToken } from '@/lib/token-blacklist';
 
 export async function POST(request: NextRequest) {
   // Extract token from cookie and add to the persisted revocation list. Every

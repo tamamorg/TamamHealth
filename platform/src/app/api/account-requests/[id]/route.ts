@@ -10,24 +10,15 @@
  */
 import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
-} from '@/lib/api-auth';
+import { PLATFORM_APPROVAL_ROLES, accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility, forbidden, generateTempPassword, getAuthPayload, hasRole, isValidAttestation, logApiError, serverError, tempPasswordLengthFor, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { buildScopeFromAuth } from '@/lib/services/data-scope';
 import type { UserRole } from '@/lib/db-types';
-import {
-  getAccountRequest, canDecide, recordDecision, suggestUsername,
-  PLATFORM_APPROVAL_ROLES,
-} from '@/lib/services/account-request-service';
-import { isValidAttestation } from '@/lib/account-request-roles';
+import { canDecide, getAccountRequest, recordDecision, suggestUsername } from '@/modules/identity/services/account-request-service';
+
 // The same generator every admin-provisioned credential uses, so an approved
 // request produces a password with the shape staff already expect — and one
 // that can be read aloud in a clinic with no email.
-import { generateTempPassword, tempPasswordLengthFor } from '@/lib/temp-password';
-import {
-  accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility,
-} from '@/lib/account-request-roles';
 
 export const runtime = 'nodejs';
 
@@ -134,7 +125,7 @@ async function postHandler(
       hospitalName = undefined;
     }
 
-    const { createUser, getAllUsers } = await import('@/lib/services/user-service');
+    const { createUser, getAllUsers } = await import('@/modules/identity/services/user-service');
     const existing = await getAllUsers();
     const taken = new Set(existing.map(u => u.username));
     const requested = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
@@ -143,7 +134,7 @@ async function postHandler(
     // Long enough for whatever minimum this deployment enforces — otherwise
     // `createUser` rejects the credential this route just generated, and the
     // approver sees a password error for a password they never typed.
-    const { getMinPasswordLength } = await import('@/lib/password-policy-server');
+    const { getMinPasswordLength } = await import('@/modules/identity/policy/password-policy-server');
     const password = generateTempPassword(tempPasswordLengthFor(await getMinPasswordLength()));
     let created;
     try {
@@ -186,7 +177,7 @@ async function postHandler(
     // who had typed their email address into the form FOR THIS PURPOSE, and
     // whose address has since been verified. Two entry points had already been
     // collapsed onto one write path; this is the same collapse for delivery.
-    const { deliverAccountInvite } = await import('@/lib/services/invite-delivery');
+    const { deliverAccountInvite } = await import('@/modules/identity/services/invite-delivery');
     const invitation = await deliverAccountInvite(created);
 
     // The one and only time this password is readable. It is not stored in

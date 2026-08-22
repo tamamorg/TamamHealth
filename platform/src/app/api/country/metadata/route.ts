@@ -7,7 +7,7 @@
  * DHIS2 or the regional layer.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { logApiError, serverError } from '@/lib/api-auth';
+import { logApiError, serverError } from '@/modules/identity';
 import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
 import { FACILITY_LEVELS } from '@/lib/db-types';
 

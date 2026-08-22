@@ -9,7 +9,7 @@
  * account nobody has ever used, and an account that was used and abandoned.
  * `lastLoginAt` did not exist at all, so none of them was answerable.
  */
-import { describeAccountState, canResendInvite, DORMANT_AFTER_DAYS } from '@/lib/account-state';
+import { describeAccountState, canResendInvite, DORMANT_AFTER_DAYS } from '@/modules/identity/provisioning/account-state';
 import type { UserDoc } from '@/lib/db-types';
 
 const NOW = Date.parse('2026-08-22T09:00:00.000Z');

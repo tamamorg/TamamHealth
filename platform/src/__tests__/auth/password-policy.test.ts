@@ -9,7 +9,7 @@
 import {
   screenPassword, assertPasswordAcceptable, PasswordPolicyError,
   ABSOLUTE_MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, DEFAULT_MIN_PASSWORD_LENGTH,
-} from '@/lib/password-policy';
+} from '@/modules/identity/policy/password-policy';
 
 const ok = 'correct horse battery staple';
 

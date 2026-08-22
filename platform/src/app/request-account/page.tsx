@@ -18,9 +18,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Corners, loginStyles } from '@/components/login/login-chrome';
 import { getRoleConfig } from '@/lib/permissions';
-import {
-  REQUESTABLE_ROLES, accountRequestRoleNeedsFacility, roleRequiresRegistrationNumber,
-} from '@/lib/account-request-roles';
+import { REQUESTABLE_ROLES, accountRequestRoleNeedsFacility, roleRequiresRegistrationNumber } from '@/modules/identity/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface Org { id: string; name: string }

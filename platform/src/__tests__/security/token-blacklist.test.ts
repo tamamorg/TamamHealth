@@ -15,7 +15,7 @@ import {
   isTokenRevoked,
   _resetTokenBlacklistForTest,
   _flushTokenBlacklistForTest,
-} from '@/lib/token-blacklist';
+} from '@/modules/identity/core/token-blacklist';
 
 let tokenCounter = 0;
 

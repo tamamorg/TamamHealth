@@ -1,4 +1,4 @@
-import { logApiError } from '@/lib/api-auth';
+import { logApiError } from '@/modules/identity';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPatientToken } from '@/lib/patient-portal-auth';
 import { demoFallbackEnabled, logDemoFallback, getDemoLabResultsByPatient } from '@/lib/patient-portal-demo';

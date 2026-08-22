@@ -87,7 +87,7 @@ describe('the groups are usable from a route at all', () => {
   it('accepts a readonly array at the guard boundary', async () => {
     // `hasRole` took a mutable `UserRole[]`, which by itself made a canonical
     // group unusable in a route and forced the copy. Assert the widening holds.
-    const { hasRole } = await import('@/lib/api-auth');
+    const { hasRole } = await import('@/modules/identity/core/api-auth');
     const frozen: readonly ('doctor')[] = Object.freeze(['doctor'] as const);
     expect(hasRole({ sub: 'u', username: 'u', role: 'doctor', name: 'U' }, frozen)).toBe(true);
   });

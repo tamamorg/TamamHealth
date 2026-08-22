@@ -1,4 +1,4 @@
-import { logApiError } from '@/lib/api-auth';
+import { logApiError } from '@/modules/identity';
 /**
  * POST /api/patient-portal/refresh — silent session renewal (KAN-68 / MED-18).
  *

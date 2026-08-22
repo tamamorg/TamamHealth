@@ -16,7 +16,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { describeInvitationOutcome } from '@/lib/invitation-copy';
+import { describeInvitationOutcome } from '@/modules/identity/provisioning/invitation-copy';
 
 const source = (relativePath: string) =>
   fs.readFileSync(path.join(process.cwd(), 'src', relativePath), 'utf8');
@@ -27,7 +27,7 @@ const CREATION_SURFACES = [
   // this one dialog, so the surface to pin is the dialog — see
   // DELEGATING_SURFACES below for the pages that must keep using it rather
   // than growing a second form.
-  'components/admin/CreateUserModal.tsx',
+  'modules/identity/components/CreateUserModal.tsx',
   'app/(dashboard)/admin/organizations/page.tsx',
 ];
 
@@ -67,7 +67,7 @@ describe('every creation surface reports the invitation', () => {
     // that could not collect an address. Since the 2026-08 console restyle it
     // renders the shared CredentialHandoffModal (like /admin/users), which is
     // where the one copy chain lives.
-    expect(source('components/admin/CredentialHandoffModal.tsx')).toContain('describeInvitationOutcome');
+    expect(source('modules/identity/components/CredentialHandoffModal.tsx')).toContain('describeInvitationOutcome');
     expect(source('app/(dashboard)/org-admin/users/page.tsx')).toContain('CredentialHandoffModal');
   });
 });

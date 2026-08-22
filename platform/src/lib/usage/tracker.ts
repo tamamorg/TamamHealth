@@ -2,7 +2,7 @@
  * Browser usage tracker — batches sanitized interaction events to /api/usage/events.
  */
 
-import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '../csrf';
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/modules/identity/client';
 import {
   describeElement,
   sanitizeUsageEvent,

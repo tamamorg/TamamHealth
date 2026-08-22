@@ -42,8 +42,8 @@ jest.mock('@/lib/services/platform-config-service', () => ({
 import {
   beginTotpEnrolment, confirmTotpEnrolment, disableTotp, verifySecondFactor,
   regenerateRecoveryCodes, isMfaRequiredFor, MFA_REQUIRED_ROLES,
-} from '@/lib/services/mfa-service';
-import { totpCode, totpStep } from '@/lib/totp';
+} from '@/modules/identity/services/mfa-service';
+import { totpCode, totpStep } from '@/modules/identity/mfa/totp';
 import type { UserDoc } from '@/lib/db-types';
 
 const ID = 'user-org.admin';

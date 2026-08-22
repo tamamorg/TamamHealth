@@ -1,4 +1,4 @@
-import { logApiError } from '@/lib/api-auth';
+import { logApiError } from '@/modules/identity';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { reconcileProviderPayment } from '@/lib/services/payment-service';

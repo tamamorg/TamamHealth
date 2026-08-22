@@ -16,11 +16,10 @@
  * different session from an account without one.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { logApiError } from '@/lib/api-auth';
-import { verifyMfaPendingToken } from '@/lib/auth-token';
+import { ROLES_WITHOUT_HOSPITAL, issueSessionResponse, logApiError, resolveEffectiveIdentity, verifyMfaPendingToken } from '@/modules/identity';
+
 import { getClientIp } from '@/lib/request-utils';
 import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
-import { issueSessionResponse, resolveEffectiveIdentity, ROLES_WITHOUT_HOSPITAL } from '@/lib/login-session';
 
 const WINDOW_MS = 15 * 60 * 1000;
 const IP_LIMIT = 30;
@@ -58,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
     }
 
-    const { verifySecondFactor } = await import('@/lib/services/mfa-service');
+    const { verifySecondFactor } = await import('@/modules/identity/services/mfa-service');
     const verdict = await verifySecondFactor(claims.sub, body.code || '');
     if (!verdict.ok) {
       return NextResponse.json({ error: GENERIC_FAILURE }, { status: 401 });
@@ -68,7 +67,7 @@ export async function POST(request: NextRequest) {
     // Re-read the account rather than trusting anything carried in the token.
     // Between step one and step two an administrator may have deactivated the
     // account or reset the password, and the hand-off token records neither.
-    const { getUserById } = await import('@/lib/services/user-service');
+    const { getUserById } = await import('@/modules/identity/services/user-service');
     const account = await getUserById(claims.sub);
     if (!account || account.isActive === false) {
       return NextResponse.json({ error: GENERIC_FAILURE }, { status: 401 });

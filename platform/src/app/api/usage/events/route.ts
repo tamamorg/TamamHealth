@@ -6,8 +6,7 @@
 import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/api-security';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, logApiError } from '@/lib/api-auth';
+import { forbidden, getAuthPayload, hasRole, logApiError, unauthorized } from '@/modules/identity';
 import { sanitizeUsageEvent } from '@/lib/usage/sanitize';
 import {
   logUsageEvents,

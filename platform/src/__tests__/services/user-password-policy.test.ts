@@ -32,15 +32,15 @@ function usersDBMock() {
 jest.mock('@/lib/db', () => ({ usersDB: usersDBMock }));
 jest.mock('@/lib/services/audit-service', () => ({ logAudit: jest.fn(async () => undefined) }));
 // bcrypt with cost 12 is ~300ms per call — irrelevant to what these tests pin.
-jest.mock('@/lib/auth', () => ({
+jest.mock('@/modules/identity/core/auth', () => ({
   hashPassword: jest.fn(async (pw: string) => `hashed:${pw}`),
   verifyPassword: jest.fn(async (pw: string, hash: string) => hash === `hashed:${pw}`),
 }));
 
-import { createUser, resetPassword, changeOwnPassword, updateUser } from '@/lib/services/user-service';
+import { createUser, resetPassword, changeOwnPassword, updateUser } from '@/modules/identity/services/user-service';
 import {
   ABSOLUTE_MIN_PASSWORD_LENGTH, DEFAULT_MIN_PASSWORD_LENGTH,
-} from '@/lib/password-policy';
+} from '@/modules/identity/policy/password-policy';
 
 beforeEach(() => store.clear());
 

@@ -10,13 +10,10 @@
  * second route, so the two paths cannot drift into issuing different sessions.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { createMfaPendingToken } from '@/lib/auth-token';
+import { ROLES_WITHOUT_HOSPITAL, createMfaPendingToken, issueSessionResponse, logApiError, resolveEffectiveIdentity } from '@/modules/identity';
 import { getClientIp } from '@/lib/request-utils';
-import { logApiError } from '@/lib/api-auth';
+
 import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
-import {
-  ROLES_WITHOUT_HOSPITAL, issueSessionResponse, resolveEffectiveIdentity,
-} from '@/lib/login-session';
 
 const USER_LOCK_THRESHOLD = 5;       // failed tries before user lock
 const USER_LOCK_MS = 15 * 60 * 1000; // 15 minutes
@@ -69,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Server-safe user authentication (no PouchDB — reads the shared users DB)
-    const { authenticateUser, UsersDbUnavailableError } = await import('@/lib/server-users');
+    const { authenticateUser, UsersDbUnavailableError } = await import('@/modules/identity/core/server-users');
 
     let user;
     try {
@@ -112,7 +109,7 @@ export async function POST(request: NextRequest) {
     // Read from the users DB rather than from `ServerUser`, which is a
     // narrower projection — a standalone demo has no document at all, and on
     // that deployment nothing can enrol a factor in the first place.
-    const { getUserById } = await import('@/lib/services/user-service');
+    const { getUserById } = await import('@/modules/identity/services/user-service');
     const account = await getUserById(user._id).catch(() => null);
     if (account?.totpEnabledAt) {
       const mfaToken = await createMfaPendingToken({

@@ -12,7 +12,7 @@
  * state, or operational details cross this public boundary.
  */
 import { NextResponse } from 'next/server';
-import { logApiError, serverError } from '@/lib/api-auth';
+import { logApiError, serverError } from '@/modules/identity';
 import { hospitalsDB, organizationsDB } from '@/lib/db';
 import type { HospitalDoc, OrganizationDoc } from '@/lib/db-types';
 import { findByType } from '@/lib/services/db-query';

@@ -8,6 +8,128 @@ import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
 import nextTypescript from 'eslint-config-next/typescript';
 import reactHooks from 'eslint-plugin-react-hooks';
 
+/**
+ * Domain modules that have migrated to `src/modules/` — see
+ * docs/adr/0003-domain-modules.md.
+ *
+ * Listed explicitly rather than globbed, and that is deliberate: the migration
+ * runs one domain per commit, so a half-migrated tree is the normal state for
+ * a while. Globbing `src/modules/*` would make the rules apply to code that
+ * has not moved yet and turn every intermediate commit into a wall of errors.
+ * Adding a name here is the last step of migrating that domain.
+ */
+const MIGRATED_MODULES = ['identity'];
+
+/**
+ * The directories inside a module that are private.
+ *
+ * Listed rather than expressed as "everything except the public entrypoints".
+ * A negated glob (`!(client|services)`) reads more cleverly and silently
+ * matched nothing here — minimatch's extglob binds to a single path segment,
+ * so `@/modules/identity/core/auth` slipped straight through a rule that
+ * looked correct. An explicit list cannot fail that way, and it doubles as
+ * documentation of what a module keeps to itself.
+ */
+const PRIVATE_MODULE_DIRS = ['core', 'policy', 'mfa', 'provisioning', 'email', 'components', 'hooks'];
+
+/** Every deep path that is off-limits from outside a module. */
+function privatePaths(name) {
+  return PRIVATE_MODULE_DIRS.flatMap(dir => [
+    `@/modules/${name}/${dir}`,
+    `@/modules/${name}/${dir}/*`,
+    `@/modules/${name}/${dir}/**`,
+  ]);
+}
+
+/**
+ * The boundary rules, as ESLint path restrictions.
+ *
+ * Errors, not warnings. This repo carries 449 warnings, which is the empirical
+ * case for the distinction: a rule nobody has to act on is a rule that records
+ * violations rather than preventing them.
+ *
+ * No new dependency. A graph tool (dependency-cruiser, madge) would express
+ * this more elegantly, but the flat-config comment above documents why this
+ * repo's ajv/minimatch overrides make new eslint-adjacent dependencies a
+ * resolution hazard — and `no-restricted-imports` already says everything the
+ * three rules in the ADR need to say.
+ */
+function moduleBoundaryRules() {
+  return [
+    // ── Rule 1: a module's internals are private. ───────────────────────
+    //
+    // A module has exactly three public entrypoints:
+    //
+    //   @/modules/<name>              the server surface (guards, policy, types)
+    //   @/modules/<name>/client       the browser-safe surface
+    //   @/modules/<name>/services/*   one service at a time
+    //
+    // The third tier is not a compromise, it is a bundling decision with a
+    // measured reason: services reach the database, and re-exporting them from
+    // the barrel made every route that wanted `getAuthPayload` eagerly load
+    // PouchDB at module-init. Naming the service keeps `await import()` doing
+    // what it was written to do. See the note in the module's index.ts.
+    //
+    // `core/`, `policy/`, `mfa/`, `provisioning/`, `email/`, `components/` and
+    // `hooks/` are private. The `ignores` entry is what lets a module import
+    // its own internals by deep path.
+    //
+    // Note this governs the STATIC graph. `no-restricted-imports` does not see
+    // `await import()`, and that is the right place to draw the line: a lazy
+    // import names a file deliberately, and the alternative — routing every
+    // lazy load through a barrel — is the eager-loading bug above.
+    ...MIGRATED_MODULES.map(name => ({
+      files: [`src/**/*.{ts,tsx}`],
+      ignores: [`src/modules/${name}/**`],
+      rules: {
+        'no-restricted-imports': ['error', {
+          patterns: [{
+            group: privatePaths(name),
+            message:
+              `Import from '@/modules/${name}', '@/modules/${name}/client', or a named service `
+              + `('@/modules/${name}/services/<name>'). A module's internals are private — reaching `
+              + 'past them is how the previous layout ended up with no boundaries at all '
+              + '(docs/adr/0003-domain-modules.md).',
+          }],
+        }],
+      },
+    })),
+
+    // ── Rule 2: shared/ is the bottom of the graph. ─────────────────────
+    {
+      files: ['src/shared/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': ['error', {
+          patterns: [{
+            group: ['@/modules/*', '@/modules/*/**'],
+            message:
+              'src/shared/ must not depend on a domain module. If this needs domain knowledge '
+              + 'it is not shared — move it into the module that owns the rule.',
+          }],
+        }],
+      },
+    },
+
+    // ── Rule 3: the app/ tree routes, it does not implement. ────────────
+    // Route files re-export from a module (see the ADR on why they cannot
+    // simply move). Reaching into a module's internals from a route would
+    // reintroduce exactly the coupling this removes.
+    {
+      files: ['src/app/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': ['error', {
+          patterns: MIGRATED_MODULES.map(name => ({
+            group: privatePaths(name),
+            message:
+              `Route files reach '@/modules/${name}', its /client surface, or a named service. `
+              + 'Everything else in the module is private.',
+          })),
+        }],
+      },
+    },
+  ];
+}
+
 const eslintConfig = [
   { ignores: ['.next/**', 'node_modules/**', 'coverage/**', 'out/**', 'next-env.d.ts', 'public/sw.js', 'scripts/**'] },
   ...nextCoreWebVitals,
@@ -98,6 +220,17 @@ const eslintConfig = [
       // an integration test and an error in a component test.
       '@typescript-eslint/no-require-imports': 'off',
     },
+  },
+  ...moduleBoundaryRules(),
+  {
+    // LAST, deliberately. Flat config resolves by order, and the boundary
+    // rules above match `src/**` — including tests. A test may reach into the
+    // module it is testing: boundaries exist to stop production code coupling,
+    // not to stop a unit test naming its unit. Put this block before
+    // `moduleBoundaryRules()` and it silently does nothing, which is how it
+    // was written the first time.
+    files: ['**/*.test.ts', '**/*.test.tsx', 'src/__tests__/**', 'jest.setup.ts', 'jest.config.ts'],
+    rules: { 'no-restricted-imports': 'off' },
   },
 ];
 

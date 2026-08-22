@@ -9,7 +9,7 @@
  * configured, and a support session "capped at thirty minutes" lived the full
  * session TTL. These pin the two rules that make them real.
  */
-import { SESSION_TTL_SEC } from '@/lib/session';
+import { SESSION_TTL_SEC } from '@/modules/identity/core/session';
 
 /**
  * The idle-timeout resolution, extracted from `useAutoLock.getTimeout`.

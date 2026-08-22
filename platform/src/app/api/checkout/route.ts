@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import { logApiError, serverError } from '@/lib/api-auth';
+import { logApiError, serverError } from '@/modules/identity';
 import type { PaymentMethodType } from '@/lib/db-types-payments';
 import { rateLimit } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/request-utils';

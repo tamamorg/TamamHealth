@@ -5,8 +5,8 @@
  * must leave the stored document untouched.
  */
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
-jest.mock('@/lib/api-auth', () => {
-  const actual = jest.requireActual('@/lib/api-auth');
+jest.mock('@/modules/identity/core/api-auth', () => {
+  const actual = jest.requireActual('@/modules/identity/core/api-auth');
   return { ...actual, getAuthPayload: jest.fn() };
 });
 jest.mock('next/server', () => {
@@ -24,7 +24,7 @@ jest.mock('next/server', () => {
 jest.setTimeout(30000);
 
 import { NextRequest } from 'next/server';
-import { getAuthPayload, type AuthPayload } from '@/lib/api-auth';
+import { getAuthPayload, type AuthPayload } from '@/modules/identity/core/api-auth';
 import {
   hospitalsDB, staffSchedulesDB, emergencyPlansDB, bloodBankDB, ancDB,
   diseaseAlertsDB, pharmacyInventoryDB, followUpsDB, organizationsDB,

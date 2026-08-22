@@ -2,7 +2,7 @@
 
 import { NextRequest } from 'next/server';
 
-jest.mock('@/lib/api-auth', () => ({
+jest.mock('@/modules/identity/core/api-auth', () => ({
   // The route is wrapped in `withAudit`, which calls `getAuthPayload(request)`
   // and chains `.catch()` on the result. A bare `jest.fn()` returns undefined,
   // so the wrapper threw before the handler ever ran. This is a public,
@@ -19,7 +19,7 @@ jest.mock('@/lib/rate-limit', () => ({
   rateLimit: jest.fn(async () => ({ allowed: true, resetAt: Date.now() + 60_000 })),
 }));
 jest.mock('@/lib/request-utils', () => ({ getClientIp: jest.fn(() => '127.0.0.1') }));
-jest.mock('@/lib/services/account-request-service', () => ({
+jest.mock('@/modules/identity/services/account-request-service', () => ({
   // Returns `{ doc, verificationToken }` since email verification was added.
   createAccountRequest: jest.fn(async () => ({
     doc: { _id: 'acctreq-1' }, verificationToken: 'tok-test',
@@ -36,7 +36,7 @@ jest.mock('@/lib/services/hospital-service', () => ({
 }));
 
 import { POST } from '@/app/api/account-requests/route';
-import { createAccountRequest } from '@/lib/services/account-request-service';
+import { createAccountRequest } from '@/modules/identity/services/account-request-service';
 import { getOrganizationById } from '@/lib/services/organization-service';
 import { getHospitalById } from '@/lib/services/hospital-service';
 

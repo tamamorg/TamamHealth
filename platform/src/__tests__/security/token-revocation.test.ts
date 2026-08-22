@@ -29,19 +29,19 @@ import os from 'node:os';
 // specifically, without needing a live PouchDB user store. token-blacklist
 // itself is deliberately left UNMOCKED.
 const getUserById = jest.fn();
-jest.mock('@/lib/services/user-service', () => ({ getUserById }));
+jest.mock('@/modules/identity/services/user-service', () => ({ getUserById }));
 jest.mock('@/lib/services/tenant-control-service', () => ({
   isOrgAccessAllowed: jest.fn(async () => true),
 }));
 
 import { NextRequest } from 'next/server';
-import { createToken } from '@/lib/auth-token';
-import { getAuthPayload } from '@/lib/api-auth';
+import { createToken } from '@/modules/identity/core/auth-token';
+import { getAuthPayload } from '@/modules/identity/core/api-auth';
 import {
   isTokenRevoked,
   revokeToken,
   _resetTokenBlacklistForTest,
-} from '@/lib/token-blacklist';
+} from '@/modules/identity/core/token-blacklist';
 import { GET as authMe } from '@/app/api/auth/me/route';
 import { POST as authLogout } from '@/app/api/auth/logout/route';
 

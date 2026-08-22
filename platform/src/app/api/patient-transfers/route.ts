@@ -19,10 +19,9 @@
  *      role capability alone never authorises acting on a specific transfer.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
-} from '@/lib/api-auth';
-import type { AuthPayload } from '@/lib/api-auth';
+import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
+import type { AuthPayload } from '@/modules/identity';
+
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { PatientDoc, PatientTransferDoc } from '@/lib/db-types';
 import {
@@ -82,7 +81,7 @@ export async function GET(request: NextRequest) {
     const view = url.searchParams.get('view');
 
     if (view === 'inbox') {
-      const { getUserById } = await import('@/lib/services/user-service');
+      const { getUserById } = await import('@/modules/identity/services/user-service');
       const me = await getUserById(auth.sub).catch(() => null);
       const transfers = await svc.getIncomingTransfers({
         id: auth.sub,
@@ -178,7 +177,7 @@ async function postHandler(request: NextRequest) {
         return forbidden('Internal transfers must stay within the current facility.');
       }
       if (to.providerId) {
-        const { getUserById } = await import('@/lib/services/user-service');
+        const { getUserById } = await import('@/modules/identity/services/user-service');
         const destinationUser = await getUserById(to.providerId);
         if (!destinationUser) return NextResponse.json({ error: 'Destination provider not found' }, { status: 400 });
         if (!crossOrg && auth.hospitalId && destinationUser.hospitalId !== auth.hospitalId) {

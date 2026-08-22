@@ -17,9 +17,10 @@ import {
 import { prescription as rxLifecycle, type PrescriptionStatus } from '../clinical-flow/order-lifecycles';
 import { resolvePrescriptionTier } from '../clinical-flow/medication-tiers';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
-import { getUserById } from './user-service';
+
 import { getSettings } from '../settings/settings-store';
 import { getRoleFlag } from '../settings/role-settings-store';
+import { getUserById } from '@/modules/identity/services/user-service';
 
 /**
  * Roles allowed to clear a medication order for dispensing — the one state

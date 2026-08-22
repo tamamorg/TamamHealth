@@ -27,7 +27,7 @@
  *      proof.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { logApiError, serverError } from '@/lib/api-auth';
+import { logApiError, serverError } from '@/modules/identity';
 import { getClientIp } from '@/lib/request-utils';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const { getAllUsers } = await import('@/lib/services/user-service');
+      const { getAllUsers } = await import('@/modules/identity/services/user-service');
       const users = await getAllUsers();
       // Matched on username OR email, because the person who has forgotten
       // their password has often also forgotten which of the two they used.
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         && (user.username === username || user.email?.trim().toLowerCase() === username));
 
       if (match) {
-        const { deliverAccountInvite } = await import('@/lib/services/invite-delivery');
+        const { deliverAccountInvite } = await import('@/modules/identity/services/invite-delivery');
         // Outcome deliberately discarded: reporting it would break rule 1.
         // `deliverAccountInvite` never throws, and logs its own failures.
         await deliverAccountInvite(match, 'reset');

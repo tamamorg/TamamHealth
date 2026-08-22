@@ -17,7 +17,7 @@ process.env.JWT_SECRET = 'test-secret-test-secret-test-secret-test'; // 40 chars
 
 import { NextRequest } from 'next/server';
 import { proxy } from '@/proxy';
-import { createToken } from '@/lib/auth-token';
+import { createToken } from '@/modules/identity/core/auth-token';
 
 const SWEEP = 'https://app.example.org/api/patient-transfers/sweep';
 const DISPATCH = 'https://app.example.org/api/patient-reminders/dispatch';

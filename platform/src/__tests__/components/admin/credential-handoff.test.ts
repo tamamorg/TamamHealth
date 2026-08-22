@@ -7,7 +7,7 @@
  * the actual text an operator pastes into a handover message/ticket after
  * creating a user or an organization's first admin.
  */
-import { formatCredentialHandoffText } from '@/components/admin/CredentialHandoffModal';
+import { formatCredentialHandoffText } from '@/modules/identity/components/CredentialHandoffModal';
 
 describe('formatCredentialHandoffText', () => {
   it('includes both the username and password on separate labeled lines', () => {

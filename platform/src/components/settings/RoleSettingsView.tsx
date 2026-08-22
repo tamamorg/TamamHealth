@@ -61,8 +61,7 @@ import {
   RefreshCw, Server, Settings, Shield, Stethoscope, Trash2, User, Users, Zap, type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
-import MfaEnrolment from '@/components/MfaEnrolment';
-
+import { MfaEnrolment } from '@/modules/identity/client';
 const SECTION_ICONS: Record<string, LucideIcon> = {
   user: User, bell: Bell, shield: Shield, steth: Stethoscope, pill: Pill,
   flask: FlaskConical, card: CreditCard, bed: BedDouble, clock: Clock,

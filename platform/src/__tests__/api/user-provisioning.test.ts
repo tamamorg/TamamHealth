@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/audit/with-audit', () => ({ withAuditLog: (handler: unknown) => handler }));
 jest.mock('@/lib/api-security', () => ({ checkRateLimit: jest.fn(async () => null) }));
-jest.mock('@/lib/api-auth', () => ({
+jest.mock('@/modules/identity/core/api-auth', () => ({
   getAuthPayload: jest.fn(async () => ({
     sub: 'user-superadmin', username: 'superadmin', name: 'Admin', role: 'super_admin',
   })),
@@ -24,7 +24,7 @@ jest.mock('@/lib/services/organization-service', () => ({
     ? { _id: 'org-a', name: 'Organization A', isActive: true }
     : null),
 }));
-jest.mock('@/lib/services/user-service', () => ({
+jest.mock('@/modules/identity/services/user-service', () => ({
   createUser: jest.fn(async (input: Record<string, unknown>) => ({
     _id: `user-${input.username}`, type: 'user', ...input, passwordHash: 'redacted',
   })),
@@ -37,7 +37,7 @@ jest.mock('@/lib/services/user-service', () => ({
 }));
 
 import { POST } from '@/app/api/users/route';
-import { createUser } from '@/lib/services/user-service';
+import { createUser } from '@/modules/identity/services/user-service';
 import { getOrganizationById } from '@/lib/services/organization-service';
 
 const mockCreateUser = createUser as jest.MockedFunction<typeof createUser>;

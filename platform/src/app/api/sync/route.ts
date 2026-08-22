@@ -1,4 +1,4 @@
-import { logApiError } from '@/lib/api-auth';
+import { logApiError } from '@/modules/identity';
 /**
  * CouchDB → PostgreSQL Sync Webhook
  *
@@ -687,7 +687,6 @@ const FIELD_MAPPERS: Record<string, FieldMapper> = {
     created_at: doc.createdAt,
     updated_at: doc.updatedAt,
   }),
-
 
   wards: (doc) => ({
     id: doc._id,

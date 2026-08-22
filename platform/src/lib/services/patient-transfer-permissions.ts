@@ -14,8 +14,7 @@
  *     one?). Capability alone is never sufficient; see `canAcceptTransfer`.
  */
 import type { UserRole, PatientTransferDoc, PatientDoc } from '../db-types';
-import type { AuthPayload } from '../api-auth';
-
+import type { AuthPayload } from '@/modules/identity';
 export type TransferCapability =
   /** Raise a transfer request for a patient you are currently involved in. */
   | 'patient.transfer.request'

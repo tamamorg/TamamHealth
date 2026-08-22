@@ -1,4 +1,4 @@
-import { logApiError } from '@/lib/api-auth';
+import { logApiError } from '@/modules/identity';
 /**
  * POST /api/patient-portal/verify-otp — second step of patient portal login
  * (KAN-76 / LOW-02).
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     // "Is anyone actually using the portal we enrolled them in?" was
     // unanswerable — nothing recorded a portal sign-in. Best-effort, and never
     // in the way of a patient reaching their own records.
-    const { recordPortalLogin } = await import('@/lib/services/patient-portal-enrolment');
+    const { recordPortalLogin } = await import('@/modules/identity/services/patient-portal-enrolment');
     await recordPortalLogin(patient._id);
 
     const token = await createPatientToken({

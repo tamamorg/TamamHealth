@@ -1,5 +1,7 @@
 'use client';
 
+import { CredentialHandoffModal, ORG_ADMIN_MIN_PASSWORD_LENGTH, buildOrgAdminUserPayload, emptyOrgAdminForm, generateTempPassword, validateOrgAdminForm } from '@/modules/identity/client';
+import type { InvitationOutcome, OrgAdminFormData } from '@/modules/identity/client';
 /**
  * Super-admin → Organizations (tenant registry), restyled to the sadb-*
  * design language (docs/SUPER-ADMIN-DESIGN-PLAN.md § /admin/organizations).
@@ -22,17 +24,12 @@ import type { OrganizationDoc, UserRole } from '@/lib/db-types';
 import { Plus, X, Edit3, Ban, RefreshCw, Eye, EyeOff, ShieldCheck } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
-import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
-import type { InvitationOutcome } from '@/lib/user-invite';
+
 import {
   SadbPage, SadbCard, SadbChip, SadbSearch, SadbGridList, SadbGridRow,
   SadbSettingRow, SadbToggle, SadbConfirmModal, statusChip,
 } from '@/components/admin/sadb-ui';
-import { generateTempPassword } from '@/lib/temp-password';
-import {
-  emptyOrgAdminForm, validateOrgAdminForm, buildOrgAdminUserPayload,
-  ORG_ADMIN_MIN_PASSWORD_LENGTH, type OrgAdminFormData,
-} from '@/lib/org-admin-provisioning';
+
 import { BRAND_PRIMARY, BRAND_SECONDARY, WARNING } from '@/lib/theme-colors';
 import { assignableRolesForOrgAdmin, labelRolesDistinctly } from '@/lib/permissions';
 
@@ -446,7 +443,7 @@ export default function AdminOrganizationsPage() {
   const provisionOrgAdmin = async (orgId: string, savedAs: 'created' | 'updated') => {
     const savedToast = savedAs === 'created' ? `Organization "${form.name}" created.` : `Organization "${form.name}" updated.`;
     try {
-      const { createUserWithInvitation } = await import('@/lib/services/user-service');
+      const { createUserWithInvitation } = await import('@/modules/identity/services/user-service');
       // The invitation outcome is the point of using this variant: the route
       // always mails a "set your password" link when the account has an email,
       // and this flow used to discard the answer and always tell the operator

@@ -226,7 +226,7 @@ export async function wipeLocalData(
   // moment offline sign-in has to work.
   if (reason === 'logout' || reason === 'session-expired' || reason === 'user-changed') {
     try {
-      const { clearOfflineCredential } = await import('../offline-credential');
+      const { clearOfflineCredential } = await import('@/modules/identity/core/offline-credential');
       clearOfflineCredential();
     } catch {
       // Never block a wipe on this; the credential alone unlocks no PHI.

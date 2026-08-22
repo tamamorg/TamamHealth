@@ -33,10 +33,11 @@ import type {
 import { findByType } from './db-query';
 import { recordMovement } from './controlled-substance-service';
 import { updatePrescription, effectivePrescriptionStatus } from './prescription-service';
-import { getUserById } from './user-service';
+
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { jubaDate } from '../time-juba';
+import { getUserById } from '@/modules/identity/services/user-service';
 
 export type DispenseErrorCode =
   | 'NOT_CLEARED'
@@ -719,7 +720,7 @@ async function resolvePrescriberId(prescribedBy: string, orgId?: string): Promis
   const wanted = (prescribedBy || '').trim().toLowerCase();
   if (!wanted) return prescribedBy;
   try {
-    const { getAllUsers } = await import('./user-service');
+    const { getAllUsers } = await import('@/modules/identity/services/user-service');
     const users = await getAllUsers();
     // Constrained to the prescription's own org: the local directory holds
     // every tenant's users, and an unconstrained unique-name match could

@@ -29,7 +29,7 @@
  * in the migration record, not in code.
  */
 import type { NextRequest, NextResponse } from 'next/server';
-import { getAuthPayload } from '@/lib/api-auth';
+import { getAuthPayload } from '@/modules/identity';
 import { logAudit } from '@/lib/services/audit-service';
 
 /**

@@ -21,8 +21,7 @@
  *      session is a mail-interception away from account takeover.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { serverError, logApiError } from '@/lib/api-auth';
-
+import { logApiError, serverError } from '@/modules/identity';
 /** One message for every failure mode — see rule 1 above. */
 const GENERIC_FAILURE =
   'This invitation link is no longer valid. Ask your administrator to send a new one.';
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
     // built from your own name" — live in `lib/password-policy.ts` and are
     // applied inside `redeemUserInvite`, which is the only place that knows
     // WHOSE account the token belongs to.
-    const { redeemUserInvite } = await import('@/lib/services/user-service');
+    const { redeemUserInvite } = await import('@/modules/identity/services/user-service');
     const result = await redeemUserInvite(token, password);
 
     if (!result.ok) {

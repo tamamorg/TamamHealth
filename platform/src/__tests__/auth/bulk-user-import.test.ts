@@ -12,7 +12,7 @@
 import {
   parseUserImport, splitCsvLine, resolveRole, usernameFromName,
   IMPORT_TEMPLATE_CSV, MAX_IMPORT_ROWS,
-} from '@/lib/bulk-user-import';
+} from '@/modules/identity/provisioning/bulk-user-import';
 
 const HEADER = 'Name,Username,Role,Email,Phone,Facility,Department';
 const FACILITIES = ['Juba Teaching Hospital', 'Wau State Hospital'];

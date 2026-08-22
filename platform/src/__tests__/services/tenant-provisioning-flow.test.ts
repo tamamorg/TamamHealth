@@ -17,8 +17,8 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 import { teardownTestDBs } from '../helpers/test-db';
 import { createOrganization } from '@/lib/services/organization-service';
 import { createHospital, getAllHospitals } from '@/lib/services/hospital-service';
-import { createUser, getAllUsers } from '@/lib/services/user-service';
-import { roleNeedsFacility, roleNeedsOrganization } from '@/lib/user-scope-rules';
+import { createUser, getAllUsers } from '@/modules/identity/services/user-service';
+import { roleNeedsFacility, roleNeedsOrganization } from '@/modules/identity/policy/user-scope-rules';
 import { DEFAULT_FACILITY_TYPE } from '@/lib/facility-types';
 import type { OrganizationDoc, HospitalDoc, UserDoc, UserRole } from '@/lib/db-types';
 

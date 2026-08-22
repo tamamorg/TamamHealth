@@ -16,7 +16,7 @@ jest.mock('@/lib/patient-portal-demo', () => ({
   logDemoFallback: jest.fn(),
   findDemoPatientByUsername: jest.fn(),
 }));
-jest.mock('@/lib/auth', () => ({ verifyPassword: async () => true }));
+jest.mock('@/modules/identity/core/auth', () => ({ verifyPassword: async () => true }));
 jest.mock('@/lib/patient-portal-otp', () => ({ otpEnabled: () => false, issueOtp: jest.fn() }));
 jest.mock('@/lib/db', () => ({
   patientsDB: () => ({ createIndex: async () => undefined, find: mockFind }),

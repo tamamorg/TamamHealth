@@ -10,10 +10,7 @@
  * flag, and re-issues the session JWT so the flag clears without a re-login.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthPayload, unauthorized, serverError, logApiError } from '@/lib/api-auth';
-import { createToken } from '@/lib/auth-token';
-import { mintCsrfToken } from '@/lib/csrf';
-import { applySessionCookies } from '@/lib/session';
+import { applySessionCookies, createToken, getAuthPayload, logApiError, mintCsrfToken, serverError, unauthorized } from '@/modules/identity';
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,7 +49,7 @@ export async function POST(request: NextRequest) {
     // advertised a minimum of 12 that nothing enforced. `changeOwnPassword`
     // screens again server-side; this pass exists so the message names the
     // real problem rather than surfacing as a generic 500.
-    const { screenPasswordForDeployment } = await import('@/lib/password-policy-server');
+    const { screenPasswordForDeployment } = await import('@/modules/identity/policy/password-policy-server');
     const weak = await screenPasswordForDeployment(newPassword, [auth.username, auth.name]);
     if (weak) {
       return NextResponse.json({ error: weak }, { status: 400 });
@@ -64,7 +61,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { changeOwnPassword } = await import('@/lib/services/user-service');
+    const { changeOwnPassword } = await import('@/modules/identity/services/user-service');
     let updatedUser: import('@/lib/db-types').UserDoc;
     try {
       updatedUser = await changeOwnPassword(auth.sub, currentPassword, newPassword);
@@ -72,7 +69,7 @@ export async function POST(request: NextRequest) {
       if (err instanceof Error && /current password is incorrect/i.test(err.message)) {
         return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
       }
-      const { PasswordPolicyError } = await import('@/lib/password-policy');
+      const { PasswordPolicyError } = await import('@/modules/identity/policy/password-policy');
       if (err instanceof PasswordPolicyError) {
         return NextResponse.json({ error: err.message }, { status: 400 });
       }
@@ -123,7 +120,7 @@ export async function POST(request: NextRequest) {
     // already succeeded and must not be rolled back over cleanup.
     if (auth.role === 'super_admin' || auth.role === 'org_admin' || auth.username === 'admin') {
       try {
-        const { deleteSeedCredentialsFile } = await import('@/lib/seed-credentials');
+        const { deleteSeedCredentialsFile } = await import('@/modules/identity/core/seed-credentials');
         await deleteSeedCredentialsFile();
       } catch (cleanupErr) {
         console.warn('[change-password] could not remove seed credentials file', cleanupErr);

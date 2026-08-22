@@ -2,9 +2,7 @@
  * FHIR R4: GET /fhir/MedicationRequest?patient=<id>
  */
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
-} from '@/lib/api-auth';
+import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import type { UserRole } from '@/lib/db-types';
 
 const READ_ROLES: UserRole[] = [

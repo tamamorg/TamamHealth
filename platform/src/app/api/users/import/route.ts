@@ -20,13 +20,8 @@
  */
 import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
-} from '@/lib/api-auth';
+import { forbidden, generateTempPassword, getAuthPayload, hasRole, logApiError, parseUserImport, roleNeedsFacility, serverError, tempPasswordLengthFor, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import { parseUserImport } from '@/lib/bulk-user-import';
-import { generateTempPassword, tempPasswordLengthFor } from '@/lib/temp-password';
-import { roleNeedsFacility } from '@/lib/user-scope-rules';
 
 export const runtime = 'nodejs';
 
@@ -91,7 +86,7 @@ async function postHandler(request: NextRequest) {
 
     const [{ getAllHospitals }, { getAllUsers }] = await Promise.all([
       import('@/lib/services/hospital-service'),
-      import('@/lib/services/user-service'),
+      import('@/modules/identity/services/user-service'),
     ]);
     const facilities = (await getAllHospitals())
       .filter(h => h.orgId === orgId && h.isActive !== false);
@@ -117,9 +112,9 @@ async function postHandler(request: NextRequest) {
       });
     }
 
-    const { createUser } = await import('@/lib/services/user-service');
-    const { deliverAccountInvite } = await import('@/lib/services/invite-delivery');
-    const { getMinPasswordLength } = await import('@/lib/password-policy-server');
+    const { createUser } = await import('@/modules/identity/services/user-service');
+    const { deliverAccountInvite } = await import('@/modules/identity/services/invite-delivery');
+    const { getMinPasswordLength } = await import('@/modules/identity/policy/password-policy-server');
     const passwordLength = tempPasswordLengthFor(await getMinPasswordLength());
 
     const results: ImportOutcome[] = [];

@@ -1,5 +1,7 @@
 'use client';
 
+import { CreateUserModal, CredentialHandoffModal } from '@/modules/identity/client';
+import type { CreatedCredentials } from '@/modules/identity/client';
 /**
  * The per-facility management surface: Staff, Wards, Equipment, Inventory,
  * Schedules, Performance and Settings for one hospital.
@@ -40,9 +42,6 @@ import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { canCreateUsers } from '@/lib/people-nav';
 import { useApp } from '@/lib/context';
-import CreateUserModal from '@/components/admin/CreateUserModal';
-import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
-import type { CreatedCredentials } from '@/components/admin/CreateUserModal';
 
 // ── Permission ───────────────────────────────────────────────────────────────
 /** Roles that may open a facility's management tabs. */
@@ -184,7 +183,7 @@ function StaffTab({ scope, hospitalId, hospital }: {
     setLoading(true);
     setError(null);
     try {
-      const { getAllUsers } = await import('@/lib/services/user-service');
+      const { getAllUsers } = await import('@/modules/identity/services/user-service');
       const all = await getAllUsers(scope);
       // Narrow to this facility (data-scope already restricted to orgId).
       setUsers(all.filter(u => u.hospitalId === hospitalId));

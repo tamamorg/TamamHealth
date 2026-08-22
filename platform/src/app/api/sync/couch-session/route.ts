@@ -17,7 +17,7 @@
  * after any reload, and locally-entered data never pushes to CouchDB.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthPayload, unauthorized, serverError, logApiError } from '@/lib/api-auth';
+import { getAuthPayload, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { randomBytes } from 'node:crypto';
 
 export async function POST(request: NextRequest) {

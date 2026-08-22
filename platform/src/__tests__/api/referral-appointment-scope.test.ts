@@ -18,8 +18,8 @@
 let uuidCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-tuid` }));
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
-jest.mock('@/lib/api-auth', () => {
-  const actual = jest.requireActual('@/lib/api-auth');
+jest.mock('@/modules/identity/core/api-auth', () => {
+  const actual = jest.requireActual('@/modules/identity/core/api-auth');
   return {
     ...actual,
     getAuthPayload: jest.fn(),
@@ -60,7 +60,7 @@ jest.setTimeout(30000);
 import type { NextRequest } from 'next/server';
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { hospitalsDB } from '@/lib/db';
-import { getAuthPayload, type AuthPayload } from '@/lib/api-auth';
+import { getAuthPayload, type AuthPayload } from '@/modules/identity/core/api-auth';
 import { createReferral, getReferralById } from '@/lib/services/referral-service';
 import { createAppointment, getAppointmentById } from '@/lib/services/appointment-service';
 import { POST as referralsPOST } from '@/app/api/referrals/route';

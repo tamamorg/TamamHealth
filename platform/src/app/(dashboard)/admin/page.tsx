@@ -173,7 +173,7 @@ export default function AdminDashboardPage() {
       try {
         const [{ getAllUsers }, { getAllPatients }, { getAllEncounters }, { getRecentAuditLogs }, { getSyncEventStats }] =
           await Promise.all([
-            import('@/lib/services/user-service'),
+            import('@/modules/identity/services/user-service'),
             import('@/lib/services/patient-service'),
             import('@/lib/services/encounter-service'),
             import('@/lib/services/audit-service'),

@@ -13,7 +13,7 @@ import {
   ORG_ADMIN_MIN_PASSWORD_LENGTH,
   emptyOrgAdminForm,
   type OrgAdminFormData,
-} from '@/lib/org-admin-provisioning';
+} from '@/modules/identity/provisioning/org-admin-provisioning';
 
 const form = (over: Partial<OrgAdminFormData> = {}): OrgAdminFormData => ({
   name: 'Grace Ayen',

@@ -5,8 +5,8 @@
  * Covers the station-role compatibility shim and BUG-008 (data_entry_clerk
  * could create patients via the API despite having no /patients module).
  */
-import { hasRole } from '@/lib/api-auth';
-import type { AuthPayload } from '@/lib/api-auth';
+import { hasRole } from '@/modules/identity/core/api-auth';
+import type { AuthPayload } from '@/modules/identity/core/api-auth';
 import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 import type { UserRole } from '@/lib/db-types';
 
