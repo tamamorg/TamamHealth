@@ -3016,6 +3016,8 @@ const apd: TranslationMap = {
   'login.errorInvalidCredentials': 'بيانات الدخول غلط. حاول تاني من فضلك.',
   'login.errorImpersonationDisabled': 'الدخول بدور تاني مقفول في المنصة دي. افتح انتحال هوية الدعم في إعدادات الأمان الأول.',
   'login.errorRoleNotPermitted': 'تقدر تدخل بالدور المخصص ليك بس.',
+  'login.errorOfflineNoCredential': 'إنت أوفلاين والجهاز دا ما عندو دخول محفوظ للحساب دا. وصّل بالشبكة مرة واحدة عشان تدخل.',
+  'login.errorOfflineBadPassword': 'كلمة السر دي ما بتطابق المحفوظة في الجهاز دا. لو غيّرتها مؤخراً، وصّل بالشبكة عشان تدخل بالجديدة.',
   'login.errorLoginFailed': 'الدخول فشل. حاول تاني من فضلك.',
   'login.errorTooManyAttempts': 'محاولات فاشلة كتيرة. استنى شوية دقايق وحاول تاني.',
   'login.errorTooManyAttemptsIn': 'محاولات فاشلة كتيرة. حاول تاني بعد {{minutes}} دقيقة.',
