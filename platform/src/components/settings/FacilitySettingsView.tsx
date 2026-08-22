@@ -86,7 +86,7 @@ const FACILITY_PROFILE_ROLES = ['super_admin', 'org_admin', 'medical_superintend
 
 type FacilityModuleKey = 'identity' | 'visits' | 'places' | 'lab' | 'workflow';
 
-const FACILITY_MODULES: Array<{ key: FacilityModuleKey; label: string; title: string; icon: typeof Building2 }> = [
+export const FACILITY_MODULES: Array<{ key: FacilityModuleKey; label: string; title: string; icon: typeof Building2 }> = [
   { key: 'identity', label: 'Identity & codes',   title: 'Identity & codes',        icon: Building2 },
   { key: 'visits',   label: 'Visit types',        title: 'Visit types & booking',   icon: CalendarClock },
   { key: 'places',   label: 'Departments & rooms', title: 'Departments & rooms',    icon: MapPin },
@@ -120,7 +120,27 @@ const typeLabel = (t?: string) => (t ? t.replace(/_/g, ' ') : 'facility');
 // `embedded` renders just the settings body (no TopBar / page-container) so the
 // main Settings page can host it as its "Facility" tab. The standalone route
 // (default, embedded=false) still renders the full page.
-export function FacilitySettingsView({ embedded = false }: { embedded?: boolean } = {}) {
+export function FacilitySettingsView({
+  embedded = false,
+  activeModule: controlledModule,
+  onModuleChange,
+  hideNav = false,
+}: {
+  embedded?: boolean;
+  /**
+   * Which module to show, when something outside drives the choice.
+   *
+   * The Settings page now expands its own rail to list these modules, so this
+   * view stopped owning a second nav column of its own — two rails side by
+   * side made the reader pick a section twice to reach one screen. Left
+   * undefined, the view keeps its internal state and its own rail, which is
+   * what the standalone /facility-settings route still uses.
+   */
+  activeModule?: string;
+  onModuleChange?: (module: string) => void;
+  /** Hide the built-in rail when the host is already listing these modules. */
+  hideNav?: boolean;
+} = {}) {
   const { showToast } = useToast();
   const { currentUser } = useAuth();
   const { hospitalId, orgId } = useSettingsContext();
@@ -132,7 +152,13 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
   const [loadingSelected, setLoadingSelected] = useState(false);
   const [facilityQuery, setFacilityQuery] = useState('');
   // One module on screen at a time: 'facility:<key>' or 'network:<key>'.
-  const [activeModule, setActiveModule] = useState<string>('facility:identity');
+  // Controlled when the host rail owns the choice, uncontrolled otherwise.
+  const [ownModule, setOwnModule] = useState<string>('facility:identity');
+  const activeModule = controlledModule ?? ownModule;
+  const setActiveModule = (next: string) => {
+    if (controlledModule === undefined) setOwnModule(next);
+    onModuleChange?.(next);
+  };
   const effectiveHospitalId = hospitalId || selectedHospitalId;
   const effectiveSettings = hospitalId ? settings : (selectedSettings || settings);
   const selectedHospital = pickerHospitals.find(h => h._id === effectiveHospitalId);
@@ -520,7 +546,8 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
   };
 
   const content = (
-    <div className="fs-shell">
+    <div className={`fs-shell${hideNav ? ' fs-shell--nonav' : ''}`}>
+      {!hideNav && (
       <nav className="fs-nav" aria-label="Settings modules">
         <p className="fs-nav-group">
           This facility
@@ -562,6 +589,7 @@ export function FacilitySettingsView({ embedded = false }: { embedded?: boolean 
           </Link>
         )}
       </nav>
+      )}
 
       <div className="fs-shell-body">
         {/* Context bar: which facility the per-facility modules are editing,

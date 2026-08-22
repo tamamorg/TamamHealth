@@ -87,23 +87,51 @@ export function SaPill({ tone, children }: { tone: 'ok' | 'warn' | 'danger' | 'm
 
 /* Dense table. Columns render as an uppercase header row; rows are plain
    <tr> children so pages keep full control of cells. */
+/**
+ * A column: a label, and optionally how much of the table's width it should
+ * get relative to the others.
+ *
+ * `w` is a weight, not a size — 2 takes twice the room of 1. Widths are
+ * resolved to percentages so the table stays fluid at any viewport.
+ */
+export type SaColumn = string | { label: string; w?: number };
+
+const columnLabel = (c: SaColumn) => (typeof c === 'string' ? c : c.label);
+const columnWeight = (c: SaColumn) => (typeof c === 'string' ? 1 : c.w ?? 1);
+
+/**
+ * Admin data table.
+ *
+ * `table-layout: fixed` is the point of this component. Auto layout sizes
+ * columns from their content, which on a wide screen dumps every spare pixel
+ * into whichever column happens to hold the longest string: the audit log
+ * showed a 435px gap before Detail and a 120px one before Action, with an Org
+ * column of em-dashes taking a full share. Fixed layout spends the width the
+ * way the caller asked for it — equal by default, weighted where a column
+ * genuinely holds a sentence rather than a chip.
+ */
 export function SaTable({
   columns,
   children,
   empty,
   minWidth,
 }: {
-  columns: string[];
+  columns: SaColumn[];
   children: ReactNode;
   empty?: string;
   minWidth?: number;
 }) {
   const hasRows = Array.isArray(children) ? children.some(Boolean) : Boolean(children);
+  const weights = columns.map(columnWeight);
+  const total = weights.reduce((sum, w) => sum + w, 0) || columns.length;
   return (
     <div className="sa-table-scroll">
       <table className="sa-table" style={minWidth ? { minWidth } : undefined}>
+        <colgroup>
+          {weights.map((w, i) => <col key={i} style={{ width: `${((w / total) * 100).toFixed(3)}%` }} />)}
+        </colgroup>
         <thead>
-          <tr>{columns.map(c => <th key={c}>{c}</th>)}</tr>
+          <tr>{columns.map((c, i) => <th key={`${columnLabel(c)}-${i}`}>{columnLabel(c)}</th>)}</tr>
         </thead>
         <tbody>{children}</tbody>
       </table>

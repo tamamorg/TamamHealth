@@ -45,9 +45,11 @@ describe('every creation surface reports the invitation', () => {
   test('the copy has one source, not one per page', () => {
     // /org-admin/users used to spell out its own ternary chain, which had no
     // branch for `no_email` at all — the commonest outcome on the surfaces
-    // that could not collect an address.
+    // that could not collect an address. Since the 2026-08 console restyle it
+    // renders the shared CredentialHandoffModal (like /admin/users), which is
+    // where the one copy chain lives.
     expect(source('components/admin/CredentialHandoffModal.tsx')).toContain('describeInvitationOutcome');
-    expect(source('app/(dashboard)/org-admin/users/page.tsx')).toContain('describeInvitationOutcome');
+    expect(source('app/(dashboard)/org-admin/users/page.tsx')).toContain('CredentialHandoffModal');
   });
 });
 

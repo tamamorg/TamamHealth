@@ -14,7 +14,7 @@
  * There is no role switcher — each user sees only their own settings.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { useApp } from '@/lib/context';
@@ -33,9 +33,10 @@ import {
   type RoleSettingsValues, type RoleSettingRow, type RoleSettingSection,
 } from '@/lib/role-settings';
 import { replaceRoleSettings, resetRoleSettings } from '@/lib/settings/role-settings-store';
-import { FacilitySettingsView } from '@/components/settings/FacilitySettingsView';
+import { FacilitySettingsView, FACILITY_MODULES } from '@/components/settings/FacilitySettingsView';
+import { NETWORK_MODULES } from '@/components/settings/NetworkDefaultsView';
 import FacilityPolicySections from '@/components/settings/FacilityPolicySections';
-import FacilitySyncPanel from '@/components/settings/FacilitySyncPanel';
+import { useFacilitySync, FacilitySyncButton, FacilitySyncDetail } from '@/components/settings/FacilitySyncPanel';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import OrganizationSettingsPanel, { type OrganizationSettingsSection } from '@/components/settings/OrganizationSettingsPanel';
 import OrgBrandingPage from '@/app/(dashboard)/org-admin/branding/page';
@@ -53,7 +54,7 @@ import {
   SystemAdminEditorModal,
   SystemAdminStyles,
 } from '@/components/settings/SystemAdminSections';
-import { getDhis2SyncLog, isDhis2Configured, type Dhis2SyncLogDoc } from '@/lib/services/dhis2-sync-log-service';
+import { isDhis2Configured } from '@/lib/services/dhis2-sync-log-service';
 import {
   AlertTriangle, ArrowLeft, Bell, BedDouble, Building2, Check, ChevronRight, Clock,
   CreditCard, FileText, FlaskConical, KeyRound, List, Lock, Palette, Pill,
@@ -102,7 +103,26 @@ const ORG_SETTINGS_PANEL_IDS = new Set([
   'org-billing',
 ]);
 
-type NavItem = { id: string; label: string; icon: LucideIcon; badge?: string; nested?: boolean; href?: string };
+type NavItem = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: string;
+  nested?: boolean;
+  href?: string;
+  /**
+   * A row that expands DOWN into the rail rather than opening a second column.
+   *
+   * Facility settings used to render its own nav beside this one, so the
+   * reader chose a section twice — once here, once there — and the two rails
+   * competed for the same job. Its modules are these children now.
+   */
+  children?: NavItem[];
+  /** Indented child row. */
+  sub?: boolean;
+  /** Group heading inside an expanded row — not clickable. */
+  heading?: string;
+};
 type NavGroup = { title: string; items: NavItem[] };
 
 export default function RoleSettingsView() {
@@ -212,12 +232,20 @@ export default function RoleSettingsView() {
   useEffect(() => { setPinIsSet(hasLockPin()); }, [pinOpen]);
 
   // ── Integration status (real: DHIS2 push log + offline sync state) ──
-  const [dhis2Log, setDhis2Log] = useState<Dhis2SyncLogDoc | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    getDhis2SyncLog().then(log => { if (!cancelled) setDhis2Log(log); });
-    return () => { cancelled = true; };
-  }, []);
+  // One owner for the sync log. This screen used to load it here AND inside
+  // FacilitySyncPanel, so running a push updated one copy and left the status
+  // grid reading the other — the same facts, twice, disagreeing.
+  const sync = useFacilitySync();
+  const dhis2Log = sync.log;
+
+  /**
+   * Which facility module the expanded rail row is pointing at. Held here
+   * rather than inside FacilitySettingsView because the rail is what chooses
+   * it now — the view renders whatever this says. Must sit above the
+   * `!currentUser || !spec` guard below: a hook after an early return does not
+   * run in the same order on every render.
+   */
+  const [facilityModule, setFacilityModule] = useState('facility:identity');
 
   const showFacility = canAccess('/facility-settings');
   const isAdminSpec = useMemo(
@@ -293,7 +321,25 @@ export default function RoleSettingsView() {
 
     if (isAdminSpec || showFacility || canManageUsers) {
       const facilityItems: NavItem[] = [];
-      if (showFacility && currentUser.role !== 'org_admin') facilityItems.push({ id: 'facility-editor', label: 'Facility settings', icon: Building2 });
+      if (showFacility && currentUser.role !== 'org_admin') {
+        facilityItems.push({
+          id: 'facility-editor',
+          label: 'Facility settings',
+          icon: Building2,
+          // Expands DOWN into this rail. These are exactly the modules the
+          // facility view used to list in a second column of its own.
+          children: [
+            { id: 'mod:facility', label: 'This facility', icon: Building2, heading: 'This facility' },
+            ...FACILITY_MODULES.map(m => ({
+              id: `mod:facility:${m.key}`, label: m.label, icon: m.icon, sub: true,
+            })),
+            { id: 'mod:network', label: 'All facilities', icon: Building2, heading: 'All facilities' },
+            ...NETWORK_MODULES.map(m => ({
+              id: `mod:network:${m.key}`, label: m.label, icon: m.icon, sub: true,
+            })),
+          ],
+        });
+      }
       const clinical = spec.sections.find(s => s.id === 'clinical');
       if (isAdminSpec && clinical) facilityItems.push({ id: 'clinical', label: clinical.title, icon: Stethoscope });
       const reporting = spec.sections.find(s => s.id === 'reporting');
@@ -456,6 +502,12 @@ export default function RoleSettingsView() {
     // A rail row with an href is a shortcut to a page that owns itself
     // elsewhere in the nav; everything else is a panel of this screen.
     if (item.href) { router.push(item.href); return; }
+    // A module row selects inside the facility panel without leaving it.
+    if (item.id.startsWith('mod:')) {
+      setFacilityModule(item.id.slice('mod:'.length));
+      setActivePanel('facility-editor');
+      return;
+    }
     setActivePanel(item.id);
   };
 
@@ -566,7 +618,7 @@ export default function RoleSettingsView() {
     const smsOn = facilitySettings.itOperations.integrations.includes('sms');
     const lastPush = dhis2Log?.lastPush;
     const dhis2Status = !isDhis2Configured()
-      ? { label: 'Not set up', tone: 'neutral', detail: 'Set NEXT_PUBLIC_DHIS2_BASE_URL to enable national reporting.' }
+      ? { label: 'Not set up', tone: 'neutral', detail: 'Set NEXT_PUBLIC_DHIS2_BASE_URL to enable national reporting. Sync now still prepares the export locally.' }
       : lastPush?.status === 'pushed'
         ? { label: 'Connected', tone: 'green', detail: `HMIS + IDSR datasets. Last push ${dhis2Log?.lastSyncedAt ? new Date(dhis2Log.lastSyncedAt).toLocaleString() : '—'}.` }
         : lastPush?.status === 'failed'
@@ -598,8 +650,12 @@ export default function RoleSettingsView() {
             <span><RefreshCw /></span>
             <div style={{ minWidth: 0, flex: '1 1 auto' }}>
               <h3>Integrations &amp; offline sync</h3>
-              <small>Live status on this device</small>
+              <small>Live status on this device &middot; {sync.lastSyncedLabel}</small>
             </div>
+            {/* The push is an action on this section, not a card of its own.
+                As a card it repeated the heading, the DHIS2 status and the
+                last-push message that are all already on this screen. */}
+            <FacilitySyncButton sync={sync} />
           </div>
           <div className="ehr-set-integrations">
             {cells.map(cell => (
@@ -611,7 +667,8 @@ export default function RoleSettingsView() {
             ))}
           </div>
         </section>
-        <FacilitySyncPanel />
+        {/* Renders nothing until a push has actually run. */}
+        <FacilitySyncDetail sync={sync} />
         <FacilityPolicySections panel="integrations" />
       </>
     );
@@ -662,7 +719,12 @@ export default function RoleSettingsView() {
     if (activePanel === 'facility-editor' || activePanel === 'facility-config') {
       return (
         <section className="ehr-set-section ehr-set-embed">
-          <FacilitySettingsView embedded />
+          <FacilitySettingsView
+            embedded
+            hideNav
+            activeModule={facilityModule}
+            onModuleChange={setFacilityModule}
+          />
         </section>
       );
     }
@@ -759,16 +821,6 @@ export default function RoleSettingsView() {
                 </div>
               ))}
             </div>
-            <div className="ehr-set-account-scope">
-              <b>{spec.subtitle}</b>
-              <p>{spec.scope}</p>
-              <div className="ehr-set-account-chips">
-                <span>You control</span>
-                <div>
-                  {spec.chips.map(chip => <span key={chip}>{chip}</span>)}
-                </div>
-              </div>
-            </div>
           </section>
         ) : renderSection(section)}
       </>
@@ -813,6 +865,10 @@ export default function RoleSettingsView() {
             </button>
           )}
           <h1>Settings</h1>
+          {/* Scope, on the title line: "Settings" alone never said whose. Only
+              at the top level — once you are inside a panel the crumb is the
+              more useful thing for the same few centimetres. */}
+          {!backLabel && <span className="ehr-set-scope-note" title={spec.subtitle}>{spec.subtitle}</span>}
           {/* The trail only shows the panel you'd return to, not the whole
               stack: it's an escape hatch, not a site map. */}
           {backLabel && (
@@ -848,21 +904,47 @@ export default function RoleSettingsView() {
                 <span className="ehr-set-nav-group-title">{group.title}</span>
                 {group.items.map(item => {
                   const Icon = item.icon;
+                  // A row with children expands DOWN into the rail. It opens
+                  // its panel on click like any other row; the chevron only
+                  // reports whether its modules are showing.
+                  const expanded = !!item.children && isNavActive(item.id);
                   return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={isNavActive(item.id) ? 'active' : undefined}
-                      onClick={() => handleNav(item)}
-                      /* A rail label can outrun its column; the tooltip keeps
-                         the full wording reachable when it ellipsises. */
-                      title={item.label}
-                    >
-                      <Icon />
-                      <em>{item.label}</em>
-                      {item.badge && <b className="is-badge">{item.badge}</b>}
-                      {item.nested && <b className="is-nested" aria-hidden="true"><ChevronRight /></b>}
-                    </button>
+                    <Fragment key={item.id}>
+                      <button
+                        type="button"
+                        className={isNavActive(item.id) ? 'active' : undefined}
+                        onClick={() => handleNav(item)}
+                        aria-expanded={item.children ? expanded : undefined}
+                        /* A rail label can outrun its column; the tooltip keeps
+                           the full wording reachable when it ellipsises. */
+                        title={item.label}
+                      >
+                        <Icon />
+                        <em>{item.label}</em>
+                        {item.badge && <b className="is-badge">{item.badge}</b>}
+                        {item.children && (
+                          <b className={`is-caret${expanded ? ' is-open' : ''}`} aria-hidden="true"><ChevronRight /></b>
+                        )}
+                        {item.nested && <b className="is-nested" aria-hidden="true"><ChevronRight /></b>}
+                      </button>
+                      {expanded && item.children!.map(child => (
+                        child.heading
+                          ? (
+                            <span key={child.id} className="ehr-set-nav-subhead">{child.heading}</span>
+                          ) : (
+                            <button
+                              key={child.id}
+                              type="button"
+                              className={`ehr-set-nav-sub${facilityModule === child.id.slice(4) ? ' active' : ''}`}
+                              onClick={() => handleNav(child)}
+                              title={child.label}
+                            >
+                              <child.icon />
+                              <em>{child.label}</em>
+                            </button>
+                          )
+                      ))}
+                    </Fragment>
                   );
                 })}
               </div>

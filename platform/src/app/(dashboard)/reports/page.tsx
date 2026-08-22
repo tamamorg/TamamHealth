@@ -2,14 +2,14 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import {
-  FileText, Download, Users, Activity, Pill, BedDouble, TrendingUp,
-  ChevronUp, Loader2, BarChart3, AlertTriangle, Filter, Building2, Banknote
+  FileText, Download, Activity, Users, Pill, BedDouble, TrendingUp,
+  ChevronUp, ChevronLeft, ChevronRight, Loader2, BarChart3, PieChart, Layers, List,
+  AlertTriangle, type LucideIcon
 } from '@/components/icons/lucide';
-import { buildReportChart, type ReportChart } from '@/lib/reports/report-chart-data';
+import { buildReportChart, type ReportChart as ReportChartData } from '@/lib/reports/report-chart-data';
+import { supportsPartToWhole, type ReportChartKind } from './_ReportCharts';
 import { diseaseColor } from '@/lib/chart-colors';
-import { useSettings } from '@/lib/settings/SettingsProvider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EmptyState from '@/components/EmptyState';
 import { FilterSelect } from '@/components/filters';
@@ -25,25 +25,26 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 import { ESSENTIAL_MEDICINES } from '@/lib/services/supply-chain-service';
 import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
 import Select from '@/components/Select';
-import { todayIso as isoToday } from '@/lib/date-utils';
 import { downloadCsv, safeFilenamePart } from '@/lib/export-file';
 
 /* ── Charts ────────────────────────────────────────────────────────
  * recharts (~80-100 KB) sits behind a dynamic boundary so the catalogue —
  * which is what most visits are here for — does not pay for it. The fixed
  * `loading` heights stop the page reflowing as each chart arrives. */
-const RankedBarChart = dynamic(
-  () => import('./_ReportCharts').then(m => m.RankedBarChart),
+const ReportChart = dynamic(
+  () => import('./_ReportCharts').then(m => m.ReportChart),
   { ssr: false, loading: () => <div style={{ height: '100%' }} /> },
 );
-const DiseaseBurdenChart = dynamic(
-  () => import('./_ReportCharts').then(m => m.DiseaseBurdenChart),
-  { ssr: false, loading: () => <div style={{ height: '100%' }} /> },
-);
-const StockStatusDonut = dynamic(
-  () => import('./_ReportCharts').then(m => m.StockStatusDonut),
-  { ssr: false, loading: () => <div style={{ height: '100%' }} /> },
-);
+
+/** The forms on offer, in the order their buttons appear. `partToWhole` marks
+ *  the two that need values which add up — see `supportsPartToWhole`. */
+const CHART_KINDS: { id: ReportChartKind; labelKey: string; icon: LucideIcon; partToWhole?: true }[] = [
+  { id: 'bar', labelKey: 'reports.chartBar', icon: List },
+  { id: 'column', labelKey: 'reports.chartColumn', icon: BarChart3 },
+  { id: 'lollipop', labelKey: 'reports.chartLollipop', icon: Activity },
+  { id: 'donut', labelKey: 'reports.chartDonut', icon: PieChart, partToWhole: true },
+  { id: 'treemap', labelKey: 'reports.chartTreemap', icon: Layers, partToWhole: true },
+];
 
 /* ── Static report definitions ─────────────────────────────────── */
 // NOTE: this page does not yet track per-report refresh times — every report
@@ -153,17 +154,6 @@ const periodKey: Record<string, string> = {
   Quarterly: 'reports.periodQuarterly',
 };
 
-/** The statistics the picker offers, in the order they appear. */
-const STAT_VIEWS = [
-  { id: 'burden' as const, labelKey: 'reports.statViewBurden' },
-  { id: 'patients' as const, labelKey: 'reports.statViewPatients' },
-  { id: 'stock' as const, labelKey: 'reports.statViewStock' },
-  { id: 'revenue' as const, labelKey: 'reports.statViewRevenue' },
-];
-
-/** Report cadences, in the order their stat dots appear in the header. */
-const PERIODS = ['Daily', 'Weekly', 'Monthly', 'Quarterly'] as const;
-
 /* ── Component ─────────────────────────────────────────────────── */
 export default function ReportsPage() {
   const { t } = useTranslation();
@@ -176,9 +166,6 @@ export default function ReportsPage() {
   const { payments, loading: paymentsLoading } = usePayments();
   const { ledger, loading: ledgerLoading } = useLedger();
   const scope = useDataScope();
-  // The ledger's currency is facility policy, not a constant — the KPI label
-  // has to name whichever one this facility actually bills in.
-  const { currency } = useSettings();
   const [bills, setBills] = useState<BillingDoc[]>([]);
   const [billsLoading, setBillsLoading] = useState(true);
 
@@ -205,12 +192,12 @@ export default function ReportsPage() {
   const dataLoading = patientsLoading || hospitalsLoading || referralsLoading || alertsLoading || labLoading
     || inventoryLoading || paymentsLoading || ledgerLoading || billsLoading;
 
-  // Today's ISO date (YYYY-MM-DD). Reports are regenerated on demand from
-  // live data, so the most accurate "last generated" stamp we can show
-  // without a per-report run history is "today".
-  const todayIso = isoToday();
-
-  const [expandedReport, setExpandedReport] = useState<string | null>(null);
+  // Whether the selected report's table is shown under the graph. One flag,
+  // not a per-card open/closed map: there is one report on screen now.
+  const [tableOpen, setTableOpen] = useState(false);
+  // Which form the graph takes. Held across report changes on purpose: a
+  // reader who chose a treemap wants treemaps, not a reset on every step.
+  const [chartKind, setChartKind] = useState<ReportChartKind>('bar');
   // Reporting period selector. Reports regenerate on demand from live data, so
   // this is presentational only — it does not (yet) filter the underlying rows.
   const periodOptions = [
@@ -220,47 +207,12 @@ export default function ReportsPage() {
   ];
   const [reportPeriod, setReportPeriod] = useState('feb2026');
 
-  // One statistic at a time. Four charts stacked down the page pushed the
-  // catalogue below the fold and asked the reader to take in every dimension
-  // at once; a picker shows the one they came for and keeps the whole page to
-  // a single screen.
-  const [statView, setStatView] = useState<'burden' | 'stock' | 'patients' | 'revenue'>('burden');
-
-  // Category filter only. The search box was removed: sixteen reports in five
-  // named groups are already scannable, and losing the input is what let the
-  // statistics band and the catalogue share one screen.
-  const [categoryFilter, setCategoryFilter] = useState('all');
-
-  /* ── Visible catalogue (category filter + search) ─────────────── */
-  const visibleSections = useMemo(
-    () => reports.filter(section => categoryFilter === 'all' || section.category === categoryFilter),
-    [categoryFilter],
-  );
-
-  // Stat dots: two lead counts plus the four cadences, which partition the
-  // visible reports exactly — the row always adds up to the "Reports" count.
-  const reportStats = useMemo(() => {
-    const items = visibleSections.flatMap(section => section.items);
-    return {
-      total: items.length,
-      categories: visibleSections.length,
-      byPeriod: Object.fromEntries(
-        PERIODS.map(p => [p, items.filter(i => i.period === p).length]),
-      ) as Record<(typeof PERIODS)[number], number>,
-    };
-  }, [visibleSections]);
-
-  const periodDotColor: Record<(typeof PERIODS)[number], string> = {
-    Daily: LIST_STAT_COLORS.green,
-    Weekly: LIST_STAT_COLORS.amber,
-    Monthly: LIST_STAT_COLORS.bronze,
-    Quarterly: LIST_STAT_COLORS.purple,
-  };
-
-  /* ── Toggle report ──────────────────────────────────────────── */
-  const toggleReport = (reportName: string) => {
-    setExpandedReport(prev => (prev === reportName ? null : reportName));
-  };
+  // Which report the page's one graph is showing. Every report reduces to the
+  // same shape, so drawing each of them its own chart — sixteen card
+  // sparklines, four fixed overview panels, one more inside each expanded
+  // report — was the same graph twenty-one times. There is one now, and this
+  // is what it points at.
+  const [chartReport, setChartReport] = useState<string>(reports[0].items[0].name);
 
   /* ── Generate report data ───────────────────────────────────── */
   const generateReportData = useMemo(() => {
@@ -296,9 +248,14 @@ export default function ReportsPage() {
 
         /* ─── Monthly OPD Summary ─────────────────────────── */
         case 'Monthly OPD Summary': {
+          // `lastVisitHospital` stores an id, so the rows (and the chart's
+          // category axis) read "hosp-002" unless it is resolved against the
+          // facilities already loaded on this page.
+          const hospitalName = (idOrName: string) =>
+            hospitals.find(h => h._id === idOrName)?.name || idOrName;
           const byHospital: Record<string, number> = {};
           patients.forEach(p => {
-            const h = p.lastVisitHospital || p.registrationHospital || 'Unknown';
+            const h = hospitalName(p.lastVisitHospital || p.registrationHospital || 'Unknown');
             byHospital[h] = (byHospital[h] || 0) + 1;
           });
           const rows = Object.entries(byHospital)
@@ -699,7 +656,7 @@ export default function ReportsPage() {
    * data), not on the filter state, so typing re-filters an existing map
    * instead of re-aggregating sixteen reports over every patient and SKU. */
   const reportPreviews = useMemo(() => {
-    const map = new Map<string, { chart: ReportChart | null; rowCount: number }>();
+    const map = new Map<string, { chart: ReportChartData | null; rowCount: number }>();
     for (const section of reports) {
       for (const item of section.items) {
         const { rows } = generateReportData(item.name);
@@ -713,446 +670,244 @@ export default function ReportsPage() {
    * The page loads every dataset the sixteen reports draw on and, until now,
    * showed none of it until something was expanded — a reporting screen with
    * no numbers on it. These are the headline figures those reports are about. */
-  const collectedTotal = useMemo(
-    () => payments.filter(p => p.status === 'posted').reduce((sum, p) => sum + (p.amount || 0), 0),
-    [payments],
+  /** Every report, flattened — the list the dropdown lists and the arrows
+   *  step through. The catalogue of cards is gone: one graph, and this is how
+   *  you choose what it draws. */
+  const chartableReports = useMemo(
+    () => reports.flatMap(section =>
+      section.items.map(item => ({ ...item, category: section.category }))),
+    [],
   );
 
-  const kpis = useMemo(() => ([
-    { key: 'patients', icon: Users, label: t('reports.kpiPatients'), value: patients.length.toLocaleString() },
-    { key: 'facilities', icon: Building2, label: t('reports.kpiFacilities'), value: hospitals.length.toLocaleString() },
-    { key: 'signals', icon: Activity, label: t('reports.kpiSignals'), value: alerts.length.toLocaleString() },
-    {
-      key: 'collected', icon: Banknote, label: t('reports.kpiCollected', { currency }),
-      value: collectedTotal > 0 ? Math.round(collectedTotal).toLocaleString() : '0',
-    },
-  ]), [patients.length, hospitals.length, alerts.length, collectedTotal, currency, t]);
+  const chartIndex = chartableReports.findIndex(r => r.name === chartReport);
+  const activeReport = chartableReports[chartIndex] ?? chartableReports[0];
+  const stepChart = (delta: number) => {
+    const next = (chartIndex + delta + chartableReports.length) % chartableReports.length;
+    setChartReport(chartableReports[next].name);
+    setTableOpen(false);
+  };
 
-  /** Top five diseases by reported cases — the five surveillance reports in
-   *  the catalogue are all cuts of this one figure. */
-  const diseaseBurden = useMemo(() => {
-    const byDisease = new Map<string, number>();
-    for (const a of alerts) byDisease.set(a.disease, (byDisease.get(a.disease) ?? 0) + a.cases);
-    return [...byDisease.entries()]
-      .map(([label, value]) => ({ label, value, color: diseaseColor(label) }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
-  }, [alerts]);
+  /** The selected report, as bars. Surveillance categories are diseases, which
+   *  carry their own colour across every screen that charts them — everything
+   *  else is one measure and takes the magnitude shades. */
+  const activeChart = useMemo(() => {
+    const preview = reportPreviews.get(chartReport);
+    if (!preview?.chart) return null;
+    const isDisease = activeReport?.category === 'Disease Surveillance';
+    return {
+      ...preview.chart,
+      points: preview.chart.points.map(p => (
+        isDisease && p.label !== 'Other' ? { ...p, color: diseaseColor(p.label) } : p
+      )),
+    };
+  }, [reportPreviews, chartReport, activeReport]);
 
-  /** Patients by state — the census reports' headline, ranked. */
-  const patientsByState = useMemo(() => {
-    const byState = new Map<string, number>();
-    for (const p of patients) byState.set(p.state || 'Unknown', (byState.get(p.state || 'Unknown') ?? 0) + 1);
-    return [...byState.entries()]
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
-  }, [patients]);
-
-  /** Collected revenue by facility — the financial reports' headline. */
-  const revenueByFacility = useMemo(() => {
-    const byFacility = new Map<string, number>();
-    for (const payment of payments) {
-      if (payment.status !== 'posted') continue;
-      const bill = payment.invoiceId ? bills.find(b => b._id === payment.invoiceId) : undefined;
-      const name = bill?.facilityName || bill?.facilityId || t('reports.unallocated');
-      byFacility.set(name, (byFacility.get(name) ?? 0) + (payment.amount || 0));
-    }
-    return [...byFacility.entries()]
-      .map(([label, value]) => ({ label, value: Math.round(value) }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
-  }, [payments, bills, t]);
-
-  /** Stock mix for the pharmacy reports. Status colours, not the categorical
-   *  palette — "critical" here means critical, which is what that palette is
-   *  reserved for. */
-  const stockMix = useMemo(() => {
-    const counts: Record<string, number> = { adequate: 0, low: 0, critical: 0, expired: 0 };
-    for (const item of inventoryItems) {
-      const status = item.stockLevel <= 0 ? 'critical' : classifyStockStatus(item);
-      counts[status] = (counts[status] ?? 0) + 1;
-    }
-    const meta: { key: string; label: string; color: string }[] = [
-      { key: 'adequate', label: t('reports.stockAdequate'), color: 'var(--color-success)' },
-      { key: 'low', label: t('reports.stockLow'), color: 'var(--color-warning)' },
-      { key: 'critical', label: t('reports.stockCritical'), color: 'var(--color-danger)' },
-      { key: 'expired', label: t('reports.stockExpired'), color: 'var(--text-muted)' },
-    ];
-    return meta
-      .map(m => ({ ...m, value: counts[m.key] ?? 0 }))
-      .filter(m => m.value > 0);
-  }, [inventoryItems, t]);
-
-  const stockTotal = useMemo(() => stockMix.reduce((sum, s) => sum + s.value, 0), [stockMix]);
+  /* Donut and treemap encode a share of a total, so they are offered only when
+   * the values actually add up. Falling back rather than disabling silently:
+   * stepping from a count report to a rate report while a donut is on screen
+   * must not leave a ring of percentages that sum to 240%. */
+  const partToWholeOk = activeChart
+    ? supportsPartToWhole(activeChart.valueLabel, activeChart.points)
+    : false;
+  const effectiveKind: ReportChartKind =
+    (chartKind === 'donut' || chartKind === 'treemap') && !partToWholeOk ? 'bar' : chartKind;
 
   /* ── Render expanded report section ─────────────────────────── */
-  const renderExpandedReport = (reportName: string) => {
+  /** The selected report as a table, under the graph. The graph is the shape;
+   *  this is the record, and the only place every row and column is visible. */
+  const renderTable = (reportName: string) => {
     const { rows, title, placeholder } = generateReportData(reportName);
 
     if (placeholder || rows.length === 0) {
       return (
-        <div className="mt-3">
-          <EmptyState
-            icon={AlertTriangle}
-            title={title}
-            message={placeholder || t('reports.noDataForReport')}
-          />
-        </div>
+        <EmptyState
+          icon={AlertTriangle}
+          title={title}
+          message={placeholder || t('reports.noDataForReport')}
+        />
       );
     }
 
     const headers = Object.keys(rows[0]);
-    const chart = reportPreviews.get(reportName)?.chart ?? buildReportChart(rows);
-
     return (
-      <div
-        className="mt-3 rounded-lg overflow-hidden"
-        style={{ border: '1px solid var(--overlay-medium)' }}
-      >
-        {/* Report header bar */}
-        <div
-          className="flex items-center justify-between px-4 py-2"
-          style={{ background: 'var(--overlay-light)' }}
-        >
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
-            <span className="text-sm font-bold">{title}</span>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)' }}
-            >
-              {rows.length} {rows.length === 1 ? t('reports.rowSingular') : t('reports.rowPlural')}
-            </span>
-          </div>
-          <button
-            className="btn btn-secondary btn-sm"
-            data-track="reports.export_csv"
-            onClick={(e) => {
-              e.stopPropagation();
-              downloadCsv(rows, safeFilenamePart(title));
-            }}
-          >
-            <Download className="w-3.5 h-3.5" /> {t('reports.downloadCsv')}
-          </button>
-        </div>
-
-        {/* The same figures as bars, above the table rather than instead of it.
-            The table stays the record — the chart is the shape of it, and a
-            reader can always check one against the other. */}
-        {chart && (
-          <figure className="rpt-figure">
-            <figcaption className="rpt-figure-cap">
-              {t('reports.chartCaption', { measure: chart.valueLabel, category: chart.categoryLabel })}
-              {chart.truncated && <span className="rpt-figure-note">{t('reports.chartTopOnly')}</span>}
-            </figcaption>
-            <div className="rpt-figure-plot" style={{ height: Math.max(150, chart.points.length * 30 + 40) }}>
-              <RankedBarChart points={chart.points} valueLabel={chart.valueLabel} />
-            </div>
-          </figure>
-        )}
-
-        {/* Report table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm" style={{ minWidth: 760 }}>
-            <thead>
-              <tr style={{ background: 'var(--overlay-light)' }}>
-                {headers.map(h => (
-                  <th
-                    key={h}
-                    className="text-start px-4 py-2 font-bold text-xs"
-                    style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--overlay-medium)' }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => {
-                const isTotal = String(row[headers[0]] ?? '') === 'TOTAL';
-                const isSection = String(row[headers[0]] ?? '').match(/^BY /);
-                return (
-                  <tr
-                    key={i}
-                    style={{
-                      borderBottom: '1px solid var(--overlay-light)',
-                      background: isTotal
-                        ? 'rgba(33, 145, 208, 0.06)'
-                        : isSection
-                          ? 'var(--overlay-light)'
-                          : 'transparent',
-                    }}
-                  >
-                    {headers.map(h => (
-                      <td
-                        key={h}
-                        className="px-4 py-2"
-                        style={{
-                          color: isTotal || isSection ? 'var(--text-primary)' : 'var(--text-secondary)',
-                          fontWeight: isTotal || isSection ? 600 : 400,
-                        }}
-                      >
-                        {String(row[h] ?? '')}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <div className="rpt-table-scroll">
+        <table className="rpt-table">
+          <thead>
+            <tr>{headers.map(h => <th key={h}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => {
+              // The generators mark their own summary and sub-heading rows;
+              // both are read as structure, not as data, so they keep the
+              // emphasis they had before this page was rebuilt.
+              const first = String(row[headers[0]] ?? '');
+              const cls = first === 'TOTAL' ? 'is-total' : /^BY /.test(first) ? 'is-section' : '';
+              return (
+                <tr key={i} className={cls}>
+                  {headers.map(h => <td key={h}>{String(row[h] ?? '')}</td>)}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     );
   };
 
   return (
-    <main className="page-container page-enter">
-        <div className="card-elevated overflow-hidden mb-6">
-          <EhrListHeader
-            title={t('nav.reports')}
-            stats={[
-              { label: t('nav.reports'), value: reportStats.total, color: LIST_STAT_COLORS.muted },
-              { label: t('reports.statCategories'), value: reportStats.categories, color: LIST_STAT_COLORS.blue },
-              ...PERIODS.map(p => ({
-                label: t(periodKey[p]),
-                value: reportStats.byPeriod[p],
-                color: periodDotColor[p],
-              })),
-            ]}
-            /* Pushed right so they sit under the stat dots. With the search
-               input gone, EhrListHeader lays a lone `actions` group out from
-               the start of the row, which left the whole band empty to its
-               right. */
-            actions={
-              <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div
-                  className={`listpage-icon-select ${categoryFilter !== 'all' ? 'is-active' : ''}`}
-                  title={t('reports.filterByCategory')}
-                >
-                  <Filter size={16} />
-                  <Select
-                    value={categoryFilter}
-                    onChange={e => setCategoryFilter(e.target.value)}
-                    aria-label={t('reports.filterByCategory')}
-                  >
-                    <option value="all">{t('reports.allCategories')}</option>
-                    {reports.map(section => (
-                      <option key={section.category} value={section.category}>
-                        {t(categoryKey[section.category] ?? section.category)}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <FilterSelect
-                  value={reportPeriod}
-                  onChange={setReportPeriod}
-                  options={periodOptions}
-                  neutralValue="feb2026"
-                  aria-label={t('reports.pageTitle')}
-                />
-              </div>
-            }
-          />
-        </div>
+    <main className="page-container page-enter rpt-page">
+      {/* ── The page: one graph, and the controls to choose what it draws ──
+           There is no catalogue of cards any more. Sixteen reports all reduce
+           to the same shape, so sixteen cards each carrying a preview of that
+           shape said nothing the dropdown does not, and pushed the actual
+           chart into a corner. Pick a report, read it, generate the table,
+           export it — all without leaving one panel. */}
+      <section className="rpt-stats">
+        <header className="rpt-stats-head">
+          <div className="rpt-stats-title">
+            <BarChart3 />
+            <div>
+              <i className="rpt-eyebrow">{t('nav.reports')}</i>
+              <b>{t(reportNameKey[chartReport] ?? chartReport)}</b>
+              <span>
+                {activeChart
+                  ? t('reports.chartCaption', {
+                      measure: activeChart.valueLabel,
+                      category: activeChart.categoryLabel,
+                    })
+                  : t(reportDescKey[chartReport] ?? '')}
+                {activeChart?.truncated && ` ${t('reports.chartTopOnly')}`}
+              </span>
+            </div>
+            {activeReport && (
+              <span className={`rpt-chip rpt-chip--${activeReport.period.toLowerCase()}`}>
+                {t(periodKey[activeReport.period] ?? activeReport.period)}
+              </span>
+            )}
+          </div>
 
-        {/* ── At a glance ─────────────────────────────────────────
-             The catalogue answers "which report"; this answers "what do they
-             currently say". Both come from data already loaded for the
-             generators, so it costs a render, not a query. */}
-        {/* Rendered whether or not the data has arrived. Gating the whole band
-            on `dataLoading` moved the catalogue down the page the moment it
-            resolved, and `dataLoading` is the OR of nine hooks — one of them
-            stalling would have hidden the band for the whole session rather
-            than showing it empty. */}
-        <section className="rpt-overview" aria-label={t('reports.overviewTitle')} aria-busy={dataLoading}>
-            <div className="rpt-kpis">
-              {kpis.map(kpi => (
-                <div key={kpi.key} className="rpt-kpi">
-                  <span className="rpt-kpi-icon"><kpi.icon /></span>
-                  <div className="rpt-kpi-body">
-                    <b>{dataLoading ? '—' : kpi.value}</b>
-                    <span>{kpi.label}</span>
-                  </div>
-                </div>
+          <div className="rpt-stats-nav">
+            {/* Step to the neighbouring report without opening the dropdown. */}
+            <button
+              type="button"
+              className="rpt-nav-btn"
+              aria-label={t('reports.chartPrev')}
+              onClick={() => stepChart(-1)}
+            >
+              <ChevronLeft />
+            </button>
+            <span className="rpt-nav-pos">{chartIndex + 1}/{chartableReports.length}</span>
+            <button
+              type="button"
+              className="rpt-nav-btn"
+              aria-label={t('reports.chartNext')}
+              onClick={() => stepChart(1)}
+            >
+              <ChevronRight />
+            </button>
+
+            {/* Grouped by category, so the five groupings the catalogue used
+                to spend a screen on survive as the shape of this list. */}
+            <Select
+              className="rpt-nav-select"
+              value={chartReport}
+              aria-label={t('reports.chartPick')}
+              onChange={e => { setChartReport(e.target.value); setTableOpen(false); }}
+            >
+              {reports.map(section => (
+                <optgroup key={section.category} label={t(categoryKey[section.category] ?? section.category)}>
+                  {section.items.map(item => (
+                    <option key={item.name} value={item.name}>
+                      {t(reportNameKey[item.name] ?? item.name)}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
+            </Select>
+
+            <FilterSelect
+              value={reportPeriod}
+              onChange={setReportPeriod}
+              options={periodOptions}
+              neutralValue="feb2026"
+              aria-label={t('reports.pageTitle')}
+            />
+
+            {/* Chart form. Only the honest ones for this data shape are here
+                — see the note at the top of _ReportCharts.tsx for why line and
+                area are not among them. */}
+            <div className="rpt-kinds" role="radiogroup" aria-label={t('reports.chartForm')}>
+              {CHART_KINDS.map(kind => {
+                const blocked = kind.partToWhole && !partToWholeOk;
+                return (
+                  <button
+                    key={kind.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={effectiveKind === kind.id}
+                    className={effectiveKind === kind.id ? 'is-on' : ''}
+                    disabled={blocked}
+                    title={blocked ? t('reports.chartFormUnavailable') : t(kind.labelKey)}
+                    aria-label={t(kind.labelKey)}
+                    onClick={() => setChartKind(kind.id)}
+                  >
+                    <kind.icon />
+                  </button>
+                );
+              })}
             </div>
 
-            <section className="rpt-stats">
-              <header className="rpt-stats-head">
-                <div className="rpt-stats-title">
-                  <BarChart3 />
-                  <b>{t('reports.statsTitle')}</b>
-                </div>
-                {/* Radio group, not buttons: these are four views of one
-                    panel, exactly one of which is current, and a screen
-                    reader should hear it that way. */}
-                <div className="rpt-seg" role="radiogroup" aria-label={t('reports.statsTitle')}>
-                  {STAT_VIEWS.map(view => (
-                    <button
-                      key={view.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={statView === view.id}
-                      className={statView === view.id ? 'is-on' : ''}
-                      onClick={() => setStatView(view.id)}
-                    >
-                      {t(view.labelKey)}
-                    </button>
-                  ))}
-                </div>
-              </header>
+            <button
+              type="button"
+              className={`rpt-nav-generate ${tableOpen ? 'is-on' : ''}`.trim()}
+              aria-expanded={tableOpen}
+              disabled={dataLoading}
+              onClick={() => setTableOpen(open => !open)}
+            >
+              {tableOpen
+                ? <><ChevronUp /> {t('action.close')}</>
+                : <><FileText /> {t('reports.generate')}</>}
+            </button>
 
-              <div className="rpt-stats-body">
-                {dataLoading && <p className="rpt-panel-empty">{t('reports.loadingReportData')}</p>}
-
-                {!dataLoading && statView === 'burden' && (
-                  diseaseBurden.length > 0
-                    ? <div className="rpt-plot"><DiseaseBurdenChart points={diseaseBurden} /></div>
-                    : <p className="rpt-panel-empty">{t('reports.burdenEmpty')}</p>
-                )}
-
-                {!dataLoading && statView === 'patients' && (
-                  patientsByState.length > 0
-                    ? <div className="rpt-plot"><RankedBarChart points={patientsByState} valueLabel={t('reports.kpiPatients')} /></div>
-                    : <p className="rpt-panel-empty">{t('reports.noDataForReport')}</p>
-                )}
-
-                {!dataLoading && statView === 'revenue' && (
-                  revenueByFacility.length > 0
-                    ? <div className="rpt-plot"><RankedBarChart points={revenueByFacility} valueLabel={t('reports.kpiCollected', { currency })} /></div>
-                    : <p className="rpt-panel-empty">{t('reports.placeholderRevenue')}</p>
-                )}
-
-                {!dataLoading && statView === 'stock' && (
-                  stockTotal > 0 ? (
-                    <div className="rpt-donut-row">
-                      <div className="rpt-donut">
-                        <StockStatusDonut data={stockMix} />
-                        <div className="rpt-donut-hole">
-                          <b>{stockTotal.toLocaleString()}</b>
-                          <span>{t('reports.stockItems')}</span>
-                        </div>
-                      </div>
-                      {/* Legend, not colour alone: every slice is named and counted. */}
-                      <ul className="rpt-legend">
-                        {stockMix.map(slice => (
-                          <li key={slice.key}>
-                            <i style={{ background: slice.color }} aria-hidden="true" />
-                            <span>{slice.label}</span>
-                            <b>{slice.value.toLocaleString()}</b>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : <p className="rpt-panel-empty">{t('reports.stockEmpty')}</p>
-                )}
-              </div>
-            </section>
-        </section>
-
-        {/* ── Report categories ───────────────────────────────── */}
-        {visibleSections.length === 0 && (
-          <div className="card-elevated overflow-hidden">
-            <EmptyState
-              title={t('reports.noMatches')}
-              message={t('reports.noMatchesMessage')}
-              action={{
-                label: t('reports.clearFilters'),
-                onClick: () => setCategoryFilter('all'),
+            <button
+              type="button"
+              className="rpt-nav-csv"
+              disabled={dataLoading}
+              data-track="reports.export_csv"
+              onClick={() => {
+                const { rows, title } = generateReportData(chartReport);
+                if (rows.length) downloadCsv(rows, safeFilenamePart(title));
               }}
-            />
+            >
+              <Download /> {t('reports.downloadCsv')}
+            </button>
+          </div>
+        </header>
+
+        <div className="rpt-stats-body">
+          {dataLoading ? (
+            <p className="rpt-panel-empty">
+              <Loader2 className="animate-spin" /> {t('reports.loadingReportData')}
+            </p>
+          ) : activeChart ? (
+            <div className="rpt-plot">
+              <ReportChart kind={effectiveKind} points={activeChart.points} valueLabel={activeChart.valueLabel} />
+            </div>
+          ) : (
+            <p className="rpt-panel-empty">{t('reports.noDataForReport')}</p>
+          )}
+        </div>
+
+        {tableOpen && !dataLoading && (
+          <div className="rpt-table-wrap">
+            <div className="rpt-table-cap">
+              <span>{t(reportNameKey[chartReport] ?? chartReport)}</span>
+              <b>{t('reports.rowsAvailable', { count: reportPreviews.get(chartReport)?.rowCount ?? 0 })}</b>
+            </div>
+            {renderTable(chartReport)}
           </div>
         )}
-
-        <div className="rpt-groups">
-          {visibleSections.map(section => {
-            const openReport = section.items.find(item => item.name === expandedReport);
-            return (
-              <section key={section.category} className="rpt-group">
-                <header className="rpt-group-head">
-                  <section.icon />
-                  <h2>{t(categoryKey[section.category] ?? section.category)}</h2>
-                  <span className="rpt-group-count">{section.items.length}</span>
-                </header>
-
-                <div className="rpt-grid">
-                  {section.items.map(report => {
-                    const isExpanded = expandedReport === report.name;
-                    const preview = reportPreviews.get(report.name);
-                    const bars = preview?.chart?.points.slice(0, 5) ?? [];
-                    const peak = bars.reduce((max, b) => Math.max(max, b.value), 0);
-                    return (
-                      <article
-                        key={report.name}
-                        className={`rpt-card ${isExpanded ? 'is-open' : ''}`.trim()}
-                      >
-                        <div className="rpt-card-top">
-                          <span className="rpt-card-icon"><FileText /></span>
-                          <span className={`rpt-chip rpt-chip--${report.period.toLowerCase()}`}>
-                            {t(periodKey[report.period] ?? report.period)}
-                          </span>
-                        </div>
-
-                        <h3 className="rpt-card-title">{t(reportNameKey[report.name] ?? report.name)}</h3>
-                        <p className="rpt-card-desc">{t(reportDescKey[report.name] ?? report.description)}</p>
-
-                        {/* Shape-at-a-glance: the report's top rows as bars, so
-                            the catalogue shows what each report holds instead of
-                            sixteen identical rows. Plain divs rather than a
-                            chart library — sixteen of these must stay cheap. */}
-                        {bars.length > 0 && peak > 0 ? (
-                          <div className="rpt-spark" role="img" aria-label={t('reports.sparkAria', { name: t(reportNameKey[report.name] ?? report.name) })}>
-                            {bars.map(bar => (
-                              <span key={bar.label} title={`${bar.label}: ${bar.value}`}>
-                                <i style={{ height: `${Math.max(8, (bar.value / peak) * 100)}%` }} />
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="rpt-spark is-empty" aria-hidden="true" />
-                        )}
-
-                        <footer className="rpt-card-foot">
-                          <span className="rpt-card-meta">
-                            {preview
-                              ? t('reports.rowsAvailable', { count: preview.rowCount })
-                              : t('reports.lastGenerated', { date: todayIso })}
-                          </span>
-                          <button
-                            className="rpt-card-btn"
-                            aria-expanded={isExpanded}
-                            onClick={() => toggleReport(report.name)}
-                          >
-                            {isExpanded
-                              ? <><ChevronUp /> {t('action.close')}</>
-                              : <><BarChart3 /> {t('reports.generate')}</>}
-                          </button>
-                        </footer>
-                      </article>
-                    );
-                  })}
-                </div>
-
-                {/* The opened report spans the full width beneath its own
-                    group, so the chart and table get the room they need
-                    without the card grid reflowing around them. */}
-                {openReport && (
-                  <div className="rpt-detail">
-                    {dataLoading ? (
-                      <div className="rpt-detail-loading">
-                        <Loader2 className="animate-spin" />
-                        <span>{t('reports.loadingReportData')}</span>
-                      </div>
-                    ) : (
-                      renderExpandedReport(openReport.name)
-                    )}
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
+      </section>
     </main>
   );
 }

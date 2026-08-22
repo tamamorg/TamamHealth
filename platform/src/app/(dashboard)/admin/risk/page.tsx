@@ -285,7 +285,11 @@ export default function RiskCenterPage() {
 
         {tab === 'open' ? (
           <SaTable
-            columns={['Severity', 'Signal', 'Source', 'Detail', 'Age', 'Status', '']}
+            columns={[
+              { label: 'Severity', w: 0.8 }, { label: 'Signal', w: 1.6 }, { label: 'Source', w: 0.9 },
+              { label: 'Detail', w: 2.2 }, { label: 'Age', w: 0.7 }, { label: 'Status', w: 0.9 },
+              { label: '', w: 0.5 },
+            ]}
             empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
           >
             {filteredOpen.map(r => (
@@ -310,7 +314,11 @@ export default function RiskCenterPage() {
           </SaTable>
         ) : (
           <SaTable
-            columns={['Severity', 'Signal', 'Source', 'What was done', 'Resolved', 'By', '']}
+            columns={[
+              { label: 'Severity', w: 0.8 }, { label: 'Signal', w: 1.6 }, { label: 'Source', w: 0.9 },
+              { label: 'What was done', w: 2.2 }, { label: 'Resolved', w: 0.9 }, { label: 'By', w: 0.9 },
+              { label: '', w: 0.5 },
+            ]}
             empty={loading ? 'Loading…' : 'Nothing has been resolved yet.'}
           >
             {filteredResolved.map(d => (

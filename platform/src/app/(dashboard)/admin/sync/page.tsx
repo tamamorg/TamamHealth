@@ -177,7 +177,10 @@ export default function AdminSyncPage() {
             : `${events.length} shown${events.length === 100 ? ' (capped at 100)' : ''} · Oldest pending ${formatWhen(stats?.oldestPending)}`}
         </p>
         <SaTable
-          columns={['When', 'Resource', 'Operation', 'Facility', 'Status', 'Error']}
+          columns={[
+            { label: 'When', w: 0.9 }, { label: 'Resource', w: 1.5 }, { label: 'Operation', w: 1 },
+            { label: 'Facility', w: 1.2 }, { label: 'Status', w: 0.8 }, { label: 'Error', w: 1.8 },
+          ]}
           empty={loading ? 'Loading…' : 'Queue is drained — all events synced.'}
           minWidth={760}
         >
@@ -195,6 +198,13 @@ export default function AdminSyncPage() {
       </SadbCard>
 
       <div className="sadb-row-3">
+        <SadbCard
+          title="Conflicts"
+          action={<SadbHeadLink onClick={() => router.push('/admin/conflicts')}>Open</SadbHeadLink>}
+        >
+          <SadbKvRow label="Pending reconciliation" value={conflictsError ? '—' : pendingConflicts ?? '…'} />
+        </SadbCard>
+
         <SadbSettingGroup title="Job runners">
           <SadbSettingRow label="Push pending to country node" sub="Pushes up to 50 queued events from this browser to the configured country node.">
             <SadbActionButton onClick={handlePushCountryNode} disabled={anyRunning}>
@@ -212,13 +222,6 @@ export default function AdminSyncPage() {
             </SadbActionButton>
           </SadbSettingRow>
         </SadbSettingGroup>
-
-        <SadbCard
-          title="Conflicts"
-          action={<SadbHeadLink onClick={() => router.push('/admin/conflicts')}>Open</SadbHeadLink>}
-        >
-          <SadbKvRow label="Pending reconciliation" value={conflictsError ? '—' : pendingConflicts ?? '…'} />
-        </SadbCard>
       </div>
     </SadbPage>
   );

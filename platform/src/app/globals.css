@@ -10844,11 +10844,6 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 .modal-content {
   position: relative;
   width: 100%;
-  /* What the full-bleed header rule below pulls itself back out by. These
-     panels carry Tailwind's `p-6`, and the bleed used to assume 20px — which
-     left a 4px white gutter down both sides of every blue title bar. */
-  --modal-pad: 24px;
-  --modal-radius: var(--card-radius);
   border-radius: var(--card-radius);
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border);
@@ -11456,10 +11451,6 @@ span:has(> svg:only-child) {
   padding: 16px;
 }
 .modal-panel {
-  /* See --modal-pad on .modal-content: the blue title bar bleeds out by
-     exactly this much, so the two must stay in step. */
-  --modal-pad: 24px;
-  --modal-radius: var(--card-radius);
   background: var(--glass-bg-strong);
   border-radius: var(--card-radius);
   border: 1px solid var(--glass-border);
@@ -19388,6 +19379,24 @@ textarea.ehr-handoff-input {
   color: #B3BDC9;
 }
 
+/* Scope on the title line — what these settings govern, in the space the
+   account panel used to spend on a paragraph and five chips that repeated the
+   rail. Drops out when the line gets tight; the rail still says it all. */
+.ehr-set-scope-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-inline-start: 10px;
+  border-inline-start: 1px solid var(--ehr-border);
+  color: var(--ehr-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+@media (max-width: 900px) {
+  .ehr-set-scope-note { display: none; }
+}
+
 /* Back out of a panel opened from inside another panel. Rendered only when
    the stack has somewhere to return to, so it never sits there inert. */
 .ehr-set-back {
@@ -19813,64 +19822,6 @@ textarea.ehr-handoff-input {
   height: 15px;
 }
 
-/* Scope + "you control" chips, folded into the identity card rather than
-   drawn as two more boxes under it. */
-.ehr-set-account-scope {
-  padding: 14px 18px 16px;
-  border-top: 1px solid var(--ehr-border);
-  background: var(--ehr-head);
-}
-
-.ehr-set-account-scope b {
-  display: block;
-  color: var(--text-strong);
-  font-size: 12.5px;
-  font-weight: 800;
-}
-
-.ehr-set-account-scope p {
-  margin: 5px 0 0;
-  max-width: 78ch;
-  color: var(--ehr-muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.5;
-}
-
-.ehr-set-account-chips {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-
-.ehr-set-account-chips > span {
-  color: var(--ehr-muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.ehr-set-account-chips > div {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.ehr-set-account-chips > div span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(33, 145, 208, 0.10);
-  color: var(--tb-blue-800, #113055);
-  font-size: 11.5px;
-  font-weight: 700;
-  white-space: nowrap;
-}
 
 /* ── Update-account popup ────────────────────────────────────────────────
    It holds the whole personal account now — identity, the preference rows
@@ -20540,6 +20491,117 @@ textarea.ehr-handoff-input {
   margin-top: 5px;
   border-radius: 999px;
   background: rgba(33, 145, 208, 0.22);
+}
+
+/* ── Expandable rail row ─────────────────────────────────────────────────
+   Facility settings used to open a SECOND nav column listing its modules, so
+   the reader chose a section twice to reach one screen and the two rails
+   competed for the same job. The row expands down into this rail instead. */
+.ehr-set-nav button b.is-caret {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 140ms ease;
+}
+
+.ehr-set-nav button b.is-caret svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ehr-set-nav button b.is-caret.is-open {
+  transform: rotate(90deg);
+}
+
+/* RTL: the chevron points the other way to start with, so it opens the
+   other way too. */
+[dir="rtl"] .ehr-set-nav button b.is-caret { transform: scaleX(-1); }
+[dir="rtl"] .ehr-set-nav button b.is-caret.is-open { transform: scaleX(-1) rotate(90deg); }
+
+/* Child rows sit inside a hairline gutter that ties them to their parent —
+   indentation alone reads as an accident at this row height. */
+.ehr-set-nav button.ehr-set-nav-sub {
+  min-height: 32px;
+  margin-inline-start: 10px;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--border-light);
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ehr-set-nav button.ehr-set-nav-sub svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ehr-set-nav button.ehr-set-nav-sub.active {
+  border-inline-start-color: var(--accent-primary);
+}
+
+/* The two group headings inside the expansion ("This facility" / "All
+   facilities"). Quieter than a top-level group title, which owns a whole
+   section of the rail rather than a run of rows inside one. */
+/* An action living in a section header rather than in a card of its own.
+   Facility Sync used to be a whole card that repeated the heading, the DHIS2
+   status and the last-push message already on the screen; it is this button.
+   Placed beside the rail rules rather than next to `.ehr-set-section-head`
+   because a later block in this file restyles that head wholesale. */
+.ehr-set-section-head > .ehr-set-head-action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--accent-primary);
+  border-radius: 7px;
+  background: var(--accent-primary);
+  color: #fff;
+  font-family: var(--font-condensed);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ehr-set-section-head > .ehr-set-head-action:hover:not(:disabled) { opacity: 0.9; }
+.ehr-set-section-head > .ehr-set-head-action:disabled { opacity: 0.6; cursor: default; }
+
+/* The glyph must repaint: globals' `svg.lucide:not([style*="color"])` rule
+   pins it to --icon-color, which is this button's own fill. */
+.ehr-set-section-head > .ehr-set-head-action svg {
+  width: 14px;
+  height: 14px;
+  color: #fff !important;
+  stroke: currentColor !important;
+}
+
+/* The head's `small` is pushed to the right edge by a later rule; with an
+   action button present it must stay beside the title instead. */
+.ehr-set-section-head > div > small { margin-inline-start: 0; }
+
+/* A one-line explanation inside a section, where a card would be too much. */
+.ehr-set-note {
+  margin: 0;
+  padding: 12px 16px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.ehr-set-nav-subhead {
+  display: block;
+  margin-inline-start: 10px;
+  padding: 8px 8px 3px 12px;
+  border-inline-start: 1px solid var(--border-light);
+  color: var(--ehr-muted);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .ehr-set-nav button b.is-badge {
@@ -21350,6 +21412,13 @@ textarea.ehr-handoff-input {
   grid-template-columns: 214px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
+}
+
+/* Hosted with its own rail suppressed — the Settings rail lists these modules
+   now, so the body takes the width the second column was holding. Must follow
+   `.fs-shell`: same specificity, so source order decides. */
+.fs-shell--nonav {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .fs-nav {
@@ -22512,6 +22581,9 @@ table.patient-data-table.patient-data-table {
 .sa-table {
   width: 100%;
   border-collapse: collapse;
+  /* Columns get the width the <colgroup> asks for instead of whatever their
+     content negotiates — see SaTable's note. */
+  table-layout: fixed;
 }
 
 .sa-table th {
@@ -22534,6 +22606,9 @@ table.patient-data-table.patient-data-table {
   font-size: 12.5px;
   font-weight: 600;
   vertical-align: middle;
+  /* Fixed layout can't grow a column to fit a long unbroken token (a document
+     id, a URL), so wrap it rather than let it push the cell over its share. */
+  overflow-wrap: anywhere;
 }
 
 .sa-table tbody tr:last-child td {
@@ -25922,47 +25997,63 @@ table.patient-data-table.patient-data-table {
    overridden here.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Panels that carry no surface class state their padding and radius through
-   Tailwind utilities, so those are mapped to `--modal-pad` / `--modal-radius`
-   here rather than left to the fallback. Guessing is what produces the two
-   ways the bar fails to fill the header: a white gutter down the sides when
-   the pull-back is short of the real padding, and white wedges in the top
-   corners when a 6px bar sits inside a 12px or 16px panel. */
-.modal-portal-backdrop [role="dialog"] > [class~="p-3"],
-.modal-portal-backdrop [role="dialog"] > [class~="px-3"] { --modal-pad: 12px; }
-.modal-portal-backdrop [role="dialog"] > [class~="p-4"],
-.modal-portal-backdrop [role="dialog"] > [class~="px-4"] { --modal-pad: 16px; }
-.modal-portal-backdrop [role="dialog"] > [class~="p-5"],
-.modal-portal-backdrop [role="dialog"] > [class~="px-5"] { --modal-pad: 20px; }
-.modal-portal-backdrop [role="dialog"] > [class~="p-6"],
-.modal-portal-backdrop [role="dialog"] > [class~="px-6"] { --modal-pad: 24px; }
-.modal-portal-backdrop [role="dialog"] > [class~="p-8"],
-.modal-portal-backdrop [role="dialog"] > [class~="px-8"] { --modal-pad: 32px; }
 
-.modal-portal-backdrop [role="dialog"] > [class~="rounded-lg"] { --modal-radius: 8px; }
-.modal-portal-backdrop [role="dialog"] > [class~="rounded-xl"] { --modal-radius: 12px; }
-.modal-portal-backdrop [role="dialog"] > [class~="rounded-2xl"] { --modal-radius: 16px; }
-.modal-portal-backdrop [role="dialog"] > .dash-card { --modal-radius: var(--card-radius); }
+/* The panel supplies the clip; the bar bleeds sideways into it.
 
+   This used to pull the header out with a negative margin sized from a
+   `--modal-pad` map of Tailwind padding classes. Measuring all 132 dialogs
+   showed the guess was wrong for 107 of them: the map assumes a 16px root
+   (the app runs 15px, so `p-5` is 18.75px, not 20px), unpadded panels got a
+   20px overhang, and panels that pad by any other means — an inline
+   `padding: 48`, `.sadb-modal`, `.confirm-dialog` — kept a white gutter
+   around the bar.
+
+   Nothing here needs to know the padding now. The bar is a pseudo-element
+   that bleeds far past both sides and is cut off exactly at the panel's
+   padding box, which is the panel's own inner edge whatever produced it; the
+   panel's `padding-top` is zeroed so the bar meets the top edge without any
+   vertical bleed (that would need `overflow-y`, and these panels scroll).
+   The header's own box is untouched, so every dialog keeps the padding and
+   spacing its component chose. */
 .modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)),
 .modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
-  /* Full-bleed to the panel edges. Each panel declares its own padding and
-     radius in `--modal-pad` / `--modal-radius`, so the bar meets the border
-     exactly rather than being pulled back by a guessed amount — 20px was
-     right for `.modal-panel` and 4px short on every `p-6` `.modal-content`,
-     which is where the white gutter around the blue came from. */
-  margin: calc(-1 * var(--modal-pad, 20px)) calc(-1 * var(--modal-pad, 20px)) 18px !important;
-  padding: 14px var(--modal-pad, 18px) !important;
-  /* `inherit` takes the panel's OWN computed corner, whatever produced it —
-     a utility class, a surface class, or one of the `.tamam-ehr-app` !important
-     overrides that flatten every panel to 6px. A guessed radius is how the bar
-     ended up 14px inside a 6px panel, leaving white wedges in the top corners
-     of exactly the header this rule is meant to fill. */
-  border-radius: inherit !important;
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
-  background: var(--accent-primary, #015697) !important;
+  position: relative;
+  /* Its own stacking context, so the bar can sit behind the header's content
+     with `z-index: -1` without falling behind the panel's background. */
+  isolation: isolate;
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: transparent !important;
   color: #fff !important;
+}
+
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))::before,
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  /* 100vw each way covers any panel padding; the clip below bounds it. */
+  inset: 0 -100vw;
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: var(--accent-primary, #015697);
+}
+
+/* The panel that hosts such a header: no top padding above the bar, and a
+   horizontal clip so the bleed stops at its inner edge. `clip` and not
+   `hidden` — hidden on one axis forces the other to scroll, and most of
+   these panels scroll vertically.
+
+   The header condition is restated here with a descendant combinator and a
+   separate `:not(:has(…))` rather than reusing the selector above: `:has()`
+   may not contain another `:has()`, so the obvious `:has(> HEADER)` form
+   parses as invalid and silently drops the whole rule. */
+.modal-portal-backdrop [role="dialog"]:has(> div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title) :is(h2, h3)):not(:has(> div:first-child :is(input, select, textarea, form, table, ul, ol))),
+.modal-portal-backdrop [role="dialog"] > *:has(> div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title) :is(h2, h3)):not(:has(> div:first-child :is(input, select, textarea, form, table, ul, ol))) {
+  padding-top: 0 !important;
+  overflow-x: clip;
 }
 
 .modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b),
@@ -26044,29 +26135,11 @@ table.patient-data-table.patient-data-table {
   stroke: currentColor !important;
 }
 
-/* Panels pad themselves by different amounts, and a negative margin larger
-   than the padding pushes the bar past the padding box — which, on
-   `.modal-panel` (overflow: auto), buys a scrollbar rather than a wider bar.
-   So the generic rule above stays conservative and the two panel classes that
-   carry a known padding get an exact match here. */
-.modal-portal-backdrop [role="dialog"] > .modal-panel > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
-  margin: -24px -24px 20px !important;
-  padding: 16px 22px !important;
-}
-
-/* Sectioned panels — a `.modal-content`/`.card-elevated` surface with NO
-   padding utility of its own (front-desk check-in, dispense, queue-move…)
-   pads per section instead, so its header row is already flush with the
-   panel edges. The pull-back above would shove that header past the panel's
-   `overflow: hidden` box and clip the title; here it keeps its own padding
-   and stays put. Surfaces that DO pad themselves (`p-5`/`p-6` wrappers)
-   fall through to the generic pull-back. `.cn-meds` (the medications popup)
-   is the same shape — an unpadded panel whose sections pad themselves — so
-   without this it wore the -20px pull-back as a bar bleeding right across
-   the page, covering the page header. */
-.modal-portal-backdrop [role="dialog"] > :is(.modal-content, .card-elevated, .cn-meds):not([class~="p-4"]):not([class~="p-5"]):not([class~="p-6"]) > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
-  margin: 0 !important;
-}
+/* The two panel-specific pull-backs that used to live here — an exact
+   `-24px` for `.modal-panel` and a `margin: 0` for the unpadded sectioned
+   surfaces — are gone with the guess they were compensating for. The bleed
+   above needs no per-panel arithmetic, so both shapes take the same rule as
+   everything else. */
 
 /* ============ Booking week grid (bwg-) ============
    The clinician × day availability matrix in Book Appointment, aligned like
@@ -30156,11 +30229,16 @@ button.sadb-signal { cursor: pointer; }
    every left edge lines up from the top of the page to the bottom.
    ------------------------------------------------------------------------ */
 
-.rpt-overview {
+/* The panel IS the page: one column that fills the dashboard's main area, so
+   the chart gets every pixel below the header instead of a fixed 230px while
+   the rest of the screen sat empty. `min-height: 0` at each level is what lets
+   the plot shrink inside a flex column rather than overflowing it. */
+.rpt-page {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
+  min-height: 0;
+  height: 100%;
+  padding-bottom: 16px;
 }
 
 /* ── Headline figures ── */
@@ -30209,146 +30287,130 @@ button.sadb-signal { cursor: pointer; }
 
 /* ── Statistics: one panel, one chart, a picker for the rest ── */
 .rpt-stats {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   border-radius: 10px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
+  overflow: hidden;
 }
 .rpt-stats-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-light);
 }
-.rpt-stats-title { display: flex; align-items: center; gap: 8px; }
-.rpt-stats-title svg { width: 15px; height: 15px; color: var(--accent-primary); }
-.rpt-stats-title b { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-
-/* Segmented picker. One track, one filled thumb — the current view reads as a
-   position, not as four independent toggles. */
-.rpt-seg {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--overlay-subtle);
+.rpt-stats-title { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1 1 auto; }
+.rpt-stats-title svg { width: 16px; height: 16px; color: var(--accent-primary); flex: 0 0 auto; }
+.rpt-stats-title > div { display: flex; flex-direction: column; min-width: 0; }
+/* The page's name, now that the title card is gone. */
+.rpt-eyebrow {
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
-.rpt-seg button {
-  border: none;
-  background: transparent;
+.rpt-stats-title b {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rpt-stats-title span { font-size: 11px; color: var(--text-muted); }
+
+/* Navigation for the one graph: step, jump, filter, export.
+   `flex: 0 0 auto` so the controls keep their width and the TITLE gives way
+   instead — it already ellipsizes, whereas a shrunk nav wrapped the export
+   button onto a second line and made the panel header two rows tall. */
+.rpt-stats-nav { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; }
+.rpt-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-card-solid);
+  color: var(--text-secondary);
   cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.rpt-nav-btn svg { width: 14px; height: 14px; }
+.rpt-nav-btn:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--accent-primary); }
+.rpt-nav-btn:disabled { opacity: 0.4; cursor: default; }
+.rpt-nav-pos {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 34px;
+  text-align: center;
+}
+.rpt-nav-select {
+  height: 28px;
+  max-width: 190px;
+  font-size: 11.5px;
+  border-radius: 7px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+  padding: 0 8px;
+}
+.rpt-nav-csv {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  height: 28px;
+  padding: 0 11px;
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--text-muted);
-  padding: 5px 12px;
-  border-radius: 6px;
-  transition: background 0.15s ease, color 0.15s ease;
-  white-space: nowrap;
-}
-.rpt-seg button:hover { color: var(--text-primary); }
-.rpt-seg button.is-on {
+  border-radius: 7px;
+  border: 1px solid var(--border-medium);
   background: var(--bg-card-solid);
-  color: var(--accent-primary);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
+.rpt-nav-csv svg { width: 13px; height: 13px; }
+.rpt-nav-csv:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--accent-primary); }
+.rpt-nav-csv:disabled { opacity: 0.45; cursor: default; }
 
 /* Fixed height, so switching views never moves the catalogue underneath. */
-.rpt-stats-body { padding: 10px 14px 12px; min-height: 214px; display: flex; }
-.rpt-plot { width: 100%; height: 200px; }
+.rpt-stats-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 220px;
+  padding: 12px 16px 14px;
+}
+.rpt-plot { width: 100%; height: 100%; min-height: 0; }
 .rpt-panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   margin: auto;
   padding: 26px 0;
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
 }
+.rpt-panel-empty svg { width: 15px; height: 15px; color: var(--accent-primary); }
 
-/* Donut + legend, centred in the same 200px the bar charts occupy. */
-.rpt-donut-row { display: flex; align-items: center; gap: 26px; width: 100%; height: 200px; }
-.rpt-donut { position: relative; width: 200px; height: 200px; flex: 0 0 auto; }
-.rpt-donut-hole {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-.rpt-donut-hole b {
-  font-size: 19px;
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-.rpt-donut-hole span { font-size: 10px; color: var(--text-muted); }
-
-.rpt-legend { list-style: none; margin: 0; padding: 0; flex: 1 1 auto; min-width: 0; max-width: 320px; }
-.rpt-legend li {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 6px 0;
-  font-size: 12px;
-  border-bottom: 1px solid var(--border-light);
-}
-.rpt-legend li:last-child { border-bottom: none; }
-.rpt-legend i { width: 9px; height: 9px; border-radius: 999px; flex: 0 0 auto; }
-/* Legend text stays in neutral ink — identity is carried by the dot. */
-.rpt-legend span { color: var(--text-secondary); flex: 1 1 auto; min-width: 0; }
-.rpt-legend b { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-
-/* ── Catalogue ── */
-.rpt-groups { display: flex; flex-direction: column; gap: 16px; }
-.rpt-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.rpt-group-head svg { width: 16px; height: 16px; color: var(--accent-primary); }
-.rpt-group-head h2 { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.rpt-group-count {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: var(--overlay-subtle);
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Four fixed tracks, matching the KPI row above. A fixed count rather than
-   auto-fill: with sections of 3/5/3/3/2 reports, auto-fill gave each section a
-   different right edge, which is what made the page look ragged. Now every
-   card is the same width everywhere and a short section simply leaves its last
-   track empty. */
-.rpt-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-
-.rpt-card {
-  display: flex;
-  flex-direction: column;
-  padding: 12px 14px 10px;
-  border-radius: 10px;
-  background: var(--bg-card-solid);
-  border: 1px solid var(--border-light);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-.rpt-card:hover { border-color: var(--border-medium); }
-.rpt-card.is-open { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); }
-
-.rpt-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.rpt-card-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--overlay-subtle);
-}
-.rpt-card-icon svg { width: 14px; height: 14px; color: var(--accent-primary); }
-
-/* Cadence chip. The hues match the header's stat dots for the same four
-   cadences, so the two readings of the catalogue agree. */
+/* Cadence chip beside the selected report's name. Hues match the four
+   cadences the reports use. */
 .rpt-chip {
   font-size: 9.5px;
   font-weight: 700;
@@ -30356,6 +30418,7 @@ button.sadb-signal { cursor: pointer; }
   text-transform: uppercase;
   padding: 3px 8px;
   border-radius: 999px;
+  flex: 0 0 auto;
   color: var(--text-secondary);
   background: var(--overlay-subtle);
 }
@@ -30364,122 +30427,124 @@ button.sadb-signal { cursor: pointer; }
 .rpt-chip--monthly { color: var(--chart-1); background: color-mix(in srgb, var(--chart-1) 10%, transparent); }
 .rpt-chip--quarterly { color: var(--chart-6); background: color-mix(in srgb, var(--chart-6) 12%, transparent); }
 
-.rpt-card-title {
-  margin: 0 0 3px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.3;
+/* Chart-form switcher. Icon-only and segmented: five forms of ONE thing, so
+   they read as positions on a track rather than five separate buttons. A
+   disabled form is one the data cannot honestly take (a share-of-total drawn
+   from percentages), and says so on hover. */
+.rpt-kinds {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--overlay-subtle);
+  flex: 0 0 auto;
 }
-.rpt-card-desc {
-  margin: 0 0 10px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-muted);
-  /* Two lines, so every card in a row is the same height regardless of how
-     long its description runs. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  min-height: 31px;
-}
-
-/* Five bars, proportional to the report's own top rows, in the same
-   dark-for-large ramp the full chart uses — so the preview and the chart it
-   previews read the same way. Plain elements, not a chart library: sixteen of
-   these render on every catalogue paint. */
-.rpt-spark {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 30px;
-  margin-bottom: 10px;
-  margin-top: auto;
-}
-.rpt-spark > span { flex: 1 1 0; display: flex; align-items: flex-end; height: 100%; }
-.rpt-spark i { display: block; width: 100%; border-radius: 2px 2px 0 0; background: var(--chart-seq-3); }
-.rpt-spark > span:nth-child(1) i { background: var(--chart-seq-5); }
-.rpt-spark > span:nth-child(2) i { background: var(--chart-seq-4); }
-.rpt-spark > span:nth-child(3) i { background: var(--chart-seq-4); }
-/* An empty strip still occupies its space, so a report with nothing to preview
-   does not make its card shorter than its neighbours. */
-.rpt-spark.is-empty { border-bottom: 1px dashed var(--border-light); }
-
-.rpt-card-foot {
-  display: flex;
+.rpt-kinds button {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 9px;
-  border-top: 1px solid var(--border-light);
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.rpt-card-meta { font-size: 10.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.rpt-card-btn {
+.rpt-kinds button svg { width: 14px; height: 14px; }
+.rpt-kinds button:hover:not(:disabled) { color: var(--text-primary); }
+.rpt-kinds button.is-on {
+  background: var(--bg-card-solid);
+  color: var(--accent-primary);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+.rpt-kinds button:disabled { opacity: 0.32; cursor: not-allowed; }
+
+/* ── Generated table, under the graph ── */
+.rpt-nav-generate {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  padding: 5px 10px;
+  white-space: nowrap;
   border-radius: 7px;
-  border: 1px solid var(--border-medium);
-  background: var(--bg-card-solid);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-.rpt-card-btn svg { width: 12px; height: 12px; }
-.rpt-card-btn:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
-.rpt-card.is-open .rpt-card-btn {
+  border: 1px solid var(--accent-primary);
   background: var(--accent-primary);
-  border-color: var(--accent-primary);
   color: var(--color-white);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.rpt-nav-generate svg { width: 13px; height: 13px; }
+.rpt-nav-generate:hover:not(:disabled) { opacity: 0.9; }
+.rpt-nav-generate:disabled { opacity: 0.45; cursor: default; }
+.rpt-nav-generate.is-on {
+  background: var(--bg-card-solid);
+  color: var(--accent-primary);
 }
 
-/* ── Opened report ── */
-.rpt-detail {
-  margin-top: 10px;
-  padding: 12px 14px 14px;
-  border-radius: 10px;
-  background: var(--bg-card-solid);
-  border: 1px solid var(--border-light);
+.rpt-table-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 45%;
+  min-height: 0;
+  border-top: 1px solid var(--border-light);
 }
-.rpt-detail-loading {
+.rpt-table-cap {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 30px 0;
-  font-size: 12.5px;
-  color: var(--text-muted);
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px;
+  background: var(--overlay-subtle);
 }
-.rpt-detail-loading svg { width: 16px; height: 16px; color: var(--accent-primary); }
-
-.rpt-figure { margin: 0; padding: 10px 8px 6px 0; border-bottom: 1px solid var(--border-light); }
-.rpt-figure-cap {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 0 0 6px 16px;
+.rpt-table-cap span { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.rpt-table-cap b {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
-.rpt-figure-note { font-weight: 500; color: var(--text-muted); opacity: 0.85; }
-.rpt-figure-plot { width: 100%; }
+.rpt-table-scroll { overflow: auto; flex: 1 1 auto; min-height: 0; }
+.rpt-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.rpt-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-card-solid);
+  text-align: start;
+  padding: 9px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+.rpt-table tbody td {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--table-row-border);
+}
+.rpt-table tbody tr:last-child td { border-bottom: none; }
+/* The generators' own structural rows keep the emphasis they had before. */
+.rpt-table tbody tr.is-total td { font-weight: 700; color: var(--text-primary); background: var(--overlay-subtle); }
+.rpt-table tbody tr.is-section td { font-weight: 700; color: var(--text-primary); background: var(--overlay-light); }
 
 /* Narrower screens step the shared rhythm down together, so the KPI row and
    the card grid never disagree about how many columns the page has. */
 @media (max-width: 1280px) {
-  .rpt-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* Below this the header cannot hold the title and every control on one
+     line, so let it wrap deliberately rather than squeezing them. */
+  .rpt-stats-head { flex-wrap: wrap; }
+  .rpt-stats-nav { flex-wrap: wrap; }
 }
 @media (max-width: 900px) {
   .rpt-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .rpt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .rpt-donut-row { gap: 14px; }
-}
-@media (max-width: 620px) {
-  .rpt-grid { grid-template-columns: minmax(0, 1fr); }
-  .rpt-donut-row { flex-direction: column; height: auto; }
 }

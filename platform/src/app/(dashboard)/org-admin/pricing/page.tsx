@@ -1,11 +1,25 @@
 'use client';
 
+/**
+ * Service pricing — the org's fee catalog, on the shared admin console kit
+ * (sadb-*). Restyled from the hand-rolled table 2026-08-21: grid list whose
+ * header row survives an empty catalog, tonal status chips, and the shared
+ * sadb modal grammar (which also retired this file's injected <style> tag
+ * and its one-off .fee-input class).
+ *
+ * A row click opens the editor; Remove lives inside the editor (with its
+ * own confirm) rather than as a per-row trash can, because a grid row is a
+ * single button and cannot nest a second one.
+ */
+
 import { useEffect, useState, useCallback } from 'react';
 import Modal from '@/components/Modal';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
-import { Plus, Save, Search, Trash2 } from '@/components/icons/lucide';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
+import { Plus, Save } from '@/components/icons/lucide';
+import {
+  SadbPage, SadbCard, SadbSearch, SadbGridList, SadbGridRow, SadbChip, SadbConfirmModal,
+} from '@/components/admin/sadb-ui';
 import {
   getFeeSchedule, createFee, updateFee, deleteFee, type FeeInput,
 } from '@/lib/services/fee-schedule-service';
@@ -29,6 +43,9 @@ const emptyForm = (): FeeInput & { isActive: boolean } => ({
   facilityId: '', facilityName: '', category: 'consultation',
   serviceCode: '', serviceName: '', unitPrice: 0, currency: 'SSP', isActive: true,
 });
+
+/* Service · Code · Category · Price · Status */
+const FEE_GRID = 'minmax(200px, 1.6fr) minmax(110px, 0.8fr) minmax(130px, 1fr) minmax(120px, 0.9fr) minmax(90px, 0.7fr)';
 
 export default function ServicePricingPage() {
   const { currentUser } = useAuth();
@@ -111,6 +128,7 @@ export default function ServicePricingPage() {
       await deleteFee(removingFee._id, actor);
       showToast('Service removed', 'success');
       setRemovingFee(null);
+      setShowForm(false);
       await load();
     } catch {
       showToast('Could not remove the service', 'error');
@@ -121,142 +139,123 @@ export default function ServicePricingPage() {
   const filtered = fees.filter(f =>
     !q || f.serviceName.toLowerCase().includes(q) || f.serviceCode.toLowerCase().includes(q) || f.category.includes(q));
 
+  const editingFee = editingId ? fees.find(f => f._id === editingId) ?? null : null;
+
   return (
-    <>
-      <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        <div className="dash-card overflow-hidden flex flex-col" data-tour="org-pricing-table" style={{ flex: 1, minHeight: 0 }}>
-          <EhrListHeader
-            title="Service Pricing"
-            actions={
-              <button onClick={openAdd} className="btn btn-primary inline-flex items-center gap-2" style={{ marginInlineStart: 'auto' }}>
-                <Plus className="w-4 h-4" /> Add service
-              </button>
-            }
-          />
-          <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-            <Search className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search services…"
-              className="flex-1 bg-transparent outline-none text-sm"
-              style={{ color: 'var(--text-primary)' }}
-            />
+    <SadbPage roles={['org_admin', 'super_admin']}>
+      <div data-tour="org-pricing-table">
+        <SadbCard
+          title="Service Pricing"
+          meta={loading ? undefined : `${filtered.length} of ${fees.length}`}
+          action={
+            <button type="button" className="btn btn-primary btn-sm" onClick={openAdd}>
+              <Plus className="w-4 h-4" /> Add service
+            </button>
+          }
+        >
+          <div className="sadb-search-row" style={{ paddingBottom: 12 }}>
+            <SadbSearch value={search} onChange={setSearch} placeholder="Search services…" />
           </div>
 
-          {loading ? (
-            <div className="p-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-              {fees.length === 0 ? 'No services priced yet. Add your first service to start charging.' : 'No services match your search.'}
-            </div>
-          ) : (
-            <div style={{ overflow: 'auto', flex: 1, minHeight: 0 }}>
-            <table className="w-full" style={{ minWidth: 720 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-                  {['Service', 'Code', 'Category', 'Price', 'Status', ''].map(h => (
-                    <th key={h} className="px-4 py-2 text-start text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(fee => (
-                  <tr key={fee._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{fee.serviceName}</td>
-                    <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>{fee.serviceCode || '—'}</td>
-                    <td className="px-4 py-2.5 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{CATEGORIES.find(c => c.value === fee.category)?.label || fee.category}</td>
-                    <td className="px-4 py-2.5 text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>{formatMoney(fee.unitPrice, { currency: fee.currency, decimals: 2 })}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{
-                        background: fee.isActive ? 'var(--accent-light)' : 'var(--overlay-medium)',
-                        color: fee.isActive ? 'var(--accent-text)' : 'var(--text-muted)',
-                      }}>{fee.isActive ? 'Active' : 'Inactive'}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-end whitespace-nowrap">
-                      <button onClick={() => openEdit(fee)} className="text-[12px] font-semibold me-3" style={{ color: 'var(--accent-text)' }}>Edit</button>
-                      <button onClick={() => setRemovingFee(fee)} aria-label="Remove fee" title="Remove fee" className="p-1.5 rounded-lg transition-colors hover:bg-red-50" style={{ color: 'var(--color-danger-text)' }}><Trash2 className="w-4 h-4" /></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          )}
-        </div>
+          <SadbGridList
+            template={FEE_GRID}
+            minWidth={700}
+            head={['Service', 'Code', 'Category', 'Price', 'Status']}
+            alignEndLast
+            empty={loading
+              ? 'Loading…'
+              : fees.length === 0
+                ? 'No services priced yet. Add your first service to start charging.'
+                : 'No services match your search.'}
+          >
+            {!loading && filtered.map(fee => (
+              <SadbGridRow key={fee._id} template={FEE_GRID} onClick={() => openEdit(fee)}>
+                <span className="sadb-tenant-name truncate">{fee.serviceName}</span>
+                <span className="sadb-tenant-sub font-mono">{fee.serviceCode || '—'}</span>
+                <span className="truncate">{CATEGORIES.find(c => c.value === fee.category)?.label || fee.category}</span>
+                <span className="sadb-tenant-num" style={{ fontWeight: 700 }}>
+                  {formatMoney(fee.unitPrice, { currency: fee.currency, decimals: 2 })}
+                </span>
+                <span style={{ justifySelf: 'end' }}>
+                  <SadbChip tone={fee.isActive ? 'green' : 'neutral'}>
+                    {fee.isActive ? 'Active' : 'Inactive'}
+                  </SadbChip>
+                </span>
+              </SadbGridRow>
+            ))}
+          </SadbGridList>
+        </SadbCard>
+      </div>
 
-        {showForm && (
-          <Modal onClose={() => setShowForm(false)} width={460}>
-            <div className="card-elevated" style={{ background: 'var(--bg-card-solid)', borderRadius: 16, padding: 20, width: '100%' }}>
-              <h2 className="text-base font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+      {showForm && (
+        <Modal onClose={() => setShowForm(false)} width={460} labelledBy="fee-form-title">
+          <div className="sadb-modal">
+            <div className="sadb-modal-copy">
+              <h2 id="fee-form-title" className="sadb-modal-title">
                 {editingId ? 'Edit service price' : 'Add service price'}
               </h2>
-              <div className="flex flex-col gap-3">
-                <Field label="Service name">
-                  <input value={form.serviceName} onChange={e => setForm({ ...form, serviceName: e.target.value })} className="fee-input" placeholder="e.g. General consultation" />
+            </div>
+            <div className="flex flex-col gap-3">
+              <Field label="Service name">
+                <input className="sadb-modal-input" value={form.serviceName} onChange={e => setForm({ ...form, serviceName: e.target.value })} placeholder="e.g. General consultation" />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Category">
+                  <Select className="sadb-modal-input" value={form.category} onChange={e => setForm({ ...form, category: e.target.value as ChargeCategory })}>
+                    {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </Select>
                 </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Category">
-                    <Select value={form.category} onChange={e => setForm({ ...form, category: e.target.value as ChargeCategory })} className="fee-input">
-                      {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                    </Select>
-                  </Field>
-                  <Field label="Service code">
-                    <input value={form.serviceCode} onChange={e => setForm({ ...form, serviceCode: e.target.value })} className="fee-input" placeholder="e.g. CONS-GEN" />
-                  </Field>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Price">
-                    <input type="number" min={0} value={form.unitPrice} onChange={e => setForm({ ...form, unitPrice: Number(e.target.value) })} className="fee-input" />
-                  </Field>
-                  <Field label="Currency">
-                    <input value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} className="fee-input" />
-                  </Field>
-                </div>
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} />
-                  Active (available for charging)
-                </label>
+                <Field label="Service code">
+                  <input className="sadb-modal-input" value={form.serviceCode} onChange={e => setForm({ ...form, serviceCode: e.target.value })} placeholder="e.g. CONS-GEN" />
+                </Field>
               </div>
-              <div className="flex gap-2 mt-5">
-                <button onClick={() => setShowForm(false)} className="btn btn-secondary flex-1">Cancel</button>
-                <button onClick={save} disabled={saving} className="btn btn-primary flex-1 inline-flex items-center justify-center gap-2">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Price">
+                  <input className="sadb-modal-input" type="number" min={0} value={form.unitPrice} onChange={e => setForm({ ...form, unitPrice: Number(e.target.value) })} />
+                </Field>
+                <Field label="Currency">
+                  <input className="sadb-modal-input" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} />
+                </Field>
+              </div>
+              <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)', textTransform: 'none' }}>
+                <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} />
+                Active (available for charging)
+              </label>
+            </div>
+            <div className="sadb-modal-actions" style={editingId ? { justifyContent: 'space-between' } : undefined}>
+              {editingId && (
+                <button
+                  type="button"
+                  className="sadb-action-btn is-danger"
+                  onClick={() => setRemovingFee(editingFee)}
+                >
+                  Remove service
+                </button>
+              )}
+              <span className="flex gap-2">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
+                <button type="button" className="btn btn-primary btn-sm inline-flex items-center gap-2" onClick={save} disabled={saving}>
                   <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save'}
                 </button>
-              </div>
+              </span>
             </div>
-          </Modal>
-        )}
+          </div>
+        </Modal>
+      )}
 
-        {/* Confirm removal — gives the admin a chance to back out before the
-            catalog row is deleted, so an accidental Remove click is recoverable. */}
-        {removingFee && (
-          <Modal onClose={() => setRemovingFee(null)} width={400}>
-            <div className="card-elevated" style={{ background: 'var(--bg-card-solid)', borderRadius: 16, padding: 20, width: '100%' }}>
-              <h2 className="text-base font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Remove service?</h2>
-              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-                {removingFee.serviceName} ({formatMoney(removingFee.unitPrice, { currency: removingFee.currency, decimals: 2 })}) will be removed from the price catalog.
-              </p>
-              <p className="text-[12px] mb-4" style={{ color: 'var(--text-muted)' }}>
-                It will no longer be available for charging.
-              </p>
-              <div className="flex gap-2">
-                <button onClick={() => setRemovingFee(null)} className="btn btn-secondary flex-1">Cancel</button>
-                <button onClick={confirmRemove} className="btn flex-1 text-white" style={{ background: 'var(--color-danger)' }}>Remove</button>
-              </div>
-            </div>
-          </Modal>
-        )}
-      </main>
-
-      <style>{`
-        .fee-input {
-          width: 100%; padding: 9px 12px; border-radius: 8px;
-          border: 1px solid var(--border-medium); background: var(--bg-secondary);
-          color: var(--text-primary); font-size: 14px;
-        }
-      `}</style>
-    </>
+      {/* Confirm removal — gives the admin a chance to back out before the
+          catalog row is deleted, so an accidental Remove click is recoverable. */}
+      {removingFee && (
+        <SadbConfirmModal
+          title="Remove service?"
+          body={`${removingFee.serviceName} (${formatMoney(removingFee.unitPrice, { currency: removingFee.currency, decimals: 2 })}) will be removed from the price catalog and no longer available for charging.`}
+          confirmLabel="Remove"
+          auditNote={false}
+          onCancel={() => setRemovingFee(null)}
+          onConfirm={confirmRemove}
+        />
+      )}
+    </SadbPage>
   );
 }
 

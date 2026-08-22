@@ -208,7 +208,10 @@ export default function AdminDataGovernancePage() {
             />
             <SadbCard meta={busy ? undefined : `${patients.length.toLocaleString()} patients scanned`}>
               <SaTable
-                columns={['Patient A', 'Patient B', 'Match basis', 'Facility']}
+                columns={[
+                  { label: 'Patient A', w: 1.3 }, { label: 'Patient B', w: 1.3 },
+                  { label: 'Match basis', w: 1.6 }, { label: 'Facility', w: 1.2 },
+                ]}
                 empty={busy ? 'Loading…' : 'No duplicate candidates detected.'}
                 minWidth={680}
               >
@@ -244,7 +247,10 @@ export default function AdminDataGovernancePage() {
             />
             <SadbCard meta={busy ? undefined : `${completeness.rows.length} facilities with patients`}>
               <SaTable
-                columns={['Facility', 'Patients', 'Complete', 'Score']}
+                columns={[
+                  { label: 'Facility', w: 2.2 }, { label: 'Patients', w: 0.9 },
+                  { label: 'Complete', w: 0.9 }, { label: 'Score', w: 0.9 },
+                ]}
                 empty={busy ? 'Loading…' : 'No facilities with registered patients yet.'}
                 minWidth={520}
               >

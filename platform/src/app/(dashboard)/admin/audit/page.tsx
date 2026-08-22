@@ -252,7 +252,11 @@ export default function AuditLogsPage() {
             head's "Showing X of Y" meta states the count. */}
         <div style={{ maxHeight: 620, overflowY: 'auto' }}>
           <SaTable
-            columns={['When', 'User', 'Org', 'Action', 'Detail', 'Result', 'Risk']}
+            columns={[
+              { label: 'When', w: 0.8 }, { label: 'User', w: 1.1 }, { label: 'Org', w: 1 },
+              { label: 'Action', w: 1.5 }, { label: 'Detail', w: 2.4 },
+              { label: 'Result', w: 0.9 }, { label: 'Risk', w: 0.8 },
+            ]}
             empty={loading ? 'Loading audit logs…' : 'No audit events match these filters.'}
           >
             {filtered.map(({ log, risk }) => (

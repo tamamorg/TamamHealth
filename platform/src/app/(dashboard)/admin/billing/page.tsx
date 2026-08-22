@@ -179,12 +179,12 @@ export default function AdminBillingPage() {
 
         <SaTable
           columns={[
-            t('adminBilling.colOrganization'),
-            t('adminBilling.colPlan'),
-            t('adminBilling.colStatus'),
-            t('adminBilling.colMaxUsers'),
-            t('adminBilling.colMaxHospitals'),
-            t('adminBilling.colActions'),
+            { label: t('adminBilling.colOrganization'), w: 2.2 },
+            { label: t('adminBilling.colPlan'), w: 1 },
+            { label: t('adminBilling.colStatus'), w: 1 },
+            { label: t('adminBilling.colMaxUsers'), w: 0.8 },
+            { label: t('adminBilling.colMaxHospitals'), w: 0.9 },
+            { label: t('adminBilling.colActions'), w: 1 },
           ]}
           empty={loading ? t('status.loading') : t('adminBilling.noOrganizationsFound')}
           minWidth={720}

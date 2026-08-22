@@ -154,7 +154,10 @@ export default function AdminInteropPage() {
 
       <SadbCard title="DHIS2 push log" meta={loading ? 'Loading…' : `${entries.length} entries`}>
         <SaTable
-          columns={['When', 'Dataset', 'Period', 'Result', 'Detail']}
+          columns={[
+            { label: 'When', w: 0.9 }, { label: 'Dataset', w: 1.4 }, { label: 'Period', w: 0.8 },
+            { label: 'Result', w: 0.9 }, { label: 'Detail', w: 2 },
+          ]}
           empty={loading ? 'Loading…' : 'No DHIS2 push attempts recorded yet.'}
           minWidth={680}
         >
@@ -181,7 +184,10 @@ export default function AdminInteropPage() {
         }
       >
         <SaTable
-          columns={['When', 'Resource', 'Operation', 'Error']}
+          columns={[
+            { label: 'When', w: 0.9 }, { label: 'Resource', w: 1.5 },
+            { label: 'Operation', w: 1 }, { label: 'Error', w: 2.2 },
+          ]}
           empty={loading ? 'Loading…' : 'No failed pushes.'}
           minWidth={620}
         >

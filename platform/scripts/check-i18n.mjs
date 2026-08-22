@@ -65,22 +65,35 @@ for (const file of others) {
 // npm run i18n:check fails otherwise", the check passed, and 25 dashboard pages
 // were English-only in a bilingual RTL product.
 //
-// This pass is a RATCHET, not a gate: today's offenders are recorded below and
-// the build fails only when a page NOT on that list gains hardcoded text, or
-// when a listed page is cleaned up and the list is not. Turning it into a hard
-// gate would have meant translating 25 pages before anything else could merge.
+// This pass is a RATCHET, not a gate. The list below records the files that are
+// KNOWN PENDING TRANSLATION — every one of them has no `useTranslation` at all,
+// so the fix is "translate the page", not "translate this line". The build fails
+// when a file NOT on that list gains hardcoded text, and when a listed file is
+// finally translated but its entry is left behind.
+//
+// It deliberately does NOT track a per-file count. An earlier version did, and
+// it fired the moment somebody added two more action labels to a page that was
+// already 100% untranslated — noise that says nothing new and trains people to
+// bump the number. What matters is a clean file going bad.
 const SCAN_ROOTS = ['src/app', 'src/components'];
 
-/** Pages known to contain untranslated text, with the count at the time of writing.
- *  Numbers may only go DOWN. Delete an entry once its page is fully translated. */
+/** Files known to be pending translation. Delete an entry once its page adopts
+ *  `useTranslation`; never add one to silence a new violation. */
 const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/app/(dashboard)/billing/[id]/page.tsx': 34,
+  'src/components/patients/PatientDetailPage.tsx': 33,
+  'src/app/(dashboard)/anc/page.tsx': 31,
   'src/components/ehr/EhrClinicalDashboard.tsx': 20,
+  'src/app/(dashboard)/births/page.tsx': 18,
   'src/components/patients/TransferHistoryPanel.tsx': 17,
   'src/components/clinical-notes/ClinicalNoteEditor.tsx': 15,
+  'src/components/nurse/TriageWorkflow.tsx': 14,
   'src/components/settings/FacilitySettingsView.tsx': 14,
+  'src/components/settings/RoleSettingsView.tsx': 13,
+  'src/app/(dashboard)/admin/users/page.tsx': 11,
   'src/app/(dashboard)/blood-bank/page.tsx': 11,
-  'src/components/patients/DirectiveList.tsx': 11,
+  'src/components/patients/BillingTab.tsx': 11,
+  'src/app/request-account/page.tsx': 10,
   'src/app/(dashboard)/emergency-preparedness/page.tsx': 9,
   'src/app/(dashboard)/messages/page.tsx': 9,
   'src/components/ehr/chart/sections/DirectivesSection.tsx': 9,
@@ -89,19 +102,30 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/clinical-notes/assessment/IncludeProblemsModal.tsx': 8,
   'src/components/ehr/EhrVisitPopup.tsx': 8,
   'src/app/(dashboard)/billing/page.tsx': 7,
+  'src/components/appointments/BookAppointmentModal.tsx': 7,
   'src/components/clinical-notes/prescribe/DrugInfoSection.tsx': 7,
   'src/components/dashboards/FacilityManagementDashboard.tsx': 7,
+  'src/components/patient-portal/PatientLogin.tsx': 7,
   'src/components/patients/DocumentsPanel.tsx': 7,
+  'src/app/(dashboard)/data-quality/page.tsx': 6,
   'src/components/ehr/chart/ChartHeader.tsx': 6,
   'src/components/ehr/chart/sections/OrdersSection.tsx': 6,
+  'src/components/payments/ClaimsPanel.tsx': 6,
+  'src/app/(dashboard)/admin/audit/page.tsx': 5,
+  'src/app/(dashboard)/dashboard/pharmacy/page.tsx': 5,
+  'src/app/(dashboard)/facility-overview/page.tsx': 5,
   'src/app/(dashboard)/government/equity/page.tsx': 5,
   'src/app/(dashboard)/government/page.tsx': 5,
+  'src/app/(dashboard)/immunizations/page.tsx': 5,
+  'src/app/(dashboard)/surveillance/page.tsx': 5,
   'src/components/clinical-notes/CareCoordinationModal.tsx': 5,
   'src/components/ehr/chart/sections/ImmunizationsSection.tsx': 5,
   'src/components/patients/TransferPatientModal.tsx': 5,
+  'src/app/(dashboard)/dashboard/front-desk/page.tsx': 4,
   'src/app/(dashboard)/inquiries/page.tsx': 4,
   'src/app/accept-invite/page.tsx': 4,
   'src/app/checkout/[linkId]/page.tsx': 4,
+  'src/app/patient-portal/page.tsx': 4,
   'src/app/terms/page.tsx': 4,
   'src/components/MessagingDock.tsx': 4,
   'src/components/admin/ItOperationsPanel.tsx': 4,
@@ -114,9 +138,9 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/patients/AllergyList.tsx': 4,
   'src/components/patients/PhoneNotes.tsx': 4,
   'src/components/settings/NetworkDefaultsView.tsx': 4,
-  'src/app/(dashboard)/admin/audit/page.tsx': 3,
   'src/app/(dashboard)/admin/data/page.tsx': 3,
   'src/app/(dashboard)/government/alerts/page.tsx': 3,
+  'src/app/(dashboard)/my-facility/page.tsx': 3,
   'src/app/global-error.tsx': 3,
   'src/components/ForcePasswordChange.tsx': 3,
   'src/components/TasksPanel.tsx': 3,
@@ -136,9 +160,16 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/app/(dashboard)/admin/page.tsx': 2,
   'src/app/(dashboard)/admin/security/page.tsx': 2,
   'src/app/(dashboard)/controlled-substances/page.tsx': 2,
+  'src/app/(dashboard)/deaths/page.tsx': 2,
+  'src/app/(dashboard)/lab/page.tsx': 2,
+  'src/app/(dashboard)/org-admin/pricing/page.tsx': 2,
+  'src/app/(dashboard)/patients/page.tsx': 2,
+  'src/app/(dashboard)/pharmacy/page.tsx': 2,
+  'src/app/(dashboard)/referrals/page.tsx': 2,
   'src/app/(dashboard)/rooming/[patientId]/page.tsx': 2,
   'src/app/(dashboard)/transfers/page.tsx': 2,
   'src/app/(dashboard)/wards/handoff/page.tsx': 2,
+  'src/app/(dashboard)/wards/page.tsx': 2,
   'src/components/AnnouncementsPanel.tsx': 2,
   'src/components/AvailabilityModal.tsx': 2,
   'src/components/PrintListDialog.tsx': 2,
@@ -146,28 +177,37 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/booking/primitives.tsx': 2,
   'src/components/clinical-notes/AllergiesModal.tsx': 2,
   'src/components/create-dialogs/AddInquiryDialog.tsx': 2,
+  'src/components/ehr/EhrTopRail.tsx': 2,
   'src/components/ehr/chart/sections/MedicationsSection.tsx': 2,
   'src/components/ehr/chart/sections/ProceduresSection.tsx': 2,
+  'src/components/ehr/chart/sections/ResultsSection.tsx': 2,
   'src/components/nurse/NurseVitalsModal.tsx': 2,
   'src/components/onboarding/GetStartedCard.tsx': 2,
+  'src/components/patient-portal/BillingTab.tsx': 2,
   'src/components/patients/AssessmentsPanel.tsx': 2,
   'src/components/patients/RecordSignatureBar.tsx': 2,
   'src/components/patients/RemindersPanel.tsx': 2,
   'src/components/patients/ScreeningsPanel.tsx': 2,
   'src/components/settings/FacilityPolicySections.tsx': 2,
+  'src/components/settings/OrganizationSettingsPanel.tsx': 2,
   'src/app/(booking)/book/[practice]/[provider]/page.tsx': 1,
+  'src/app/(dashboard)/appointments/page.tsx': 1,
   'src/app/(dashboard)/consultation/page.tsx': 1,
+  'src/app/(dashboard)/dashboard/radiology/page.tsx': 1,
+  'src/app/(dashboard)/dashboard/state/page.tsx': 1,
+  'src/app/(dashboard)/dhis2-export/page.tsx': 1,
   'src/app/(dashboard)/government/briefing/page.tsx': 1,
   'src/app/(dashboard)/hr/leave/page.tsx': 1,
   'src/app/(dashboard)/hr/schedule/page.tsx': 1,
   'src/app/(dashboard)/layout.tsx': 1,
   'src/app/(dashboard)/notifications/page.tsx': 1,
-  'src/app/(dashboard)/org-admin/pricing/page.tsx': 1,
   'src/app/(dashboard)/settings/manage/page.tsx': 1,
   'src/app/checkout/layout.tsx': 1,
+  'src/app/login/page.tsx': 1,
   'src/app/not-found.tsx': 1,
   'src/components/AssignDoctorModal.tsx': 1,
   'src/components/NotificationsPanel.tsx': 1,
+  'src/components/PatientTimeline.tsx': 1,
   'src/components/PublicLegalShell.tsx': 1,
   'src/components/admin/sadb-ui.tsx': 1,
   'src/components/booking/BookingFlow.tsx': 1,
@@ -175,22 +215,35 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/clinical-notes/FollowUpModal.tsx': 1,
   'src/components/clinical-notes/prescribe/PatientCostSection.tsx': 1,
   'src/components/clinical-notes/prescribe/PharmacyInfoSection.tsx': 1,
+  'src/components/dashboards/SuperintendentDashboard.tsx': 1,
   'src/components/ehr/EhrCareDashboard.tsx': 1,
   'src/components/ehr/EhrListHeader.tsx': 1,
   'src/components/ehr/EhrMiniCalendar.tsx': 1,
   'src/components/ehr/EhrWorkItemProgress.tsx': 1,
+  'src/components/front-desk/AssignmentControls.tsx': 1,
   'src/components/mobile/dashboard/MobileOutstandingList.tsx': 1,
   'src/components/mobile/patients/tabs/MobileVitalsTab.tsx': 1,
   'src/components/patients/AddAllergyModal.tsx': 1,
   'src/components/patients/CareAlertFields.tsx': 1,
+  'src/components/patients/PatientSBAR.tsx': 1,
+  'src/components/payments/BillingWorkspace.tsx': 1,
+  'src/components/payments/PaymentPanel.tsx': 1,
   'src/components/settings/FacilitySyncPanel.tsx': 1,
   'src/components/settings/SystemAdminSections.tsx': 1,
   'src/components/settings/VisitTypesSection.tsx': 1,
 }));
 
-/** JSX text nodes that read as a user-facing sentence. */
+/**
+ * JSX text nodes that read as a user-facing sentence.
+ *
+ * Counted the same way whether or not the file imports `useTranslation`. An
+ * earlier version exempted files that did, on the theory that they had opted
+ * in — which hid the worse case: 41 files import the hook AND still carry 231
+ * literal strings between them. A fully-English screen is at least honest; a
+ * half-translated one shows a Juba Arabic reader Arabic and English in the
+ * same sentence.
+ */
 function untranslatedCount(source) {
-  if (source.includes('useTranslation')) return 0;   // page opted in; parity check covers it
   const matches = source.match(/>\s*[A-Z][a-zA-Z]+(?: [a-zA-Z&/]+){1,6}\s*</g) || [];
   return matches.length;
 }
@@ -212,15 +265,18 @@ for (const root of SCAN_ROOTS) {
     const rel = relative(ROOT, file);
     const count = untranslatedCount(readFileSync(file, 'utf8'));
     scanned++;
-    const baseline = UNTRANSLATED_BASELINE.get(rel) ?? 0;
-    if (count > baseline) regressions.push(`  UNTRANSLATED ${rel} — ${count} literal string(s), baseline ${baseline}`);
-    else if (count < baseline) improved.push(`  ${rel}: ${baseline} → ${count} (lower the baseline in scripts/check-i18n.mjs)`);
+    const pending = UNTRANSLATED_BASELINE.has(rel);
+    if (count > 0 && !pending) {
+      regressions.push(`  UNTRANSLATED ${rel} — ${count} literal string(s) on a file that had none`);
+    } else if (count === 0 && pending) {
+      improved.push(`  ${rel} is translated — remove it from UNTRANSLATED_BASELINE in scripts/check-i18n.mjs`);
+    }
   }
 }
 console.log(`\nscanned ${scanned} components for untranslated text`);
 for (const r of regressions) report(r);
 if (improved.length) {
-  console.error('\nThese pages improved — the baseline is now stale:');
+  console.error('\nThese pages are now translated — the pending list is stale:');
   for (const i of improved) report(i);
 }
 

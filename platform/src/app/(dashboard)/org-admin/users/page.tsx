@@ -1,49 +1,63 @@
 'use client';
 
+/**
+ * The organization's user roster + account requests, on the shared admin
+ * console kit (sadb-*) — the org-scoped sibling of /admin/users, which now
+ * shares its exact anatomy: KPI tile row, one card with People/Requests
+ * pill tabs in the head, a sadb search row, and the shared
+ * appointment-card-list rows (unchanged — they were already the same list
+ * grammar both pages use). Restyled 2026-08-21; the raw fixed-inset create
+ * and reset overlays became shared-Modal sadb dialogs, the hand-off panel
+ * became the shared CredentialHandoffModal, and banners became toasts.
+ *
+ * Read and write diverge here: medical_superintendent and hospital_manager
+ * read this list as their staff roster, but /api/users' WRITE_ROLES is
+ * super_admin + org_admin, so the create button and the Requests tab are
+ * gated on canCreateUsers, not on reaching the page.
+ */
+
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useToast } from '@/components/Toast';
 import type { InvitationOutcome } from '@/lib/user-invite';
-import { describeInvitationOutcome } from '@/lib/invitation-copy';
 import {
-  Plus, KeyRound, Users,
-  UserX, UserCheck, X, Eye, EyeOff, ChevronDown, AlertCircle,
-  Copy, Check, RefreshCw, ShieldCheck,
+  Plus, KeyRound, UserX, UserCheck, Eye, EyeOff, RefreshCw, ShieldCheck, Building2,
 } from '@/components/icons/lucide';
 import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { avatarTint } from '@/lib/patient-utils';
-import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS, ehrTabId, ehrTabPanelId } from '@/components/ehr/EhrListHeader';
-import { FilterSelect } from '@/components/filters';
-import EmptyState from '@/components/EmptyState';
+import Modal from '@/components/Modal';
 import Select from '@/components/Select';
 import { generateTempPassword } from '@/lib/temp-password';
 import { canCreateUsers, canCreateFacilities } from '@/lib/people-nav';
 import { roleNeedsFacility } from '@/lib/user-scope-rules';
 import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
+import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
 import { activeFacilities } from '@/lib/services/hospital-service';
 import { getRoleConfig, labelRolesDistinctly } from '@/lib/permissions';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
+import {
+  SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbTabs,
+} from '@/components/admin/sadb-ui';
 
 const MIN_PASSWORD_LENGTH = 8;
 import type { UserDoc, HospitalDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 
 // Column template for the user list header + rows:
-// User · Role · Facility · Status · Actions
-// The first four tracks match .appointment-card-row's shared grid
-// (minmax(320px, 1.6fr) + minmax(150px, 1fr) columns) so this list lines up
-// with the clinical worklist and patient registry; only the trailing actions
-// gutter is narrower, since it holds a lone kebab instead of a data column.
-// No trailing action gutter — the row opens the actions, so the 44px it held
-// goes back to the data columns.
+// User · Role · Facility · Status
+// The tracks match .appointment-card-row's shared grid so this list lines up
+// with the clinical worklist, the patient registry, and /admin/users.
+// No trailing action gutter — the row opens the actions popup itself.
 const USER_GRID = 'minmax(320px, 1.6fr) repeat(3, minmax(150px, 1fr))';
 
 export default function OrgUsersPage() {
   const { currentUser, globalSearch } = useApp();
   const router = useRouter();
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [hospitals, setHospitals] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,8 +85,9 @@ export default function OrgUsersPage() {
       ? [{ key: 'reactivate', label: t('orgUsers.reactivate'), tone: 'success' as const, icon: <UserCheck className="w-4 h-4" />, onClick: () => handleReactivate(user._id) }]
       : []),
   ];
+  // Modal-scoped error copy (create / reset dialogs render it inline; list
+  // actions report through toasts).
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>([]);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -112,9 +127,6 @@ export default function OrgUsersPage() {
      *  server. Absent for a password reset, which sends nothing. */
     invitation?: InvitationOutcome;
   } | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const brandColor = currentUser?.branding?.primaryColor || 'var(--accent-primary)';
 
   const loadData = useCallback(async () => {
     // Still hydrating the session — a later run (currentUser dependency)
@@ -259,13 +271,11 @@ export default function OrgUsersPage() {
     try {
       const { deactivateUser } = await import('@/lib/services/user-service');
       await deactivateUser(userId, currentUser?._id, currentUser?.username);
-      setSuccess(t('orgUsers.successUserDeactivated'));
+      showToast(t('orgUsers.successUserDeactivated'), 'success');
       await loadData();
-      setTimeout(() => setSuccess(''), 4000);
     } catch (err: unknown) {
       const e = err as Error;
-      setError(e.message || t('orgUsers.errorDeactivateFailed'));
-      setTimeout(() => setError(''), 4000);
+      showToast(e.message || t('orgUsers.errorDeactivateFailed'), 'error');
     }
   };
 
@@ -273,13 +283,11 @@ export default function OrgUsersPage() {
     try {
       const { reactivateUser } = await import('@/lib/services/user-service');
       await reactivateUser(userId, currentUser?._id, currentUser?.username);
-      setSuccess(t('orgUsers.successUserReactivated'));
+      showToast(t('orgUsers.successUserReactivated'), 'success');
       await loadData();
-      setTimeout(() => setSuccess(''), 4000);
     } catch (err: unknown) {
       const e = err as Error;
-      setError(e.message || t('orgUsers.errorReactivateFailed'));
-      setTimeout(() => setError(''), 4000);
+      showToast(e.message || t('orgUsers.errorReactivateFailed'), 'error');
     }
   };
 
@@ -346,9 +354,9 @@ export default function OrgUsersPage() {
     label: label.includes('(') ? label : roleLabel(role),
   }));
 
-  // Filter users — role/status pills from the header's Filters popover, plus
-  // the header's own search box combined with any lingering platform-wide
-  // search (same merge pattern as the hospitals list).
+  // Filter users — the header's role/status selects, plus the header's own
+  // search box combined with any lingering platform-wide search (same merge
+  // pattern as the hospitals list).
   const filteredUsers = users.filter(u => {
     if (focusedUserId) return u._id === focusedUserId;
     if (filterRole !== 'all' && u.role !== filterRole) return false;
@@ -369,249 +377,195 @@ export default function OrgUsersPage() {
   const showRoster = activeTab === 'people' || !canReviewRequests;
 
   const activeUserCount = users.filter(u => u.isActive).length;
-  const activeFilterCount = (filterRole !== 'all' ? 1 : 0) + (filterStatus !== 'all' ? 1 : 0);
-  const clearUserFilters = () => { setFilterRole('all'); setFilterStatus('all'); };
 
-  if (loading) {
-    return (
-      <main className="page-container flex items-center justify-center page-enter">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: brandColor }} />
-      </main>
-    );
-  }
+  const inputStyle: React.CSSProperties = {
+    background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)',
+    borderRadius: '4px', padding: '10px 14px', color: 'var(--text-primary)',
+    fontSize: '14px', width: '100%', outline: 'none',
+  };
+  // No custom chevron artwork here — the global `select` rule already draws
+  // one (globals.css); this only reserves room for it, since inline padding
+  // would otherwise override the stylesheet's own padding-right.
+  const selectStyle: React.CSSProperties = { ...inputStyle, paddingInlineEnd: 40 };
 
   return (
-    <>
-      <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        {/* Success/Error banners */}
-        {success && (
-          <div className="mb-4 p-3 rounded-lg text-sm font-medium flex-shrink-0" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)', border: '1px solid var(--accent-border)' }}>
-            {success}
-          </div>
+    <SadbPage roles={['org_admin', 'super_admin', 'medical_superintendent', 'hospital_manager']}>
+      {/* ═══ KPI strip ═══ */}
+      <div className="sadb-kpi-row">
+        <SadbKpiTile label={t('orgUsers.heading')} value={users.length.toLocaleString()} />
+        <SadbKpiTile label={t('orgUsers.statusActive')} value={activeUserCount.toLocaleString()} />
+        <SadbKpiTile label={t('orgUsers.statusInactive')} value={(users.length - activeUserCount).toLocaleString()} />
+        {canReviewRequests && (
+          <SadbKpiTile
+            label="Pending requests"
+            value={requestCounts.pending.toLocaleString()}
+            onClick={() => setActiveTab('requests')}
+          />
         )}
-        {error && !showCreateModal && !showResetModal && (
-          <div className="mb-4 p-3 rounded-lg text-sm font-medium flex-shrink-0" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(224, 49, 39,0.2)' }}>
-            {error}
-          </div>
-        )}
+      </div>
 
-        <div className="dash-card overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
-          <EhrListHeader
-            title={t('orgUsers.pageTitle')}
-            tabs={canReviewRequests ? [
+      {/* ═══ Roster + account requests ═══ */}
+      {/* One card, two tabs, not a page of its own: a request that nobody
+          thinks to open is a person who never gets access. */}
+      <SadbCard
+        title={t('orgUsers.pageTitle')}
+        meta={showRoster ? `${filteredUsers.length} of ${users.length}` : `${requestCounts.pending} pending`}
+        action={canReviewRequests ? (
+          <SadbTabs
+            tabs={[
               { key: 'people', label: 'People', count: users.length },
               { key: 'requests', label: 'Account requests', count: requestCounts.pending },
-            ] : []}
-            activeTab={activeTab}
-            onTabChange={key => setActiveTab(key as 'people' | 'requests')}
-            tabsAriaLabel="User management views"
-            stats={showRoster ? [
-              { label: 'Total', value: users.length, color: LIST_STAT_COLORS.muted },
-              { label: t('orgUsers.statusActive'), value: activeUserCount, color: LIST_STAT_COLORS.blue },
-              { label: t('orgUsers.statusInactive'), value: users.length - activeUserCount, color: LIST_STAT_COLORS.amber },
-            ] : [
-              { label: 'Pending', value: requestCounts.pending, color: LIST_STAT_COLORS.amber },
-              { label: 'Decided', value: requestCounts.decided, color: LIST_STAT_COLORS.muted },
             ]}
-            search={showRoster ? { value: search, onChange: setSearch, placeholder: 'Search by name or username…' } : undefined}
-            actions={showRoster ? (
-              <>
-                <EhrListFilters activeCount={activeFilterCount} onClear={clearUserFilters}>
-                  <FilterSelect
-                    label={t('orgUsers.fieldRole')}
-                    value={filterRole}
-                    onChange={setFilterRole}
-                    neutralValue="all"
-                    size="sm"
-                    options={[{ value: 'all', label: t('orgUsers.allRoles') }, ...roleOptions.map(o => ({ value: o.role, label: o.label }))]}
-                  />
-                  <FilterSelect
-                    label={t('orgUsers.colStatus')}
-                    value={filterStatus}
-                    onChange={setFilterStatus}
-                    neutralValue="all"
-                    size="sm"
-                    options={[
-                      { value: 'all', label: t('orgUsers.allStatus') },
-                      { value: 'active', label: t('orgUsers.statusActive') },
-                      { value: 'inactive', label: t('orgUsers.statusInactive') },
-                    ]}
-                  />
-                </EhrListFilters>
-                {/* Read and write diverge here: the facility roles read this
-                    list as their staff roster, but /api/users' WRITE_ROLES is
-                    super_admin + org_admin, so anyone else would just 403. */}
-                {canCreateUsers(currentUser?.role || '') && (
-                  <button
-                    onClick={() => { setError(''); setFormPassword(generateTempPassword()); setShowPassword(true); setShowCreateModal(true); }}
-                    data-tour="org-users-create-btn"
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: brandColor, color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-                  >
-                    <Plus className="w-4 h-4" /> {t('orgUsers.createUser')}
-                  </button>
-                )}
-              </>
-            ) : undefined}
+            active={activeTab}
+            onChange={key => setActiveTab(key as 'people' | 'requests')}
+            ariaLabel="User management views"
           />
+        ) : undefined}
+      >
+        <div style={{ display: showRoster ? undefined : 'none' }}>
+          <div className="sadb-search-row">
+            <SadbSearch value={search} onChange={setSearch} placeholder="Search by name or username…" />
+            <Select value={filterRole} onChange={e => setFilterRole(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 180 }}>
+              <option value="all">{t('orgUsers.allRoles')}</option>
+              {roleOptions.map(o => (
+                <option key={o.role} value={o.role}>{o.label}</option>
+              ))}
+            </Select>
+            <Select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 150 }}>
+              <option value="all">{t('orgUsers.allStatus')}</option>
+              <option value="active">{t('orgUsers.statusActive')}</option>
+              <option value="inactive">{t('orgUsers.statusInactive')}</option>
+            </Select>
+            {/* Read and write diverge here: the facility roles read this
+                list as their staff roster, but /api/users' WRITE_ROLES is
+                super_admin + org_admin, so anyone else would just 403. */}
+            {canCreateUsers(currentUser?.role || '') && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm flex-shrink-0"
+                data-tour="org-users-create-btn"
+                onClick={() => { setError(''); setFormPassword(generateTempPassword()); setShowPassword(true); setShowCreateModal(true); }}
+              >
+                <Plus className="w-4 h-4" /> {t('orgUsers.createUser')}
+              </button>
+            )}
+          </div>
 
-          {/* Same list anatomy as the appointments page: card-list wrapper,
-              compact column head, card rows. */}
-          <div
-            className="appointment-card-list"
-            data-tour="org-users-list"
-            role={canReviewRequests ? 'tabpanel' : undefined}
-            id={ehrTabPanelId('people')}
-            aria-labelledby={canReviewRequests ? ehrTabId('people') : undefined}
-            style={{ display: showRoster ? undefined : 'none' }}
-          >
-                {/* The column head is the table's frame, not a label for the
-                    rows that happen to be loaded: it stays put when a filter
-                    matches nothing, so the list never collapses into a bare
-                    message. */}
-                <div className="appointment-card-head" aria-hidden="true" style={{ gridTemplateColumns: USER_GRID }}>
-                  <span>{t('orgUsers.colName')}</span>
-                  <span>{t('orgUsers.colRole')}</span>
-                  <span>{t('orgUsers.colHospital')}</span>
-                  {/* Status values right-align (shared .appointment-card-status),
-                      so its label right-aligns to the same edge. */}
-                  <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('orgUsers.colStatus')}</span>
-                </div>
-                {filteredUsers.length === 0 && (
-                  <EmptyState icon={Users} title={t('orgUsers.heading')} message={t('orgUsers.noUsersFound')} />
-                )}
-                {filteredUsers.map(user => (
-                    <div
-                      key={user._id}
-                      id={`org-user-${user._id}`}
-                      // Every row is a tab stop now that the row itself is the
-                      // control; the roving tabindex went with the pencil button.
-                      tabIndex={0}
-                      aria-current={focusedUserId === user._id ? 'true' : undefined}
-                      className="ehr-appointment-row appointment-card-row"
-                      role="button"
-                      onClick={e => setRowMenu(rowActionsAt(e, actionsFor(user)))}
-                      onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, actionsFor(user))); } }}
-                      style={{
-                        gridTemplateColumns: USER_GRID,
-                        background: focusedUserId === user._id ? 'var(--overlay-subtle)' : undefined,
-                        outline: focusedUserId === user._id ? '2px solid var(--accent-primary)' : undefined,
-                        outlineOffset: focusedUserId === user._id ? -2 : undefined,
-                      }}
-                    >
-                      {/* User: square avatar + name/username, on the shared
-                          identity classes so type and spacing match the other
-                          card lists. */}
-                      <div className="ehr-appointment-identity">
-                        <div className="ehr-patient-icon" style={avatarTint(user.name)}>
-                          {user.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
-                        </div>
-                        <div className="ehr-appointment-main appointment-card-patient">
-                          <strong>{user.name}</strong>
-                          <p>{user.username}</p>
-                        </div>
-                      </div>
-
-                      {/* Role — value + scope, matching the shared row hierarchy. */}
-                      <div className="appointment-card-provider">
-                        <strong>{roleLabel(user.role)}</strong>
-                        <span>{user.department || user.specialty || 'Access role'}</span>
-                      </div>
-
-                      {/* Facility — value + label, like the Context column. */}
-                      <div className="appointment-card-provider">
-                        <strong>{user.hospitalName || 'Facility unassigned'}</strong>
-                        <span>{t('orgUsers.colHospital')}</span>
-                      </div>
-
-                      {/* Status pill — shared appointment pill metrics */}
-                      <div className="appointment-card-status">
-                        <span
-                          className="appointment-status-pill"
-                          style={user.isActive
-                            ? { borderColor: 'rgba(15, 160, 106,0.45)', background: 'rgba(15, 160, 106,0.10)', color: 'var(--color-success-text)' }
-                            : { borderColor: 'rgba(224, 49, 39,0.45)', background: 'rgba(224, 49, 39,0.10)', color: 'var(--color-danger-text)' }}
-                        >
-                          {user.isActive ? t('orgUsers.statusActive') : t('orgUsers.statusInactive')}
-                        </span>
-                        <small>{user.mustChangePassword ? 'Password reset required' : 'Credentials current'}</small>
-                      </div>
-
+          {/* Same list anatomy as the clinical worklist, the patient registry
+              and /admin/users: card-list wrapper, compact column head, card
+              rows. */}
+          <div className="appointment-card-list" data-tour="org-users-list">
+            {/* The column head is the table's frame, not a label for the
+                rows that happen to be loaded: it stays put when a filter
+                matches nothing, so the list never collapses into a bare
+                message. */}
+            <div className="appointment-card-head" aria-hidden="true" style={{ gridTemplateColumns: USER_GRID }}>
+              <span>{t('orgUsers.colName')}</span>
+              <span>{t('orgUsers.colRole')}</span>
+              <span>{t('orgUsers.colHospital')}</span>
+              {/* Status values right-align (shared .appointment-card-status),
+                  so its label right-aligns to the same edge. */}
+              <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('orgUsers.colStatus')}</span>
+            </div>
+            {loading && (
+              <div className="appointment-card-empty">{t('adminUsers.loadingUsers')}</div>
+            )}
+            {!loading && filteredUsers.length === 0 && (
+              <div className="appointment-card-empty">{t('orgUsers.noUsersFound')}</div>
+            )}
+            {!loading && filteredUsers.map(user => (
+                <div
+                  key={user._id}
+                  id={`org-user-${user._id}`}
+                  // Every row is a tab stop now that the row itself is the
+                  // control; the roving tabindex went with the pencil button.
+                  tabIndex={0}
+                  aria-current={focusedUserId === user._id ? 'true' : undefined}
+                  className="ehr-appointment-row appointment-card-row"
+                  role="button"
+                  onClick={e => setRowMenu(rowActionsAt(e, actionsFor(user)))}
+                  onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, actionsFor(user))); } }}
+                  style={{
+                    gridTemplateColumns: USER_GRID,
+                    background: focusedUserId === user._id ? 'var(--overlay-subtle)' : undefined,
+                    outline: focusedUserId === user._id ? '2px solid var(--accent-primary)' : undefined,
+                    outlineOffset: focusedUserId === user._id ? -2 : undefined,
+                  }}
+                >
+                  {/* User: square avatar + name/username, on the shared
+                      identity classes so type and spacing match the other
+                      card lists. */}
+                  <div className="ehr-appointment-identity">
+                    <div className="ehr-patient-icon" style={avatarTint(user.name)}>
+                      {user.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
                     </div>
-                ))}
+                    <div className="ehr-appointment-main appointment-card-patient">
+                      <strong>{user.name}</strong>
+                      <p>{user.username}</p>
+                    </div>
+                  </div>
+
+                  {/* Role — value + scope, matching the shared row hierarchy. */}
+                  <div className="appointment-card-provider">
+                    <strong>{roleLabel(user.role)}</strong>
+                    <span>{user.department || user.specialty || 'Access role'}</span>
+                  </div>
+
+                  {/* Facility — value + label, like the Context column. */}
+                  <div className="appointment-card-provider">
+                    <strong>{user.hospitalName || 'Facility unassigned'}</strong>
+                    <span>{t('orgUsers.colHospital')}</span>
+                  </div>
+
+                  {/* Status pill — shared appointment pill metrics */}
+                  <div className="appointment-card-status">
+                    <span
+                      className="appointment-status-pill"
+                      style={user.isActive
+                        ? { borderColor: 'rgba(15, 160, 106,0.45)', background: 'rgba(15, 160, 106,0.10)', color: 'var(--color-success-text)' }
+                        : { borderColor: 'rgba(224, 49, 39,0.45)', background: 'rgba(224, 49, 39,0.10)', color: 'var(--color-danger-text)' }}
+                    >
+                      {user.isActive ? t('orgUsers.statusActive') : t('orgUsers.statusInactive')}
+                    </span>
+                    <small>{user.mustChangePassword ? 'Password reset required' : 'Credentials current'}</small>
+                  </div>
+
+                </div>
+            ))}
           </div>
 
           <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
-
-          {/* Mounted for approvers whichever tab is showing, so the tab's
-              pending badge is honest before anyone opens it. */}
-          {canReviewRequests && (
-            <div
-              role="tabpanel"
-              id={ehrTabPanelId('requests')}
-              aria-labelledby={ehrTabId('requests')}
-              style={{ display: showRoster ? 'none' : 'block', minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}
-            >
-              <AccountRequestQueue viewerRole="org_admin" embedded onCountsChange={setRequestCounts} />
-            </div>
-          )}
         </div>
-      </main>
+
+        {/* Mounted for approvers whichever tab is showing, so the tab's
+            pending badge is honest before anyone opens it. */}
+        {canReviewRequests && (
+          <div style={{ display: showRoster ? 'none' : 'block', padding: '4px 14px 14px' }}>
+            <AccountRequestQueue viewerRole="org_admin" embedded onCountsChange={setRequestCounts} />
+          </div>
+        )}
+      </SadbCard>
 
       {/* Create User Modal */}
       {showCreateModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setShowCreateModal(false)}
-        >
-          <div
-            className="w-full max-w-lg mx-4 rounded-xl shadow-2xl p-6"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{t('orgUsers.createNewUser')}</h2>
-              <button onClick={() => setShowCreateModal(false)} className="p-1 rounded-lg hover:opacity-80">
-                <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-              </button>
+        <Modal onClose={() => setShowCreateModal(false)} width={440} labelledBy="org-create-user-title">
+          <div className="sadb-modal">
+            <div className="sadb-modal-copy">
+              <h2 id="org-create-user-title" className="sadb-modal-title">{t('orgUsers.createNewUser')}</h2>
             </div>
-
-            {error && (
-              <div className="mb-4 p-3 rounded-lg text-sm flex items-center gap-2" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(224, 49, 39,0.2)' }}>
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Name */}
               <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldFullName')}</label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={e => setFormName(e.target.value)}
-                  placeholder={t('orgUsers.fullNamePlaceholder')}
-                  className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                />
+                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldFullName')}</label>
+                <input type="text" value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('orgUsers.fullNamePlaceholder')} style={inputStyle} />
               </div>
 
               {/* Email — optional. Present means the new user gets an invitation
                   link and chooses their own password; absent means the admin
                   reads them the temporary one. */}
               <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                  {t('orgUsers.fieldEmail')}
-                </label>
-                <input
-                  type="email"
-                  value={formEmail}
-                  onChange={e => setFormEmail(e.target.value)}
-                  placeholder={t('orgUsers.emailPlaceholder')}
-                  className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                />
+                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldEmail')}</label>
+                <input type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} placeholder={t('orgUsers.emailPlaceholder')} style={inputStyle} autoComplete="off" />
                 <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
                   {t('orgUsers.emailHint')}
                 </p>
@@ -619,21 +573,14 @@ export default function OrgUsersPage() {
 
               {/* Username */}
               <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldUsername')}</label>
-                <input
-                  type="text"
-                  value={formUsername}
-                  onChange={e => setFormUsername(e.target.value)}
-                  placeholder={t('orgUsers.usernamePlaceholder')}
-                  className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                />
+                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldUsername')}</label>
+                <input type="text" value={formUsername} onChange={e => setFormUsername(e.target.value)} placeholder={t('orgUsers.usernamePlaceholder')} style={inputStyle} autoComplete="off" />
               </div>
 
               {/* Password */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldPassword')}</label>
+                  <label className="text-xs font-semibold block" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldPassword')}</label>
                   <button
                     type="button"
                     onClick={() => { setFormPassword(generateTempPassword()); setShowPassword(true); }}
@@ -649,19 +596,13 @@ export default function OrgUsersPage() {
                     value={formPassword}
                     onChange={e => setFormPassword(e.target.value)}
                     placeholder={t('orgUsers.passwordPlaceholder')}
-                    className="w-full px-3 py-2 pe-10 rounded-lg text-sm"
-                    style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
+                    style={{ ...inputStyle, paddingInlineEnd: 40, fontFamily: showPassword ? 'var(--font-mono, monospace)' : undefined }}
+                    autoComplete="new-password"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute end-3 top-1/2 -translate-y-1/2"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                    ) : (
-                      <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                    )}
+                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2">
+                    {showPassword
+                      ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                      : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
                   </button>
                 </div>
                 <p className="mt-1.5 text-[11px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
@@ -671,20 +612,12 @@ export default function OrgUsersPage() {
 
               {/* Role */}
               <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldRole')}</label>
-                <div className="relative">
-                  <Select
-                    value={formRole}
-                    onChange={e => setFormRole(e.target.value as UserRole)}
-                    className="w-full appearance-none px-3 py-2 pe-8 rounded-lg text-sm"
-                    style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                  >
-                    {roleOptions.map(o => (
-                      <option key={o.role} value={o.role}>{o.label}</option>
-                    ))}
-                  </Select>
-                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                </div>
+                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldRole')}</label>
+                <Select value={formRole} onChange={e => setFormRole(e.target.value as UserRole)} style={selectStyle}>
+                  {roleOptions.map(o => (
+                    <option key={o.role} value={o.role}>{o.label}</option>
+                  ))}
+                </Select>
               </div>
 
               {/* Hospital (conditional) */}
@@ -696,7 +629,7 @@ export default function OrgUsersPage() {
                    has to exist before its clinical staff can, so say that and
                    point at the page that creates one. */
                 <div
-                  className="rounded-lg px-3 py-2.5 text-sm"
+                  className="rounded-lg px-3 py-2.5 text-xs"
                   style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}
                   data-field="no-facilities"
                 >
@@ -711,156 +644,71 @@ export default function OrgUsersPage() {
                       if (canCreateFacilities(currentUser?.role ?? '')) setShowAddFacility(true);
                       else router.push('/hospitals');
                     }}
-                    className="text-sm font-semibold"
-                    style={{ color: 'var(--accent-primary)' }}
+                    className="btn btn-secondary btn-sm"
                     data-action="add-facility-inline"
                   >
-                    {t('orgUsers.noFacilitiesAction')}
+                    <Building2 className="w-4 h-4" /> {t('orgUsers.noFacilitiesAction')}
                   </button>
                 </div>
               )}
               {needsHospital && hospitals.length > 0 && (
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldAssignedHospital')}</label>
-                  <div className="relative">
-                    <Select
-                      value={formHospitalId}
-                      onChange={e => setFormHospitalId(e.target.value)}
-                      className="w-full appearance-none px-3 py-2 pe-8 rounded-lg text-sm"
-                      style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                    >
-                      <option value="">{t('orgUsers.selectHospitalOption')}</option>
-                      {hospitals.map(h => (
-                        <option key={h._id} value={h._id}>{h.name}</option>
-                      ))}
-                    </Select>
-                    <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                  </div>
+                  <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('orgUsers.fieldAssignedHospital')}</label>
+                  <Select value={formHospitalId} onChange={e => setFormHospitalId(e.target.value)} style={selectStyle}>
+                    <option value="">{t('orgUsers.selectHospitalOption')}</option>
+                    {hospitals.map(h => (
+                      <option key={h._id} value={h._id}>{h.name}</option>
+                    ))}
+                  </Select>
                 </div>
+              )}
+
+              {error && (
+                <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{error}</p>
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-                style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
-              >
+            <div className="sadb-modal-actions">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowCreateModal(false)} disabled={creating}>
                 {t('action.cancel')}
               </button>
-              <button
-                onClick={handleCreate}
-                disabled={creating}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ background: brandColor }}
-              >
-                {creating ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
-                {t('orgUsers.createUser')}
+              <button type="button" className="btn btn-primary btn-sm" onClick={handleCreate} disabled={creating}>
+                {creating ? t('orgHospitals.creating') : t('orgUsers.createUser')}
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
-      {/* Credential hand-off panel — shown after create or reset */}
+      {/* Credential hand-off — shown after create or reset. The password is
+          unrecoverable once this closes, so it's the shared hard-to-dismiss
+          modal, byte-identical with /admin/users. */}
       {handoff && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => { setHandoff(null); setCopied(false); }}
-        >
-          <div
-            className="w-full max-w-md mx-4 rounded-xl shadow-2xl p-6"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'transparent', color: 'var(--color-success-text)' }}>
-                <Check className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {handoff.kind === 'created' ? 'User created' : 'Password reset'}
-                </h2>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {/* One source of this copy — /admin/users and the
-                      create-organization flow show the same sentences now,
-                      and this chain silently had no case for `no_email`. */}
-                  {handoff.kind === 'created'
-                    ? describeInvitationOutcome(handoff.invitation).message
-                    : 'Share these credentials securely. The user must change the password at first login.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-lg p-3 mb-3 space-y-2" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Username</span>
-                <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{handoff.username}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Temporary password</span>
-                <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{handoff.password}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(`Username: ${handoff.username}\nTemporary password: ${handoff.password}`);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                } catch { /* clipboard unavailable — user can read the values above */ }
-              }}
-              className="btn btn-secondary w-full justify-center mb-2"
-            >
-              {copied ? <><Check className="w-4 h-4" /> Copied</> : <><Copy className="w-4 h-4" /> Copy credentials</>}
-            </button>
-            <button
-              onClick={() => { setHandoff(null); setCopied(false); }}
-              className="btn btn-primary w-full justify-center"
-            >
-              Done
-            </button>
-          </div>
-        </div>
+        <CredentialHandoffModal
+          title={handoff.kind === 'created' ? 'User created' : 'Password reset'}
+          description="Share these credentials securely. The user must change the password at first login."
+          username={handoff.username}
+          password={handoff.password}
+          invitation={handoff.invitation}
+          onClose={() => setHandoff(null)}
+        />
       )}
 
       {/* Reset Password Modal */}
       {showResetModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setShowResetModal(null)}
-        >
-          <div
-            className="w-full max-w-sm mx-4 rounded-xl shadow-2xl p-6"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <KeyRound className="w-5 h-5" style={{ color: 'var(--color-warning)' }} />
-                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{t('orgUsers.resetPassword')}</h2>
-              </div>
-              <button onClick={() => setShowResetModal(null)} className="p-1">
-                <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-              </button>
+        <Modal onClose={() => setShowResetModal(null)} width={400} labelledBy="org-reset-pw-title">
+          <div className="sadb-modal sadb-modal--danger">
+            <div className="sadb-modal-copy">
+              <h2 id="org-reset-pw-title" className="sadb-modal-title sadb-modal-title--danger">{t('orgUsers.resetPassword')}</h2>
+              <p className="sadb-modal-sub">
+                {t('orgUsers.resetPasswordPrompt')}{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>{users.find(u => u._id === showResetModal)?.username}</strong>
+              </p>
             </div>
 
             {error && (
-              <div className="mb-3 p-2 rounded-lg text-xs" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)' }}>
-                {error}
-              </div>
+              <p className="text-xs mb-2" style={{ color: 'var(--color-danger-text)' }}>{error}</p>
             )}
-
-            <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-              {t('orgUsers.resetPasswordPrompt')} <strong style={{ color: 'var(--text-primary)' }}>{users.find(u => u._id === showResetModal)?.username}</strong>
-            </p>
 
             <div className="flex justify-end mb-1.5">
               <button
@@ -872,47 +720,32 @@ export default function OrgUsersPage() {
                 <RefreshCw className="w-3 h-3" /> Generate
               </button>
             </div>
-            <div className="relative mb-2">
+            <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={resetPassword}
                 onChange={e => setResetPassword(e.target.value)}
                 placeholder={t('orgUsers.newPasswordPlaceholder')}
-                className="w-full px-3 py-2 pe-10 rounded-lg text-sm"
-                style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
+                style={{ ...inputStyle, paddingInlineEnd: 40, fontFamily: showPassword ? 'var(--font-mono, monospace)' : undefined }}
+                autoComplete="new-password"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute end-3 top-1/2 -translate-y-1/2"
-              >
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                ) : (
-                  <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                )}
+              <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2">
+                {showPassword
+                  ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                  : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
               </button>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowResetModal(null)}
-                className="px-3 py-1.5 rounded-lg text-sm"
-                style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
-              >
+            <div className="sadb-modal-actions">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowResetModal(null)} disabled={resetting}>
                 {t('action.cancel')}
               </button>
-              <button
-                onClick={handleResetPassword}
-                disabled={resetting}
-                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: 'var(--color-warning)' }}
-              >
+              <button type="button" className="btn btn-sm sadb-btn-danger" onClick={handleResetPassword} disabled={resetting}>
                 {resetting ? t('orgUsers.resetting') : t('orgUsers.resetPassword')}
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {showAddFacility && canCreateFacilities(currentUser?.role ?? '') && (
@@ -927,9 +760,8 @@ export default function OrgUsersPage() {
           }}
           orgId={currentUser?.orgId}
           actor={{ _id: currentUser?._id, username: currentUser?.username }}
-          brandColor={brandColor}
         />
       )}
-    </>
+    </SadbPage>
   );
 }

@@ -145,7 +145,11 @@ export default function AdminFlagsPage() {
           <SadbSearch value={matrixSearch} onChange={setMatrixSearch} placeholder="Search organizations…" ariaLabel="Search organizations" />
         </div>
         <SaTable
-          columns={['Organization', ...TENANT_FLAGS.map(f => f.label)]}
+          /* The tenant name is a name; every other column is a toggle. */
+          columns={[
+            { label: 'Organization', w: 2.2 },
+            ...TENANT_FLAGS.map(f => ({ label: f.label, w: 1 })),
+          ]}
           empty={orgsLoading ? 'Loading organizations…' : 'No organizations match this search.'}
           minWidth={880}
         >

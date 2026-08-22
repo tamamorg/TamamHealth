@@ -179,7 +179,11 @@ export default function AdminSupportPage() {
                 />
               </div>
               <SaTable
-                columns={['Organization', 'Status', 'Plan', 'Users', 'Facilities', 'Last activity', '']}
+                columns={[
+                  { label: 'Organization', w: 2 }, { label: 'Status', w: 0.9 }, { label: 'Plan', w: 0.9 },
+                  { label: 'Users', w: 0.7 }, { label: 'Facilities', w: 0.9 },
+                  { label: 'Last activity', w: 1.2 }, { label: '', w: 0.7 },
+                ]}
                 empty={orgsLoading ? 'Loading organizations…' : 'No organizations match this search.'}
                 minWidth={860}
               >
@@ -225,7 +229,10 @@ export default function AdminSupportPage() {
                 />
               </div>
               <SaTable
-                columns={['User', 'Role', 'Organization', 'Facility', 'Status']}
+                columns={[
+                  { label: 'User', w: 1.6 }, { label: 'Role', w: 1.1 }, { label: 'Organization', w: 1.4 },
+                  { label: 'Facility', w: 1.3 }, { label: 'Status', w: 0.8 },
+                ]}
                 empty={usersLoading ? 'Loading users…' : 'No users match this search.'}
                 minWidth={720}
               >
@@ -277,7 +284,10 @@ export default function AdminSupportPage() {
             </SadbCard>
             <SadbCard title="Support session audit trail">
               <SaTable
-                columns={['When', 'User', 'Action', 'Result']}
+                columns={[
+                  { label: 'When', w: 0.9 }, { label: 'User', w: 1.2 },
+                  { label: 'Action', w: 1.6 }, { label: 'Result', w: 0.9 },
+                ]}
                 empty="No support-access events recorded."
                 minWidth={620}
               >
