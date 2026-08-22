@@ -144,6 +144,38 @@ async function postHandler(request: NextRequest) {
       await deactivateOrganization(body.orgId as string, auth.sub, auth.username);
       return NextResponse.json({ success: true });
     }
+    // Put a deactivated tenant back into service — the Trash's undo.
+    if (action === 'restore') {
+      if (!body.orgId) {
+        return NextResponse.json({ error: 'orgId is required' }, { status: 400 });
+      }
+      const { restoreOrganization } = await import('@/lib/services/organization-service');
+      await restoreOrganization(body.orgId as string, auth.sub, auth.username);
+      return NextResponse.json({ success: true });
+    }
+    // Delete a tenant for good. The service refuses while the tenant still owns
+    // facilities, staff or patients — deleting the parent does not delete them,
+    // it strands them behind a scope match that can never succeed again.
+    if (action === 'purge') {
+      if (!body.orgId) {
+        return NextResponse.json({ error: 'orgId is required' }, { status: 400 });
+      }
+      const { purgeOrganization, OrganizationNotEmptyError } = await import('@/lib/services/organization-service');
+      try {
+        await purgeOrganization(body.orgId as string, auth.sub, auth.username);
+      } catch (err) {
+        if (err instanceof OrganizationNotEmptyError) {
+          const { hospitalCount, userCount, patientCount } = err.counts;
+          return NextResponse.json({
+            error: 'This organization still holds records, so it cannot be deleted. '
+              + `Facilities: ${hospitalCount}, staff accounts: ${userCount}, patients: ${patientCount}. `
+              + 'Move or remove them first, or leave the organization in Trash.',
+          }, { status: 409 });
+        }
+        throw err;
+      }
+      return NextResponse.json({ success: true });
+    }
     // Update existing organization.
     //
     // This used to accept only name and slug, so every other field the

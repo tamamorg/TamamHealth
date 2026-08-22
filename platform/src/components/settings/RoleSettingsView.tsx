@@ -45,6 +45,8 @@ import OrgUsersPage from '@/app/(dashboard)/org-admin/users/page';
 import ServicePricingPage from '@/app/(dashboard)/org-admin/pricing/page';
 import ManagementSettingsPage from '@/app/(dashboard)/settings/manage/page';
 import ItOperationsPanel, { IT_OPERATIONS_JOB_COUNT } from '@/components/admin/ItOperationsPanel';
+import TrashPanel from './TrashPanel';
+import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { SettingsHostProvider } from '@/components/settings/SettingsHost';
 import {
   SYSTEM_ADMIN_SECTIONS_META,
@@ -263,6 +265,11 @@ export default function RoleSettingsView() {
   // properties logic. Gated on the role's real route table, same as the
   // console itself, not a separate permission check.
   const showSystemAdmin = Boolean(currentUser && isPathAllowed(currentUser.role, '/system-admin'));
+  // Trash holds deactivated TENANTS, so it belongs to whoever can deactivate
+  // one: the operator who runs /admin/organizations, and nobody else.
+  const showTrash = Boolean(currentUser && isPathAllowed(currentUser.role, '/admin/organizations'));
+  const { trashedOrganizations } = useOrganizations();
+  const trashedCount = showTrash ? trashedOrganizations.length : 0;
   const sysAdminData = useSystemAdminConfig(showSystemAdmin);
 
   const navGroups = useMemo<NavGroup[]>(() => {
@@ -364,6 +371,15 @@ export default function RoleSettingsView() {
       }
     }
 
+    if (showTrash) {
+      groups.push({
+        title: 'Trash',
+        items: [
+          { id: 'trash', label: 'Deleted organizations', icon: Trash2, badge: String(trashedCount) },
+        ],
+      });
+    }
+
     if (showSystemAdmin) {
       groups.push({
         title: 'System administration',
@@ -382,7 +398,7 @@ export default function RoleSettingsView() {
       });
     }
     return groups;
-  }, [spec, currentUser, isAdminSpec, showFacility, canManageUsers, users.length, hospitals.length, showSystemAdmin, sysAdminData]);
+  }, [spec, currentUser, isAdminSpec, showFacility, canManageUsers, users.length, hospitals.length, showSystemAdmin, sysAdminData, showTrash, trashedCount]);
 
   if (!currentUser || !spec) return null;
 
@@ -779,6 +795,9 @@ export default function RoleSettingsView() {
           <ManagementSettingsPage />
         </section>
       );
+    }
+    if (activePanel === 'trash') {
+      return <TrashPanel />;
     }
     if (activePanel === 'sysadmin-itops') {
       return (

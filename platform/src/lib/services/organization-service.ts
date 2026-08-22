@@ -211,6 +211,108 @@ export async function deactivateOrganization(
   });
 }
 
+/**
+ * Put a deactivated tenant back into service.
+ *
+ * The inverse of `deactivateOrganization`, and the reason deactivation only
+ * ever flips `isActive`: the plan, the limits, the branding and the billing
+ * status are all still on the document, so restoring returns the tenant to
+ * exactly what it was rather than to a default.
+ */
+export async function restoreOrganization(
+  id: string,
+  actorId?: string,
+  actorUsername?: string
+): Promise<void> {
+  if (isBrowserRuntime()) {
+    await postOrganizationsApi({ action: 'restore', orgId: id });
+    return;
+  }
+
+  const db = organizationsDB();
+  const existing = await db.get(id) as OrganizationDoc;
+
+  const updated: OrganizationDoc = {
+    ...existing,
+    isActive: true,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const resp = await db.put(updated);
+  updated._rev = resp.rev;
+  const { logAudit } = await import('./audit-service');
+  await logAudit('organization_restored', actorId, actorUsername, `Restored organization "${existing.name}"`, true);
+  emitSyncEvent({
+    resourceType: 'organization',
+    resourceId: updated._id,
+    operation: 'update',
+    resourceVersion: updated._rev,
+    userId: actorId,
+    username: actorUsername,
+    orgId: updated._id,
+  });
+}
+
+/** Thrown when a tenant still owns records, so deleting it would orphan them. */
+export class OrganizationNotEmptyError extends Error {
+  constructor(public readonly counts: { userCount: number; hospitalCount: number; patientCount: number }) {
+    super('This organization still holds records.');
+    this.name = 'OrganizationNotEmptyError';
+  }
+}
+
+/**
+ * Delete a tenant for good.
+ *
+ * REFUSES while the tenant still owns facilities, staff accounts or patients,
+ * and that refusal is the point. Deleting the organization document does not
+ * delete anything underneath it — the facilities, users and charts carry the
+ * `orgId` as a plain string, and `filterByScope` matches on it. Removing the
+ * parent would leave every one of those documents pointing at a tenant that no
+ * longer exists: invisible to every scoped query, unreachable through any
+ * screen, and still on disk holding patient data. An empty tenant is the only
+ * one that can be removed without creating that.
+ *
+ * Only reachable from Trash, which only holds deactivated tenants, so nothing
+ * live can be deleted by a single mistaken click.
+ */
+export async function purgeOrganization(
+  id: string,
+  actorId?: string,
+  actorUsername?: string
+): Promise<void> {
+  if (isBrowserRuntime()) {
+    await postOrganizationsApi({ action: 'purge', orgId: id });
+    return;
+  }
+
+  const db = organizationsDB();
+  const existing = await db.get(id) as OrganizationDoc;
+  const stats = await getOrganizationStats(id);
+  if (stats.hospitalCount > 0 || stats.userCount > 0 || stats.patientCount > 0) {
+    throw new OrganizationNotEmptyError({
+      userCount: stats.userCount,
+      hospitalCount: stats.hospitalCount,
+      patientCount: stats.patientCount,
+    });
+  }
+
+  await db.remove(existing._id, existing._rev as string);
+  const { logAudit } = await import('./audit-service');
+  await logAudit(
+    'organization_deleted', actorId, actorUsername,
+    `Permanently deleted organization "${existing.name}"`, true,
+  );
+  emitSyncEvent({
+    resourceType: 'organization',
+    resourceId: id,
+    operation: 'delete',
+    userId: actorId,
+    username: actorUsername,
+    orgId: id,
+  });
+}
+
 // One-shot per-DB "we tried to create the orgId index" cache. createIndex is
 // idempotent server-side but every call still makes an HTTP round-trip; doing
 // it once per process per DB is enough.

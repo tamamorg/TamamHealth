@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Building2, BedDouble, Users, Stethoscope, WifiOff,
   Zap, ZapOff, Sun, Truck, Signal, Clock, Activity,
   MapPin, HeartPulse, X, Phone, Mail,
   FlaskConical, Download, Eye, Settings, Plus, Edit3, Ban, RotateCcw,
-  Syringe, Baby, Pill, ShieldCheck, Microscope,
+  Syringe, Baby, Pill, ShieldCheck, Microscope, ChevronDown,
 } from '@/components/icons/lucide';
 import {
   ResponsiveContainer, LineChart, Line,
@@ -709,6 +709,55 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
   }, [currentUser, hospital._id]);
   const canWriteSettings = !!currentUser && FACILITY_SETTINGS_WRITE_ROLES.includes(currentUser.role);
 
+  // The eight sections were a tab strip under this header. As a menu they sit
+  // beside the facility's own actions, so the row reads as one set of things
+  // you can do with this facility, and the panel opens on content rather than
+  // on a row of navigation.
+  const [sectionOpen, setSectionOpen] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sectionOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (sectionRef.current && !sectionRef.current.contains(event.target as Node)) setSectionOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setSectionOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [sectionOpen]);
+  const activeSection = PROFILE_TABS.find(item => item.id === tab) ?? PROFILE_TABS[0];
+
+  /**
+   * How many people can actually sign in here.
+   *
+   * The role counts on the facility record are an ESTABLISHMENT — the posts
+   * the facility is staffed for, reported to the ministry. They are not user
+   * accounts, and nothing ever created one from them. Read side by side, the
+   * Overview said "Staff 6" while the Staff tab said "No staff assigned to
+   * this facility yet", and both were telling the truth about different
+   * things. This is the same query that tab runs, so the two now agree.
+   */
+  const [staffAccounts, setStaffAccounts] = useState<number | null>(null);
+  useEffect(() => {
+    if (!scope) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getAllUsers } = await import('@/modules/identity/services/user-service');
+        const all = await getAllUsers(scope);
+        if (!cancelled) setStaffAccounts(all.filter(u => u.hospitalId === hospital._id).length);
+      } catch {
+        // A roster that cannot be read is not a roster of zero — leave it
+        // unknown rather than reporting an absence the query never proved.
+        if (!cancelled) setStaffAccounts(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [scope, hospital._id]);
+
   const formatLastSync = (iso: string) => {
     if (!iso) return t('hospitals.syncUnknown');
     const d = new Date(iso);
@@ -765,6 +814,41 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {canManage && (
+            <div className="fac-secnav" ref={sectionRef}>
+              <button
+                type="button"
+                className="fac-secnav-trigger"
+                aria-haspopup="menu"
+                aria-expanded={sectionOpen}
+                aria-label={t('hospitals.manageTitle', { name: hospital.name })}
+                onClick={() => setSectionOpen(open => !open)}
+                data-action="facility-section"
+              >
+                <activeSection.icon />
+                <span>{t(activeSection.labelKey)}</span>
+                <ChevronDown className="fac-secnav-caret" />
+              </button>
+              {sectionOpen && (
+                <div className="fac-secnav-menu" role="menu">
+                  {PROFILE_TABS.map(tabItem => (
+                    <button
+                      key={tabItem.id}
+                      type="button"
+                      role="menuitem"
+                      className={`fac-secnav-item${tab === tabItem.id ? ' is-active' : ''}`}
+                      aria-current={tab === tabItem.id ? 'page' : undefined}
+                      onClick={() => { setTab(tabItem.id); setSectionOpen(false); }}
+                      data-tab={tabItem.id}
+                    >
+                      <tabItem.icon />
+                      {t(tabItem.labelKey)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {canCreate && (
             <>
               <button type="button" onClick={onEdit} className="btn btn-secondary btn-sm" style={{ gap: 4 }} data-action="edit-facility">
@@ -789,28 +873,9 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
       <hr className="section-divider" />
 
       {/* The facility's record and the work done on it, on one screen. These
-          tabs were a separate page reached by a "Manage" button; the record you
-          were reading was then two navigations away from the roster, ward list
-          or stock you opened it to check. Roles without the management grant
-          see the profile alone, exactly as before. */}
-      {canManage && (
-        <nav className="fac-tabs" aria-label={t('hospitals.manageTitle', { name: hospital.name })} style={{ marginBottom: 16 }}>
-          {PROFILE_TABS.map(tabItem => (
-            <button
-              key={tabItem.id}
-              type="button"
-              className={`fac-tab${tab === tabItem.id ? ' is-active' : ''}`}
-              aria-current={tab === tabItem.id ? 'page' : undefined}
-              onClick={() => setTab(tabItem.id)}
-              data-tab={tabItem.id}
-            >
-              <tabItem.icon />
-              {t(tabItem.labelKey)}
-            </button>
-          ))}
-        </nav>
-      )}
-
+          sections were a separate page reached by a "Manage" button, then a tab
+          strip here; they are now the menu beside Edit facility in the header
+          above, so the panel opens on content rather than on navigation. */}
       {tab !== 'overview' && canManage ? (
         <FacilityManageTabs
           hospital={hospital}
@@ -924,6 +989,10 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
               { label: t('hospitals.staffNurses'), value: hospital.nurses },
               { label: t('hospitals.staffLabTech'), value: hospital.labTechnicians },
               { label: t('hospitals.staffPharmacists'), value: hospital.pharmacists },
+              // The establishment above is what the facility is staffed FOR;
+              // this is who can sign in. The difference is the provisioning
+              // gap, and it belongs next to the number it contradicts.
+              { label: t('hospitals.staffAccounts'), value: staffAccounts ?? '—' },
             ].map(s => (
               <div key={s.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{s.label}</span>

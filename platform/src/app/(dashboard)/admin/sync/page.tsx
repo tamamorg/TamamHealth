@@ -160,6 +160,35 @@ export default function AdminSyncPage() {
 
   return (
     <SadbPage>
+      {/* Actions first: the conflict count and the three runners are what an
+          operator comes here to DO; the queue below is the evidence. */}
+      <div className="sadb-row-3">
+        <SadbCard
+          title="Conflicts"
+          action={<SadbHeadLink onClick={() => router.push('/admin/conflicts')}>Open</SadbHeadLink>}
+        >
+          <SadbKvRow label="Pending reconciliation" value={conflictsError ? '—' : pendingConflicts ?? '…'} />
+        </SadbCard>
+
+        <SadbSettingGroup title="Job runners">
+          <SadbSettingRow label="Push pending to country node" sub="Pushes up to 50 queued events from this browser to the configured country node.">
+            <SadbActionButton onClick={handlePushCountryNode} disabled={anyRunning}>
+              {pushingCountryNode ? 'Running…' : 'Run now'}
+            </SadbActionButton>
+          </SadbSettingRow>
+          <SadbSettingRow label="Server sync push" sub="Server-side push of pending sync events to CouchDB.">
+            <SadbActionButton onClick={handleSyncPush} disabled={anyRunning}>
+              {syncPushing ? 'Running…' : 'Run now'}
+            </SadbActionButton>
+          </SadbSettingRow>
+          <SadbSettingRow label="DHIS2 export push" sub="Exports this reporting period's aggregate data values to DHIS2.">
+            <SadbActionButton onClick={handleDhis2Push} disabled={anyRunning}>
+              {dhis2Pushing ? 'Running…' : 'Run now'}
+            </SadbActionButton>
+          </SadbSettingRow>
+        </SadbSettingGroup>
+      </div>
+
       <SadbCard
         title="Sync &amp; Jobs"
         meta={(
@@ -196,33 +225,6 @@ export default function AdminSyncPage() {
           ))}
         </SaTable>
       </SadbCard>
-
-      <div className="sadb-row-3">
-        <SadbCard
-          title="Conflicts"
-          action={<SadbHeadLink onClick={() => router.push('/admin/conflicts')}>Open</SadbHeadLink>}
-        >
-          <SadbKvRow label="Pending reconciliation" value={conflictsError ? '—' : pendingConflicts ?? '…'} />
-        </SadbCard>
-
-        <SadbSettingGroup title="Job runners">
-          <SadbSettingRow label="Push pending to country node" sub="Pushes up to 50 queued events from this browser to the configured country node.">
-            <SadbActionButton onClick={handlePushCountryNode} disabled={anyRunning}>
-              {pushingCountryNode ? 'Running…' : 'Run now'}
-            </SadbActionButton>
-          </SadbSettingRow>
-          <SadbSettingRow label="Server sync push" sub="Server-side push of pending sync events to CouchDB.">
-            <SadbActionButton onClick={handleSyncPush} disabled={anyRunning}>
-              {syncPushing ? 'Running…' : 'Run now'}
-            </SadbActionButton>
-          </SadbSettingRow>
-          <SadbSettingRow label="DHIS2 export push" sub="Exports this reporting period's aggregate data values to DHIS2.">
-            <SadbActionButton onClick={handleDhis2Push} disabled={anyRunning}>
-              {dhis2Pushing ? 'Running…' : 'Run now'}
-            </SadbActionButton>
-          </SadbSettingRow>
-        </SadbSettingGroup>
-      </div>
     </SadbPage>
   );
 }

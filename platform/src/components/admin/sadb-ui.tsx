@@ -40,6 +40,29 @@ export const SEVERITY_CHIP: Record<SaSeverity, ChipTone> = {
 };
 
 /** Subscription-status → chip tone (tenant registry, billing, dashboard). */
+/**
+ * What a tenant's status actually IS, as opposed to what it is paying for.
+ *
+ * Two fields describe a tenant and only one of them was ever shown.
+ * `isActive` is the LIFECYCLE — deactivating an organization sets it false and
+ * touches nothing else. `subscriptionStatus` is the BILLING plan state, and
+ * that is what the rosters rendered. So a deactivated tenant kept advertising
+ * "TRIAL" in its status column while the header counted it under Suspended
+ * (`|| !o.isActive`), and the console disagreed with itself: three
+ * organizations, chips reading 2 active + 2 trial + 1 suspended.
+ *
+ * Derived rather than written, on purpose. Stamping `subscriptionStatus:
+ * 'suspended'` at deactivation would destroy the plan state underneath it, and
+ * reactivating could not tell whether the tenant had been on trial or paying.
+ * This is lossless: turn `isActive` back on and the real billing status is
+ * still there.
+ */
+export function effectiveOrgStatus(
+  org: { isActive?: boolean; subscriptionStatus: string },
+): string {
+  return org.isActive === false ? 'suspended' : org.subscriptionStatus;
+}
+
 export function statusChip(status: string): ChipTone {
   if (status === 'active') return 'green';
   if (status === 'trial') return 'yellow';

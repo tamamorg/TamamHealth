@@ -23,11 +23,12 @@ import { useToast } from '@/components/Toast';
 import type { OrganizationDoc, UserRole } from '@/lib/db-types';
 import { Plus, X, Edit3, Ban, RefreshCw, Eye, EyeOff, ShieldCheck } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
+import TenantCard, { TENANT_ACTION_ICONS } from '@/components/admin/TenantCard';
 import Select from '@/components/Select';
 
 import {
   SadbPage, SadbCard, SadbChip, SadbSearch, SadbGridList, SadbGridRow,
-  SadbSettingRow, SadbToggle, SadbConfirmModal, statusChip,
+  SadbSettingRow, SadbToggle, SadbConfirmModal, statusChip, effectiveOrgStatus,
 } from '@/components/admin/sadb-ui';
 
 import { BRAND_PRIMARY, BRAND_SECONDARY, WARNING } from '@/lib/theme-colors';
@@ -168,89 +169,10 @@ function tenantSync(org: OrganizationDoc, stats?: OrgRowStats): { label: string;
   return { label: `${pct}%`, color: pct < 95 ? 'var(--color-warning-700)' : 'var(--color-success-800)' };
 }
 
-/**
- * Tenant pop card — what a row click opens.
- *
- * The row already carries the tenant's health figures; repeating them here
- * (rather than jumping straight to a menu of two verbs) means the person about
- * to edit or deactivate an organization is looking at its plan, capacity and
- * sync state while they decide. The actions live in the footer, so the card is
- * both the detail view and the action surface — there is no second popup.
- */
-function TenantCard({ org, stats, t, onClose, onEdit, onDeactivate, onAddFacility, onAddUser }: {
-  org: OrganizationDoc;
-  stats?: OrgRowStats;
-  t: (key: string, vars?: Record<string, string | number>) => string;
-  onClose: () => void;
-  onEdit: () => void;
-  onDeactivate: () => void;
-  /** Provisioning shortcuts — navigate to the flows that own the create
-   *  forms (/hospitals?new=1 and /admin/users?new=1), so growing the tenant
-   *  the card is showing is one click, not a page hunt. */
-  onAddFacility: () => void;
-  onAddUser: () => void;
-}) {
-  const titleId = 'org-tenant-card-title';
-  const sync = tenantSync(org, stats);
-  const onboarded = onboardedLabel(org.createdAt);
-  const orgKind = org.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
-  const details: Array<{ label: string; value: ReactNode }> = [
-    { label: t('orgAdmin.colPlan'), value: <span className="capitalize">{org.subscriptionPlan}</span> },
-    { label: t('orgAdmin.colStatus'), value: <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip> },
-    { label: t('orgAdmin.colFacilities'), value: stats ? `${stats.hospitalCount} / ${org.maxHospitals}` : '…' },
-    { label: t('orgAdmin.colUsers'), value: stats ? `${stats.userCount} / ${org.maxUsers}` : '…' },
-    { label: t('orgAdmin.colSync'), value: <span style={{ color: sync.color }}>{sync.label}</span> },
-  ];
-  return (
-    <Modal onClose={onClose} width={520} labelledBy={titleId}>
-      <div className="modal-panel">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="sadb-card-meta">
-              {t('orgAdmin.tenantHealth')} · {orgKind}{onboarded ? ` · onboarded ${onboarded}` : ''}
-            </p>
-            <h2 id={titleId} className="text-lg font-bold mt-1 truncate" style={{ color: 'var(--text-primary)' }}>{org.name}</h2>
-          </div>
-          <button type="button" className="p-2 rounded-lg flex-shrink-0" onClick={onClose} aria-label={t('action.close')}>
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="py-5">
-          <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
-            {details.map(detail => (
-              <div key={detail.label} className="sadb-kv" style={{ padding: '12px 14px' }}>
-                <span>{detail.label}</span>
-                <span className="sadb-kv-value">{detail.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-2 pt-4 flex-wrap" style={{ borderTop: '1px solid var(--border-light)' }}>
-          {/* Grow-the-tenant shortcuts on the left; the card's own actions on
-              the right. Both navigate to the pages that own the create forms
-              rather than opening a third dialog over this one. */}
-          <span className="flex items-center gap-2">
-            <button type="button" className="sadb-action-btn" onClick={onAddFacility}>{t('orgHospitals.addFacility')}</button>
-            <button type="button" className="sadb-action-btn" onClick={onAddUser}>{t('orgUsers.createUser')}</button>
-          </span>
-          <span className="flex items-center gap-2">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>{t('action.close')}</button>
-            {/* Deactivate only while the org is still live — same rule the row
-                actions menu applied before this card replaced it. */}
-            {org.isActive && (
-              <button type="button" className="btn btn-sm sadb-btn-danger" onClick={onDeactivate}>
-                <Ban className="w-4 h-4" /> {t('orgAdmin.deactivate')}
-              </button>
-            )}
-            <button type="button" className="btn btn-primary btn-sm" onClick={onEdit}>
-              <Edit3 className="w-4 h-4" /> {t('action.edit')}
-            </button>
-          </span>
-        </div>
-      </div>
-    </Modal>
-  );
-}
+/* The tenant pop card moved to components/admin/TenantCard so the super-admin
+   dashboard opens the SAME card instead of unfolding a row into a different
+   shape. This page keeps what only it knows — sync health, and the create /
+   edit / deactivate flows it owns — and passes them in. */
 
 function onboardedLabel(iso?: string): string | null {
   if (!iso) return null;
@@ -263,7 +185,7 @@ export default function AdminOrganizationsPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const { organizations, loading, create, update, deactivate, getStats } = useOrganizations();
+  const { organizations, trashedOrganizations, loading, create, update, deactivate, getStats } = useOrganizations();
 
   // Local to this page now — the previous binding to the app-wide global
   // search leaked whatever was typed here into every other screen's search.
@@ -277,15 +199,23 @@ export default function AdminOrganizationsPage() {
   // outlive the screens that made them, so the handler stays. Runs once, after
   // the organizations load, since the id has to be resolved to a name the
   // search can match.
+  //
+  // It has a producer again: the dashboard's tenant card sends Edit here as
+  // `?org=<id>&edit=1` and its other tenant-level actions as `?org=<id>&card=1`,
+  // because this page owns the organization form and the deactivate confirm.
+  // The card opens on the same tenant so the trip does not lose your place.
   const deepLinkApplied = useRef(false);
   useEffect(() => {
     if (deepLinkApplied.current || organizations.length === 0) return;
-    const orgId = new URLSearchParams(window.location.search).get('org');
+    const params = new URLSearchParams(window.location.search);
+    const orgId = params.get('org');
     if (!orgId) return;
     const match = organizations.find(o => o._id === orgId);
     if (!match) return;
     deepLinkApplied.current = true;
     setSearch(match.name);
+    if (params.has('edit')) openEditRef.current?.(match);
+    else if (params.has('card')) setTenantCardId(match._id);
   }, [organizations]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -365,9 +295,20 @@ export default function AdminOrganizationsPage() {
     );
   }, [organizations, search]);
 
-  const activeOrgs = organizations.filter(o => o.isActive && o.subscriptionStatus !== 'suspended' && o.subscriptionStatus !== 'cancelled');
-  const trialOrgs = organizations.filter(o => o.subscriptionStatus === 'trial');
-  const suspendedOrgs = organizations.filter(o => o.subscriptionStatus === 'suspended' || o.subscriptionStatus === 'cancelled' || !o.isActive);
+  // Counted off the SAME status the rows show, so the chips add up to the list
+  // beneath them. They used to be three overlapping questions asked of two
+  // fields — a deactivated trial tenant answered yes to both "trial" and
+  // "suspended", so three organizations reported 2 active + 2 trial + 1
+  // suspended, and the one counted as suspended displayed TRIAL in its row.
+  //
+  // `organizations` is the LIVE list now: a deactivated tenant is in Trash
+  // (Settings → Trash) and appears in no console. So "suspended" here can only
+  // mean a live tenant whose SUBSCRIPTION is suspended or cancelled — one you
+  // are still running, that is not paying.
+  const statusOf = (o: OrganizationDoc) => effectiveOrgStatus(o);
+  const activeOrgs = organizations.filter(o => statusOf(o) === 'active');
+  const trialOrgs = organizations.filter(o => statusOf(o) === 'trial');
+  const suspendedOrgs = organizations.filter(o => statusOf(o) === 'suspended' || statusOf(o) === 'cancelled');
 
   const openCreate = () => {
     setEditingId(null);
@@ -392,6 +333,9 @@ export default function AdminOrganizationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Declared below this effect, so the deep-link handler above reaches it
+  // through a ref rather than forcing a reorder of the component.
+  const openEditRef = useRef<((org: OrganizationDoc) => void) | null>(null);
   const openEdit = (org: OrganizationDoc) => {
     setEditingId(org._id);
     setForm({
@@ -431,6 +375,8 @@ export default function AdminOrganizationsPage() {
     setAdminError(null);
     setShowForm(true);
   };
+  // The deep-link handler above calls this through the ref.
+  openEditRef.current = openEdit;
 
   // Shared tail of both the create and edit paths once the organization
   // write itself has succeeded: create the org_admin (scoped to `orgId` —
@@ -620,6 +566,9 @@ export default function AdminOrganizationsPage() {
             <span><i style={{ background: 'var(--color-success-800)' }} />{t('orgAdmin.statusActive')} ({activeOrgs.length})</span>
             <span><i style={{ background: 'var(--color-warning-600)' }} />{t('orgAdmin.statusTrial')} ({trialOrgs.length})</span>
             <span><i style={{ background: 'var(--color-danger-500)' }} />{t('orgAdmin.statusSuspended')} ({suspendedOrgs.length})</span>
+            {trashedOrganizations.length > 0 && (
+              <span><i style={{ background: 'var(--text-muted)' }} />{t('orgAdmin.inTrash')} ({trashedOrganizations.length})</span>
+            )}
           </div>
         }
       >
@@ -664,7 +613,7 @@ export default function AdminOrganizationsPage() {
                 <span className="sadb-tenant-num">{stats ? `${stats.userCount} / ${org.maxUsers}` : '…'}</span>
                 <span style={{ color: sync.color }}>{sync.label}</span>
                 <span style={{ textAlign: 'end' }}>
-                  <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip>
+                  <SadbChip tone={statusChip(effectiveOrgStatus(org))}>{effectiveOrgStatus(org)}</SadbChip>
                 </span>
               </SadbGridRow>
             );
@@ -672,18 +621,40 @@ export default function AdminOrganizationsPage() {
         </SadbGridList>
       </SadbCard>
 
-      {tenantCard && (
-        <TenantCard
-          org={tenantCard}
-          stats={orgStats[tenantCard._id]}
-          t={t}
-          onClose={() => setTenantCardId(null)}
-          onEdit={() => { setTenantCardId(null); openEdit(tenantCard); }}
-          onDeactivate={() => { setTenantCardId(null); setDeactivateTarget(tenantCard); }}
-          onAddFacility={() => router.push('/hospitals?new=1')}
-          onAddUser={() => router.push('/admin/users?new=1')}
-        />
-      )}
+      {tenantCard && (() => {
+        const stats = orgStats[tenantCard._id];
+        const sync = tenantSync(tenantCard, stats);
+        const onboarded = onboardedLabel(tenantCard.createdAt);
+        const orgKind = tenantCard.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
+        return (
+          <TenantCard
+            title={tenantCard.name}
+            context={`${t('orgAdmin.tenantHealth')} · ${orgKind}${onboarded ? ` · onboarded ${onboarded}` : ''}`}
+            closeLabel={t('action.close')}
+            onClose={() => setTenantCardId(null)}
+            details={[
+              { label: t('orgAdmin.colPlan'), value: <span className="capitalize">{tenantCard.subscriptionPlan}</span> },
+              { label: t('orgAdmin.colStatus'), value: <SadbChip tone={statusChip(effectiveOrgStatus(tenantCard))}>{effectiveOrgStatus(tenantCard)}</SadbChip> },
+              { label: t('orgAdmin.colFacilities'), value: stats ? `${stats.hospitalCount} / ${tenantCard.maxHospitals}` : '…' },
+              { label: t('orgAdmin.colUsers'), value: stats ? `${stats.userCount} / ${tenantCard.maxUsers}` : '…' },
+              { label: t('orgAdmin.colSync'), value: <span style={{ color: sync.color }}>{sync.label}</span> },
+            ]}
+            actions={[
+              // Grow-the-tenant shortcuts navigate to the pages that own the
+              // create forms rather than opening a third dialog over this one.
+              { key: 'add-facility', label: t('orgHospitals.addFacility'), icon: TENANT_ACTION_ICONS.addFacility, onClick: () => router.push('/hospitals?new=1') },
+              { key: 'add-user', label: t('orgUsers.createUser'), icon: TENANT_ACTION_ICONS.addUser, onClick: () => router.push('/admin/users?new=1') },
+              { key: 'users', label: t('orgAdmin.manageUsers'), icon: TENANT_ACTION_ICONS.users, onClick: () => router.push('/admin/users') },
+              { key: 'edit', label: t('action.edit'), icon: TENANT_ACTION_ICONS.edit, tone: 'primary' as const, onClick: () => { setTenantCardId(null); openEdit(tenantCard); } },
+              // Deactivate only while the org is still live — the same rule the
+              // row actions menu applied before this card replaced it.
+              ...(tenantCard.isActive
+                ? [{ key: 'deactivate', label: t('orgAdmin.deactivate'), icon: TENANT_ACTION_ICONS.deactivate, tone: 'danger' as const, onClick: () => { setTenantCardId(null); setDeactivateTarget(tenantCard); } }]
+                : []),
+            ]}
+          />
+        );
+      })()}
 
       {/* Create/Edit Modal */}
       {showForm && (

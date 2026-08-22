@@ -70,10 +70,48 @@ export function useOrganizations() {
     await loadOrganizations();
   }, [loadOrganizations]);
 
+  const restore = useCallback(async (
+    id: string,
+    actorId?: string, actorUsername?: string
+  ) => {
+    const { restoreOrganization } = await import('../services/organization-service');
+    await restoreOrganization(id, actorId, actorUsername);
+    await loadOrganizations();
+  }, [loadOrganizations]);
+
+  /** Permanent. The service refuses while the tenant still owns records. */
+  const purge = useCallback(async (
+    id: string,
+    actorId?: string, actorUsername?: string
+  ) => {
+    const { purgeOrganization } = await import('../services/organization-service');
+    await purgeOrganization(id, actorId, actorUsername);
+    await loadOrganizations();
+  }, [loadOrganizations]);
+
   const getStats = useCallback(async (orgId: string) => {
     const { getOrganizationStats } = await import('../services/organization-service');
     return getOrganizationStats(orgId);
   }, []);
 
-  return { organizations, loading, error, create, update, deactivate, getStats, reload: loadOrganizations };
+  /**
+   * The tenants a console should show, and the ones in Trash.
+   *
+   * Deactivating a tenant takes it out of every list rather than leaving it in
+   * place wearing a red chip: it is not something you are running any more, and
+   * a roster that mixes the two makes every count on the page a question about
+   * which kind it means. `trashed` is the Trash panel's list, and the only
+   * place a deactivated tenant is visible.
+   */
+  const liveOrganizations = organizations.filter(o => o.isActive !== false);
+  const trashedOrganizations = organizations.filter(o => o.isActive === false);
+
+  return {
+    organizations: liveOrganizations,
+    trashedOrganizations,
+    /** Every tenant, live and trashed — for callers that must not filter. */
+    allOrganizations: organizations,
+    loading, error, create, update, deactivate, restore, purge, getStats,
+    reload: loadOrganizations,
+  };
 }

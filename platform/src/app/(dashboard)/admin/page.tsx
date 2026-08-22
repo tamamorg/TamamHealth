@@ -33,11 +33,12 @@ import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { formatWhen } from '@/components/admin/sa-ui';
 import { buildRiskRows, readinessFromRisks } from '@/components/admin/risk-signals';
 import { getRiskResolutions, indexResolutions, isRiskResolved } from '@/lib/services/risk-resolution-service';
-import { SadbChip, SadbGridList, SadbGridRow, statusChip } from '@/components/admin/sadb-ui';
+import { SadbChip, SadbGridList, SadbGridRow, statusChip, effectiveOrgStatus } from '@/components/admin/sadb-ui';
 import { OrgFacilities, ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
+import TenantCard, { TENANT_ACTION_ICONS } from '@/components/admin/TenantCard';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import Modal from '@/components/Modal';
-import { ChevronDown, ChevronRight, X } from '@/components/icons/lucide';
+import { X } from '@/components/icons/lucide';
 import type {
   AuditLogDoc, ConflictQueueDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
 } from '@/lib/db-types';
@@ -160,7 +161,6 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   /* Which tenant rows have their facility list open. A set, not a single id:
      comparing two tenants' sites is the reason to open them at all. */
-  const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
 
   // Defense in depth on top of the Edge proxy check (SaPage used to own this).
   useEffect(() => {
@@ -354,11 +354,6 @@ export default function AdminDashboardPage() {
     [organizations],
   );
 
-  const toggleOrg = (id: string) => setExpandedOrgs(prev => {
-    const next = new Set(prev);
-    if (!next.delete(id)) next.add(id);
-    return next;
-  });
 
   const openRiskTone: Tone = openRisks.some(r => r.severity === 'critical' || r.severity === 'high')
     ? 'danger'
@@ -436,6 +431,41 @@ export default function AdminDashboardPage() {
     }
     return null;
   })();
+
+  /* The tenant card the Organizations list opens. Carried in the URL like the
+     KPI preview beside it, so a card survives a refresh and Back closes it —
+     and only as an id: every figure it shows is resolved again from the
+     scoped dashboard data, never from the link. */
+  const orgCardId = searchParams.get('org');
+  const orgCard = orgCardId ? orgRows.find(o => o._id === orgCardId) ?? null : null;
+  const orgCardOpenedHere = useRef(false);
+
+  const openOrgCard = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('org', id);
+    orgCardOpenedHere.current = true;
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const closeOrgCard = () => {
+    if (orgCardOpenedHere.current) {
+      orgCardOpenedHere.current = false;
+      router.back();
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('org');
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
+  };
+
+  /* Leaving for a page that owns a tenant-level form: drop the card from the
+     history entry first, so Back from there returns to a clean dashboard
+     rather than re-opening the card over it. */
+  const leaveForOrgPage = (href: string) => {
+    orgCardOpenedHere.current = false;
+    router.push(href);
+  };
 
   const openPreview = (token: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -590,18 +620,14 @@ export default function AdminDashboardPage() {
             >
               {orgRows.map(org => {
                 const facilities = facilitiesByOrg.get(org._id) || [];
-                const open = expandedOrgs.has(org._id);
                 const onboarded = org.createdAt ? new Date(org.createdAt) : null;
                 const onboardedLabel = onboarded && !isNaN(onboarded.getTime())
                   ? onboarded.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
                   : null;
                 return (
                   <div key={org._id}>
-                    <SadbGridRow template={ORG_GRID_TEMPLATE} onClick={() => toggleOrg(org._id)} ariaExpanded={open}>
+                    <SadbGridRow template={ORG_GRID_TEMPLATE} onClick={() => openOrgCard(org._id)}>
                       <span className="min-w-0 flex items-center gap-2">
-                        {open
-                          ? <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                          : <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />}
                         <span className="min-w-0">
                           <span className="sadb-tenant-name truncate" style={{ color: org.isActive ? undefined : 'var(--text-muted)' }}>
                             {org.name}
@@ -616,17 +642,9 @@ export default function AdminDashboardPage() {
                       <span className="sadb-tenant-num">{loading ? '…' : `${usersByOrg.get(org._id) || 0} / ${org.maxUsers}`}</span>
                       <span className="sadb-tenant-num">{loading ? '…' : (patientAgg.byOrg.get(org._id) || 0).toLocaleString()}</span>
                       <span style={{ textAlign: 'end' }}>
-                        <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip>
+                        <SadbChip tone={statusChip(effectiveOrgStatus(org))}>{effectiveOrgStatus(org)}</SadbChip>
                       </span>
                     </SadbGridRow>
-                    {open && (
-                      <OrgFacilities
-                        facilities={facilities}
-                        usersByFacility={usersByFacility}
-                        loading={loading}
-                        onOpen={id => router.push(`/hospitals/${id}/manage`)}
-                      />
-                    )}
                   </div>
                 );
               })}
@@ -638,6 +656,52 @@ export default function AdminDashboardPage() {
       {preview && (
         <PreviewDialog preview={preview} onClose={closePreview} onOpen={() => openFullPage(preview)} />
       )}
+      {orgCard && (() => {
+        const facilities = facilitiesByOrg.get(orgCard._id) || [];
+        const onboarded = orgCard.createdAt ? new Date(orgCard.createdAt) : null;
+        const onboardedLabel = onboarded && !isNaN(onboarded.getTime())
+          ? onboarded.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+          : null;
+        const orgPage = `/admin/organizations?org=${orgCard._id}`;
+        return (
+          <TenantCard
+            title={orgCard.name}
+            context={`Tenant · ${orgCard.orgType === 'public' ? 'Public' : 'Private'}${onboardedLabel ? ` · onboarded ${onboardedLabel}` : ''}`}
+            closeLabel="Close"
+            expandLabel="Open full page"
+            onClose={closeOrgCard}
+            onExpand={() => leaveForOrgPage(orgPage)}
+            bodyTitle="Facilities & accounts"
+            details={[
+              { label: 'Plan', value: <span className="capitalize">{orgCard.subscriptionPlan}</span> },
+              { label: 'Status', value: <SadbChip tone={statusChip(effectiveOrgStatus(orgCard))}>{effectiveOrgStatus(orgCard)}</SadbChip> },
+              { label: 'Facilities', value: `${facilities.length} / ${orgCard.maxHospitals}` },
+              { label: 'Users', value: loading ? '…' : `${usersByOrg.get(orgCard._id) || 0} / ${orgCard.maxUsers}` },
+              { label: 'Patients', value: loading ? '…' : (patientAgg.byOrg.get(orgCard._id) || 0).toLocaleString() },
+            ]}
+            actions={[
+              /* Create goes to the flow that owns the form; edit and deactivate
+                 go to the registry, which owns the organization form and the
+                 deactivate confirm. Both carry ?org= so the destination lands
+                 on this tenant instead of a list to search again. */
+              { key: 'add-facility', label: 'Add facility', icon: TENANT_ACTION_ICONS.addFacility, onClick: () => leaveForOrgPage('/hospitals?new=1') },
+              { key: 'add-user', label: 'Add user', icon: TENANT_ACTION_ICONS.addUser, onClick: () => leaveForOrgPage('/admin/users?new=1') },
+              { key: 'users', label: 'Manage users', icon: TENANT_ACTION_ICONS.users, onClick: () => leaveForOrgPage('/admin/users') },
+              { key: 'edit', label: 'Edit organization', icon: TENANT_ACTION_ICONS.edit, tone: 'primary' as const, onClick: () => leaveForOrgPage(`${orgPage}&edit=1`) },
+              ...(orgCard.isActive
+                ? [{ key: 'deactivate', label: 'Deactivate', icon: TENANT_ACTION_ICONS.deactivate, tone: 'danger' as const, onClick: () => leaveForOrgPage(`${orgPage}&card=1`) }]
+                : []),
+            ]}
+          >
+            <OrgFacilities
+              facilities={facilities}
+              usersByFacility={usersByFacility}
+              loading={loading}
+              onOpen={id => leaveForOrgPage(`/hospitals?facility=${id}`)}
+            />
+          </TenantCard>
+        );
+      })()}
     </main>
   );
 }
