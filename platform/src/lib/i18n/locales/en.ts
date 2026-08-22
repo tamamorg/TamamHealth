@@ -3022,6 +3022,8 @@ const en: TranslationMap = {
   'login.backToSite': 'Back to tamamhealth.org',
   'login.demoAccounts': 'Demo Accounts',
   'login.errorInvalidCredentials': 'Invalid credentials. Please try again.',
+  'login.errorImpersonationDisabled': 'Signing in as another role is switched off for this platform. Turn on support impersonation in Security settings first.',
+  'login.errorRoleNotPermitted': 'You can only sign in as your assigned role.',
   'login.errorLoginFailed': 'Login failed. Please try again.',
   'login.errorTooManyAttempts': 'Too many failed attempts. Wait a few minutes, then try again.',
   'login.errorTooManyAttemptsIn': 'Too many failed attempts. Try again in {{minutes}} minutes.',

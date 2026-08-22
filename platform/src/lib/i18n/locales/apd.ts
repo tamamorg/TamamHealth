@@ -3014,6 +3014,8 @@ const apd: TranslationMap = {
   'login.backToSite': 'رجوع لـ tamamhealth.org',
   'login.demoAccounts': 'حسابات تجريبية',
   'login.errorInvalidCredentials': 'بيانات الدخول غلط. حاول تاني من فضلك.',
+  'login.errorImpersonationDisabled': 'الدخول بدور تاني مقفول في المنصة دي. افتح انتحال هوية الدعم في إعدادات الأمان الأول.',
+  'login.errorRoleNotPermitted': 'تقدر تدخل بالدور المخصص ليك بس.',
   'login.errorLoginFailed': 'الدخول فشل. حاول تاني من فضلك.',
   'login.errorTooManyAttempts': 'محاولات فاشلة كتيرة. استنى شوية دقايق وحاول تاني.',
   'login.errorTooManyAttemptsIn': 'محاولات فاشلة كتيرة. حاول تاني بعد {{minutes}} دقيقة.',

@@ -195,6 +195,17 @@ export default function LoginPage() {
         : t('login.errorTooManyAttempts');
     }
     if (failure.status >= 500) return t('login.errorServiceUnavailable');
+    // 403 is a policy refusal, and the password was already correct by the time
+    // the server sent it. Falling through to `fallback` here would tell a
+    // super-admin blocked by the impersonation switch to retype a password that
+    // was never wrong — the exact failure this function exists to prevent.
+    if (failure.status === 403) {
+      if (failure.code === 'impersonation_disabled') return t('login.errorImpersonationDisabled');
+      if (failure.code === 'role_not_permitted') return t('login.errorRoleNotPermitted');
+      // An unrecognised 403 still beats the credentials message: the server's
+      // own prose is at least about the real reason, even if it is untranslated.
+      if (failure.message) return failure.message;
+    }
     return fallback;
   };
 
