@@ -7,13 +7,13 @@
  * environments separate as required by the spec.
  */
 import { v4 as uuidv4 } from 'uuid';
-import { conversationsDB, messagesDB, usersDB } from '../db';
-import type { ConversationDoc, MessageDoc, StaffPresence, UserDoc } from '../db-types';
-import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
-import { findByType } from './db-query';
-import { createMessage } from './message-service';
-import { logAuditSafe } from './audit-service';
+import { conversationsDB, messagesDB, usersDB } from '@/lib/db';
+import type { ConversationDoc, MessageDoc, StaffPresence, UserDoc } from '@/lib/db-types';
+import type { DataScope } from '@/lib/services/data-scope';
+import { filterByScope } from '@/lib/services/data-scope';
+import { findByType } from '@/lib/services/db-query';
+import { createMessage } from '@/modules/communication/services/message-service';
+import { logAuditSafe } from '@/lib/services/audit-service';
 
 /** A staff member may edit/delete their own message within this window. */
 export const EDIT_WINDOW_MS = 15 * 60 * 1000;

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Keyboard } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useMessagingDock } from '@/lib/messaging-dock-context';
+import { useMessagingDock } from '@/modules/communication/client';
 
 const SHORTCUTS = [
   { keys: ['Alt', 'N'], altKeys: ['Ctrl', 'N'], descriptionKey: 'keyboardShortcuts.newPatient', action: '/patients/new' },

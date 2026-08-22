@@ -68,7 +68,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
 
   const load = useCallback(async () => {
     if (!currentUser) return;
-    const { getVisibleAnnouncements, canPostAnnouncements } = await import('@/lib/services/announcement-service');
+    const { getVisibleAnnouncements, canPostAnnouncements } = await import('@/modules/communication/services/announcement-service');
     setCanPost(canPostAnnouncements(currentUser.role));
     const scope: DataScope = {
       role: currentUser.role,
@@ -94,7 +94,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
     if (!title.trim() || !bodyText.trim()) { setError('Title and message are required.'); return; }
     setSaving(true);
     try {
-      const { createAnnouncement } = await import('@/lib/services/announcement-service');
+      const { createAnnouncement } = await import('@/modules/communication/services/announcement-service');
       const chosenFacility = isOrgLevelAuthor
         ? facilities.find(h => h._id === facilityChoice)
         : { _id: currentUser.hospitalId as string, name: currentUser.hospitalName as string };
@@ -124,7 +124,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
 
   const handleDismiss = async (id: string) => {
     if (!currentUser) return;
-    const { dismissAnnouncement } = await import('@/lib/services/announcement-service');
+    const { dismissAnnouncement } = await import('@/modules/communication/services/announcement-service');
     await dismissAnnouncement(id, currentUser._id);
     await load();
   };

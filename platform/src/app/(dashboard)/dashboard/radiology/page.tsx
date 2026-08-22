@@ -241,7 +241,7 @@ export default function RadiologyDashboard() {
       // clinician directly. Best-effort — the report is already durably
       // saved, so a notification failure must not undo that.
       try {
-        const { createMessage } = await import('@/lib/services/message-service');
+        const { createMessage } = await import('@/modules/communication/services/message-service');
         await createMessage({
           recipientType: 'staff',
           patientId: study.patientId,

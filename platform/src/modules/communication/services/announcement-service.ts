@@ -1,10 +1,10 @@
-import { announcementsDB } from '../db';
-import type { AnnouncementDoc, UserRole } from '../db-types';
-import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
-import { findByType } from './db-query';
+import { announcementsDB } from '@/lib/db';
+import type { AnnouncementDoc, UserRole } from '@/lib/db-types';
+import type { DataScope } from '@/lib/services/data-scope';
+import { filterByScope } from '@/lib/services/data-scope';
+import { findByType } from '@/lib/services/db-query';
 import { v4 as uuidv4 } from 'uuid';
-import { logAuditSafe } from './audit-service';
+import { logAuditSafe } from '@/lib/services/audit-service';
 
 /** Roles allowed to post announcements. Everyone else is read-only. */
 export const ANNOUNCEMENT_AUTHOR_ROLES: UserRole[] = [

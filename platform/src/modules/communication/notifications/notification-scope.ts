@@ -21,7 +21,7 @@
  *      *routine* enough to leave out.
  */
 
-import type { UserRole } from './db-types';
+import type { UserRole } from '@/lib/db-types';
 
 /**
  * The notification sources `useNotifications` aggregates. Defined here rather

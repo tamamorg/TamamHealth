@@ -18,7 +18,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
  * has not moved yet and turn every intermediate commit into a wall of errors.
  * Adding a name here is the last step of migrating that domain.
  */
-const MIGRATED_MODULES = ['identity'];
+const MIGRATED_MODULES = ['identity', 'communication'];
 
 /**
  * The directories inside a module that are private.
@@ -30,7 +30,7 @@ const MIGRATED_MODULES = ['identity'];
  * looked correct. An explicit list cannot fail that way, and it doubles as
  * documentation of what a module keeps to itself.
  */
-const PRIVATE_MODULE_DIRS = ['core', 'policy', 'mfa', 'provisioning', 'email', 'components', 'hooks'];
+const PRIVATE_MODULE_DIRS = ['core', 'policy', 'mfa', 'provisioning', 'email', 'components', 'hooks', 'notifications'];
 
 /** Every deep path that is off-limits from outside a module. */
 function privatePaths(name) {

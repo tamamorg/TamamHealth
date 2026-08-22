@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
-import type { MessageDoc } from '../db-types';
-import { messagesDB } from '../db';
-import { useDataScope } from './useDataScope';
+import { makeCoalescer } from '@/lib/hooks/live-reload';
+import type { MessageDoc } from '@/lib/db-types';
+import { messagesDB } from '@/lib/db';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 export function useMessages() {
   const [messages, setMessages] = useState<MessageDoc[]>([]);
@@ -15,7 +15,7 @@ export function useMessages() {
   const loadMessages = useCallback(async () => {
     try {
       setError(null);
-      const { getAllMessages } = await import('../services/message-service');
+      const { getAllMessages } = await import('@/modules/communication/services/message-service');
       const data = await getAllMessages(scope);
       setMessages(data);
     } catch (err) {
@@ -45,7 +45,7 @@ export function useMessages() {
   }, [loadMessages]);
 
   const send = useCallback(async (data: Omit<MessageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'status'>) => {
-    const { createMessage } = await import('../services/message-service');
+    const { createMessage } = await import('@/modules/communication/services/message-service');
     const msg = await createMessage(data);
     await loadMessages();
     return msg;

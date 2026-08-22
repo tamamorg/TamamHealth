@@ -1,12 +1,12 @@
-import { messagesDB } from '../db';
-import { findByType } from './db-query';
-import type { MessageDoc } from '../db-types';
-import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
+import { messagesDB } from '@/lib/db';
+import { findByType } from '@/lib/services/db-query';
+import type { MessageDoc } from '@/lib/db-types';
+import type { DataScope } from '@/lib/services/data-scope';
+import { filterByScope } from '@/lib/services/data-scope';
 import { v4 as uuidv4 } from 'uuid';
-import { logAuditSafe } from './audit-service';
-import { emitSyncEvent } from './sync-event-service';
-import { maybeDecrypt, maybeEncrypt } from '../field-encryption';
+import { logAuditSafe } from '@/lib/services/audit-service';
+import { emitSyncEvent } from '@/lib/services/sync-event-service';
+import { maybeDecrypt, maybeEncrypt } from '@/lib/field-encryption';
 
 const ENCRYPTED_MESSAGE_FIELDS = ['subject', 'body'] as const;
 

@@ -16,22 +16,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import EhrListHeader, { LIST_STAT_COLORS, EhrListFilters, EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
 import EmptyState from '@/components/EmptyState';
 import { Bell, BellOff, Check, ChevronRight, RefreshCw } from '@/components/icons/lucide';
-import {
-  useNotifications,
-  getNotificationAlertPref,
-  setNotificationAlertPref,
-  type NotificationItem,
-  type NotificationSeverity,
-  type NotificationType,
-} from '@/lib/hooks/useNotifications';
-import {
-  NOTIFICATION_META,
-  NOTIFICATION_TYPE_ORDER,
-  SEVERITY_META,
-  notificationBucket,
-  relativeNotificationTime,
-} from '@/lib/notification-meta';
+
 import Select from '@/components/Select';
+import { NOTIFICATION_META, NOTIFICATION_TYPE_ORDER, SEVERITY_META, getNotificationAlertPref, notificationBucket, relativeNotificationTime, setNotificationAlertPref, useNotifications } from '@/modules/communication/client';
+import type { NotificationItem, NotificationSeverity, NotificationType } from '@/modules/communication/client';
 
 /** Rows rendered before "Show more" — long feeds stay responsive. */
 const PAGE_SIZE = 60;

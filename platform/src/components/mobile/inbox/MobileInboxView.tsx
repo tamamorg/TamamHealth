@@ -4,8 +4,9 @@ import { useMemo } from 'react';
 import { Loader2 } from '@/components/icons/lucide';
 import EmptyState from '@/components/EmptyState';
 import { useAuth } from '@/lib/context';
-import { useMessages } from '@/lib/hooks/useMessages';
+
 import { initials, avatarTint } from '@/lib/patient-utils';
+import { useMessages } from '@/modules/communication/client';
 
 export default function MobileInboxView() {
   const { currentUser } = useAuth();

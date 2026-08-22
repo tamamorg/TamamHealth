@@ -32,7 +32,7 @@ export function useStaffChat() {
   const loadConversations = useCallback(async () => {
     if (!currentUser) return;
     try {
-      const { getConversationsForUser } = await import('../services/conversation-service');
+      const { getConversationsForUser } = await import('@/modules/communication/services/conversation-service');
       const data = await getConversationsForUser(currentUser._id, {
         role: currentUser.role,
         orgId: currentUser.orgId,
@@ -46,7 +46,7 @@ export function useStaffChat() {
 
   const loadMessages = useCallback(async (conversationId: string | null) => {
     if (!conversationId) { setMessages([]); return; }
-    const { getConversationMessages } = await import('../services/conversation-service');
+    const { getConversationMessages } = await import('@/modules/communication/services/conversation-service');
     setMessages(await getConversationMessages(conversationId));
   }, []);
 
@@ -77,7 +77,7 @@ export function useStaffChat() {
     const hasUnread = messages.some(m => m.fromDoctorId !== currentUser._id && !m.readBy?.includes(currentUser._id));
     if (!hasUnread) return;
     (async () => {
-      const { markConversationRead } = await import('../services/conversation-service');
+      const { markConversationRead } = await import('@/modules/communication/services/conversation-service');
       await markConversationRead(activeId, currentUser._id);
     })();
   }, [activeId, messages, currentUser]);
@@ -94,7 +94,7 @@ export function useStaffChat() {
     phiAcknowledged?: boolean,
   ) => {
     if (!me || !activeConversation || (!body.trim() && !attachments?.length)) return;
-    const { sendConversationMessage } = await import('../services/conversation-service');
+    const { sendConversationMessage } = await import('@/modules/communication/services/conversation-service');
     await sendConversationMessage({
       conversationId: activeConversation._id,
       conversationName: activeConversation.name || activeConversation.participantNames?.join(', ') || 'Chat',
@@ -112,7 +112,7 @@ export function useStaffChat() {
 
   const startDM = useCallback(async (other: Participant) => {
     if (!me) return;
-    const { getOrCreateDM } = await import('../services/conversation-service');
+    const { getOrCreateDM } = await import('@/modules/communication/services/conversation-service');
     const conv = await getOrCreateDM(me, other, ctx);
     await loadConversations();
     setActiveId(conv._id);
@@ -121,7 +121,7 @@ export function useStaffChat() {
 
   const createGroupChat = useCallback(async (name: string, participants: Participant[]) => {
     if (!me) return;
-    const { createGroup } = await import('../services/conversation-service');
+    const { createGroup } = await import('@/modules/communication/services/conversation-service');
     const conv = await createGroup({ name, participants, createdBy: me, ...ctx });
     await loadConversations();
     setActiveId(conv._id);
@@ -130,67 +130,67 @@ export function useStaffChat() {
 
   const togglePin = useCallback(async (conversationId: string) => {
     if (!me) return;
-    const { togglePinConversation } = await import('../services/conversation-service');
+    const { togglePinConversation } = await import('@/modules/communication/services/conversation-service');
     await togglePinConversation(conversationId, me.id);
     await loadConversations();
   }, [me, loadConversations]);
 
   const toggleMute = useCallback(async (conversationId: string) => {
     if (!me) return;
-    const { toggleMuteConversation } = await import('../services/conversation-service');
+    const { toggleMuteConversation } = await import('@/modules/communication/services/conversation-service');
     await toggleMuteConversation(conversationId, me.id);
     await loadConversations();
   }, [me, loadConversations]);
 
   const editMessage = useCallback(async (messageId: string, body: string) => {
     if (!me) return;
-    const svc = await import('../services/conversation-service');
+    const svc = await import('@/modules/communication/services/conversation-service');
     await svc.editMessage(messageId, me.id, body);
     if (activeId) await loadMessages(activeId);
   }, [me, activeId, loadMessages]);
 
   const deleteMessage = useCallback(async (messageId: string) => {
     if (!me) return;
-    const svc = await import('../services/conversation-service');
+    const svc = await import('@/modules/communication/services/conversation-service');
     await svc.deleteMessage(messageId, me.id);
     if (activeId) { await loadMessages(activeId); await loadConversations(); }
   }, [me, activeId, loadMessages, loadConversations]);
 
   const react = useCallback(async (messageId: string, emoji: string) => {
     if (!me) return;
-    const svc = await import('../services/conversation-service');
+    const svc = await import('@/modules/communication/services/conversation-service');
     await svc.toggleReaction(messageId, emoji, me.id);
     if (activeId) await loadMessages(activeId);
   }, [me, activeId, loadMessages]);
 
   const renameGroup = useCallback(async (conversationId: string, name: string) => {
-    const svc = await import('../services/conversation-service');
+    const svc = await import('@/modules/communication/services/conversation-service');
     await svc.renameGroup(conversationId, name);
     await loadConversations();
   }, [loadConversations]);
 
   const addMembers = useCallback(async (conversationId: string, members: Participant[]) => {
-    const svc = await import('../services/conversation-service');
+    const svc = await import('@/modules/communication/services/conversation-service');
     await svc.addMembers(conversationId, members);
     await loadConversations();
   }, [loadConversations]);
 
   const removeMember = useCallback(async (conversationId: string, userId: string) => {
-    const svc = await import('../services/conversation-service');
+    const svc = await import('@/modules/communication/services/conversation-service');
     await svc.removeMember(conversationId, userId);
     await loadConversations();
   }, [loadConversations]);
 
   const leaveConversation = useCallback(async (conversationId: string) => {
     if (!me) return;
-    const svc = await import('../services/conversation-service');
+    const svc = await import('@/modules/communication/services/conversation-service');
     await svc.removeMember(conversationId, me.id);
     if (activeId === conversationId) setActiveId(null);
     await loadConversations();
   }, [me, activeId, loadConversations]);
 
   const deleteConversation = useCallback(async (conversationId: string) => {
-    const svc = await import('../services/conversation-service');
+    const svc = await import('@/modules/communication/services/conversation-service');
     await svc.deleteConversation(conversationId);
     if (activeId === conversationId) setActiveId(null);
     await loadConversations();
@@ -198,7 +198,7 @@ export function useStaffChat() {
 
   const setPresence = useCallback(async (presence: import('../db-types').StaffPresence) => {
     if (!me) return;
-    const svc = await import('../services/conversation-service');
+    const svc = await import('@/modules/communication/services/conversation-service');
     await svc.setPresence(me.id, presence);
   }, [me]);
 

@@ -130,7 +130,7 @@ export default function DocumentsPanel({
   // right after you click the tab is worse than one cheap patient-scoped read.
   const loadSentEducation = useCallback(async () => {
     try {
-      const { getMessagesByPatient } = await import('@/lib/services/message-service');
+      const { getMessagesByPatient } = await import('@/modules/communication/services/message-service');
       const all = await getMessagesByPatient(patient._id);
       setSentEducation(all.filter(m => m.patientEducation && m.direction !== 'patient_to_staff'));
     } catch {

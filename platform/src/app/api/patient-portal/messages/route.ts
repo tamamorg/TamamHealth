@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const { getMessagesByPatient } = await import('@/lib/services/message-service');
+    const { getMessagesByPatient } = await import('@/modules/communication/services/message-service');
     const messages = await getMessagesByPatient(auth.sub);
     return NextResponse.json({ messages });
   } catch (err) {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const { createMessage } = await import('@/lib/services/message-service');
+    const { createMessage } = await import('@/modules/communication/services/message-service');
     const doc = await createMessage(
       messageInput as Omit<MessageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'status'>
     );

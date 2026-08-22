@@ -190,7 +190,7 @@ export function useLabWorkflow(
 
     if (resultDraft.critical) {
       try {
-        const { createMessage } = await import('@/lib/services/message-service');
+        const { createMessage } = await import('@/modules/communication/services/message-service');
         await createMessage({
           recipientType: 'staff',
           patientId: order.patientId,
@@ -271,7 +271,7 @@ export function useLabWorkflow(
 
   /** Send the report to the ordering clinician's inbox. */
   const notifyClinician = useCallback(() => run(async () => {
-    const { createMessage } = await import('@/lib/services/message-service');
+    const { createMessage } = await import('@/modules/communication/services/message-service');
     await createMessage({
       recipientType: 'staff',
       patientId: order.patientId,

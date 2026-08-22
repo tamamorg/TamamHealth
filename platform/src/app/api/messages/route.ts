@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
     if (!hasRole(auth, READ_ROLES)) return forbidden();
-    const { getAllMessages, getMessagesByPatient, getMessagesByDoctor } = await import('@/lib/services/message-service');
+    const { getAllMessages, getMessagesByPatient, getMessagesByDoctor } = await import('@/modules/communication/services/message-service');
     const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
     const scope = buildScopeFromAuth(auth);
     const url = new URL(request.url);
@@ -60,7 +60,7 @@ async function postHandler(request: NextRequest) {
     const action = body.action as string;
     // Update message status
     if (action === 'update-status' && body.messageId) {
-      const { updateMessage } = await import('@/lib/services/message-service');
+      const { updateMessage } = await import('@/modules/communication/services/message-service');
       const { messagesDB } = await import('@/lib/db');
       const { filterByScope, buildScopeFromAuth } = await import('@/lib/services/data-scope');
       try {
@@ -79,7 +79,7 @@ async function postHandler(request: NextRequest) {
     }
     // Delete message
     if (action === 'delete' && body.messageId) {
-      const { deleteMessage } = await import('@/lib/services/message-service');
+      const { deleteMessage } = await import('@/modules/communication/services/message-service');
       const { messagesDB } = await import('@/lib/db');
       const { filterByScope, buildScopeFromAuth } = await import('@/lib/services/data-scope');
       try {
@@ -110,7 +110,7 @@ async function postHandler(request: NextRequest) {
         return forbidden('Access denied to this patient record');
       }
     }
-    const { createMessage, updateMessage } = await import('@/lib/services/message-service');
+    const { createMessage, updateMessage } = await import('@/modules/communication/services/message-service');
     const channel = (body.channel as 'app' | 'sms' | 'both') || 'app';
     const messageText = (body.content as string) || (body.body as string) || '';
     const recipientType = (body.recipientType as 'patient' | 'staff') || 'patient';

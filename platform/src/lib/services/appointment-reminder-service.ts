@@ -3,10 +3,11 @@ import type { AppointmentDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { logAuditSafe } from './audit-service';
-import { createMessage, updateMessage } from './message-service';
+
 import { findByType } from './db-query';
 import { sendSms } from '../sms';
 import { jubaDate } from '../time-juba';
+import { createMessage, updateMessage } from '@/modules/communication/services/message-service';
 
 export async function getUpcomingReminders(daysAhead?: number, facilityId?: string, scope?: DataScope): Promise<AppointmentDoc[]> {
   /* istanbul ignore next -- defensive default */

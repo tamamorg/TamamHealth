@@ -12,7 +12,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useStaffChat } from '@/lib/hooks/useStaffChat';
 import { useUsers } from '@/lib/hooks/useUsers';
-import { useMessagingDock } from '@/lib/messaging-dock-context';
+import { useMessagingDock } from '@/modules/communication/components/messaging-dock-context';
 import { getRoleConfig } from '@/lib/permissions';
 import { initials, avatarTint } from '@/lib/patient-utils';
 import { ROLE_LABEL } from '@/lib/role-display';

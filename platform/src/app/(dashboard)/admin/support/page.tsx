@@ -9,9 +9,7 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 
 import { getRecentAuditLogs } from '@/lib/services/audit-service';
-import {
-  getVisibleAnnouncements, createAnnouncement, canPostAnnouncements,
-} from '@/lib/services/announcement-service';
+
 import type { UserDoc, AuditLogDoc, AnnouncementDoc, AnnouncementPriority } from '@/lib/db-types';
 import {
   SadbPage, SadbShell, useSadbTab, SadbPanelHeader, SadbCard, SadbChip, SadbKvRow,
@@ -21,6 +19,7 @@ import { SaTable, formatWhen } from '@/components/admin/sa-ui';
 import { Send, Building2, Users, ShieldCheck, Megaphone, ClipboardList } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { getAllUsers } from '@/modules/identity/services/user-service';
+import { canPostAnnouncements, createAnnouncement, getVisibleAnnouncements } from '@/modules/communication/services/announcement-service';
 
 const SUPPORT_ACTION_RE = /support|impersonat|emergency|break/i;
 

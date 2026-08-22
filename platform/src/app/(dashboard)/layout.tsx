@@ -11,8 +11,7 @@ import PreferenceEffects from '@/components/PreferenceEffects';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
 import LockScreen from '@/components/LockScreen';
 import ConnectivityNotice from '@/components/ConnectivityNotice';
-import MessagingDock from '@/components/MessagingDock';
-import { MessagingDockProvider } from '@/lib/messaging-dock-context';
+
 import { TourProvider } from '@/lib/tour/tour-context';
 import GetStartedCard from '@/components/onboarding/GetStartedCard';
 
@@ -24,6 +23,7 @@ import MobileAppShell from '@/components/mobile/MobileAppShell';
 import UsageTracker from '@/components/UsageTracker';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import RouteContextBar from '@/components/navigation/RouteContextBar';
+import { MessagingDock, MessagingDockProvider } from '@/modules/communication/client';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();

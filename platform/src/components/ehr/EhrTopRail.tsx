@@ -23,7 +23,7 @@ import { getRoleConfig } from '@/lib/permissions';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import type { NavItem } from '@/lib/permissions';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { useNotifications } from '@/lib/hooks/useNotifications';
+
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
 import { formatPhoneShared } from '@/lib/field-formats';
@@ -43,6 +43,7 @@ import {
   uniqueAllowedNavItems,
 } from './ehr-navigation';
 import { moduleBadgeCounts } from '@/lib/module-badges';
+import { useNotifications } from '@/modules/communication/client';
 
 export default function EhrTopRail() {
   const router = useRouter();
@@ -175,7 +176,6 @@ export default function EhrTopRail() {
     [headerShortcutHrefs, navItems],
   );
 
-
   const navLabel = (item: NavItem): string => navItemLabel(item, t);
 
   // Resolved once, then handed to the dropdown and the shortcut row, so all
@@ -304,7 +304,6 @@ export default function EhrTopRail() {
             items={addMenuItems}
           />
         )}
-
 
       </nav>
 

@@ -8,10 +8,11 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import { Megaphone, Bell, ClipboardCheck } from '@/components/icons/lucide';
-import AnnouncementsPanel from '@/components/AnnouncementsPanel';
+
 import NotificationsPanel from '@/components/NotificationsPanel';
 import TasksPanel from '@/components/TasksPanel';
 import { useTasks } from '@/lib/hooks/useTasks';
+import { AnnouncementsPanel } from '@/modules/communication/client';
 
 /**
  * The rail's one count colour (`.ehr-top-action-badge`, the module shortcut

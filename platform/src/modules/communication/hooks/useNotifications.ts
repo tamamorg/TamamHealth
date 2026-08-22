@@ -1,37 +1,26 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useApp } from '../context';
-import { makeCoalescer } from './live-reload';
-import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB } from '../db';
-import { isForViewer, isKindRelevantToRole } from '../notification-scope';
-import type { NotificationKind } from '../notification-scope';
+import { useApp } from '@/lib/context';
+import { makeCoalescer } from '@/lib/hooks/live-reload';
+import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB } from '@/lib/db';
+import { isForViewer, isKindRelevantToRole } from '@/modules/communication/notifications/notification-scope';
+import type { NotificationKind } from '@/modules/communication/notifications/notification-scope';
+// The shapes moved to `notifications/types.ts` so a server module can name a
+// notification without importing a React hook. Re-exported so existing
+// consumers of this file keep working.
+export type {
+  NotificationType, NotificationSeverity, NotificationItem,
+} from '@/modules/communication/notifications/types';
+import type { NotificationItem, NotificationSeverity } from '@/modules/communication/notifications/types';
 import { todayIso as isoToday } from '@/lib/date-utils';
 import {
   NOTIFICATION_READS_EVENT,
   getReadNotificationIds,
   markNotificationsRead,
-} from '../notification-reads';
-import { getRoleSettings, subscribeRoleSettings } from '../settings/role-settings-store';
-import { filterNotifications } from '../settings/notification-preferences';
-
-export type NotificationType = NotificationKind;
-/** How hard the item pushes: an outbreak or a breached critical result is not
- *  the same class of thing as "a prescription is waiting". Drives the filter
- *  tabs and row treatment on /notifications. */
-export type NotificationSeverity = 'critical' | 'warning' | 'info';
-
-export type NotificationItem = {
-  id: string;
-  type: NotificationType;
-  severity: NotificationSeverity;
-  title: string;
-  subtitle: string;
-  time: string;
-  href: string;
-  /** Set from per-device read state — see lib/notification-reads.ts. */
-  read?: boolean;
-};
+} from '@/modules/communication/notifications/notification-reads';
+import { getRoleSettings, subscribeRoleSettings } from '@/lib/settings/role-settings-store';
+import { filterNotifications } from '@/lib/settings/notification-preferences';
 
 /**
  * Aggregates every facility-level event a user should be notified about into
@@ -144,7 +133,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     const relevant = (kind: NotificationKind) => isKindRelevantToRole(kind, currentUser?.role);
 
     if (relevant('referral')) try {
-      const { getAllReferrals } = await import('../services/referral-service');
+      const { getAllReferrals } = await import('@/lib/services/referral-service');
       const refs = await getAllReferrals(scope);
       const myHospitalId = currentUser?.hospitalId;
       // Recent-acceptance window so a sender's "patient received" banner clears
@@ -187,7 +176,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // the sender must learn the answer — a transfer accepted or rejected in
     // silence leaves one of the two teams believing they own the patient.
     try {
-      const svc = await import('../services/patient-transfer-service');
+      const svc = await import('@/lib/services/patient-transfer-service');
       const myId = currentUser?._id;
       if (myId) {
         // One read serves both directions. The decision feed needs `rejected` /
@@ -240,7 +229,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     } catch { /* offline */ }
 
     try {
-      const { getActiveAlerts } = await import('../services/surveillance-service');
+      const { getActiveAlerts } = await import('@/lib/services/surveillance-service');
       // Scoped: an outbreak alert reaches every role, but only within the
       // viewer's own tenant — unscoped, every alert in the replicated DB
       // reached every user on the platform.
@@ -261,7 +250,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // the shared pool clinicians pull the next patient from. Filtering it by
     // ownership would empty the queue for everyone — there is no owner yet.
     if (relevant('triage')) try {
-      const { getActiveTriage } = await import('../services/triage-service');
+      const { getActiveTriage } = await import('@/lib/services/triage-service');
       const triages = await getActiveTriage(scope);
       const waiting = triages.filter(x => x.status === 'pending');
       // Most acute first, then longest-waiting, so the per-source cap drops
@@ -291,8 +280,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     const nowMsLocal = Date.now();
 
     if (relevant('lab')) try {
-      const { getAllLabResults, effectiveOrderStatus } = await import('../services/lab-service');
-      const { getResultReviewSLA } = await import('../clinical-flow/order-lifecycles');
+      const { getAllLabResults, effectiveOrderStatus } = await import('@/lib/services/lab-service');
+      const { getResultReviewSLA } = await import('@/lib/clinical-flow/order-lifecycles');
       const labs = await getAllLabResults(scope);
 
       // Results this clinician ordered that are back but still unreviewed past
@@ -354,7 +343,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
     // Appointments — approvals needed + patients checked in and waiting.
     if (relevant('appointment')) try {
-      const { getAllAppointments } = await import('../services/appointment-service');
+      const { getAllAppointments } = await import('@/lib/services/appointment-service');
       const appts = await getAllAppointments(scope);
       // Awaiting approval: explicitly requested, or today's scheduled slots that
       // still need confirmation.
@@ -383,7 +372,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // work assigned to the signed-in user, unassigned urgent work, blocked
     // tasks, and patients waiting for the next team member.
     try {
-      const { getAllConsultationProgress } = await import('../services/consultation-progress-service');
+      const { getAllConsultationProgress } = await import('@/lib/services/consultation-progress-service');
       const progress = await getAllConsultationProgress(scope);
       // Pool items (blocked / unassigned urgent / waiting for provider) are
       // gated by role relevance; work assigned to THIS user always surfaces,
@@ -414,7 +403,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
     // Prescriptions awaiting dispensing (pharmacy queue).
     if (relevant('prescription')) try {
-      const { getAllPrescriptions } = await import('../services/prescription-service');
+      const { getAllPrescriptions } = await import('@/lib/services/prescription-service');
       const rxs = await getAllPrescriptions(scope);
       for (const rx of rxs.filter(x => x.status === 'pending').slice(0, perSourceLimit)) {
         out.push({ id: `rx-${rx._id}`, type: 'prescription', severity: 'info', title: `Prescription · ${rx.patientName}`, subtitle: `${rx.medication} · awaiting dispensing`, time: rx.updatedAt || rx.createdAt, href: '/pharmacy' });

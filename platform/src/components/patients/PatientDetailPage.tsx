@@ -624,7 +624,7 @@ export default function PatientDetailPage() {
     setMessageSending(true);
     setMessageError('');
     try {
-      const { createMessage } = await import('@/lib/services/message-service');
+      const { createMessage } = await import('@/modules/communication/services/message-service');
       await createMessage({
         patientId: patient._id,
         patientName: patientFullName(patient),

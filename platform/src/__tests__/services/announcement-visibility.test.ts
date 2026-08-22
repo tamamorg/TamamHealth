@@ -34,7 +34,7 @@ function announcementsDB() {
 jest.mock('@/lib/db', () => ({ announcementsDB }));
 jest.mock('@/lib/services/audit-service', () => ({ logAuditSafe: jest.fn() }));
 
-import { createAnnouncement, getVisibleAnnouncements } from '@/lib/services/announcement-service';
+import { createAnnouncement, getVisibleAnnouncements } from '@/modules/communication/services/announcement-service';
 import type { DataScope } from '@/lib/services/data-scope';
 import type { AnnouncementDoc, UserRole } from '@/lib/db-types';
 

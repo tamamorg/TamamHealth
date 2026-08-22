@@ -20,7 +20,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const MODULE_ROOT = path.join(process.cwd(), 'src/modules/identity');
+const MODULES_ROOT = path.join(process.cwd(), 'src/modules');
+const MODULE_ROOT = path.join(MODULES_ROOT, 'identity');
+
+/** Every migrated module, so a new one is covered the day it lands. */
+const MODULES = fs.readdirSync(MODULES_ROOT).filter(
+  d => fs.statSync(path.join(MODULES_ROOT, d)).isDirectory(),
+);
 
 /** Every file the given entrypoint can reach through STATIC imports. */
 function staticGraph(entry: string): string[] {
@@ -90,24 +96,35 @@ describe('the server surface stays cheap to import', () => {
   });
 });
 
-describe('the module keeps its own edges', () => {
-  const files = fs.readdirSync(MODULE_ROOT, { recursive: true, encoding: 'utf8' })
+describe.each(MODULES)('module %s keeps its own edges', name => {
+  const root = path.join(MODULES_ROOT, name);
+  const files = fs.readdirSync(root, { recursive: true, encoding: 'utf8' })
     .filter(f => f.endsWith('.ts') || f.endsWith('.tsx'))
-    .map(f => path.join(MODULE_ROOT, f));
+    .map(f => path.join(root, f));
 
   it('never imports its own barrel', () => {
     // A module importing its own index is a cycle waiting to become an
-    // initialisation order bug.
-    const offenders = files.filter(f => {
-      if (f.endsWith('index.ts') || f.endsWith('client.ts')) return false;
-      return /from\s+['"]@\/modules\/identity['"]|from\s+['"]@\/modules\/identity\/client['"]/
-        .test(fs.readFileSync(f, 'utf8'));
-    });
-    expect(offenders.map(f => path.relative(MODULE_ROOT, f))).toEqual([]);
+    // initialisation-order bug — the exact failure that took a test suite
+    // down while identity was being extracted.
+    const barrel = new RegExp(`from\\s+['"]@/modules/${name}(/client)?['"]`);
+    const offenders = files.filter(f =>
+      !f.endsWith('index.ts') && !f.endsWith('client.ts')
+      && barrel.test(fs.readFileSync(f, 'utf8')));
+    expect(offenders.map(f => path.relative(root, f))).toEqual([]);
   });
 
-  it('exposes exactly the entrypoints the lint rules allow', () => {
-    expect(fs.existsSync(path.join(MODULE_ROOT, 'index.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(MODULE_ROOT, 'client.ts'))).toBe(true);
+  it('exposes a public surface at all', () => {
+    // A module with no barrel has no boundary: the lint rules would block
+    // every deep import and leave nothing legal to import instead.
+    const hasSurface = fs.existsSync(path.join(root, 'index.ts'))
+      || fs.existsSync(path.join(root, 'client.ts'));
+    expect(hasSurface).toBe(true);
+  });
+
+  it('does not statically pull React into a server surface', () => {
+    const index = path.join(root, 'index.ts');
+    if (!fs.existsSync(index)) return;
+    const components = staticGraph(index).filter(f => f.includes(`/modules/${name}/components/`));
+    expect(components.map(f => path.basename(f))).toEqual([]);
   });
 });

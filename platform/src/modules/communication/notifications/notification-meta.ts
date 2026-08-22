@@ -8,7 +8,7 @@
  * accent blue so they don't read the same as referrals).
  */
 import { Bell, AlertTriangle, ArrowRightLeft, FlaskConical, Calendar, Pill, ClipboardList, Activity } from '@/components/icons/lucide';
-import type { NotificationSeverity, NotificationType } from '@/lib/hooks/useNotifications';
+import type { NotificationSeverity, NotificationType } from '@/modules/communication/hooks/useNotifications';
 
 export interface NotificationMeta {
   icon: typeof Bell;

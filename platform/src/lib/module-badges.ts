@@ -1,3 +1,5 @@
+
+import type { NotificationItem, NotificationType } from '@/modules/communication';
 /**
  * Counts for the top-rail module shortcuts — the small number on the pharmacy /
  * lab / referrals icons that says "there is something waiting in here".
@@ -11,7 +13,6 @@
  * entry renders no badge — /patients, /reports and /settings deliberately have
  * none, because "35 patients on file" is not something to action.
  */
-import type { NotificationItem, NotificationType } from '@/lib/hooks/useNotifications';
 
 export const MODULE_BADGE_SOURCES: Readonly<Record<string, readonly NotificationType[]>> = {
   '/referrals': ['referral', 'transfer'],

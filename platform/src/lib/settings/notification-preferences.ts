@@ -14,8 +14,9 @@
  * govern nothing here — they are marked `pending` in `lib/role-settings.ts`
  * rather than silently filtering something they don't mean.
  */
-import type { NotificationItem } from '../hooks/useNotifications';
+
 import type { RoleSettingsValues } from '../role-settings';
+import type { NotificationItem } from '@/modules/communication';
 
 /**
  * The `notify.*` keys that cover one notification, across every role that has

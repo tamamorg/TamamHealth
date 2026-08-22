@@ -28,7 +28,7 @@ import { mergeFacilitySettings, DEFAULT_FACILITY_SETTINGS } from '@/lib/settings
 import { setDisabledApps, isAppDisabled, getDisabledAppRoutes } from '@/lib/settings/disabled-apps';
 import { systemConfigScope, PLATFORM_CONFIG_SCOPE } from '@/lib/services/system-config-service';
 import { specForRole } from '@/lib/role-settings';
-import type { NotificationItem } from '@/lib/hooks/useNotifications';
+import type { NotificationItem } from '@/modules/communication/hooks/useNotifications';
 
 const DOCTOR_ID = 'user-doctor-1';
 

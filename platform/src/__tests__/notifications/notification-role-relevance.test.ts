@@ -8,7 +8,7 @@
  * that — these tests pin who receives which source, and the safety property
  * that per-user and safety-critical kinds are never narrowed.
  */
-import { isKindRelevantToRole, type NotificationKind } from '@/lib/notification-scope';
+import { isKindRelevantToRole, type NotificationKind } from '@/modules/communication/notifications/notification-scope';
 
 const ALL_KINDS: NotificationKind[] = [
   'alert', 'triage', 'referral', 'lab', 'appointment', 'prescription', 'progress', 'transfer',

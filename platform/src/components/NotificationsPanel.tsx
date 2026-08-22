@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { Bell, BellOff, Check, ChevronRight, X } from '@/components/icons/lucide';
-import { useNotifications, getNotificationAlertPref, setNotificationAlertPref } from '@/lib/hooks/useNotifications';
-import { NOTIFICATION_META, relativeNotificationTime } from '@/lib/notification-meta';
+import { NOTIFICATION_META, getNotificationAlertPref, relativeNotificationTime, setNotificationAlertPref, useNotifications } from '@/modules/communication/client';
 
 /**
  * The bell panel — a glance surface over the most recent notifications.

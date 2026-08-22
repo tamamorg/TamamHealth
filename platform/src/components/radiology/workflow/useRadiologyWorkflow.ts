@@ -213,7 +213,7 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
       // Best-effort, exactly as the lab does it: a filed report the department
       // can phone through beats a blocked save.
       try {
-        const { createMessage } = await import('@/lib/services/message-service');
+        const { createMessage } = await import('@/modules/communication/services/message-service');
         await createMessage({
           recipientType: 'staff',
           patientId: study.patientId,
@@ -237,7 +237,7 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
 
   /** Send the report to the ordering clinician's inbox. */
   const notifyClinician = useCallback(() => run(async () => {
-    const { createMessage } = await import('@/lib/services/message-service');
+    const { createMessage } = await import('@/modules/communication/services/message-service');
     await createMessage({
       recipientType: 'staff',
       patientId: study.patientId,

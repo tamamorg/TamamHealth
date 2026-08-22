@@ -525,7 +525,7 @@ export default function ClinicalNoteEditor({
   // Documents ▸ Patient education, then stamps the plan on success.
   const handleSendEducation = async (result: PatientEducationModalResult) => {
     if (!note) return;
-    const { createMessage } = await import('@/lib/services/message-service');
+    const { createMessage } = await import('@/modules/communication/services/message-service');
     await createMessage({
       patientId: note.patientId,
       patientName: note.patientName,

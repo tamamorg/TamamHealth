@@ -63,7 +63,7 @@ export function enquiryAssignee(message: Pick<MessageDoc, 'enquiryAssignedToName
 
 /** Inbound patient enquiries, newest first. Scope is applied upstream. */
 export async function getPatientEnquiries(scope?: DataScope): Promise<MessageDoc[]> {
-  const { getInboundPatientMessages } = await import('./message-service');
+  const { getInboundPatientMessages } = await import('@/modules/communication/services/message-service');
   return getInboundPatientMessages(scope);
 }
 
@@ -136,7 +136,7 @@ export function filterEnquiries(messages: MessageDoc[], filters: EnquiryFilters)
 
 /** Move an enquiry through triage. Returns the updated message, or null. */
 export async function setEnquiryStatus(id: string, status: EnquiryStatus): Promise<MessageDoc | null> {
-  const { updateMessage } = await import('./message-service');
+  const { updateMessage } = await import('@/modules/communication/services/message-service');
   return updateMessage(id, { enquiryStatus: status });
 }
 
@@ -145,7 +145,7 @@ export async function assignEnquiry(
   id: string,
   assignee: { id: string; name: string } | null,
 ): Promise<MessageDoc | null> {
-  const { updateMessage } = await import('./message-service');
+  const { updateMessage } = await import('@/modules/communication/services/message-service');
   return updateMessage(id, {
     enquiryAssignedToId: assignee?.id,
     enquiryAssignedToName: assignee?.name,
@@ -170,7 +170,7 @@ export interface CreateEnquiryInput {
  * shows both and nothing downstream needs to special-case the origin.
  */
 export async function createEnquiry(input: CreateEnquiryInput): Promise<MessageDoc> {
-  const { createMessage } = await import('./message-service');
+  const { createMessage } = await import('@/modules/communication/services/message-service');
   return createMessage({
     direction: 'patient_to_staff',
     recipientType: 'staff',
