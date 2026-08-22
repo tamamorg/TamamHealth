@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import {
   Building2, BedDouble, Users, Stethoscope, WifiOff,
   Zap, ZapOff, Sun, Truck, Signal, Clock, Activity,
-  MapPin, HeartPulse, X, Phone, Mail,
+  MapPin, HeartPulse, X, Phone, Mail, UserPlus,
   FlaskConical, Download, Eye, Settings, Plus, Edit3, Ban, RotateCcw,
   Syringe, Baby, Pill, ShieldCheck, Microscope, ChevronDown,
 } from '@/components/icons/lucide';
@@ -27,6 +27,8 @@ import { FilterSelect } from '@/components/filters';
 import EhrListHeader, { EhrListFilters, EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Modal from '@/components/Modal';
 import RowActionsPopup, { rowActionsFromElement, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import { CreateUserModal, CredentialHandoffModal, type CreatedCredentials } from '@/modules/identity/client';
+import { canCreateUsers } from '@/lib/people-nav';
 import FacilityManageTabs, {
   FACILITY_MANAGE_TABS, FACILITY_SETTINGS_WRITE_ROLES, type FacilityTabId,
 } from '@/components/facilities/FacilityManageTabs';
@@ -764,6 +766,16 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
   }, [scope, hospital._id]);
 
   const totalStaff = (hospital.doctors || 0) + (hospital.clinicalOfficers || 0) + (hospital.nurses || 0) + (hospital.labTechnicians || 0) + (hospital.pharmacists || 0);
+  /* Adding staff belongs beside Edit facility, not only inside the Staff
+     section: hiring into a facility is something you decide while looking at
+     the facility, and it was previously two clicks and a section change away.
+     Reading the roster and writing to it are different grants — the
+     superintendent and HRIO who reach this panel are not /api/users'
+     WRITE_ROLES — so the button is gated on canCreateUsers, not on canManage. */
+  const canAddUser = canCreateUsers(currentUser?.role || '');
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [userHandoff, setUserHandoff] = useState<CreatedCredentials | null>(null);
+  const [staffRefreshToken, setStaffRefreshToken] = useState(0);
   const contact = hospital as unknown as { phone?: string; email?: string };
   // Real occupancy from this facility's ward documents (the same census the
   // Wards board draws from) — null when the facility has no ward docs yet.
@@ -845,6 +857,17 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
               )}
             </div>
           )}
+          {canAddUser && (
+            <button
+              type="button"
+              onClick={() => setShowAddUser(true)}
+              className="btn btn-secondary btn-sm"
+              style={{ gap: 4 }}
+              data-action="facility-add-user"
+            >
+              <UserPlus style={{ width: 13, height: 13 }} /> {t('hospitals.addUser')}
+            </button>
+          )}
           {canCreate && (
             <>
               <button type="button" onClick={onEdit} className="btn btn-secondary btn-sm" style={{ gap: 4 }} data-action="edit-facility">
@@ -877,6 +900,7 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
           hospital={hospital}
           tab={tab}
           scope={scope}
+          staffRefreshToken={staffRefreshToken}
           canWriteSettings={canWriteSettings}
           onHospitalSaved={onHospitalSaved}
         />
@@ -1051,6 +1075,34 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
         <span className="font-mono">{(hospital.lat ?? 0).toFixed(4)}°N, {(hospital.lng ?? 0).toFixed(4)}°E{hospital.county && ` | ${hospital.county}`}</span>
       </div>
       </>
+      )}
+
+      {showAddUser && (
+        <CreateUserModal
+          hospitals={[hospital]}
+          presetHospitalId={hospital._id}
+          lockFacility
+          onClose={() => setShowAddUser(false)}
+          onCreated={(credentials) => {
+            setShowAddUser(false);
+            // The temporary password is unrecoverable once this closes.
+            setUserHandoff(credentials);
+            // Land on the roster the new account just joined, and make it
+            // re-read: the Staff section is a different component.
+            setStaffRefreshToken(token => token + 1);
+            setTab('staff');
+          }}
+        />
+      )}
+      {userHandoff && (
+        <CredentialHandoffModal
+          title={t('orgUsers.handoffCreatedTitle')}
+          description={t('orgUsers.handoffDescription')}
+          username={userHandoff.username}
+          password={userHandoff.password}
+          invitation={userHandoff.invitation}
+          onClose={() => setUserHandoff(null)}
+        />
       )}
     </div>
   );

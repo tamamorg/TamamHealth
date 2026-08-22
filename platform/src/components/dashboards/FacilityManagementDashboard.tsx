@@ -35,7 +35,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  AlertTriangle, RefreshCw, Loader2, X, } from '@/components/icons/lucide';
+  AlertTriangle, RefreshCw, Loader2, X, Maximize2,} from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -186,19 +186,23 @@ function FacilityMetricPreviewDialog({ metric, onClose, onOpen }: {
             <p className="sadb-card-meta">Facility overview</p>
             <h2 id={titleId} className="sadb-modal-title mt-1">{metric.label}</h2>
           </div>
-          <button type="button" className="p-2 rounded-lg flex-shrink-0" onClick={onClose} aria-label="Close preview">
-            <X className="w-4 h-4" />
-          </button>
+          {/* Expand and close, once each. This card used to offer both again in
+              a footer row, so two buttons at the bottom restated two buttons at
+              the top and the reader had to compare them to be sure. */}
+          <span className="flex items-center gap-1 flex-shrink-0">
+            <button type="button" className="p-2 rounded-lg" onClick={onOpen} aria-label="Open full page" title="Open full page" data-action="preview-expand">
+              <Maximize2 className="w-4 h-4" />
+            </button>
+            <button type="button" className="p-2 rounded-lg" onClick={onClose} aria-label="Close preview">
+              <X className="w-4 h-4" />
+            </button>
+          </span>
         </div>
         <div className="py-5">
           <p className="sadb-kpi-value" style={{ fontSize: 30 }}>{metric.value}</p>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
             This is the current scope-visible total. Open the full page to review and manage the underlying records.
           </p>
-        </div>
-        <div className="sadb-modal-actions" style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>Close</button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={onOpen}>Open full page</button>
         </div>
       </div>
     </Modal>

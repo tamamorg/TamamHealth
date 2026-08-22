@@ -266,12 +266,31 @@ export function tenantDatabasesEnabled(): boolean {
 }
 
 /** Check whether sync is enabled via environment variable */
+/**
+ * Whether replication is switched on for this build.
+ *
+ * On by default: a device that can reach a CouchDB replicates unless somebody
+ * has deliberately stopped it. The rule used to be the other way round — the
+ * flag had to read exactly `'true'` — and "unset" is by far the easiest state
+ * to end up in, so a dev environment (and any deployment whose build arg was
+ * forgotten) ran with sync silently off. Nothing on screen says so: writes
+ * land in the browser's own PouchDB and look saved, while the server never
+ * sees them. That is what makes a just-registered facility unassignable —
+ * /api/users reads the server's copy, and the facility is not there and never
+ * will be.
+ *
+ * Two things still turn it off, both of them explicit:
+ *   • `NEXT_PUBLIC_SYNC_ENABLED=false` — the stop switch, used by the
+ *     standalone seeded demo;
+ *   • no `NEXT_PUBLIC_COUCHDB_URL` — there is nowhere to replicate TO, so
+ *     "on" would mean retrying against a URL that was never configured.
+ */
+export function syncFlagAllowsSync(): boolean {
+  return process.env.NEXT_PUBLIC_SYNC_ENABLED !== 'false' && !!process.env.NEXT_PUBLIC_COUCHDB_URL;
+}
+
 export function isSyncEnabled(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true' &&
-    !!process.env.NEXT_PUBLIC_COUCHDB_URL
-  );
+  return typeof window !== 'undefined' && syncFlagAllowsSync();
 }
 
 /** Get the configured CouchDB base URL */

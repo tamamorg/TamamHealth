@@ -170,6 +170,29 @@ export async function createHospital(
   // rule once covers every path.
   await assertOrganizationCanHoldAnotherFacility(data.orgId);
 
+  // ...and it must not already have this one. Facility ids are generated, so
+  // nothing here was stopping the same hospital being registered twice: the
+  // network list showed two "Juba Teaching Hospital" rows in the same town,
+  // each collecting its own staff, wards and stock. Matching is on name AND
+  // town, because a name repeats legitimately across towns — two St Mary
+  // clinics in different counties are two clinics. A retired facility still
+  // counts: the answer to "we already have that one" is to restore it, not to
+  // create a second.
+  const { findByEntityName } = await import('../entity-names');
+  const existingInOrg = (await getAllHospitals()).filter(h => h.orgId === data.orgId);
+  const duplicate = findByEntityName(
+    existingInOrg,
+    { name: data.name, place: data.town },
+    h => ({ name: h.name, place: h.town }),
+  );
+  if (duplicate) {
+    throw new ValidationError({
+      name: isFacilityActive(duplicate)
+        ? `"${duplicate.name}" is already registered${duplicate.town ? ` in ${duplicate.town}` : ''}. Open that facility instead of creating a second one.`
+        : `"${duplicate.name}" is already registered${duplicate.town ? ` in ${duplicate.town}` : ''} but retired. Restore it instead of creating a second one.`,
+    });
+  }
+
   const db = hospitalsDB();
   const now = new Date().toISOString();
   const { v4: uuidv4 } = await import('uuid');

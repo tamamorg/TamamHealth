@@ -11,8 +11,7 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import type { UserDoc, UserRole } from '@/lib/db-types';
 import {
   UserX, UserCheck, UserPlus, Shield, Building2,
-  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Mail, Upload,
-} from '@/components/icons/lucide';
+  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Mail, Upload, Trash2} from '@/components/icons/lucide';
 import { isRowActivationKey } from '@/components/RowActionsPopup';
 
 import { avatarTint } from '@/lib/patient-utils';
@@ -97,6 +96,12 @@ export default function AdminUsersPage() {
   // with no confirmation at all; it now goes through the same danger-confirm
   // pattern as every other destructive admin action.
   const [deactivateTarget, setDeactivateTarget] = useState<UserDoc | null>(null);
+  // Deletion, which deactivation is not: the account document goes, and with
+  // it the ability to sign in under that username ever again. Deactivate is
+  // the reversible answer and stays the default; this is for the account that
+  // should never have existed (a typo, a test, a duplicate).
+  const [deleteTarget, setDeleteTarget] = useState<UserDoc | null>(null);
+  const [deleting, setDeleting] = useState(false);
   // One popup for the whole list — the row that was clicked supplies its own
   // actions and the pointer position, so a hundred rows cost one portal.
   // Opening a row opens its card: the account's full record and everything
@@ -164,6 +169,12 @@ export default function AdminUsersPage() {
   const filteredUsers = useMemo(() => {
     if (focusedUserId) return users.filter(u => u._id === focusedUserId);
     return users.filter(u => {
+    // Platform operators are not staff of any tenant, and a roster is a
+    // staffing list: a super_admin sitting in it invited role changes and
+    // deactivations from a screen that exists to run a facility. The account
+    // stays reachable by its ?user= deep link (that branch runs first), so
+    // nothing became unmanageable — it just stopped being listed here.
+    if (u.role === 'super_admin') return false;
       const q = search.toLowerCase();
       const matchSearch = !q || u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (u.hospitalName || '').toLowerCase().includes(q);
       const matchRole = filterRole === 'all' || u.role === filterRole;
@@ -359,6 +370,22 @@ export default function AdminUsersPage() {
       showToast(err instanceof Error ? err.message : 'Could not send the invitation.', 'error');
     } finally {
       setResendingId(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || !currentUser) return;
+    setDeleting(true);
+    try {
+      const { deleteUser } = await import('@/modules/identity/services/user-service');
+      await deleteUser(deleteTarget._id, currentUser._id, currentUser.username);
+      showToast(`${deleteTarget.name} deleted`, 'success');
+      setDeleteTarget(null);
+      await reloadUsers();
+    } catch (err: unknown) {
+      showToast((err as Error).message || 'Could not delete this account', 'error');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -708,6 +735,14 @@ export default function AdminUsersPage() {
                     <UserCheck className="w-4 h-4" /> {t('adminUsers.activate')}
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="btn btn-sm sadb-btn-danger"
+                  onClick={() => { const u = detailUser; closeDetail(); setDeleteTarget(u); }}
+                  data-action="delete-user"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete
+                </button>
               </div>
             </div>
           </div>
@@ -971,6 +1006,16 @@ export default function AdminUsersPage() {
         />
       )}
 
+      {deleteTarget && (
+        <SadbConfirmModal
+          title={`Delete ${deleteTarget.name}?`}
+          body={`The account @${deleteTarget.username} is removed permanently. Their record of past activity stays in the audit log, but the account itself cannot be restored — deactivate instead if they may return.`}
+          confirmLabel={deleting ? 'Deleting…' : 'Delete account'}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+          busy={deleting}
+        />
+      )}
       {deactivateTarget && (
         <SadbConfirmModal
           title={`Deactivate ${deactivateTarget.name}?`}

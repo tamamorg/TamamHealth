@@ -13,8 +13,7 @@ import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHea
 import {
   Users, Stethoscope, HeartPulse, BedDouble,
   ClipboardCheck, Activity, AlertTriangle, SendHorizontal,
-  ChevronRight, ArrowRight, X,
-} from '@/components/icons/lucide';
+  ChevronRight, ArrowRight, X, Maximize2} from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -34,9 +33,11 @@ interface SuperintendentPreview {
   context: string;
 }
 
-function SuperintendentPreviewDialog({ preview, closeLabel, onClose, onOpen }: {
+function SuperintendentPreviewDialog({ preview, closeLabel, expandLabel, onClose, onOpen }: {
   preview: SuperintendentPreview;
   closeLabel: string;
+  /** Translated by the caller, like `closeLabel` — this dialog holds no `t`. */
+  expandLabel: string;
   onClose: () => void;
   onOpen: () => void;
 }) {
@@ -49,17 +50,19 @@ function SuperintendentPreviewDialog({ preview, closeLabel, onClose, onOpen }: {
             <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{preview.context}</p>
             <h2 id={titleId} className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{preview.title}</h2>
           </div>
-          <button type="button" className="p-2 rounded-lg flex-shrink-0" onClick={onClose} aria-label={closeLabel}>
-            <X className="w-4 h-4" />
-          </button>
+          {/* Expand and close, once each — the footer used to restate both. */}
+          <span className="flex items-center gap-1 flex-shrink-0">
+            <button type="button" className="p-2 rounded-lg" onClick={onOpen} aria-label={expandLabel} title={expandLabel} data-action="preview-expand">
+              <Maximize2 className="w-4 h-4" />
+            </button>
+            <button type="button" className="p-2 rounded-lg" onClick={onClose} aria-label={closeLabel}>
+              <X className="w-4 h-4" />
+            </button>
+          </span>
         </div>
         <div className="py-5">
           <p className="stat-value text-3xl" style={{ color: 'var(--text-primary)' }}>{preview.value}</p>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{preview.detail}</p>
-        </div>
-        <div className="flex items-center justify-end gap-2 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-          <button type="button" className="btn btn-secondary" onClick={onClose}>{closeLabel}</button>
-          <button type="button" className="btn btn-primary" onClick={onOpen}>Open full page</button>
         </div>
       </div>
     </Modal>
@@ -261,6 +264,7 @@ export default function SuperintendentDashboard() {
       </main>
       {preview && (
         <SuperintendentPreviewDialog
+          expandLabel={t('orgAdmin.openFullPage')}
           preview={preview}
           closeLabel={t('action.close')}
           onClose={closePreview}

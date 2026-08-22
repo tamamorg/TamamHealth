@@ -113,8 +113,10 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   // PouchDB is an offline cache, not shared durable storage, so allowing sync
   // to be disabled in production would make users on different devices see
   // different patient charts and worklists.
-  if (!isDemo && env.NEXT_PUBLIC_SYNC_ENABLED !== 'true') {
-    errors.push('NEXT_PUBLIC_SYNC_ENABLED must be true in production — shared CouchDB replication is required for multi-user patient data.');
+  // Sync is on unless it is explicitly stopped (see `syncFlagAllowsSync`), so
+  // production only has to refuse the stop switch — not an unset variable.
+  if (!isDemo && env.NEXT_PUBLIC_SYNC_ENABLED === 'false') {
+    errors.push('NEXT_PUBLIC_SYNC_ENABLED=false in production — shared CouchDB replication is required for multi-user patient data. Remove the variable (sync is on by default) or set it to true.');
   }
   if (!isDemo && !env.COUCHDB_URL) {
     errors.push('COUCHDB_URL is unset — server routes need a durable CouchDB endpoint, not local filesystem storage.');
@@ -150,9 +152,9 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
       }
     }
   }
-  if (env.NEXT_PUBLIC_SYNC_ENABLED === 'true') {
+  if (env.NEXT_PUBLIC_SYNC_ENABLED !== 'false') {
     if (!env.NEXT_PUBLIC_COUCHDB_URL) {
-      errors.push('NEXT_PUBLIC_SYNC_ENABLED=true but NEXT_PUBLIC_COUCHDB_URL is unset.');
+      errors.push('Sync is enabled (the default) but NEXT_PUBLIC_COUCHDB_URL is unset — set the URL, or set NEXT_PUBLIC_SYNC_ENABLED=false to run without replication.');
     }
     if (!env.COUCHDB_WEBHOOK_SECRET) {
       errors.push('NEXT_PUBLIC_SYNC_ENABLED=true but COUCHDB_WEBHOOK_SECRET is unset.');

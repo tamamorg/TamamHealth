@@ -25,8 +25,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 
 import {
-  Plus, KeyRound, UserX, UserCheck, Eye, EyeOff, RefreshCw, Mail, Upload, ShieldCheck,
-} from '@/components/icons/lucide';
+  Plus, KeyRound, UserX, UserCheck, Eye, EyeOff, RefreshCw, Mail, Upload, ShieldCheck, Trash2} from '@/components/icons/lucide';
 import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { avatarTint } from '@/lib/patient-utils';
@@ -75,6 +74,8 @@ export default function OrgUsersPage() {
   const [showResetModal, setShowResetModal] = useState<string | null>(null);
   // One popup for the list; the clicked row supplies its actions and position.
   const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserDoc | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   /** What a row offers. Deactivate is hidden for your own account — locking
    *  yourself out of the console is never the intent behind that click. */
@@ -103,7 +104,29 @@ export default function OrgUsersPage() {
     ...(!user.isActive
       ? [{ key: 'reactivate', label: t('orgUsers.reactivate'), tone: 'success' as const, icon: <UserCheck className="w-4 h-4" />, onClick: () => handleReactivate(user._id) }]
       : []),
+    // Deletion, which deactivation is not: the document goes and the username
+    // is free again. Never offered for your own account — the click that locks
+    // you out of your own console is not one to make available.
+    ...(user._id !== currentUser?._id
+      ? [{ key: 'delete', label: t('orgUsers.deleteUser'), tone: 'danger' as const, icon: <Trash2 className="w-4 h-4" />, onClick: () => setDeleteTarget(user) }]
+      : []),
   ];
+  const confirmDelete = async () => {
+    if (!deleteTarget || !currentUser) return;
+    setDeleting(true);
+    try {
+      const { deleteUser } = await import('@/modules/identity/services/user-service');
+      await deleteUser(deleteTarget._id, currentUser._id, currentUser.username);
+      showToast(t('orgUsers.deletedToast', { name: deleteTarget.name }), 'success');
+      setDeleteTarget(null);
+      await loadData();
+    } catch (err: unknown) {
+      showToast((err as Error).message || t('orgUsers.errorDeleteFailed'), 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   /** Re-issue the set-your-password link, invalidating any outstanding one. */
   const handleResendInvite = async (user: UserDoc) => {
     setResendingId(user._id);
@@ -333,6 +356,12 @@ export default function OrgUsersPage() {
   // pattern as the hospitals list).
   const filteredUsers = users.filter(u => {
     if (focusedUserId) return u._id === focusedUserId;
+    // Platform operators are not staff of any tenant, and a roster is a
+    // staffing list: a super_admin sitting in it invited role changes and
+    // deactivations from a screen that exists to run a facility. The account
+    // stays reachable by its ?user= deep link (that branch runs first), so
+    // nothing became unmanageable — it just stopped being listed here.
+    if (u.role === 'super_admin') return false;
     if (filterRole !== 'all' && u.role !== filterRole) return false;
     if (filterStatus === 'active' && !u.isActive) return false;
     if (filterStatus === 'inactive' && u.isActive) return false;
@@ -595,6 +624,16 @@ export default function OrgUsersPage() {
       )}
 
       {/* Reset Password Modal */}
+      {deleteTarget && (
+        <SadbConfirmModal
+          title={t('orgUsers.deleteTitle', { name: deleteTarget.name })}
+          body={t('orgUsers.deleteBody', { username: deleteTarget.username })}
+          confirmLabel={deleting ? t('orgUsers.deleting') : t('orgUsers.deleteUser')}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+          busy={deleting}
+        />
+      )}
       {showResetModal && (
         <Modal onClose={() => setShowResetModal(null)} width={400} labelledBy="org-reset-pw-title">
           <div className="sadb-modal sadb-modal--danger">

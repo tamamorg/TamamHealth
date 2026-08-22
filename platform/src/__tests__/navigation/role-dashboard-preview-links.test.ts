@@ -13,7 +13,13 @@ describe('role dashboard preview links', () => {
     ];
 
     for (const dashboard of dashboards) {
-      expect(source(dashboard)).toContain('Open full page');
+      // The action, not the wording: it moved into the card head as an icon
+      // (the footer used to repeat the head's expand and close), and one of
+      // the three now takes its label from the locale file rather than a
+      // literal. What must not change is that a preview offers an explicit
+      // way to open the page instead of navigating the moment you click a
+      // card.
+      expect(source(dashboard)).toContain('data-action="preview-expand"');
     }
   });
 

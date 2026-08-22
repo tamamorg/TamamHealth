@@ -134,14 +134,10 @@ export default function TenantCard({
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-2 pt-4 mt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>{closeLabel}</button>
-          {onExpand && (
-            <button type="button" className="btn btn-primary btn-sm" onClick={onExpand}>
-              <Maximize2 className="w-4 h-4" style={{ color: '#fff' }} /> {expandLabel}
-            </button>
-          )}
-        </div>
+        {/* No footer. Close and "open the full page" are both in the head, and
+            a card that offers each of them twice reads as four choices where
+            there are two — the eye checks the bottom row against the top one
+            before it can be sure. */}
       </div>
     </Modal>
   );

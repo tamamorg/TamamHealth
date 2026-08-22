@@ -73,17 +73,20 @@ export const FACILITY_MANAGE_TABS: { id: FacilityTabId; labelKey: string; icon: 
  * Only the active tab is mounted, so an unopened tab fires no fetch — the
  * property the old page depended on, kept here.
  */
-export default function FacilityManageTabs({ hospital, tab, scope, canWriteSettings, onHospitalSaved }: {
+export default function FacilityManageTabs({ hospital, tab, scope, canWriteSettings, onHospitalSaved, staffRefreshToken }: {
   hospital: HospitalDoc;
   tab: FacilityTabId;
   scope: DataScope | undefined;
   canWriteSettings: boolean;
   onHospitalSaved: (hospital: HospitalDoc) => void;
+  /** Bumped when an account is created from the profile header, so the roster
+   *  below re-reads instead of showing the facility one person short. */
+  staffRefreshToken?: number;
 }) {
   const hospitalId = hospital._id;
   return (
     <>
-      {tab === 'staff' && <StaffTab scope={scope} hospitalId={hospitalId} hospital={hospital} />}
+      {tab === 'staff' && <StaffTab scope={scope} hospitalId={hospitalId} hospital={hospital} refreshToken={staffRefreshToken} />}
       {tab === 'wards' && <WardsTab scope={scope} hospitalId={hospitalId} hospital={hospital} />}
       {tab === 'equipment' && <EquipmentTab scope={scope} hospitalId={hospitalId} />}
       {tab === 'inventory' && <InventoryTab scope={scope} hospitalId={hospitalId} />}
@@ -96,7 +99,6 @@ export default function FacilityManageTabs({ hospital, tab, scope, canWriteSetti
   );
 }
 
-// ─── Shared little pieces ────────────────────────────────────────────────────
 // ─── Shared little pieces ────────────────────────────────────────────────────
 function LoadingBlock({ label }: { label?: string }) {
   const { t } = useTranslation();
@@ -157,10 +159,11 @@ function formatRelative(iso?: string, t?: (key: string, vars?: Record<string, st
   return t ? t('hospitals.timeDaysAgo', { count: days }) : `${days}d ago`;
 }
 
-function StaffTab({ scope, hospitalId, hospital }: {
+function StaffTab({ scope, hospitalId, hospital, refreshToken }: {
   scope: DataScope | undefined;
   hospitalId: string;
   hospital: HospitalDoc;
+  refreshToken?: number;
 }) {
   const { t } = useTranslation();
   const { currentUser } = useApp();
@@ -194,7 +197,10 @@ function StaffTab({ scope, hospitalId, hospital }: {
     }
   }, [scope, hospitalId, t]);
 
-  useEffect(() => { loadUsers(); }, [loadUsers]);
+  // `refreshToken` is in the deps on purpose: an account created from the
+  // header is written by a different component, so nothing else here would
+  // know the roster changed.
+  useEffect(() => { loadUsers(); }, [loadUsers, refreshToken]);
 
   const addUserButton = canAddUser ? (
     <button

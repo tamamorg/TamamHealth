@@ -215,7 +215,6 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/clinical-notes/FollowUpModal.tsx': 1,
   'src/components/clinical-notes/prescribe/PatientCostSection.tsx': 1,
   'src/components/clinical-notes/prescribe/PharmacyInfoSection.tsx': 1,
-  'src/components/dashboards/SuperintendentDashboard.tsx': 1,
   'src/components/ehr/EhrCareDashboard.tsx': 1,
   'src/components/ehr/EhrListHeader.tsx': 1,
   'src/components/ehr/EhrMiniCalendar.tsx': 1,

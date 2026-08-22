@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
+import { syncFlagAllowsSync } from './sync/sync-config';
 import type { HospitalDoc, OrganizationDoc, UserRole, UserDoc } from './db-types';
 import type { OrgBranding } from './branding';
 import type { AggregateStatus } from './sync/sync-manager';
@@ -380,7 +381,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               // life). Re-establish it server-side so replication resumes
               // instead of silently 401-looping for the rest of the session.
               if (
-                process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true' &&
+                syncFlagAllowsSync() &&
                 process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true'
               ) {
                 try {
@@ -706,7 +707,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // the platform password is never copied into CouchDB and role changes
           // take effect without waiting on the next password login.
           if (
-            process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true' &&
+            syncFlagAllowsSync() &&
             process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true'
           ) {
             void import('./sync/couch-client-auth')
@@ -1076,7 +1077,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       if (
-        process.env.NEXT_PUBLIC_SYNC_ENABLED === 'true' &&
+        syncFlagAllowsSync() &&
         process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true'
       ) {
         try {

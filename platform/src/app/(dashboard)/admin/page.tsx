@@ -38,7 +38,7 @@ import { OrgFacilities, ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree'
 import TenantCard, { TENANT_ACTION_ICONS } from '@/components/admin/TenantCard';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import Modal from '@/components/Modal';
-import { X } from '@/components/icons/lucide';
+import { X, Maximize2} from '@/components/icons/lucide';
 import type {
   AuditLogDoc, ConflictQueueDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
 } from '@/lib/db-types';
@@ -85,9 +85,17 @@ function PreviewDialog({ preview, onClose, onOpen }: {
             <p className="sadb-card-meta">{preview.context}</p>
             <h2 id={titleId} className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{preview.title}</h2>
           </div>
-          <button type="button" className="p-2 rounded-lg flex-shrink-0" onClick={onClose} aria-label="Close preview">
-            <X className="w-4 h-4" />
-          </button>
+          {/* Expand and close, once each. This card used to offer both again in
+              a footer row, so two buttons at the bottom restated two buttons at
+              the top and the reader had to compare them to be sure. */}
+          <span className="flex items-center gap-1 flex-shrink-0">
+            <button type="button" className="p-2 rounded-lg" onClick={onOpen} aria-label="Open full page" title="Open full page" data-action="preview-expand">
+              <Maximize2 className="w-4 h-4" />
+            </button>
+            <button type="button" className="p-2 rounded-lg" onClick={onClose} aria-label="Close preview">
+              <X className="w-4 h-4" />
+            </button>
+          </span>
         </div>
         <div className="py-5">
           <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
@@ -98,10 +106,6 @@ function PreviewDialog({ preview, onClose, onOpen }: {
               </div>
             ))}
           </div>
-        </div>
-        <div className="flex items-center justify-end gap-2 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
-          <button type="button" className="btn btn-primary" onClick={onOpen}>Open full page</button>
         </div>
       </div>
     </Modal>
@@ -309,7 +313,14 @@ export default function AdminDashboardPage() {
   // frozen at record creation, so every app-created facility read offline
   // forever. Real liveness is derived from sync events (see
   // /admin/organizations' Sync column and /api/admin/sync-health).
-  const platformUsers = users.filter(u => !u.orgId).length;
+  /* Platform operators are not "users" in the sense this tile means. There is
+     one of them on a fresh install — the superadmin reading the tile — and
+     counting it made a platform with no staff at all report "Users 1", which
+     is a tenant-staffing number that describes nobody. Count the accounts that
+     do clinical or administrative work inside a tenant; name the operators
+     separately so they are not hidden, only distinguished. */
+  const platformOperators = users.filter(u => u.role === 'super_admin').length;
+  const tenantUsers = users.length - platformOperators;
 
   const licensedSeats = organizations.reduce((sum, o) => sum + (o.maxUsers || 0), 0);
 
@@ -382,8 +393,8 @@ export default function AdminDashboardPage() {
     {
       key: 'users',
       label: 'Users',
-      value: loading ? '…' : users.length.toLocaleString(),
-      delta: `${platformUsers} platform · ${users.length - platformUsers} tenant`,
+      value: loading ? '…' : tenantUsers.toLocaleString(),
+      delta: `${platformOperators} platform operator${platformOperators === 1 ? '' : 's'}`,
       href: '/admin/users',
     },
     {

@@ -17,6 +17,7 @@
  * after any reload, and locally-entered data never pushes to CouchDB.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { syncFlagAllowsSync } from '@/lib/sync/sync-config';
 import { getAuthPayload, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { randomBytes } from 'node:crypto';
 
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
 
-    if (process.env.NEXT_PUBLIC_SYNC_ENABLED !== 'true') {
+    if (!syncFlagAllowsSync()) {
       return NextResponse.json({ enabled: false });
     }
     if (process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED === 'true') {

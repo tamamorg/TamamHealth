@@ -101,6 +101,19 @@ export async function createOrganization(
     throw new Error(`Organization with slug "${slug}" already exists`);
   }
 
+  // The slug check alone let the same tenant in twice. "Ministry of Health -
+  // Republic of South Sudan" and "Ministry of Health — Republic of South
+  // Sudan" differ by one dash, produce different slugs, and are one ministry:
+  // the console listed both, each with its own facilities and user quota.
+  // Compare the names the way a person reads them.
+  const { isSameEntityName } = await import('../entity-names');
+  const sameName = (await getAllOrganizations()).find(o => isSameEntityName(o.name, data.name));
+  if (sameName) {
+    throw new Error(
+      `"${sameName.name}" already exists (${sameName._id}). Rename this one or open the existing organization.`,
+    );
+  }
+
   const doc: OrganizationDoc = {
     ...data,
     _id: `org-${slug}`,
