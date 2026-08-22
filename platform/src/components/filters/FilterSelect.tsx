@@ -64,7 +64,11 @@ export default function FilterSelect({
         style={{
           fontSize: font,
           width: 'auto',
-          background: isActive ? 'var(--accent-light)' : 'var(--bg-card-solid)',
+          // backgroundColor, never the `background` shorthand: the shorthand
+          // also resets background-image, which is where the global `select`
+          // rule draws the dropdown chevron — leaving the 32px of padding-end
+          // reserved for it below standing empty on every filter in the app.
+          backgroundColor: isActive ? 'var(--accent-light)' : 'var(--bg-card-solid)',
           color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)',
           border: `1.5px solid ${isActive ? 'var(--accent-border)' : 'var(--border-light)'}`,
           borderRadius: 'var(--input-radius)',

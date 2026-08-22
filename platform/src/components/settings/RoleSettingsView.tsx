@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { useApp } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -26,6 +27,7 @@ import { SUPPORTED_LOCALES } from '@/lib/i18n';
 import { getUserPrefs, setUserPrefs } from '@/lib/user-prefs';
 import { hasLockPin, setLockPin, clearLockPin } from '@/lib/hooks/useAutoLock';
 import { getRoleConfig } from '@/lib/permissions';
+import { usersHrefForRole } from '@/lib/people-nav';
 import { isPathAllowed } from '@/lib/role-routes';
 import {
   specForRole, getStoredRoleSettings,
@@ -34,6 +36,7 @@ import {
 import { replaceRoleSettings, resetRoleSettings } from '@/lib/settings/role-settings-store';
 import { FacilitySettingsView } from '@/components/settings/FacilitySettingsView';
 import FacilityPolicySections from '@/components/settings/FacilityPolicySections';
+import FacilitySyncPanel from '@/components/settings/FacilitySyncPanel';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import OrganizationSettingsPanel, { type OrganizationSettingsSection } from '@/components/settings/OrganizationSettingsPanel';
 import OrgBrandingPage from '@/app/(dashboard)/org-admin/branding/page';
@@ -100,10 +103,11 @@ const ORG_SETTINGS_PANEL_IDS = new Set([
   'org-billing',
 ]);
 
-type NavItem = { id: string; label: string; icon: LucideIcon; badge?: string; nested?: boolean };
+type NavItem = { id: string; label: string; icon: LucideIcon; badge?: string; nested?: boolean; href?: string };
 type NavGroup = { title: string; items: NavItem[] };
 
 export default function RoleSettingsView() {
+  const router = useRouter();
   const { currentUser, isOnline, syncPaused, lastSync, refreshCurrentUser } = useApp();
   const { showToast } = useToast();
   const { canManageUsers, canAccess } = usePermissions();
@@ -295,16 +299,22 @@ export default function RoleSettingsView() {
       if (isAdminSpec && reporting) facilityItems.push({ id: 'reporting', label: reporting.title, icon: FileText });
       if (facilityItems.length > 0) groups.push({ title: 'Facility', items: facilityItems });
 
-      if (canManageUsers && currentUser.role !== 'org_admin') {
+      // One People & access entry, pointing at the roster this badge counts.
+      // `usersHrefForRole` is the app's single answer to "where does this role
+      // administer accounts" (/admin/users for the operator, /org-admin/users
+      // for the roles that run a facility), so this cannot drift from the nav.
+      const rosterHref = usersHrefForRole(currentUser.role);
+      if (canManageUsers && currentUser.role !== 'org_admin' && rosterHref) {
         groups.push({
           title: 'People & access',
           items: [
             {
-              id: 'manage-link',
-              label: 'Users & hospitals',
+              id: 'people-roster',
+              label: 'Users & roles',
               icon: Users,
               badge: users.length ? String(users.length) : undefined,
               nested: true,
+              href: rosterHref,
             },
           ],
         });
@@ -435,9 +445,11 @@ export default function RoleSettingsView() {
     }
   };
 
-  const handleNav = (id: string) => {
-    if (id === 'manage-link') { setActivePanel('manage-screen'); return; }
-    setActivePanel(id);
+  const handleNav = (item: NavItem) => {
+    // A rail row with an href is a shortcut to a page that owns itself
+    // elsewhere in the nav; everything else is a panel of this screen.
+    if (item.href) { router.push(item.href); return; }
+    setActivePanel(item.id);
   };
 
   const renderControl = (row: RoleSettingRow): ReactNode => {
@@ -592,6 +604,7 @@ export default function RoleSettingsView() {
             ))}
           </div>
         </section>
+        <FacilitySyncPanel />
         <FacilityPolicySections panel="integrations" />
       </>
     );
@@ -775,7 +788,6 @@ export default function RoleSettingsView() {
       'org-facilities-editor': 'org-facilities',
       'org-people-editor': 'org-people',
       'org-billing-editor': 'org-billing',
-      'manage-screen': 'manage-link',
     };
     return editorParent[activePanel] === id;
   };
@@ -840,7 +852,7 @@ export default function RoleSettingsView() {
                       key={item.id}
                       type="button"
                       className={isNavActive(item.id) ? 'active' : undefined}
-                      onClick={() => handleNav(item.id)}
+                      onClick={() => handleNav(item)}
                       /* A rail label can outrun its column; the tooltip keeps
                          the full wording reachable when it ellipsises. */
                       title={item.label}

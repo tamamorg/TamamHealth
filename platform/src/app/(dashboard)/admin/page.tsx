@@ -36,6 +36,8 @@ import { SadbChip, SadbGridList, SadbGridRow, statusChip } from '@/components/ad
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import Modal from '@/components/Modal';
 import { ChevronDown, ChevronRight, X } from '@/components/icons/lucide';
+import { abbreviateProviderName } from '@/lib/patient-utils';
+import { getRoleConfig } from '@/lib/permissions';
 import type { AuditLogDoc, EncounterDoc, HospitalDoc, UserDoc } from '@/lib/db-types';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
@@ -152,14 +154,28 @@ function KvRow({ label, value, valueClass, chip, chipClass }: {
  * competing with the tenant list's own header. Rows open the per-facility
  * management dashboard, which is where a platform operator can actually act on
  * what they find here.
+ *
+ * The Users cell is a disclosure, not just a number: "3" tells an operator a
+ * facility is staffed but not by whom, and the answer to "who is attached
+ * here?" was three navigations away. Opening it lists the accounts inline,
+ * marking each as the user's home site or one they merely cover.
  */
-function OrgFacilities({ facilities, userCounts, loading, onOpen }: {
+function OrgFacilities({ facilities, usersByFacility, loading, onOpen }: {
   facilities: HospitalDoc[];
   /** Accounts attached to each facility, keyed by facility id. */
-  userCounts: Map<string, number>;
+  usersByFacility: Map<string, UserDoc[]>;
   loading: boolean;
   onOpen: (hospitalId: string) => void;
 }) {
+  /* A set, not one id: comparing who staffs two sites is a reason to open
+     both, the same argument the tenant rows above make. */
+  const [openUsers, setOpenUsers] = useState<Set<string>>(new Set());
+  const toggleUsers = (id: string) => setOpenUsers(prev => {
+    const next = new Set(prev);
+    if (!next.delete(id)) next.add(id);
+    return next;
+  });
+
   const cell: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', minWidth: 0 };
   return (
     <div style={{ background: 'var(--ehr-head)', borderBottom: '1px solid var(--border-light)', padding: '8px 16px 10px 40px' }}>
@@ -184,33 +200,102 @@ function OrgFacilities({ facilities, userCounts, loading, onOpen }: {
           </div>
           {facilities.map(f => {
             const retired = f.isActive === false;
+            const facilityUsers = usersByFacility.get(f._id) || [];
+            const usersOpen = openUsers.has(f._id);
             return (
-              <button
-                key={f._id}
-                type="button"
-                onClick={() => onOpen(f._id)}
-                style={{
-                  display: 'grid', gridTemplateColumns: ORG_FACILITY_TEMPLATE, gap: 12, alignItems: 'center',
-                  width: '100%', textAlign: 'start', padding: '7px 8px', background: 'transparent',
-                  border: 0, borderTop: '1px solid var(--border-light)', cursor: 'pointer',
-                }}
-              >
-                <span style={{ ...cell, fontSize: 12.5, fontWeight: 600, color: retired ? 'var(--text-muted)' : 'var(--text-primary)' }} className="truncate">
-                  {f.name}{retired ? ' · retired' : ''}
-                </span>
-                <span style={cell} className="truncate">{FACILITY_TYPE_LABELS[f.facilityType] || f.facilityType}</span>
-                <span style={cell} className="truncate">{[f.town, f.state].filter(Boolean).join(', ') || '—'}</span>
-                <span style={{ ...cell, fontVariantNumeric: 'tabular-nums' }}>{loading ? '…' : (userCounts.get(f._id) || 0)}</span>
-                <span style={{ textAlign: 'end' }}>
-                  <SadbChip tone={f.syncStatus === 'online' ? 'green' : f.syncStatus === 'syncing' ? 'yellow' : 'neutral'}>
-                    {f.syncStatus || 'unknown'}
-                  </SadbChip>
-                </span>
-              </button>
+              <div key={f._id}>
+                {/* Not a <button> wrapping the row any more: the Users cell is
+                    its own control, and a button cannot nest inside a button.
+                    The facility name carries a stretched hit area instead, so
+                    clicking anywhere else on the row still opens the site. */}
+                <div
+                  className="sadb-facrow"
+                  style={{
+                    display: 'grid', gridTemplateColumns: ORG_FACILITY_TEMPLATE, gap: 12, alignItems: 'center',
+                    width: '100%', padding: '7px 8px', borderTop: '1px solid var(--border-light)',
+                  }}
+                >
+                  <span style={{ minWidth: 0 }} className="truncate">
+                    <button
+                      type="button"
+                      className="sadb-facrow-open truncate"
+                      onClick={() => onOpen(f._id)}
+                      style={{ fontSize: 12.5, fontWeight: 600, color: retired ? 'var(--text-muted)' : 'var(--text-primary)' }}
+                    >
+                      {f.name}{retired ? ' · retired' : ''}
+                    </button>
+                  </span>
+                  <span style={cell} className="truncate">{FACILITY_TYPE_LABELS[f.facilityType] || f.facilityType}</span>
+                  <span style={cell} className="truncate">{[f.town, f.state].filter(Boolean).join(', ') || '—'}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <button
+                      type="button"
+                      className={`sadb-facrow-users ${usersOpen ? 'is-open' : ''}`.trim()}
+                      onClick={() => toggleUsers(f._id)}
+                      disabled={loading}
+                      aria-expanded={usersOpen}
+                      aria-label={`${facilityUsers.length} accounts at ${f.name}`}
+                    >
+                      <b style={{ fontVariantNumeric: 'tabular-nums' }}>{loading ? '…' : facilityUsers.length}</b>
+                      <ChevronDown className="w-3 h-3" aria-hidden />
+                    </button>
+                  </span>
+                  <span style={{ textAlign: 'end' }}>
+                    <SadbChip tone={f.syncStatus === 'online' ? 'green' : f.syncStatus === 'syncing' ? 'yellow' : 'neutral'}>
+                      {f.syncStatus || 'unknown'}
+                    </SadbChip>
+                  </span>
+                </div>
+                {usersOpen && <FacilityUserList users={facilityUsers} facilityId={f._id} />}
+              </div>
             );
           })}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * The accounts attached to one facility, opened from its Users cell.
+ *
+ * Home sites sort first: a user whose `hospitalId` is this facility works
+ * here, while one who reaches it through `facilityIds` covers it from
+ * somewhere else, and an operator reading a staffing question needs to tell
+ * those apart. The header row stays drawn when the list is empty, so the
+ * panel keeps its shape and the zero is explained rather than blank.
+ */
+function FacilityUserList({ users, facilityId }: { users: UserDoc[]; facilityId: string }) {
+  const rows = useMemo(() => [...users].sort((a, b) => {
+    const home = Number(b.hospitalId === facilityId) - Number(a.hospitalId === facilityId);
+    return home || a.name.localeCompare(b.name);
+  }), [users, facilityId]);
+
+  return (
+    <div className="sadb-facusers">
+      <div className="sadb-facusers-head">
+        <span>Account</span>
+        <span>Role</span>
+        <span>Attachment</span>
+        <span style={{ textAlign: 'end' }}>Status</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="sadb-facusers-empty">No accounts are attached to this facility yet.</p>
+      ) : rows.map(u => (
+        <div className="sadb-facusers-row" key={u._id}>
+          <span className="truncate">
+            <b>{abbreviateProviderName(u.name)}</b>
+            <i>@{u.username}</i>
+          </span>
+          <span className="truncate">{getRoleConfig(u.role).label}</span>
+          <span>{u.hospitalId === facilityId ? 'Home site' : 'Covering'}</span>
+          <span style={{ textAlign: 'end' }}>
+            <SadbChip tone={u.isActive === false ? 'neutral' : 'green'}>
+              {u.isActive === false ? 'inactive' : 'active'}
+            </SadbChip>
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -410,12 +495,15 @@ export default function AdminDashboardPage() {
      user, since a home site listed again among the extras is one account at
      one facility, not two. */
   const usersByFacility = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, UserDoc[]>();
     for (const u of users) {
       const ids = new Set<string>();
       if (u.hospitalId) ids.add(u.hospitalId);
       for (const id of u.facilityIds || []) ids.add(id);
-      for (const id of ids) map.set(id, (map.get(id) || 0) + 1);
+      for (const id of ids) {
+        const list = map.get(id);
+        if (list) list.push(u); else map.set(id, [u]);
+      }
     }
     return map;
   }, [users]);
@@ -686,7 +774,7 @@ export default function AdminDashboardPage() {
                     {open && (
                       <OrgFacilities
                         facilities={facilities}
-                        userCounts={usersByFacility}
+                        usersByFacility={usersByFacility}
                         loading={loading}
                         onOpen={id => router.push(`/hospitals/${id}/manage`)}
                       />

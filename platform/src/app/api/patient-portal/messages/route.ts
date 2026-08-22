@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyPatientToken } from '@/lib/patient-portal-auth';
+import { verifyPatientToken, guardPortalWrite } from '@/lib/patient-portal-auth';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import type { MessageDoc } from '@/lib/db-types';
 import { demoFallbackEnabled, logDemoFallback, getDemoMessagesByPatient, recordDemoMessage } from '@/lib/patient-portal-demo';
@@ -25,6 +25,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await verifyPatientToken(req);
   if (auth instanceof NextResponse) return auth;
+
+  // Tighter than the per-patient floor: a message lands in a clinician inbox, so this is a
+  // handfuls-per-visit action and a strict cap never touches real use.
+  const limited = await guardPortalWrite(auth.sub, 'portal-message', 10, 5 * 60_000);
+  if (limited) return limited;
 
   let body: Record<string, unknown>;
   try {

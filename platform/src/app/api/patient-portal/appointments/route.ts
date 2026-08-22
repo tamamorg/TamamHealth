@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { verifyPatientToken } from '@/lib/patient-portal-auth';
+import { verifyPatientToken, guardPortalWrite } from '@/lib/patient-portal-auth';
 import { appointmentsDB } from '@/lib/db';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import { emitSyncEvent } from '@/lib/services/sync-event-service';
@@ -29,6 +29,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await verifyPatientToken(req);
   if (auth instanceof NextResponse) return auth;
+
+  // Tighter than the per-patient floor: each request reaches the front desk as work, so this is a
+  // handfuls-per-visit action and a strict cap never touches real use.
+  const limited = await guardPortalWrite(auth.sub, 'portal-appointment', 10, 5 * 60_000);
+  if (limited) return limited;
 
   let body: Record<string, unknown>;
   try {

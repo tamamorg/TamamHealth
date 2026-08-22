@@ -4,6 +4,7 @@
  * GET  — list recent events (super_admin / org_admin)
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/api-security';
 import {
   getAuthPayload, unauthorized, forbidden, hasRole, logApiError,
 } from '@/lib/api-auth';
@@ -20,6 +21,11 @@ const MAX_BATCH = 50;
 
 export async function POST(request: NextRequest) {
   try {
+    // Telemetry, so a bug in a client loop costs the analytics database
+    // rather than anything clinical — but it is still an authenticated
+    // write with no ceiling, and a retry storm writes a row each time.
+    const limited = await checkRateLimit(request, 'usage:events', 120);
+    if (limited) return limited;
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
     // Any authenticated staff session may emit usage events.

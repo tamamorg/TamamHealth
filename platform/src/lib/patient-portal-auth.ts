@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from './rate-limit';
 import { SignJWT, jwtVerify } from 'jose';
 
 // Mirrors the JWT_SECRET resolution + production refusal in lib/auth-token.ts
@@ -119,13 +120,82 @@ export async function verifyPatientToken(
   }
 
   const token = auth.slice(7);
+  let payload: PatientTokenPayload;
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, {
+    const verified = await jwtVerify(token, JWT_SECRET, {
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
     });
-    return payload as unknown as PatientTokenPayload;
+    payload = verified.payload as unknown as PatientTokenPayload;
   } catch {
     return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
   }
+
+  const throttled = await guardPortalFloor(payload.sub);
+  return throttled ?? payload;
+}
+
+/**
+ * The floor every portal request passes through.
+ *
+ * `/patient-portal/login`, `/verify-otp` and `/refresh` were rate limited —
+ * somebody reasoned carefully about credential brute-force — and the eleven
+ * routes behind them were not. So a token, once obtained, could read a
+ * patient's records, labs, prescriptions, immunisations and bills as fast as
+ * the network allowed.
+ *
+ * Token theft is the realistic threat here rather than a forged session: the
+ * portal is used on shared phones, and `PATIENT_SESSION_MAX_SECONDS` already
+ * exists because a stolen token surviving forever was a known concern. A limit
+ * does not prevent theft; it bounds what one stolen token can drain before the
+ * 24-hour cap forces re-authentication.
+ *
+ * Keyed on the PATIENT, not the IP — an attacker holding a token can change
+ * address freely, and the thing worth bounding is access to one person's
+ * record.
+ *
+ * Deliberately generous. A portal page load hits several endpoints at once and
+ * a patient may refresh; this is set well above any human pattern so it never
+ * fires for a real session, and still turns "unbounded" into a number.
+ */
+const PORTAL_FLOOR_PER_MINUTE = 120;
+
+async function guardPortalFloor(patientId: string): Promise<NextResponse | null> {
+  if (!patientId) return null;
+  const verdict = await rateLimit({
+    key: `portal:floor:${patientId}`,
+    limit: PORTAL_FLOOR_PER_MINUTE,
+    windowMs: 60_000,
+  });
+  if (verdict.allowed) return null;
+  const retryAfter = Math.max(1, Math.ceil((verdict.resetAt - Date.now()) / 1000));
+  return NextResponse.json(
+    { error: 'Too many requests. Please try again shortly.' },
+    { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+  );
+}
+
+/**
+ * A tighter cap for the three portal endpoints that WRITE.
+ *
+ * The floor above bounds a scrape. This bounds the actions that reach staff —
+ * an appointment request, a message into a clinician's inbox, a recorded
+ * payment. Those are handfuls-per-visit actions, so the limit can be strict
+ * without ever touching real use, and a scripted patient cannot fill a ward's
+ * message queue.
+ */
+export async function guardPortalWrite(
+  patientId: string,
+  bucket: string,
+  limit = 10,
+  windowMs = 5 * 60_000,
+): Promise<NextResponse | null> {
+  if (!patientId) return null;
+  const verdict = await rateLimit({ key: `portal:${bucket}:${patientId}`, limit, windowMs });
+  if (verdict.allowed) return null;
+  const retryAfter = Math.max(1, Math.ceil((verdict.resetAt - Date.now()) / 1000));
+  return NextResponse.json(
+    { error: 'Too many requests. Please try again shortly.' },
+    { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+  );
 }

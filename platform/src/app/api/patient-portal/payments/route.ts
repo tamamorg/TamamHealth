@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { verifyPatientToken } from '@/lib/patient-portal-auth';
+import { verifyPatientToken, guardPortalWrite } from '@/lib/patient-portal-auth';
 import { paymentsDB } from '@/lib/db';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import { emitSyncEvent } from '@/lib/services/sync-event-service';
@@ -9,6 +9,11 @@ import type { PaymentDoc, PaymentStatus, PaymentMethodType } from '@/lib/db-type
 export async function POST(req: NextRequest) {
   const auth = await verifyPatientToken(req);
   if (auth instanceof NextResponse) return auth;
+
+  // Tighter than the per-patient floor: each POST records a pending payment row, so this is a
+  // handfuls-per-visit action and a strict cap never touches real use.
+  const limited = await guardPortalWrite(auth.sub, 'portal-payment', 10, 5 * 60_000);
+  if (limited) return limited;
 
   let body: Record<string, unknown>;
   try {

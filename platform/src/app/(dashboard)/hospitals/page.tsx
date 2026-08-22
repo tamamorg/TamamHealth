@@ -333,7 +333,7 @@ function HospitalsPageInner() {
                   </>
                 }
               />
-              <FacilityList hospitals={filteredHospitals} colorMetric={colorMetric} onSelect={setSelectedHospital} canManage={canManage} />
+              <FacilityList hospitals={filteredHospitals} colorMetric={colorMetric} onSelect={setSelectedHospital} />
             </>
           )}
         </div>
@@ -469,11 +469,10 @@ function FilterDropdown({ label, value, onChange, options }: {
 // ═══════════════════════════════════════════
 //  Facility List (no selection)
 // ═══════════════════════════════════════════
-function FacilityList({ hospitals, colorMetric, onSelect, canManage }: {
+function FacilityList({ hospitals, colorMetric, onSelect }: {
   hospitals: HospitalDoc[];
   colorMetric: PerformanceMetricKey;
   onSelect: (h: HospitalDoc) => void;
-  canManage: boolean;
 }) {
   const { t } = useTranslation();
   if (hospitals.length === 0) {
@@ -488,34 +487,34 @@ function FacilityList({ hospitals, colorMetric, onSelect, canManage }: {
   return (
     <div className="ehr-list-scroll">
       <table className="data-table" style={{ minWidth: 940, tableLayout: 'fixed' }}>
-        {/* The Manage <col> only exists when the Manage cells do. It used to be
-            declared unconditionally, so for a user without that permission
-            `table-layout: fixed` reserved 8% for a column with no cells and
-            every row stopped short of the card's right edge. */}
+        {/* One even rhythm across the row: the eight data columns are the same
+            width, and only the row number is narrower — a counter never needs
+            more than its digits.
+
+            The colgroup is the ONLY place widths are declared. `table-layout:
+            fixed` takes them from the first row it finds, so the per-<th>
+            widths that used to sit below disagreed with these and were simply
+            ignored — two sets of numbers, one of them fiction. Widths must
+            also stay exhaustive: a short colgroup leaves the last column to
+            absorb the remainder, which is what left Sync stranded mid-row
+            after the Manage column was removed. */}
         <colgroup>
           <col style={{ width: '4%' }} />
-          <col style={{ width: canManage ? '20%' : '28%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '14%' }} />
-          <col style={{ width: '9%' }} />
-          <col style={{ width: '7%' }} />
-          <col style={{ width: '7%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '11%' }} />
-          {canManage && <col style={{ width: '8%' }} />}
+          {Array.from({ length: 8 }, (_, i) => <col key={i} style={{ width: '12%' }} />)}
         </colgroup>
         <thead>
           <tr>
-            <th style={{ width: '4%', textAlign: 'center' }}>#</th>
-            <th style={{ width: '26%' }}>{t('hospitals.colFacility')}</th>
-            <th style={{ width: '10%' }}>{t('hospitals.colType')}</th>
-            <th style={{ width: '14%' }}>{t('hospitals.colLocation')}</th>
-            <th style={{ width: '8%' }}>{t('hospitals.colStatus')}</th>
-            <th style={{ width: '8%' }}>{t('hospitals.colBeds')}</th>
-            <th style={{ width: '8%' }}>{t('hospitals.colStaff')}</th>
-            <th style={{ width: '14%' }}>{METRIC_LABELS[colorMetric]}</th>
-            <th style={{ width: '10%' }}>{t('hospitals.colSync')}</th>
-            {canManage && <th style={{ width: '8%' }}></th>}
+            <th style={{ textAlign: 'center' }}>#</th>
+            <th>{t('hospitals.colFacility')}</th>
+            <th>{t('hospitals.colType')}</th>
+            <th>{t('hospitals.colLocation')}</th>
+            <th>{t('hospitals.colStatus')}</th>
+            <th>{t('hospitals.colBeds')}</th>
+            <th>{t('hospitals.colStaff')}</th>
+            <th>{METRIC_LABELS[colorMetric]}</th>
+            {/* Last column: aligned to the row's right edge so the sync badges
+                form a single column at the end rather than floating. */}
+            <th style={{ textAlign: 'right' }}>{t('hospitals.colSync')}</th>
           </tr>
         </thead>
         <tbody>
@@ -562,7 +561,7 @@ function FacilityList({ hospitals, colorMetric, onSelect, canManage }: {
                     </span>
                   </div>
                 </td>
-                <td>
+                <td style={{ textAlign: 'right' }}>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 999, textTransform: 'capitalize',
                     color: h.syncStatus === 'online' ? 'var(--color-success-text)' : h.syncStatus === 'syncing' ? 'var(--color-warning-text)' : 'var(--text-muted)',
@@ -571,17 +570,6 @@ function FacilityList({ hospitals, colorMetric, onSelect, canManage }: {
                     {h.syncStatus}
                   </span>
                 </td>
-                {canManage && (
-                  <td onClick={e => e.stopPropagation()}>
-                    <Link
-                      href={`/hospitals/${h._id}/manage`}
-                      className="btn btn-secondary btn-sm"
-                      style={{ gap: 4, padding: '4px 8px', fontSize: 11 }}
-                    >
-                      <Settings style={{ width: 11, height: 11 }} /> {t('hospitals.manage')}
-                    </Link>
-                  </td>
-                )}
               </tr>
             );
           })}
@@ -740,16 +728,16 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
         <div className="card-elevated" style={{ padding: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('hospitals.bedsHeader', { count: hospital.totalBeds })}</div>
           <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* Same as the staff rows above: the colour chips keyed to nothing,
+                and "ICU" in danger red read as an alert about a ward type. */}
             {[
-              { label: t('hospitals.bedsIcu'), value: hospital.icuBeds, color: 'var(--color-danger-text)' },
-              { label: t('hospitals.bedsMaternity'), value: hospital.maternityBeds, color: 'var(--chart-2)' },
-              { label: t('hospitals.bedsPediatric'), value: hospital.pediatricBeds, color: 'var(--accent-primary)' },
-              { label: t('hospitals.bedsGeneral'), value: Math.max(0, hospital.totalBeds - hospital.icuBeds - hospital.maternityBeds - hospital.pediatricBeds), color: 'var(--text-muted)' },
+              { label: t('hospitals.bedsIcu'), value: hospital.icuBeds },
+              { label: t('hospitals.bedsMaternity'), value: hospital.maternityBeds },
+              { label: t('hospitals.bedsPediatric'), value: hospital.pediatricBeds },
+              { label: t('hospitals.bedsGeneral'), value: Math.max(0, hospital.totalBeds - hospital.icuBeds - hospital.maternityBeds - hospital.pediatricBeds) },
             ].map(b => (
               <div key={b.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
-                  <span style={{ width: 4, height: 12, borderRadius: 2, background: b.color }} />{b.label}
-                </span>
+                <span style={{ color: 'var(--text-secondary)' }}>{b.label}</span>
                 <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{b.value}</span>
               </div>
             ))}
@@ -765,17 +753,18 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
         <div className="card-elevated" style={{ padding: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('hospitals.staffHeader', { count: totalStaff })}</div>
           <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* Plain label/value rows. Each role used to carry a coloured dot
+                that keyed to nothing — no chart, no legend, no status — and one
+                of the five colours was a raw off-palette hex. */}
             {[
-              { label: t('hospitals.staffDoctors'), value: hospital.doctors, color: 'var(--accent-primary)' },
-              { label: t('hospitals.staffClinicalOfficers'), value: hospital.clinicalOfficers, color: '#FFD2A6' },
-              { label: t('hospitals.staffNurses'), value: hospital.nurses, color: 'var(--chart-2)' },
-              { label: t('hospitals.staffLabTech'), value: hospital.labTechnicians, color: 'var(--color-warning-text)' },
-              { label: t('hospitals.staffPharmacists'), value: hospital.pharmacists, color: 'var(--color-success-text)' },
+              { label: t('hospitals.staffDoctors'), value: hospital.doctors },
+              { label: t('hospitals.staffClinicalOfficers'), value: hospital.clinicalOfficers },
+              { label: t('hospitals.staffNurses'), value: hospital.nurses },
+              { label: t('hospitals.staffLabTech'), value: hospital.labTechnicians },
+              { label: t('hospitals.staffPharmacists'), value: hospital.pharmacists },
             ].map(s => (
               <div key={s.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
-                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: s.color }} />{s.label}
-                </span>
+                <span style={{ color: 'var(--text-secondary)' }}>{s.label}</span>
                 <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{s.value}</span>
               </div>
             ))}
