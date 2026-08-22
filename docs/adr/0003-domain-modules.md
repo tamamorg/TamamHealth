@@ -1,6 +1,7 @@
 # ADR 0003 — Domain modules with enforced boundaries
 
-- **Status:** Accepted (migration in progress; `identity` landed first)
+- **Status:** Accepted (migration in progress — `identity` and `communication` landed;
+  10 domains remain)
 - **Supersedes:** nothing
 - **Interacts with:** ADR 0001 (tenant scoping), `docs/ARCHITECTURE.md`
 
@@ -62,10 +63,28 @@ src/
 
 ### The three rules
 
-1. **A module's internals are private.** Other modules import
-   `@/modules/<name>` and get whatever `index.ts` chooses to export. Reaching
-   past it — `@/modules/pharmacy/services/dispensing-service` — is a lint
-   error.
+1. **A module's internals are private.** A module has exactly three public
+   entrypoints, and everything else is closed:
+
+   ```
+   @/modules/<name>              server surface — guards, policy, vocabulary
+   @/modules/<name>/client       browser-safe surface
+   @/modules/<name>/services/*   one service at a time
+   ```
+
+   The first two exist because a single barrel cannot serve both sides: the
+   server surface reaches `node:crypto` and the database, and a client
+   component that imported it put `node:fs` in the browser bundle and failed
+   the production build. Splitting them makes that a decision rather than a
+   property of the bundler on a given day.
+
+   The third exists for a measured reason. Re-exporting services from the
+   barrel turned every `await import()` into an eager one — a route that
+   wanted `getAuthPayload` loaded PouchDB at module-init, before its first
+   request — and this codebase reaches for services lazily precisely to keep
+   route cold-start light. Naming the service keeps the laziness. It also
+   resolves genuine ambiguity: `communication` has two services that both
+   export `deleteMessage`, and a barrel would have had to rename one.
 2. **`shared/` may not import a module.** It is the bottom of the graph. If
    something in `shared/` needs domain knowledge, it is not shared.
 3. **Modules do not import each other's internals, and cycles are errors.**
@@ -92,8 +111,18 @@ worth being explicit: the re-export must name its exports, because Next reads
 
 ### How the rules are enforced
 
-ESLint `no-restricted-imports` with path patterns, in
-`platform/eslint.config.mjs`. **No new dependency** — the repo pins ajv 6 for
+ESLint `no-restricted-imports` listing each module's private directories
+explicitly, in `platform/eslint.config.mjs`. The first attempt expressed this
+as "everything except the public entrypoints" with a negated glob —
+`!(client|services)` — which reads better and silently matched nothing:
+minimatch's extglob binds to a single path segment, so `core/auth` walked
+straight through. An explicit list cannot fail that way.
+
+Ordering matters too. Flat config resolves last-wins, and the carve-out that
+lets a test reach into the module it is testing must come AFTER the boundary
+rules; placed before them it does nothing at all.
+
+**No new dependency** — the repo pins ajv 6 for
 the eslint core binary and force-upgrades ajv/minimatch through
 `package.json` overrides, so adding a graph tool like dependency-cruiser risks
 the exact resolution conflict the flat-config comment already documents.
@@ -119,18 +148,45 @@ invariant, and the other consumes it through the public surface. Interaction
 checking is a medication-safety rule, so it lives in `pharmacy` and `clinical`
 imports it.
 
+### Guards, because the failures are invisible to `tsc`
+
+`src/__tests__/architecture/module-boundaries.test.ts` walks the static import
+graph of every module's entrypoints and asserts:
+
+- the client surface reaches no Node built-in and no database;
+- the server surface pulls neither the services layer nor React;
+- no file inside a module imports its own barrel (a cycle waiting to become an
+  initialisation-order bug — which is exactly how it failed once);
+- every module exposes a public surface at all.
+
+It models RUNTIME reachability: `import type` is erased and dynamic `import()`
+is deferred, so neither counts as an edge. Both distinctions matter — counting
+type imports reported `node:crypto` against the client surface for a type that
+does not exist at runtime.
+
+The guards run over whatever is in `src/modules/`, so a new domain is covered
+the day it lands. The migration itself is scripted (phases A→D plus a
+service-repointing pass); the script carries the lessons above, including
+re-inserting a merged import block AFTER the last surviving import so a leading
+`'use client'` is never displaced.
+
 ## Migration order
 
 One domain per commit, each landing green (tsc, jest, lint, build). Ordered by
 independence, so the pattern is proven before it meets the tangled parts:
 
-1. **identity** — self-contained, recently reviewed end to end, and the domain
-   whose boundary matters most (it is the only one that can grant access).
-2. `platform`, `communication` — few inbound dependencies.
-3. `revenue`, `scheduling`, `pharmacy`, `diagnostics`.
-4. `patients`, `clinical` — the tangled core, done last with the most edges
+1. ~~**identity**~~ — landed. Self-contained, recently reviewed end to end, and
+   the domain whose boundary matters most (it is the only one that can grant
+   access). 40 files.
+2. ~~**communication**~~ — landed. Messages, announcements, the notification
+   bell. 11 files, and the mirror image of identity: client-heavy, so its
+   `client.ts` is the main surface.
+3. `platform` — tenants, config, policy, audit, usage. Server-heavy, high
+   fan-in; the third shape the tooling needs to handle.
+4. `revenue`, `scheduling`, `pharmacy`, `diagnostics`.
+5. `patients`, `clinical` — the tangled core, done last with the most edges
    already resolved.
-5. `maternal-child`, `public-health`, `facility-ops`.
+6. `maternal-child`, `public-health`, `facility-ops`.
 
 Until a domain has moved, its code stays where it is and the boundary rules
 simply do not match it. The lint config therefore lists modules explicitly
