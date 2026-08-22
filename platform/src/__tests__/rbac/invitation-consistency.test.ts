@@ -23,8 +23,18 @@ const source = (relativePath: string) =>
 
 const CREATION_SURFACES = [
   'app/(dashboard)/admin/users/page.tsx',
-  'app/(dashboard)/org-admin/users/page.tsx',
+  // The org roster and a facility's Staff tab both create accounts through
+  // this one dialog, so the surface to pin is the dialog — see
+  // DELEGATING_SURFACES below for the pages that must keep using it rather
+  // than growing a second form.
+  'components/admin/CreateUserModal.tsx',
   'app/(dashboard)/admin/organizations/page.tsx',
+];
+
+/** Pages whose "create user" action must route through the shared dialog. */
+const DELEGATING_SURFACES = [
+  'app/(dashboard)/org-admin/users/page.tsx',
+  'components/facilities/FacilityManageTabs.tsx',
 ];
 
 describe('every creation surface reports the invitation', () => {
@@ -32,8 +42,17 @@ describe('every creation surface reports the invitation', () => {
     expect(source(file)).toContain('createUserWithInvitation');
   });
 
+  test.each(DELEGATING_SURFACES)('%s creates through the shared dialog', file => {
+    // A second copy of the form is how the outcome got dropped on two
+    // surfaces in the first place.
+    expect(source(file)).toContain('CreateUserModal');
+    expect(source(file)).not.toContain('createUserWithInvitation');
+  });
+
   test.each(CREATION_SURFACES)('%s carries it into the hand-off', file => {
-    expect(source(file)).toMatch(/invitation[=:,}]|invitation\)/);
+    // Any form that passes the value on: `invitation={...}`, `invitation:`,
+    // `invitation,`, `invitation)` or the object shorthand `invitation }`.
+    expect(source(file)).toMatch(/invitation\s*[=:,)}]/);
   });
 
   test.each(CREATION_SURFACES)('%s collects an email address to send to', file => {

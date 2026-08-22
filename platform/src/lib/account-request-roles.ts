@@ -29,7 +29,61 @@ export const REQUESTABLE_ROLES: UserRole[] = [
   'pharmacist', 'front_desk', 'cashier', 'data_entry_clerk',
   'medical_superintendent', 'hrio', 'nutritionist', 'radiologist',
   'hospital_manager', 'medical_biller', 'government', 'county_health_director',
+  // The six clinical-flow station roles. They were omitted when this list was
+  // written, which left seven of the platform's twenty-five roles with no
+  // self-service path at all — real, seeded, routable roles with their own
+  // dashboards, whose holders opened the form and could not find their job on
+  // it. Nothing about them is privileged: each is narrower than the legacy
+  // role it stands in for (see STATION_ROLE_EQUIVALENT in lib/api-auth.ts).
+  'central_registration_clerk', 'clinic_clerk', 'triage_nurse', 'rooming_nurse',
+  'clinician', 'records_hmis_officer',
 ];
+
+/**
+ * Roles whose holders must be on a professional register.
+ *
+ * Collected as free text and checked by a HUMAN against the council's own
+ * roll — see `AccountRequestDoc.professionalRegistrationNumber` for why it is
+ * not validated by shape. The list is the clinical roles that can author
+ * clinical content or hold a licence: it is not a permissions boundary, it is
+ * a prompt to the approver about what to verify before granting.
+ */
+export const ROLES_REQUIRING_REGISTRATION: UserRole[] = [
+  'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
+  'medical_superintendent', 'pharmacist', 'lab_tech', 'radiologist',
+  'nutritionist', 'triage_nurse', 'rooming_nurse',
+];
+
+export function roleRequiresRegistrationNumber(role: string): boolean {
+  return (ROLES_REQUIRING_REGISTRATION as string[]).includes(role);
+}
+
+/**
+ * How an approver satisfied themselves that the requester is who they say.
+ *
+ * Recorded with the decision, and REQUIRED to approve. The public form
+ * collects nothing but self-assertion, so before this the approval step had no
+ * place to record that anyone had checked — and an approval that looks
+ * identical whether it was verified or waved through is not an audit trail,
+ * it is a rubber stamp with a timestamp.
+ *
+ * The options are the checks actually available in this setting. "I know this
+ * person" is on the list deliberately: in a district hospital it is often the
+ * true and sufficient answer, and leaving it off would mean approvers picking
+ * a more official-sounding option they did not actually perform.
+ */
+export const IDENTITY_ATTESTATION_METHODS: readonly { value: string; label: string }[] = [
+  { value: 'known_personally', label: 'I know this person and confirm their identity' },
+  { value: 'supervisor_confirmed', label: 'Confirmed with their supervisor or department head' },
+  { value: 'register_checked', label: 'Checked their registration number against the council register' },
+  { value: 'staff_id_seen', label: 'Saw their staff ID or appointment letter' },
+  { value: 'in_person', label: 'Verified in person at the facility' },
+];
+
+export function isValidAttestation(value: unknown): value is string {
+  return typeof value === 'string'
+    && IDENTITY_ATTESTATION_METHODS.some(method => method.value === value);
+}
 
 /** Roles whose accounts are organisation-wide rather than facility-bound. */
 export const ACCOUNT_REQUEST_ROLES_WITHOUT_FACILITY: UserRole[] = [

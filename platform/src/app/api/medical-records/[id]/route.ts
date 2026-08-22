@@ -4,15 +4,12 @@
  * PATCH — Update a medical record
  * DELETE — Delete a medical record (soft-delete via status, or hard delete)
  */
+import { CLINICIANS } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
-} from '@/lib/api-auth';
+  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError } from '@/lib/api-auth';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import type { UserRole } from '@/lib/db-types';
-const WRITE_ROLES: UserRole[] = [
-  'super_admin', 'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
-];
+const WRITE_ROLES = CLINICIANS;
 async function patchHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

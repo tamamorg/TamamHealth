@@ -31,10 +31,16 @@ import EhrCareDashboard, { type EhrCareDashboardAction, type EhrCareDashboardMet
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/lib/date-utils';
 import {
-  Calendar, ClipboardCheck, ArrowRightLeft,
-  UserPlus, ClipboardList, Plus,
-  LogOut, X, Maximize2,
-  Stethoscope, FileText, RotateCcw, type LucideIcon,
+  ClipboardCheck,
+  UserPlus,
+  Plus,
+  LogOut,
+  X,
+  Maximize2,
+  Stethoscope,
+  FileText,
+  RotateCcw,
+  type LucideIcon,
 } from '@/components/icons/lucide';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 import { formatPhoneShared } from '@/lib/field-formats';
@@ -1016,12 +1022,6 @@ export default function FrontDeskDashboardPage() {
 
   // Quick-navigation strip mirroring the Clinical Officer dashboard's clinical
   // strip. Route-guarded so a clinic clerk never sees a shortcut they can't open.
-  const actionStrip = useMemo<EhrCareDashboardAction[]>(() => ([
-    ...(canUseRoute('/patients') ? [{ label: 'Patient Registry', icon: ClipboardList, onClick: () => router.push('/patients') }] : []),
-    ...(canUseRoute('/appointments') ? [{ label: 'Appointments', icon: Calendar, onClick: () => router.push('/appointments') }] : []),
-    ...(canUseRoute('/referrals') ? [{ label: 'Referrals', icon: ArrowRightLeft, onClick: () => router.push('/referrals') }] : []),
-  ]), [canUseRoute, router]);
-
   const frontDeskRows = useMemo<EhrCareDashboardRow[]>(() => {
     const patientById = new Map(patients.map(patient => [patient._id, patient]));
     const appointmentRows: EhrCareDashboardRow[] = visiblePendingAppointments.map(appointment => {
@@ -1509,7 +1509,6 @@ export default function FrontDeskDashboardPage() {
           onSearchChange={setQueueSearch}
           filters={[]}
           actions={actions}
-          actionStrip={actionStrip}
           chartSeriesNames={['Active', 'Completed']}
           // The list below is one day's schedule, so charting it left a single
           // bar under a "This week" heading. The chart reads the whole booking
@@ -1532,7 +1531,6 @@ export default function FrontDeskDashboardPage() {
           showMissionCard
           // Reception rows already open the patient detail on click, so the
           // per-row pencil is redundant.
-          showRowOpenAction={false}
           emptyTitle={centerCopy.emptyTitle}
           emptyActionLabel={centerCopy.emptyActionLabel}
           onEmptyAction={() => {
@@ -1591,7 +1589,7 @@ export default function FrontDeskDashboardPage() {
                   — they stay put while the form scrolls under them. The
                   heading the dialog is labelled by moves with them, visually
                   hidden, so `aria-labelledby` still resolves. */}
-              <div className="ehr-registration-dialog-actions">
+              <div className="ehr-registration-dialog-actions modal-no-headband">
                 <h2 id="patient-registration-dialog-title" className="sr-only">
                   {t('frontDesk.registerNewPatient')}
                 </h2>
@@ -1621,12 +1619,14 @@ export default function FrontDeskDashboardPage() {
         {rescheduleTarget && (
           <Modal onClose={() => !reschedSaving && setRescheduleTarget(null)} width={420} labelledBy="reschedule-dialog-title">
             <div className="card-elevated" style={{ padding: 24, borderRadius: 16, background: 'var(--bg-card)' }}>
-              <h2 id="reschedule-dialog-title" className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
-                Reschedule appointment
-              </h2>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                {rescheduleTarget.patientName} · currently {formatDayMonthYear(rescheduleTarget.appointmentDate)} {formatClockTime(rescheduleTarget.appointmentTime)}
-              </p>
+              <div className="modal-headband">
+                <h2 id="reschedule-dialog-title" className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
+                  Reschedule appointment
+                </h2>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  {rescheduleTarget.patientName} · currently {formatDayMonthYear(rescheduleTarget.appointmentDate)} {formatClockTime(rescheduleTarget.appointmentTime)}
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--text-muted)' }}>New date</label>
@@ -1654,10 +1654,12 @@ export default function FrontDeskDashboardPage() {
         {noShowTarget && (
           <Modal onClose={() => setNoShowTarget(null)} width={380} labelledBy="no-show-dialog-title">
             <div className="card-elevated" style={{ padding: 24, borderRadius: 16, background: 'var(--bg-card)' }}>
-              <h2 id="no-show-dialog-title" className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>Mark as no-show?</h2>
-              <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-                {noShowTarget.patientName} — {formatClockTime(noShowTarget.appointmentTime)}. Check the waiting room first; this removes them from today&apos;s arrivals.
-              </p>
+              <div className="modal-headband">
+                <h2 id="no-show-dialog-title" className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>Mark as no-show?</h2>
+                <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
+                  {noShowTarget.patientName} — {formatClockTime(noShowTarget.appointmentTime)}. Check the waiting room first; this removes them from today&apos;s arrivals.
+                </p>
+              </div>
               <div className="flex justify-end gap-2 mt-5">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setNoShowTarget(null)}>{t('action.cancel')}</button>
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => handleNoShow(noShowTarget)}>Mark no-show</button>
@@ -1669,11 +1671,13 @@ export default function FrontDeskDashboardPage() {
         {cancelTarget && (
           <Modal onClose={() => setCancelTarget(null)} width={420} labelledBy="cancel-dialog-title">
             <div className="card-elevated" style={{ padding: 24, borderRadius: 16, background: 'var(--bg-card)' }}>
-              <h2 id="cancel-dialog-title" className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>Cancel this appointment?</h2>
-              <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-                {cancelTarget.appt.patientName} — {formatClockTime(cancelTarget.appt.appointmentTime)}.
-                The booking stays on record under Finished; you can undo from the notification or reopen it later.
-              </p>
+              <div className="modal-headband">
+                <h2 id="cancel-dialog-title" className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>Cancel this appointment?</h2>
+                <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
+                  {cancelTarget.appt.patientName} — {formatClockTime(cancelTarget.appt.appointmentTime)}.
+                  The booking stays on record under Finished; you can undo from the notification or reopen it later.
+                </p>
+              </div>
               <label className="block text-xs font-semibold mt-4 mb-1" style={{ color: 'var(--text-secondary)' }} htmlFor="front-desk-cancel-reason">
                 Reason (optional)
               </label>

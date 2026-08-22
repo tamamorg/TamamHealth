@@ -333,8 +333,19 @@ export function SadbShell({ groups, active, onSelect, children }: {
   );
 }
 
-export function SadbPanelHeader({ title, note, tag, tagTone }: {
+export function SadbPanelHeader({ title, note, tag, tagTone, actions }: {
   title: string; note?: ReactNode; tag?: ReactNode; tagTone?: ChipTone;
+  /**
+   * Page actions, sitting on the same line as the title.
+   *
+   * `SadbPage` also takes an `actions` slot, but it renders as its own row
+   * ABOVE the panel — so a page using both showed its buttons stranded on a
+   * line of their own with the title beneath them, which reads as two headers
+   * rather than one. Passing them here puts them where the eye expects: title
+   * left, actions right, one row. `sadb-panel-head` was already a
+   * space-between flex row, so this needed no layout change.
+   */
+  actions?: ReactNode;
 }) {
   return (
     <div className="sadb-panel-head">
@@ -342,7 +353,12 @@ export function SadbPanelHeader({ title, note, tag, tagTone }: {
         <h2 className="sadb-panel-title">{title}</h2>
         {note && <p className="sadb-panel-note">{note}</p>}
       </div>
-      {tag !== undefined && <SadbChip tone={tagTone ?? 'neutral'}>{tag}</SadbChip>}
+      {(tag !== undefined || actions) && (
+        <div className="sadb-panel-head-end">
+          {tag !== undefined && <SadbChip tone={tagTone ?? 'neutral'}>{tag}</SadbChip>}
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

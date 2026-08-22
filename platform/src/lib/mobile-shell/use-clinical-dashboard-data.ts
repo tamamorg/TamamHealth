@@ -8,8 +8,6 @@ import { computeSignCount, type SigningInboxCounts } from '@/lib/hooks/signing-i
 import { usePhoneNotesInbox } from '@/lib/hooks/usePhoneNotesInbox';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useLabResults } from '@/lib/hooks/useLabResults';
-import { getRoleConfig } from '@/lib/permissions';
-import { isHrefAllowed } from '@/components/ehr/ehr-navigation';
 import type { AppointmentDoc, LabResultDoc, PhoneNoteDoc, ReferralDoc } from '@/lib/db-types';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
 import { appointmentStatusGroup, APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
@@ -66,7 +64,7 @@ export interface ClinicalOutstandingInput extends SigningInboxCounts {
  * the mobile shell or its half-dozen backing hooks.
  */
 export function computeClinicalOutstanding(input: ClinicalOutstandingInput): MobileOutstandingItem[] {
-  const { currentUser, phoneNotes, referrals, labResults, today } = input;
+  const { currentUser, phoneNotes, referrals, labResults } = input;
   const signCount = computeSignCount(input);
   const myReferralsCount = referrals.filter((r) => r.createdBy === currentUser?._id).length;
   const awaitingLabs = labResults.filter(
@@ -100,10 +98,6 @@ export function useClinicalDashboardData(): MobileDashboardData {
   const { results: labResults, loading: labLoading } = useLabResults();
 
   const today = todayIso();
-  const allowedRoutes = useMemo(
-    () => (currentUser ? getRoleConfig(currentUser.role).allowedRoutes : []),
-    [currentUser]
-  );
 
   const lanes = useMemo<MobileLane<AppointmentDoc>[]>(
     () => computeClinicalLanes(appointments, today),

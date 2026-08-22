@@ -7,11 +7,13 @@ import { clinicalOfficerTourSteps } from '../clinical-officer-steps';
 // imported clinical steps, finish stripped so this tour keeps its own single
 // ending), then the tour turns to what's actually different about the role:
 // facility-wide oversight across clinical quality, HR, facility performance,
-// and finance. `/hospitals/[hospitalId]/manage` (Staff/Wards/Equipment/
-// Inventory/Schedules/Performance/Settings, reachable to this role) is
-// described narratively rather than anchored: opening it takes two sequential
-// clicks — select a facility, then Manage — and the engine's single
-// `preClickSelector` can only script one.
+// and finance. A facility's working tabs — Staff, Wards, Equipment, Inventory,
+// Schedules, Performance, Settings — used to be a separate screen at
+// `/hospitals/[hospitalId]/manage`, two sequential clicks away (select a
+// facility, then Manage), which is why this tour could only describe them.
+// They now sit on the facility profile itself, and every row in the network
+// list carries a gear that opens straight onto one, so the stop below anchors
+// on that gear instead of narrating a screen the tour could not reach.
 export const SUPERINTENDENT_STEPS: TourStep[] = [
   ...clinicalOfficerTourSteps.filter(s => s.id !== 'finish'),
   {
@@ -85,7 +87,17 @@ export const SUPERINTENDENT_STEPS: TourStep[] = [
     // narrative card is the stable choice for a list this long.
     target: '',
     title: 'Hospital network',
-    body: 'Every facility you oversee, with occupancy, staffing, and performance metrics side by side. Open one, then Manage, for its full profile — staff, wards, equipment, inventory, schedules, and performance in one dashboard.',
+    body: 'Every facility you oversee, with occupancy, staffing, and performance metrics side by side. Open one for its full profile — the record on Overview, and beside it the tabs you actually work in: staff, wards, equipment, inventory, schedules, and performance.',
+  },
+  {
+    id: 'facility-tabs',
+    route: '/hospitals',
+    // The gear sits on the first row, at the top of the list, so this one IS
+    // safe to anchor — unlike the list itself.
+    target: '[data-tour="facility-row-tabs"]',
+    placement: 'left',
+    title: 'Straight to a facility\u2019s work',
+    body: 'This gear opens the same tabs without opening the profile first — pick Staff, Wards, Inventory or Settings and the facility opens on it. Useful when you already know what you came to check.',
   },
   {
     id: 'payments-oversight',

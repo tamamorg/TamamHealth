@@ -16,7 +16,6 @@ import { useMessagingDock } from '@/lib/messaging-dock-context';
 import { getRoleConfig } from '@/lib/permissions';
 import { initials, avatarTint } from '@/lib/patient-utils';
 import { ROLE_LABEL } from '@/lib/role-display';
-import { BRAND_PRIMARY } from '@/lib/theme-colors';
 import type { ConversationDoc, UserRole, StaffPresence } from '@/lib/db-types';
 import {
   MessageSquare, Minus, Plus, Search, Send, ArrowLeft, Users as UsersIcon,

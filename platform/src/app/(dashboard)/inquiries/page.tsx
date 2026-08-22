@@ -53,8 +53,6 @@ const STATUS_TOKENS: Record<EnquiryStatus, { color: string; bg: string; border: 
 // Patient · Type · Received · Assigned to · Status · actions
 // Same tracks as the patient registry and User Accounts — identity column at
 // minmax(320px, 1.6fr), four equal data columns — plus the 44px kebab gutter.
-const INQUIRY_GRID = 'minmax(320px, 1.6fr) repeat(4, minmax(150px, 1fr)) 44px';
-
 const CHANNEL_LABELS: Record<MessageDoc['channel'], string> = {
   app: 'Patient app',
   sms: 'SMS',

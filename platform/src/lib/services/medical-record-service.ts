@@ -564,11 +564,6 @@ export interface NursingVitalsInput {
   };
 }
 
-function numOrZero(v?: string): number {
-  const n = parseFloat((v ?? '').toString());
-  return isNaN(n) ? 0 : n;
-}
-
 /** Parse to a number, or undefined when empty/invalid (for optional fields). */
 function numOrUndef(v?: string): number | undefined {
   if (v == null || v.toString().trim() === '') return undefined;

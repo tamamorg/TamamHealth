@@ -487,7 +487,7 @@ export default function DataEntryDashboard() {
             <div className="w-full max-w-2xl rounded-lg" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-xl)' }}>
 
               {/* Form header */}
-              <div data-tour="census-form-header" className="sticky top-0 z-10 flex items-center justify-between p-4 rounded-t-lg" style={{ background: 'var(--bg-card-solid)', borderBottom: '1px solid var(--border-medium)' }}>
+              <div data-tour="census-form-header" className="sticky top-0 z-10 flex items-center justify-between p-4 rounded-t-lg modal-headband" style={{ borderBottom: '1px solid var(--border-medium)' }}>
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-5 h-5" style={{ color: ACCENT }} />
                   <div>

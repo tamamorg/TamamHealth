@@ -39,20 +39,35 @@ import { TRANSFER_WRITE_ROLES } from '../services/patient-transfer-permissions';
 import { MULTI_FACILITY_ROLES } from './facility-entitlements';
 import { DATABASE_DOCUMENT_TYPES } from './sync-config';
 
-const ADMIN: readonly UserRole[] = ['super_admin', 'org_admin'];
-const CLINICIANS: readonly UserRole[] = [
+/**
+ * The canonical role groups.
+ *
+ * Exported — not module-private — because 51 of the 93 API routes were
+ * declaring their own `const READ_ROLES: UserRole[] = [...]` beside these, and
+ * 16 of those declarations were byte-identical to another file's. The routes
+ * could not reuse the real ones because none of them left this module.
+ *
+ * That is the mechanism behind the workflow bugs found in Aug 2026: eight
+ * flows where a role passed the API guard and was then refused by the CouchDB
+ * validator, because the guard's hand-typed list and the matrix below had
+ * drifted. Two copies of one rule always drift; the fix is for there to be one
+ * copy. `src/__tests__/rbac/role-group-reuse.test.ts` fails when a route
+ * retypes a list that already exists here.
+ */
+export const ADMIN: readonly UserRole[] = ['super_admin', 'org_admin'];
+export const CLINICIANS: readonly UserRole[] = [
   'super_admin', 'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
 ];
-const NURSING_AND_CLINICIANS: readonly UserRole[] = [
+export const NURSING_AND_CLINICIANS: readonly UserRole[] = [
   ...CLINICIANS, 'nurse', 'triage_nurse', 'rooming_nurse', 'midwife',
 ];
-const REGISTRATION: readonly UserRole[] = [
+export const REGISTRATION: readonly UserRole[] = [
   ...ADMIN, 'front_desk', 'central_registration_clerk', 'clinic_clerk',
   'data_entry_clerk', 'records_hmis_officer', 'hrio', 'hospital_manager',
 ];
 // `medical_superintendent` collects at the till in small facilities, which is
 // what `canCollectPayments` in usePermissions.ts already grants them.
-const BILLING: readonly UserRole[] = [
+export const BILLING: readonly UserRole[] = [
   ...ADMIN, 'cashier', 'medical_biller', 'front_desk', 'hospital_manager',
   'medical_superintendent',
 ];
@@ -63,7 +78,7 @@ const BILLING: readonly UserRole[] = [
  * composer — they supervise facilities and message the staff in them. The other
  * national role, `government`, has no `/messages` route and is left out.
  */
-const ALL_STAFF: readonly UserRole[] = [
+export const ALL_STAFF: readonly UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse', 'midwife',
   'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'data_entry_clerk',
   'medical_superintendent', 'hrio', 'nutritionist', 'radiologist',
@@ -86,7 +101,7 @@ const ALL_STAFF: readonly UserRole[] = [
  * A test asserts this covers `ROLE_ROUTE_TABLE` exactly, so a new role cannot
  * be added without landing here.
  */
-const EVERY_ROLE: readonly UserRole[] = [...ALL_STAFF, 'government'];
+export const EVERY_ROLE: readonly UserRole[] = [...ALL_STAFF, 'government'];
 
 /**
  * Vital-events registers: births, deaths, immunisations, antenatal visits.
@@ -98,7 +113,7 @@ const EVERY_ROLE: readonly UserRole[] = [...ALL_STAFF, 'government'];
  * `/deaths`, `/immunizations` and `/anc` routes, so register management was
  * offered to them and then refused at replication.
  */
-const VITAL_EVENTS: readonly UserRole[] = [
+export const VITAL_EVENTS: readonly UserRole[] = [
   ...NURSING_AND_CLINICIANS, 'data_entry_clerk', 'records_hmis_officer', 'hrio',
 ];
 

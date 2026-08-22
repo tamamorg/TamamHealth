@@ -22,7 +22,6 @@
 import fs from 'fs';
 import path from 'path';
 import { THEME_COLORS } from '@/lib/theme-colors';
-import { accessibleOnColor } from '@/lib/branding';
 import { CHART_SERIES_HEX } from '@/lib/chart-colors';
 
 const CSS = fs.readFileSync(path.join(process.cwd(), 'src/app/globals.css'), 'utf8');

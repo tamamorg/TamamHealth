@@ -366,6 +366,20 @@ export default function PaymentPanel({
   return (
     <Modal onClose={onCancel} width={480}>
       <div className="modal-content pp-pay" style={{ width: '100%' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-light)' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{t('billing.collectPayment')}</h3>
+            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{patientName}</p>
+          </div>
+          <button onClick={onCancel} aria-label="Close" style={{ background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', width: 32, height: 32, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Scoped field styling. It sits after the header so the header
+            stays the panel's first child — the popup header bar is matched
+            structurally, and a leading <style> node displaced it. */}
         <style>{`
           .pp-pay input:not([type=checkbox]):not([type=radio]), .pp-pay select, .pp-pay textarea {
             width:100% !important; padding:11px 13px !important; border-radius:10px !important;
@@ -389,17 +403,6 @@ export default function PaymentPanel({
           }
           .pp-pay .pp-method-select:focus-visible { outline:2px solid var(--accent-primary); outline-offset:1px; }
         `}</style>
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-light)' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{t('billing.collectPayment')}</h3>
-            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{patientName}</p>
-          </div>
-          <button onClick={onCancel} aria-label="Close" style={{ background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', width: 32, height: 32, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <X size={16} />
-          </button>
-        </div>
 
         {/* Amount hero — flat panel, no gradient wash: the figure itself is
             the emphasis, matching the billing module's plain label-above-

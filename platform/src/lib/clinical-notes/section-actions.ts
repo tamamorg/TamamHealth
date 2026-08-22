@@ -11,6 +11,7 @@
  * React, so services, tests and the Edge-runtime route gate can all read it.
  */
 
+import { isPathAllowed } from '@/lib/role-routes';
 import type { NoteSectionId } from './note-catalog';
 
 export type NoteSectionActionId =
@@ -96,7 +97,30 @@ export const SECTION_ACTIONS: Readonly<Partial<Record<NoteSectionId, readonly No
   patient_education: ['patient_education'],
 };
 
-export function actionsForSection(sectionId: NoteSectionId | string): NoteSectionActionDef[] {
+/**
+ * Actions that LEAVE the note for a module route, and the route they need.
+ *
+ * Every other action opens a dialog over the note — only this one navigates
+ * (ClinicalNoteEditor pushes `/immunizations?patientId=…`, which opens the
+ * add-immunization form prefilled). A role without that module got the button
+ * like everyone else and landed on "Access Restricted" mid-note, so the offer
+ * is withdrawn instead of the click failing.
+ */
+const ACTION_ROUTE: Partial<Record<NoteSectionActionId, string>> = {
+  order_vaccine: '/immunizations',
+};
+
+export function actionsForSection(
+  sectionId: NoteSectionId | string,
+  role?: string,
+): NoteSectionActionDef[] {
   const ids = SECTION_ACTIONS[sectionId as NoteSectionId] ?? [];
-  return ids.map(id => NOTE_SECTION_ACTIONS[id]);
+  return ids
+    .filter(id => {
+      const route = ACTION_ROUTE[id];
+      // No role passed means no gate — server-side and test callers that only
+      // want the catalogue keep the full list.
+      return !route || !role || isPathAllowed(role, route);
+    })
+    .map(id => NOTE_SECTION_ACTIONS[id]);
 }

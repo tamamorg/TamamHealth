@@ -10,7 +10,7 @@
  * after.
  */
 
-import { Video, MapPin } from '@/components/icons/lucide';
+import { MapPin } from '@/components/icons/lucide';
 import { initials } from '@/lib/patient-utils';
 import { to12Hour } from './SlotPicker';
 

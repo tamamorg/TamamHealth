@@ -62,7 +62,55 @@ const CSRF_EXEMPT_API_PATHS = new Set<string>([
   // that is what they are here to earn. Authorisation is the single-use token
   // in the body, and the route is rate-limited by IP.
   '/api/auth/accept-invite',
+  // Account-request email confirmation — no session, single-use token in the
+  // body, rate-limited by IP. Same shape as invitation redemption.
+  '/api/account-requests/verify',
+  // Second-factor hand-off: authorisation is the signed MFA token in the body,
+  // which is bound to its own JWT audience and lives five minutes.
+  '/api/auth/verify-mfa',
+  // Forgot-password: no session to ride, and the response is identical for
+  // every input, so a forged submission achieves nothing an attacker could
+  // observe.
+  '/api/auth/forgot-password',
 ]);
+
+/**
+ * The endpoints a half-finished session may still reach.
+ *
+ * Everything needed to FIX the state, and nothing else: read who you are, set
+ * a password, enrol a factor, learn the password rules, or give up and log
+ * out. A session blocked from all of these would be a session with no way
+ * forward and no way back.
+ */
+const REMEDIATION_API_PATHS = new Set<string>([
+  '/api/auth/me',
+  '/api/auth/logout',
+  '/api/auth/change-password',
+  '/api/auth/mfa',
+  '/api/auth/password-policy',
+]);
+
+function isRemediationApiPath(pathname: string): boolean {
+  return REMEDIATION_API_PATHS.has(pathname);
+}
+
+/**
+ * The escape hatch for a platform operator who has not enrolled a second
+ * factor yet.
+ *
+ * The MFA gate is a ROLLOUT mechanism, not a defence: somebody holding a
+ * stolen super-admin password is equally free to enrol their own authenticator
+ * and walk through it. What it actually does is make an existing operator set
+ * one up. That is worth doing — and it is not worth locking the operator out
+ * of the switch that turns the requirement off, on a screen that has
+ * advertised the setting since the day it shipped.
+ *
+ * Deliberately NOT extended to `mustChangePassword`. A temporary credential IS
+ * a real weakness, the person holding it may be anyone the admin read it out
+ * to, and there is nothing to configure your way out of — you change the
+ * password, which the remediation list already allows.
+ */
+const MFA_POLICY_ESCAPE_PATHS = new Set<string>(['/api/platform-config']);
 
 /**
  * Scheduled-job endpoints, and the request header each uses to authenticate.
@@ -206,7 +254,17 @@ export async function proxy(request: NextRequest) {
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/logout' ||
     pathname === '/api/auth/me' ||
-    pathname === '/api/auth/accept-invite'
+    pathname === '/api/auth/accept-invite' ||
+    // Second-factor hand-off. The caller has proved a password and holds a
+    // short-lived signed token, but has no session yet — that is exactly what
+    // this endpoint issues.
+    pathname === '/api/auth/verify-mfa' ||
+    // "I forgot my password." By definition there is no session, and the route
+    // answers identically whatever it finds, so nothing is learnable from it.
+    pathname === '/api/auth/forgot-password' ||
+    // The minimum length this deployment enforces, so the invitation and reset
+    // pages can state the same rule the server will apply. Not a secret.
+    pathname === '/api/auth/password-policy'
   ) {
     return nextWithCsp(request);
   }
@@ -217,6 +275,14 @@ export async function proxy(request: NextRequest) {
   // rather than by path is the difference between a public form and a public
   // list of everyone who has asked for access.
   if (pathname === '/api/account-requests' && request.method.toUpperCase() === 'POST') {
+    return nextWithCsp(request);
+  }
+
+  // Email confirmation for an account request. The person following the link
+  // from their inbox has no session — that is the point of the check — and the
+  // route grants nothing beyond making their own request visible to an
+  // approver.
+  if (pathname === '/api/account-requests/verify') {
     return nextWithCsp(request);
   }
 
@@ -320,9 +386,15 @@ export async function proxy(request: NextRequest) {
     pathname === '/' ||
     pathname === '/public-stats' ||
     pathname === '/patient-portal' ||
+    // A patient turning an activation slip into an account has no session —
+    // that is what the slip is for. Guarded by the single-use code, not a login.
+    pathname === '/patient-portal/activate' ||
     pathname === '/terms' ||
     pathname === '/privacy' ||
-    pathname === '/request-account'
+    pathname === '/request-account' ||
+    // Asking for a password reset requires no session by definition, and the
+    // page reveals nothing — see /api/auth/forgot-password.
+    pathname === '/forgot-password'
   ) {
     return nextWithCsp(request);
   }
@@ -420,6 +492,37 @@ export async function proxy(request: NextRequest) {
         logRequest(request, resp, userId, role, Date.now() - startTime);
         return resp;
       }
+    }
+  }
+
+  // ── Half-finished sessions ────────────────────────────────────────────
+  //
+  // Two states let someone hold a valid token while the platform has not yet
+  // finished authenticating them: an admin-issued temporary password they have
+  // not replaced, and a role obliged to hold a second factor that has not
+  // enrolled one. Both were enforced ONLY by a client-side gate in
+  // `(dashboard)/layout.tsx`, which stops a person browsing the UI and stops
+  // nothing else — the session drove `/api/*` perfectly well.
+  //
+  // 403, never 401: `api-fetch.ts` bounces a 401 to /login, which would strand
+  // the user outside the very screen that fixes this.
+  if (pathname.startsWith('/api/') && !isRemediationApiPath(pathname)) {
+    if (payload.mustChangePassword) {
+      const resp = NextResponse.json(
+        { error: 'Set a new password before using the application.', remediation: 'change_password' },
+        { status: 403 },
+      );
+      logRequest(request, resp, userId, role, Date.now() - startTime);
+      return resp;
+    }
+    if (payload.mfaPending
+      && !(role === 'super_admin' && MFA_POLICY_ESCAPE_PATHS.has(pathname))) {
+      const resp = NextResponse.json(
+        { error: 'Set up two-factor authentication before using the application.', remediation: 'enrol_mfa' },
+        { status: 403 },
+      );
+      logRequest(request, resp, userId, role, Date.now() - startTime);
+      return resp;
     }
   }
 

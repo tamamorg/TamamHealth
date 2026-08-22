@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { AppointmentDoc, AppointmentStatus, EncounterDoc, FollowUpDoc, LabResultDoc } from '@/lib/db-types';
+import type { AppointmentDoc, AppointmentStatus, FollowUpDoc } from '@/lib/db-types';
 import {
   Calendar,
   Check,
@@ -17,7 +17,6 @@ import {
   Printer,
   Search,
   Stethoscope,
-  Video,
   X,
 } from '@/components/icons/lucide';
 import { initials, stateTint, AVATAR_TINT_NEUTRAL, abbreviateProviderName, shortenPersonName } from '@/lib/patient-utils';
@@ -54,8 +53,6 @@ import { isPathAllowed } from '@/lib/role-routes';
 import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/ehr-navigation';
 import { buildQueueFromTriage, STAGE_LABELS, type QueueEntry } from '@/lib/services/patient-queue-service';
 import type { TriageDoc } from '@/lib/db-types';
-import { encountersDB, labResultsDB } from '@/lib/db';
-import { makeCoalescer } from '@/lib/hooks/live-reload';
 import { withReturnTo } from '@/lib/navigation/return-to';
 import { useRoleChoice, useRoleFlag } from '@/lib/settings/useRoleSetting';
 import { useSettings } from '@/lib/settings/SettingsProvider';
@@ -188,13 +185,6 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function statusTone(status: AppointmentStatus) {
-  if (status === 'completed') return 'done';
-  if (status === 'checked_in' || status === 'in_progress') return 'active';
-  if (status === 'confirmed') return 'ready';
-  return 'scheduled';
-}
-
 // Outstanding-entry tone → triage-style avatar color and a status pill,
 // reusing the codebase's existing tone vocabulary (Overdue/Needs
 // attention/Open already appear elsewhere as status labels) rather than
@@ -217,22 +207,6 @@ function outstandingPillTone(tone?: OutstandingEntry['tone']) {
 // A result that's overdue for review but neither flagged abnormal nor
 // critical still needs a pill; it gets a neutral gray "Overdue" rather than
 // inventing a fabricated severity.
-function overdueFlagTone(result: Pick<LabResultDoc, 'critical' | 'abnormal'>) {
-  if (result.critical) return { label: 'Critical', bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', border: 'rgba(224, 49, 39,0.25)' };
-  if (result.abnormal) return { label: 'Abnormal', bg: 'rgba(255, 210, 166,0.12)', color: 'var(--color-warning)', border: 'rgba(255, 210, 166,0.25)' };
-  return { label: 'Overdue', bg: 'rgba(148, 162, 179,0.14)', color: 'var(--text-muted)', border: 'rgba(148, 162, 179,0.28)' };
-}
-
-function departmentTone(value?: string) {
-  const department = (value || '').toLowerCase();
-  if (department.includes('emergency')) return 'emergency';
-  if (department.includes('maternity')) return 'maternity';
-  if (department.includes('pediatric')) return 'pediatrics';
-  if (department.includes('surgery')) return 'surgery';
-  if (department.includes('lab')) return 'lab';
-  return 'opd';
-}
-
 /**
  * The worklist row list: every assigned/claimable patient (`patients` — see
  * dashboard/page.tsx's assembleDoctorWorklist, which already folds in both a
@@ -576,7 +550,6 @@ export function buildClaimUpdate(
 
 export default function EhrClinicalDashboard({
   clinicianName,
-  facilityName,
   patients,
   appointments: propAppointments,
   outstanding,
@@ -584,7 +557,6 @@ export default function EhrClinicalDashboard({
   activitySeriesNames,
 }: {
   clinicianName: string;
-  facilityName?: string;
   patients: WorklistPatient[];
   appointments: AppointmentDoc[];
   outstanding: OutstandingItem[];
@@ -974,132 +946,6 @@ export default function EhrClinicalDashboard({
   // the patient, provider and date the note header needs.
   const { createNote, creating: creatingNote } = useCreateNote(currentUser);
 
-  // ── Clinical activity charts (consultations trend + lab-review aging) ──
-  // Neither `getAllEncounters` nor `getOverdueUnreviewedResults` has a
-  // dedicated hook yet (unlike lab results / resumable encounters), so this
-  // loads them directly and stays live via the same PouchDB `.changes()` +
-  // coalescer pattern `useResumableEncounters`/`useLabResults` use.
-  const [allEncounters, setAllEncounters] = useState<EncounterDoc[]>([]);
-  const [overdueLabResults, setOverdueLabResults] = useState<LabResultDoc[]>([]);
-  const vizScope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
-  // Read outside the effect (like vizScope above) so the effect closes over a
-  // primitive rather than the whole `currentUser` object, which is what lets
-  // its dependency array stay [vizScope, clinicianId] instead of re-running
-  // on every unrelated currentUser field change.
-  const clinicianId = currentUser?._id;
-  useEffect(() => {
-    let cancelled = false;
-    const loadClinicalViz = async () => {
-      try {
-        const [{ findByType }, { filterByScope }, { getOverdueUnreviewedResults }] = await Promise.all([
-          import('@/lib/services/db-query'),
-          import('@/lib/services/data-scope'),
-          import('@/lib/services/lab-service'),
-        ]);
-        // Narrowed to exactly what consultationsPerDay plots below: THIS
-        // clinician's own encounters over the same trailing-14-day window
-        // (13 days back from local midnight through now). getAllEncounters()
-        // has no clinician/date filter — it pulls every clinical_encounter
-        // doc ever written, for every clinician, re-running on every
-        // encounter write — before this component discards all but a
-        // 14-day, single-clinician slice of it. Composed from the same
-        // findByType + filterByScope primitives getAllEncounters uses
-        // internally (encounter-service.ts:99-103), just with a selector
-        // narrow enough for a Mango index to do the filtering.
-        const cutoff = new Date();
-        cutoff.setHours(0, 0, 0, 0);
-        cutoff.setDate(cutoff.getDate() - 13);
-        const [rawEncounters, overdue] = await Promise.all([
-          clinicianId
-            ? findByType<EncounterDoc>(
-                encountersDB(), 'clinical_encounter',
-                { clinicianId, startedAt: { $gte: cutoff.toISOString() } },
-                { indexFields: ['type', 'clinicianId', 'startedAt'] },
-              )
-            : Promise.resolve([]),
-          getOverdueUnreviewedResults(vizScope),
-        ]);
-        // Same org/hospital barrier getAllEncounters(scope) applies via
-        // filterByScope internally — kept explicit since bypassing that
-        // helper means this call site owns applying it.
-        const encounters = vizScope ? filterByScope(rawEncounters, vizScope) : rawEncounters;
-        if (!cancelled) {
-          setAllEncounters(encounters);
-          setOverdueLabResults(overdue);
-        }
-      } catch (err) {
-        console.error('Failed to load clinical dashboard chart data', err);
-      }
-    };
-    loadClinicalViz();
-    const reload = makeCoalescer(() => { if (!cancelled) loadClinicalViz(); });
-    const encChanges = encountersDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger()).on('error', () => { /* noop */ });
-    const labChanges = labResultsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger()).on('error', () => { /* noop */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { encChanges.cancel(); } catch { /* noop */ }
-      try { labChanges.cancel(); } catch { /* noop */ }
-    };
-  }, [vizScope, clinicianId]);
-
-  // "My consultations per day" — encounters this clinician ran (clinicianId
-  // match, the same identity the rest of this file uses for "mine"), bucketed
-  // by startedAt's calendar day over the trailing 14 days including today.
-  const consultationsPerDay = useMemo(() => {
-    const days: { iso: string; label: string; count: number }[] = [];
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    for (let i = 13; i >= 0; i--) {
-      const day = new Date(startOfToday);
-      day.setDate(day.getDate() - i);
-      days.push({
-        iso: toIsoDate(day),
-        label: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        count: 0,
-      });
-    }
-    if (!currentUser) return days;
-    const byIso = new Map(days.map(d => [d.iso, d]));
-    for (const encounter of allEncounters) {
-      if (encounter.clinicianId !== currentUser._id || !encounter.startedAt) continue;
-      const started = new Date(encounter.startedAt);
-      if (Number.isNaN(started.getTime())) continue;
-      const bucket = byIso.get(toIsoDate(started));
-      if (bucket) bucket.count += 1;
-    }
-    return days;
-  }, [allEncounters, currentUser]);
-  const consultationsTotal = useMemo(
-    () => consultationsPerDay.reduce((sum, day) => sum + day.count, 0),
-    [consultationsPerDay],
-  );
-
-  // "Abnormal-results aging" — getOverdueUnreviewedResults() already does the
-  // SLA math (24h critical / 7-day routine, order-lifecycles.getResultReviewSLA);
-  // scoped here to labs THIS clinician ordered. LabResultDoc.orderedBy is a
-  // free-text name (stamped from currentUser.name at order time — see
-  // consultation/page.tsx and lab/page.tsx), so it's matched the same way this
-  // file already matches "my" appointments in matchesProviderFilter (name
-  // equality against clinicianName), rather than an id join that doesn't exist
-  // on this doc.
-  const overdueLabRows = useMemo(() => {
-    const now = Date.now();
-    const mine = currentUser?.name
-      ? overdueLabResults.filter(r => r.orderedBy === currentUser.name)
-      : [];
-    return mine
-      .map(r => ({
-        ...r,
-        hoursOverdue: Math.max(0, Math.round((now - new Date(r.updatedAt || r.createdAt || '').getTime()) / 3_600_000)),
-      }))
-      .sort((a, b) => b.hoursOverdue - a.hoursOverdue);
-  }, [overdueLabResults, currentUser?.name]);
   // Wall-clock sampled in an effect (render stays pure) and refreshed once a
   // minute so wait times and the time-aged scores keep aging on screen. Every
   // consumer below (the 24h active-triage window, minutesWaiting/score via
@@ -2056,7 +1902,9 @@ export default function EhrClinicalDashboard({
           {canDispense && findPatientOpen && (
             <Modal onClose={() => setFindPatientOpen(false)} width={480} align="top" labelledBy="find-patient-title">
               <div className="ehr-find-patient">
-                <h3 id="find-patient-title">Dispense to patient</h3>
+                <div className="modal-headband">
+                  <h3 id="find-patient-title">Dispense to patient</h3>
+                </div>
                 <div className="ehr-find-patient-input">
                   <Search className="w-4 h-4" />
                   <input
@@ -2119,10 +1967,12 @@ export default function EhrClinicalDashboard({
           {followUpToComplete && (
             <Modal onClose={() => { if (!followUpSaving) setFollowUpToComplete(null); }} width={480} labelledBy="complete-follow-up-title">
               <div className="modal-content card-elevated p-6 w-full" onClick={event => event.stopPropagation()}>
-                <h3 id="complete-follow-up-title" className="text-base font-semibold mb-1">Complete follow-up</h3>
-                <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                  {followUpToComplete.title} · {followUpToComplete.subtitle || 'Scheduled follow-up'}
-                </p>
+                <div className="modal-headband">
+                  <h3 id="complete-follow-up-title" className="text-base font-semibold mb-1">Complete follow-up</h3>
+                  <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+                    {followUpToComplete.title} · {followUpToComplete.subtitle || 'Scheduled follow-up'}
+                  </p>
+                </div>
                 <div className="space-y-3">
                   <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                     Outcome

@@ -54,11 +54,23 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
     placement: 'left',
   },
   {
+    // The registry above lists the facilities; this is where one is worked.
+    // Staff, wards, equipment, inventory, schedules, performance and settings
+    // used to be a separate screen behind a Manage button — they are tabs on
+    // the facility itself now, which is why the tour can point at them.
+    id: 'facility-tabs',
+    route: '/hospitals',
+    target: '[data-tour="facility-row-tabs"]',
+    placement: 'left',
+    title: 'Inside one facility',
+    body: 'Open a facility for its record, and the tabs beside it — Staff, Wards, Equipment, Inventory, Schedules, Performance, Settings. This gear skips the trip: pick a tab and the facility opens straight on it.',
+  },
+  {
     id: 'users',
     route: '/org-admin/users',
     target: '[data-tour="org-users-list"]',
     title: 'Staff accounts',
-    body: 'Create staff, reset passwords, deactivate. New accounts are provisioned centrally with a temporary password the user must change at first login — so they can sign in on any device.',
+    body: 'Every account in the organization: create staff, reset passwords, deactivate. New accounts are provisioned centrally with a temporary password the user must change at first login — so they can sign in on any device.',
     placement: 'bottom',
   },
   {
@@ -66,7 +78,7 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
     route: '/org-admin/users',
     target: '[data-tour="org-users-create-btn"]',
     title: 'Add a staff member',
-    body: 'Set their name, role, and hospital — the temporary password shown after creating is theirs to change at first login.',
+    body: 'Set their name, role, and hospital — the temporary password shown after creating is theirs to change at first login. The same dialog opens from a facility\u2019s Staff tab with that facility already filled in, which is the shorter route when you are hiring into one site.',
     placement: 'left',
   },
   {

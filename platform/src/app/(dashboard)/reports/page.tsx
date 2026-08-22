@@ -9,7 +9,7 @@ import {
 } from '@/components/icons/lucide';
 import { buildReportChart, type ReportChart as ReportChartData } from '@/lib/reports/report-chart-data';
 import { supportsPartToWhole, type ReportChartKind } from './_ReportCharts';
-import { diseaseColor } from '@/lib/chart-colors';
+import { DISEASE_COLOR } from '@/lib/chart-colors';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EmptyState from '@/components/EmptyState';
 import { FilterSelect } from '@/components/filters';
@@ -36,15 +36,29 @@ const ReportChart = dynamic(
   { ssr: false, loading: () => <div style={{ height: '100%' }} /> },
 );
 
-/** The forms on offer, in the order their buttons appear. `partToWhole` marks
- *  the two that need values which add up — see `supportsPartToWhole`. */
+/** The forms on offer, in the order their buttons appear — standing columns
+ *  lead because they are the default. `partToWhole` marks the two that need
+ *  values which add up — see `supportsPartToWhole`. */
 const CHART_KINDS: { id: ReportChartKind; labelKey: string; icon: LucideIcon; partToWhole?: true }[] = [
-  { id: 'bar', labelKey: 'reports.chartBar', icon: List },
   { id: 'column', labelKey: 'reports.chartColumn', icon: BarChart3 },
+  { id: 'bar', labelKey: 'reports.chartBar', icon: List },
   { id: 'lollipop', labelKey: 'reports.chartLollipop', icon: Activity },
   { id: 'donut', labelKey: 'reports.chartDonut', icon: PieChart, partToWhole: true },
   { id: 'treemap', labelKey: 'reports.chartTreemap', icon: Layers, partToWhole: true },
 ];
+
+/** The one hue a section's ranked charts draw in. Bright categorical slots
+ *  from globals.css — identity per SECTION, stable as you step through its
+ *  reports; within one chart a single series stays a single hue. Disease
+ *  surveillance points that name an actual disease override this with the
+ *  entity colour that disease holds on every other screen. */
+const SECTION_ACCENT: Record<string, string> = {
+  'Patient Statistics': 'var(--chart-2)',      // brand blue
+  'Disease Surveillance': 'var(--chart-3)',    // rose
+  'Pharmacy & Supply Chain': 'var(--chart-4)', // teal
+  'Hospital Operations': 'var(--chart-6)',     // violet
+  'Financial': 'var(--chart-5)',               // orange
+};
 
 /* ── Static report definitions ─────────────────────────────────── */
 // NOTE: this page does not yet track per-report refresh times — every report
@@ -195,9 +209,10 @@ export default function ReportsPage() {
   // Whether the selected report's table is shown under the graph. One flag,
   // not a per-card open/closed map: there is one report on screen now.
   const [tableOpen, setTableOpen] = useState(false);
-  // Which form the graph takes. Held across report changes on purpose: a
-  // reader who chose a treemap wants treemaps, not a reset on every step.
-  const [chartKind, setChartKind] = useState<ReportChartKind>('bar');
+  // Which form the graph takes. Standing columns by default; held across
+  // report changes on purpose: a reader who chose a treemap wants treemaps,
+  // not a reset on every step.
+  const [chartKind, setChartKind] = useState<ReportChartKind>('column');
   // Reporting period selector. Reports regenerate on demand from live data, so
   // this is presentational only — it does not (yet) filter the underlying rows.
   const periodOptions = [
@@ -687,20 +702,50 @@ export default function ReportsPage() {
     setTableOpen(false);
   };
 
-  /** The selected report, as bars. Surveillance categories are diseases, which
-   *  carry their own colour across every screen that charts them — everything
-   *  else is one measure and takes the magnitude shades. */
+  /** The selected report, as bars.
+   *
+   *  Diseases carry their own colour across every screen that charts them, so
+   *  a surveillance report whose categories ARE diseases keeps those hues.
+   *  All or nothing, though: the six-slot scale has no room for an eighth
+   *  disease, and colouring the ones it knows while the rest fall back to the
+   *  section accent is worse than colouring none — it painted HIV/AIDS the
+   *  same rose as Measles, which reads as "these two are related". So the
+   *  hues apply only when EVERY named category has one; otherwise the chart
+   *  is one measure in one hue, which is what it actually is. A surveillance
+   *  report whose categories are states (Malaria Indicators, TB Outcomes)
+   *  lands there too. */
   const activeChart = useMemo(() => {
     const preview = reportPreviews.get(chartReport);
     if (!preview?.chart) return null;
-    const isDisease = activeReport?.category === 'Disease Surveillance';
+    const named = preview.chart.points.filter(p => p.label !== 'Other');
+    const hues = activeReport?.category === 'Disease Surveillance'
+      ? named.map(p => DISEASE_COLOR[p.label.trim().toLowerCase()])
+      : [];
+    const everyCategoryKnown = hues.length > 0 && hues.every(Boolean);
+    if (!everyCategoryKnown) return preview.chart;
     return {
       ...preview.chart,
-      points: preview.chart.points.map(p => (
-        isDisease && p.label !== 'Other' ? { ...p, color: diseaseColor(p.label) } : p
-      )),
+      points: preview.chart.points.map(p => {
+        const hue = DISEASE_COLOR[p.label.trim().toLowerCase()];
+        return hue && p.label !== 'Other' ? { ...p, color: hue } : p;
+      }),
     };
   }, [reportPreviews, chartReport, activeReport]);
+
+  /** Headline figures for the strip above the plot, all read off the chart
+   *  the reader is already looking at. Rates cannot be summed (three
+   *  facilities at 80% are not 240%), so a rate report leads with its
+   *  highest value instead of a total. */
+  const chartInsights = useMemo(() => {
+    if (!activeChart || activeChart.points.length === 0) return null;
+    const isRate = /%|rate|percent/i.test(activeChart.valueLabel);
+    const total = activeChart.points.reduce((sum, p) => sum + p.value, 0);
+    // Points are sorted descending with "Other" appended last, so the first
+    // named point is the leader even when the folded tail out-sums it.
+    const top = activeChart.points.find(p => p.label !== 'Other') ?? activeChart.points[0];
+    const share = !isRate && total > 0 ? Math.round((top.value / total) * 100) : null;
+    return { isRate, total, top, share };
+  }, [activeChart]);
 
   /* Donut and treemap encode a share of a total, so they are offered only when
    * the values actually add up. Falling back rather than disabling silently:
@@ -710,7 +755,7 @@ export default function ReportsPage() {
     ? supportsPartToWhole(activeChart.valueLabel, activeChart.points)
     : false;
   const effectiveKind: ReportChartKind =
-    (chartKind === 'donut' || chartKind === 'treemap') && !partToWholeOk ? 'bar' : chartKind;
+    (chartKind === 'donut' || chartKind === 'treemap') && !partToWholeOk ? 'column' : chartKind;
 
   /* ── Render expanded report section ─────────────────────────── */
   /** The selected report as a table, under the graph. The graph is the shape;
@@ -884,14 +929,45 @@ export default function ReportsPage() {
           </div>
         </header>
 
+        {/* Headline figures for the selected report — a reporting page should
+            lead with its numbers, not make the reader measure bars for them. */}
+        {!dataLoading && activeChart && chartInsights && (
+          <div className="rpt-insights">
+            <div className="rpt-insight">
+              <b>{(chartInsights.isRate ? chartInsights.top.value : chartInsights.total).toLocaleString()}</b>
+              <span>
+                {activeChart.valueLabel}
+                {chartInsights.isRate && ` · ${t('reports.insightHighest')}`}
+              </span>
+            </div>
+            <div className="rpt-insight">
+              <b>{chartInsights.top.label}</b>
+              <span>
+                {chartInsights.share !== null
+                  ? t('reports.insightTopShare', { value: chartInsights.top.value.toLocaleString(), share: chartInsights.share })
+                  : t('reports.insightTopValue', { value: chartInsights.top.value.toLocaleString() })}
+              </span>
+            </div>
+            <div className="rpt-insight">
+              <b>{activeChart.categoryCount.toLocaleString()}</b>
+              <span>{t('reports.insightCategoryCount', { category: activeChart.categoryLabel })}</span>
+            </div>
+          </div>
+        )}
+
         <div className="rpt-stats-body">
           {dataLoading ? (
             <p className="rpt-panel-empty">
               <Loader2 className="animate-spin" /> {t('reports.loadingReportData')}
             </p>
           ) : activeChart ? (
-            <div className="rpt-plot">
-              <ReportChart kind={effectiveKind} points={activeChart.points} valueLabel={activeChart.valueLabel} />
+            <div className="rpt-plot" data-kind={effectiveKind}>
+              <ReportChart
+                kind={effectiveKind}
+                points={activeChart.points}
+                valueLabel={activeChart.valueLabel}
+                accent={SECTION_ACCENT[activeReport?.category ?? ''] ?? 'var(--chart-2)'}
+              />
             </div>
           ) : (
             <p className="rpt-panel-empty">{t('reports.noDataForReport')}</p>

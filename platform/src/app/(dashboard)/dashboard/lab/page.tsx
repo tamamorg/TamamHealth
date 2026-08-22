@@ -500,7 +500,7 @@ export default function LabDashboardPage() {
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
               <div className="flex items-center gap-2">
                 <Microscope className="w-4 h-4" style={{ color: ACCENT }} />
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('lab.batchEntry')}</span>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('lab.batchEntry')}</h3>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => { setShowResultModal(false); setBatchTestType(''); }} className="p-1 rounded-lg transition-all" style={{ color: 'var(--text-muted)' }}>

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -10,7 +9,7 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import type { UserDoc, UserRole } from '@/lib/db-types';
 import {
   UserX, UserCheck, UserPlus, Shield, Building2,
-  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff,
+  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Mail, Upload,
 } from '@/components/icons/lucide';
 import { isRowActivationKey } from '@/components/RowActionsPopup';
 import CredentialHandoffModal from '@/components/admin/CredentialHandoffModal';
@@ -24,7 +23,11 @@ import { activeFacilities } from '@/lib/services/hospital-service';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
 import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
+import { describeAccountState, canResendInvite } from '@/lib/account-state';
+import { describeInvitationOutcome } from '@/lib/invitation-copy';
+import { usePasswordPolicy } from '@/lib/hooks/usePasswordPolicy';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
+import BulkUserImportModal from '@/components/admin/BulkUserImportModal';
 
 // Column template for the user list header + rows:
 // User · Role · Organization · Facility · Status · Actions
@@ -36,7 +39,7 @@ import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 // so the 44px that column used to hold goes back to the data.
 const USER_GRID = 'minmax(320px, 1.6fr) repeat(4, minmax(150px, 1fr))';
 
-const MIN_PASSWORD_LENGTH = 8;
+
 
 // Every UserRole, in the order the role selects/distribution render them.
 // roleLabel() (below) is the single source of display text — this array only
@@ -51,7 +54,6 @@ const ALL_ROLES: UserRole[] = [
 ];
 
 export default function AdminUsersPage() {
-  const router = useRouter();
   const { t } = useTranslation();
   const roleLabel = (role: string) => t(`adminUsers.role_${role}`);
   const { currentUser } = useAuth();
@@ -118,6 +120,13 @@ export default function AdminUsersPage() {
   // panel of its own above the list.
   const [activeTab, setActiveTab] = useState<'people' | 'requests'>('people');
   const [requestCounts, setRequestCounts] = useState({ pending: 0, decided: 0 });
+  // Security settings → Password minimum. This page carried its own literal 8.
+  const { minLength: MIN_PASSWORD_LENGTH, tempLength } = usePasswordPolicy();
+  // Open work the just-deactivated account still owned, shown after the fact —
+  // revoking access is never held up by it.
+  const [openWorkNotice, setOpenWorkNotice] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   // Deep-link support: /admin/users?q=<name> arrives pre-filtered (the audit
   // log's "View in User Management" action), while ?user=<id> isolates and
@@ -135,28 +144,28 @@ export default function AdminUsersPage() {
     // ?new=1 — the facility dashboards' "Add user" buttons deep-link straight
     // into the create form with a temporary password already generated.
     if (params.has('new')) {
-      setAddForm({ ...emptyAddForm, password: generateTempPassword() });
+      setAddForm({ ...emptyAddForm, password: generateTempPassword(tempLength) });
       setShowAddUserPassword(true);
       setShowAddUser(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load all users
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const { getAllUsers } = await import('@/lib/services/user-service');
-        const data = await getAllUsers();
-        setUsers(data);
-      } catch (err) {
-        console.error('Failed to load users:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadUsers();
+  // Load all users. Hoisted out of the effect so a bulk import can ask for a
+  // fresh roster when it finishes — two hundred new rows are not something to
+  // patch in one at a time.
+  const reloadUsers = useCallback(async () => {
+    try {
+      const { getAllUsers } = await import('@/lib/services/user-service');
+      setUsers(await getAllUsers());
+    } catch (err) {
+      console.error('Failed to load users:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { void reloadUsers(); }, [reloadUsers]);
 
   const filteredUsers = useMemo(() => {
     if (focusedUserId) return users.filter(u => u._id === focusedUserId);
@@ -307,8 +316,12 @@ export default function AdminUsersPage() {
       // do with turning a login back on. Deactivation never had the problem
       // because it always used its own action; this makes the pair symmetric.
       if (currentlyActive) {
-        const { deactivateUser } = await import('@/lib/services/user-service');
-        await deactivateUser(userId, currentUser._id, currentUser.username);
+        const { deactivateUserReportingOpenWork } = await import('@/lib/services/user-service');
+        const { openWork } = await deactivateUserReportingOpenWork(userId);
+        if (openWork?.hasOpenWork) {
+          const { describeOpenWork } = await import('@/lib/services/offboarding-service');
+          setOpenWorkNotice(describeOpenWork(openWork));
+        }
       } else {
         const { reactivateUser } = await import('@/lib/services/user-service');
         await reactivateUser(userId, currentUser._id, currentUser.username);
@@ -321,6 +334,34 @@ export default function AdminUsersPage() {
     } catch (err) {
       console.error(err);
       showToast(err instanceof Error ? err.message : 'Failed to update user status.', 'error');
+    }
+  };
+
+  /**
+   * Send the invitation again.
+   *
+   * The alternative — and until now the only option — was an admin password
+   * reset, which puts a plaintext credential back into the room. Re-issuing
+   * kills the previous link, which is what "send it again" means.
+   */
+  const handleResendInvite = async (user: UserDoc) => {
+    setResendingId(user._id);
+    try {
+      const { resendUserInvite } = await import('@/lib/services/user-service');
+      const invitation = await resendUserInvite(user._id);
+      showToast(
+        describeInvitationOutcome(invitation).message,
+        invitation.sent ? 'success' : 'error',
+      );
+      // The document now carries a fresh invite window; reflect it in the row
+      // so the state line stops saying the old invitation expired.
+      setUsers(prev => prev.map(u => u._id === user._id
+        ? { ...u, inviteTokenHash: 'pending', inviteExpiresAt: invitation.sent ? invitation.expiresAt : u.inviteExpiresAt }
+        : u));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not send the invitation.', 'error');
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -400,10 +441,19 @@ export default function AdminUsersPage() {
               <option value="all">{t('adminUsers.allOrganizations')}</option>
               {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
             </Select>
+            {/* A facility going live has two hundred people and one dialog.
+                See lib/bulk-user-import.ts. */}
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm flex-shrink-0"
+              onClick={() => setShowImport(true)}
+            >
+              <Upload className="w-4 h-4" /> Import list
+            </button>
             <button
               type="button"
               className="btn btn-primary btn-sm flex-shrink-0"
-              onClick={() => { setAddForm({ ...emptyAddForm, password: generateTempPassword() }); setShowAddUserPassword(true); setAddError(null); setShowAddUser(true); }}
+              onClick={() => { setAddForm({ ...emptyAddForm, password: generateTempPassword(tempLength) }); setShowAddUserPassword(true); setAddError(null); setShowAddUser(true); }}
             >
               <UserPlus className="w-4 h-4" /> Add user
             </button>
@@ -491,7 +541,15 @@ export default function AdminUsersPage() {
                       >
                         {u.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')}
                       </span>
-                      <small>{u.mustChangePassword ? 'Password reset required' : 'Credentials current'}</small>
+                      {/* One line that can tell an unopened invitation from a
+                          never-used account from an abandoned one — see
+                          lib/account-state.ts for why those are three states
+                          and not one. */}
+                      <small style={describeAccountState(u).needsAttention
+                        ? { color: 'var(--color-warning-text, var(--text-secondary))' }
+                        : undefined}>
+                        {describeAccountState(u).label}
+                      </small>
                     </div>
 
                   </div>
@@ -551,12 +609,33 @@ export default function AdminUsersPage() {
               </div>
               <div className="sadb-usercard-row">
                 <span>Credentials</span>
-                <span>{detailUser.mustChangePassword ? 'Password reset required' : 'Current'}</span>
+                <span>{describeAccountState(detailUser).label}</span>
+              </div>
+              <div className="sadb-usercard-row">
+                <span>Two-factor</span>
+                <span>{detailUser.totpEnabledAt ? 'On' : 'Not set up'}</span>
+              </div>
+              <div className="sadb-usercard-row">
+                <span>Last sign-in</span>
+                <span>
+                  {detailUser.lastLoginAt
+                    ? new Date(detailUser.lastLoginAt).toLocaleString()
+                    : 'Never'}
+                </span>
               </div>
               <div className="sadb-usercard-row">
                 <span>Created</span>
                 <span>{detailUser.createdAt ? new Date(detailUser.createdAt).toLocaleDateString() : '—'}</span>
               </div>
+              {detailUser.deactivatedAt && (
+                <div className="sadb-usercard-row">
+                  <span>Deactivated</span>
+                  <span>
+                    {new Date(detailUser.deactivatedAt).toLocaleDateString()}
+                    {detailUser.deactivatedBy ? ` by ${detailUser.deactivatedBy}` : ''}
+                  </span>
+                </div>
+              )}
               <div className="sadb-usercard-row"><span>User ID</span><span><code>{detailUser._id}</code></span></div>
             </div>
 
@@ -577,13 +656,28 @@ export default function AdminUsersPage() {
                     const u = detailUser;
                     closeDetail();
                     setResetUser(u);
-                    setResetPasswordValue(generateTempPassword());
+                    setResetPasswordValue(generateTempPassword(tempLength));
                     setResetError(null);
                     setShowResetPassword(true);
                   }}
                 >
                   <KeyRound className="w-4 h-4" /> Reset password
                 </button>
+                {/* Preferred over a reset: the person sets their own password
+                    from a single-use link, so no plaintext credential has to
+                    be relayed. Offered only when there is an address to send
+                    it to. */}
+                {canResendInvite(detailUser) && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={resendingId === detailUser._id}
+                    onClick={() => { const u = detailUser; closeDetail(); void handleResendInvite(u); }}
+                  >
+                    <Mail className="w-4 h-4" />
+                    {resendingId === detailUser._id ? 'Sending…' : 'Send invitation again'}
+                  </button>
+                )}
                 {/* Deactivating is destructive — it routes through the confirm
                     dialog. Reactivating is one reversible click, so it runs. */}
                 {detailUser.isActive ? (
@@ -638,7 +732,7 @@ export default function AdminUsersPage() {
                   <label className="text-xs font-semibold block" style={{ color: 'var(--text-muted)' }}>Temporary password</label>
                   <button
                     type="button"
-                    onClick={() => { setAddForm(f => ({ ...f, password: generateTempPassword() })); setShowAddUserPassword(true); }}
+                    onClick={() => { setAddForm(f => ({ ...f, password: generateTempPassword(tempLength) })); setShowAddUserPassword(true); }}
                     className="flex items-center gap-1 text-xs font-semibold"
                     style={{ color: 'var(--accent-text)' }}
                   >
@@ -787,7 +881,7 @@ export default function AdminUsersPage() {
             <div className="flex justify-end mb-1.5">
               <button
                 type="button"
-                onClick={() => { setResetPasswordValue(generateTempPassword()); setShowResetPassword(true); }}
+                onClick={() => { setResetPasswordValue(generateTempPassword(tempLength)); setShowResetPassword(true); }}
                 className="flex items-center gap-1 text-xs font-semibold"
                 style={{ color: 'var(--accent-text)' }}
               >
@@ -844,6 +938,28 @@ export default function AdminUsersPage() {
       )}
 
       {/* Deactivate confirm — the destructive path off the row menu. */}
+      {showImport && (
+        <BulkUserImportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => { void reloadUsers(); }}
+          // A platform operator belongs to no organization, so the roster's own
+          // filter is what says which tenant these accounts are for.
+          orgId={filterOrg === 'all' ? undefined : filterOrg}
+          orgName={organizations.find(o => o._id === filterOrg)?.name}
+        />
+      )}
+
+      {/* Shown after the account is closed, never as a gate on closing it. */}
+      {openWorkNotice && (
+        <SadbConfirmModal
+          title="Reassign this person's work"
+          body={openWorkNotice}
+          confirmLabel="I will reassign it"
+          onCancel={() => setOpenWorkNotice(null)}
+          onConfirm={() => setOpenWorkNotice(null)}
+        />
+      )}
+
       {deactivateTarget && (
         <SadbConfirmModal
           title={`Deactivate ${deactivateTarget.name}?`}

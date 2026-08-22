@@ -14,7 +14,7 @@ import {
   buildFacilityOverview,
   type FacilityOverviewInput,
 } from '@/components/dashboards/FacilityManagementDashboard';
-import type { UserDoc, PatientDoc, MessageDoc, StaffScheduleDoc } from '@/lib/db-types';
+import type { UserDoc, StaffScheduleDoc } from '@/lib/db-types';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 
 const TODAY = '2026-08-13';

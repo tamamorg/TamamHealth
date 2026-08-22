@@ -3,6 +3,7 @@
  * GET  — List medical records (supports ?patientId=xxx&limit=N)
  * POST — Create a new medical record (consultation)
  */
+import { CLINICIANS } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
@@ -13,9 +14,7 @@ const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'medical_superintendent',
 ];
-const CREATE_ROLES: UserRole[] = [
-  'super_admin', 'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
-];
+const CREATE_ROLES = CLINICIANS;
 export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);

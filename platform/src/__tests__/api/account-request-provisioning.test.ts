@@ -3,7 +3,12 @@
 import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/api-auth', () => ({
-  getAuthPayload: jest.fn(),
+  // The route is wrapped in `withAudit`, which calls `getAuthPayload(request)`
+  // and chains `.catch()` on the result. A bare `jest.fn()` returns undefined,
+  // so the wrapper threw before the handler ever ran. This is a public,
+  // unauthenticated endpoint — no session is the correct answer, but it has to
+  // be an unresolved-to-null promise rather than nothing at all.
+  getAuthPayload: jest.fn(async () => null),
   unauthorized: jest.fn(),
   forbidden: jest.fn(),
   hasRole: jest.fn(),
@@ -15,7 +20,11 @@ jest.mock('@/lib/rate-limit', () => ({
 }));
 jest.mock('@/lib/request-utils', () => ({ getClientIp: jest.fn(() => '127.0.0.1') }));
 jest.mock('@/lib/services/account-request-service', () => ({
-  createAccountRequest: jest.fn(async () => ({ _id: 'acctreq-1' })),
+  // Returns `{ doc, verificationToken }` since email verification was added.
+  createAccountRequest: jest.fn(async () => ({
+    doc: { _id: 'acctreq-1' }, verificationToken: 'tok-test',
+  })),
+  verifyAccountRequestEmail: jest.fn(),
   listAccountRequests: jest.fn(),
   isRequestableRole: jest.fn((role: string) => role === 'nurse'),
 }));

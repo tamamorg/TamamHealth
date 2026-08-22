@@ -24,7 +24,6 @@ import SuperintendentDashboard from '@/components/dashboards/SuperintendentDashb
 import NurseHomeView from '@/components/dashboards/NurseHomeView';
 import { useTransferQueue } from '@/lib/hooks/usePatientTransfers';
 import { describeAssignment, isTransferOverdue } from '@/lib/services/patient-transfer-service';
-import { formatClockTime } from '@/lib/format-utils';
 import type {
   AppointmentDoc,
   AssessmentDoc,
@@ -215,9 +214,6 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     .sort((x, y) => apptKey(x).localeCompare(apptKey(y)));
   // Still-live bookings only — where a completed or
   // cancelled visit is no longer something to join.
-  const myUpcomingAppts = myAppts
-    .filter(a => a.status !== 'cancelled' && a.status !== 'completed' && a.status !== 'no_show');
-
   // Per-item worklists behind the outstanding counts.
   const shortDate = (iso?: string) =>
     iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
@@ -417,8 +413,9 @@ function ClinicianHomeView() {
   const { notes: phoneNotesInbox } = usePhoneNotesInbox();
   // Referrals — drives the "My Referrals" / "Open referrals" outstanding item.
   const { referrals } = useReferrals();
-  // Appointments — drives the schedule board + check-in action.
-  const { appointments, updateStatus: updateApptStatus } = useAppointments();
+  // Appointments — drives the schedule board. Check-in is issued from the row
+  // itself, not from here; the mutator this used to destructure was unused.
+  const { appointments } = useAppointments();
   const { triages } = useTriage();
   // Internal transfers waiting on THIS clinician to accept or reject. Surfaced
   // here because a transfer request only ever shown on the patient's chart is
@@ -444,7 +441,6 @@ function ClinicianHomeView() {
     <main className="page-container page-enter">
       <EhrClinicalDashboard
         clinicianName={currentUser.name || 'clinician'}
-        facilityName={currentUser.hospitalName}
         patients={worklist.patients}
         appointments={worklist.appointments}
         outstanding={worklist.outstanding}

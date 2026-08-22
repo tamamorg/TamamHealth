@@ -16,7 +16,7 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClinicalNote, listClinicalNotes, type CreateNoteInput } from './note-service';
-import { getNoteType, type NoteTypeId } from './note-catalog';
+import { type NoteTypeId } from './note-catalog';
 import { useDataScope } from '../hooks/useDataScope';
 import type { ClinicalNoteDoc } from './types';
 import { toIsoDate } from '@/lib/date-utils';

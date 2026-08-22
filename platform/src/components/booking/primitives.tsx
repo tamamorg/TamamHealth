@@ -11,7 +11,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Video, MapPin, Phone } from '@/components/icons/lucide';
+import { ChevronDown, ChevronLeft, ChevronRight, MapPin, Phone } from '@/components/icons/lucide';
 import { dayParts, monogram, to12Hour } from '@/lib/booking/public-client';
 
 // ── Card shell ─────────────────────────────────────────────────────────────
@@ -221,10 +221,6 @@ export function ProviderAvatar({ name, photoUrl, className = 'booking-avatar' }:
         : monogram(name)}
     </span>
   );
-}
-
-export function VirtualBadge() {
-  return <span className="booking-badge"><Video aria-hidden /> Virtual visit</span>;
 }
 
 // ── Step dots ──────────────────────────────────────────────────────────────

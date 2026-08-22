@@ -21,7 +21,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useApp } from '@/lib/context';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useToast } from '@/components/Toast';
-import { Building2, Plus, MapPin, Users } from '@/components/icons/lucide';
+import { Building2, Plus, Users } from '@/components/icons/lucide';
 import type { HospitalDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 import {
@@ -162,10 +162,6 @@ export default function OrgHospitalsPage() {
               <SadbGridRow key={hospital._id} template={FACILITY_GRID}>
                 <span className="min-w-0">
                   <span className="sadb-tenant-name truncate">{hospital.name}</span>
-                  <span className="sadb-tenant-sub flex items-center gap-1">
-                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                    {hospital.town || '—'}
-                  </span>
                 </span>
                 <span className="truncate">{hospital.state}</span>
                 <span>

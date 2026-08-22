@@ -65,7 +65,7 @@ describe('downloads', () => {
     jest.useFakeTimers();
     clicked = null; created = []; revoked = []; blobs = [];
 
-    global.URL.createObjectURL = jest.fn((blob: Blob) => {
+    global.URL.createObjectURL = jest.fn((_blob: Blob) => {
       // Capture what actually went into the blob — the BOM is the point.
       const url = `blob:${created.length}`;
       created.push(url);
@@ -81,7 +81,7 @@ describe('downloads', () => {
       }
     } as unknown as typeof Blob;
 
-    jest.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
+    jest.spyOn(document, 'createElement').mockImplementation(((_tag: string) => {
       const el = { href: '', download: '', rel: '', click: jest.fn(() => { clicked = { href: el.href, download: el.download }; }) };
       return el as unknown as HTMLElement;
     }) as typeof document.createElement);

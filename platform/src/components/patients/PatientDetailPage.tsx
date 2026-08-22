@@ -49,6 +49,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
 import BillingTab from '@/components/patients/BillingTab';
 import PatientSBAR from '@/components/patients/PatientSBAR';
+import PortalAccessCard from '@/components/patients/PortalAccessCard';
 import { usePatientHandoff } from '@/lib/hooks/usePatientHandoff';
 import RecordSignatureBar from '@/components/patients/RecordSignatureBar';
 import NotesList from '@/components/clinical-notes/NotesList';
@@ -1673,19 +1674,27 @@ export default function PatientDetailPage() {
           )}
 
           {activeTab === 'demographics' && patient && (
-            <PatientDemographicsView
-              patient={patient}
-              activeTab={demographicsTab}
-              onTabChange={setDemographicsTab}
-              onEdit={openEditModal}
-              // The header's "Edit details" is gated on canRegisterPatients;
-              // this button opens the identical modal, so it has to be too —
-              // otherwise any chart viewer (a nurse, a cashier looking up a
-              // balance) could rewrite the patient's name, DOB or county.
-              canEdit={canRegisterPatients}
-              appointments={patientAppointments}
-              regHospitalName={regHospital?.name || patient.registrationHospital || ''}
-            />
+            <>
+              <PatientDemographicsView
+                patient={patient}
+                activeTab={demographicsTab}
+                onTabChange={setDemographicsTab}
+                onEdit={openEditModal}
+                // The header's "Edit details" is gated on canRegisterPatients;
+                // this button opens the identical modal, so it has to be too —
+                // otherwise any chart viewer (a nurse, a cashier looking up a
+                // balance) could rewrite the patient's name, DOB or county.
+                canEdit={canRegisterPatients}
+                appointments={patientAppointments}
+                regHospitalName={regHospital?.name || patient.registrationHospital || ''}
+              />
+              {/* Issuing somebody a key to their own record is an
+                  administrative act, and Demographics is one of the few tabs a
+                  front-desk role may open — which is where the person who
+                  enrols patients is standing. The card hides itself for roles
+                  the API would refuse. */}
+              <PortalAccessCard patientId={patient._id} />
+            </>
           )}
 
           {activeTab === 'careChecklist' && patient && (

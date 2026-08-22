@@ -15,8 +15,6 @@ import { createToken } from '@/lib/auth-token';
 import { mintCsrfToken } from '@/lib/csrf';
 import { applySessionCookies } from '@/lib/session';
 
-const MIN_PASSWORD_LENGTH = 8;
-
 export async function POST(request: NextRequest) {
   try {
     const { checkRateLimit } = await import('@/lib/api-security');
@@ -48,11 +46,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      return NextResponse.json(
-        { error: `New password must be at least ${MIN_PASSWORD_LENGTH} characters` },
-        { status: 400 }
-      );
+    // Length, blocklist and the "not built from your own name" rule all come
+    // from `lib/password-policy.ts` — one validator, five call sites, instead
+    // of the literal `8` this file used to carry while /admin/security
+    // advertised a minimum of 12 that nothing enforced. `changeOwnPassword`
+    // screens again server-side; this pass exists so the message names the
+    // real problem rather than surfacing as a generic 500.
+    const { screenPasswordForDeployment } = await import('@/lib/password-policy-server');
+    const weak = await screenPasswordForDeployment(newPassword, [auth.username, auth.name]);
+    if (weak) {
+      return NextResponse.json({ error: weak }, { status: 400 });
     }
     if (newPassword === currentPassword) {
       return NextResponse.json(
@@ -68,6 +71,10 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       if (err instanceof Error && /current password is incorrect/i.test(err.message)) {
         return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
+      }
+      const { PasswordPolicyError } = await import('@/lib/password-policy');
+      if (err instanceof PasswordPolicyError) {
+        return NextResponse.json({ error: err.message }, { status: 400 });
       }
       // No user document (e.g. a seed-only demo account) — can't self-change.
       if (err instanceof Error && /missing|not_found|404/i.test(err.message)) {
@@ -98,6 +105,10 @@ export async function POST(request: NextRequest) {
       county: auth.county,
       state: auth.state,
       mustChangePassword: false,
+      // Carried forward rather than cleared: replacing a temporary password
+      // does not enrol a second factor, and dropping the claim here would let
+      // an account that owes one walk straight past the proxy gate.
+      mfaPending: auth.mfaPending,
       passwordUpdatedAt: updatedUser.passwordUpdatedAt,
     });
 

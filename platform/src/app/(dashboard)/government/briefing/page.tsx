@@ -11,10 +11,6 @@ import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { Printer } from '@/components/icons/lucide';
 
-const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-condensed)', fontWeight: 800, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)',
-};
-
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
     <div className="dash-card mb-3">

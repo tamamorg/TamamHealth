@@ -60,11 +60,14 @@ interface NoteSectionCardProps {
   /** Remove an optional section the clinician added. */
   onRemove?: () => void;
   removable?: boolean;
+  /** Signed-in role, so an action that navigates is only offered when its
+   *  destination is reachable — see `actionsForSection`. */
+  role?: string;
 }
 
 export default function NoteSectionCard({
   sectionId, content, readOnly, userId, orgId, active,
-  onFocus, onChange, onRefreshDerived, onOpenDerived, onAction, onRemove, removable,
+  onFocus, onChange, onRefreshDerived, onOpenDerived, onAction, onRemove, removable, role,
 }: NoteSectionCardProps) {
   const def = getSectionDef(sectionId);
   const text = content?.text ?? '';
@@ -80,7 +83,7 @@ export default function NoteSectionCard({
 
   if (!def) return null;
 
-  const actions = actionsForSection(sectionId);
+  const actions = actionsForSection(sectionId, role);
 
   const actionButtons = !readOnly && onAction && actions.length > 0
     ? actions.map((action, index) => {

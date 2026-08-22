@@ -3,19 +3,18 @@
 /**
  * Super-admin Platform Dashboard — the command center, drawn per the
  * "Super Admin Dashboard.dc.html" design (sadb-* namespace in globals.css):
- * greeting + Command Center eyebrow, a clickable KPI tile row, readiness
- * donut with the two signals that move it, business snapshot, and sync &
- * interoperability.
+ * a clickable KPI tile row, readiness donut with the two signals that move
+ * it, business snapshot, sync & interoperability, and the Organizations
+ * card. (The tiles were briefly folded into the Organizations head meta on
+ * 2026-08-22 and restored the same day — the tile row is the wanted shape.)
  *
  * The lists this screen used to duplicate now live only where they are
  * actually worked: the risk & incident queue on /admin/risk (Risk Center),
  * the high-risk security watchlist on /admin/security (Security &
  * Compliance → Security watchlist), and the tenant health matrix on
  * /admin/organizations, where a row click can actually edit or deactivate
- * the tenant. The dashboard keeps the signals those lists produce — the
- * Organizations KPI tile is the way in — not a second copy of the lists, and
- * the 14-day encounters-vs-audit-failures trend it used to draw now lives on
- * /admin/analytics.
+ * the tenant. The 14-day encounters-vs-audit-failures trend it used to draw
+ * lives on /admin/analytics.
  *
  * It still answers "is the platform healthy today?" in one screen. Every
  * number comes from real local stores (PouchDB docs, audit log, sync events,
@@ -572,7 +571,14 @@ export default function AdminDashboardPage() {
           <CardHead
             title="Organizations"
             meta={loading ? undefined : `${activeOrgs.length} active · ${trialOrgs.length} trial · ${suspendedOrgs.length} suspended`}
-            action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations')}>Manage ›</button>}
+            action={
+              <>
+                {/* Straight into the create dialog — /admin/organizations
+                    opens it on the ?new=1 deep link. */}
+                <button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations?new=1')}>Add ›</button>
+                <button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations')}>Manage ›</button>
+              </>
+            }
           />
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             <SadbGridList

@@ -3,14 +3,15 @@
  * GET  — List all users (supports filtering by role, hospitalId, etc.)
  * POST — Create user, update user, reset password, or deactivate user
  */
+import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
   type AuthPayload,
 } from '@/lib/api-auth';
-import { withAuditLog } from '@/lib/audit/with-audit';
+import { withAuditLog, AUDIT_ACTION_HEADER } from '@/lib/audit/with-audit';
+import { PasswordPolicyError } from '@/lib/password-policy';
 import type { UserRole, UserDoc } from '@/lib/db-types';
-import type { InvitationOutcome } from '@/lib/user-invite';
 import { STAFF_DIRECTORY_READ_ROLES } from '@/lib/staff-directory-access';
 // The org/facility requirement is stated once, in `lib/user-scope-rules.ts`,
 // and read by this route, `user-service.createUser`, and the two admin UIs —
@@ -29,9 +30,7 @@ import {
 // allowed to read instead of retrying a 403 on every mount. This route remains
 // the enforcement point — the export only saves a request that would be denied.
 const READ_ROLES: UserRole[] = [...STAFF_DIRECTORY_READ_ROLES];
-const WRITE_ROLES: UserRole[] = [
-  'super_admin', 'org_admin',
-];
+const WRITE_ROLES = ADMIN;
 // Platform-wide / national (cross-tenant) roles. A user holding one of these
 // bypasses org scoping in filterByScope, so only a platform operator
 // (super_admin) may grant them. Without this guard a tenant's org_admin could
@@ -215,49 +214,65 @@ function targetMutationError(
   return null;
 }
 /**
- * Issue an invitation and mail it. Never throws: a mail gateway being down,
- * unconfigured, or missing a base URL must not fail account creation — the
- * account is the thing that matters, and the temporary password shown to the
- * administrator remains a working fallback.
+ * Tag the response so the audit wrapper records the verb that actually ran.
+ *
+ * This route serves six of them. A single fixed action name meant every
+ * deletion, reset and deactivation was logged as `user.create` — see
+ * `AUDIT_ACTION_HEADER`.
  */
-async function inviteNewUser(user: UserDoc): Promise<InvitationOutcome> {
-  const to = user.email?.trim();
-  if (!to) return { sent: false, reason: 'no_email' };
-  try {
-    const { issueUserInvite } = await import('@/lib/services/user-service');
-    const { buildInviteUrl, INVITE_TTL_HOURS } = await import('@/lib/user-invite');
-    const { sendWelcomeEmail } = await import('@/lib/email/user-welcome');
-    const { ROLE_LABEL } = await import('@/lib/role-display');
+function audited(response: NextResponse, action: string): NextResponse {
+  response.headers.set(AUDIT_ACTION_HEADER, action);
+  return response;
+}
 
-    const invite = await issueUserInvite(user._id);
-    if (!invite) return { sent: false, reason: 'send_failed' };
-
-    const inviteUrl = buildInviteUrl(invite.token);
-    // Without a base URL the link would be relative and useless in a mail
-    // client, so say so rather than sending a broken invitation.
-    if (!inviteUrl) return { sent: false, reason: 'no_app_url' };
-
-    const { wasDelivered } = await import('@/lib/email');
-    const result = await sendWelcomeEmail({
-      to,
-      name: user.name,
-      username: user.username,
-      roleLabel: ROLE_LABEL[user.role as UserRole] || user.role.replace(/_/g, ' '),
-      facilityName: user.hospitalName,
-      organisationName: user.orgName,
-      inviteUrl,
-      expiresInHours: INVITE_TTL_HOURS,
-    });
-    // `result.ok` is true even from the log provider, which delivers nothing.
-    // Reporting that as sent is the one failure mode this whole fallback exists
-    // to avoid: the administrator would not hand over the temporary password
-    // and the account would be unreachable.
-    if (wasDelivered(result)) return { sent: true, to, expiresAt: invite.expiresAt };
-    return { sent: false, reason: result.ok ? 'not_configured' : 'send_failed' };
-  } catch (err) {
-    logApiError('[API /users] invitation', err);
-    return { sent: false, reason: 'send_failed' };
+/**
+ * Refuse an action that would lock somebody — or an entire tenant — out.
+ *
+ * Two rules, and both were missing:
+ *
+ *  1. NEVER YOURSELF. `getAuthPayload` re-reads `isActive` on every request,
+ *     so an administrator who deactivates their own account is signed out
+ *     before the response finishes rendering, with no way back in. `delete`
+ *     already refused this; `deactivate` did not, which left the gentler-
+ *     sounding action as the one that could not be undone.
+ *  2. NEVER THE LAST ADMINISTRATOR. An organization with no active `org_admin`
+ *     cannot add staff, reset a password, or reach its own user management at
+ *     all. Recovery means a platform operator — who, in this deployment, may
+ *     be in another country while the clinic is offline for the afternoon.
+ *
+ * A `super_admin` is exempt from rule 2 for other people's tenants (that is
+ * the point of a platform operator) but NOT from rule 1: locking the platform
+ * operator out of the platform is the worst version of this bug, not an
+ * exception to it.
+ */
+async function lastAdminLockoutError(
+  actor: AuthPayload,
+  target: UserDoc,
+  verb: 'deactivate' | 'delete' | 'change the role of',
+): Promise<NextResponse | null> {
+  if (target._id === actor.sub) {
+    return NextResponse.json(
+      {
+        error: verb === 'change the role of'
+          ? 'You cannot change your own role. Ask another administrator to do it.'
+          : `You cannot ${verb} your own account — you would be signed out immediately with no way back in. `
+            + 'Ask another administrator to do it.',
+      },
+      { status: 400 },
+    );
   }
+  if (target.role !== 'org_admin' || !target.orgId) return null;
+
+  const { countRemainingOrgAdmins } = await import('@/lib/services/user-service');
+  const remaining = await countRemainingOrgAdmins(target.orgId, target._id);
+  if (remaining > 0) return null;
+  return NextResponse.json(
+    {
+      error: `${target.name} is the only active administrator for this organization. `
+        + `Give someone else the administrator role first, or the organization will have nobody who can manage its staff.`,
+    },
+    { status: 409 },
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -356,7 +371,33 @@ async function postHandler(request: NextRequest) {
         auth.sub,
         auth.username
       );
-      return NextResponse.json({ success: true });
+      return audited(NextResponse.json({ success: true }), 'user.password_reset');
+    }
+    // Re-send the set-your-password invitation.
+    //
+    // The invite issuer had exactly one call site — account creation — so an
+    // invitation that expired (72 hours), went to a mistyped address, or was
+    // deleted unread left an admin password reset as the only way forward, and
+    // that hands a plaintext credential back into the room. Re-issuing
+    // overwrites any outstanding token, so the previous link dies here, which
+    // is what an administrator means by "send it again".
+    if (action === 'resend_invite') {
+      if (!body.userId) {
+        return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+      }
+      const target = await getUserById(body.userId as string);
+      if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      const authzError = targetMutationError(auth, target);
+      if (authzError) return authzError;
+      if (target.isActive === false) {
+        return NextResponse.json(
+          { error: 'This account is deactivated. Reactivate it before sending an invitation.' },
+          { status: 400 },
+        );
+      }
+      const { deliverAccountInvite } = await import('@/lib/services/invite-delivery');
+      const invitation = await deliverAccountInvite(target);
+      return audited(NextResponse.json({ success: true, invitation }), 'user.invite_resend');
     }
     // Deactivate / reactivate user (toggle via `activate` boolean; default off)
     if (action === 'deactivate' || action === 'reactivate') {
@@ -372,13 +413,34 @@ async function postHandler(request: NextRequest) {
       if (authzError) return authzError;
       const activate = action === 'reactivate';
       if (activate) {
+        // A reactivated account takes a seat back. Skipping the check here was
+        // how an organization on a 50-seat plan could hold 60: deactivate ten,
+        // create ten, reactivate the ten.
+        const seatError = await validateSeatAvailable(target.orgId);
+        if (seatError) return seatError;
         const { reactivateUser } = await import('@/lib/services/user-service');
         await reactivateUser(body.userId as string, auth.sub, auth.username);
-      } else {
-        const { deactivateUser } = await import('@/lib/services/user-service');
-        await deactivateUser(body.userId as string, auth.sub, auth.username);
+        return audited(NextResponse.json({ success: true }), 'user.reactivate');
       }
-      return NextResponse.json({ success: true });
+
+      // Closing your own account signs you out on the next request — the live
+      // isActive check in getAuthPayload sees to that — and if you were the
+      // last administrator, it takes the whole tenant's user management with
+      // it. `delete` has always refused to self-target; `deactivate` did not,
+      // which made the safer-sounding action the dangerous one.
+      const lockoutError = await lastAdminLockoutError(auth, target, 'deactivate');
+      if (lockoutError) return lockoutError;
+
+      const { deactivateUser } = await import('@/lib/services/user-service');
+      await deactivateUser(body.userId as string, auth.sub, auth.username);
+      const { summarizeOpenWork } = await import('@/lib/services/offboarding-service');
+      // Reported AFTER the deactivation, never as a gate on it: access must be
+      // revocable the moment someone leaves, whatever is still assigned to
+      // them. The caller shows it so the work gets reassigned.
+      return audited(
+        NextResponse.json({ success: true, openWork: await summarizeOpenWork(body.userId as string) }),
+        'user.deactivate',
+      );
     }
     // Delete user (permanent). Confined like other mutations: org_admin only
     // within their own tenant, never a platform/national account, never self.
@@ -401,9 +463,11 @@ async function postHandler(request: NextRequest) {
       }
       const deleteAuthzError = targetMutationError(auth, target);
       if (deleteAuthzError) return deleteAuthzError;
+      const deleteLockoutError = await lastAdminLockoutError(auth, target, 'delete');
+      if (deleteLockoutError) return deleteLockoutError;
       const { deleteUser } = await import('@/lib/services/user-service');
       await deleteUser(body.userId as string, auth.sub, auth.username);
-      return NextResponse.json({ success: true });
+      return audited(NextResponse.json({ success: true }), 'user.delete');
     }
     // Update existing user
     if (action === 'update' && body.userId) {
@@ -415,6 +479,13 @@ async function postHandler(request: NextRequest) {
       // user in another (or no) organization.
       const updateAuthzError = targetMutationError(auth, existingUser);
       if (updateAuthzError) return updateAuthzError;
+      // Demotion is deactivation by another name where the last administrator
+      // is concerned: an org whose only org_admin becomes a nurse has nobody
+      // who can undo it. Same guard, same reasoning.
+      if (existingUser && body.role && body.role !== existingUser.role) {
+        const demotionError = await lastAdminLockoutError(auth, existingUser, 'change the role of');
+        if (demotionError) return demotionError;
+      }
       if (auth.role === 'org_admin') {
         const targetOrgId = (body.orgId as string | undefined) || existingUser?.orgId;
         if (targetOrgId && auth.orgId && targetOrgId !== auth.orgId) {
@@ -487,7 +558,7 @@ async function postHandler(request: NextRequest) {
         auth.username
       );
       const { redactUserForClient } = await import('@/lib/services/user-service');
-      return NextResponse.json({ user: redactUserForClient(updated) });
+      return audited(NextResponse.json({ user: redactUserForClient(updated) }), 'user.update');
     }
     // Create new user
     if (!body.username || !body.password || !body.name || !body.role) {
@@ -580,18 +651,27 @@ async function postHandler(request: NextRequest) {
     // Entirely best-effort. The account exists either way, and the response
     // reports what happened so the administrator knows whether to hand the
     // temporary password over another way instead of assuming mail arrived.
-    const invitation = await inviteNewUser(user);
+    // The same call now serves account-request approval, which used to skip
+    // this step entirely — see lib/services/invite-delivery.ts.
+    const { deliverAccountInvite } = await import('@/lib/services/invite-delivery');
+    const invitation = await deliverAccountInvite(user);
 
     const { redactUserForClient } = await import('@/lib/services/user-service');
-    return NextResponse.json(
-      { user: redactUserForClient(user), invitation },
-      { status: 201 },
+    return audited(
+      NextResponse.json({ user: redactUserForClient(user), invitation }, { status: 201 }),
+      'user.create',
     );
   } catch (err) {
     // The user-service throws plain `Error` for validation problems
     // ("Invalid role", "Clinical users must be assigned to a hospital",
     // "Username already exists", "Invalid username"). Translate those into
     // 400/409 instead of 500 so callers can correct their input.
+    // A rejected password is the caller's to fix, and it is recognised by TYPE
+    // rather than by matching its wording — which used to make the copy part
+    // of the control flow, so rewording an error turned a 400 into a 500.
+    if (err instanceof PasswordPolicyError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     if (err instanceof Error) {
       const msg = err.message;
       if (/already exists/i.test(msg)) {

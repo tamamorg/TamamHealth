@@ -80,16 +80,29 @@ export function isInviteExpired(expiresAt: string | undefined, now: Date = new D
 }
 
 /**
- * The link that goes in the email.
+ * An absolute URL into this deployment, or null when it has no address
+ * configured.
  *
- * `NEXT_PUBLIC_APP_URL` is the deployment's own address; without it the link
- * would be relative and useless in a mail client, so callers that have no base
- * URL get `null` and must not send an invitation at all.
+ * `NEXT_PUBLIC_APP_URL` is the deployment's own address. Every emailed link
+ * goes through here, because a relative URL in a mail client is not a broken
+ * link — it is a link that silently does nothing, which is worse. Callers with
+ * no base URL get `null` and must not send the message at all.
  */
-export function buildInviteUrl(token: string, baseUrl?: string): string | null {
+export function buildAppUrl(path: string, baseUrl?: string): string | null {
   const base = (baseUrl || process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
   if (!base) return null;
-  return `${base}/accept-invite?token=${encodeURIComponent(token)}`;
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+/** The set-your-password link that goes in an invitation or a reset email. */
+export function buildInviteUrl(token: string, baseUrl?: string, isReset = false): string | null {
+  // One page redeems both: setting a password you never had and replacing one
+  // you forgot are the same operation on the same document. `reset=1` only
+  // changes what the page SAYS — it is not a credential and not trusted for
+  // anything, so a user who edits it out of the URL simply sees the other
+  // wording and redeems exactly the same token.
+  const suffix = isReset ? '&reset=1' : '';
+  return buildAppUrl(`/accept-invite?token=${encodeURIComponent(token)}${suffix}`, baseUrl);
 }
 
 /**

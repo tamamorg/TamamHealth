@@ -180,13 +180,18 @@ function tenantSync(org: OrganizationDoc, stats?: OrgRowStats): { label: string;
  * sync state while they decide. The actions live in the footer, so the card is
  * both the detail view and the action surface — there is no second popup.
  */
-function TenantCard({ org, stats, t, onClose, onEdit, onDeactivate }: {
+function TenantCard({ org, stats, t, onClose, onEdit, onDeactivate, onAddFacility, onAddUser }: {
   org: OrganizationDoc;
   stats?: OrgRowStats;
   t: (key: string, vars?: Record<string, string | number>) => string;
   onClose: () => void;
   onEdit: () => void;
   onDeactivate: () => void;
+  /** Provisioning shortcuts — navigate to the flows that own the create
+   *  forms (/hospitals?new=1 and /admin/users?new=1), so growing the tenant
+   *  the card is showing is one click, not a page hunt. */
+  onAddFacility: () => void;
+  onAddUser: () => void;
 }) {
   const titleId = 'org-tenant-card-title';
   const sync = tenantSync(org, stats);
@@ -223,18 +228,27 @@ function TenantCard({ org, stats, t, onClose, onEdit, onDeactivate }: {
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>{t('action.close')}</button>
-          {/* Deactivate only while the org is still live — same rule the row
-              actions menu applied before this card replaced it. */}
-          {org.isActive && (
-            <button type="button" className="btn btn-sm sadb-btn-danger" onClick={onDeactivate}>
-              <Ban className="w-4 h-4" /> {t('orgAdmin.deactivate')}
+        <div className="flex items-center justify-between gap-2 pt-4 flex-wrap" style={{ borderTop: '1px solid var(--border-light)' }}>
+          {/* Grow-the-tenant shortcuts on the left; the card's own actions on
+              the right. Both navigate to the pages that own the create forms
+              rather than opening a third dialog over this one. */}
+          <span className="flex items-center gap-2">
+            <button type="button" className="sadb-action-btn" onClick={onAddFacility}>{t('orgHospitals.addFacility')}</button>
+            <button type="button" className="sadb-action-btn" onClick={onAddUser}>{t('orgUsers.createUser')}</button>
+          </span>
+          <span className="flex items-center gap-2">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>{t('action.close')}</button>
+            {/* Deactivate only while the org is still live — same rule the row
+                actions menu applied before this card replaced it. */}
+            {org.isActive && (
+              <button type="button" className="btn btn-sm sadb-btn-danger" onClick={onDeactivate}>
+                <Ban className="w-4 h-4" /> {t('orgAdmin.deactivate')}
+              </button>
+            )}
+            <button type="button" className="btn btn-primary btn-sm" onClick={onEdit}>
+              <Edit3 className="w-4 h-4" /> {t('action.edit')}
             </button>
-          )}
-          <button type="button" className="btn btn-primary btn-sm" onClick={onEdit}>
-            <Edit3 className="w-4 h-4" /> {t('action.edit')}
-          </button>
+          </span>
         </div>
       </div>
     </Modal>
@@ -370,6 +384,16 @@ export default function AdminOrganizationsPage() {
     setAdminError(null);
     setShowForm(true);
   };
+
+  // Deep link: /admin/organizations?new=1 opens the create dialog directly
+  // (the dashboard's Organizations card "Add" head action) — same pattern as
+  // /admin/users, /hospitals and /org-admin/hospitals. Mount-only: the brand
+  // defaults it seeds may still be the constants at this point, which is the
+  // same fallback resolveCssVarToHex uses.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('new')) openCreate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openEdit = (org: OrganizationDoc) => {
     setEditingId(org._id);
@@ -659,6 +683,8 @@ export default function AdminOrganizationsPage() {
           onClose={() => setTenantCardId(null)}
           onEdit={() => { setTenantCardId(null); openEdit(tenantCard); }}
           onDeactivate={() => { setTenantCardId(null); setDeactivateTarget(tenantCard); }}
+          onAddFacility={() => router.push('/hospitals?new=1')}
+          onAddUser={() => router.push('/admin/users?new=1')}
         />
       )}
 

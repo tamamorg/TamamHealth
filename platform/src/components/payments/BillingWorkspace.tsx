@@ -879,10 +879,12 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
       {reverseFor && (
         <Modal onClose={() => { if (!reversing) setReverseFor(null); }} width={420} labelledBy="bl-reverse-title">
           <div className="bl-root bl-modal-body">
-            <h3 className="bl-modal-title" id="bl-reverse-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle size={16} style={{ color: 'var(--color-danger-text)' }} />
-              {reverseFor.mode === 'void' ? t('action.reverse') : t('action.undo')}
-            </h3>
+            <div className="bl-modal-head">
+              <h3 className="bl-modal-title" id="bl-reverse-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={16} style={{ color: 'var(--color-danger-text)' }} />
+                {reverseFor.mode === 'void' ? t('action.reverse') : t('action.undo')}
+              </h3>
+            </div>
             <div className="bl-fee-list" style={{ maxHeight: 'none', overflow: 'visible' }}>
               <div className="bl-fee-row">
                 <div className="min-w-0">
@@ -1116,7 +1118,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
         }}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
+        <div className="px-5 py-4 border-b flex items-start justify-between gap-3 modal-headband" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
           <div>
             <button
               onClick={() => router.push(`/patients/${line.patientId}?tab=billing`)}

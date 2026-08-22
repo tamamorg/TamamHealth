@@ -46,8 +46,25 @@ export type RouteHandler = (request: NextRequest, ctx?: any) => Promise<NextResp
 
 export type AuditCategory = 'CREATE' | 'UPDATE' | 'DELETE' | 'EXPORT' | 'OTHER';
 
+/**
+ * Response header a handler may set to name what it ACTUALLY did.
+ *
+ * `/api/users` is one route serving six verbs, so a fixed action name recorded
+ * every deletion, reset and deactivation as `user.create`. The audit trail
+ * then held one accurate row (written by the service layer) and one wrong one
+ * per event, and an auditor reading the wrapper's rows would conclude accounts
+ * were created at the moment they were destroyed.
+ *
+ * The wrapper cannot work the verb out for itself: the request body has
+ * already been consumed by the handler, and reading it twice is not possible.
+ * So the handler says so on the way out, and the wrapper strips the header
+ * before the response leaves — it is an internal channel, not an API.
+ */
+export const AUDIT_ACTION_HEADER = 'x-audit-action';
+
 export interface AuditOptions {
-  /** Logical action name, e.g. 'patient.create', 'lab.result.update'. Required. */
+  /** Logical action name, e.g. 'patient.create', 'lab.result.update'. Required.
+   *  A handler may override it per-request via `AUDIT_ACTION_HEADER`. */
   action: string;
   /** Optional resource extractor — pulls the resource id from the request for the log. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,15 +160,22 @@ export function withAuditLog<T extends RouteHandler>(handler: T, opts: AuditOpti
     let response: NextResponse;
     let success = false;
     let status = 500;
+    // Overridden below when the handler names the verb it actually performed.
+    let action = opts.action;
     try {
       response = await handler(request, ctx);
       status = response.status;
       success = status < 400;
+      const declared = response.headers.get(AUDIT_ACTION_HEADER);
+      if (declared) {
+        action = declared;
+        response.headers.delete(AUDIT_ACTION_HEADER);
+      }
       return response;
     } catch (err) {
       // Handler threw — record the failure, then rethrow so the caller's
       // error path (Next.js's own 500 page, Sentry, etc.) runs as before.
-      emitAudit(opts.action, userId, username, {
+      emitAudit(action, userId, username, {
         method,
         path,
         resourceId,
@@ -168,7 +192,7 @@ export function withAuditLog<T extends RouteHandler>(handler: T, opts: AuditOpti
       // throw, `response` is undefined and we skip.
       // (Set in the try block; left undefined on throw.)
       if (response! !== undefined) {
-        emitAudit(opts.action, userId, username, {
+        emitAudit(action, userId, username, {
           method,
           path,
           resourceId,

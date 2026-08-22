@@ -61,6 +61,7 @@ import {
   RefreshCw, Server, Settings, Shield, Stethoscope, Trash2, User, Users, Zap, type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import MfaEnrolment from '@/components/MfaEnrolment';
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
   user: User, bell: Bell, shield: Shield, steth: Stethoscope, pill: Pill,
@@ -72,6 +73,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
 function rowDefault(row: RoleSettingRow, wired: { language: string; density: string; displayName: string }): boolean | string | null {
   if (row.kind === 'toggle') return row.pending ? null : row.def;
   if (row.kind === 'select') {
+    if (row.pending) return null;
     if (row.key === 'account.language') return wired.language;
     if (row.key === 'account.density') return wired.density;
     return row.def;
@@ -219,6 +221,10 @@ export default function RoleSettingsView() {
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwSaving, setPwSaving] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  // Second-factor setup. The panel is the same component the enrolment gate
+  // renders — one implementation, so voluntary enrolment and required
+  // enrolment cannot describe the same thing differently.
+  const [mfaOpen, setMfaOpen] = useState(false);
   const [pinForm, setPinForm] = useState({ next: '', confirm: '' });
   const [pinIsSet, setPinIsSet] = useState(false);
   const [pinSaving, setPinSaving] = useState(false);
@@ -512,19 +518,22 @@ export default function RoleSettingsView() {
   };
 
   const renderControl = (row: RoleSettingRow): ReactNode => {
+    // A `pending` row is declared but not wired — nothing reads its value.
+    // Rendering a live control for it invites the reader to believe the
+    // setting is in force, which for `mar.barcode` ("Confirms patient and
+    // drug") or `security.twoFactor` ("One-time code at sign-in") is a claim
+    // the platform cannot keep. Show it as unavailable, in the same language
+    // as a facility-managed row. Selects need this as much as toggles: a
+    // "Default acuity" dropdown reading "Clerk may raise it, never lower it"
+    // describes an enforcement that does not exist.
+    if ((row.kind === 'toggle' || row.kind === 'select') && row.pending) {
+      return (
+        <span className="ehr-set-locked" title="Not available in this version">
+          <Lock /> Not available yet
+        </span>
+      );
+    }
     if (row.kind === 'toggle') {
-      // A `pending` row is declared but not wired — nothing reads its value.
-      // Rendering a live switch for it invites the reader to believe the
-      // setting is in force, which for `mar.barcode` ("Confirms patient and
-      // drug") is a safety claim the platform cannot keep. Show it as
-      // unavailable, in the same language as a facility-managed row.
-      if (row.pending) {
-        return (
-          <span className="ehr-set-locked" title="Not available in this version">
-            <Lock /> Not available yet
-          </span>
-        );
-      }
       const on = Boolean(draft[row.key]);
       return (
         <button
@@ -573,7 +582,11 @@ export default function RoleSettingsView() {
         <button
           type="button"
           className="ehr-queue-action-pill"
-          onClick={() => (row.action === 'password' ? setPwOpen(true) : setPinOpen(true))}
+          onClick={() => {
+            if (row.action === 'password') setPwOpen(true);
+            else if (row.action === 'mfa') setMfaOpen(true);
+            else setPinOpen(true);
+          }}
         >
           {row.action === 'pin' && pinIsSet ? 'Change PIN' : row.buttonLabel}
         </button>
@@ -1051,6 +1064,13 @@ export default function RoleSettingsView() {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* ── Two-factor setup popup ── */}
+      {mfaOpen && (
+        <Modal onClose={() => setMfaOpen(false)} width={480} labelledBy="mfa-modal-title">
+          <MfaEnrolment mode="settings" onEnrolled={() => setMfaOpen(false)} />
         </Modal>
       )}
 

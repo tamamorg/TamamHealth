@@ -4,7 +4,7 @@ import { Children, createContext, useCallback, useContext, useEffect, useMemo, u
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { shortenPersonName, abbreviateProviderName } from '@/lib/patient-utils';
-import { ClipboardList, Printer, Search, Stethoscope, Video, X, type LucideIcon } from '@/components/icons/lucide';
+import { ClipboardList, Printer, Search, Stethoscope, X, type LucideIcon } from '@/components/icons/lucide';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
 import EhrMiniCalendar, { formatDateTitle, parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -220,7 +220,6 @@ export default function EhrCareDashboard({
   onSearchChange,
   filters,
   actions,
-  actionStrip,
   headerExtra,
   rows,
   metrics,
@@ -246,10 +245,8 @@ export default function EhrCareDashboard({
   emptyTitle = 'No active work',
   emptyActionLabel,
   onEmptyAction,
-  showActionStrip = false,
   showMissionCard = true,
   hideRowList = false,
-  showRowOpenAction = true,
   autoOpenRowId,
   children,
 }: {
@@ -270,7 +267,6 @@ export default function EhrCareDashboard({
   /** Quick-navigation strip shown under the work list, matching the
    *  Clinical Officer dashboard's clinical strip. Kept separate from header
    *  `actions` so nothing is duplicated between the header and the strip. */
-  actionStrip?: EhrCareDashboardAction[];
   /** Rendered in the header action row, beside Print. Use for controls that
    *  are not plain buttons (e.g. a dropdown menu). */
   headerExtra?: ReactNode;
@@ -327,7 +323,6 @@ export default function EhrCareDashboard({
   emptyTitle?: string;
   emptyActionLabel?: string;
   onEmptyAction?: () => void;
-  showActionStrip?: boolean;
   showMissionCard?: boolean;
   /** When the `children` workflow already renders its own patient list
    *  (e.g. the nurse stations' Ward/Triage/MAR workflows), set this to skip
@@ -337,7 +332,6 @@ export default function EhrCareDashboard({
   /** Trailing pencil button on each row. Dashboards whose rows already open
    *  their own detail on click (reception) turn it off — the row *is* the
    *  affordance, so a per-row icon is just noise. */
-  showRowOpenAction?: boolean;
   /** Opens a row detail popup from an external deep link, once per row id. */
   autoOpenRowId?: string | null;
   children?: ReactNode;

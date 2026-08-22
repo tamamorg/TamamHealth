@@ -26,6 +26,8 @@ export interface ReportChart {
   categoryLabel: string;
   /** True when the tail was folded into a single "Other" bar. */
   truncated: boolean;
+  /** Distinct categories BEFORE the fold — what "Other" is hiding. */
+  categoryCount: number;
 }
 
 /** Bars beyond this are folded into "Other" — past ~8 the labels stop fitting
@@ -146,5 +148,5 @@ export function buildReportChart(rows: Record<string, unknown>[]): ReportChart |
     truncated = true;
   }
 
-  return { points, valueLabel, categoryLabel, truncated };
+  return { points, valueLabel, categoryLabel, truncated, categoryCount: totals.size };
 }

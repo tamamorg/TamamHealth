@@ -35,6 +35,33 @@ const eslintConfig = [
     },
   },
   {
+    // An underscore prefix means "deliberately unused".
+    //
+    // The pattern this repo actually relies on is destructuring-to-omit —
+    // `const { passwordHash: _passwordHash, ...safe } = user` is how a
+    // credential is stripped before a document crosses an API boundary. The
+    // binding exists precisely so the field does NOT end up in `safe`; being
+    // unused is the whole point. Without this option the only way to quiet the
+    // rule was a trailing `void _passwordHash;`, and `redactUserForClient`
+    // showed why that is worse than useless: it had the `void` for two of its
+    // three omitted credentials and not the third, so the one line that
+    // mattered most looked like an oversight rather than a decision.
+    //
+    // `ignoreRestSiblings` covers the omit pattern even unprefixed; the `^_`
+    // patterns cover the rest (unused props like `flat: _flat`, fetch-mock
+    // signatures that must accept `(_url, _init)` to match the real one).
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        args: 'after-used',
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+        destructuredArrayIgnorePattern: '^_',
+        ignoreRestSiblings: true,
+      }],
+    },
+  },
+  {
     // react-hooks@7 (pulled in by eslint-config-next@16) enables the new
     // "React Compiler" rule family — a much stricter opinion set the existing
     // code was never written against (~220 hits). Surface them as warnings so

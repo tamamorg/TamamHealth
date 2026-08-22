@@ -30,6 +30,12 @@ const NURSE_MODULE_ROUTES = [
   '/dashboard', '/patients', '/triage', '/rooming', '/messages',
   '/lab', '/immunizations', '/anc', '/births', '/deaths',
   '/settings', '/appointments',
+  // The retired station's redirect stubs. Station dashboards are explicit
+  // grants now (see `stationDashboardGrant`), so without this entry the proxy
+  // would bounce an old /dashboard/nurse bookmark to the role's home before
+  // the stub itself could redirect — same destination, but the stubs exist
+  // precisely so those links resolve rather than get gated.
+  '/dashboard/nurse',
   // Nurses document their own encounters (the Nurse Visit note type), so the
   // notes module is part of the nursing station, not a clinician-only surface.
   '/notes',
@@ -85,22 +91,31 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/org-admin/branding', '/org-admin/settings', '/org-admin/pricing',
       '/org-admin/analytics',
       '/facility-settings',
-      // Console targets inside the IT/system console: data quality and the
-      // conflict queue (org_admin is in CONFLICT_RESOLUTION_ROLES).
-      '/it', '/system-admin', '/data-quality', '/admin/conflicts',
+      // No IT/system console: `/it`, `/system-admin`, `/data-quality` and the
+      // conflict queue were removed 2026-08-22. Running a tenant is not
+      // operating the platform — those screens edit apps, extensions,
+      // privileges, metadata and global properties, which are the platform
+      // operator's job, and an org admin who opened them could change
+      // behaviour for every tenant. Removing the route is what also empties
+      // the Settings rail's System-administration group, which is gated on
+      // `isPathAllowed(role, '/system-admin')`.
       '/hospitals', '/reports', '/settings', '/settings/manage',
       '/patients', '/pharmacy', '/messages',
       '/appointments',
       '/billing', '/payments', '/payments/claims',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
-      // Facility station workspaces, moved off the super-admin console
-      // 2026-08-19 (see the WORKSPACES block in permissions.ts). These pair
-      // with nav entries there; both halves are required or the proxy 302s the
-      // link away. County and Government are intentionally absent — they are
-      // supra-organisational and would cross the tenant boundary.
-      '/dashboard/front-desk', '/dashboard/lab', '/dashboard/pharmacy',
-      '/dashboard/radiology', '/dashboard/data-entry', '/dashboard/nutrition',
+      // No facility station workspaces. Front desk, laboratory, pharmacy,
+      // radiology, records/HMIS and nutrition are stations an org admin does
+      // not staff; they were carried here from 2026-08-19 until 2026-08-22.
+      // The nav rows in permissions.ts went with them — both halves have to
+      // move together or the proxy 302s a link the sidebar still draws.
+      //
+      // What replaced them is the read side of the same areas: the facility
+      // statistics mirror and the laboratory worklist, which answer "what is
+      // going on in those hospitals" without handing the role a station's
+      // controls.
+      '/facility-overview', '/lab',
       '/transfers',
     ],
     // Org admins land on the Facility Operations dashboard — the single home
@@ -152,6 +167,9 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     // the patient/ANC record, not the lab orders queue.
     allowed: [
       '/dashboard', '/patients', '/triage', '/messages',
+      // Same retired-station stubs the other nurse-family roles keep — a
+      // midwife's old /dashboard/nurse bookmark has to reach the redirect.
+      '/dashboard/nurse',
       '/anc', '/births', '/deaths', '/immunizations',
       '/wards', '/referrals', '/appointments',
       '/notes', '/settings',
@@ -212,11 +230,17 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
 
   government: {
     allowed: [
-      '/government', '/dashboard/state',
+      // No '/dashboard/state': that is the COUNTY director's oversight
+      // console, scoped to one state, and nothing in the national dashboard
+      // ever linked to it — the ministry's own drill-downs are
+      // /government/equity, /government/programs and /hospitals.
+      // No '/appointments' either: a national ministry user has no clinic
+      // book to keep. Both were grants no nav row and no link ever used.
+      '/government',
       '/hospitals', '/vital-statistics', '/immunizations',
       '/anc', '/births', '/deaths', '/facility-assessments', '/data-quality',
       '/surveillance', '/reports', '/dhis2-export', '/public-stats', '/settings',
-      '/epidemic-intelligence', '/mch-analytics', '/appointments',
+      '/epidemic-intelligence', '/mch-analytics',
     ],
     defaultDashboard: '/government',
   },
@@ -247,14 +271,28 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
   },
 
   medical_superintendent: {
+    // No '/immunizations', '/anc', '/births' or '/deaths'. They were granted
+    // from the start and never given a nav row, so the only way in was to type
+    // the URL; the console is also at its row ceiling, and the sibling
+    // facility-management role (hospital_manager) has neither the rows nor the
+    // grants. The two surfaces that DID reach them from inside the chart now
+    // gate on route access like every other row and action there: the ANC
+    // form row (ClinicalFormsPanel) and the note's "Vaccines" plan action
+    // (section-actions.ts) are withdrawn rather than left to land on "Access
+    // Restricted". Oversight of these registers is via /reports,
+    // /vital-statistics and /data-quality, which this role does have.
     allowed: [
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
-      '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
+      '/lab', '/pharmacy',
       '/surveillance', '/reports', '/hospitals', '/settings', '/settings/manage',
       '/facility-settings',
       '/it', '/system-admin',
       '/epidemic-intelligence', '/mch-analytics', '/my-facility', '/facility-overview',
       '/appointments', '/facility-assessments', '/data-quality',
+      // The aggregate register view, which is what replaces the four raw
+      // registers above for an oversight role — the same surface the sibling
+      // hospital_manager console has carried all along.
+      '/vital-statistics',
       '/billing', '/payments', '/payments/claims',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       // The staff list. The HR module's own "Staff Roster" was the same roster
@@ -412,6 +450,31 @@ const UNIVERSAL_ROUTES: readonly string[] = ['/notifications'];
  */
 const EXPLICIT_GRANT_ROUTES: readonly string[] = ['/payments/claims', '/settings/manage'];
 
+/**
+ * Station dashboards are explicit grants too, and the rule is structural
+ * rather than a list: ANY `/dashboard/<station>` needs its own entry.
+ *
+ * `/dashboard` is the shared clinical workspace, held by doctors, clinicians,
+ * nurses, midwives and the medical superintendent. Under plain prefix
+ * inheritance that one entry also opened `/dashboard/state` (the county
+ * director's oversight console), `/dashboard/hr` (the HR station),
+ * `/dashboard/front-desk`, `/dashboard/lab`, `/dashboard/pharmacy`,
+ * `/dashboard/radiology`, `/dashboard/nutrition` and `/dashboard/data-entry`
+ * — every other role's station, to a role whose nav never offers them and
+ * whose job never involves them.
+ *
+ * Every role that legitimately works in a station already names it (lab_tech
+ * has `/dashboard/lab`, government has `/dashboard/state`, and so on), so
+ * nothing loses a route it was actually using. Written as a prefix test, not
+ * an enumeration, so a station added later is closed by default instead of
+ * inheriting the workspace's grant on the day it lands.
+ */
+function stationDashboardGrant(path: string): string | null {
+  if (!path.startsWith('/dashboard/')) return null;
+  const station = path.split('/')[2];
+  return station ? `/dashboard/${station}` : null;
+}
+
 function getConfig(role: UserRole | string): RoleRouteConfig | undefined {
   return (ROLE_ROUTE_TABLE as Record<string, RoleRouteConfig>)[role];
 }
@@ -448,7 +511,7 @@ export function isPathAllowed(role: UserRole | string, pathname: string): boolea
   const matches = (route: string) => path === route || path.startsWith(route + '/');
   // Explicit-grant routes ignore prefix inheritance: the role's own allow-list
   // must name the route (or something nested beneath it).
-  const explicit = EXPLICIT_GRANT_ROUTES.find(matches);
+  const explicit = EXPLICIT_GRANT_ROUTES.find(matches) ?? stationDashboardGrant(path);
   if (explicit) {
     return config.allowed.some((route) => route === explicit || route.startsWith(explicit + '/'));
   }

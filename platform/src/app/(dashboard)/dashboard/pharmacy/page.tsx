@@ -30,9 +30,21 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, ResponsiveContainer,
 } from 'recharts';
 import {
-  Pill, Package, ShieldCheck, ClipboardList,
-  Activity, AlertTriangle, Clock, CheckCircle2, ChevronRight,
-  AlertOctagon, X, Check, Plus, Users, BarChart3, Loader2,
+  Pill,
+  Package,
+  ShieldCheck,
+  ClipboardList,
+  Activity,
+  AlertTriangle,
+  Clock,
+  CheckCircle2,
+  ChevronRight,
+  AlertOctagon,
+  X,
+  Check,
+  Plus,
+  BarChart3,
+  Loader2,
   type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';

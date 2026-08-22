@@ -8,6 +8,7 @@
  * temporary-password-then-change flow. The request document is only the paper
  * trail; it is never a second, weaker way to make a user.
  */
+import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
@@ -19,17 +20,18 @@ import {
   getAccountRequest, canDecide, recordDecision, suggestUsername,
   PLATFORM_APPROVAL_ROLES,
 } from '@/lib/services/account-request-service';
+import { isValidAttestation } from '@/lib/account-request-roles';
 // The same generator every admin-provisioned credential uses, so an approved
 // request produces a password with the shape staff already expect — and one
 // that can be read aloud in a clinic with no email.
-import { generateTempPassword } from '@/lib/temp-password';
+import { generateTempPassword, tempPasswordLengthFor } from '@/lib/temp-password';
 import {
   accountRequestFacilityMatchesOrg, accountRequestRoleNeedsFacility,
 } from '@/lib/account-request-roles';
 
 export const runtime = 'nodejs';
 
-const APPROVER_ROLES: UserRole[] = ['super_admin', 'org_admin'];
+const APPROVER_ROLES = ADMIN;
 
 async function postHandler(
   request: NextRequest,
@@ -66,11 +68,27 @@ async function postHandler(
     const decisionNote = typeof body.decisionNote === 'string' ? body.decisionNote : undefined;
 
     if (action === 'reject') {
+      // No attestation required to say no: refusing access needs no proof of
+      // identity, and demanding one would only stop approvers clearing junk.
       await recordDecision(id, 'rejected', { username: auth.username, name: auth.name }, { decisionNote });
       return NextResponse.json({ ok: true, status: 'rejected' });
     }
 
     // ── Approval ────────────────────────────────────────────────────────
+    // Every field on the request is self-asserted. The approver is the only
+    // identity check in the whole flow, and before this there was nowhere to
+    // record that they had performed one — so an approval that was verified
+    // and an approval that was waved through produced identical evidence.
+    // Required, and validated against the list rather than accepted as free
+    // text, so the audit trail can be counted rather than read.
+    const identityAttestation = body.identityAttestation;
+    if (!isValidAttestation(identityAttestation)) {
+      return NextResponse.json(
+        { error: 'Record how you confirmed this person\'s identity before approving.' },
+        { status: 400 },
+      );
+    }
+
     // The approver may override the requested role — the person asking says
     // what they do, the administrator decides what they get.
     const grantedRole = (typeof body.role === 'string' ? body.role : doc.requestedRole) as UserRole;
@@ -122,7 +140,11 @@ async function postHandler(
     const requested = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
     const username = requested || suggestUsername(doc.fullName, name => taken.has(name));
 
-    const password = generateTempPassword();
+    // Long enough for whatever minimum this deployment enforces — otherwise
+    // `createUser` rejects the credential this route just generated, and the
+    // approver sees a password error for a password they never typed.
+    const { getMinPasswordLength } = await import('@/lib/password-policy-server');
+    const password = generateTempPassword(tempPasswordLengthFor(await getMinPasswordLength()));
     let created;
     try {
       created = await createUser(
@@ -153,17 +175,32 @@ async function postHandler(
     await recordDecision(
       id, 'approved',
       { username: auth.username, name: auth.name },
-      { decisionNote, createdUsername: created.username },
+      { decisionNote, createdUsername: created.username, identityAttestation },
     );
+
+    // Send the invitation, exactly as `POST /api/users` does for an account an
+    // administrator creates by hand.
+    //
+    // This route used to skip it entirely: it called `createUser` directly and
+    // handed the approver a temporary password to relay by phone — to someone
+    // who had typed their email address into the form FOR THIS PURPOSE, and
+    // whose address has since been verified. Two entry points had already been
+    // collapsed onto one write path; this is the same collapse for delivery.
+    const { deliverAccountInvite } = await import('@/lib/services/invite-delivery');
+    const invitation = await deliverAccountInvite(created);
 
     // The one and only time this password is readable. It is not stored in
     // plaintext anywhere, and the account cannot be used without changing it.
+    // Still returned even when the invitation was delivered: the approver
+    // needs a fallback for the mail that never arrives, and `invitation` tells
+    // them honestly which situation they are in.
     return NextResponse.json({
       ok: true,
       status: 'approved',
       username: created.username,
       temporaryPassword: password,
       mustChangePassword: true,
+      invitation,
     });
   } catch (err) {
     logApiError('POST /api/account-requests/[id]', err);

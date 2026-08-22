@@ -71,7 +71,7 @@ function demoGroupName(account: DemoAccount): string {
 export default function LoginPage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { login, lastLoginFailure, isAuthenticated, currentUser, dbReady } = useAuth();
+  const { login, lastLoginFailure, lastLoginChallenge, isAuthenticated, currentUser, dbReady } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -90,6 +90,10 @@ export default function LoginPage() {
   // route declines (it has a users database) keeps the product panel.
   const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
   const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
+  // Second-factor step. The password has been accepted and the server is
+  // holding a five-minute hand-off token; nothing is signed in yet.
+  const [awaitingCode, setAwaitingCode] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
 
   // Username handed over from the marketing site's login (?u=). Read from
   // window rather than useSearchParams — the same pattern the patients and
@@ -216,9 +220,29 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const result = await login(username, password, undefined, roleChoice || undefined);
-      if (result) router.push(resolveLandingPage(result));
-      else { setError(describeLoginFailure(t('login.errorInvalidCredentials'))); setLoading(false); }
+      const result = await login(
+        username, password, undefined, roleChoice || undefined,
+        // Only sent on the second pass. `login()` ignores it unless a
+        // challenge for this username is outstanding.
+        awaitingCode ? mfaCode : undefined,
+      );
+      if (result) { router.push(resolveLandingPage(result)); return; }
+
+      // The password was right and the account holds a second factor. Not a
+      // failure — a second step, so the form asks for the code rather than
+      // telling the user their credentials were wrong.
+      if (lastLoginChallenge()) {
+        setAwaitingCode(true);
+        setMfaCode('');
+        setLoading(false);
+        return;
+      }
+      setAwaitingCode(false);
+      setMfaCode('');
+      setError(describeLoginFailure(
+        awaitingCode ? t('login.errorCodeRejected') : t('login.errorInvalidCredentials'),
+      ));
+      setLoading(false);
     } catch { setError(t('login.errorLoginFailed')); setLoading(false); }
   };
 
@@ -373,6 +397,27 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Second factor. Shown only once the password has been accepted,
+                so nobody is asked for a code before the server has said one is
+                needed — and never revealing, before that point, which accounts
+                have one. */}
+            {awaitingCode && (
+              <div className="lg-field">
+                <label htmlFor="tl-mfa">{t('login.codeLabel')}</label>
+                <input
+                  id="tl-mfa"
+                  className="lg-input lg-code"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/[^0-9A-Za-z-]/g, '').slice(0, 12))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  placeholder="000000"
+                />
+                <span className="lg-hint">{t('login.codeHint')}</span>
+              </div>
+            )}
+
             <label className="lg-keep">
               <input type="checkbox" checked={keepSignedIn} onChange={(e) => setKeepSignedIn(e.target.checked)} />
               {t('login.keepSignedIn')}
@@ -393,6 +438,11 @@ export default function LoginPage() {
                 copying a password into a message. This goes to a form whose
                 answer is an account, routed to whoever is allowed to grant it. */}
             <a href="/request-account">{t('login.requestAccount')}</a>
+            {/* The string for this existed in both locales from the day the
+                login page shipped and was rendered nowhere, because there was
+                no flow behind it: every forgotten password was an
+                administrator reset and a credential read down a phone line. */}
+            <a href="/forgot-password">{t('login.forgotPassword')}</a>
           </div>
 
           <span className="lg-note">

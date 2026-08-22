@@ -38,14 +38,33 @@ jest.mock('@/lib/auth', () => ({
 }));
 
 import { createUser, resetPassword, changeOwnPassword, updateUser } from '@/lib/services/user-service';
+import {
+  ABSOLUTE_MIN_PASSWORD_LENGTH, DEFAULT_MIN_PASSWORD_LENGTH,
+} from '@/lib/password-policy';
 
 beforeEach(() => store.clear());
 
 describe('createUser password policy', () => {
   const base = { username: 'nurse.jane', name: 'Jane Poni', role: 'nurse' as const, hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital' };
 
-  test('rejects passwords shorter than 8 characters', async () => {
-    await expect(createUser({ ...base, password: 'short1' })).rejects.toThrow(/^Password must be at least 8/);
+  // The floor is `ABSOLUTE_MIN_PASSWORD_LENGTH` (8); what actually applies
+  // with no configured policy is `DEFAULT_MIN_PASSWORD_LENGTH` (12), which is
+  // the number /admin/security had been displaying without enforcing. Asserted
+  // against the constants rather than a literal so the two cannot drift apart
+  // again.
+  test('rejects a password under the default minimum', async () => {
+    await expect(createUser({ ...base, password: 'short1' }))
+      .rejects.toThrow(new RegExp(`^Password must be at least ${DEFAULT_MIN_PASSWORD_LENGTH}`));
+    expect(store.size).toBe(0);
+  });
+
+  test('rejects a password that clears the absolute floor but not the default', async () => {
+    // 8-11 characters is the window this fix closed: it passed before and the
+    // admin screen claimed it would not.
+    const nineChars = 'Kq7mHn2pW';
+    expect(nineChars.length).toBeGreaterThanOrEqual(ABSOLUTE_MIN_PASSWORD_LENGTH);
+    expect(nineChars.length).toBeLessThan(DEFAULT_MIN_PASSWORD_LENGTH);
+    await expect(createUser({ ...base, password: nineChars })).rejects.toThrow(/Password must be at least/);
     expect(store.size).toBe(0);
   });
 
@@ -60,7 +79,8 @@ describe('createUser password policy', () => {
 describe('resetPassword policy', () => {
   test('rejects short passwords and leaves the account untouched', async () => {
     await createUser({ username: 'desk.amira', name: 'Amira Juma', role: 'front_desk', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', password: 'Kq7mHn2pWx4Z' });
-    await expect(resetPassword('user-desk.amira', 'tiny')).rejects.toThrow(/^Password must be at least 8/);
+    await expect(resetPassword('user-desk.amira', 'tiny'))
+      .rejects.toThrow(new RegExp(`^Password must be at least ${DEFAULT_MIN_PASSWORD_LENGTH}`));
     expect((store.get('user-desk.amira') as { passwordHash: string }).passwordHash).toBe('hashed:Kq7mHn2pWx4Z');
   });
 
