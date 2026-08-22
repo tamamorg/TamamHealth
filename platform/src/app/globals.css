@@ -25912,7 +25912,9 @@ table.patient-data-table.patient-data-table {
         super-admin design-language panel (sadb-ui.tsx): its confirm variant
         is heading + copy + buttons with no form control, exactly the shape
         that matched. A surface class marks a panel by definition, never a
-        title row.
+        title row. `.ehr-handoff-head` is the opposite case — a header that
+        DOES have a class of its own, so it paints itself (below) rather than
+        going through a fallback whose pull-back assumes a padded panel.
 
    `!important` on the colours is not decoration: every one of those headers
    sets `color: var(--text-primary)` inline on its own `<h2>`, and inline wins
@@ -25942,8 +25944,8 @@ table.patient-data-table.patient-data-table {
 .modal-portal-backdrop [role="dialog"] > [class~="rounded-2xl"] { --modal-radius: 16px; }
 .modal-portal-backdrop [role="dialog"] > .dash-card { --modal-radius: var(--card-radius); }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)),
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)),
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
   /* Full-bleed to the panel edges. Each panel declares its own padding and
      radius in `--modal-pad` / `--modal-radius`, so the bar meets the border
      exactly rather than being pulled back by a guessed amount — 20px was
@@ -25963,34 +25965,81 @@ table.patient-data-table.patient-data-table {
   color: #fff !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b),
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b) {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b),
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) :is(h2, h3, p, span, small, b) {
   color: #fff !important;
+}
+
+/* ── Exception: the header that already has a class ──────────────────────
+   `.ehr-handoff-head` is a real header with its own rules, not one of the 58
+   hand-rolled ones the structural fallback above exists for. Two things went
+   wrong when it went through that fallback:
+
+     • the pull-back (`margin: -20px`) assumes a panel padded by the same
+       amount. `.ehr-handoff-modal` has no padding, so the bar hung 20px past
+       both edges and was cropped by the panel's `overflow: hidden` — the
+       heading came out clipped against the top of the dialog.
+     • these panels declare `role="dialog"` on themselves, inside `Modal`'s
+       own dialog element, so `[role="dialog"] > * > div:first-child` matched
+       a level deeper as well and painted the TITLE ROW blue on top of the
+       already-blue bar, at its own negative offset.
+
+   It keeps the design's solid blue bar; it just takes it directly. */
+/* Scoped to the backdrop on purpose: `.ehr-handoff-modal` is also rendered
+   inline as a page panel (the handoff board at /wards/handoff), and that one
+   is not a popup — it keeps the plain white header it always had. */
+.modal-portal-backdrop .ehr-handoff-modal > .ehr-handoff-head {
+  border-bottom-color: transparent;
+  border-radius: 12px 12px 0 0;
+  background: var(--accent-primary);
+  color: #FFFFFF;
+}
+
+.modal-portal-backdrop .ehr-handoff-modal > .ehr-handoff-head :is(h2, h3, b, span, small),
+.modal-portal-backdrop .ehr-handoff-modal > .ehr-handoff-head .ehr-handoff-close {
+  color: #FFFFFF;
+}
+
+/* The duotone icons paint from `currentColor`, so the bar has to hand them a
+   full white — the same treatment the structural rule gives its own. */
+.modal-portal-backdrop .ehr-handoff-modal > .ehr-handoff-head svg {
+  color: #FFFFFF;
+  stroke: currentColor;
+}
+
+.modal-portal-backdrop .ehr-handoff-modal > .ehr-handoff-head p {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.modal-portal-backdrop .ehr-handoff-modal > .ehr-handoff-head .ehr-handoff-close:hover {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.16);
+  color: #FFFFFF;
 }
 
 /* The subtitle line ("Step 1 of 4 · Visit") is muted grey inline — on blue it
    needs to stay secondary without disappearing. */
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p,
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) p {
   color: rgba(255, 255, 255, 0.82) !important;
 }
 
 /* Close and back buttons: the tinted grey disc they carry inline is invisible
    on blue, so they become a translucent white one. */
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button,
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button {
   background: rgba(255, 255, 255, 0.16) !important;
   color: #fff !important;
   border-color: transparent !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover,
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) button:hover {
   background: rgba(255, 255, 255, 0.28) !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg,
-.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg {
+.modal-portal-backdrop [role="dialog"] > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg,
+.modal-portal-backdrop [role="dialog"] > * > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) svg {
   color: #fff !important;
   stroke: currentColor !important;
 }
@@ -26000,7 +26049,7 @@ table.patient-data-table.patient-data-table {
    `.modal-panel` (overflow: auto), buys a scrollbar rather than a wider bar.
    So the generic rule above stays conservative and the two panel classes that
    carry a known padding get an exact match here. */
-.modal-portal-backdrop [role="dialog"] > .modal-panel > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
+.modal-portal-backdrop [role="dialog"] > .modal-panel > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
   margin: -24px -24px 20px !important;
   padding: 16px 22px !important;
 }
@@ -26015,7 +26064,7 @@ table.patient-data-table.patient-data-table {
    is the same shape — an unpadded panel whose sections pad themselves — so
    without this it wore the -20px pull-back as a bar bleeding right across
    the page, covering the page header. */
-.modal-portal-backdrop [role="dialog"] > :is(.modal-content, .card-elevated, .cn-meds):not([class~="p-4"]):not([class~="p-5"]):not([class~="p-6"]) > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
+.modal-portal-backdrop [role="dialog"] > :is(.modal-content, .card-elevated, .cn-meds):not([class~="p-4"]):not([class~="p-5"]):not([class~="p-6"]) > div:first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)) {
   margin: 0 !important;
 }
 
@@ -28889,30 +28938,33 @@ button.sadb-kpi:hover { border-color: var(--brand-300); }
   .sadb-row-2 { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* The donut is the card's headline, so it takes the room: the two signals sit
+   further right on a tighter measure rather than splitting the width evenly
+   with it. */
 .sadb-readiness-body {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 14px;
+  gap: 18px;
+  padding: 12px 14px;
 }
 .sadb-readiness-signals {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 .sadb-signal {
   display: block;
   width: 100%;
   text-align: start;
-  padding: 9px 12px;
+  padding: 7px 10px;
   border-radius: 8px;
   border: 1px solid transparent;
 }
 button.sadb-signal { cursor: pointer; }
-.sadb-signal b { display: block; font-size: 13px; font-weight: 700; }
-.sadb-signal span { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
+.sadb-signal b { display: block; font-size: 12.5px; font-weight: 700; }
+.sadb-signal span { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); }
 .sadb-signal--green { background: rgba(10, 110, 74, 0.07); border-color: rgba(10, 110, 74, 0.32); }
 .sadb-signal--green b { color: var(--color-success-800); }
 .sadb-signal--yellow { background: rgba(179, 89, 0, 0.07); border-color: rgba(179, 89, 0, 0.35); }
@@ -30085,38 +30137,40 @@ button.sadb-signal { cursor: pointer; }
 }
 
 /* ============ Reports (rpt-*) ============================================
-   The reports catalogue and its charts.
+   The reports catalogue and its statistics.
 
    Scoped namespace on purpose, per the two traps this stylesheet carries: the
    bare `label` rule force-uppercases every <label>, and
    `svg.lucide:not([style*="color"])` recolours icons globally with several
    `!important` stroke overrides. Everything here is addressed through `rpt-`
    classes so neither cascade reaches it and nothing here reaches anything
-   else. Colours are tokens only — the chart hues come from --chart-* (the
-   CVD-validated categorical scale) and the stock ring from the reserved
-   status palette; no literal hex belongs in this block.
+   else. Colours are tokens only — chart hues come from --chart-* and the
+   stock ring from the reserved status palette; no literal hex belongs here.
+
+   ONE column rhythm runs down the page: four KPI tiles, a full-width
+   statistics panel, and a four-up card grid all sit on the same tracks, so
+   every left edge lines up from the top of the page to the bottom.
    ------------------------------------------------------------------------ */
 
 .rpt-overview {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 /* ── Headline figures ── */
 .rpt-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
-@media (max-width: 900px) { .rpt-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .rpt-kpi {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 11px;
+  padding: 11px 14px;
   border-radius: 10px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
@@ -30125,20 +30179,20 @@ button.sadb-signal { cursor: pointer; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   border-radius: 9px;
   background: var(--overlay-subtle);
 }
 /* Icon colour is set here rather than inline so the global lucide rule has a
    more specific selector to lose to. */
-.rpt-kpi-icon svg { width: 17px; height: 17px; color: var(--accent-primary); }
+.rpt-kpi-icon svg { width: 16px; height: 16px; color: var(--accent-primary); }
 .rpt-kpi-body { display: flex; flex-direction: column; min-width: 0; }
 .rpt-kpi-body b {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.15;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
@@ -30146,48 +30200,70 @@ button.sadb-signal { cursor: pointer; }
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
-/* ── Overview charts ── */
-.rpt-panels {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 12px;
-}
-@media (max-width: 1100px) { .rpt-panels { grid-template-columns: minmax(0, 1fr); } }
-
-.rpt-panel {
-  margin: 0;
-  padding: 14px 16px 12px;
+/* ── Statistics: one panel, one chart, a picker for the rest ── */
+.rpt-stats {
   border-radius: 10px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
 }
-.rpt-panel-head {
+.rpt-stats-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  padding: 0;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-light);
 }
-.rpt-panel-head svg { width: 16px; height: 16px; color: var(--accent-primary); flex: 0 0 auto; }
-.rpt-panel-head div { display: flex; flex-direction: column; min-width: 0; }
-.rpt-panel-head b { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.rpt-panel-head span { font-size: 11px; color: var(--text-muted); }
-.rpt-panel-plot { width: 100%; }
+.rpt-stats-title { display: flex; align-items: center; gap: 8px; }
+.rpt-stats-title svg { width: 15px; height: 15px; color: var(--accent-primary); }
+.rpt-stats-title b { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+
+/* Segmented picker. One track, one filled thumb — the current view reads as a
+   position, not as four independent toggles. */
+.rpt-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--overlay-subtle);
+}
+.rpt-seg button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 5px 12px;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+.rpt-seg button:hover { color: var(--text-primary); }
+.rpt-seg button.is-on {
+  background: var(--bg-card-solid);
+  color: var(--accent-primary);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+/* Fixed height, so switching views never moves the catalogue underneath. */
+.rpt-stats-body { padding: 10px 14px 12px; min-height: 214px; display: flex; }
+.rpt-plot { width: 100%; height: 200px; }
 .rpt-panel-empty {
-  margin: 0;
-  padding: 34px 0;
+  margin: auto;
+  padding: 26px 0;
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
 }
 
-/* Donut + legend sit side by side; the count in the hole is the total the
-   slices add up to, so the ring never needs a percentage label. */
-.rpt-donut-row { display: flex; align-items: center; gap: 18px; }
-.rpt-donut { position: relative; width: 148px; height: 148px; flex: 0 0 auto; }
+/* Donut + legend, centred in the same 200px the bar charts occupy. */
+.rpt-donut-row { display: flex; align-items: center; gap: 26px; width: 100%; height: 200px; }
+.rpt-donut { position: relative; width: 200px; height: 200px; flex: 0 0 auto; }
 .rpt-donut-hole {
   position: absolute;
   inset: 0;
@@ -30198,7 +30274,7 @@ button.sadb-signal { cursor: pointer; }
   pointer-events: none;
 }
 .rpt-donut-hole b {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -30206,40 +30282,28 @@ button.sadb-signal { cursor: pointer; }
 }
 .rpt-donut-hole span { font-size: 10px; color: var(--text-muted); }
 
-.rpt-legend { list-style: none; margin: 0; padding: 0; flex: 1 1 auto; min-width: 0; }
+.rpt-legend { list-style: none; margin: 0; padding: 0; flex: 1 1 auto; min-width: 0; max-width: 320px; }
 .rpt-legend li {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 0;
+  gap: 9px;
+  padding: 6px 0;
   font-size: 12px;
+  border-bottom: 1px solid var(--border-light);
 }
-.rpt-legend i {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  flex: 0 0 auto;
-}
+.rpt-legend li:last-child { border-bottom: none; }
+.rpt-legend i { width: 9px; height: 9px; border-radius: 999px; flex: 0 0 auto; }
 /* Legend text stays in neutral ink — identity is carried by the dot. */
 .rpt-legend span { color: var(--text-secondary); flex: 1 1 auto; min-width: 0; }
-.rpt-legend b {
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
+.rpt-legend b { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 
 /* ── Catalogue ── */
-.rpt-groups { display: flex; flex-direction: column; gap: 22px; }
-.rpt-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.rpt-group-head svg { width: 17px; height: 17px; color: var(--accent-primary); }
-.rpt-group-head h2 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
+.rpt-groups { display: flex; flex-direction: column; gap: 16px; }
+.rpt-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.rpt-group-head svg { width: 16px; height: 16px; color: var(--accent-primary); }
+.rpt-group-head h2 { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .rpt-group-count {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: var(--text-muted);
   background: var(--overlay-subtle);
@@ -30248,47 +30312,45 @@ button.sadb-signal { cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 
-.rpt-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
-  gap: 12px;
-}
+/* Four fixed tracks, matching the KPI row above. A fixed count rather than
+   auto-fill: with sections of 3/5/3/3/2 reports, auto-fill gave each section a
+   different right edge, which is what made the page look ragged. Now every
+   card is the same width everywhere and a short section simply leaves its last
+   track empty. */
+.rpt-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 
 .rpt-card {
   display: flex;
   flex-direction: column;
-  padding: 14px 16px 12px;
+  padding: 12px 14px 10px;
   border-radius: 10px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .rpt-card:hover { border-color: var(--border-medium); }
-.rpt-card.is-open {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary);
-}
+.rpt-card.is-open { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); }
 
-.rpt-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.rpt-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .rpt-card-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 8px;
   background: var(--overlay-subtle);
 }
-.rpt-card-icon svg { width: 15px; height: 15px; color: var(--accent-primary); }
+.rpt-card-icon svg { width: 14px; height: 14px; color: var(--accent-primary); }
 
 /* Cadence chip. The hues match the header's stat dots for the same four
    cadences, so the two readings of the catalogue agree. */
 .rpt-chip {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 3px 9px;
+  padding: 3px 8px;
   border-radius: 999px;
   color: var(--text-secondary);
   background: var(--overlay-subtle);
@@ -30299,16 +30361,16 @@ button.sadb-signal { cursor: pointer; }
 .rpt-chip--quarterly { color: var(--chart-6); background: color-mix(in srgb, var(--chart-6) 12%, transparent); }
 
 .rpt-card-title {
-  margin: 0 0 4px;
-  font-size: 13px;
+  margin: 0 0 3px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.3;
 }
 .rpt-card-desc {
-  margin: 0 0 12px;
-  font-size: 11.5px;
-  line-height: 1.45;
+  margin: 0 0 10px;
+  font-size: 11px;
+  line-height: 1.4;
   color: var(--text-muted);
   /* Two lines, so every card in a row is the same height regardless of how
      long its description runs. */
@@ -30316,26 +30378,26 @@ button.sadb-signal { cursor: pointer; }
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  min-height: 31px;
 }
 
-/* Five bars, proportional to the report's own top rows. Plain elements, not a
-   chart library: sixteen of these render on every catalogue paint. */
+/* Five bars, proportional to the report's own top rows, in the same
+   dark-for-large ramp the full chart uses — so the preview and the chart it
+   previews read the same way. Plain elements, not a chart library: sixteen of
+   these render on every catalogue paint. */
 .rpt-spark {
   display: flex;
   align-items: flex-end;
-  gap: 4px;
-  height: 34px;
-  margin-bottom: 12px;
+  gap: 3px;
+  height: 30px;
+  margin-bottom: 10px;
   margin-top: auto;
 }
 .rpt-spark > span { flex: 1 1 0; display: flex; align-items: flex-end; height: 100%; }
-.rpt-spark i {
-  display: block;
-  width: 100%;
-  border-radius: 3px 3px 0 0;
-  background: color-mix(in srgb, var(--chart-2) 55%, transparent);
-}
-.rpt-card.is-open .rpt-spark i { background: var(--chart-2); }
+.rpt-spark i { display: block; width: 100%; border-radius: 2px 2px 0 0; background: var(--chart-seq-3); }
+.rpt-spark > span:nth-child(1) i { background: var(--chart-seq-5); }
+.rpt-spark > span:nth-child(2) i { background: var(--chart-seq-4); }
+.rpt-spark > span:nth-child(3) i { background: var(--chart-seq-4); }
 /* An empty strip still occupies its space, so a report with nothing to preview
    does not make its card shorter than its neighbours. */
 .rpt-spark.is-empty { border-bottom: 1px dashed var(--border-light); }
@@ -30345,17 +30407,17 @@ button.sadb-signal { cursor: pointer; }
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-top: 10px;
+  padding-top: 9px;
   border-top: 1px solid var(--border-light);
 }
-.rpt-card-meta { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rpt-card-meta { font-size: 10.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .rpt-card-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 5px 11px;
+  padding: 5px 10px;
   border-radius: 7px;
   border: 1px solid var(--border-medium);
   background: var(--bg-card-solid);
@@ -30363,7 +30425,7 @@ button.sadb-signal { cursor: pointer; }
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-.rpt-card-btn svg { width: 13px; height: 13px; }
+.rpt-card-btn svg { width: 12px; height: 12px; }
 .rpt-card-btn:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
 .rpt-card.is-open .rpt-card-btn {
   background: var(--accent-primary);
@@ -30373,8 +30435,8 @@ button.sadb-signal { cursor: pointer; }
 
 /* ── Opened report ── */
 .rpt-detail {
-  margin-top: 12px;
-  padding: 14px 16px 16px;
+  margin-top: 10px;
+  padding: 12px 14px 14px;
   border-radius: 10px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
@@ -30384,17 +30446,13 @@ button.sadb-signal { cursor: pointer; }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 34px 0;
+  padding: 30px 0;
   font-size: 12.5px;
   color: var(--text-muted);
 }
-.rpt-detail-loading svg { width: 17px; height: 17px; color: var(--accent-primary); }
+.rpt-detail-loading svg { width: 16px; height: 16px; color: var(--accent-primary); }
 
-.rpt-figure {
-  margin: 0;
-  padding: 12px 8px 8px 0;
-  border-bottom: 1px solid var(--border-light);
-}
+.rpt-figure { margin: 0; padding: 10px 8px 6px 0; border-bottom: 1px solid var(--border-light); }
 .rpt-figure-cap {
   display: flex;
   align-items: baseline;
@@ -30406,3 +30464,18 @@ button.sadb-signal { cursor: pointer; }
 }
 .rpt-figure-note { font-weight: 500; color: var(--text-muted); opacity: 0.85; }
 .rpt-figure-plot { width: 100%; }
+
+/* Narrower screens step the shared rhythm down together, so the KPI row and
+   the card grid never disagree about how many columns the page has. */
+@media (max-width: 1280px) {
+  .rpt-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .rpt-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rpt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rpt-donut-row { gap: 14px; }
+}
+@media (max-width: 620px) {
+  .rpt-grid { grid-template-columns: minmax(0, 1fr); }
+  .rpt-donut-row { flex-direction: column; height: auto; }
+}

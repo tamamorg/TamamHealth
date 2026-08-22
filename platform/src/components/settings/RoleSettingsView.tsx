@@ -888,13 +888,13 @@ export default function RoleSettingsView() {
              credential hand-offs. Editing writes to the same draft the rest
              of Settings uses, so Save is the page's one save path. ── */}
       {acctOpen && (
-        <Modal onClose={closeAccountEditor} width={640}>
-          <div className="ehr-handoff-modal ehr-set-acct" role="dialog" aria-modal="true" aria-label="Update account">
+        <Modal onClose={closeAccountEditor} width={640} labelledBy="acct-modal-title">
+          <div className="ehr-handoff-modal ehr-set-acct">
             <div className="ehr-handoff-head">
               <div className="ehr-handoff-head-title">
                 <User />
                 <div>
-                  <h2>Update account</h2>
+                  <h2 id="acct-modal-title">Update account</h2>
                   <p>{currentUser.username}</p>
                 </div>
               </div>
@@ -974,13 +974,13 @@ export default function RoleSettingsView() {
 
       {/* ── Change password popup ── */}
       {pwOpen && (
-        <Modal onClose={() => setPwOpen(false)} width={420}>
-          <div className="ehr-handoff-modal" role="dialog" aria-modal="true" aria-label="Change password">
+        <Modal onClose={() => setPwOpen(false)} width={420} labelledBy="pw-modal-title">
+          <div className="ehr-handoff-modal">
             <div className="ehr-handoff-head">
               <div className="ehr-handoff-head-title">
                 <KeyRound />
                 <div>
-                  <h2>Change password</h2>
+                  <h2 id="pw-modal-title">Change password</h2>
                   <p>{currentUser.name}</p>
                 </div>
               </div>
@@ -1015,13 +1015,13 @@ export default function RoleSettingsView() {
 
       {/* ── Screen-lock PIN popup ── */}
       {pinOpen && (
-        <Modal onClose={() => setPinOpen(false)} width={420}>
-          <div className="ehr-handoff-modal" role="dialog" aria-modal="true" aria-label="Screen-lock PIN">
+        <Modal onClose={() => setPinOpen(false)} width={420} labelledBy="pin-modal-title">
+          <div className="ehr-handoff-modal">
             <div className="ehr-handoff-head">
               <div className="ehr-handoff-head-title">
                 <Lock />
                 <div>
-                  <h2>Screen-lock PIN</h2>
+                  <h2 id="pin-modal-title">Screen-lock PIN</h2>
                   <p>{pinIsSet ? 'PIN is active on this device' : 'Quick unlock on this shared device'}</p>
                 </div>
               </div>

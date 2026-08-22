@@ -9,6 +9,7 @@ import {
 } from '@/components/icons/lucide';
 import { buildReportChart, type ReportChart } from '@/lib/reports/report-chart-data';
 import { diseaseColor } from '@/lib/chart-colors';
+import { useSettings } from '@/lib/settings/SettingsProvider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EmptyState from '@/components/EmptyState';
 import { FilterSelect } from '@/components/filters';
@@ -31,8 +32,8 @@ import { downloadCsv, safeFilenamePart } from '@/lib/export-file';
  * recharts (~80-100 KB) sits behind a dynamic boundary so the catalogue —
  * which is what most visits are here for — does not pay for it. The fixed
  * `loading` heights stop the page reflowing as each chart arrives. */
-const ReportBarChart = dynamic(
-  () => import('./_ReportCharts').then(m => m.ReportBarChart),
+const RankedBarChart = dynamic(
+  () => import('./_ReportCharts').then(m => m.RankedBarChart),
   { ssr: false, loading: () => <div style={{ height: '100%' }} /> },
 );
 const DiseaseBurdenChart = dynamic(
@@ -152,6 +153,14 @@ const periodKey: Record<string, string> = {
   Quarterly: 'reports.periodQuarterly',
 };
 
+/** The statistics the picker offers, in the order they appear. */
+const STAT_VIEWS = [
+  { id: 'burden' as const, labelKey: 'reports.statViewBurden' },
+  { id: 'patients' as const, labelKey: 'reports.statViewPatients' },
+  { id: 'stock' as const, labelKey: 'reports.statViewStock' },
+  { id: 'revenue' as const, labelKey: 'reports.statViewRevenue' },
+];
+
 /** Report cadences, in the order their stat dots appear in the header. */
 const PERIODS = ['Daily', 'Weekly', 'Monthly', 'Quarterly'] as const;
 
@@ -167,6 +176,9 @@ export default function ReportsPage() {
   const { payments, loading: paymentsLoading } = usePayments();
   const { ledger, loading: ledgerLoading } = useLedger();
   const scope = useDataScope();
+  // The ledger's currency is facility policy, not a constant — the KPI label
+  // has to name whichever one this facility actually bills in.
+  const { currency } = useSettings();
   const [bills, setBills] = useState<BillingDoc[]>([]);
   const [billsLoading, setBillsLoading] = useState(true);
 
@@ -208,28 +220,22 @@ export default function ReportsPage() {
   ];
   const [reportPeriod, setReportPeriod] = useState('feb2026');
 
-  // Header search + category filter, matching the appointments list header.
-  const [reportSearch, setReportSearch] = useState('');
+  // One statistic at a time. Four charts stacked down the page pushed the
+  // catalogue below the fold and asked the reader to take in every dimension
+  // at once; a picker shows the one they came for and keeps the whole page to
+  // a single screen.
+  const [statView, setStatView] = useState<'burden' | 'stock' | 'patients' | 'revenue'>('burden');
+
+  // Category filter only. The search box was removed: sixteen reports in five
+  // named groups are already scannable, and losing the input is what let the
+  // statistics band and the catalogue share one screen.
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   /* ── Visible catalogue (category filter + search) ─────────────── */
-  const visibleSections = useMemo(() => {
-    const q = reportSearch.trim().toLowerCase();
-    return reports
-      .filter(section => categoryFilter === 'all' || section.category === categoryFilter)
-      .map(section => ({
-        ...section,
-        // Search the translated strings, so it works in the reader's language
-        // rather than only against the English identifiers.
-        items: section.items.filter(report => !q || [
-          t(reportNameKey[report.name] ?? report.name),
-          t(reportDescKey[report.name] ?? report.description),
-          t(categoryKey[section.category] ?? section.category),
-          t(periodKey[report.period] ?? report.period),
-        ].some(value => value.toLowerCase().includes(q))),
-      }))
-      .filter(section => section.items.length > 0);
-  }, [reportSearch, categoryFilter, t]);
+  const visibleSections = useMemo(
+    () => reports.filter(section => categoryFilter === 'all' || section.category === categoryFilter),
+    [categoryFilter],
+  );
 
   // Stat dots: two lead counts plus the four cadences, which partition the
   // visible reports exactly — the row always adds up to the "Reports" count.
@@ -717,10 +723,10 @@ export default function ReportsPage() {
     { key: 'facilities', icon: Building2, label: t('reports.kpiFacilities'), value: hospitals.length.toLocaleString() },
     { key: 'signals', icon: Activity, label: t('reports.kpiSignals'), value: alerts.length.toLocaleString() },
     {
-      key: 'collected', icon: Banknote, label: t('reports.kpiCollected'),
+      key: 'collected', icon: Banknote, label: t('reports.kpiCollected', { currency }),
       value: collectedTotal > 0 ? Math.round(collectedTotal).toLocaleString() : '0',
     },
-  ]), [patients.length, hospitals.length, alerts.length, collectedTotal, t]);
+  ]), [patients.length, hospitals.length, alerts.length, collectedTotal, currency, t]);
 
   /** Top five diseases by reported cases — the five surveillance reports in
    *  the catalogue are all cuts of this one figure. */
@@ -732,6 +738,31 @@ export default function ReportsPage() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
   }, [alerts]);
+
+  /** Patients by state — the census reports' headline, ranked. */
+  const patientsByState = useMemo(() => {
+    const byState = new Map<string, number>();
+    for (const p of patients) byState.set(p.state || 'Unknown', (byState.get(p.state || 'Unknown') ?? 0) + 1);
+    return [...byState.entries()]
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [patients]);
+
+  /** Collected revenue by facility — the financial reports' headline. */
+  const revenueByFacility = useMemo(() => {
+    const byFacility = new Map<string, number>();
+    for (const payment of payments) {
+      if (payment.status !== 'posted') continue;
+      const bill = payment.invoiceId ? bills.find(b => b._id === payment.invoiceId) : undefined;
+      const name = bill?.facilityName || bill?.facilityId || t('reports.unallocated');
+      byFacility.set(name, (byFacility.get(name) ?? 0) + (payment.amount || 0));
+    }
+    return [...byFacility.entries()]
+      .map(([label, value]) => ({ label, value: Math.round(value) }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [payments, bills, t]);
 
   /** Stock mix for the pharmacy reports. Status colours, not the categorical
    *  palette — "critical" here means critical, which is what that palette is
@@ -816,7 +847,7 @@ export default function ReportsPage() {
               {chart.truncated && <span className="rpt-figure-note">{t('reports.chartTopOnly')}</span>}
             </figcaption>
             <div className="rpt-figure-plot" style={{ height: Math.max(150, chart.points.length * 30 + 40) }}>
-              <ReportBarChart points={chart.points} valueLabel={chart.valueLabel} />
+              <RankedBarChart points={chart.points} valueLabel={chart.valueLabel} />
             </div>
           </figure>
         )}
@@ -889,12 +920,6 @@ export default function ReportsPage() {
                 color: periodDotColor[p],
               })),
             ]}
-            search={{
-              value: reportSearch,
-              onChange: setReportSearch,
-              placeholder: t('reports.searchPlaceholder'),
-              ariaLabel: t('reports.searchPlaceholder'),
-            }}
             actions={
               <>
                 <div
@@ -931,73 +956,96 @@ export default function ReportsPage() {
              The catalogue answers "which report"; this answers "what do they
              currently say". Both come from data already loaded for the
              generators, so it costs a render, not a query. */}
-        {!dataLoading && (
-          <section className="rpt-overview" aria-label={t('reports.overviewTitle')}>
+        {/* Rendered whether or not the data has arrived. Gating the whole band
+            on `dataLoading` moved the catalogue down the page the moment it
+            resolved, and `dataLoading` is the OR of nine hooks — one of them
+            stalling would have hidden the band for the whole session rather
+            than showing it empty. */}
+        <section className="rpt-overview" aria-label={t('reports.overviewTitle')} aria-busy={dataLoading}>
             <div className="rpt-kpis">
               {kpis.map(kpi => (
                 <div key={kpi.key} className="rpt-kpi">
                   <span className="rpt-kpi-icon"><kpi.icon /></span>
                   <div className="rpt-kpi-body">
-                    <b>{kpi.value}</b>
+                    <b>{dataLoading ? '—' : kpi.value}</b>
                     <span>{kpi.label}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="rpt-panels">
-              <figure className="rpt-panel">
-                <figcaption className="rpt-panel-head">
-                  <Activity />
-                  <div>
-                    <b>{t('reports.burdenTitle')}</b>
-                    <span>{t('reports.burdenSubtitle')}</span>
-                  </div>
-                </figcaption>
-                {diseaseBurden.length > 0 ? (
-                  <div className="rpt-panel-plot" style={{ height: 176 }}>
-                    <DiseaseBurdenChart points={diseaseBurden} />
-                  </div>
-                ) : (
-                  <p className="rpt-panel-empty">{t('reports.burdenEmpty')}</p>
-                )}
-              </figure>
+            <section className="rpt-stats">
+              <header className="rpt-stats-head">
+                <div className="rpt-stats-title">
+                  <BarChart3 />
+                  <b>{t('reports.statsTitle')}</b>
+                </div>
+                {/* Radio group, not buttons: these are four views of one
+                    panel, exactly one of which is current, and a screen
+                    reader should hear it that way. */}
+                <div className="rpt-seg" role="radiogroup" aria-label={t('reports.statsTitle')}>
+                  {STAT_VIEWS.map(view => (
+                    <button
+                      key={view.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={statView === view.id}
+                      className={statView === view.id ? 'is-on' : ''}
+                      onClick={() => setStatView(view.id)}
+                    >
+                      {t(view.labelKey)}
+                    </button>
+                  ))}
+                </div>
+              </header>
 
-              <figure className="rpt-panel">
-                <figcaption className="rpt-panel-head">
-                  <Pill />
-                  <div>
-                    <b>{t('reports.stockTitle')}</b>
-                    <span>{t('reports.stockSubtitle')}</span>
-                  </div>
-                </figcaption>
-                {stockTotal > 0 ? (
-                  <div className="rpt-donut-row">
-                    <div className="rpt-donut">
-                      <StockStatusDonut data={stockMix} />
-                      <div className="rpt-donut-hole">
-                        <b>{stockTotal.toLocaleString()}</b>
-                        <span>{t('reports.stockItems')}</span>
-                      </div>
-                    </div>
-                    {/* Legend, not colour alone: every slice is named and counted. */}
-                    <ul className="rpt-legend">
-                      {stockMix.map(slice => (
-                        <li key={slice.key}>
-                          <i style={{ background: slice.color }} aria-hidden="true" />
-                          <span>{slice.label}</span>
-                          <b>{slice.value.toLocaleString()}</b>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="rpt-panel-empty">{t('reports.stockEmpty')}</p>
+              <div className="rpt-stats-body">
+                {dataLoading && <p className="rpt-panel-empty">{t('reports.loadingReportData')}</p>}
+
+                {!dataLoading && statView === 'burden' && (
+                  diseaseBurden.length > 0
+                    ? <div className="rpt-plot"><DiseaseBurdenChart points={diseaseBurden} /></div>
+                    : <p className="rpt-panel-empty">{t('reports.burdenEmpty')}</p>
                 )}
-              </figure>
-            </div>
-          </section>
-        )}
+
+                {!dataLoading && statView === 'patients' && (
+                  patientsByState.length > 0
+                    ? <div className="rpt-plot"><RankedBarChart points={patientsByState} valueLabel={t('reports.kpiPatients')} /></div>
+                    : <p className="rpt-panel-empty">{t('reports.noDataForReport')}</p>
+                )}
+
+                {!dataLoading && statView === 'revenue' && (
+                  revenueByFacility.length > 0
+                    ? <div className="rpt-plot"><RankedBarChart points={revenueByFacility} valueLabel={t('reports.kpiCollected', { currency })} /></div>
+                    : <p className="rpt-panel-empty">{t('reports.placeholderRevenue')}</p>
+                )}
+
+                {!dataLoading && statView === 'stock' && (
+                  stockTotal > 0 ? (
+                    <div className="rpt-donut-row">
+                      <div className="rpt-donut">
+                        <StockStatusDonut data={stockMix} />
+                        <div className="rpt-donut-hole">
+                          <b>{stockTotal.toLocaleString()}</b>
+                          <span>{t('reports.stockItems')}</span>
+                        </div>
+                      </div>
+                      {/* Legend, not colour alone: every slice is named and counted. */}
+                      <ul className="rpt-legend">
+                        {stockMix.map(slice => (
+                          <li key={slice.key}>
+                            <i style={{ background: slice.color }} aria-hidden="true" />
+                            <span>{slice.label}</span>
+                            <b>{slice.value.toLocaleString()}</b>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : <p className="rpt-panel-empty">{t('reports.stockEmpty')}</p>
+                )}
+              </div>
+            </section>
+        </section>
 
         {/* ── Report categories ───────────────────────────────── */}
         {visibleSections.length === 0 && (
@@ -1007,7 +1055,7 @@ export default function ReportsPage() {
               message={t('reports.noMatchesMessage')}
               action={{
                 label: t('reports.clearFilters'),
-                onClick: () => { setReportSearch(''); setCategoryFilter('all'); },
+                onClick: () => setCategoryFilter('all'),
               }}
             />
           </div>

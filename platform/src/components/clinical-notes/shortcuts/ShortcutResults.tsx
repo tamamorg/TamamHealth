@@ -16,6 +16,9 @@ export default function ShortcutResults({ search }: { search: ShortcutSearch }) 
 
   return (
     <div
+      id="cn-shortcut-results"
+      role="listbox"
+      aria-label="Text shortcut suggestions"
       className="cn-shortcut-results"
       onMouseDown={e => e.preventDefault()}
     >
