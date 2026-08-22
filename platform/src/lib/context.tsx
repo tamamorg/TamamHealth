@@ -149,7 +149,18 @@ export interface PlatformClientPolicy {
  * labelling a database outage or a lockout as "Invalid credentials" — the one
  * message that tells the user to retype a password that was never wrong.
  */
+/**
+ * `LoginFailure.status` when the request never reached the server.
+ *
+ * Not an HTTP status — there was no response to take one from. Zero is what
+ * `fetch` failing looks like everywhere else in the platform, and keeping the
+ * field a plain number means callers that only test ranges (`>= 500`) still
+ * behave.
+ */
+export const NETWORK_UNREACHABLE = 0;
+
 export interface LoginFailure {
+  /** HTTP status, or `NETWORK_UNREACHABLE` when the device never got a reply. */
   status: number;
   /** The server's own error text, when it sent one. */
   message?: string;
@@ -386,6 +397,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Ask for durable storage as early as the databases exist. IndexedDB is
+      // evictable by default, and what the browser would drop is unsynced
+      // clinical work plus this device's offline sign-in. Best-effort by
+      // design — see `storage-persistence.ts` for what it cannot promise.
+      void import('./storage-persistence')
+        .then(({ ensurePersistentStorage }) => ensurePersistentStorage())
+        .catch(() => {
+          // A device that cannot ask is a device that stays evictable, which
+          // is where it already was. Never let this affect boot.
+        });
+
       // Gate route-guarding on dbReady only once the session check above has
       // resolved — flipping this before that finishes lets DashboardLayout's
       // isAuthenticated effect fire on a false negative and bounce a
@@ -587,6 +609,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [platformPolicy, setPlatformPolicy] = useState<PlatformClientPolicy>({});
   const login = useCallback(async (username: string, password: string, hospitalId?: string, requestedRole?: UserRole): Promise<UserRole | false> => {
     loginFailureRef.current = null;
+    // Whether the sign-in request ever reached the server. A refusal that never
+    // left the device means something completely different to the person
+    // typing, and the form cannot tell the two apart from a `false` return.
+    let serverUnreachable = false;
     try {
       const sanitizedUsername = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
 
@@ -724,7 +750,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Any other status (500, 502, 503) falls through to the offline path.
         }
       } catch {
-        // Network error — fall through to PouchDB.
+        // Network error — fall through to PouchDB. Nothing is recorded in
+        // `loginFailureRef` yet on purpose: the offline path below may still
+        // sign this person in, and only if it does not do we know what to say.
+        serverUnreachable = true;
       }
 
       // Offline fallback.
@@ -738,8 +767,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
       //      in production it is empty and, under tenant databases, purged.
       //      Kept so the demo roster still signs in with the network off.
       if (!user) {
-        const { verifyOfflineCredential } = await import('@/modules/identity/core/offline-credential');
+        const { verifyOfflineCredential, hasOfflineCredential } = await import('@/modules/identity/core/offline-credential');
         const cached = await verifyOfflineCredential(sanitizedUsername, password);
+        if (!cached && serverUnreachable) {
+          // Record it here, while the reason is still knowable. Every `return
+          // false` below this point is reached with the network down, and the
+          // sign-in form used to render all of them as "Invalid credentials" —
+          // so a clinician whose device had simply never cached a credential
+          // (a new device, a cleared browser, or a cache older than
+          // OFFLINE_CREDENTIAL_TTL_DAYS) was told to retype a correct password,
+          // with nothing on screen saying they had to reconnect once.
+          //
+          // `verifyOfflineCredential` collapses "no record", "different user",
+          // "expired" and "wrong password" into null, so ask separately which
+          // of those it was. An expired record was just cleared by that call,
+          // which lands it in `offline_no_credential` — correct, because
+          // reconnecting is exactly what it needs.
+          loginFailureRef.current = {
+            status: NETWORK_UNREACHABLE,
+            code: hasOfflineCredential(sanitizedUsername)
+              ? 'offline_bad_password'
+              : 'offline_no_credential',
+          };
+        }
         if (cached) {
           // A cached credential already encodes the facility and role the
           // server issued, so the role-picker and hospital checks below —

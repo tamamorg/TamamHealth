@@ -3024,6 +3024,8 @@ const en: TranslationMap = {
   'login.errorInvalidCredentials': 'Invalid credentials. Please try again.',
   'login.errorImpersonationDisabled': 'Signing in as another role is switched off for this platform. Turn on support impersonation in Security settings first.',
   'login.errorRoleNotPermitted': 'You can only sign in as your assigned role.',
+  'login.errorOfflineNoCredential': 'You are offline and this device has no saved sign-in for that account. Connect to the network once to sign in.',
+  'login.errorOfflineBadPassword': 'That password does not match the one saved on this device. If you changed it recently, connect to the network to sign in with the new one.',
   'login.errorLoginFailed': 'Login failed. Please try again.',
   'login.errorTooManyAttempts': 'Too many failed attempts. Wait a few minutes, then try again.',
   'login.errorTooManyAttemptsIn': 'Too many failed attempts. Try again in {{minutes}} minutes.',
