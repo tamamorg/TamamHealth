@@ -520,6 +520,19 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
         onSelect: () => router.push('/billing'),
       });
     }
+    // The assisted-portal view — the patient's own bills and payment methods,
+    // opened by the person at the till so the two can look at them together.
+    // It is a real, role-gated screen (`/payments/portal` is granted to the
+    // cashier and the biller) that nothing in the product linked to: no nav
+    // row, no button, no redirect. It could only be reached by typing the URL,
+    // which means in practice it could not be reached at all.
+    if (currentUser && isPathAllowed(currentUser.role, '/payments/portal')) {
+      items.push({
+        key: 'patient-portal',
+        label: t('billing.openPatientPortal'),
+        onSelect: () => router.push('/payments/portal'),
+      });
+    }
     items.push(
       {
         key: 'export',

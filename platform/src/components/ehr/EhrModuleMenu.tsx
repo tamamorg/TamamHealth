@@ -8,6 +8,7 @@ export default function EhrModuleMenu({
   activeHref,
   navLabel,
   onOpenModule,
+  onWarm,
 }: {
   groups: { section: string | null; items: NavItem[] }[];
   roleLabel: string;
@@ -21,7 +22,19 @@ export default function EhrModuleMenu({
   activeHref?: string | null;
   navLabel: (item: NavItem) => string;
   onOpenModule: (href: string) => void;
+  /**
+   * Warm a destination before it is chosen. The menu is the second click of
+   * every two-click journey through the rail, so the moment it opens is the
+   * last chance to fetch the route ahead of the user — see `warm` in
+   * EhrTopRail.
+   */
+  onWarm?: (href: string) => void;
 }) {
+  // Warming is per row on hover, not the whole menu on open. An admin menu runs
+  // to twenty rows, and this platform is used over field connections where
+  // twenty speculative fetches to save one is the wrong trade — the pointer
+  // arriving on a row is a much better signal than the menu being open.
+
   return (
     <div className="ehr-module-menu" role="menu">
       <div className="ehr-module-menu-head">
@@ -42,6 +55,8 @@ export default function EhrModuleMenu({
                   className={active ? 'active' : ''}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => onOpenModule(item.href)}
+                  onMouseEnter={() => item.href && onWarm?.(item.href)}
+                  onFocus={() => item.href && onWarm?.(item.href)}
                 >
                   <ItemIcon className="w-4 h-4" color="currentColor" />
                   <span>{navLabel(item)}</span>

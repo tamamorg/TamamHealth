@@ -11,6 +11,7 @@ import {
 } from '@/lib/appointment-status';
 import { useRouter } from 'next/navigation';
 import { getDefaultDashboard } from '@/lib/role-routes';
+import { getRoleConfig } from '@/lib/permissions';
 import {
   Calendar,
   Plus,
@@ -432,8 +433,16 @@ export default function AppointmentsPage() {
             actorId: currentUser?._id,
           });
         }
-      } catch {
-        // encounter creation is best-effort; the walk-in booking still stands
+      } catch (encErr) {
+        // The booking still stands — losing the registration because the visit
+        // thread failed would be worse. But this must not be silent: without
+        // the encounter the patient is CHECKED IN on the reception board and
+        // on no nursing worklist at all, their chart shows no visit, and the
+        // checkout gate has nothing to close. That failure was invisible to
+        // everybody, including the clerk who caused it, so it is logged and
+        // said out loud here.
+        console.error('[walk-in] arrival encounter was not opened', encErr);
+        showToast(t('appointments.toastWalkInNoVisit'), 'error');
       }
       showToast(t('appointments.toastWalkInRegistered'), 'success'); setShowWalkIn(false);
       setWiPatient(''); setWiReason(''); setWiNotes(''); setWiDepartment('Outpatient'); setWiPriority('routine');
@@ -535,9 +544,18 @@ export default function AppointmentsPage() {
             <div className="ehr-greeting-row">
               <div className="ehr-care-header-copy">
                 <p className="ehr-care-greeting">Appointments</p>
+                {/* Who is looking, not where they are. The facility used to be
+                    printed here ("JUBA TEACHING HOSPITAL · SCHEDULE") while the
+                    top rail said the same thing three centimetres above it; the
+                    rail now carries organization over facility, so this line
+                    names the signed-in user instead — their role, then their
+                    name. Same shape on every page header, for every role. */}
                 <p className="ehr-care-greeting-sub">
-                  {currentUser?.hospitalName ? `${currentUser.hospitalName} · Schedule` : 'Facility schedule'}
+                  {currentUser ? getRoleConfig(currentUser.role).label : 'Schedule'}
                 </p>
+                {currentUser?.name && (
+                  <p className="ehr-care-greeting-name">{currentUser.name}</p>
+                )}
               </div>
             </div>
           </div>

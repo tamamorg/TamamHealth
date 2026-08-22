@@ -338,6 +338,8 @@ export default function EhrCareDashboard({
 }) {
   const router = useRouter();
   const { currentUser } = useAuth();
+  /** The signed-in user's role, as every other surface writes it. */
+  const roleLabel = currentUser ? getRoleConfig(currentUser.role).label : undefined;
 
   // Navigations promoted into this station's header, the same rung the
   // clinical dashboard promotes (see getPageHeaderNavItems). Every station
@@ -666,9 +668,17 @@ export default function EhrCareDashboard({
           <div className="ehr-greeting-row">
             <div className="ehr-care-header-copy">
               <p className="ehr-care-greeting">{headerTitle}</p>
-              {/* The design's small-caps role line — "Front Desk · Reception".
-                  Stations that don't pass one keep the bare greeting. */}
-              {greetingSubtitle && <p className="ehr-care-greeting-sub">{greetingSubtitle}</p>}
+              {/* The small-caps role line under the greeting. Every station
+                  gets one whether or not it passes a subtitle: pharmacy, lab,
+                  radiology, nutrition, HR, data entry and the county board all
+                  rendered a bare "Welcome, {name}" and named the signed-in
+                  user's role nowhere on the page, while the front desk wrote
+                  out a hardcoded phrase ("Front Desk · Reception") that
+                  matched no role in the product. The role's own label is the
+                  one name every other surface already uses. */}
+              {(greetingSubtitle || roleLabel) && (
+                <p className="ehr-care-greeting-sub">{greetingSubtitle || roleLabel}</p>
+              )}
             </div>
           </div>
         </div>

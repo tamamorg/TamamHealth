@@ -71,3 +71,27 @@ export function endOfLocalDay(value: string): number {
   d.setHours(23, 59, 59, 999);
   return d.getTime();
 }
+
+/**
+ * A date of birth as `dd-MMM-yyyy` — "17-Jun-1990", the OpenMRS convention the
+ * patient chart and the printed bill both use. Distinct from the app's
+ * general-purpose `formatDate` ("Jun 17, 1990").
+ *
+ * Stated once here because the two surfaces that show a DOB had a copy each,
+ * and both copies read `new Date(iso)` for a date-ONLY string. The spec parses
+ * that form as UTC midnight and `getDate()` reports it in LOCAL time, so west
+ * of UTC every patient's birthday rendered a day early — on the chart header
+ * every clinician reads, and on a bill that leaves the building. `parseIsoDate`
+ * is the fix and the reason it exists: `YYYY-MM-DD` is a calendar day, not an
+ * instant, so it must never travel through a timezone.
+ *
+ * A value carrying a time component is a real instant and is parsed as one.
+ */
+export function formatDobOmrs(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? parseIsoDate(iso) : new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = d.toLocaleDateString('en-US', { month: 'short' });
+  return `${day}-${month}-${d.getFullYear()}`;
+}

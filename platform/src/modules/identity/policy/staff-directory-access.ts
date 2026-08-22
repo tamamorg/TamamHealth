@@ -22,6 +22,14 @@ import type { UserRole } from '@/lib/db-types';
 export const STAFF_DIRECTORY_READ_ROLES: readonly UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
   'pharmacist', 'medical_superintendent', 'hospital_manager', 'hrio',
+  // The desk roles. They were missing, and the contradiction was total: these
+  // three are exactly `canAssignCareTeam` — the front desk PICKS the doctor
+  // and the nurse for a patient — and the booking wizard builds its PROVIDER
+  // list from this same directory. Refused the read, the wizard offered "Any
+  // clinician" and nothing else, so the roles whose whole job is booking could
+  // not book anyone with a named provider. Nothing is disclosed by the change:
+  // their own queue already prints the care team's names in every row.
+  'front_desk', 'central_registration_clerk', 'clinic_clerk',
 ];
 
 export function canReadStaffDirectory(role?: UserRole | string | null): boolean {

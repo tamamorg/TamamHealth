@@ -46,6 +46,18 @@ interface PatientRegistrationFormProps {
   embedded?: boolean;
   onCancel?: () => void;
   onRegistered?: () => void;
+  /**
+   * Host handler for "Register & check in", given the new patient's id.
+   *
+   * An embedded host takes over what happens after a save (`onRegistered`),
+   * and that is what used to decide whether the check-in button existed at
+   * all — so the one surface whose own tour promises "register → check in",
+   * the front desk board, was the only place that could not check anybody in.
+   * A clerk who registered from the desk was left with a row reading
+   * "REGISTERED · Needs care team" and no action on it. Passing this restores
+   * the button inside a dialog and lets the host route the hand-off itself.
+   */
+  onCheckIn?: (patientId: string) => void;
   draftId?: string;
   returnTo?: string;
   onDraftChange?: (draft: PatientRegistrationDraft) => void;
@@ -55,6 +67,7 @@ export function PatientRegistrationForm({
   embedded = false,
   onCancel,
   onRegistered,
+  onCheckIn,
   draftId,
   returnTo,
   onDraftChange,
@@ -73,7 +86,8 @@ export function PatientRegistrationForm({
   const { patients, create: createPatient } = usePatients();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  // "Register & check in" hands off to the appointments page's walk-in dialog.
+  // "Register & check in" hands off to the appointments page's walk-in dialog
+  // — or to `onCheckIn`, when an embedded host wants to route it itself.
   // Roles that can register a patient but cannot book (lab, pharmacy, records,
   // nutrition, radiology) would only land on Access Restricted, so they don't
   // get the button.
@@ -465,7 +479,10 @@ export function PatientRegistrationForm({
         'success',
       );
       if (draftId) await dropPatientRegistrationDraft(draftId);
-      if (onRegistered) {
+      if (nextAction === 'check-in' && onCheckIn && result?._id) {
+        // An embedded host that offered the check-in button owns the hand-off.
+        onCheckIn(result._id);
+      } else if (onRegistered) {
         onRegistered();
       } else if (nextAction === 'check-in' && result?._id) {
         // The standalone Check-In module is retired — a patient is checked in
@@ -558,7 +575,7 @@ export function PatientRegistrationForm({
                   <button type="button" onClick={() => handleSubmit('profile')} disabled={submitting} className="btn btn-primary">
                     {submitting && submitIntent === 'profile' ? t('patientNew.saving') : t('patientNew.registerPatient')}
                   </button>
-                  {!onRegistered && canCheckIn && (
+                  {(!onRegistered || onCheckIn) && canCheckIn && (
                     <button type="button" onClick={() => handleSubmit('check-in')} disabled={submitting} className="btn btn-secondary">
                       {submitting && submitIntent === 'check-in' ? t('patientNew.saving') : t('patientNew.registerAndCheckIn')}
                     </button>

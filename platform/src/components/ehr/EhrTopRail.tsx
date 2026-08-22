@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Calendar,
@@ -68,10 +68,9 @@ export default function EhrTopRail() {
   // main line, the signed-in user's workspace on the quieter line under it —
   // "MERCY HOSPITAL GROUP / MEDICAL RECEPTIONIST". The derivation (including
   // the facility-console and Ministry special cases) lives in ehr-navigation's
-  // railCenterLabels, pure and unit-tested per role shape. The facility no
-  // longer competes for the main line — it rides in the tooltip below, so a
-  // multi-site org's staff can still see which site their session is scoped
-  // to.
+  // railCenterLabels, pure and unit-tested per role shape. The rail names the
+  // PLACE — organization over facility — and each dashboard's own header names
+  // the job under the greeting, so the two never restate one another.
   const { centerLabel, centerSubLabel } = railCenterLabels({
     role: currentUser?.role,
     name: currentUser?.name,
@@ -214,6 +213,39 @@ export default function EhrTopRail() {
     router.push(href);
   };
 
+  /**
+   * Warm a destination before it is clicked.
+   *
+   * The rail navigates imperatively — every shortcut and every module row is a
+   * `<button>` calling `router.push`, which is what the ~15 CSS rules keyed on
+   * `.ehr-top-rail button` / `.ehr-module-menu section > button` are written
+   * against. That kept the styling honest and left the whole primary
+   * navigation with no prefetching at all: a route was only ever fetched after
+   * the click, so every module switch paid the full round trip (~300-500ms
+   * measured warm). `router.prefetch` is what `<Link>` does underneath, so
+   * calling it on hover and focus buys the same head start without turning a
+   * button into an anchor and taking the cascade with it.
+   *
+   * Each href is warmed once per mount — prefetch is idempotent, but the Set
+   * keeps a hover-heavy rail from queueing the same request repeatedly.
+   *
+   * No-op in `next dev`, where Next disables prefetching; the effect is a
+   * production one.
+   */
+  const prefetched = useRef(new Set<string>());
+  const warm = useCallback((href?: string) => {
+    if (!href || href.startsWith('http') || prefetched.current.has(href)) return;
+    prefetched.current.add(href);
+    try { router.prefetch(href); } catch { /* prefetch is best-effort */ }
+  }, [router]);
+
+  // The four shortcuts and the role's home are warmed as soon as the rail
+  // renders, so the first click of a session is as quick as the rest.
+  useEffect(() => {
+    warm(homeHref);
+    for (const item of headerShortcutItems) warm(item.href);
+  }, [warm, homeHref, headerShortcutItems]);
+
   const openSettingsPage = () => {
     setUserOpen(false);
     router.push('/settings');
@@ -233,7 +265,24 @@ export default function EhrTopRail() {
   return (
     <>
     <header className={`ehr-top-rail ${mobileSearchOpen ? 'is-searching' : ''}`}>
-      <div className="ehr-top-brand" onClick={() => router.push(homeHref)} role="button" tabIndex={0} data-track="nav.home">
+      {/* The brand mark is the way home from anywhere, and it was mouse-only:
+          `role="button"` and `tabIndex={0}` put it in the tab order with no key
+          handler behind them, so a keyboard user could focus it and press
+          Enter to nothing. */}
+      <div
+        className="ehr-top-brand"
+        onClick={() => router.push(homeHref)}
+        onKeyDown={event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          router.push(homeHref);
+        }}
+        onMouseEnter={() => warm(homeHref)}
+        role="button"
+        tabIndex={0}
+        aria-label="Go to your dashboard"
+        data-track="nav.home"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="ehr-top-brand-logo-full" src="/assets/tamamhealth-logo-full-white.svg" alt="Tamam Healthcare System" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -271,6 +320,7 @@ export default function EhrTopRail() {
             activeHref={activeModuleItem?.href}
             navLabel={navLabel}
             onOpenModule={openModule}
+            onWarm={warm}
           />
         )}
 
@@ -279,6 +329,7 @@ export default function EhrTopRail() {
           navLabel={navLabel}
           activeHref={activeModuleItem?.href}
           onOpenModule={openModule}
+          onWarm={warm}
           badges={moduleBadges}
         />
 
@@ -313,9 +364,10 @@ export default function EhrTopRail() {
         <div className="ehr-top-center">
           <div
             className="ehr-top-facility"
-            /* The facility rides here now that the two visible lines are
-               organization · workspace — hover still answers "which site". */
-            title={[centerLabel, centerSubLabel, facilityName !== centerLabel ? facilityName : undefined]
+            /* The two visible lines are organization · facility, so the
+               tooltip carries the one thing they no longer say — the
+               workspace the session is in. */
+            title={[centerLabel, centerSubLabel, roleLabel !== centerSubLabel ? roleLabel : undefined]
               .filter(Boolean).join(' · ')}
           >
             <span>{centerLabel}</span>

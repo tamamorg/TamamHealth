@@ -27112,6 +27112,18 @@ table.patient-data-table.patient-data-table {
   color: color-mix(in srgb, var(--text-primary) 55%, transparent);
 }
 
+/* The signed-in user's name, under their role. Sentence case and a shade
+   quieter than the role above it: the role is what the page is behaving as,
+   the name is who is holding it. Not tracked or upper-cased — a person's name
+   is the one string on this header that is not a label. */
+.ehr-care-greeting-name {
+  margin: 2px 0 0;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: color-mix(in srgb, var(--text-primary) 45%, transparent);
+}
+
 /* Outstanding items count as the design draws it: a bare 19px condensed
    number, not a pill — the tone colour carries the meaning, the row hairline
    carries the shape. (The plate rules above set a 23px badge; stated last so

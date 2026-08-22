@@ -2,7 +2,24 @@
  * Shared formatting utilities used across the app for consistent date/time
  * display. Always prefer these helpers over inline `toLocaleDateString()`
  * calls so date formatting stays uniform across modules.
+ *
+ * One rule runs through all of them: a bare `YYYY-MM-DD` is a CALENDAR DAY,
+ * not an instant. `new Date('2026-08-24')` is the date-only form, which the
+ * spec parses as UTC midnight and every getter then reports in local time — so
+ * west of UTC the day rendered as the one before. A patient's chart showed an
+ * appointment booked for Monday sitting on Sunday, while the calendar that
+ * booked it showed Monday. `asLocalDay` is what keeps a day a day; a value
+ * carrying a time component is a real instant and is parsed as one.
  */
+
+import { parseIsoDate } from './date-utils';
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Parse a date string without letting a calendar day travel through UTC. */
+function asLocalDay(value: string): Date {
+  return DATE_ONLY.test(value) ? parseIsoDate(value) : new Date(value);
+}
 
 /**
  * Format an ISO 8601 timestamp as "Mon DD, YYYY at HH:mm" (e.g. "Apr 10, 2026 at 14:32").
@@ -13,7 +30,7 @@
  */
 export function formatDateTime(iso?: string | null): string {
   if (!iso) return '—';
-  const d = new Date(iso);
+  const d = asLocalDay(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const hasTime = /T\d{2}:\d{2}/.test(iso);
   const dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -28,7 +45,7 @@ export function formatDateTime(iso?: string | null): string {
  */
 export function formatCompactDateTime(iso?: string | null): string {
   if (!iso) return '—';
-  const d = new Date(iso);
+  const d = asLocalDay(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const hasTime = /T\d{2}:\d{2}/.test(iso);
@@ -63,7 +80,7 @@ export function formatClockTime(value?: string | Date | null): string {
  */
 export function formatDate(iso?: string | null): string {
   if (!iso) return '—';
-  const d = new Date(iso);
+  const d = asLocalDay(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }

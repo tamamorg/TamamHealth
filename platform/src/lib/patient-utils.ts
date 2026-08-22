@@ -9,6 +9,7 @@
  */
 
 import type { PatientDoc, Patient } from './db-types';
+import { parseIsoDate } from './date-utils';
 
 type PatientLike = Partial<Patient> & { createdAt?: string };
 
@@ -173,7 +174,13 @@ export function stateColor(state?: string | null): string {
 export function patientAge(p: { estimatedAge?: number; dateOfBirth?: string }): number | null {
   if (typeof p.estimatedAge === 'number' && p.estimatedAge > 0) return p.estimatedAge;
   if (!p.dateOfBirth) return null;
-  const d = new Date(p.dateOfBirth);
+  // `YYYY-MM-DD` is a calendar day, not an instant. `new Date()` parses that
+  // date-ONLY form as UTC midnight and the getters below read it back in local
+  // time, so west of UTC the birth day landed a day early — which flips the
+  // birthday comparison and reports the wrong age for one day a year.
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(p.dateOfBirth)
+    ? parseIsoDate(p.dateOfBirth)
+    : new Date(p.dateOfBirth);
   if (Number.isNaN(d.getTime())) return null;
   const now = new Date();
   let age = now.getFullYear() - d.getFullYear();

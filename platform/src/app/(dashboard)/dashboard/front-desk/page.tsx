@@ -1499,7 +1499,6 @@ export default function FrontDeskDashboardPage() {
         <EhrCareDashboard
           title=""
           greetingName={currentUser.name || 'front desk'}
-          greetingSubtitle="Front Desk · Reception"
           dateLabel={dateLabel}
           tabs={tabs}
           activeTab={queueFilter}
@@ -1609,6 +1608,15 @@ export default function FrontDeskDashboardPage() {
                     setRegisterOpen(false);
                     setPanelView('registered');
                     router.refresh();
+                  }}
+                  // Register AND check in, from the desk that does both. The
+                  // walk-in dialog books today's visit already checked in and
+                  // opens the encounter triage and rooming join, then returns
+                  // the clerk here — the same hand-off the full-page form has
+                  // always made, which a dialog could not reach.
+                  onCheckIn={(patientId) => {
+                    setRegisterOpen(false);
+                    router.push(`/appointments?walkIn=${patientId}`);
                   }}
                 />
               </div>

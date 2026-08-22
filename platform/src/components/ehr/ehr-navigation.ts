@@ -37,7 +37,9 @@ const PRIMARY_SHORTCUT_PRIORITY = [
   // destination of its own — ranking it here is what once put two adjacent
   // money glyphs at the head of the rail for one page.
   '/payments',
-  '/consultation',
+  // No /consultation. It ranked second here while being a redirect stub to
+  // /patients, so the clinician roles spent one of four rail shortcuts on the
+  // button next to it. Its nav rows went with it (see permissions.ts).
   '/patients',
   '/appointments',
   '/lab',
@@ -127,13 +129,18 @@ function sortByShortcutPriority(list: NavItem[]): NavItem[] {
  * destinations. The fallback also keeps specialist roles with small menus
  * from ending up with an incomplete header.
  *
- * Tiers, in fill order:
- *   1. Primary destinations — not the home dashboard, messages, or a route the
- *      role's own dashboard body already duplicates.
- *   2. Messages.
- *   3. Dashboard-duplicate destinations — used when still needed to reach the
- *      requested header size.
- *   4. The role's own dashboard, last. The module trigger beside this row
+ * Fill order:
+ *   1. Every destination the role holds, ranked by PRIMARY_SHORTCUT_PRIORITY.
+ *      Whether the role's own dashboard repeats a route only breaks ties: that
+ *      argument holds while the user is standing ON their dashboard, and the
+ *      rail is the only navigation on every other screen.
+ *   2. Messages, after the work. It used to outrank the dashboard-duplicate
+ *      routes, which is how eight roles ended up with the inbox as their FIRST
+ *      rail button — Messages ahead of Pharmacy for a pharmacist, ahead of
+ *      Patients for the front desk, ahead of Lab for the laboratory. The
+ *      rail's job is "somewhere else, fast", and for a role at work that
+ *      somewhere is the work.
+ *   3. The role's own dashboard, last. The module trigger beside this row
  *      carries the dashboard glyph and its menu leads with Dashboard, so a
  *      shortcut to it was the same destination twice in adjacent buttons. It
  *      stays as the final fallback rather than being dropped outright, so a
@@ -151,12 +158,24 @@ export function getPrimaryShortcutItems(items: NavItem[], role?: UserRole, maxIt
   const isDashboard = (href: string) =>
     href === '/dashboard' || href.startsWith('/dashboard/') || (!!home && href === home);
 
-  const tier1 = sortByShortcutPriority(
-    items.filter(item => !isDashboard(item.href) && item.href !== '/messages' && !duplicateRoutes?.includes(item.href)),
-  );
-  const duplicateFallbacks = sortByShortcutPriority(
-    items.filter(item => !isDashboard(item.href) && item.href !== '/messages' && duplicateRoutes?.includes(item.href)),
-  );
+  // Destinations rank by PRIMARY_SHORTCUT_PRIORITY across the whole set, not
+  // by whether the role's dashboard happens to repeat them. Ranking duplicates
+  // as a separate lower tier demoted precisely the route each role needs most:
+  // Lab for the laboratory, Patients for the records desk, Surveillance for
+  // the county director — each pushed behind a secondary destination that only
+  // ranked higher for being absent from its dashboard. `duplicateRoutes` still
+  // breaks ties, so a route the dashboard already shows loses to one it does
+  // not when the priority list rates them equally.
+  const destinations = sortByShortcutPriority(
+    items.filter(item => !isDashboard(item.href) && item.href !== '/messages'),
+  ).sort((a, b) => {
+    const ap = PRIMARY_SHORTCUT_PRIORITY.indexOf(a.href);
+    const bp = PRIMARY_SHORTCUT_PRIORITY.indexOf(b.href);
+    if (ap !== bp) return 0; // sortByShortcutPriority already ordered these
+    const ad = duplicateRoutes?.includes(a.href) ? 1 : 0;
+    const bd = duplicateRoutes?.includes(b.href) ? 1 : 0;
+    return ad - bd;
+  });
   const messagesFallback = sortByShortcutPriority(items.filter(item => item.href === '/messages'));
 
   // No dashboard shortcut, ever — not even to fill an empty slot on a role
@@ -169,7 +188,7 @@ export function getPrimaryShortcutItems(items: NavItem[], role?: UserRole, maxIt
 
   // De-duplicate by href across tiers (defensive; nav items are already unique).
   const seen = new Set<string>();
-  const ordered = [...tier1, ...messagesFallback, ...duplicateFallbacks].filter(item => {
+  const ordered = [...destinations, ...messagesFallback].filter(item => {
     if (seen.has(item.href)) return false;
     seen.add(item.href);
     return true;
@@ -233,7 +252,6 @@ export function getPageHeaderNavItems(
 const NAV_LABEL_KEYS: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
   '/patients': 'nav.patients',
-  '/consultation': 'nav.consultation',
   '/appointments': 'nav.appointments',
   '/referrals': 'nav.referrals',
   '/lab': 'nav.lab',
@@ -277,16 +295,23 @@ export function navItemLabel(item: NavItem, translate: (key: string) => string):
 /**
  * The top rail's two centre lines — one shape for every role, matching the
  * one the platform operator always had ("TAMAMHEALTH PLATFORM ADMIN /
- * COMMAND CENTER"): the organization on the main line, the signed-in user's
- * workspace on the quieter line under it — "MERCY HOSPITAL GROUP / MEDICAL
- * RECEPTIONIST". The workspace name comes in as `roleLabel` (the role's
- * written label from ROLE_PERMISSIONS, the one source covering all 25
- * roles) rather than being looked up here, so this stays a pure function a
- * test can drive without the permissions table's icon imports.
+ * COMMAND CENTER"): the organization on the main line, and the SITE the
+ * session is scoped to on the quieter line under it — "REPUBLIC OF SOUTH
+ * SUDAN / JUBA TEACHING HOSPITAL".
  *
- * The facility deliberately does not take a line: it rides in the rail's
- * tooltip so a multi-site org's staff can still see which site their
- * session is scoped to.
+ * The second line used to carry the role instead, with the facility demoted
+ * to a hover tooltip. Between them those two lines answer "where am I", and a
+ * multi-site organization is exactly where that question is asked — while the
+ * role is something the signed-in user already knows, and which their own
+ * dashboard header now prints under the greeting on every workspace. So the
+ * rail names the place and the page names the job.
+ *
+ * `roleLabel` (the role's written label from ROLE_PERMISSIONS, the one source
+ * covering all 25 roles) stays the fallback for the accounts that have no
+ * facility at all — a platform operator, a ministry account, an org admin
+ * between postings — because a blank second line says less than the workspace
+ * does. It is passed in rather than looked up here so this stays a pure
+ * function a test can drive without the permissions table's icon imports.
  */
 export function railCenterLabels(input: {
   role?: UserRole;
@@ -299,10 +324,11 @@ export function railCenterLabels(input: {
 }): { centerLabel?: string; centerSubLabel?: string } {
   const { role, name, orgName, facilityName, roleLabel } = input;
   if (!role) return {};
-  // The platform administrator belongs to no tenant, so the only true answer
-  // for the main line is who they are: their own display name, which they can
-  // change in Settings and see reflected here (it seeds as "TamamHealth
-  // Platform Admin", so the console reads the same until they rename it).
+  // The platform administrator belongs to no tenant and no site, so the only
+  // true answer for the main line is who they are: their own display name,
+  // which they can change in Settings and see reflected here (it seeds as
+  // "TamamHealth Platform Admin", so the console reads the same until they
+  // rename it).
   if (role === 'super_admin') {
     return { centerLabel: name || 'TamamHealth Platform Admin', centerSubLabel: 'Command Center' };
   }
@@ -310,15 +336,19 @@ export function railCenterLabels(input: {
   // a title above its own numbers: for org_admin and hospital_manager the
   // useful workspace line is the console they are standing in ("Facility
   // Management"), not their own role label ("Organization Admin"), which the
-  // organization name above it already implies.
+  // organization name above it already implies. Only used when the account has
+  // no facility of its own to name.
   const workspace = role === 'org_admin' || role === 'hospital_manager'
     ? 'Facility Management'
     : roleLabel;
   const centerLabel = orgName
     || (role === 'government' ? 'Ministry of Health' : facilityName || workspace);
-  // Only a second line when it would say something the main line doesn't — a
-  // role with no organization at all falls back to the workspace as the main
-  // line, and repeating it underneath would be noise.
-  const centerSubLabel = centerLabel !== workspace ? workspace : undefined;
+  // The site under the organization. Two accounts never reach it: one with no
+  // facility at all — a ministry or county account, an org admin between
+  // postings — and one whose missing org name already pushed the facility up
+  // to the main line. Both keep the workspace there rather than going blank or
+  // printing the same words twice.
+  const secondLine = facilityName && facilityName !== centerLabel ? facilityName : workspace;
+  const centerSubLabel = centerLabel !== secondLine ? secondLine : undefined;
   return { centerLabel, centerSubLabel };
 }

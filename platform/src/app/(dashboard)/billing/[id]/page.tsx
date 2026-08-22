@@ -29,14 +29,8 @@ import type { PatientDoc } from '@/lib/db-types';
 import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { formatDobOmrs } from '@/lib/date-utils';
 
-/** dd-MMM-yyyy — the OpenMRS DOB convention (matches ChartHeader). */
-function formatDobOmrs(iso?: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return `${String(d.getDate()).padStart(2, '0')}-${d.toLocaleDateString('en-US', { month: 'short' })}-${d.getFullYear()}`;
-}
 
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'mobile_money', 'bank_transfer', 'insurance', 'credit'];
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ChargeCategory[];

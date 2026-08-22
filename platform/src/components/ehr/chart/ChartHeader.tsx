@@ -14,18 +14,9 @@ import { Stethoscope } from '@/components/icons/lucide';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
+import { formatDobOmrs } from '@/lib/date-utils';
 import type { PatientDoc } from '@/lib/db-types';
 
-/** dd-MMM-yyyy, e.g. "17-Jun-1990" — the OpenMRS convention, distinct from
- *  this app's general-purpose `formatDate` ("Jun 17, 1990"). */
-function formatDobOmrs(iso?: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = d.toLocaleDateString('en-US', { month: 'short' });
-  return `${day}-${month}-${d.getFullYear()}`;
-}
 
 interface ChartHeaderProps {
   patient: PatientDoc;

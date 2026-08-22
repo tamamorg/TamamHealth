@@ -7,6 +7,7 @@ export default function EhrTopActions({
   navLabel,
   activeHref,
   onOpenModule,
+  onWarm,
   badges,
 }: {
   items: NavItem[];
@@ -20,6 +21,11 @@ export default function EhrTopActions({
    */
   activeHref?: string | null;
   onOpenModule: (href: string) => void;
+  /**
+   * Warm a destination on hover/focus. The row navigates imperatively, so
+   * nothing prefetches it otherwise — see the note on `warm` in EhrTopRail.
+   */
+  onWarm?: (href: string) => void;
   /** href → count of open work in that module. Omitted hrefs show no badge. */
   badges?: Record<string, number>;
 }) {
@@ -37,6 +43,8 @@ export default function EhrTopActions({
             key={item.href}
             type="button"
             onClick={() => onOpenModule(item.href)}
+            onMouseEnter={() => onWarm?.(item.href)}
+            onFocus={() => onWarm?.(item.href)}
             title={count > 0 ? `${label} · ${count} waiting` : label}
             aria-label={count > 0 ? `${label}, ${count} waiting` : label}
             aria-current={active ? 'page' : undefined}

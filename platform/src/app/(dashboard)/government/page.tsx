@@ -21,6 +21,8 @@ import {
   Siren, FileText, ChevronRight, ChevronDown, Check,
 } from '@/components/icons/lucide';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
+import { getRoleConfig } from '@/lib/permissions';
+import { useAuth } from '@/lib/context';
 import { SOUTH_SUDAN_STATES } from '@/data/south-sudan-geo';
 import { makeProjector } from '@/lib/maps/south-sudan-projection';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -178,6 +180,7 @@ const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
 
 export default function GovernmentNationalDashboard() {
   const router = useRouter();
+  const { currentUser } = useAuth();
   const { alerts } = useSurveillance();
   const { hospitals } = useHospitals();
 
@@ -415,6 +418,14 @@ export default function GovernmentNationalDashboard() {
         <div>
           <h1>National Dashboard</h1>
           <p>South Sudan · National · {periodLabel} — computed live from facility-reported data</p>
+          {/* Who is looking. Every other workspace header names the signed-in
+              user's role and name under its title; this console named neither,
+              so the one screen that speaks for the whole country did not say
+              whose session it was. */}
+          {currentUser && (
+            <p className="ehr-care-greeting-sub">{getRoleConfig(currentUser.role).label}</p>
+          )}
+          {currentUser?.name && <p className="ehr-care-greeting-name">{currentUser.name}</p>}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button type="button" className="btn btn-secondary" onClick={() => router.push('/government/briefing')}>

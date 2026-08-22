@@ -125,7 +125,15 @@ const defaultUsers: SeedUserProfile[] = [
   { username: 'desk.wau', name: 'Tabitha Nyandeng Kuol', role: 'front_desk', hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'nurse.stella', name: 'Nurse Stella Keji Lemi', role: 'nurse', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'dr.ochalla', name: 'Dr. Peter Ochalla Diu', role: 'doctor', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', orgId: PUBLIC_ORG_ID },
-  { username: 'lab.gatluak', name: 'Lab Tech Gatluak Puok', role: 'lab_tech', hospitalId: 'hosp-004', hospitalName: 'Bentiu State Hospital', orgId: PUBLIC_ORG_ID },
+  // Stationed at Juba, not Bentiu. Juba Teaching Hospital is where the seeded
+  // doctors, nurses, triage, rooming, pharmacy, billing and records all work,
+  // and `lab_tech` is the ONLY role that may enter a result
+  // (`canEnterLabResults` in usePermissions). With the platform's one lab
+  // technician posted to a different facility, `filterByScope` hid every Juba
+  // order from them — so a test ordered in the flagship facility's
+  // consultation could be placed and never resulted, and the lab loop the
+  // product is built around had no one standing at the end of it.
+  { username: 'lab.gatluak', name: 'Lab Tech Gatluak Puok', role: 'lab_tech', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'pharma.rose', name: 'Pharmacist Rose Gbudue', role: 'pharmacist', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'desk.amira', name: 'Amira Juma Hassan', role: 'front_desk', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'data.ayen', name: 'Ayen Dut Malual', role: 'data_entry_clerk', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
@@ -1568,7 +1576,7 @@ const seedAssets: Omit<AssetDoc, '_rev' | 'createdBy'>[] = [
 // ═══ Leave request seed data ══════════════════════════════════════
 const seedLeaveRequests: Omit<LeaveRequestDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'leave-1', type: 'leave_request', userId: 'user-nurse.stella', userName: 'Nurse Stella Keji Lemi', role: 'nurse', facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', leaveType: 'annual', startDate: dateFromNow(10), endDate: dateFromNow(20), days: 11, reason: 'Family visit', status: 'pending', requestedAt: daysAgo(2), orgId: PUBLIC_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(2) },
-  { _id: 'leave-2', type: 'leave_request', userId: 'user-lab.gatluak', userName: 'Lab Tech Gatluak Puok', role: 'lab_tech', facilityId: 'hosp-004', facilityName: 'Bentiu State Hospital', leaveType: 'sick', startDate: dateAgo(3), endDate: dateAgo(1), days: 3, reason: 'Malaria', status: 'approved', requestedAt: daysAgo(4), decidedAt: daysAgo(3), decidedBy: 'user-hrio.dut', decidedByName: 'Dut Machar Kuol', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(4), updatedAt: daysAgo(3) },
+  { _id: 'leave-2', type: 'leave_request', userId: 'user-lab.gatluak', userName: 'Lab Tech Gatluak Puok', role: 'lab_tech', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', leaveType: 'sick', startDate: dateAgo(3), endDate: dateAgo(1), days: 3, reason: 'Malaria', status: 'approved', requestedAt: daysAgo(4), decidedAt: daysAgo(3), decidedBy: 'user-hrio.dut', decidedByName: 'Dut Machar Kuol', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(4), updatedAt: daysAgo(3) },
   { _id: 'leave-3', type: 'leave_request', userId: 'user-midwife.nyakong', userName: 'Midwife Nyakong Gatkuoth', role: 'midwife', facilityId: 'hosp-003', facilityName: 'Malakal Teaching Hospital', leaveType: 'maternity', startDate: dateFromNow(30), endDate: dateFromNow(120), days: 91, reason: 'Maternity leave', status: 'approved', requestedAt: daysAgo(10), decidedAt: daysAgo(8), decidedBy: 'user-hrio.dut', decidedByName: 'Dut Machar Kuol', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(10), updatedAt: daysAgo(8) },
   { _id: 'leave-4', type: 'leave_request', userId: 'user-pharma.rose', userName: 'Pharmacist Rose Gbudue', role: 'pharmacist', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', leaveType: 'compassionate', startDate: dateAgo(6), endDate: dateAgo(4), days: 3, reason: 'Bereavement', status: 'taken', requestedAt: daysAgo(8), decidedAt: daysAgo(7), decidedBy: 'user-hrio.dut', decidedByName: 'Dut Machar Kuol', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(8), updatedAt: daysAgo(4) },
   { _id: 'leave-5', type: 'leave_request', userId: 'user-co.deng', userName: 'CO Deng Mabior Kuol', role: 'clinical_officer', facilityId: 'hosp-002', facilityName: 'Wau State Hospital', leaveType: 'study', startDate: dateFromNow(40), endDate: dateFromNow(70), days: 31, reason: 'Diploma exams', status: 'rejected', requestedAt: daysAgo(5), decidedAt: daysAgo(4), decidedBy: 'user-hrio.dut', decidedByName: 'Dut Machar Kuol', decisionNotes: 'Critical staffing shortage this quarter', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(5), updatedAt: daysAgo(4) },

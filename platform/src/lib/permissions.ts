@@ -33,7 +33,6 @@ import {
   Wallet,
   Activity,
   BedDouble,
-  Stethoscope,
   Package,
   Microscope,
   Droplets,
@@ -230,7 +229,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/messages', label: 'Messages', icon: MessageSquare },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'CLINICAL' },
-      { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
+      // No Consultation row. `/consultation` is a redirect stub: with no
+      // patient in the link it lands on /patients, which this list already
+      // offers a row above — and for the clinician roles it also held one of
+      // the four always-visible rail shortcuts (it sits second in
+      // PRIMARY_SHORTCUT_PRIORITY), so the fastest button on the rail led to
+      // the button beside it. The route stays in allowedRoutes so "Start
+      // consultation" deep links and old bookmarks still resolve; it just
+      // stopped being a destination of its own. Removed 2026-08-22.
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
@@ -258,7 +264,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/messages', label: 'Messages', icon: MessageSquare },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'CLINICAL' },
-      { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
+      // No Consultation row. `/consultation` is a redirect stub: with no
+      // patient in the link it lands on /patients, which this list already
+      // offers a row above — and for the clinician roles it also held one of
+      // the four always-visible rail shortcuts (it sits second in
+      // PRIMARY_SHORTCUT_PRIORITY), so the fastest button on the rail led to
+      // the button beside it. The route stays in allowedRoutes so "Start
+      // consultation" deep links and old bookmarks still resolve; it just
+      // stopped being a destination of its own. Removed 2026-08-22.
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
@@ -526,7 +539,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
-      { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
+      // No Consultation row. `/consultation` is a redirect stub: with no
+      // patient in the link it lands on /patients, which this list already
+      // offers a row above — and for the clinician roles it also held one of
+      // the four always-visible rail shortcuts (it sits second in
+      // PRIMARY_SHORTCUT_PRIORITY), so the fastest button on the rail led to
+      // the button beside it. The route stays in allowedRoutes so "Start
+      // consultation" deep links and old bookmarks still resolve; it just
+      // stopped being a destination of its own. Removed 2026-08-22.
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
       { href: '/controlled-substances', label: 'Controlled Substances', icon: ClipboardCheck, section: 'SERVICES' },
@@ -740,7 +760,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/messages', label: 'Messages', icon: MessageSquare },
       { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
       { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'CLINICAL' },
-      { href: '/consultation', label: 'Consultation', icon: Stethoscope, section: 'CLINICAL' },
+      // No Consultation row. `/consultation` is a redirect stub: with no
+      // patient in the link it lands on /patients, which this list already
+      // offers a row above — and for the clinician roles it also held one of
+      // the four always-visible rail shortcuts (it sits second in
+      // PRIMARY_SHORTCUT_PRIORITY), so the fastest button on the rail led to
+      // the button beside it. The route stays in allowedRoutes so "Start
+      // consultation" deep links and old bookmarks still resolve; it just
+      // stopped being a destination of its own. Removed 2026-08-22.
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
