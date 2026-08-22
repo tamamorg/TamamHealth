@@ -78,6 +78,9 @@ export default function HRDashboardPage() {
   const onLeaveToday = leave.filter(l =>
     l.status === 'approved' && l.startDate <= today && l.endDate >= today
   );
+  // Headcount minus approved leave — NOT attendance (no clock-in exists).
+  // The KPI label says "Not on Leave Today" so the number claims exactly
+  // what it measures; it used to say "Present Today".
   const presentToday = facilityUsers.length - onLeaveToday.length;
   const onCallToday = schedules.filter(s => s.isOnCall).length;
 

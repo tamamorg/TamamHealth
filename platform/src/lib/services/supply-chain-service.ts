@@ -14,7 +14,7 @@
  */
 import { pharmacyInventoryDB } from '../db';
 import type { PharmacyInventoryDoc } from '../db-types';
-import { classifyStockStatus } from './pharmacy-inventory-service';
+import { classifyStockStatus, dispensedTodayOf } from './pharmacy-inventory-service';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
@@ -342,8 +342,11 @@ export async function getConsumptionTrend(
   }
 
   const item = items[0];
-  const dispensedToday = item.dispensedToday || 0;
-  // Use dispensedToday as a rough daily average (in production, track historical data)
+  // Day-guarded read: the raw field may hold yesterday's (or, on docs written
+  // before the day-stamp existed, a lifetime) total — dispensedTodayOf
+  // returns 0 for anything not stamped with today's Juba day.
+  const dispensedToday = dispensedTodayOf(item);
+  // Rough daily average until a real consumption history exists.
   const dailyAverage = dispensedToday > 0 ? dispensedToday : 1;
   const projectedStockoutDays = item.stockLevel > 0
     ? Math.ceil(item.stockLevel / dailyAverage)

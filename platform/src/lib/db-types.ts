@@ -1888,6 +1888,16 @@ export interface PharmacyInventoryDoc extends BaseDoc {
   lastDispensed?: string;            // ISO datetime of last decrement
   dispensedToday: number;
   /**
+   * The Juba clinical day `dispensedToday` counts. Writers reset the counter
+   * when this rolls over; readers must treat the counter as 0 when this is
+   * not today (see `dispensedTodayOf` in pharmacy-inventory-service). Without
+   * it the field was a LIFETIME total wearing a per-day label — by day 30 the
+   * "today" figure was a month's cumulative dispensing, and the days-of-stock
+   * indicator it fed was understated ~30×. Absent on docs written before
+   * 2026-08, which correctly makes their stale totals read as "not tracked".
+   */
+  dispensedTodayDate?: string;
+  /**
    * Drug control schedule. Schedule II/III/IV require two-staff
    * witness sign-off on every movement (intake, dispense, waste).
    * Sourced from the South Sudan Drug & Food Control Authority list.

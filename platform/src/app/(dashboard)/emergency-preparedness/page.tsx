@@ -71,10 +71,12 @@ const EMPTY_FORM = {
   severity: 'level_2' as EmergencySeverity,
   phase: 'preparedness' as EmergencyPhase,
   description: '',
-  surgeBeds: 10,
+  // 0, not an invented 10/50: capacity figures default to "not stated" so a
+  // plan saved without editing them never claims surge beds it doesn't have.
+  surgeBeds: 0,
   incidentCommander: '',
   incidentCommanderPhone: '',
-  estimatedCapacity: 50,
+  estimatedCapacity: 0,
   state: '',
 };
 

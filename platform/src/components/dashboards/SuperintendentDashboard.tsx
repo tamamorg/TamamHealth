@@ -18,13 +18,13 @@ import {
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useUsers } from '@/lib/hooks/useUsers';
+import { useWards } from '@/lib/hooks/useWards';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 import Modal from '@/components/Modal';
 import { todayIso } from '@/lib/date-utils';
 
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
 
 interface SuperintendentPreview {
   title: string;
@@ -76,6 +76,9 @@ export default function SuperintendentDashboard() {
   const { users } = useUsers();
   const { referrals } = useReferrals();
   const { alerts: diseaseAlerts } = useSurveillance();
+  // Real ward census — the same numbers the Wards board and the facility
+  // dashboard show, so the two views can never disagree.
+  const { totalBeds: wardBedTotal, occupiedBeds: wardBedsOccupied, occupancyRate: wardOccupancyPct } = useWards();
   const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
 
   const facilityId = currentUser?.hospitalId;
@@ -108,11 +111,13 @@ export default function SuperintendentDashboard() {
   const hospital = currentUser?.hospital;
   const totalDoctors = hospital?.doctors || 0;
   const totalNurses = hospital?.nurses || 0;
-  const bedTotal = hospital?.totalBeds || 0;
-  // Same demo-mode occupancy derivation as the clinical dashboard so the two
-  // views agree; collapses to 0 in production until a real occupancy feed exists.
-  const bedOccupancy = bedTotal && IS_DEMO ? Math.round(bedTotal * 0.72) : 0;
-  const occupancyPct = bedTotal ? Math.round((bedOccupancy / bedTotal) * 100) : 0;
+  // Bed occupancy comes from the ward census (useWards sums ward docs'
+  // totalBeds/occupiedBeds), never from the hospital registry record or a
+  // multiplier: the old `bedTotal * 0.72` printed a fabricated occupancy
+  // percentage on a superintendent's KPI tile.
+  const bedTotal = wardBedTotal;
+  const bedOccupancy = wardBedsOccupied;
+  const occupancyPct = wardOccupancyPct;
 
   const activeAlerts = diseaseAlerts.filter(a => a.alertLevel === 'emergency' || a.alertLevel === 'warning');
   const pendingReferrals = referrals.filter(r => r.status === 'sent' || r.status === 'received');

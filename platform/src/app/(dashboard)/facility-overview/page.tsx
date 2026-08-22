@@ -23,6 +23,8 @@ import { useANC } from '@/lib/hooks/useANC';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
+import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
+import { censusFor } from '@/lib/services/facility-census';
 import {
   Building2, Users, BedDouble, Activity, Baby, Skull, Syringe, HeartPulse,
   ArrowRightLeft, AlertTriangle, Send, CheckCircle, Clock, Loader2, TrendingUp,
@@ -45,6 +47,9 @@ function FacilityOverview() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { hospitals, loading: hospitalsLoading, update } = useHospitals();
+  // Real counts — HospitalDoc.patientCount/todayVisits are write-once-zero
+  // registry fields nothing recomputes (2026-08 hardcoded-data sweep).
+  const { census: facilityCensus } = useFacilityCensus();
   const { births } = useBirths();
   const { deaths } = useDeaths();
   const { visits: ancVisits } = useANC();
@@ -100,8 +105,10 @@ function FacilityOverview() {
 
   // ── Facility-scoped aggregates ───────────────────────────────────────────
   const staff = (hospital?.doctors || 0) + (hospital?.nurses || 0) + (hospital?.clinicalOfficers || 0);
+  // `performance` exists only on seeded demo records — no service ever writes
+  // it. Absent means "never measured", which must render as such, not as 0%.
   const perf = hospital?.performance;
-  const dataQuality = perf?.qualityScore ?? perf?.reportingCompleteness ?? 0;
+  const dataQuality = perf?.qualityScore ?? perf?.reportingCompleteness ?? null;
 
   const referralsOut = referrals.filter(r => r.fromHospitalId === hospitalId).length;
   const referralsIn = referrals.filter(r => r.toHospitalId === hospitalId).length;
@@ -200,13 +207,15 @@ function FacilityOverview() {
             <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>· operations &amp; care programs</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-            <StatCard icon={Users} label="Patients" value={String(hospital?.patientCount ?? 0)} tint="var(--accent-primary)" />
+            <StatCard icon={Users} label="Patients" value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).patients) : '…'} tint="var(--accent-primary)" />
             <StatCard icon={BedDouble} label="Beds" value={String(hospital?.totalBeds ?? 0)} tint="var(--color-warning)" />
             <StatCard icon={Users} label="Clinical Staff" value={String(staff)} tint="var(--accent-primary)" />
-            <StatCard icon={Activity} label="Today's Visits" value={String(hospital?.todayVisits ?? 0)} tint="var(--accent-primary)" />
+            <StatCard icon={Activity} label="Today's Visits" value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).todayVisits) : '…'} tint="var(--accent-primary)" />
             <StatCard icon={ArrowRightLeft} label="Referrals (in / out)" value={`${referralsIn} / ${referralsOut}`} tint="var(--accent-primary)" />
             <StatCard icon={AlertTriangle} label="Active Alerts" value={String(activeAlerts)} tint={activeAlerts > 0 ? 'var(--color-danger)' : 'var(--color-success)'} />
-            <StatCard icon={CheckCircle} label="Data Quality" value={`${Math.round(dataQuality)}%`} tint={dataQuality >= 80 ? 'var(--color-success)' : dataQuality >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'} />
+            {/* '—' when never measured — a red 0% would assert a measurement
+                that was never taken. */}
+            <StatCard icon={CheckCircle} label="Data Quality" value={dataQuality === null ? '—' : `${Math.round(dataQuality)}%`} tint={dataQuality === null ? 'var(--text-muted)' : dataQuality >= 80 ? 'var(--color-success)' : dataQuality >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'} />
             <StatCard icon={Baby} label="Births Registered" value={String(births.length)} tint="var(--accent-primary)" />
             <StatCard icon={Skull} label="Deaths Registered" value={String(deaths.length)} tint="var(--text-muted)" />
             <StatCard icon={HeartPulse} label="ANC Visits" value={String(ancVisits.length)} tint="var(--chart-2)" />
@@ -227,11 +236,17 @@ function FacilityOverview() {
           </div>
           <div className="card-elevated p-5 lg:col-span-2">
             <SectionTitle icon={<TrendingUp className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />} title="Facility Performance" />
-            <div className="grid grid-cols-3 gap-4 mt-3">
-              <Gauge label="Reporting" value={perf?.reportingCompleteness ?? 0} />
-              <Gauge label="Service Readiness" value={perf?.serviceReadinessScore ?? 0} />
-              <Gauge label="Immunization Coverage" value={perf?.immunizationCoverage ?? 0} />
-            </div>
+            {perf ? (
+              <div className="grid grid-cols-3 gap-4 mt-3">
+                <Gauge label="Reporting" value={perf.reportingCompleteness ?? 0} />
+                <Gauge label="Service Readiness" value={perf.serviceReadinessScore ?? 0} />
+                <Gauge label="Immunization Coverage" value={perf.immunizationCoverage ?? 0} />
+              </div>
+            ) : (
+              <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
+                No performance data recorded for this facility yet.
+              </p>
+            )}
           </div>
         </div>
 

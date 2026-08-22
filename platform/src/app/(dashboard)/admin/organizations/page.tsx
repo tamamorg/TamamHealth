@@ -155,18 +155,34 @@ interface OrgRowStats {
 }
 
 /**
- * Per-tenant sync: the share of this tenant's facilities currently online.
- * Sync events are only tracked platform-wide, so facility reachability is the
- * honest per-tenant proxy — the same one the super-admin dashboard used while
- * this matrix lived there. A suspended tenant, or one with no facilities yet,
- * has nothing to report rather than 0%.
+ * Per-tenant sync: how many of this tenant's facilities emitted a sync event
+ * in the last 24 hours (/api/admin/sync-health) out of its facility total.
+ * A suspended tenant, or one with no facilities yet, has nothing to report
+ * rather than 0%.
  */
-function tenantSync(org: OrganizationDoc, stats?: OrgRowStats): { label: string; color: string } {
+function tenantSync(
+  org: OrganizationDoc,
+  stats: OrgRowStats | undefined,
+  /** hospitalIds under this org that emitted a sync event in the last 24h —
+   *  null while /api/admin/sync-health is still loading (or unreachable). */
+  activeFacilities: number | null,
+): { label: string; color: string } {
   const suspended = org.subscriptionStatus === 'suspended' || org.subscriptionStatus === 'cancelled';
   if (!stats) return { label: '…', color: 'var(--text-muted)' };
   if (suspended || stats.hospitalCount === 0) return { label: '—', color: 'var(--text-muted)' };
-  const pct = Math.round(((stats.hospitalCount - stats.offlineHospitalCount) / stats.hospitalCount) * 100);
-  return { label: `${pct}%`, color: pct < 95 ? 'var(--color-warning-700)' : 'var(--color-success-800)' };
+  // Real signal only: facilities with sync events in the last 24 hours
+  // (/api/admin/sync-health). The old derivation counted
+  // HospitalDoc.syncStatus, a field frozen at record creation, so every
+  // app-created facility read permanently offline and the column showed an
+  // amber 0% that measured how records were created, not connectivity.
+  if (activeFacilities === null) return { label: '—', color: 'var(--text-muted)' };
+  const label = `${activeFacilities}/${stats.hospitalCount} · 24h`;
+  return {
+    label,
+    color: activeFacilities === stats.hospitalCount
+      ? 'var(--color-success-800)'
+      : activeFacilities > 0 ? 'var(--color-warning-700)' : 'var(--text-muted)',
+  };
 }
 
 /* The tenant pop card moved to components/admin/TenantCard so the super-admin
@@ -222,6 +238,34 @@ export default function AdminOrganizationsPage() {
   const [form, setForm] = useState<OrgFormData>(emptyForm);
   const [formLoading, setFormLoading] = useState(false);
   const [orgStats, setOrgStats] = useState<Record<string, OrgRowStats>>({});
+  // Per-org count of facilities that emitted a sync event in the last 24h —
+  // the REAL liveness signal behind the Sync column (see tenantSync). null
+  // until /api/admin/sync-health answers; stays null offline, which renders
+  // as '—' rather than a fabricated figure.
+  const [orgSyncActive, setOrgSyncActive] = useState<Record<string, number> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ apiFetch }, { getAllHospitals }] = await Promise.all([
+          import('@/lib/api-fetch'),
+          import('@/lib/services/hospital-service'),
+        ]);
+        const res = await apiFetch('/api/admin/sync-health');
+        if (!res.ok) return;
+        const body = await res.json() as { perFacilityLast24h?: Record<string, unknown> };
+        const seen = new Set(Object.keys(body.perFacilityLast24h || {}));
+        const hospitals = await getAllHospitals();
+        const byOrg: Record<string, number> = {};
+        for (const h of hospitals) {
+          if (!h.orgId) continue;
+          if (seen.has(h._id)) byOrg[h.orgId] = (byOrg[h.orgId] || 0) + 1;
+        }
+        if (!cancelled) setOrgSyncActive(byOrg);
+      } catch { /* offline — the column reads '—' */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
   // Clicking a row opens the tenant pop card rather than a bare menu: the same
   // health figures the row shows, plus the actions, in one place. Held by id so
@@ -591,7 +635,7 @@ export default function AdminOrganizationsPage() {
         >
           {filteredOrgs.map(org => {
             const stats = orgStats[org._id];
-            const sync = tenantSync(org, stats);
+            const sync = tenantSync(org, stats, orgSyncActive ? (orgSyncActive[org._id] ?? 0) : null);
             const onboarded = onboardedLabel(org.createdAt);
             const orgKind = org.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
             return (
@@ -623,7 +667,7 @@ export default function AdminOrganizationsPage() {
 
       {tenantCard && (() => {
         const stats = orgStats[tenantCard._id];
-        const sync = tenantSync(tenantCard, stats);
+        const sync = tenantSync(tenantCard, stats, orgSyncActive ? (orgSyncActive[tenantCard._id] ?? 0) : null);
         const onboarded = onboardedLabel(tenantCard.createdAt);
         const orgKind = tenantCard.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
         return (

@@ -1600,7 +1600,14 @@ const seedProblems: Omit<ProblemDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'problem-7', type: 'problem', patientId: 'pat-00030', patientName: 'Achol Mayen Ring', name: 'Burns >30% TBSA', icd11Code: 'NE00', status: 'active', onsetDate: dateAgo(2), severity: 'severe', notes: 'ICU admission, isolation for infection control.', recordedBy: 'user-dr.wani', recordedByName: 'Dr. James Wani Igga', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(0) },
 ];
 
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+// Demo seeding must be EXPLICITLY enabled. This was `!== 'false'` — demo as
+// the default — which meant a production build that simply forgot the env var
+// seeded the entire mock corpus (34k-patient facilities, sine-wave trend
+// charts, fabricated performance scores) into a real deployment. NEXT_PUBLIC_*
+// is inlined at BUILD time, so the mistake was invisible at runtime. Local dev
+// and the standalone demo keep seeding by setting NEXT_PUBLIC_DEMO_MODE=true
+// (as .env.example already does).
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 /**
  * Production seed: creates only the initial super admin user and a default organization.

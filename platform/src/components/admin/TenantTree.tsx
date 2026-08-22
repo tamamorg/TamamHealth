@@ -109,9 +109,10 @@ export function OrgFacilities({ facilities, usersByFacility, loading, onOpen }: 
               <span className="sadb-tenant-num">{loading ? '…' : facilityUsers.length}</span>
               <span className="sadb-subrow-blank">—</span>
               <span style={{ textAlign: 'end' }}>
-                <SadbChip tone={f.syncStatus === 'online' ? 'green' : f.syncStatus === 'syncing' ? 'yellow' : 'neutral'}>
-                  {f.syncStatus || 'unknown'}
-                </SadbChip>
+                {/* No sync chip: HospitalDoc.syncStatus is frozen at record
+                    creation (every app-created facility read "offline"
+                    forever). Real liveness lives in sync events — reintroduce
+                    only from that source. */}
               </span>
             </div>
             {usersOpen && (

@@ -15,7 +15,7 @@
  *   - `server-users.ts`              — reads to verify logins.
  *   - `/api/demo-credentials` route  — surfaces the map to the browser seed
  *                                      and the demo-accounts dropdown
- *                                      (only when NEXT_PUBLIC_DEMO_MODE !== 'false').
+ *                                      (only when NEXT_PUBLIC_DEMO_MODE === 'true').
  *
  * NEVER import this from the browser. It uses `node:fs` and the import
  * graph treats this file as server-only — pulling it into a Client Component
@@ -194,7 +194,7 @@ export async function getOrCreateSeedCredentials(): Promise<CredentialsFile> {
   if (inflight) return inflight;
 
   inflight = (async () => {
-    const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+    const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
     // 'superadmin' is seeded in BOTH modes: production needs a working
     // platform administrator just as much as the demo does.
     const expectedUsers = demoMode ? DEMO_USERNAMES : ['admin', 'superadmin'];

@@ -30,6 +30,8 @@ import {
 import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
 import { FACILITY_TYPES } from '@/lib/facility-types';
 import { canCreateFacilities } from '@/lib/people-nav';
+import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
+import { censusFor } from '@/lib/services/facility-census';
 
 /* Facility · State · Type · Beds · Patients · Today's visits */
 const FACILITY_GRID = 'minmax(210px, 1.7fr) minmax(110px, 0.9fr) minmax(130px, 1fr) minmax(70px, 0.6fr) minmax(90px, 0.7fr) minmax(90px, 0.7fr)';
@@ -54,6 +56,9 @@ export default function OrgHospitalsPage() {
   // read of a database they are scoped out of anyway.
   const needsOrgPicker = mayCreate && !currentUser?.orgId;
   const { organizations } = useOrganizations();
+  // Real counts — HospitalDoc.patientCount/todayVisits are write-once-zero
+  // registry fields nothing recomputes (2026-08 hardcoded-data sweep).
+  const { census: facilityCensus } = useFacilityCensus();
 
   const loadData = useCallback(async () => {
     if (!currentUser) return;
@@ -172,9 +177,9 @@ export default function OrgHospitalsPage() {
                 <span className="sadb-tenant-num">{hospital.totalBeds || 0}</span>
                 <span className="sadb-tenant-num flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                  {hospital.patientCount || 0}
+                  {facilityCensus ? censusFor(facilityCensus, hospital._id).patients : '…'}
                 </span>
-                <span className="sadb-tenant-num">{hospital.todayVisits || 0}</span>
+                <span className="sadb-tenant-num">{facilityCensus ? censusFor(facilityCensus, hospital._id).todayVisits : '…'}</span>
               </SadbGridRow>
             ))}
           </SadbGridList>

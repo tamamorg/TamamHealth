@@ -279,10 +279,14 @@ async function applyBatchDecrement(
       );
     }
     const now = new Date().toISOString();
+    // Day-scoped: reset on Juba-day rollover so "dispensed today" never
+    // accumulates into a lifetime total (see dispensedTodayOf).
+    const dispenseDay = jubaDate();
     const updated: PharmacyInventoryDoc = {
       ...batch,
       stockLevel: before - quantity,
-      dispensedToday: (batch.dispensedToday || 0) + quantity,
+      dispensedToday: (batch.dispensedTodayDate === dispenseDay ? (batch.dispensedToday || 0) : 0) + quantity,
+      dispensedTodayDate: dispenseDay,
       lastDispensed: now,
       updatedAt: now,
     };
@@ -322,7 +326,11 @@ async function revertBatchDecrement(allocation: DispenseAllocation): Promise<voi
       const resp = await db.put({
         ...batch,
         stockLevel: (batch.stockLevel || 0) + allocation.quantity,
-        dispensedToday: Math.max(0, (batch.dispensedToday || 0) - allocation.quantity),
+        // Only unwind the counter for the day it was counted in — rolling
+        // back yesterday's dispense must not eat into today's count.
+        dispensedToday: batch.dispensedTodayDate === jubaDate()
+          ? Math.max(0, (batch.dispensedToday || 0) - allocation.quantity)
+          : (batch.dispensedToday || 0),
         updatedAt: now,
       } as PharmacyInventoryDoc);
       emitSyncEvent({

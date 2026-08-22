@@ -225,6 +225,14 @@ async function postHandler(request: NextRequest) {
         return forbidden('Cannot create wards in another organization');
       }
     }
+    // A ward's capacity is a claim about physical beds — never invent one.
+    // The old `|| 10` default silently asserted a 10-bed ward for any POST
+    // that omitted totalBeds (and swallowed an explicit 0), feeding the
+    // national bed census a number nobody stated.
+    const totalBeds = Number(body.totalBeds);
+    if (!Number.isFinite(totalBeds) || totalBeds < 0) {
+      return NextResponse.json({ error: 'totalBeds is required and must be a non-negative number' }, { status: 400 });
+    }
     const { createWard } = await import('@/lib/services/ward-service');
     const ward = await createWard({
       name: body.name as string,
@@ -232,7 +240,7 @@ async function postHandler(request: NextRequest) {
       facilityId: body.facilityId as string,
       facilityName: (body.facilityName as string) || '',
       facilityLevel: (body.facilityLevel as Parameters<typeof createWard>[0]['facilityLevel']) || 'county',
-      totalBeds: Number(body.totalBeds) || 10,
+      totalBeds,
       isActive: true,
       orgId: auth.orgId,
     });

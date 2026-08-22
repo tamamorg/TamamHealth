@@ -131,6 +131,20 @@ export default function OrgBrandingPage() {
       return;
     }
 
+    // A colour that `getOrgBranding` would reject is a colour that vanishes on
+    // the next sign-in. Say so now, while the operator is still looking at the
+    // field, rather than letting them discover it tomorrow.
+    const { isUsableBrandColor } = await import('@/lib/branding');
+    const badColor = ([
+      [t('branding.primaryColor'), draft.primaryColor],
+      [t('branding.secondaryColor'), draft.secondaryColor],
+      [t('branding.accentColor'), draft.accentColor],
+    ] as const).find(([, value]) => !isUsableBrandColor(value));
+    if (badColor) {
+      showToast(t('branding.errorInvalidColor', { field: badColor[0], value: badColor[1] }), 'error');
+      return;
+    }
+
     setSaving(true);
     try {
       const { updateOrganization } = await import('@/lib/services/organization-service');
@@ -148,15 +162,19 @@ export default function OrgBrandingPage() {
         currentUser.username
       );
 
-      // Apply branding CSS variables live
-      const { brandingToCSSVars } = await import('@/lib/branding');
-      const vars = brandingToCSSVars({
+      // Apply branding CSS variables live — through the SAME resolver login
+      // and session restore use. Applying the raw fields here is how a colour
+      // could look applied until the next reload quietly dropped it: the hex
+      // field beside each swatch accepts free text, and `getOrgBranding`
+      // rejects anything that is not a hex colour.
+      const { brandingToCSSVars, brandingFromFields } = await import('@/lib/branding');
+      const vars = brandingToCSSVars(brandingFromFields({
         name: draft.orgName.trim(),
         logoUrl: draft.logoUrl,
         primaryColor: draft.primaryColor,
         secondaryColor: draft.secondaryColor,
         accentColor: draft.accentColor,
-      });
+      }));
       for (const [key, value] of Object.entries(vars)) {
         document.documentElement.style.setProperty(key, value);
       }

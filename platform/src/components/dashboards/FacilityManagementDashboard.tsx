@@ -42,6 +42,8 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
 import { useHospitals } from '@/lib/hooks/useHospitals';
+import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
+import { censusFor } from '@/lib/services/facility-census';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
@@ -431,6 +433,9 @@ export default function FacilityManagementDashboard() {
   const { patients, loading: patientsLoading } = usePatients();
   const { availableBeds, loading: wardsLoading } = useWards();
   const { hospitals } = useHospitals();
+  // Real counts — HospitalDoc.patientCount/todayVisits are write-once-zero
+  // registry fields nothing recomputes (2026-08 hardcoded-data sweep).
+  const { census: facilityCensus } = useFacilityCensus();
 
   const [cash, setCash] = useState<{ currency: string; days: DailyCash[] }>({ currency: 'SSP', days: [] });
   const [enquiries, setEnquiries] = useState<MessageDoc[]>([]);
@@ -940,8 +945,8 @@ export default function FacilityManagementDashboard() {
                       </SadbChip>
                     </span>
                     <span className="sadb-tenant-num">{h.totalBeds || 0}</span>
-                    <span className="sadb-tenant-num">{h.patientCount || 0}</span>
-                    <span className="sadb-tenant-num">{h.todayVisits || 0}</span>
+                    <span className="sadb-tenant-num">{facilityCensus ? censusFor(facilityCensus, h._id).patients : '…'}</span>
+                    <span className="sadb-tenant-num">{facilityCensus ? censusFor(facilityCensus, h._id).todayVisits : '…'}</span>
                   </SadbGridRow>
                 ))}
               </SadbGridList>

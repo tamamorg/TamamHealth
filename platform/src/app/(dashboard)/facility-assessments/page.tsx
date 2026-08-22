@@ -20,26 +20,32 @@ import { todayIso } from '@/lib/date-utils';
  * in the field we capture the 6 score axes + core infrastructure
  * booleans and derive the overall score as an average.
  */
+// Every score starts at 0 and every capability at false — nothing defaults
+// to "adequate". The old form pre-filled every axis at 70 and most booleans
+// at true, so an assessor who submitted without editing filed a
+// plausible-looking 70%-across-the-board assessment that flowed into
+// /data-quality, the /public-stats readiness bars and the /government
+// completeness choropleth as measured data.
 const EMPTY_FORM = {
   facilityId: '',
   assessmentDate: todayIso(),
-  generalEquipmentScore: 70,
-  diagnosticCapacityScore: 70,
-  essentialMedicinesScore: 70,
-  infectionControlScore: 70,
-  staffingScore: 70,
-  powerReliabilityScore: 70,
-  reportingCompleteness: 70,
-  reportingTimeliness: 70,
-  dataQualityScore: 70,
-  hisStaffCount: 1,
-  hisStaffTrained: 1,
-  hasCleanWater: true,
-  hasSanitation: true,
-  hasWasteManagement: true,
+  generalEquipmentScore: 0,
+  diagnosticCapacityScore: 0,
+  essentialMedicinesScore: 0,
+  infectionControlScore: 0,
+  staffingScore: 0,
+  powerReliabilityScore: 0,
+  reportingCompleteness: 0,
+  reportingTimeliness: 0,
+  dataQualityScore: 0,
+  hisStaffCount: 0,
+  hisStaffTrained: 0,
+  hasCleanWater: false,
+  hasSanitation: false,
+  hasWasteManagement: false,
   hasEmergencyTransport: false,
-  hasCommunication: true,
-  hasPatientRegisters: true,
+  hasCommunication: false,
+  hasPatientRegisters: false,
   hasDHIS2Reporting: false,
   recommendations: '',
 };

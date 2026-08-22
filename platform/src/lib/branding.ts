@@ -33,20 +33,64 @@ function isHexColor(color: string): boolean {
   return /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(color.trim());
 }
 
+/**
+ * Expand any accepted hex to the 6-digit form the tokens are built from.
+ *
+ * `--accent-light` and `--accent-border` are derived by appending an alpha
+ * pair (`${primary}12`), which is only a colour if the base is exactly six
+ * digits: a perfectly legal `#abc` produced `#abc12`, and an 8-digit value
+ * that already carried alpha produced a 10-digit string. Both are invalid, so
+ * the browser dropped the declaration and the tint fell back to whatever the
+ * cascade held — a brand that looked applied everywhere except its own tints.
+ */
+function toSixDigitHex(color: string): string {
+  const h = color.trim().replace('#', '');
+  if (h.length === 3 || h.length === 4) {
+    return `#${h.slice(0, 3).split('').map(c => c + c).join('')}`;
+  }
+  return `#${h.slice(0, 6)}`;
+}
+
 function modernizeColor(color?: string): string | undefined {
   if (!color || !isHexColor(color)) return undefined;
-  return color.toLowerCase() !== LEGACY_DEFAULT_BLUE ? color : undefined;
+  const normalized = toSixDigitHex(color);
+  return normalized.toLowerCase() !== LEGACY_DEFAULT_BLUE ? normalized : undefined;
+}
+
+/**
+ * The org branding a set of raw colour fields resolves to.
+ *
+ * Every surface that applies branding — login, session restore, and the
+ * branding editor's own live preview — must agree on what a value means, or
+ * "set it, see it, reload, it's gone" is the result: the editor applied the
+ * literal string it was given while login ran it through `getOrgBranding`
+ * first and dropped anything that was not a hex colour.
+ */
+export function brandingFromFields(fields: {
+  name: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+}): OrgBranding {
+  return {
+    name: fields.name,
+    logoUrl: fields.logoUrl,
+    primaryColor: modernizeColor(fields.primaryColor) || DEFAULT_BRANDING.primaryColor,
+    secondaryColor: modernizeColor(fields.secondaryColor) || DEFAULT_BRANDING.secondaryColor,
+    accentColor: modernizeColor(fields.accentColor) || DEFAULT_BRANDING.accentColor,
+  };
+}
+
+/** Whether a stored/typed colour will survive `getOrgBranding` — i.e. whether
+ *  what the operator just set is what they will see after a reload. */
+export function isUsableBrandColor(color: string): boolean {
+  return isHexColor(color);
 }
 
 export function getOrgBranding(org?: OrganizationDoc | null): OrgBranding {
   if (!org) return DEFAULT_BRANDING;
-  return {
-    name: org.name,
-    logoUrl: org.logoUrl,
-    primaryColor: modernizeColor(org.primaryColor) || DEFAULT_BRANDING.primaryColor,
-    secondaryColor: modernizeColor(org.secondaryColor) || DEFAULT_BRANDING.secondaryColor,
-    accentColor: modernizeColor(org.accentColor) || DEFAULT_BRANDING.accentColor,
-  };
+  return brandingFromFields(org);
 }
 
 /**

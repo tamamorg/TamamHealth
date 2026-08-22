@@ -64,7 +64,7 @@ const EMPTY_FORM = { name: '', age: '', sex: 'F', muac: '', weight: '', height: 
 // Demo-only screenings + supply inventory. Gated on NEXT_PUBLIC_DEMO_MODE so
 // production deploys render empty states instead of confusing staff with
 // sample patient names.
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 const SAMPLE_SCREENINGS = [
   { id: 'ns-001', name: 'Akech Deng Mawien', age: '2y', sex: 'F', muac: 10.8, weight: 8.2, height: 78, edema: true, status: 'SAM', date: '2026-02-09' },

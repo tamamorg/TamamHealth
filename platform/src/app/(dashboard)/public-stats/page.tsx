@@ -6,6 +6,7 @@ import { useVitalStatistics } from '@/lib/hooks/useVitalStatistics';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { useFacilityAssessments } from '@/lib/hooks/useFacilityAssessments';
+import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
 import { Baby, Skull, Activity, Heart, Shield, Building2, Users, BedDouble, Stethoscope, Wifi } from '@/components/icons/lucide';
 
 type SectionId = 'overview' | 'births' | 'mortality' | 'readiness' | 'quality';
@@ -16,6 +17,7 @@ export default function PublicStatsPage() {
   const { hospitals } = useHospitals();
   const { data: dqData, loading: dqLoading } = useDataQuality();
   const { summary: assessmentSummary } = useFacilityAssessments();
+  const { census } = useFacilityCensus();
   const [section, setSection] = useState<SectionId>('overview');
 
   const loading = vLoading || dqLoading;
@@ -23,7 +25,12 @@ export default function PublicStatsPage() {
   if (loading || !vitalData) return <><main className="page-container flex items-center justify-center"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('publicStats.loading')}</p></main></>;
 
   const { birthStats, deathStats } = vitalData;
-  const totalPop = hospitals.reduce((s, h) => s + h.patientCount, 0);
+  // Summed from real patient records — HospitalDoc.patientCount is a
+  // write-once-zero registry field, which published "0 patients" as the
+  // national figure on this PUBLIC page for every real deployment.
+  const totalPop = census
+    ? Array.from(census.values()).reduce((s, c) => s + c.patients, 0)
+    : 0;
   const totalBeds = hospitals.reduce((s, h) => s + h.totalBeds, 0);
   const totalStaff = hospitals.reduce((s, h) => s + h.doctors + h.nurses + h.clinicalOfficers, 0);
 

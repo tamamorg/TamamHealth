@@ -56,7 +56,12 @@ export default function TenantCard({
 }) {
   const titleId = 'tenant-card-title';
   return (
-    <Modal onClose={onClose} width={children ? 720 : 520} labelledBy={titleId}>
+    /* Wide enough for the tenant tree to draw its six columns at the width the
+       list behind it uses (SadbGridList minWidth={880}); at 720 the location
+       cell ellipsised and the last column fell off the card. Modal caps rather
+       than fixes the width, so a narrow viewport still gets a full-width
+       dialog and the tree scrolls inside its own box. */
+    <Modal onClose={onClose} width={children ? 980 : 640} labelledBy={titleId}>
       <div className="modal-panel" style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -86,16 +91,12 @@ export default function TenantCard({
             put "what can I do about this" below a fold on any card long enough
             to need one — and this card now carries a facility tree. */}
         {actions.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap pt-3" data-testid="tenant-card-actions">
+          <div className="sadb-tenant-actions" data-testid="tenant-card-actions">
             {actions.map(action => (
               <button
                 key={action.key}
                 type="button"
-                className={
-                  action.tone === 'danger' ? 'btn btn-sm sadb-btn-danger'
-                    : action.tone === 'primary' ? 'btn btn-primary btn-sm'
-                      : 'sadb-action-btn'
-                }
+                className={`sadb-tenant-action${action.tone === 'danger' ? ' is-danger' : action.tone === 'primary' ? ' is-primary' : ''}`}
                 onClick={action.onClick}
                 data-action={`tenant-${action.key}`}
               >
@@ -123,9 +124,12 @@ export default function TenantCard({
                 push the card past the viewport and take its actions with it. */}
             <div
               className="rounded-lg"
-              style={{ border: '1px solid var(--border-light)', overflow: 'auto', maxHeight: 320, minHeight: 0 }}
+              style={{ border: '1px solid var(--border-light)', overflow: 'auto', maxHeight: 340, minHeight: 0 }}
             >
-              {children}
+              {/* The floor the columns are drawn against — the same one the
+                  tenant list uses, so the card and the list behind it line the
+                  same facts up under the same headings. */}
+              <div style={{ minWidth: 880 }}>{children}</div>
             </div>
           </div>
         )}
@@ -148,9 +152,9 @@ export const TENANT_ACTION_ICONS = {
   addFacility: <Plus className="w-4 h-4" />,
   addUser: <Plus className="w-4 h-4" />,
   users: <Users className="w-4 h-4" />,
-  /* The two that sit on a filled button carry an explicit colour: globals.css
-     repaints any lucide glyph without one to --icon-color, which on a solid
-     blue or red fill is the glyph disappearing into it. */
-  edit: <Edit3 className="w-4 h-4" style={{ color: '#fff' }} />,
-  deactivate: <Ban className="w-4 h-4" style={{ color: '#fff' }} />,
+  /* No inline colour on these two: .sadb-tenant-action's filled variants
+     repaint both `color` and the `stroke` attribute lucide writes out, which
+     is what a hard-coded white would have frozen against a rebranded fill. */
+  edit: <Edit3 className="w-4 h-4" />,
+  deactivate: <Ban className="w-4 h-4" />,
 };

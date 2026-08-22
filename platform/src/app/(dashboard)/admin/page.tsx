@@ -305,7 +305,10 @@ export default function AdminDashboardPage() {
   const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).getTime();
   const newOrgsQuarter = organizations.filter(o => o.createdAt && new Date(o.createdAt).getTime() >= quarterStart).length;
   const newFacilitiesQuarter = hospitals.filter(h => h.createdAt && new Date(h.createdAt).getTime() >= quarterStart).length;
-  const offlineFacilities = hospitals.filter(h => h.syncStatus === 'offline').length;
+  // No "N offline" delta any more: it counted HospitalDoc.syncStatus, a field
+  // frozen at record creation, so every app-created facility read offline
+  // forever. Real liveness is derived from sync events (see
+  // /admin/organizations' Sync column and /api/admin/sync-health).
   const platformUsers = users.filter(u => !u.orgId).length;
 
   const licensedSeats = organizations.reduce((sum, o) => sum + (o.maxUsers || 0), 0);
@@ -372,8 +375,8 @@ export default function AdminDashboardPage() {
       key: 'facilities',
       label: 'Facilities',
       value: String(hospitals.length),
-      delta: offlineFacilities > 0 ? `${offlineFacilities} offline` : newFacilitiesQuarter > 0 ? `+${newFacilitiesQuarter} this quarter` : `across ${organizations.length} organizations`,
-      deltaClass: offlineFacilities > 0 ? 'is-warn' : newFacilitiesQuarter > 0 ? 'is-up' : undefined,
+      delta: newFacilitiesQuarter > 0 ? `+${newFacilitiesQuarter} this quarter` : `across ${organizations.length} organizations`,
+      deltaClass: newFacilitiesQuarter > 0 ? 'is-up' : undefined,
       href: '/admin/organizations',
     },
     {

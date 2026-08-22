@@ -29,25 +29,15 @@ export default function AdminSystemPage() {
     const loadStats = async () => {
       try {
         const { getDB } = await import('@/lib/db');
-        const dbNames = [
-          { key: 'tamamhealth_users', label: t('system.dbUsers') },
-          { key: 'tamamhealth_patients', label: t('system.dbPatients') },
-          { key: 'tamamhealth_hospitals', label: t('system.dbHospitals') },
-          { key: 'tamamhealth_medical_records', label: t('system.dbMedicalRecords') },
-          { key: 'tamamhealth_referrals', label: t('system.dbReferrals') },
-          { key: 'tamamhealth_lab_results', label: t('system.dbLabResults') },
-          { key: 'tamamhealth_disease_alerts', label: t('system.dbDiseaseAlerts') },
-          { key: 'tamamhealth_prescriptions', label: t('system.dbPrescriptions') },
-          { key: 'tamamhealth_audit_log', label: t('system.dbAuditLog') },
-          { key: 'tamamhealth_messages', label: t('system.dbMessages') },
-          { key: 'tamamhealth_births', label: t('system.dbBirths') },
-          { key: 'tamamhealth_deaths', label: t('system.dbDeaths') },
-          { key: 'tamamhealth_immunizations', label: t('system.dbImmunizations') },
-          { key: 'tamamhealth_anc', label: t('system.dbAncVisits') },
-          { key: 'tamamhealth_follow_ups', label: t('system.dbFollowUps') },
-          { key: 'tamamhealth_organizations', label: t('system.dbOrganizations') },
-          { key: 'tamamhealth_platform_config', label: t('system.dbPlatformConfig') },
-        ];
+        // Every synced store, from the one canonical list — the old
+        // hand-typed 17 names understated the "N stores · M documents"
+        // headline against the ~76 stores the app actually holds, and had
+        // already drifted from ItOperationsPanel's own 8-name copy.
+        const { DATABASE_SYNC_CONFIGS } = await import('@/lib/sync/sync-config');
+        const dbNames = DATABASE_SYNC_CONFIGS.map(c => ({
+          key: c.localName,
+          label: c.localName.replace(/^tamamhealth_/, '').replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase()),
+        }));
         // Run all db.info() calls concurrently — sequential awaits across 18
         // databases meant 18 round-trips on every page load.
         const stats: DBStats[] = await Promise.all(
@@ -103,10 +93,14 @@ export default function AdminSystemPage() {
       </SadbCard>
 
       <SadbCard title={t('system.systemInfo')}>
+        {/* Stack facts, not versions: the old row said "Next.js 14" while the
+            build ran 16 — a literal that drifts is worse than no number. The
+            build version row is the one figure stamped at build time. */}
         <SadbKvRow label={t('system.storageEngine')} value="PouchDB (IndexedDB)" />
-        <SadbKvRow label={t('system.platform')} value="Next.js 14" />
+        <SadbKvRow label={t('system.platform')} value="Next.js (App Router)" />
         <SadbKvRow label={t('system.uiFramework')} value="Tailwind CSS" />
         <SadbKvRow label={t('system.auth')} value="JWT (Client-side)" />
+        <SadbKvRow label="Build version" value={process.env.NEXT_PUBLIC_APP_VERSION || '—'} />
       </SadbCard>
     </SadbPage>
   );

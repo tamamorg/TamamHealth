@@ -100,9 +100,15 @@ const emptyCensus = (date: string): CensusData => ({
   maternityBeds: 0, maternityOccupied: 0, pediatricBeds: 0, pediatricOccupied: 0,
   doctorsPresent: 0, nursesPresent: 0, clinicalOfficers: 0, labTechs: 0, pharmacists: 0, supportStaff: 0,
   functionalThermometers: 0, functionalBPMonitors: 0, functionalStethoscopes: 0, functionalOximeters: 0,
-  wheelchairsAvailable: 0, ambulanceOperational: false, generatorFunctional: false, waterAvailable: true, electricityHoursToday: 0,
-  tracerMedicinesInStock: 0, tracerMedicinesTotal: 20, stockOutItems: '', labTestsPerformed: 0, labTestsPending: 0, bloodUnitsAvailable: 0,
-  handwashStations: 0, handwashFunctional: 0, wasteDisposalFunctional: true, ppeSetsAvailable: 0,
+  // Nothing defaults to "working": waterAvailable and wasteDisposalFunctional
+  // used to default TRUE, so a clerk who saved without touching those
+  // sections filed a readiness report asserting water and waste disposal were
+  // functional. tracerMedicinesTotal used to default 20 — a hardcoded
+  // denominator that skewed the availability % for any facility whose tracer
+  // list isn't 20 items. Every field now starts at "not reported".
+  wheelchairsAvailable: 0, ambulanceOperational: false, generatorFunctional: false, waterAvailable: false, electricityHoursToday: 0,
+  tracerMedicinesInStock: 0, tracerMedicinesTotal: 0, stockOutItems: '', labTestsPerformed: 0, labTestsPending: 0, bloodUnitsAvailable: 0,
+  handwashStations: 0, handwashFunctional: 0, wasteDisposalFunctional: false, ppeSetsAvailable: 0,
   challenges: '', achievements: '', urgentNeeds: '',
 });
 
@@ -258,7 +264,9 @@ export default function DataEntryDashboard() {
   // Latest report drives the KPI metrics in the right rail.
   const latest = savedReports[0] || null;
   const bedOccupancy = latest && latest.totalBeds > 0 ? Math.round((latest.occupiedBeds / latest.totalBeds) * 100) : 0;
-  const medAvailability = latest && latest.tracerMedicinesTotal > 0 ? Math.round((latest.tracerMedicinesInStock / latest.tracerMedicinesTotal) * 100) : 0;
+  // null when the report never stated a tracer-list size — a 0% here would
+  // read as a total stockout rather than "not reported".
+  const medAvailability = latest && latest.tracerMedicinesTotal > 0 ? Math.round((latest.tracerMedicinesInStock / latest.tracerMedicinesTotal) * 100) : null;
 
   // Search filter over the saved-report worklist (matches on report date).
   const filteredReports = useMemo(() => {
@@ -469,7 +477,7 @@ export default function DataEntryDashboard() {
         metrics={[
           { label: t('dataEntry.kpiFacilityScore'), value: facilityStats ? `${facilityStats.pct}%` : '--', tone: facilityStats ? (facilityStats.pct >= 80 ? 'success' : 'warning') : 'neutral' },
           { label: t('dashboard.bedOccupancy'), value: latest ? `${bedOccupancy}%` : '--', tone: bedOccupancy > 90 ? 'danger' : bedOccupancy > 70 ? 'warning' : 'success' },
-          { label: t('dataEntry.kpiMedicineAvail'), value: latest ? `${medAvailability}%` : '--', tone: medAvailability >= 80 ? 'success' : medAvailability >= 50 ? 'warning' : 'danger' },
+          { label: t('dataEntry.kpiMedicineAvail'), value: latest && medAvailability !== null ? `${medAvailability}%` : '--', tone: medAvailability === null ? 'neutral' : medAvailability >= 80 ? 'success' : medAvailability >= 50 ? 'warning' : 'danger' },
           { label: t('dataEntry.kpiReportsFiled'), value: savedReports.length },
           { label: t('dataEntry.dailyCensus'), value: (!!latest && latest.date === today) ? t('patientPortal.done') : t('patientPortal.pending'), tone: (!!latest && latest.date === today) ? 'success' : 'warning', onClick: () => setShowForm(true) },
         ]}

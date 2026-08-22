@@ -12,7 +12,6 @@ import { supportsPartToWhole, type ReportChartKind } from './_ReportCharts';
 import { DISEASE_COLOR } from '@/lib/chart-colors';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EmptyState from '@/components/EmptyState';
-import { FilterSelect } from '@/components/filters';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useReferrals } from '@/lib/hooks/useReferrals';
@@ -23,7 +22,7 @@ import { usePayments, useLedger } from '@/lib/hooks/usePayments';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { BillingDoc } from '@/lib/db-types-billing';
 import { ESSENTIAL_MEDICINES } from '@/lib/services/supply-chain-service';
-import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
+import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import Select from '@/components/Select';
 import { downloadCsv, safeFilenamePart } from '@/lib/export-file';
 
@@ -213,14 +212,11 @@ export default function ReportsPage() {
   // report changes on purpose: a reader who chose a treemap wants treemaps,
   // not a reset on every step.
   const [chartKind, setChartKind] = useState<ReportChartKind>('column');
-  // Reporting period selector. Reports regenerate on demand from live data, so
-  // this is presentational only — it does not (yet) filter the underlying rows.
-  const periodOptions = [
-    { value: 'feb2026', label: t('reports.monthFeb2026') },
-    { value: 'jan2026', label: t('reports.monthJan2026') },
-    { value: 'dec2025', label: t('reports.monthDec2025') },
-  ];
-  const [reportPeriod, setReportPeriod] = useState('feb2026');
+  // No period selector: the old dropdown offered three hardcoded months
+  // (stale within weeks of shipping) and filtered NOTHING — every report is
+  // generated over all records, and the control labelled that all-time data
+  // as a specific past month. Until report generation takes a real date
+  // filter, the page states the true window instead of simulating a choice.
 
   // Which report the page's one graph is showing. Every report reduces to the
   // same shape, so drawing each of them its own chart — sixteen card
@@ -458,7 +454,9 @@ export default function ReportsPage() {
                 unit: item.unit || '',
               };
             }
-            byMedication[key].dispensedToday += item.dispensedToday || 0;
+            // Day-guarded read — the raw counter can hold a stale or (on
+            // pre-stamp docs) lifetime total (see dispensedTodayOf).
+            byMedication[key].dispensedToday += dispensedTodayOf(item);
             byMedication[key].currentStock += item.stockLevel || 0;
             byMedication[key].reorderLevel += item.reorderLevel || 0;
             byMedication[key].facilities.add(item.hospitalName || item.hospitalId || 'Unknown');
@@ -576,7 +574,9 @@ export default function ReportsPage() {
             'Lab Technicians': h.labTechnicians ?? 0,
             Pharmacists: h.pharmacists ?? 0,
             'Total Beds': h.totalBeds,
-            'Patients Registered': h.patientCount ?? 0,
+            // Real registrations — HospitalDoc.patientCount is a
+            // write-once-zero registry field (2026-08 hardcoded-data sweep).
+            'Patients Registered': patients.filter(p => p.registrationHospital === h._id).length,
           }));
           return { rows, title: 'Staff Productivity Report' };
         }
@@ -870,13 +870,11 @@ export default function ReportsPage() {
               ))}
             </Select>
 
-            <FilterSelect
-              value={reportPeriod}
-              onChange={setReportPeriod}
-              options={periodOptions}
-              neutralValue="feb2026"
-              aria-label={t('reports.pageTitle')}
-            />
+            {/* The honest period: all records to date (see the note where the
+                fake month dropdown used to be defined). */}
+            <span className="text-xs font-semibold px-2.5 py-1.5 rounded-lg" style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)', whiteSpace: 'nowrap' }}>
+              {t('reports.periodAllRecords')}
+            </span>
 
             {/* Chart form. Only the honest ones for this data shape are here
                 — see the note at the top of _ReportCharts.tsx for why line and

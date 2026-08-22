@@ -15,7 +15,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
 import { medications } from '@/lib/data/formulary';
-import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
+import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import { medicationMatches } from '@/lib/services/dispensing-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
@@ -607,7 +607,9 @@ export default function PharmacyPage() {
   const paymentDueCount = rxQueue.filter(r => pharmacyStage(r) === 'cleared_for_dispensing' && !isClearedFor(r.patientId)).length;
   const readyCount = rxQueue.filter(r => pharmacyStage(r) === 'cleared_for_dispensing' && isClearedFor(r.patientId)).length;
   const lowStock = inventory.filter(i => i.status === 'low' || i.status === 'critical').length;
-  const totalDispensedToday = inventory.reduce((sum, i) => sum + (i.dispensedToday || 0), 0);
+  // Day-guarded reads — the raw counter can hold a stale or (on docs written
+  // before the day-stamp) lifetime total (see dispensedTodayOf).
+  const totalDispensedToday = inventory.reduce((sum, i) => sum + dispensedTodayOf(i), 0);
 
   const filteredInventory = inventory.filter(i => {
     if (q && !(i.medicationName.toLowerCase().includes(q.toLowerCase()) || i.category.toLowerCase().includes(q.toLowerCase()))) return false;
@@ -776,7 +778,7 @@ export default function PharmacyPage() {
           i.status === 'adequate' ? t('pharmacy.inStock') : t(`pharmacy.invStatus_${i.status}`),
           i.batchNumber,
           i.expiryDate,
-          i.dispensedToday,
+          dispensedTodayOf(i),
         ]);
         break;
       case 'reorder':
@@ -1131,7 +1133,7 @@ export default function PharmacyPage() {
                     <td className="text-xs" style={{ color: item.status === 'expired' ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>
                       {item.expiryDate}
                     </td>
-                    <td className="text-center font-semibold text-sm">{item.dispensedToday}</td>
+                    <td className="text-center font-semibold text-sm">{dispensedTodayOf(item)}</td>
                     {canDispense && (
                       <td>
                         <button className="btn btn-secondary btn-sm" onClick={() => openRestock(item._id)}>+ {t('pharmacy.receive')}</button>

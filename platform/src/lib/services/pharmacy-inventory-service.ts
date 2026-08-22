@@ -121,10 +121,14 @@ export async function decrementStock(
       ? initial
       : (await db.get(initial._id) as PharmacyInventoryDoc);
     const now = new Date().toISOString();
+    // Day-scoped counter: reset when the Juba clinical day rolls over, so
+    // "dispensed today" never accumulates into a lifetime total.
+    const today = jubaDate();
     const updated: PharmacyInventoryDoc = {
       ...target,
       stockLevel: Math.max(0, (target.stockLevel || 0) - quantity),
-      dispensedToday: (target.dispensedToday || 0) + quantity,
+      dispensedToday: (target.dispensedTodayDate === today ? (target.dispensedToday || 0) : 0) + quantity,
+      dispensedTodayDate: today,
       lastDispensed: now,
       updatedAt: now,
     };
@@ -166,6 +170,17 @@ export async function deleteInventoryItem(id: string, scope?: DataScope): Promis
   } catch {
     return false;
   }
+}
+
+/**
+ * The quantity actually dispensed TODAY (Juba clinical day). The stored
+ * counter is only valid when its day-stamp is today — docs written before
+ * the stamp existed carry a lifetime total under a per-day name, and a doc
+ * untouched since yesterday still holds yesterday's count. Every display of
+ * "dispensed today" must read through this, never the raw field.
+ */
+export function dispensedTodayOf(item: Pick<PharmacyInventoryDoc, 'dispensedToday' | 'dispensedTodayDate'>): number {
+  return item.dispensedTodayDate === jubaDate() ? (item.dispensedToday || 0) : 0;
 }
 
 export function classifyStockStatus(item: PharmacyInventoryDoc): 'adequate' | 'low' | 'critical' | 'expired' {

@@ -16,6 +16,7 @@ import { useApp } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { apiFetch } from '@/lib/api-fetch';
 import { isPathAllowed } from '@/lib/role-routes';
+import { DATABASE_SYNC_CONFIGS } from '@/lib/sync/sync-config';
 import {
   Activity, AlertTriangle, CheckCircle2, Database, HardDrive, RefreshCw,
   Server, ShieldCheck, Smartphone, Upload,
@@ -27,16 +28,17 @@ interface DbStat {
   count: number;
 }
 
-const DB_NAMES = [
-  ['tamamhealth_patients', 'Patients'],
-  ['tamamhealth_appointments', 'Appointments'],
-  ['tamamhealth_medical_records', 'Medical Records'],
-  ['tamamhealth_lab_results', 'Lab & Imaging'],
-  ['tamamhealth_prescriptions', 'Prescriptions'],
-  ['tamamhealth_payments', 'Payments'],
-  ['tamamhealth_referrals', 'Referrals'],
-  ['tamamhealth_audit_log', 'Audit Log'],
-] as const;
+// Every synced store, from the one canonical list (sync-config). The old
+// hand-typed list of 8 stores meant the "N documents" headline silently
+// counted a tenth of local storage while reading as the total.
+const DB_NAMES: ReadonlyArray<readonly [string, string]> = DATABASE_SYNC_CONFIGS.map(c => [
+  c.localName,
+  c.localName.replace(/^tamamhealth_/, '').replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase()),
+] as const);
+
+/** Bars drawn in the Data Stores card — the biggest stores; the headline
+ *  total still counts every store. */
+const STORE_BARS_SHOWN = 8;
 
 const CONSOLE_LINKS = [
   { href: '/data-quality', title: 'Data quality monitor', desc: 'Completeness and validation issues by facility.' },
@@ -161,7 +163,11 @@ export default function ItOperationsPanel({ embedded = false }: {
         <HealthCard icon={Activity} title="Sync" status={syncStatus} value={syncPaused ? 'Paused' : isOnline ? 'Online' : 'Offline'} detail={lastSync ? `Last sync ${new Date(lastSync).toLocaleString()}` : 'No sync recorded'} />
         <HealthCard icon={HardDrive} title="Backup" status={backupStatus} value={backupAgeHours === null ? 'None recorded' : `${backupAgeHours}h old`} detail={backupAgeHours === null ? `No backup on this device yet · expected every ${settings.itOperations.backupFrequencyHours}h` : `Expected every ${settings.itOperations.backupFrequencyHours}h`} />
         <HealthCard icon={Smartphone} title="Devices" status={settings.itOperations.requireDeviceRegistration ? 'healthy' : 'warning'} value={settings.itOperations.requireDeviceRegistration ? 'Registration on' : 'Open'} detail={`Review every ${settings.itOperations.deviceReviewDays} days`} />
-        <HealthCard icon={ShieldCheck} title="Audit" status="healthy" value={`${settings.itOperations.auditRetentionDays} days`} detail="Retention policy" />
+        {/* 'unknown', not 'healthy': the retention number is a local setting
+            nothing enforces (see /admin/security's "· not enforced" note on
+            the same policy) — a green check here claimed a control that does
+            not exist. */}
+        <HealthCard icon={ShieldCheck} title="Audit" status="unknown" value={`${settings.itOperations.auditRetentionDays} days`} detail="Retention policy (not enforced)" />
       </div>
 
       {/* 50/50 split so the seam lines up with the health-card row above
@@ -241,7 +247,7 @@ export default function ItOperationsPanel({ embedded = false }: {
             <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{loadingStats ? '…' : `${totalDocs.toLocaleString()} documents`}</span>
           </div>
           <div className="px-4 py-2 flex-1 flex flex-col justify-center">
-            {dbStats.map(stat => {
+            {[...dbStats].sort((a, b) => b.count - a.count).slice(0, STORE_BARS_SHOWN).map(stat => {
               const maxCount = Math.max(1, ...dbStats.map(s => s.count));
               return (
                 <div key={stat.key} className="it-store-row">
@@ -254,6 +260,11 @@ export default function ItOperationsPanel({ embedded = false }: {
                 </div>
               );
             })}
+            {dbStats.length > STORE_BARS_SHOWN && (
+              <p className="text-[11px] pt-1" style={{ color: 'var(--text-muted)' }}>
+                Largest {STORE_BARS_SHOWN} of {dbStats.length} stores — the document total above counts all of them.
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -261,16 +272,21 @@ export default function ItOperationsPanel({ embedded = false }: {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <section className="dash-card overflow-hidden">
           <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Configured Integrations</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Integrations Enabled in Settings</h2>
           </div>
           <div className="px-4 py-2">
+            {/* This list is the facility SETTING (which integrations the
+                facility has switched on), not a connectivity check — the old
+                green "Configured" pill asserted DHIS2/SMS/payments were live
+                on fresh deployments where /admin/interop correctly reported
+                the opposite. Actual endpoint state lives on /admin/interop. */}
             {settings.itOperations.integrations.map(integration => (
               <div key={integration} className="it-kv-row">
                 <span className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-                  <i className="it-dot" style={{ background: 'var(--color-success)' }} />
+                  <i className="it-dot" style={{ background: 'var(--text-muted)' }} />
                   {integration.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                 </span>
-                <span className="it-pill">Configured</span>
+                <span className="it-pill">Enabled</span>
               </div>
             ))}
           </div>

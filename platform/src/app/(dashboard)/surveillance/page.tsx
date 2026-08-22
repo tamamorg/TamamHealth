@@ -25,6 +25,8 @@ import { SOUTH_SUDAN_STATES, WHITE_NILE } from '@/data/south-sudan-geo';
 import { makeProjector } from '@/lib/maps/south-sudan-projection';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { useHospitals } from '@/lib/hooks/useHospitals';
+import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
+import { censusFor } from '@/lib/services/facility-census';
 import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
@@ -175,6 +177,9 @@ export default function SurveillancePage() {
   const { showToast } = useToast();
   const { alerts: diseaseAlerts, create: createAlert } = useSurveillance();
   const { hospitals } = useHospitals();
+  // Real per-facility patient counts for the map tooltip — the stored
+  // HospitalDoc.patientCount is write-once-zero (2026-08 sweep).
+  const { census } = useFacilityCensus();
 
   const handleCreateAlert = async () => {
     if (!alertForm.disease || !alertForm.state || alertForm.cases <= 0) {
@@ -509,7 +514,7 @@ export default function SurveillancePage() {
                               fill="#94A2B3">{h.state}</text>
                             <text x={pos.x} y={pos.y - 15} textAnchor="middle" fontSize="9"
                               fill={dotColor} fontWeight="500">
-                              {alertLevel.toUpperCase()} -- {h.patientCount.toLocaleString()} patients
+                              {alertLevel.toUpperCase()} -- {censusFor(census, h._id).patients.toLocaleString()} patients
                             </text>
                           </g>
                         )}

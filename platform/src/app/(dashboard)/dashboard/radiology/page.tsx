@@ -40,10 +40,10 @@ function formatTurnaround(minutes: number): string {
   return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
 }
 
-// Demo data — only shown when NEXT_PUBLIC_DEMO_MODE !== 'false' AND no real
+// Demo data — only shown when NEXT_PUBLIC_DEMO_MODE === 'true' AND no real
 // studies exist yet. Production with the env var unset/false renders an
 // empty-state instead so staff never mistake fake studies for real orders.
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 const SAMPLE_STUDIES = [
   { id: 'img-001', patientName: 'Deng Mabior Garang', modality: 'X-Ray', bodyPart: 'Chest PA', status: 'pending', priority: 'urgent', orderedBy: 'Dr. James Wani', date: '2026-02-09', notes: 'Suspected pneumonia, persistent cough 3 weeks' },

@@ -4,7 +4,7 @@ import type { PatientDoc } from '@/lib/db-types';
 // below (shown when a facility hasn't configured real bank details) — the
 // login screen's demo scaffolding (Demo Accounts panel, ?demo= auto-login)
 // has been removed in favor of a single real username/password account.
-export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 const PATIENT_PORTAL_SESSION_KEY = 'tamamhealth-patient-portal-session';
 
 export type PatientPortalSession = {

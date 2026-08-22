@@ -7,7 +7,7 @@
  * fall back to bundled SAMPLE_* arrays.
  *
  * Visibility is the caller's responsibility — render this component only
- * when `NEXT_PUBLIC_DEMO_MODE !== 'false'` AND the page is actually about
+ * when `NEXT_PUBLIC_DEMO_MODE === 'true'` AND the page is actually about
  * to display demo data. We do NOT inspect the env var here so the banner
  * is reusable for any future demo-data surface.
  *

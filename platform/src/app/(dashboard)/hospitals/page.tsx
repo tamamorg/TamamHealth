@@ -13,6 +13,9 @@ import {
   ResponsiveContainer, LineChart, Line,
 } from 'recharts';
 import { useHospitals } from '@/lib/hooks/useHospitals';
+import { useWards } from '@/lib/hooks/useWards';
+import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
+import { censusFor } from '@/lib/services/facility-census';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useApp } from '@/lib/context';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
@@ -211,30 +214,33 @@ function HospitalsPageInner() {
   }, [hospitals, search, globalSearch, filterState, filterCounty, filterType, filterOwnership, filterStatus, filterService]);
 
   // ── KPIs ──
+  // Performance averages run over the facilities that HAVE performance data
+  // only — `performance` is written by nothing in the app (it exists only on
+  // seeded demo records), so averaging `|| 0` across every facility reported
+  // "Avg reporting 0%" as a measured fact on real deployments. With no
+  // measured facility at all the figures read '—', never a false zero.
   const kpis = useMemo(() => {
     const f = filteredHospitals;
-    const n = f.length || 1;
     const functional = f.filter(h => h.operationalStatus === 'functional').length;
-    const avgReporting = f.reduce((s, h) => s + (h.performance?.reportingCompleteness || 0), 0) / n;
-    const avgReadiness = f.reduce((s, h) => s + (h.performance?.serviceReadinessScore || 0), 0) / n;
-    const coverageGaps = f.filter(h => (h.performance?.immunizationCoverage || 0) < 50).length;
+    const withPerf = f.filter(h => h.performance);
+    const avgReporting = withPerf.length
+      ? Math.round(withPerf.reduce((s, h) => s + (h.performance?.reportingCompleteness || 0), 0) / withPerf.length)
+      : null;
+    const avgReadiness = withPerf.length
+      ? Math.round(withPerf.reduce((s, h) => s + (h.performance?.serviceReadinessScore || 0), 0) / withPerf.length)
+      : null;
+    const coverageGaps = withPerf.filter(h => (h.performance?.immunizationCoverage || 0) < 50).length;
     const totalStaff = f.reduce((s, h) => s + (h.doctors || 0) + (h.nurses || 0) + (h.clinicalOfficers || 0), 0);
     const totalBeds = f.reduce((s, h) => s + (h.totalBeds || 0), 0);
     return {
       total: f.length,
       pctFunctional: f.length ? Math.round((functional / f.length) * 100) : 0,
-      avgReporting: Math.round(avgReporting),
-      avgReadiness: Math.round(avgReadiness),
+      avgReporting,
+      avgReadiness,
       coverageGaps,
+      hasPerformanceData: withPerf.length > 0,
       staffPerBed: totalBeds ? (totalStaff / totalBeds).toFixed(1) : '—',
     };
-  }, [filteredHospitals]);
-
-  // Sync-status counts for the facility list header's stat chips.
-  const syncCounts = useMemo(() => {
-    const online = filteredHospitals.filter(h => h.syncStatus === 'online').length;
-    const offline = filteredHospitals.filter(h => h.syncStatus !== 'online').length;
-    return { online, offline };
   }, [filteredHospitals]);
 
   // Badge count for the Filters pill — colorMetric is a display option, not a
@@ -303,12 +309,14 @@ function HospitalsPageInner() {
                 stats={[
                   { label: t('hospitals.kpiFacilities'), value: kpis.total, color: LIST_STAT_COLORS.muted },
                   { label: t('hospitals.kpiFunctional'), value: `${kpis.pctFunctional}%`, color: getPerformanceColor(kpis.pctFunctional) },
-                  { label: t('hospitals.kpiReporting'), value: `${kpis.avgReporting}%`, color: getPerformanceColor(kpis.avgReporting) },
-                  { label: t('hospitals.kpiReadiness'), value: `${kpis.avgReadiness}%`, color: getPerformanceColor(kpis.avgReadiness) },
-                  { label: t('hospitals.kpiGaps'), value: kpis.coverageGaps, color: kpis.coverageGaps > 5 ? 'var(--color-danger)' : 'var(--color-warning)' },
+                  { label: t('hospitals.kpiReporting'), value: kpis.avgReporting === null ? '—' : `${kpis.avgReporting}%`, color: kpis.avgReporting === null ? LIST_STAT_COLORS.muted : getPerformanceColor(kpis.avgReporting) },
+                  { label: t('hospitals.kpiReadiness'), value: kpis.avgReadiness === null ? '—' : `${kpis.avgReadiness}%`, color: kpis.avgReadiness === null ? LIST_STAT_COLORS.muted : getPerformanceColor(kpis.avgReadiness) },
+                  { label: t('hospitals.kpiGaps'), value: kpis.hasPerformanceData ? kpis.coverageGaps : '—', color: !kpis.hasPerformanceData ? LIST_STAT_COLORS.muted : kpis.coverageGaps > 5 ? 'var(--color-danger)' : 'var(--color-warning)' },
                   { label: t('hospitals.kpiStaffPerBed'), value: kpis.staffPerBed, color: LIST_STAT_COLORS.muted },
-                  { label: 'Online', value: syncCounts.online, color: LIST_STAT_COLORS.blue },
-                  { label: 'Offline', value: syncCounts.offline, color: LIST_STAT_COLORS.amber },
+                  // The Online/Offline chips are gone: they counted
+                  // HospitalDoc.syncStatus, a field frozen at creation that no
+                  // sync code ever updates — the split measured how records
+                  // were created, not connectivity.
                 ]}
                 search={{ value: search, onChange: setSearch, placeholder: t('hospitals.searchPlaceholder'), ariaLabel: t('hospitals.searchPlaceholder') }}
                 actions={
@@ -561,9 +569,10 @@ function FacilityList({ hospitals, colorMetric, onSelect, canManage, onOpenTab }
             <th>{t('hospitals.colBeds')}</th>
             <th>{t('hospitals.colStaff')}</th>
             <th>{METRIC_LABELS[colorMetric]}</th>
-            {/* Last column: aligned to the row's right edge so the sync badges
-                form a single column at the end rather than floating. */}
-            <th style={{ textAlign: 'right' }}>{t('hospitals.colSync')}</th>
+            {/* The Sync column was removed 2026-08: it displayed
+                HospitalDoc.syncStatus, which is frozen at creation — every
+                app-created facility read "offline" forever. Bring it back only
+                with a real per-facility liveness source (sync events). */}
             {canManage && <th aria-label={t('hospitals.manage')} />}
           </tr>
         </thead>
@@ -612,15 +621,6 @@ function FacilityList({ hospitals, colorMetric, onSelect, canManage, onOpenTab }
                       {formatMetricValue(colorMetric, metricVal)}
                     </span>
                   </div>
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 999, textTransform: 'capitalize',
-                    color: h.syncStatus === 'online' ? 'var(--color-success-text)' : h.syncStatus === 'syncing' ? 'var(--color-warning-text)' : 'var(--text-muted)',
-                    background: h.syncStatus === 'online' ? 'color-mix(in srgb, var(--color-success) 12%, transparent)' : h.syncStatus === 'syncing' ? 'color-mix(in srgb, var(--color-warning) 12%, transparent)' : 'var(--overlay-subtle)',
-                  }}>
-                    {h.syncStatus}
-                  </span>
                 </td>
                 {canManage && (
                   /* The gear is a shortcut, not the only way in: the row still
@@ -696,6 +696,11 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
 }) {
   const { t } = useTranslation();
   const { currentUser } = useApp();
+  // Real counts for the profile KPIs — the stored patientCount/todayVisits
+  // registry fields are write-once-zero (2026-08 hardcoded-data sweep), and
+  // the ward docs are the only true occupancy signal.
+  const { census: facilityCensus } = useFacilityCensus();
+  const { wards } = useWards();
   const [tab, setTab] = useState<ProfileTabId>(initialTab ?? 'overview');
   // A late-arriving ?tab= (the manage-route redirect lands before the
   // facility list has loaded) still opens the tab it asked for.
@@ -758,25 +763,16 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
     return () => { cancelled = true; };
   }, [scope, hospital._id]);
 
-  const formatLastSync = (iso: string) => {
-    if (!iso) return t('hospitals.syncUnknown');
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return t('hospitals.syncUnknown');
-    const now = new Date();
-    const diffMin = Math.floor((now.getTime() - d.getTime()) / 60000);
-    if (diffMin < 1) return t('hospitals.syncJustNow');
-    if (diffMin < 60) return t('hospitals.syncMinutesAgo', { count: diffMin });
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return t('hospitals.syncHoursAgo', { count: diffHr });
-    return t('hospitals.syncDaysAgo', { count: Math.floor(diffHr / 24) });
-  };
-
   const totalStaff = (hospital.doctors || 0) + (hospital.clinicalOfficers || 0) + (hospital.nurses || 0) + (hospital.labTechnicians || 0) + (hospital.pharmacists || 0);
   const contact = hospital as unknown as { phone?: string; email?: string };
-  // Best-available proxy, labelled as an estimate wherever it is shown — the
-  // ward bed counts are the only occupancy signal the hospital record carries.
-  const occupiedBeds = (hospital.icuBeds || 0) + (hospital.maternityBeds || 0) + (hospital.pediatricBeds || 0);
-  const occupancyPct = hospital.totalBeds ? Math.round((occupiedBeds / hospital.totalBeds) * 100) : 0;
+  // Real occupancy from this facility's ward documents (the same census the
+  // Wards board draws from) — null when the facility has no ward docs yet.
+  // The old "estimate" summed ICU+maternity+paediatric CAPACITY and divided
+  // by total capacity: a constant that never moved with admissions.
+  const facilityWards = wards.filter(w => w.facilityId === hospital._id);
+  const wardBedTotal = facilityWards.reduce((s, w) => s + (w.totalBeds || 0), 0);
+  const wardBedsOccupied = facilityWards.reduce((s, w) => s + (w.occupiedBeds || 0), 0);
+  const occupancyPct = wardBedTotal > 0 ? Math.round((wardBedsOccupied / wardBedTotal) * 100) : null;
 
   return (
     <div style={{ padding: 20, overflowY: 'auto', flex: 1, minHeight: 0 }}>
@@ -888,8 +884,8 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
       <>
       {/* Quick stats row */}
       <div className="kpi-grid" style={{ marginBottom: 16 }}>
-        <div className="kpi"><div className="icon-box-sm"><Users style={{ color: 'var(--accent-primary)' }} /></div><div className="kpi__body"><div className="kpi__value">{hospital.patientCount.toLocaleString()}</div><div className="kpi__label">{t('hospitals.statPatients')}</div></div></div>
-        <div className="kpi"><div className="icon-box-sm"><Activity style={{ color: 'var(--accent-primary)' }} /></div><div className="kpi__body"><div className="kpi__value">{hospital.todayVisits}</div><div className="kpi__label">{t('hospitals.statToday')}</div></div></div>
+        <div className="kpi"><div className="icon-box-sm"><Users style={{ color: 'var(--accent-primary)' }} /></div><div className="kpi__body"><div className="kpi__value">{facilityCensus ? censusFor(facilityCensus, hospital._id).patients.toLocaleString() : '…'}</div><div className="kpi__label">{t('hospitals.statPatients')}</div></div></div>
+        <div className="kpi"><div className="icon-box-sm"><Activity style={{ color: 'var(--accent-primary)' }} /></div><div className="kpi__body"><div className="kpi__value">{facilityCensus ? censusFor(facilityCensus, hospital._id).todayVisits : '…'}</div><div className="kpi__label">{t('hospitals.statToday')}</div></div></div>
         <div className="kpi"><div className="icon-box-sm"><BedDouble style={{ color: '#FFD2A6' }} /></div><div className="kpi__body"><div className="kpi__value">{hospital.totalBeds}</div><div className="kpi__label">{t('hospitals.statBeds')}</div></div></div>
         <div className="kpi"><div className="icon-box-sm"><Stethoscope style={{ color: '#FFD2A6' }} /></div><div className="kpi__body"><div className="kpi__value">{totalStaff}</div><div className="kpi__label">{t('hospitals.statStaff')}</div></div></div>
       </div>
@@ -959,9 +955,9 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
               { label: t('hospitals.bedsMaternity'), value: hospital.maternityBeds },
               { label: t('hospitals.bedsPediatric'), value: hospital.pediatricBeds },
               { label: t('hospitals.bedsGeneral'), value: Math.max(0, hospital.totalBeds - hospital.icuBeds - hospital.maternityBeds - hospital.pediatricBeds) },
-              // Carried over from the manage screen's header facts, which is
-              // the only place this estimate used to appear.
-              { label: t('hospitals.occupancyEstimated'), value: `${occupancyPct}%` as number | string },
+              // Ward-derived; '—' until the facility has ward documents, so
+              // an unmeasured facility never reads as 0% (or a fake constant).
+              { label: t('hospitals.occupancyEstimated'), value: (occupancyPct === null ? '—' : `${occupancyPct}%`) as number | string },
             ].map(b => (
               <div key={b.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{b.label}</span>
@@ -1048,10 +1044,10 @@ function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRe
 
       {/* Footer: sync + GPS */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', padding: '8px 0', borderTop: '1px solid var(--border-light)' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: hospital.syncStatus === 'online' ? 'var(--color-success)' : hospital.syncStatus === 'syncing' ? 'var(--color-warning)' : 'var(--text-muted)' }} />
-          {hospital.syncStatus} &middot; <Clock style={{ width: 10, height: 10 }} /> {formatLastSync(hospital.lastSync)}
-        </span>
+        {/* The sync dot + "last synced" line are gone: both read fields frozen
+            at record creation, so they asserted a replication state nothing
+            measures. */}
+        <span />
         <span className="font-mono">{(hospital.lat ?? 0).toFixed(4)}°N, {(hospital.lng ?? 0).toFixed(4)}°E{hospital.county && ` | ${hospital.county}`}</span>
       </div>
       </>

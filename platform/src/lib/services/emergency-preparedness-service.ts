@@ -245,7 +245,11 @@ export async function getSurgeAlerts(facilityId?: string, scope?: DataScope): Pr
       });
     }
 
-    if (plan.resources.oralRehydrationSachets < 50 && (plan.emergencyType === 'cholera_outbreak' || plan.emergencyType === 'disease_outbreak')) {
+    // Only alert on a stock level somebody actually RECORDED: the plan form
+    // hardcodes oralRehydrationSachets to 0 with no input field, so `< 50`
+    // alone raised a permanent "running low on ORS (0 remaining)" alert on
+    // every outbreak plan the moment it was created — an invented emergency.
+    if (plan.resources.oralRehydrationSachets > 0 && plan.resources.oralRehydrationSachets < 50 && (plan.emergencyType === 'cholera_outbreak' || plan.emergencyType === 'disease_outbreak')) {
       alerts.push({
         planId: plan._id,
         planName: plan.planName,

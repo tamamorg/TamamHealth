@@ -10,7 +10,7 @@ import { usePharmacyInventory } from '@/lib/hooks/usePharmacyInventory';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
-import { classifyStockStatus } from '@/lib/services/pharmacy-inventory-service';
+import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import { checkNewPrescription, type DrugInteraction, type InteractionSeverity } from '@/lib/services/drug-interaction-service';
 import { formatMoney , formatRxSig, formatClockTime } from '@/lib/format-utils';
 import { isActivePharmacyStage, isFinanciallyCleared, pharmacyStage, pharmacyStageGroup, pharmacyStageLabel, pharmacyStageTone } from '@/lib/pharmacy-workflow';
@@ -501,8 +501,11 @@ export default function PharmacyDashboardPage() {
   const stockRiskRows = useMemo<StockRiskRow[]>(() => {
     return inventory
       .map(item => {
-        if (!item.dispensedToday || item.dispensedToday <= 0) return { item, daysRemaining: null, rag: null };
-        const daysRemaining = item.stockLevel / item.dispensedToday;
+        // Day-guarded: the raw counter can hold yesterday's (or, on docs
+        // written before the day-stamp, a lifetime) total.
+        const todayQty = dispensedTodayOf(item);
+        if (todayQty <= 0) return { item, daysRemaining: null, rag: null };
+        const daysRemaining = item.stockLevel / todayQty;
         const rag: 'red' | 'amber' | 'green' = daysRemaining <= 3 ? 'red' : daysRemaining <= 7 ? 'amber' : 'green';
         return { item, daysRemaining, rag };
       })
@@ -1173,7 +1176,7 @@ export default function PharmacyDashboardPage() {
                           <tr key={item._id} style={{ borderTop: '1px solid var(--border-light)' }}>
                             <td className="px-2.5 py-1.5" style={{ color: 'var(--text-primary)' }}>{item.medicationName}</td>
                             <td className="px-2.5 py-1.5 text-end" style={{ color: 'var(--text-muted)' }}>{item.stockLevel} {item.unit}</td>
-                            <td className="px-2.5 py-1.5 text-end" style={{ color: 'var(--text-muted)' }}>{item.dispensedToday}</td>
+                            <td className="px-2.5 py-1.5 text-end" style={{ color: 'var(--text-muted)' }}>{dispensedTodayOf(item)}</td>
                             <td className="px-2.5 py-1.5 text-end">
                               {daysRemaining == null ? (
                                 <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>No dispenses today</span>

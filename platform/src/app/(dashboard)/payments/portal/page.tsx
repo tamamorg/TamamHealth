@@ -15,10 +15,11 @@ import type { PaymentMethodType, PaymentStatus } from '@/lib/db-types-payments';
 import { formatMoney } from '@/lib/format-utils';
 import '@/components/billing/billing.css';
 
-// Demo gate. In production (NEXT_PUBLIC_DEMO_MODE=false) the portal never
+// Demo gate — must be EXPLICITLY enabled (=== 'true'): an absent build-time
+// env var must never show a patient invented invoices. In production the portal never
 // shows fake invoices or the hardcoded Equity Bank account — empty state
 // instead, and bank details fall back to a "contact billing" placeholder.
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 // Shape the portal renders against — independent of underlying BillingDoc so
 // we can keep the demo fallback when a patient has no real bills yet.
@@ -113,11 +114,20 @@ const resolveBankInstructions = (bankDetails?: string): string =>
 
 type PaymentMethodDef = { id: PaymentMethod; label: string; desc: string; icon: typeof Smartphone; color: string; instructions: string };
 
+// Mobile-money instructions follow the same rule as bank transfer: the canned
+// merchant identifiers exist ONLY in demo mode. They were previously shown
+// unconditionally, which handed production patients invented pay-bill numbers
+// — including 247247, a real Safaricom paybill that belongs to someone else.
+// Until per-org merchant codes exist in settings, production says "contact
+// billing" rather than directing money to a number nobody at the facility owns.
+const momoInstructions = (demoExample: string): string =>
+  IS_DEMO ? demoExample : BANK_INSTRUCTIONS_FALLBACK;
+
 const buildPaymentMethods = (bankDetails?: string): PaymentMethodDef[] => [
-  { id: 'mgurush', label: 'm-GURUSH', desc: 'Pay via m-GURUSH (South Sudan)', icon: Smartphone, color: '#1E90FF', instructions: 'Dial *158# > Pay Bill\nBusiness Number: TamamHealth\nReference: Your Invoice #' },
-  { id: 'mpesa', label: 'M-Pesa', desc: 'Pay via Safaricom M-Pesa', icon: Smartphone, color: '#0FA06A', instructions: 'Go to M-Pesa > Lipa na M-Pesa > Pay Bill\nBusiness Number: 247247\nAccount: Your Invoice #' },
-  { id: 'mtn', label: 'MTN Mobile Money', desc: 'Pay via MTN MoMo', icon: Smartphone, color: '#FFD2A6', instructions: 'Dial *165# > Pay Bill\nMerchant Code: TamamHealth\nReference: Your Invoice #' },
-  { id: 'airtel', label: 'Airtel Money', desc: 'Pay via Airtel Money', icon: Smartphone, color: '#E03127', instructions: 'Dial *185# > Pay Bill\nBusiness Name: TamamHealth HEALTH\nReference: Your Invoice #' },
+  { id: 'mgurush', label: 'm-GURUSH', desc: 'Pay via m-GURUSH (South Sudan)', icon: Smartphone, color: '#1E90FF', instructions: momoInstructions('Dial *158# > Pay Bill\nBusiness Number: TamamHealth\nReference: Your Invoice #') },
+  { id: 'mpesa', label: 'M-Pesa', desc: 'Pay via Safaricom M-Pesa', icon: Smartphone, color: '#0FA06A', instructions: momoInstructions('Go to M-Pesa > Lipa na M-Pesa > Pay Bill\nBusiness Number: 247247\nAccount: Your Invoice #') },
+  { id: 'mtn', label: 'MTN Mobile Money', desc: 'Pay via MTN MoMo', icon: Smartphone, color: '#FFD2A6', instructions: momoInstructions('Dial *165# > Pay Bill\nMerchant Code: TamamHealth\nReference: Your Invoice #') },
+  { id: 'airtel', label: 'Airtel Money', desc: 'Pay via Airtel Money', icon: Smartphone, color: '#E03127', instructions: momoInstructions('Dial *185# > Pay Bill\nBusiness Name: TamamHealth HEALTH\nReference: Your Invoice #') },
   { id: 'card', label: 'Visa / Mastercard', desc: 'Card payment (manually verified)', icon: CreditCard, color: '#1174b4', instructions: 'Enter your card details with our billing team, or provide a transaction reference. The charge is recorded here and verified by finance before it posts.' },
   // Literal hex (the --accent-primary value), not the CSS var — the icon
   // tint below concatenates a hex alpha suffix onto this string, which only

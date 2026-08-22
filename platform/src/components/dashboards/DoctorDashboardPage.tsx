@@ -45,10 +45,12 @@ const DEPARTMENTS = ['OPD', 'Emergency', 'Maternity', 'Pediatrics', 'Surgery', '
 // clinician should know before it lapses into a missed home visit.
 const FOLLOW_UP_DUE_WINDOW_DAYS = 3;
 
-// In production we suppress fabricated demo values (e.g. sampled ward/division
-// labels) so users never see invented data. Set NEXT_PUBLIC_DEMO_MODE=false on
-// real deploys and these collapse to blank.
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+// Demo data must be explicitly enabled — same rule as nurse/shared.tsx, which
+// learned it the hard way: treating an ABSENT environment value as demo mode
+// leaked fabricated ward/division labels into otherwise real facilities
+// (NEXT_PUBLIC_* is inlined at build time, so a build that forgot the var
+// shipped demo data to production).
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 export interface DoctorWorklistInput {
   patients: PatientDoc[];
@@ -158,7 +160,9 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     photoUrl: p.photoUrl,
     payorInfo: p.payorInfo,
     name: patientDisplayName(p),
-    age: patientAge(p) ?? (25 + i * 3),
+    // null when unknown — the row renders '—'. Never invented: the old
+    // `?? (25 + i * 3)` fallback printed a fabricated age in production.
+    age: patientAge(p),
     gender: p.gender?.[0] || (IS_DEMO ? (i % 2 === 0 ? 'M' : 'F') : ''),
     id: p.hospitalNumber,
     admittedAt: p.assignedAt || p.registeredAt || p.registrationDate,
@@ -168,7 +172,6 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     assignedDoctorName: p.assignedDoctorName,
     nurse: p.assignedByName || '',
     division: IS_DEMO ? DEPARTMENTS[i % DEPARTMENTS.length] : '',
-    critical: false,
     triagePriority: triagePriorityByPatient[p._id],
   }));
 
@@ -188,7 +191,9 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
       photoUrl: p.photoUrl,
       payorInfo: p.payorInfo,
       name: patientDisplayName(p),
-      age: patientAge(p) ?? (25 + i * 3),
+      // null when unknown — the row renders '—'. Never invented: the old
+    // `?? (25 + i * 3)` fallback printed a fabricated age in production.
+    age: patientAge(p),
       gender: p.gender?.[0] || (IS_DEMO ? (i % 2 === 0 ? 'M' : 'F') : ''),
       id: p.hospitalNumber,
       admittedAt: tr?.triagedAt || p.registeredAt || p.registrationDate,
@@ -196,7 +201,6 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
       doctor: '',
       nurse: tr?.triagedByName || '',
       division: IS_DEMO ? DEPARTMENTS[i % DEPARTMENTS.length] : '',
-      critical: false,
       triagePriority: triagePriorityByPatient[p._id] || tr?.priority,
     };
   });

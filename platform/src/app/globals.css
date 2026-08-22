@@ -29938,6 +29938,71 @@ button.sadb-signal { cursor: pointer; }
 .sadb-btn-danger { background: var(--color-danger-800); border-color: var(--color-danger-800); color: #FFFFFF; }
 .sadb-btn-danger:hover { background: var(--color-danger-600); border-color: var(--color-danger-600); }
 
+/* ── Tenant card action bar ──────────────────────────────────────────────
+   Five verbs on one line: three that add something to the tenant, then the
+   two that act on the tenant itself, pushed to the far end so the group you
+   are reaching for is the group you can see. Every button is the same height
+   and the same type, whatever it does — the card previously mixed a 28px
+   condensed action with a 32px sentence-case button, which read as two
+   unrelated rows even before it wrapped. */
+.sadb-tenant-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Wrap rather than clip: a narrow viewport gets two tidy rows, never a
+     half-visible action. */
+  flex-wrap: wrap;
+  padding-top: 14px;
+}
+.sadb-tenant-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-card-solid);
+  color: var(--accent-primary);
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sadb-tenant-action:hover { background: var(--tb-blue-50); }
+.sadb-tenant-action svg { width: 14px; height: 14px; flex: none; }
+.sadb-tenant-action.is-primary {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  /* --accent-on, not white: a tenant may brand this button pale, and the
+     branding layer already computes the legible ink for its own colour. */
+  color: var(--accent-on, var(--color-white));
+}
+.sadb-tenant-action.is-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.sadb-tenant-action.is-danger {
+  background: var(--color-danger-800);
+  border-color: var(--color-danger-800);
+  color: var(--color-white);
+}
+.sadb-tenant-action.is-danger:hover { background: var(--color-danger-600); border-color: var(--color-danger-600); }
+/* Lucide writes its colour out as a `stroke` attribute, so a filled button
+   has to repaint the stroke — `color` alone leaves a dark glyph on the fill,
+   which is what the Deactivate ban icon was doing. */
+.sadb-tenant-action.is-primary svg.lucide {
+  color: var(--accent-on, var(--color-white)) !important;
+  stroke: currentColor !important;
+}
+.sadb-tenant-action.is-danger svg.lucide {
+  color: var(--color-white) !important;
+  stroke: currentColor !important;
+}
+/* The first tenant-level action starts the right-hand group. */
+.sadb-tenant-actions .sadb-tenant-action.is-primary { margin-inline-start: auto; }
+
 /* ── Save bar / saved chip (dirty-state settings forms) ── */
 .sadb-savebar { display: flex; align-items: center; gap: 8px; }
 .sadb-savebar-note { font-size: 12px; color: var(--color-warning-700); white-space: nowrap; }

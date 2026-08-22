@@ -29,7 +29,7 @@ import type {
 import type { BillingDoc } from './db-types-billing';
 
 export function demoFallbackEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 }
 
 // Throttled, one-line log for the "CouchDB not reachable → serve demo data"
@@ -126,7 +126,7 @@ export async function getDemoRecordsByPatient(patientId: string): Promise<Medica
   const { generateMedicalRecords } = await import('@/data/mock');
   const generated = generateMedicalRecords(patientId, 6);
   return generated.map(r => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { id, ...rest } = r;
     // The mock generator only produces `visitDate`/`consultedAt` — real
     // MedicalRecordDocs always carry `createdAt`/`updatedAt` too, and the
