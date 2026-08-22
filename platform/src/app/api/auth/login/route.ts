@@ -95,7 +95,13 @@ export async function POST(request: NextRequest) {
 
     const identity = await resolveEffectiveIdentity(user, requestedRole);
     if (!identity.ok) {
-      return NextResponse.json({ error: identity.error }, { status: identity.status });
+      // `code` travels with the prose so the browser can show a translated
+      // message. Without it the sign-in form can only fall back to "Invalid
+      // credentials", which is the one thing this refusal is not.
+      return NextResponse.json(
+        { error: identity.error, code: identity.code },
+        { status: identity.status },
+      );
     }
 
     return await issueSessionResponse(user, identity.effective);

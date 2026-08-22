@@ -33,9 +33,24 @@ export interface EffectiveIdentity {
   orgId?: string;
 }
 
+/**
+ * Why a role-picker sign-in was refused.
+ *
+ * A refusal here is a statement about platform policy, not about the password
+ * — which was already verified by the time this runs. The sign-in form used to
+ * render every non-429, non-5xx failure as "Invalid credentials", so a
+ * super-admin blocked by the impersonation switch was told to retype a
+ * password that was already correct.
+ *
+ * The code is what the browser keys its message off. The `error` string stays
+ * for API clients with no locale, but a stable code is the only thing a
+ * translated UI can match on without string-matching English prose.
+ */
+export type RolePickerRefusal = 'role_not_permitted' | 'impersonation_disabled';
+
 export type RolePickerResult =
   | { ok: true; effective: EffectiveIdentity }
-  | { ok: false; error: string; status: number };
+  | { ok: false; error: string; code: RolePickerRefusal; status: number };
 
 /**
  * Resolve the role a session will actually run as.
@@ -61,7 +76,12 @@ export async function resolveEffectiveIdentity(
 
   const { hasRoleRouteConfig } = await import('@/lib/role-routes');
   if (user.role !== 'super_admin' || !hasRoleRouteConfig(requestedRole)) {
-    return { ok: false, error: 'You can only sign in as your assigned role.', status: 403 };
+    return {
+      ok: false,
+      error: 'You can only sign in as your assigned role.',
+      code: 'role_not_permitted',
+      status: 403,
+    };
   }
 
   let impersonationEnabled = false;
@@ -79,6 +99,7 @@ export async function resolveEffectiveIdentity(
       ok: false,
       error: 'Signing in as another role is switched off for this platform. '
         + 'Turn on support impersonation in Security settings first.',
+      code: 'impersonation_disabled',
       status: 403,
     };
   }

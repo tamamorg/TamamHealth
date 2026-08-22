@@ -132,13 +132,6 @@ async function hydrateAppUser(raw: {
 }
 
 /**
- * Why the server refused the last sign-in attempt.
- *
- * `login()` collapses every failure into `false`, which left the sign-in form
- * labelling a database outage or a lockout as "Invalid credentials" — the one
- * message that tells the user to retype a password that was never wrong.
- */
-/**
  * The slice of the platform's security policy a browser is given.
  *
  * Deliberately small. `/api/auth/me` sends an allow-list, not the whole
@@ -149,10 +142,25 @@ export interface PlatformClientPolicy {
   sessionTimeoutMinutes?: number;
 }
 
+/**
+ * Why the server refused the last sign-in attempt.
+ *
+ * `login()` collapses every failure into `false`, which left the sign-in form
+ * labelling a database outage or a lockout as "Invalid credentials" — the one
+ * message that tells the user to retype a password that was never wrong.
+ */
 export interface LoginFailure {
   status: number;
   /** The server's own error text, when it sent one. */
   message?: string;
+  /**
+   * Stable reason code, for refusals the UI must phrase itself.
+   *
+   * `message` is English prose from the server; this is what a translated
+   * form matches on. Only 403 role-picker refusals send one today
+   * (`RolePickerRefusal` in `identity/core/login-session.ts`).
+   */
+  code?: string;
   /** Seconds until a rate-limited account may try again (from Retry-After). */
   retryAfterSeconds?: number;
 }
@@ -692,9 +700,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // path below and may still end in `false`, and by then the status
           // that explains it is gone.
           let message: string | undefined;
+          let code: string | undefined;
           try {
             const body = await res.json();
             if (typeof body?.error === 'string') message = body.error;
+            if (typeof body?.code === 'string') code = body.code;
           } catch {
             // Non-JSON body (proxy error page). The status still classifies it.
           }
@@ -702,6 +712,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           loginFailureRef.current = {
             status: res.status,
             message,
+            code,
             retryAfterSeconds: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
           };
 
