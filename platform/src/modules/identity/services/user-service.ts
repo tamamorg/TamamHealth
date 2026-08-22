@@ -40,6 +40,21 @@ const isBrowserRuntime = () => typeof window !== 'undefined' && !process.env.JES
 /** A user document with every credential verifier removed. */
 export type ClientSafeUser = Omit<UserDoc, 'passwordHash' | 'pinHash'>;
 
+/**
+ * Credential material left on user documents by the retired second factor.
+ *
+ * The fields are gone from `UserDoc`, so nothing writes them and no
+ * destructure can name them — but a document written while the feature existed
+ * still CARRIES them, and a shape the type no longer describes is exactly the
+ * kind that stops being redacted without anyone noticing. `totpSecret` is a
+ * standing credential: anyone holding it can generate that account's codes
+ * forever. Stripped by name until `npm run db:strip-totp` has cleared them from
+ * storage, and harmless to keep after that.
+ */
+const RETIRED_MFA_FIELDS = [
+  'totpSecret', 'totpRecoveryCodeHashes', 'totpLastUsedStep', 'totpEnabledAt',
+] as const;
+
 /** Strip credential verifiers before a user document crosses an API boundary. */
 export function redactUserForClient(user: UserDoc): ClientSafeUser {
   const {
@@ -50,6 +65,8 @@ export function redactUserForClient(user: UserDoc): ClientSafeUser {
     inviteTokenHash: _inviteTokenHash,
     ...safe
   } = user;
+  const legacy = safe as Record<string, unknown>;
+  for (const field of RETIRED_MFA_FIELDS) delete legacy[field];
   return safe;
 }
 

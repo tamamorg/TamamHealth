@@ -30,8 +30,6 @@ export interface AuthPayload {
   state?: string;
   /** True when the user must set a new password before using the app. */
   mustChangePassword?: boolean;
-  /** True when the user's role requires a second factor they have not set up. */
-  mfaPending?: boolean;
 }
 
 /**

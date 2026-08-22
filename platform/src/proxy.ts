@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_TTL_SEC, mintCsrfToken, verifyCsrfToken, verifyToken } from '@/modules/identity';
+// The EDGE surface, not the server barrel. Middleware runs on every request
+// with no Node built-ins, and `@/modules/identity` reaches `node:crypto`
+// through the invitation token and the CouchDB auth helper. See edge.ts.
+import {
+  CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_TTL_SEC,
+  mintCsrfToken, verifyCsrfToken, verifyToken,
+} from '@/modules/identity/edge';
 
 import { addBreadcrumb } from './lib/observability';
 import { buildContentSecurityPolicy } from './lib/security/content-security-policy';

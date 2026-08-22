@@ -80,6 +80,50 @@ describe('the client surface stays usable in a browser', () => {
   });
 });
 
+describe('the Edge surface stays runnable in middleware', () => {
+  const edge = path.join(MODULE_ROOT, 'edge.ts');
+  const graph = staticGraph(edge);
+
+  it('reaches no Node built-in', () => {
+    // `src/proxy.ts` runs on the Edge runtime, which has Web Crypto and no
+    // Node built-ins. This is the same barrel hazard as the client surface,
+    // one runtime over — and it was worse: middleware runs on EVERY request,
+    // and the production build reported it only as a warning while the dev
+    // server served 500s.
+    const offenders = graph
+      .map(f => ({ f, hits: [...fs.readFileSync(f, 'utf8').matchAll(/from\s+['"](node:[a-z/]+)['"]/g)].map(m => m[1]) }))
+      .filter(x => x.hits.length);
+    expect(offenders.map(o => `${path.relative(process.cwd(), o.f)} → ${o.hits.join(', ')}`)).toEqual([]);
+  });
+
+  it('reaches no database', () => {
+    const offenders = graph.filter(f => /from\s+['"]@\/lib\/db['"]/.test(fs.readFileSync(f, 'utf8')));
+    expect(offenders.map(f => path.relative(process.cwd(), f))).toEqual([]);
+  });
+});
+
+describe('the middleware imports only Edge-safe surfaces', () => {
+  const proxy = path.join(process.cwd(), 'src/proxy.ts');
+
+  it('never imports a module\'s server or client barrel', () => {
+    // Naming the file rather than deriving it: `proxy.ts` is the one module in
+    // the app with a different runtime, and the rule that protects it should
+    // be as literal as the risk.
+    const src = fs.readFileSync(proxy, 'utf8');
+    const bad = [...src.matchAll(/from\s+['"](@\/modules\/[^'"]+)['"]/g)]
+      .map(m => m[1])
+      .filter(spec => !/\/edge$/.test(spec));
+    expect(bad).toEqual([]);
+  });
+
+  it('reaches no Node built-in at all', () => {
+    const offenders = staticGraph(proxy)
+      .map(f => ({ f, hits: [...fs.readFileSync(f, 'utf8').matchAll(/from\s+['"](node:[a-z/]+)['"]/g)].map(m => m[1]) }))
+      .filter(x => x.hits.length);
+    expect(offenders.map(o => `${path.relative(process.cwd(), o.f)} → ${o.hits.join(', ')}`)).toEqual([]);
+  });
+});
+
 describe('the server surface stays cheap to import', () => {
   const graph = staticGraph(path.join(MODULE_ROOT, 'index.ts'));
 

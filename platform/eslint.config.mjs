@@ -86,7 +86,8 @@ function moduleBoundaryRules() {
           patterns: [{
             group: privatePaths(name),
             message:
-              `Import from '@/modules/${name}', '@/modules/${name}/client', or a named service `
+              `Import from '@/modules/${name}', '@/modules/${name}/client', `
+              + `'@/modules/${name}/edge', or a named service `
               + `('@/modules/${name}/services/<name>'). A module's internals are private — reaching `
               + 'past them is how the previous layout ended up with no boundaries at all '
               + '(docs/adr/0003-domain-modules.md).',
