@@ -36,6 +36,7 @@
  * NOT a replacement for short JWT lifetimes — it complements them.
  */
 
+import { captureException } from '@/lib/observability';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { getUpstashConfig, upstashPipeline, withRetry, hashKey } from './upstash';
@@ -132,6 +133,7 @@ async function persistNow(): Promise<void> {
     await fs.writeFile(filePath(), body, { mode: 0o600 });
   } catch (err) {
     console.error('[token-blacklist] failed to persist:', err);
+    captureException(err, { tag: '[token-blacklist] failed to persist:' });
   }
 }
 
@@ -223,6 +225,7 @@ export async function revokeToken(token: string): Promise<void> {
       // invalidate the session. The local write below still happens, so this
       // replica is protected, but the operator needs to see it.
       console.error('[token-blacklist] shared revocation failed — token is revoked on THIS replica only:', err);
+      captureException(err, { tag: '[token-blacklist] shared revocation failed — token is revoked on THIS replica only:' });
     }
   }
 
@@ -248,6 +251,7 @@ export async function isTokenRevoked(token: string): Promise<boolean> {
       if (await upstashIsRevoked(token)) return true;
     } catch (err) {
       console.error('[token-blacklist] shared lookup failed — falling back to local store:', err);
+      captureException(err, { tag: '[token-blacklist] shared lookup failed — falling back to local store:' });
     }
   }
 

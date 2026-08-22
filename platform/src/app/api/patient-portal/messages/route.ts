@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPatientToken, guardPortalWrite } from '@/lib/patient-portal-auth';
 import { logAuditSafe } from '@/lib/services/audit-service';
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
       logDemoFallback('messages', err);
       return NextResponse.json({ messages: await getDemoMessagesByPatient(auth.sub) });
     }
-    console.error('[patient-portal/messages]', err);
+    logApiError('[patient-portal/messages]', err);
     return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
   }
 }
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
       recordDemoMessage(doc);
       return NextResponse.json({ ok: true, id: doc._id, message: doc }, { status: 201 });
     }
-    console.error('[patient-portal/messages POST]', err);
+    logApiError('[patient-portal/messages POST]', err);
     return NextResponse.json({ error: 'Failed to create message' }, { status: 500 });
   }
 }

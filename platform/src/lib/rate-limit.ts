@@ -1,3 +1,5 @@
+
+import { captureException } from '@/lib/observability';
 /**
  * Centralised rate limiter — async, sliding-window counters.
  *
@@ -189,6 +191,7 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
       return await fn();
     } catch (secondErr) {
       console.error('[rate-limit] upstash retry failed:', secondErr);
+      captureException(secondErr, { tag: '[rate-limit] upstash retry failed:' });
       throw firstErr;
     }
   }
@@ -258,6 +261,7 @@ export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitVerdic
       // than the shared one, but it is bounded: brute force is still capped at
       // `limit` per replica per window instead of infinity.
       console.error('[rate-limit] Upstash failed — degrading to in-process counter:', err);
+      captureException(err, { tag: '[rate-limit] Upstash failed — degrading to in-process counter:' });
       return memIncrement(hashed, windowMs, limit);
     }
   }
@@ -284,6 +288,7 @@ export async function resetRateLimit(key: string): Promise<void> {
       return;
     } catch (err) {
       console.error('[rate-limit] Upstash reset failed:', err);
+      captureException(err, { tag: '[rate-limit] Upstash reset failed:' });
       return;
     }
   }

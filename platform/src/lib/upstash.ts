@@ -1,3 +1,5 @@
+
+import { captureException } from '@/lib/observability';
 /**
  * Shared Upstash Redis REST client (KAN-34 / HIGH-04).
  *
@@ -80,6 +82,7 @@ export async function withRetry<T>(fn: () => Promise<T>, label = 'upstash'): Pro
       return await fn();
     } catch (secondErr) {
       console.error(`[${label}] upstash retry failed:`, secondErr);
+      captureException(secondErr, { tag: `[${label}] upstash retry failed:` });
       throw firstErr;
     }
   }

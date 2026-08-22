@@ -22,7 +22,7 @@ npm run build          # production build
 npm run lint           # ESLint 9
 npm test               # Jest 30 (jsdom); only src/**/*.test.ts(x) is collected
 npm run test:ci        # + coverage
-npm run i18n:check     # apd locale must cover every en key and {{placeholder}}
+npm run i18n:check     # locale parity + no NEW untranslated UI text (ratcheted)
 npm run db:migrate     # Postgres analytics migrations (also run at boot)
 npm run setup:couchdb:validators      # validate_doc_update + _security on org-scoped DBs
 npm run db:migrate:couchdb-tenants    # shared -> database-per-org (DRY_RUN=true to preview)
@@ -65,7 +65,7 @@ Escape both with a scoped namespace rather than fighting specificity. Existing n
 
 **Lists.** The column-header row stays rendered when a list is empty; the empty message sits inside the body below it, never in place of it.
 
-**i18n.** Two locales, both carried end to end: `en` and `apd` (Juba Arabic, RTL). Every new user-facing string needs both — `npm run i18n:check` fails otherwise.
+**i18n.** Two locales, both carried end to end: `en` and `apd` (Juba Arabic, RTL). Every new user-facing string needs both — `npm run i18n:check` fails otherwise. That check does two things: **locale parity** (apd covers every en key and placeholder) and an **untranslated-text ratchet**. The parity half is blind to a string that never became a key at all, which is how 112 files accumulated 438 hardcoded strings while the check passed; the ratchet records those as a baseline and fails only when a file gains NEW literal JSX text or when a cleaned-up file's baseline goes stale. Lower a baseline in `scripts/check-i18n.mjs` when you translate a file; never raise one.
 
 **Security.** JWT via `jose` (HS256, TTL from `SESSION_TTL_HOURS`); two-layer CSRF (Origin/Host check + HMAC double-submit bound to the session subject); login rate limits 5/username and 20/IP over 15 minutes (Upstash when configured, in-memory otherwise); token revocation is enforced in `/api/auth/me` and `getAuthPayload`, not in the Edge proxy. PHI drafts are AES-GCM encrypted with a per-tab key. `NEXT_PUBLIC_DEMO_MODE` gates demo behaviour.
 

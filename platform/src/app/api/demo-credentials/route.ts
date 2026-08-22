@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 /**
  * API: /api/demo-credentials
  * GET — the seeded demo roster with the password for each account, which the
@@ -64,7 +65,7 @@ export async function GET() {
 
     return NextResponse.json({ profiles }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
-    console.error('[API /demo-credentials GET]', err);
+    logApiError('[API /demo-credentials GET]', err);
     return NextResponse.json({ error: 'Failed to read seed credentials' }, { status: 500 });
   }
 }

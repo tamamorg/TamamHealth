@@ -1,3 +1,4 @@
+import { captureException } from '@/lib/observability';
 import { auditLogDB } from '../db';
 import type { AuditLogDoc } from '../db-types';
 import { v4 as uuidv4 } from 'uuid';
@@ -39,6 +40,7 @@ export async function logAudit(
   } catch (err) {
     // Never let audit logging failures break the main flow
     console.error('[Audit] Failed to write audit log:', err);
+    captureException(err, { tag: '[Audit] Failed to write audit log:' });
   }
 }
 
@@ -175,5 +177,6 @@ async function writeReadEntry(
   } catch (err) {
     // Same posture as logAudit: never break the read path over the log.
     console.error('[Audit] Failed to write PHI read log:', err);
+    captureException(err, { tag: '[Audit] Failed to write PHI read log:' });
   }
 }

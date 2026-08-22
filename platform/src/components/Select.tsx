@@ -501,7 +501,9 @@ export default function Select({
       <select
         {...selectProps}
         ref={selectRef}
-        aria-haspopup="listbox"
+        // No aria-haspopup: a native <select> carries listbox semantics
+        // implicitly, and the attribute is not supported on that role — screen
+        // readers either ignore it or announce the control twice.
         aria-expanded={open}
         onMouseDown={onTriggerMouseDown}
         onKeyDown={onTriggerKeyDown}

@@ -148,7 +148,7 @@ export default function TermsPage() {
       <ul>
         <li>
           Alerts and checks in the system, including allergy and interaction warnings, dosing
-          aids, coding suggestions and any AI-assisted feature, are <strong>advisory</strong>.
+          aids and coding suggestions, are <strong>advisory</strong>.
           They can be overridden, they may be incomplete, and they are not a substitute for
           professional judgement or for examining the patient.
         </li>
@@ -279,7 +279,7 @@ export default function TermsPage() {
       <h2 id="third-party">11. Third-party services</h2>
       <p>
         Some features can be connected to outside services — SMS reminders, payment
-        providers, error monitoring, AI assistance. All of them are
+        providers, error monitoring. All of them are
         optional: the platform runs with none of them configured, and features that depend on
         one degrade rather than fail.
       </p>

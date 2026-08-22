@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 /**
  * POST /api/patient-portal/refresh — silent session renewal (KAN-68 / MED-18).
  *
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ token });
   } catch (err) {
-    console.error('[patient-portal/refresh]', err);
+    logApiError('[patient-portal/refresh]', err);
     return NextResponse.json({ error: 'Could not refresh the session' }, { status: 500 });
   }
 }

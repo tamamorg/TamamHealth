@@ -29,9 +29,6 @@ function decryptRecord(doc: MedicalRecordDoc): MedicalRecordDoc {
   if (out.followUp?.reason) {
     out.followUp = { ...out.followUp, reason: maybeDecrypt(out.followUp.reason) };
   }
-  if (out.aiEvaluation?.clinicalNotes) {
-    out.aiEvaluation = { ...out.aiEvaluation, clinicalNotes: maybeDecrypt(out.aiEvaluation.clinicalNotes) };
-  }
   if (out.addenda) {
     out.addenda = out.addenda.map(a => ({ ...a, text: maybeDecrypt(a.text) }));
   }
@@ -46,9 +43,6 @@ function encryptRecordFields<T extends Partial<MedicalRecordDoc>>(data: T): T {
   }
   if (out.followUp?.reason) {
     out.followUp = { ...out.followUp, reason: maybeEncrypt(out.followUp.reason) };
-  }
-  if (out.aiEvaluation?.clinicalNotes) {
-    out.aiEvaluation = { ...out.aiEvaluation, clinicalNotes: maybeEncrypt(out.aiEvaluation.clinicalNotes) };
   }
   if (out.addenda) {
     out.addenda = out.addenda.map(a => ({ ...a, text: maybeEncrypt(a.text) }));

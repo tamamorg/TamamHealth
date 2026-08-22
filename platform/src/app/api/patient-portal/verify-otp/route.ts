@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 /**
  * POST /api/patient-portal/verify-otp — second step of patient portal login
  * (KAN-76 / LOW-02).
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('[patient-portal/verify-otp]', err);
+    logApiError('[patient-portal/verify-otp]', err);
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 });
   }
 }

@@ -469,6 +469,15 @@ function FilterDropdown({ label, value, onChange, options }: {
 // ═══════════════════════════════════════════
 //  Facility List (no selection)
 // ═══════════════════════════════════════════
+/**
+ * Clip rather than wrap. The columns are equal width, so the two free-text
+ * cells (facility name, location) are the ones that can outgrow their share —
+ * and a wrapped cell makes that single row taller, which is exactly the uneven
+ * rhythm the equal widths exist to prevent. Both carry a `title` so the full
+ * value is still readable.
+ */
+const ELLIPSIS = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const;
+
 function FacilityList({ hospitals, colorMetric, onSelect }: {
   hospitals: HospitalDoc[];
   colorMetric: PerformanceMetricKey;
@@ -486,7 +495,13 @@ function FacilityList({ hospitals, colorMetric, onSelect }: {
 
   return (
     <div className="ehr-list-scroll">
-      <table className="data-table" style={{ minWidth: 940, tableLayout: 'fixed' }}>
+      {/* The floor is set by the widest cell, not by the narrowest screen: with
+          equal columns, `minWidth` is what decides whether a laptop scrolls the
+          table or squeezes every name into an ellipsis. At 1100 the columns
+          fell to ~138px and 18 of 41 facility names truncated; 1560 keeps a
+          column at ~185px — the same width it has on a large display — and lets
+          `.ehr-list-scroll` scroll instead. */}
+      <table className="data-table" style={{ minWidth: 1560, tableLayout: 'fixed' }}>
         {/* One even rhythm across the row: the eight data columns are the same
             width, and only the row number is narrower — a counter never needs
             more than its digits.
@@ -527,7 +542,7 @@ function FacilityList({ hospitals, colorMetric, onSelect }: {
                 <td style={{ textAlign: 'center' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
                 </td>
-                <td>
+                <td style={ELLIPSIS} title={h.name}>
                   <span style={{ fontWeight: 600, fontSize: 13 }}>{h.name}</span>
                 </td>
                 <td>
@@ -535,7 +550,9 @@ function FacilityList({ hospitals, colorMetric, onSelect }: {
                     {TYPE_SHORT[h.facilityType] || h.facilityType}
                   </span>
                 </td>
-                <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{h.town}, {h.state}</td>
+                <td style={{ ...ELLIPSIS, fontSize: 12, color: 'var(--text-secondary)' }} title={`${h.town}, ${h.state}`}>
+                  {h.town}, {h.state}
+                </td>
                 <td>
                   {h.operationalStatus && (
                     <span style={{ fontSize: 11, fontWeight: 600, color: STATUS_COLORS[h.operationalStatus] }}>

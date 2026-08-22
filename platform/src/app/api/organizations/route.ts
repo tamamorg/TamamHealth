@@ -203,7 +203,6 @@ async function postHandler(request: NextRequest) {
           epidemicIntelligence: false,
           mchAnalytics: false,
           dhis2Export: false,
-          aiClinicalSupport: false,
           communityHealth: false,
           facilityAssessments: false,
         },

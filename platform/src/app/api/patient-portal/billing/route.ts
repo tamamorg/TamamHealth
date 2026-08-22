@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPatientToken } from '@/lib/patient-portal-auth';
 import { demoFallbackEnabled, logDemoFallback, getDemoBillingByPatient } from '@/lib/patient-portal-demo';
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
       logDemoFallback('billing', err);
       return NextResponse.json(await getDemoBillingByPatient(auth.sub));
     }
-    console.error('[patient-portal/billing]', err);
+    logApiError('[patient-portal/billing]', err);
     return NextResponse.json({ error: 'Failed to fetch billing data' }, { status: 500 });
   }
 }

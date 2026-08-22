@@ -19780,47 +19780,191 @@ textarea.ehr-handoff-input {
     #fff;
 }
 
-/* Gear on the My-account header — opens the update-account popup. */
-.ehr-set-account-gear {
+/* The My-account header's only control. It was an unlabelled gear while the
+   editable rows sat in a card below it; now that the popup is the only place
+   those rows exist, the way in has to name itself. */
+.ehr-set-account-edit {
   flex: none;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 999px;
   background: var(--overlay-subtle);
-  color: var(--text-muted);
+  color: var(--text-strong);
+  font-family: var(--font-condensed);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.ehr-set-account-gear:hover {
+.ehr-set-account-edit:hover {
   background: var(--accent-light);
   border-color: var(--accent-primary);
   color: var(--accent-primary);
 }
 
-.ehr-set-account-gear svg {
-  width: 16px;
-  height: 16px;
+.ehr-set-account-edit svg {
+  width: 15px;
+  height: 15px;
 }
 
-/* Read-only identity rows inside the update-account popup. */
-.ehr-set-acct-readonly {
+/* Scope + "you control" chips, folded into the identity card rather than
+   drawn as two more boxes under it. */
+.ehr-set-account-scope {
+  padding: 14px 18px 16px;
+  border-top: 1px solid var(--ehr-border);
+  background: var(--ehr-head);
+}
+
+.ehr-set-account-scope b {
+  display: block;
+  color: var(--text-strong);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.ehr-set-account-scope p {
+  margin: 5px 0 0;
+  max-width: 78ch;
+  color: var(--ehr-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.ehr-set-account-chips {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 10px;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.ehr-set-account-chips > span {
+  color: var(--ehr-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ehr-set-account-chips > div {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ehr-set-account-chips > div span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(33, 145, 208, 0.10);
+  color: var(--tb-blue-800, #113055);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── Update-account popup ────────────────────────────────────────────────
+   It holds the whole personal account now — identity, the preference rows
+   that used to be a card in the panel behind it, and the two credential
+   hand-offs — so it is grouped and given a fixed footer rather than run as
+   one undifferentiated column of controls. */
+.ehr-set-acct-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ehr-set-acct-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ehr-set-acct-group > h3 {
+  margin: 0;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--ehr-muted);
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ehr-set-acct-field > label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ehr-set-acct-field > small {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+/* Role / organization / facility: three facts an administrator owns, read
+   side by side instead of as three full-width rows. */
+.ehr-set-acct-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ehr-set-acct-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 11px;
   border: 1px solid var(--border-light);
   border-radius: 8px;
   background: var(--overlay-subtle);
-  font-size: 12px;
 }
 
-.ehr-set-acct-readonly span { color: var(--text-muted); }
-.ehr-set-acct-readonly b { color: var(--text-strong); font-weight: 700; }
+.ehr-set-acct-facts span {
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ehr-set-acct-facts b {
+  color: var(--text-strong);
+  font-size: 12.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The preference rows keep the settings-page row language, minus the card
+   edge they had when they were a section of their own. */
+.ehr-set-acct-row.ehr-set-row {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ehr-set-acct-row.ehr-set-row:last-child {
+  border-bottom: 0;
+}
 
 .ehr-set-acct-note {
   margin: 0;
@@ -19833,8 +19977,6 @@ textarea.ehr-handoff-input {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-light);
 }
 
 .ehr-set-acct-actions .ehr-handoff-btn {
@@ -19848,6 +19990,21 @@ textarea.ehr-handoff-input {
 .ehr-set-acct-actions .ehr-handoff-btn svg {
   width: 14px;
   height: 14px;
+}
+
+/* Save sits in the footer, not in the flow of the body: with three groups
+   above it, a button in the column reads as belonging to the last one. */
+.ehr-set-acct-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 13px 18px;
+  border-top: 1px solid var(--ehr-border);
+  background: var(--ehr-head);
+}
+
+@media (max-width: 640px) {
+  .ehr-set-acct-facts { grid-template-columns: minmax(0, 1fr); }
 }
 
 .ehr-set-account-head > span {
@@ -29487,3 +29644,765 @@ button.sadb-signal { cursor: pointer; }
   color: var(--text-muted);
   white-space: nowrap;
 }
+
+/* ── Platform dashboard: the tenant tree's child rows ──────────────────────
+   Facilities and accounts render on the tenant list's own six-column
+   template; only the first cell changes with depth. Each level used to bring
+   its own grid (5 tracks indented 40px, then 4 inside a bordered box with its
+   own scroll), so nothing lined up and two expansions stacked three headers. */
+.sadb-subrow {
+  /* --depth is set per row: 1 for a facility, 2 for an account. The indent
+     lives on the first cell, so every track after it stays on the parent's
+     grid — indenting the row itself narrows the grid and walks the columns
+     out of alignment, which is the whole problem this replaced. */
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  background: var(--ehr-head);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: start;
+  /* The rail marks how deep the row sits without tinting the whole strip. */
+  box-shadow: none;
+  position: relative;
+}
+.sadb-subrow > :first-child { padding-inline-start: calc(var(--depth, 1) * 18px); }
+.sadb-subrow::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(10px + var(--depth, 1) * 12px);
+  width: 1px;
+  background: var(--border-light);
+}
+.sadb-subrow[role="button"] { cursor: pointer; }
+.sadb-subrow[role="button"]:hover { background: var(--color-slate-50); }
+.sadb-subrow[role="button"]:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+/* An account has nothing inside it to open, so it reads as text, not a row
+   you can act on. */
+.sadb-subrow--leaf { background: var(--bg-card-solid); }
+
+.sadb-subrow-caret {
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+.sadb-subrow.is-open .sadb-subrow-caret { transform: rotate(90deg); }
+
+.sadb-subrow-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: start;
+  cursor: pointer;
+}
+.sadb-subrow-link:hover { color: var(--accent-primary); text-decoration: underline; }
+.sadb-subrow-link:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.sadb-subrow-name { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+.sadb-subrow-sub { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+/* A measure the parent has and this level does not — held, not invented. */
+.sadb-subrow-blank { color: var(--text-muted); opacity: 0.5; }
+
+.sadb-subrow-empty {
+  margin: 0;
+  padding: 11px 16px;
+  padding-inline-start: calc(16px + var(--depth, 1) * 18px + 20px);
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  background: var(--ehr-head);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ══ Facility management header (fac-*) ══════════════════════════════
+   /hospitals/[id]/manage used to open on an Overview tab of five stacked
+   cards — a screenful of the facility's own record that you had to leave in
+   order to do anything, and could not see again while working in Wards or
+   Inventory. The record is the header now: identity, contacts and six facts
+   above the tabs, in about a fifth of the height. */
+.fac-head {
+  background: var(--bg-card-solid, #FFFFFF);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 12px 14px 0;
+  margin-bottom: 14px;
+}
+.fac-head-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.fac-head-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-light, #F2FCFF);
+}
+.fac-head-icon svg { width: 17px; height: 17px; color: var(--accent-primary); }
+.fac-head-id { min-width: 0; flex: 1 1 220px; }
+.fac-head-name {
+  margin: 0;
+  font-family: var(--font-condensed);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+/* Identity reads as one sentence of facts, with a dot between the parts that
+   are actually present — no empty rows for fields this facility never filled. */
+.fac-head-meta {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+.fac-head-meta i { margin: 0 6px; font-style: normal; opacity: 0.55; }
+.fac-head-back { margin-inline-start: auto; flex: none; }
+.fac-head-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 9px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.fac-head-contacts span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.fac-head-nocontact { color: var(--text-muted); font-weight: 600; }
+.fac-head-contacts svg { width: 12px; height: 12px; color: var(--text-muted); }
+
+.fac-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  margin-top: 11px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 11px;
+}
+.fac-fact { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding-inline-end: 12px; }
+.fac-fact-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.fac-fact-value {
+  font-family: var(--font-condensed);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  text-transform: capitalize;
+}
+.fac-fact-value.is-ok { color: var(--color-success-800); }
+.fac-fact-value.is-warn { color: var(--color-warning-700); }
+.fac-fact-value.is-danger { color: var(--color-danger-800); }
+.fac-fact-sub {
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+.fac-fact-when { display: inline-flex; align-items: center; gap: 4px; }
+.fac-fact-when svg { width: 10px; height: 10px; }
+.fac-meter {
+  display: block;
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--overlay-subtle);
+  overflow: hidden;
+}
+.fac-meter i { display: block; height: 100%; border-radius: 999px; }
+.fac-meter i.is-ok { background: var(--color-success-800); }
+.fac-meter i.is-warn { background: var(--color-warning-600); }
+.fac-meter i.is-danger { background: var(--color-danger-500); }
+
+/* Tabs dock to the header: a strip of eight primary/secondary buttons read as
+   eight competing actions, when only one of them is ever "where you are". */
+.fac-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 11px -14px 0;
+  padding: 0 10px;
+  border-top: 1px solid var(--border-light);
+}
+.fac-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 11px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fac-tab svg { width: 14px; height: 14px; color: var(--text-muted); }
+.fac-tab:hover { color: var(--text-primary); }
+.fac-tab:hover svg { color: var(--text-secondary); }
+.fac-tab.is-active {
+  border-bottom-color: var(--accent-primary);
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+.fac-tab.is-active svg { color: var(--accent-primary); }
+.fac-tab:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -3px; border-radius: 6px; }
+
+@media (max-width: 640px) {
+  .fac-tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .fac-facts { gap: 10px 1px; }
+}
+
+/* ── Account card: the roster row's whole record plus its actions ──
+   Opened from the row itself, so it replaces both the actions menu and the
+   detail strip the menu used to cover. */
+.sadb-usercard-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sadb-usercard-head > .ehr-patient-icon { flex: none; }
+.sadb-usercard-id { min-width: 0; flex: 1 1 auto; }
+.sadb-usercard-id .sadb-modal-sub { margin-top: 3px; }
+.sadb-usercard-rows {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sadb-usercard-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  font-size: 12.5px;
+}
+.sadb-usercard-row:last-child { border-bottom: 0; }
+.sadb-usercard-row > span:first-child {
+  flex: none;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.sadb-usercard-row > span:last-child {
+  min-width: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.sadb-usercard-row code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+/* Close sits apart from the three things that change the account. */
+.sadb-usercard-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.sadb-usercard-actions > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.sadb-btn-danger { background: var(--color-danger-800); border-color: var(--color-danger-800); color: #FFFFFF; }
+.sadb-btn-danger:hover { background: var(--color-danger-600); border-color: var(--color-danger-600); }
+
+/* ── Save bar / saved chip (dirty-state settings forms) ── */
+.sadb-savebar { display: flex; align-items: center; gap: 8px; }
+.sadb-savebar-note { font-size: 12px; color: var(--color-warning-700); white-space: nowrap; }
+.sadb-saved-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--ehr-head);
+  border: 1px solid var(--border-light);
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Platform dashboard: the facility strip inside a tenant row ────────────
+   The row still opens the facility (a stretched hit area on its name), but
+   the Users cell is now its own disclosure — a count that expands into the
+   accounts behind it, which a nested <button> could never have been. */
+.sadb-facrow {
+  position: relative;
+}
+
+.sadb-facrow:hover {
+  background: var(--overlay-subtle);
+}
+
+.sadb-facrow-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.sadb-facrow-open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.sadb-facrow-open:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Raised above the row's stretched hit area so it keeps its own click. */
+.sadb-facrow-users {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sadb-facrow-users:hover:not(:disabled),
+.sadb-facrow-users.is-open {
+  border-color: var(--border-light);
+  background: var(--bg-card-solid);
+  color: var(--accent-primary);
+}
+
+.sadb-facrow-users:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.sadb-facrow-users svg {
+  transition: transform 0.15s ease;
+}
+
+.sadb-facrow-users.is-open svg {
+  transform: rotate(180deg);
+}
+
+.sadb-facusers {
+  margin: 0 8px 6px;
+  max-height: 264px;
+  overflow: auto;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-card-solid);
+}
+
+.sadb-facusers-head,
+.sadb-facusers-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 92px 78px;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 12px;
+}
+
+/* Stays drawn over an empty list — the panel keeps its shape and the zero in
+   the Users cell is explained rather than left blank. */
+.sadb-facusers-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ehr-head);
+  border-bottom: 1px solid var(--border-light);
+  font-family: var(--font-condensed);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sadb-facusers-row {
+  border-top: 1px solid var(--border-light);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sadb-facusers-head + .sadb-facusers-row {
+  border-top: 0;
+}
+
+.sadb-facusers-row b {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sadb-facusers-row i {
+  margin-inline-start: 6px;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sadb-facusers-empty {
+  margin: 0;
+  padding: 14px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ============ Reports (rpt-*) ============================================
+   The reports catalogue and its charts.
+
+   Scoped namespace on purpose, per the two traps this stylesheet carries: the
+   bare `label` rule force-uppercases every <label>, and
+   `svg.lucide:not([style*="color"])` recolours icons globally with several
+   `!important` stroke overrides. Everything here is addressed through `rpt-`
+   classes so neither cascade reaches it and nothing here reaches anything
+   else. Colours are tokens only — the chart hues come from --chart-* (the
+   CVD-validated categorical scale) and the stock ring from the reserved
+   status palette; no literal hex belongs in this block.
+   ------------------------------------------------------------------------ */
+
+.rpt-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* ── Headline figures ── */
+.rpt-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 900px) { .rpt-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.rpt-kpi {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+}
+.rpt-kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: var(--overlay-subtle);
+}
+/* Icon colour is set here rather than inline so the global lucide rule has a
+   more specific selector to lose to. */
+.rpt-kpi-icon svg { width: 17px; height: 17px; color: var(--accent-primary); }
+.rpt-kpi-body { display: flex; flex-direction: column; min-width: 0; }
+.rpt-kpi-body b {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.rpt-kpi-body span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* ── Overview charts ── */
+.rpt-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1100px) { .rpt-panels { grid-template-columns: minmax(0, 1fr); } }
+
+.rpt-panel {
+  margin: 0;
+  padding: 14px 16px 12px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+}
+.rpt-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 0;
+}
+.rpt-panel-head svg { width: 16px; height: 16px; color: var(--accent-primary); flex: 0 0 auto; }
+.rpt-panel-head div { display: flex; flex-direction: column; min-width: 0; }
+.rpt-panel-head b { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.rpt-panel-head span { font-size: 11px; color: var(--text-muted); }
+.rpt-panel-plot { width: 100%; }
+.rpt-panel-empty {
+  margin: 0;
+  padding: 34px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Donut + legend sit side by side; the count in the hole is the total the
+   slices add up to, so the ring never needs a percentage label. */
+.rpt-donut-row { display: flex; align-items: center; gap: 18px; }
+.rpt-donut { position: relative; width: 148px; height: 148px; flex: 0 0 auto; }
+.rpt-donut-hole {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.rpt-donut-hole b {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.rpt-donut-hole span { font-size: 10px; color: var(--text-muted); }
+
+.rpt-legend { list-style: none; margin: 0; padding: 0; flex: 1 1 auto; min-width: 0; }
+.rpt-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 12px;
+}
+.rpt-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+/* Legend text stays in neutral ink — identity is carried by the dot. */
+.rpt-legend span { color: var(--text-secondary); flex: 1 1 auto; min-width: 0; }
+.rpt-legend b {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Catalogue ── */
+.rpt-groups { display: flex; flex-direction: column; gap: 22px; }
+.rpt-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.rpt-group-head svg { width: 17px; height: 17px; color: var(--accent-primary); }
+.rpt-group-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.rpt-group-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--overlay-subtle);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rpt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 12px;
+}
+
+.rpt-card {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 12px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.rpt-card:hover { border-color: var(--border-medium); }
+.rpt-card.is-open {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary);
+}
+
+.rpt-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.rpt-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--overlay-subtle);
+}
+.rpt-card-icon svg { width: 15px; height: 15px; color: var(--accent-primary); }
+
+/* Cadence chip. The hues match the header's stat dots for the same four
+   cadences, so the two readings of the catalogue agree. */
+.rpt-chip {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--overlay-subtle);
+}
+.rpt-chip--daily { color: var(--color-success-text); background: color-mix(in srgb, var(--color-success) 12%, transparent); }
+.rpt-chip--weekly { color: var(--color-warning-text); background: color-mix(in srgb, var(--color-warning) 14%, transparent); }
+.rpt-chip--monthly { color: var(--chart-1); background: color-mix(in srgb, var(--chart-1) 10%, transparent); }
+.rpt-chip--quarterly { color: var(--chart-6); background: color-mix(in srgb, var(--chart-6) 12%, transparent); }
+
+.rpt-card-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+.rpt-card-desc {
+  margin: 0 0 12px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  /* Two lines, so every card in a row is the same height regardless of how
+     long its description runs. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Five bars, proportional to the report's own top rows. Plain elements, not a
+   chart library: sixteen of these render on every catalogue paint. */
+.rpt-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 34px;
+  margin-bottom: 12px;
+  margin-top: auto;
+}
+.rpt-spark > span { flex: 1 1 0; display: flex; align-items: flex-end; height: 100%; }
+.rpt-spark i {
+  display: block;
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: color-mix(in srgb, var(--chart-2) 55%, transparent);
+}
+.rpt-card.is-open .rpt-spark i { background: var(--chart-2); }
+/* An empty strip still occupies its space, so a report with nothing to preview
+   does not make its card shorter than its neighbours. */
+.rpt-spark.is-empty { border-bottom: 1px dashed var(--border-light); }
+
+.rpt-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+.rpt-card-meta { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rpt-card-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 7px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-card-solid);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.rpt-card-btn svg { width: 13px; height: 13px; }
+.rpt-card-btn:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+.rpt-card.is-open .rpt-card-btn {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--color-white);
+}
+
+/* ── Opened report ── */
+.rpt-detail {
+  margin-top: 12px;
+  padding: 14px 16px 16px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+}
+.rpt-detail-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 34px 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.rpt-detail-loading svg { width: 17px; height: 17px; color: var(--accent-primary); }
+
+.rpt-figure {
+  margin: 0;
+  padding: 12px 8px 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.rpt-figure-cap {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 0 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.rpt-figure-note { font-weight: 500; color: var(--text-muted); opacity: 0.85; }
+.rpt-figure-plot { width: 100%; }

@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { verifyPatientToken, guardPortalWrite } from '@/lib/patient-portal-auth';
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
       logDemoFallback('appointments', err);
       return NextResponse.json({ appointments: await getDemoAppointmentsByPatient(auth.sub) });
     }
-    console.error('[patient-portal/appointments]', err);
+    logApiError('[patient-portal/appointments]', err);
     return NextResponse.json({ error: 'Failed to fetch appointments' }, { status: 500 });
   }
 }
@@ -125,7 +126,7 @@ export async function POST(req: NextRequest) {
       recordDemoAppointment(doc);
       return NextResponse.json({ ok: true, id: doc._id, appointment: doc }, { status: 201 });
     }
-    console.error('[patient-portal/appointments POST]', err);
+    logApiError('[patient-portal/appointments POST]', err);
     return NextResponse.json({ error: 'Failed to create appointment request' }, { status: 500 });
   }
 }

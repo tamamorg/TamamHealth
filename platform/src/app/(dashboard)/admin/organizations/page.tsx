@@ -38,7 +38,7 @@ import { assignableRolesForOrgAdmin, labelRolesDistinctly } from '@/lib/permissi
 
 type FeatureFlagKey =
   | 'epidemicIntelligence' | 'mchAnalytics' | 'dhis2Export'
-  | 'aiClinicalSupport' | 'communityHealth' | 'facilityAssessments';
+  | 'communityHealth' | 'facilityAssessments';
 
 type OrgFormData = {
   name: string;
@@ -76,7 +76,7 @@ const emptyForm: OrgFormData = {
   subscriptionPlan: 'professional', subscriptionStatus: 'trial',
   maxUsers: 50, maxHospitals: 10,
   epidemicIntelligence: true, mchAnalytics: true, dhis2Export: false,
-  aiClinicalSupport: true, communityHealth: true, facilityAssessments: true,
+  communityHealth: true, facilityAssessments: true,
 };
 
 /** Normalize a resolved CSS colour string — `#rrggbb`, `#rgb`, or `rgb()`/
@@ -258,12 +258,14 @@ export default function AdminOrganizationsPage() {
   // search leaked whatever was typed here into every other screen's search.
   const [search, setSearch] = useState('');
 
-  // The dashboard's tenant rows link here as `?org=<id>`. That used to lock the
-  // list to one row behind an explanatory banner whose button was the only way
-  // out. The deep link still narrows the list, but it does it by seeding the
-  // search box — so the way back is the control already on screen, and there is
-  // nothing to explain. Runs once, after the organizations load, since the id
-  // has to be resolved to a name the search can match.
+  // `?org=<id>` seeds the search box rather than locking the list to one row
+  // behind an explanatory banner whose button was the only way out — the way
+  // back is now the control already on screen. Nothing in the app emits the
+  // parameter any more (the super-admin dashboard's tenant matrix, its last
+  // producer, was removed on 2026-08-21), but bookmarks and pasted links
+  // outlive the screens that made them, so the handler stays. Runs once, after
+  // the organizations load, since the id has to be resolved to a name the
+  // search can match.
   const deepLinkApplied = useRef(false);
   useEffect(() => {
     if (deepLinkApplied.current || organizations.length === 0) return;
@@ -396,7 +398,6 @@ export default function AdminOrganizationsPage() {
       epidemicIntelligence: org.featureFlags.epidemicIntelligence,
       mchAnalytics: org.featureFlags.mchAnalytics,
       dhis2Export: org.featureFlags.dhis2Export,
-      aiClinicalSupport: org.featureFlags.aiClinicalSupport,
       communityHealth: org.featureFlags.communityHealth,
       facilityAssessments: org.featureFlags.facilityAssessments,
     });
@@ -493,7 +494,6 @@ export default function AdminOrganizationsPage() {
           epidemicIntelligence: form.epidemicIntelligence,
           mchAnalytics: form.mchAnalytics,
           dhis2Export: form.dhis2Export,
-          aiClinicalSupport: form.aiClinicalSupport,
           communityHealth: form.communityHealth,
           facilityAssessments: form.facilityAssessments,
         },
@@ -561,7 +561,6 @@ export default function AdminOrganizationsPage() {
     { key: 'epidemicIntelligence', label: t('orgAdmin.featureEpidemicIntelligence'), sub: t('orgSettings.flagEpidemicIntelligenceDesc') },
     { key: 'mchAnalytics', label: t('orgAdmin.featureMchAnalytics'), sub: t('orgSettings.flagMchAnalyticsDesc') },
     { key: 'dhis2Export', label: t('orgAdmin.featureDhis2Export'), sub: t('orgSettings.flagDhis2ExportDesc') },
-    { key: 'aiClinicalSupport', label: t('orgAdmin.featureAiClinicalSupport'), sub: t('orgSettings.flagAiClinicalSupportDesc') },
     { key: 'communityHealth', label: t('orgAdmin.featureCommunityHealth'), sub: t('orgSettings.flagCommunityHealthDesc') },
     { key: 'facilityAssessments', label: t('orgAdmin.featureFacilityAssessments'), sub: t('orgSettings.flagFacilityAssessmentsDesc') },
   ];

@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 /**
  * Patient portal — own profile.
  *
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('[patient-portal/profile]', err);
+    logApiError('[patient-portal/profile]', err);
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
   }
 }

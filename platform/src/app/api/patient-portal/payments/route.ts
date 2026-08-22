@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { verifyPatientToken, guardPortalWrite } from '@/lib/patient-portal-auth';
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, id: doc._id }, { status: 201 });
   } catch (err) {
-    console.error('[patient-portal/payments POST]', err);
+    logApiError('[patient-portal/payments POST]', err);
     return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
   }
 }

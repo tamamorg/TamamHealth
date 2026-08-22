@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientIp } from '@/lib/request-utils';
 import { createPatientToken } from '@/lib/patient-portal-auth';
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('[patient-portal/login]', err);
+    logApiError('[patient-portal/login]', err);
     return NextResponse.json({ error: 'Login failed' }, { status: 500 });
   }
 }

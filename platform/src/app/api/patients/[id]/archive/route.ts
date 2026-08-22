@@ -10,8 +10,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getAuthPayload, unauthorized, forbidden, hasRole, serverError,
-} from '@/lib/api-auth';
+  getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError} from '@/lib/api-auth';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 
@@ -69,7 +68,7 @@ async function postHandler(
 
     return NextResponse.json({ patient: updated, action });
   } catch (err) {
-    console.error('[API /patients/:id/archive POST]', err instanceof Error ? err.message : err);
+    logApiError('[API /patients/:id/archive POST]', err);
     return serverError();
   }
 }

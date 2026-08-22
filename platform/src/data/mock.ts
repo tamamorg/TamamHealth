@@ -38,6 +38,7 @@ export type {
 // The roster generator draws from these; the re-export further down is a
 // separate statement and creates no local binding.
 import { states, statesAndCounties, bloodTypes } from '@/lib/data/south-sudan-reference';
+import { toIsoDate } from '@/lib/date-utils';
 
 export interface Hospital {
   id: string;
@@ -2246,14 +2247,6 @@ export interface MedicalRecord {
   attachments?: Attachment[];
   followUp?: { date: string; reason: string };
   syncStatus: 'synced' | 'pending';
-  aiEvaluation?: {
-    suggestedDiagnoses: { icd10Code: string; name: string; confidence: number; reasoning: string; severity: 'mild' | 'moderate' | 'severe'; suggestedTreatment?: string }[];
-    vitalSignAlerts: string[];
-    recommendedTests: string[];
-    severityAssessment: string;
-    clinicalNotes: string;
-    evaluatedAt: string;
-  };
 }
 
 const departments = ['Internal Medicine', 'Pediatrics', 'Obstetrics & Gynecology', 'Surgery', 'Emergency', 'Outpatient'];
@@ -2341,7 +2334,12 @@ export function generateMedicalRecords(patientId: string, count: number, homeHos
     visitDateObj.setMonth(visitDateObj.getMonth() - monthsAgo);
     visitDateObj.setDate(1 + Math.floor(rand() * 27));
     visitDateObj.setHours(8 + Math.floor(rand() * 9), Math.floor(rand() * 60), 0, 0);
-    const visitDate = visitDateObj.toISOString().split('T')[0];
+    // LOCAL calendar day: the object above is built with local setters
+    // (setMonth/setDate/setHours 08:00–16:00), so reading it back as UTC
+    // can name a different day than `consultedAt` on any machine more
+    // than 8 hours from UTC — a seeded visit dated one day off its own
+    // timestamp. Same class of bug the v48 seed bump fixed elsewhere.
+    const visitDate = toIsoDate(visitDateObj);
     const consultedAt = visitDateObj.toISOString();
 
     const numDiagnoses = 1 + Math.floor(rand() * 2);

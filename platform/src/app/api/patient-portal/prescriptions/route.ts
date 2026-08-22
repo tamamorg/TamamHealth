@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPatientToken } from '@/lib/patient-portal-auth';
 import { demoFallbackEnabled, logDemoFallback, getDemoPrescriptionsByPatient } from '@/lib/patient-portal-demo';
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
       logDemoFallback('prescriptions', err);
       return NextResponse.json({ prescriptions: await getDemoPrescriptionsByPatient(auth.sub) });
     }
-    console.error('[patient-portal/prescriptions]', err);
+    logApiError('[patient-portal/prescriptions]', err);
     return NextResponse.json({ error: 'Failed to fetch prescriptions' }, { status: 500 });
   }
 }

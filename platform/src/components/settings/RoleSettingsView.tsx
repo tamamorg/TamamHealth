@@ -27,7 +27,6 @@ import { SUPPORTED_LOCALES } from '@/lib/i18n';
 import { getUserPrefs, setUserPrefs } from '@/lib/user-prefs';
 import { hasLockPin, setLockPin, clearLockPin } from '@/lib/hooks/useAutoLock';
 import { getRoleConfig } from '@/lib/permissions';
-import { usersHrefForRole } from '@/lib/people-nav';
 import { isPathAllowed } from '@/lib/role-routes';
 import {
   specForRole, getStoredRoleSettings,
@@ -206,8 +205,10 @@ export default function RoleSettingsView() {
 
   // ── Update-account popup (gear on the My account header) ──
   const [acctOpen, setAcctOpen] = useState(false);
-  const [acctName, setAcctName] = useState('');
-  const [acctSaving, setAcctSaving] = useState(false);
+  /* The account rows are edited in the popup now, against the same draft the
+     rest of Settings writes to. Snapshotting them on open is what lets a
+     cancelled dialog put them back instead of leaving the page dirty. */
+  const [acctSnapshot, setAcctSnapshot] = useState<RoleSettingsValues>({});
   useEffect(() => { setPinIsSet(hasLockPin()); }, [pinOpen]);
 
   // ── Integration status (real: DHIS2 push log + offline sync state) ──
@@ -299,26 +300,10 @@ export default function RoleSettingsView() {
       if (isAdminSpec && reporting) facilityItems.push({ id: 'reporting', label: reporting.title, icon: FileText });
       if (facilityItems.length > 0) groups.push({ title: 'Facility', items: facilityItems });
 
-      // One People & access entry, pointing at the roster this badge counts.
-      // `usersHrefForRole` is the app's single answer to "where does this role
-      // administer accounts" (/admin/users for the operator, /org-admin/users
-      // for the roles that run a facility), so this cannot drift from the nav.
-      const rosterHref = usersHrefForRole(currentUser.role);
-      if (canManageUsers && currentUser.role !== 'org_admin' && rosterHref) {
-        groups.push({
-          title: 'People & access',
-          items: [
-            {
-              id: 'people-roster',
-              label: 'Users & roles',
-              icon: Users,
-              badge: users.length ? String(users.length) : undefined,
-              nested: true,
-              href: rosterHref,
-            },
-          ],
-        });
-      }
+      // No People & access entry here: it was a rail item that only ever
+      // bounced out of Settings to the roster page those roles already reach
+      // from their own navigation, so it padded the rail without being a
+      // setting. The roster stays where it is administered.
       if (isAdminSpec && currentUser.role !== 'org_admin') {
         groups.push({
           title: 'System',
@@ -364,6 +349,28 @@ export default function RoleSettingsView() {
 
   const setValue = (key: string, value: boolean | string) => setDraft(prev => ({ ...prev, [key]: value }));
   const handleDiscard = () => setDraft(baseline);
+
+  /* The rows the Update-account popup owns. They stay declared in the role
+     spec — the draft, the save, and the reset all key off it — they are just
+     no longer drawn as a fifth card under the identity summary. */
+  const accountRows = (spec.sections.find(s => s.id === 'account')?.rows ?? [])
+    .filter((row): row is Extract<RoleSettingRow, { key: string }> => 'key' in row);
+  const displayNameKey = 'account.displayName';
+  const displayName = String(draft[displayNameKey] ?? '');
+
+  const openAccountEditor = () => {
+    const snap: RoleSettingsValues = {};
+    for (const row of accountRows) if (draft[row.key] !== undefined) snap[row.key] = draft[row.key];
+    setAcctSnapshot(snap);
+    setAcctOpen(true);
+  };
+  /* Cancel restores what the popup found; the two hand-offs below it
+     (password, PIN) deliberately keep the edits, since they continue the
+     same errand rather than abandoning it. */
+  const closeAccountEditor = () => {
+    setDraft(prev => ({ ...prev, ...acctSnapshot }));
+    setAcctOpen(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -728,21 +735,20 @@ export default function RoleSettingsView() {
     const section = spec.sections.find(s => s.id === activePanel) || spec.sections[0];
     return (
       <>
-        {section.id === 'account' && (
-          <section className="ehr-set-section">
+        {section.id === 'account' ? (
+          /* One card, not three. The identity head, the assignment rows and
+             the scope note all answer "who am I here", and the four editable
+             rows that used to sit under them have moved into the
+             Update-account popup — so what is left reads as one summary
+             instead of three stacked boxes saying the same thing. */
+          <section className="ehr-set-section ehr-set-account">
             <div className="ehr-set-account-head">
               <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                 <b>{currentUser.name}</b>
                 <small>{currentUser.username}</small>
               </div>
-              <button
-                type="button"
-                className="ehr-set-account-gear"
-                title="Update account"
-                aria-label="Update account"
-                onClick={() => { setAcctName(currentUser.name || ''); setAcctOpen(true); }}
-              >
-                <Settings />
+              <button type="button" className="ehr-set-account-edit" onClick={openAccountEditor}>
+                <Settings /> Update account
               </button>
             </div>
             <div className="ehr-set-account-rows">
@@ -753,23 +759,18 @@ export default function RoleSettingsView() {
                 </div>
               ))}
             </div>
-          </section>
-        )}
-        {section.id === 'account' && (
-          <div className="ehr-set-scope-grid">
-            <div className="ehr-set-scope">
+            <div className="ehr-set-account-scope">
               <b>{spec.subtitle}</b>
               <p>{spec.scope}</p>
-            </div>
-            <div className="ehr-set-chips">
-              <span>You control</span>
-              <div>
-                {spec.chips.map(chip => <span key={chip}>{chip}</span>)}
+              <div className="ehr-set-account-chips">
+                <span>You control</span>
+                <div>
+                  {spec.chips.map(chip => <span key={chip}>{chip}</span>)}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-        {renderSection(section)}
+          </section>
+        ) : renderSection(section)}
       </>
     );
   };
@@ -880,11 +881,15 @@ export default function RoleSettingsView() {
         </main>
       </section>
 
-      {/* ── Update-account popup: edit the display name, then jump to the
-             password / screen-lock actions without leaving Settings. ── */}
+      {/* ── Update-account popup ───────────────────────────────────────
+             Everything personal now lives here: the display name, the three
+             preference rows that used to sit in a card below the identity
+             summary, the assignment facts an administrator owns, and the two
+             credential hand-offs. Editing writes to the same draft the rest
+             of Settings uses, so Save is the page's one save path. ── */}
       {acctOpen && (
-        <Modal onClose={() => setAcctOpen(false)} width={420}>
-          <div className="ehr-handoff-modal" role="dialog" aria-modal="true" aria-label="Update account">
+        <Modal onClose={closeAccountEditor} width={640}>
+          <div className="ehr-handoff-modal ehr-set-acct" role="dialog" aria-modal="true" aria-label="Update account">
             <div className="ehr-handoff-head">
               <div className="ehr-handoff-head-title">
                 <User />
@@ -894,62 +899,74 @@ export default function RoleSettingsView() {
                 </div>
               </div>
               <div className="ehr-handoff-head-actions">
-                <button type="button" className="ehr-handoff-close" aria-label="Close" onClick={() => setAcctOpen(false)}>✕</button>
+                <button type="button" className="ehr-handoff-close" aria-label="Close" onClick={closeAccountEditor}>✕</button>
               </div>
             </div>
-            <div className="ehr-handoff-body">
-              <div>
-                <label className="ehr-handoff-label">Display name</label>
-                <input
-                  type="text"
-                  className="ehr-handoff-input"
-                  autoComplete="name"
-                  value={acctName}
-                  onChange={e => setAcctName(e.target.value)}
-                />
-              </div>
-              {identityRows.filter(row => row.label !== 'Username').map(row => (
-                <div key={row.label} className="ehr-set-acct-readonly">
-                  <span>{row.label}</span>
-                  <b title={row.value}>{row.value}</b>
+
+            <div className="ehr-handoff-body ehr-set-acct-body">
+              <section className="ehr-set-acct-group">
+                <h3>Identity</h3>
+                <div className="ehr-set-acct-field">
+                  <label htmlFor="acct-display-name">Display name</label>
+                  <input
+                    id="acct-display-name"
+                    type="text"
+                    className="ehr-handoff-input"
+                    autoComplete="name"
+                    value={displayName}
+                    onChange={e => setValue(displayNameKey, e.target.value)}
+                  />
+                  <small>Shown on notes, receipts, and referrals</small>
                 </div>
-              ))}
-              <p className="ehr-set-acct-note">
-                Role and facility are assigned by an administrator and can&rsquo;t be changed here.
-              </p>
+                <div className="ehr-set-acct-facts">
+                  {identityRows.filter(row => row.label !== 'Username').map(row => (
+                    <div key={row.label}>
+                      <span>{row.label}</span>
+                      <b title={row.value}>{row.value}</b>
+                    </div>
+                  ))}
+                </div>
+                <p className="ehr-set-acct-note">
+                  Role and facility are assigned by an administrator and can&rsquo;t be changed here.
+                </p>
+              </section>
+
+              <section className="ehr-set-acct-group">
+                <h3>Preferences</h3>
+                {accountRows.filter(row => row.key !== displayNameKey).map(row => (
+                  <div key={row.key} className="ehr-set-row ehr-set-acct-row">
+                    <div className="ehr-set-row-label">
+                      <b>{row.label}</b>
+                      <span>{row.hint}</span>
+                    </div>
+                    {renderControl(row)}
+                  </div>
+                ))}
+              </section>
+
+              <section className="ehr-set-acct-group">
+                <h3>Sign-in &amp; device</h3>
+                <div className="ehr-set-acct-actions">
+                  <button type="button" className="ehr-handoff-btn" onClick={() => { setAcctOpen(false); setPwOpen(true); }}>
+                    <KeyRound /> Change password
+                  </button>
+                  <button type="button" className="ehr-handoff-btn" onClick={() => { setAcctOpen(false); setPinOpen(true); }}>
+                    <Lock /> {pinIsSet ? 'Change screen-lock PIN' : 'Set screen-lock PIN'}
+                  </button>
+                </div>
+              </section>
+            </div>
+
+            <div className="ehr-set-acct-foot">
+              <button type="button" className="ehr-handoff-btn" onClick={closeAccountEditor}>Cancel</button>
               <button
                 type="button"
                 className="ehr-handoff-btn primary"
-                disabled={acctSaving || !acctName.trim() || acctName.trim() === currentUser.name}
-                onClick={async () => {
-                  const next = acctName.trim();
-                  setAcctSaving(true);
-                  try {
-                    await updateUser(currentUser._id, { name: next }, currentUser._id, currentUser.username);
-                    await refreshCurrentUser();
-                    // Keep the settings draft in step so the name row doesn't
-                    // show the old value or read as an unsaved change.
-                    setDraft(prev => ({ ...prev, 'account.displayName': next }));
-                    setBaseline(prev => ({ ...prev, 'account.displayName': next }));
-                    showToast('Account updated', 'success');
-                    setAcctOpen(false);
-                  } catch {
-                    showToast('Failed to update account', 'error');
-                  } finally {
-                    setAcctSaving(false);
-                  }
-                }}
+                disabled={saving || !displayName.trim()}
+                onClick={async () => { await handleSave(); setAcctOpen(false); }}
               >
-                {acctSaving ? 'Saving…' : 'Save changes'}
+                {saving ? 'Saving…' : 'Save changes'}
               </button>
-              <div className="ehr-set-acct-actions">
-                <button type="button" className="ehr-handoff-btn" onClick={() => { setAcctOpen(false); setPwOpen(true); }}>
-                  <KeyRound /> Change password
-                </button>
-                <button type="button" className="ehr-handoff-btn" onClick={() => { setAcctOpen(false); setPinOpen(true); }}>
-                  <Lock /> {pinIsSet ? 'Change screen-lock PIN' : 'Set screen-lock PIN'}
-                </button>
-              </div>
             </div>
           </div>
         </Modal>

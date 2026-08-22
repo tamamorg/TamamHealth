@@ -1,3 +1,4 @@
+import { captureException } from '@/lib/observability';
 import crypto from 'node:crypto';
 import { getUpstashConfig, hashKey, upstashPipeline, withRetry } from './upstash';
 
@@ -57,6 +58,7 @@ async function reserveNonce(nonce: string): Promise<'ok' | 'replay' | 'unavailab
       return result[0]?.result === 'OK' ? 'ok' : 'replay';
     } catch (error) {
       console.error('[Sync] shared replay store unavailable:', error);
+      captureException(error, { tag: '[Sync] shared replay store unavailable:' });
       return 'unavailable';
     }
   }

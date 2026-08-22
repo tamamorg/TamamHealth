@@ -1649,7 +1649,6 @@ async function seedProduction(): Promise<void> {
       epidemicIntelligence: true,
       mchAnalytics: true,
       dhis2Export: true,
-      aiClinicalSupport: true,
       communityHealth: true,
       facilityAssessments: true,
     },

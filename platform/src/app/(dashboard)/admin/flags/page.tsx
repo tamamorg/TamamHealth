@@ -18,7 +18,6 @@ const TENANT_FLAGS: { key: FlagKey; label: string }[] = [
   { key: 'epidemicIntelligence', label: 'Epidemic' },
   { key: 'mchAnalytics', label: 'MCH' },
   { key: 'dhis2Export', label: 'DHIS2' },
-  { key: 'aiClinicalSupport', label: 'AI Clinical' },
   { key: 'communityHealth', label: 'Community' },
   { key: 'facilityAssessments', label: 'Assessments' },
 ];

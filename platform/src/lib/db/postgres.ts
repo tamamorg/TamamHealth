@@ -46,6 +46,7 @@
  * ============================================================================
  */
 
+import { captureException } from '@/lib/observability';
 import { Pool, type PoolConfig } from 'pg';
 import { connectionStringForExplicitSsl, postgresSslOptions } from './postgres-ssl';
 
@@ -461,6 +462,7 @@ function getPool(): Pool {
 
     pool.on('error', (err) => {
       console.error('[PostgreSQL] Unexpected pool error:', err);
+      captureException(err, { tag: '[PostgreSQL] Unexpected pool error:' });
     });
   }
 

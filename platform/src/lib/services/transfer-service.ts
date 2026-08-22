@@ -87,7 +87,6 @@ export async function assembleTransferPackage(
     attachments: rec.attachments,
     followUp: rec.followUp,
     syncStatus: rec.syncStatus,
-    aiEvaluation: rec.aiEvaluation,
   }));
 
   // Estimate package size (rough: base64 data of attachments + JSON overhead)

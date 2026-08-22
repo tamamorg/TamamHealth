@@ -1,3 +1,4 @@
+import { captureException } from '@/lib/observability';
 import { referralsDB, hospitalsDB, medicalRecordsDB } from '../db';
 import type { ReferralDoc, HospitalDoc, MedicalRecordDoc } from '../db-types';
 import type { DataScope } from './data-scope';
@@ -482,6 +483,7 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
         });
       } catch (err) {
         console.error('Failed to transfer patient on referral acceptance:', err);
+        captureException(err, { tag: 'Failed to transfer patient on referral acceptance:' });
         // Intentionally swallow: re-running acceptance is idempotent.
       }
       // Drop an intake encounter into the receiver's EHR (idempotent). Failure
@@ -491,6 +493,7 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
         await recordReferralIntake(referral, toOrgId);
       } catch (err) {
         console.error('Failed to record referral intake encounter:', err);
+        captureException(err, { tag: 'Failed to record referral intake encounter:' });
       }
     }
 

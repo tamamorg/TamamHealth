@@ -115,7 +115,6 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
     { key: 'epidemicIntelligence', label: t('orgSettings.flagEpidemicIntelligence'), desc: t('orgSettings.flagEpidemicIntelligenceDesc') },
     { key: 'mchAnalytics', label: t('orgSettings.flagMchAnalytics'), desc: t('orgSettings.flagMchAnalyticsDesc') },
     { key: 'dhis2Export', label: t('orgSettings.flagDhis2Export'), desc: t('orgSettings.flagDhis2ExportDesc') },
-    { key: 'aiClinicalSupport', label: t('orgSettings.flagAiClinicalSupport'), desc: t('orgSettings.flagAiClinicalSupportDesc') },
     { key: 'communityHealth', label: t('orgSettings.flagCommunityHealth'), desc: t('orgSettings.flagCommunityHealthDesc') },
     { key: 'facilityAssessments', label: t('orgSettings.flagFacilityAssessments'), desc: t('orgSettings.flagFacilityAssessmentsDesc') },
   ] : [];

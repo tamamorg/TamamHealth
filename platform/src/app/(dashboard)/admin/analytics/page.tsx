@@ -10,23 +10,24 @@
  *    source, so in demo mode it drew fabricated growth and outside it drew a
  *    flat zero line. Neither is information an operator can act on.
  *  - "Patients per Organization" and "Users per Organization" were bar charts
- *    of the same two numbers the Organization Metrics table already carries,
- *    and they stop being readable past a handful of tenants.
- *  - The Plans and Status donuts were two cards for a legend; the table's own
- *    Plan and Status columns say it per row, and the card head now carries the
- *    status mix in one line.
+ *    of two numbers a table already carries, and they stop being readable past
+ *    a handful of tenants.
+ *  - The Plans and Status donuts were two cards for a legend; a per-tenant
+ *    table's own Plan and Status columns say it per row.
  *  - "Top Actions" ranked `element || eventName`, and only eight elements in
  *    the whole app carry a `data-track` attribute — so it was dominated by
  *    session bookkeeping (already the Sessions tile) and generic DOM
  *    descriptors like `button|type=button`. Restore it once the interactions
  *    worth counting are actually annotated.
- *  - "Activity by Organization" listed raw org ids. Its numbers are now the
- *    Events column of the Organization Metrics table, resolved to org names.
+ *  - "Activity by Organization" listed raw org ids, which name no tenant.
+ *  - The "Organization Metrics" table went 2026-08-21. The super-admin
+ *    dashboard now opens on a per-tenant Organizations card — patients, users,
+ *    seats, plan, status, and each tenant's facilities — so this was the same
+ *    roster read twice, one screen apart, from two different sources.
  *
- * It deliberately does NOT grow a Sync column: /admin/organizations owns
- * tenant health (facilities, seats, sync, status), this screen owns tenant
- * usage (patients, users, events). Two tables that differ are worth more than
- * two tables that nearly match.
+ * What is left is what only this screen does: platform totals and trends over
+ * time. Per-tenant rosters belong to /admin (the dashboard card) and tenant
+ * health to /admin/organizations.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -41,7 +42,7 @@ import {
 } from 'recharts';
 import { tooltipStyle as chartTooltipStyle, axisTick, AreaGradients } from '@/components/ChartCard';
 import {
-  SadbPage, SadbCard, SadbKpiTile, SadbPanelHeader, SadbGridList, SadbGridRow, SadbKvRow, SadbChip, statusChip,
+  SadbPage, SadbCard, SadbKpiTile, SadbPanelHeader, SadbKvRow,
 } from '@/components/admin/sadb-ui';
 
 /** Local day bucket — the trend is read the way a operator reads a calendar,
@@ -83,16 +84,12 @@ interface UsageSummary {
   perOrg?: Array<{ orgId: string; users: number; events: number }>;
 }
 
-/** Organization · Patients · Users · Events · Plan · Status. */
-const ORG_TABLE_TEMPLATE = 'minmax(180px, 1.6fr) repeat(5, minmax(90px, 1fr))';
-
 export default function AdminAnalyticsPage() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
-  const { organizations, loading: orgsLoading, getStats } = useOrganizations();
+  const { organizations, getStats } = useOrganizations();
 
   const [orgData, setOrgData] = useState<OrgDataPoint[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
   const [activity, setActivity] = useState<{ encounters: string[]; failures: string[] } | null>(null);
@@ -102,7 +99,6 @@ export default function AdminAnalyticsPage() {
     if (organizations.length === 0) return;
     let cancelled = false;
     (async () => {
-      setDataLoading(true);
       const dataPoints = await Promise.all(organizations.map(async (org): Promise<OrgDataPoint> => {
         const name = org.name.length > 18 ? org.name.slice(0, 16) + '...' : org.name;
         try {
@@ -112,10 +108,7 @@ export default function AdminAnalyticsPage() {
           return { orgId: org._id, name, patients: 0, users: 0, color: org.primaryColor || 'var(--color-success)' };
         }
       }));
-      if (!cancelled) {
-        setOrgData(dataPoints);
-        setDataLoading(false);
-      }
+      if (!cancelled) setOrgData(dataPoints);
     })();
     return () => { cancelled = true; };
   }, [organizations, getStats]);
@@ -184,29 +177,8 @@ export default function AdminAnalyticsPage() {
     [activityTrend],
   );
 
-  /** Per-org lookup keyed by org id (was a positional orgData[i] join, which
-   *  broke silently the moment the two arrays fell out of order). */
-  const orgDataById = useMemo(() => new Map(orgData.map(d => [d.orgId, d] as const)), [orgData]);
-
-  /* Per-org event counts, folded in from what used to be its own "Activity by
-     Organization" card. Events raised by platform-level users carry no orgId
-     and land in usage's `(none)` bucket — they belong to no tenant row, so the
-     column intentionally does not sum to the Events tile. */
-  const eventsByOrg = useMemo(
-    () => new Map((usage?.perOrg || []).map(r => [r.orgId, r.events] as const)),
-    [usage],
-  );
-
   const totalUsersAll = orgData.reduce((s, d) => s + d.users, 0);
   const totalPatientsAll = orgData.reduce((s, d) => s + d.patients, 0);
-
-  /* Status mix for the table's head — what the Status donut used to draw,
-     in the legend strip /admin/organizations already uses. */
-  const statusMix = [
-    { label: t('analytics.statusActive'), count: organizations.filter(o => o.subscriptionStatus === 'active').length, color: 'var(--color-success-800)' },
-    { label: t('analytics.statusTrial'), count: organizations.filter(o => o.subscriptionStatus === 'trial').length, color: 'var(--color-warning-600)' },
-    { label: t('analytics.statusSuspended'), count: organizations.filter(o => o.subscriptionStatus === 'suspended' || o.subscriptionStatus === 'cancelled').length, color: 'var(--color-danger-500)' },
-  ];
 
   function renderActivityChart() {
     if (!activity) {
@@ -309,56 +281,6 @@ export default function AdminAnalyticsPage() {
         </SadbCard>
       </div>
 
-      {/* Per-org metrics — the one place tenant numbers are compared, now
-          carrying the usage column that used to be its own card. */}
-      <SadbCard
-        title={t('analytics.organizationMetrics')}
-        action={
-          <div className="sadb-legend">
-            <span><i style={{ background: 'var(--text-muted)' }} />{t('analytics.legendOrganizations')} ({organizations.length})</span>
-            {statusMix.map(s => (
-              <span key={s.label}><i style={{ background: s.color }} />{s.label} ({s.count})</span>
-            ))}
-          </div>
-        }
-      >
-        <SadbGridList
-          template={ORG_TABLE_TEMPLATE}
-          minWidth={720}
-          head={[
-            t('analytics.colOrganization'), t('analytics.colPatients'), t('analytics.colUsers'),
-            t('analytics.colEvents30d'), t('analytics.colPlan'),
-            t('analytics.colStatus'),
-          ]}
-          alignEndLast
-          empty={dataLoading || orgsLoading ? t('analytics.loadingChartData') : t('status.noData')}
-        >
-          {organizations.map(org => {
-            const data = orgDataById.get(org._id);
-            const events = eventsByOrg.get(org._id);
-            return (
-              <SadbGridRow key={org._id} template={ORG_TABLE_TEMPLATE}>
-                <span className="min-w-0 flex items-center gap-2">
-                  <span
-                    className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
-                    style={{ background: org.primaryColor }}
-                  >
-                    {org.name.charAt(0)}
-                  </span>
-                  <span className="sadb-tenant-name truncate">{org.name}</span>
-                </span>
-                <span className="sadb-tenant-num" style={{ color: 'var(--color-success-text)' }}>{data ? data.patients.toLocaleString() : '…'}</span>
-                <span className="sadb-tenant-num" style={{ color: 'var(--accent-primary)' }}>{data ? data.users.toLocaleString() : '…'}</span>
-                <span className="sadb-tenant-num">{usageLoading ? '…' : (events ?? 0).toLocaleString()}</span>
-                <span className="capitalize">{org.subscriptionPlan}</span>
-                <span style={{ textAlign: 'end' }}>
-                  <SadbChip tone={statusChip(org.subscriptionStatus)}>{org.subscriptionStatus}</SadbChip>
-                </span>
-              </SadbGridRow>
-            );
-          })}
-        </SadbGridList>
-      </SadbCard>
     </SadbPage>
   );
 }

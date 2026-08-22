@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { reconcileProviderPayment } from '@/lib/services/payment-service';
@@ -147,7 +148,7 @@ async function postHandler(req: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('[Airtel Webhook] Error processing callback:', error);
+    logApiError('[Airtel Webhook] Error processing callback:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

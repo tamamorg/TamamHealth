@@ -18,6 +18,11 @@ export default function ShortcutSearchInput({ search }: { search: ShortcutSearch
         placeholder="Shortcut…"
         value={search.query}
         aria-label="Search text shortcuts"
+        // Without role="combobox" this is a plain textbox, which has no
+        // expanded state — so aria-expanded was announced as nothing and a
+        // screen-reader user never heard the suggestion list open.
+        role="combobox"
+        aria-controls="cn-shortcut-results"
         aria-expanded={search.open}
         onFocus={search.openList}
         onClick={search.openList}

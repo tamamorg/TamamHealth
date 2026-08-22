@@ -32,6 +32,7 @@
  *   issue a token; a "second factor" nobody receives is not a factor.
  */
 
+import { captureException } from '@/lib/observability';
 import { createHash, timingSafeEqual, randomInt } from 'node:crypto';
 import { getUpstashConfig, upstashPipeline, withRetry, hashKey } from './upstash';
 import { sendSms } from './sms';
@@ -170,6 +171,7 @@ export async function issueOtp(patientId: string, phone: string): Promise<IssueO
     // arrived only widens the guessing window.
     await dropChallenge(patientId);
     console.error('[portal-otp] delivery failed:', result.error);
+    captureException(result.error, { tag: '[portal-otp] delivery failed:' });
     return { ok: false, error: 'delivery-failed' };
   }
 

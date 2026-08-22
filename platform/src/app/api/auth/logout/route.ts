@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { CSRF_COOKIE_NAME } from '@/lib/csrf';
 import { revokeToken } from '@/lib/token-blacklist';
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
       // Cookie invalidation must still happen if the shared revocation store is
       // temporarily unavailable. The browser is logged out locally, while the
       // failure is visible in server logs for remediation.
-      console.error('[auth/logout] token revocation failed:', error);
+      logApiError('[auth/logout] token revocation failed:', error);
     }
   }
 

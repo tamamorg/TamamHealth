@@ -1,3 +1,4 @@
+import { logApiError } from '@/lib/api-auth';
 /**
  * CouchDB → PostgreSQL Sync Webhook
  *
@@ -1342,7 +1343,7 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-    console.error('[Sync] Webhook error:', err);
+    logApiError('[Sync] Webhook error:', err);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -1391,7 +1392,7 @@ export async function GET(request: NextRequest) {
         { status: 503 }
       );
     }
-    console.error('[Sync] Status error:', err);
+    logApiError('[Sync] Status error:', err);
     return NextResponse.json(
       { error: 'Failed to fetch sync status' },
       { status: 500 }
