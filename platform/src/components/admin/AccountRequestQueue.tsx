@@ -264,7 +264,18 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
             <div className="arq-row">
               <span className="arq-who">
                 <strong>{doc.fullName}</strong>
-                <span className="arq-meta">{doc.email}{doc.phone ? ` · ${doc.phone}` : ''}</span>
+                <span className="arq-meta">
+                  {doc.email}
+                  {/* What has and has not been checked, on the row where the
+                      decision is made. The address is the ONE thing the
+                      platform verifies by itself; everything else here is
+                      still the requester's own word, which is why approving
+                      asks the administrator how they confirmed the rest. */}
+                  {doc.emailVerifiedAt
+                    ? <em className="arq-verified" title={`Confirmed ${doc.emailVerifiedAt.slice(0, 10)}`}> · address confirmed</em>
+                    : <em className="arq-unverified"> · address not confirmed</em>}
+                  {doc.phone ? ` · ${doc.phone}` : ''}
+                </span>
               </span>
               <span>{roleLabel(doc.requestedRole)}</span>
               <span className="arq-meta">
@@ -403,6 +414,10 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
            to prevent, so the count is set apart from the date rather than
            reading as more of the same metadata. */
         .arq-age { font-style: normal; color: var(--color-warning-text, var(--text-secondary)); }
+        /* The one fact the platform established on its own, said plainly so
+           the approver knows exactly how much has been checked for them. */
+        .arq-verified { font-style: normal; color: var(--color-success-text, var(--text-secondary)); }
+        .arq-unverified { font-style: normal; color: var(--color-warning-text, var(--text-secondary)); }
         .arq-status { font-size: 12px; text-transform: capitalize; }
         .arq-status--pending { color: var(--text-muted); }
         .arq-status--approved { color: var(--color-success); }

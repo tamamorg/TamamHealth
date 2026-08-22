@@ -65,6 +65,7 @@ export default function AdminUsersPage() {
   const [focusedUserId, setFocusedUserId] = useState<string | null>(null);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterOrg, setFilterOrg] = useState<string>('all');
+  const [filterReview, setFilterReview] = useState(false);
   const [changeRoleUser, setChangeRoleUser] = useState<UserDoc | null>(null);
   const [newRole, setNewRole] = useState<UserRole>('nurse');
   const [changingRole, setChangingRole] = useState(false);
@@ -127,6 +128,8 @@ export default function AdminUsersPage() {
   const [openWorkNotice, setOpenWorkNotice] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [mfaResetTarget, setMfaResetTarget] = useState<UserDoc | null>(null);
+  const [resettingMfa, setResettingMfa] = useState(false);
 
   // Deep-link support: /admin/users?q=<name> arrives pre-filtered (the audit
   // log's "View in User Management" action), while ?user=<id> isolates and
@@ -174,9 +177,12 @@ export default function AdminUsersPage() {
       const matchSearch = !q || u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (u.hospitalName || '').toLowerCase().includes(q);
       const matchRole = filterRole === 'all' || u.role === filterRole;
       const matchOrg = filterOrg === 'all' || u.orgId === filterOrg;
+      // "Needs attention" is the access review: everything a roster row is
+      // already flagging, gathered into one list.
+      if (filterReview && !(u.isActive !== false && describeAccountState(u).needsAttention)) return false;
       return matchSearch && matchRole && matchOrg;
     });
-  }, [users, search, filterRole, filterOrg, focusedUserId]);
+  }, [users, search, filterRole, filterOrg, filterReview, focusedUserId]);
 
   const handleChangeRole = async () => {
     if (!changeRoleUser || !currentUser) return;
@@ -365,6 +371,28 @@ export default function AdminUsersPage() {
     }
   };
 
+  /**
+   * Clear a colleague's second factor so they can enrol a new one.
+   *
+   * Behind a confirm, because the person on the phone claiming to have lost
+   * their handset is exactly who an attacker would claim to be — the dialog
+   * says so rather than leaving it to the administrator to remember.
+   */
+  const handleResetMfa = async (user: UserDoc) => {
+    setResettingMfa(true);
+    try {
+      const { resetUserMfa } = await import('@/lib/services/user-service');
+      const { message } = await resetUserMfa(user._id);
+      setUsers(prev => prev.map(u => u._id === user._id ? { ...u, totpEnabledAt: undefined } : u));
+      showToast(message || `Two-factor authentication cleared for ${user.name}.`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not clear two-factor authentication.', 'error');
+    } finally {
+      setResettingMfa(false);
+      setMfaResetTarget(null);
+    }
+  };
+
   const confirmDeactivate = async () => {
     if (!deactivateTarget) return;
     setDeactivating(true);
@@ -386,11 +414,20 @@ export default function AdminUsersPage() {
   const roleCounts: Record<string, number> = {};
   users.forEach(u => { roleCounts[u.role] = (roleCounts[u.role] || 0) + 1; });
 
+  // The access-review list, derived from the same `describeAccountState` the
+  // rows show — an unopened invitation, an account still on a temporary
+  // password, one nobody has used in 90 days. One definition, two surfaces.
+  const needsAttention = useMemo(
+    () => users.filter(u => u.isActive !== false && describeAccountState(u).needsAttention),
+    [users],
+  );
+
   const kpis = [
     { label: t('adminUsers.statTotalUsers'), value: users.length },
     { label: t('adminUsers.statActiveUsers'), value: users.filter(u => u.isActive).length },
     { label: t('adminUsers.statInactiveUsers'), value: users.filter(u => !u.isActive).length },
     { label: t('adminUsers.statAdminUsers'), value: users.filter(u => u.role === 'super_admin' || u.role === 'org_admin').length },
+    { label: 'Needs attention', value: needsAttention.length },
   ];
 
   const inputStyle: React.CSSProperties = {
@@ -441,6 +478,15 @@ export default function AdminUsersPage() {
               <option value="all">{t('adminUsers.allOrganizations')}</option>
               {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
             </Select>
+            <button
+              type="button"
+              className={`btn btn-sm flex-shrink-0 ${filterReview ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setFilterReview(v => !v)}
+              aria-pressed={filterReview}
+              title="Invitations nobody opened, accounts still on a temporary password, and accounts unused for 90 days"
+            >
+              Needs attention{needsAttention.length ? ` (${needsAttention.length})` : ''}
+            </button>
             {/* A facility going live has two hundred people and one dialog.
                 See lib/bulk-user-import.ts. */}
             <button
@@ -663,6 +709,17 @@ export default function AdminUsersPage() {
                 >
                   <KeyRound className="w-4 h-4" /> Reset password
                 </button>
+                {/* The lost-phone path. Only shown when there is a factor to
+                    clear — see `reset_mfa` in /api/users for why it exists. */}
+                {detailUser.totpEnabledAt && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => { const u = detailUser; closeDetail(); setMfaResetTarget(u); }}
+                  >
+                    <ShieldCheck className="w-4 h-4" /> Reset two-factor
+                  </button>
+                )}
                 {/* Preferred over a reset: the person sets their own password
                     from a single-use link, so no plaintext credential has to
                     be relayed. Offered only when there is an address to send
@@ -946,6 +1003,20 @@ export default function AdminUsersPage() {
           // filter is what says which tenant these accounts are for.
           orgId={filterOrg === 'all' ? undefined : filterOrg}
           orgName={organizations.find(o => o._id === filterOrg)?.name}
+        />
+      )}
+
+      {mfaResetTarget && (
+        <SadbConfirmModal
+          title={`Reset two-factor for ${mfaResetTarget.name}?`}
+          body={`${mfaResetTarget.name} will be able to sign in with their password alone, and will be `
+            + 'asked to set up a new authenticator app. Anyone who knows their password could do the same, '
+            + 'so confirm you are speaking to the right person first — in person, or by calling the number '
+            + 'on their staff record rather than one they have just given you.'}
+          confirmLabel={resettingMfa ? 'Clearing…' : 'Reset two-factor'}
+          onCancel={() => setMfaResetTarget(null)}
+          onConfirm={() => handleResetMfa(mfaResetTarget)}
+          busy={resettingMfa}
         />
       )}
 

@@ -19,6 +19,29 @@ async function lookupOrgName(orgId?: string): Promise<string | undefined> {
   }
 }
 
+/**
+ * The slice of `superAdminPolicies` a client is allowed to act on.
+ *
+ * An explicit allow-list, not the whole document: the config also carries
+ * break-glass and continuity settings that are the operator's business and
+ * have no business in a nurse's browser.
+ *
+ * Never throws — an unreadable platform config must not stop anybody signing
+ * in; the client simply falls back to the facility/org chain it used before.
+ */
+async function platformPolicyForClient(): Promise<{ sessionTimeoutMinutes?: number }> {
+  try {
+    const { getPlatformConfig } = await import('@/lib/services/platform-config-service');
+    const policies = (await getPlatformConfig()).superAdminPolicies;
+    const minutes = policies?.sessionTimeoutMinutes;
+    return Number.isFinite(minutes) && (minutes as number) > 0
+      ? { sessionTimeoutMinutes: minutes }
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function GET(request: NextRequest) {
   const token = request.cookies.get('tamamhealth-token')?.value;
 
@@ -148,6 +171,11 @@ export async function GET(request: NextRequest) {
       mfaPending: fresh.mfaPending,
       department: fresh.department,
     },
+    // Deployment-wide operational policy, sent with the session because every
+    // signed-in user's client needs it and none of it is sensitive: an idle
+    // timeout is not a secret, and the alternative is a second request on
+    // every app load. Read by `useAutoLock`, which treats it as a ceiling.
+    platform: await platformPolicyForClient(),
   });
 
   // Sliding renewal — the mechanism behind "the browser remembers I'm logged

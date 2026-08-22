@@ -86,7 +86,14 @@ function notifySection(rows: RoleSettingRow[]): RoleSettingSection {
   return { id: 'notifications', title: 'Notifications', icon: 'bell', note: 'In-app, plus SMS where a number is on file', rows };
 }
 
-function securitySection(twoFactor: boolean, idle: string, mask: boolean): RoleSettingSection {
+/**
+ * `twoFactor` used to be the first argument here, seeding a toggle that was
+ * declared `pending` and backed by nothing. Two-factor is a real action now
+ * (see the row below), so the per-role default has no meaning: whether an
+ * account needs a second factor is decided by the platform policy and the
+ * account's role, not by a preference seeded per dashboard.
+ */
+function securitySection(idle: string, mask: boolean): RoleSettingSection {
   return {
     id: 'security', title: 'Security & sessions', icon: 'shield', note: 'Policy set by the facility admin',
     rows: [
@@ -145,7 +152,7 @@ const DOCTOR: RoleSettingsSpec = {
       tg('notify.referrals', 'New referrals to me', 'Incoming referrals from other facilities', true),
       tg('notify.apptSummary', 'Appointment reminders', 'Daily summary at 07:00', false),
     ]),
-    securitySection(true, '15 min', false),
+    securitySection('15 min', false),
   ],
 };
 
@@ -192,7 +199,7 @@ const NURSE: RoleSettingsSpec = {
       tg('notify.admissions', 'New admissions to my ward', 'When a patient is assigned a bed', true),
       tg('notify.discharge', 'Discharge paperwork ready', 'Daily summary', false, true),
     ]),
-    securitySection(false, '10 min', true),
+    securitySection('10 min', true),
   ],
 };
 
@@ -236,7 +243,7 @@ const PHARMACIST: RoleSettingsSpec = {
       tg('notify.newRx', 'New prescriptions to dispense', 'Live queue notification', true),
       tg('notify.po', 'Purchase order status', 'When a PO is approved or delivered', true, true),
     ]),
-    securitySection(true, '10 min', false),
+    securitySection('10 min', false),
   ],
 };
 
@@ -280,7 +287,7 @@ const LAB: RoleSettingsSpec = {
       tg('notify.analyser', 'Analyser errors', 'When an instrument reports a fault', true, true),
       tg('notify.reagent', 'Reagent stock low', 'Weekly summary', false, true),
     ]),
-    securitySection(true, '15 min', true),
+    securitySection('15 min', true),
   ],
 };
 
@@ -326,7 +333,7 @@ const FRONTDESK: RoleSettingsSpec = {
       tg('notify.queue', 'Queue over capacity', 'When waits pass the target', true),
       tg('notify.collections', 'Daily collection summary', 'Sent at close of shift', true, true),
     ]),
-    securitySection(false, '5 min', true),
+    securitySection('5 min', true),
   ],
 };
 
@@ -368,7 +375,7 @@ const ADMIN: RoleSettingsSpec = {
       tg('notify.integrations', 'Failed integrations', 'Credential or connection errors', true, true),
       tg('notify.weekly', 'Weekly facility summary', 'Attendance, collections, and stock', true, true),
     ]),
-    securitySection(true, '15 min', false),
+    securitySection('15 min', false),
   ],
 };
 
@@ -385,7 +392,7 @@ const GENERIC: RoleSettingsSpec = {
       tg('notify.mentions', 'Messages and mentions', 'When a colleague messages me', true, true),
       tg('notify.summary', 'Daily summary', 'Sent at the start of the day', false, true),
     ]),
-    securitySection(false, '15 min', false),
+    securitySection('15 min', false),
   ],
 };
 

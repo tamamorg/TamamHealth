@@ -9,7 +9,7 @@
  * gap matters: an account whose factor went live the moment a secret was
  * generated would be locked out by any mistake between the two — a mistyped
  * secret, an app that failed to save, a browser closed halfway. The secret
- * alone is inert, and `mfaEnabled` reads `totpEnabledAt`, never `totpSecret`.
+ * alone is inert: every reader asks `totpEnabledAt`, never `totpSecret`.
  *
  * Server-only: `lib/totp.ts` uses `node:crypto`.
  */

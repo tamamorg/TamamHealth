@@ -66,16 +66,18 @@ export async function GET(request: NextRequest) {
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
     const { getUserById } = await import('@/lib/services/user-service');
-    const { isMfaRequiredFor, isMfaPolicyEnabled, MFA_REQUIRED_ROLES } = await import('@/lib/services/mfa-service');
+    const { isMfaRequiredFor } = await import('@/lib/services/mfa-service');
     const user = await getUserById(auth.sub);
     if (!user) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     return NextResponse.json({
       enabled: Boolean(user.totpEnabledAt),
       enabledAt: user.totpEnabledAt,
       recoveryCodesRemaining: user.totpRecoveryCodeHashes?.length ?? 0,
+      // `required` is the only distinction the panel needs: it decides both
+      // whether enrolment is being demanded and whether the user may turn the
+      // factor off again. Reporting the policy flag and the role list
+      // separately just gave the client two more things to get out of step.
       required: await isMfaRequiredFor(user),
-      policyEnabled: await isMfaPolicyEnabled(),
-      appliesToRole: MFA_REQUIRED_ROLES.includes(user.role),
     });
   } catch (err) {
     logApiError('GET /api/auth/mfa', err);

@@ -93,7 +93,7 @@ export function pwdAtClaim(passwordUpdatedAt?: string): number | undefined {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : undefined;
 }
 
-export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; facilityIds?: string[]; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; mfaPending?: boolean; passwordUpdatedAt?: string; pwdAt?: number }): Promise<string> {
+export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; facilityIds?: string[]; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; mfaPending?: boolean; passwordUpdatedAt?: string; pwdAt?: number; ttlSeconds?: number }): Promise<string> {
   const payload = {
     sub: user._id,
     username: user.username,
@@ -126,6 +126,14 @@ export async function createToken(user: { _id: string; username: string; role: s
     pwdAt: user.pwdAt ?? pwdAtClaim(user.passwordUpdatedAt),
   };
 
+  // A shorter life than the session default, where the caller asks for one.
+  // The only user today is an impersonated session: `impersonationMaxMinutes`
+  // is displayed on the security console, and a maximum duration that nothing
+  // shortens is not a maximum.
+  const ttl = user.ttlSeconds && user.ttlSeconds > 0
+    ? Math.min(user.ttlSeconds, SESSION_TTL_SEC)
+    : SESSION_TTL_SEC;
+
   // Use jose when crypto.subtle is available (HTTPS / localhost / server-side)
   if (hasCryptoSubtle()) {
     return new SignJWT(payload)
@@ -133,7 +141,7 @@ export async function createToken(user: { _id: string; username: string; role: s
       .setIssuedAt()
       .setIssuer(JWT_ISSUER)
       .setAudience(JWT_AUDIENCE)
-      .setExpirationTime(`${SESSION_TTL_SEC}s`)
+      .setExpirationTime(`${ttl}s`)
       .sign(JWT_SECRET);
   }
 

@@ -24,7 +24,7 @@ import {
   getAuthPayload, unauthorized, forbidden, hasRole, serverError, logApiError,
 } from '@/lib/api-auth';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import { parseUserImport, MAX_IMPORT_ROWS } from '@/lib/bulk-user-import';
+import { parseUserImport } from '@/lib/bulk-user-import';
 import { generateTempPassword, tempPasswordLengthFor } from '@/lib/temp-password';
 import { roleNeedsFacility } from '@/lib/user-scope-rules';
 
@@ -183,7 +183,6 @@ async function postHandler(request: NextRequest) {
     return NextResponse.json({
       created: results.filter(r => r.username).length,
       failed: results.filter(r => r.error).length,
-      limit: MAX_IMPORT_ROWS,
       results,
     });
   } catch (err) {

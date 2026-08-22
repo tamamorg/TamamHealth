@@ -34,9 +34,30 @@ import {
 
 type Policy = NonNullable<PlatformConfigDoc['superAdminPolicies']>;
 
+/**
+ * Whether the platform actually DOES anything with a setting.
+ *
+ * This screen shipped with sixteen controls and enforced none of them. An
+ * operator reading it believed the platform imposed an MFA requirement, a
+ * password minimum, an idle timeout and a cap on support sessions; the code
+ * read none of those values, and a governance screen that overstates the
+ * posture will be read as an assurance by whoever procures and audits it.
+ *
+ * Four are enforced now. The rest are real commitments an organisation makes
+ * and answers for — an audit-retention window, a recovery objective, a rule
+ * that destructive actions get a second approver — but the platform does not
+ * police them, and saying so on the row is the difference between a policy
+ * register and a false claim.
+ */
+type Enforcement = 'enforced' | 'recorded';
+
 interface SettingField {
   kind: 'toggle' | 'number';
   key: keyof Policy;
+  /** Defaults to 'recorded' — a control has to EARN the stronger label. */
+  enforcement?: Enforcement;
+  /** What enforces it, named so the claim is checkable. */
+  enforcedBy?: string;
   label: string;
   sub: string;
   /** Appended straight after the value, e.g. "15m", "6y", " characters". */
@@ -44,9 +65,21 @@ interface SettingField {
 }
 
 const ACCESS_FIELDS: SettingField[] = [
-  { kind: 'toggle', key: 'mfaRequired', label: 'Require MFA', sub: 'Multi-factor authentication for privileged access.' },
-  { kind: 'number', key: 'passwordMinLength', label: 'Password minimum', sub: 'Minimum password length, characters.', unit: ' characters' },
-  { kind: 'number', key: 'sessionTimeoutMinutes', label: 'Session timeout', sub: 'Idle session timeout, minutes.', unit: 'm' },
+  {
+    kind: 'toggle', key: 'mfaRequired', label: 'Require MFA',
+    sub: 'Platform and organization admins, medical superintendents and hospital managers must set up an authenticator app before using the platform.',
+    enforcement: 'enforced', enforcedBy: 'lib/services/mfa-service.ts',
+  },
+  {
+    kind: 'number', key: 'passwordMinLength', label: 'Password minimum',
+    sub: 'Minimum password length, characters. Applies wherever a password is set or reset.',
+    unit: ' characters', enforcement: 'enforced', enforcedBy: 'lib/password-policy.ts',
+  },
+  {
+    kind: 'number', key: 'sessionTimeoutMinutes', label: 'Session timeout',
+    sub: 'Idle timeout ceiling, minutes. A facility may lock sooner, never later.',
+    unit: 'm', enforcement: 'enforced', enforcedBy: 'lib/hooks/useAutoLock.ts',
+  },
   { kind: 'toggle', key: 'ssoEnabled', label: 'SSO controls', sub: 'Expose SAML/OIDC controls per organization.' },
 ];
 
@@ -60,8 +93,16 @@ const PHI_FIELDS: SettingField[] = [
 const BREAKGLASS_FIELDS: SettingField[] = [
   { kind: 'toggle', key: 'emergencyAccessEnabled', label: 'Emergency access', sub: 'Allow break-glass access with follow-up review.' },
   { kind: 'number', key: 'emergencyAccessReviewHours', label: 'Emergency review window', sub: 'Hours to review break-glass access after use.', unit: 'h' },
-  { kind: 'toggle', key: 'impersonationEnabled', label: 'Support impersonation', sub: 'Allow isolated tenant support sessions with audit trail.' },
-  { kind: 'number', key: 'impersonationMaxMinutes', label: 'Impersonation max duration', sub: 'Maximum impersonation session length, minutes.', unit: 'm' },
+  {
+    kind: 'toggle', key: 'impersonationEnabled', label: 'Support impersonation',
+    sub: 'Allow a platform operator to sign in as another role. Every session is audited.',
+    enforcement: 'enforced', enforcedBy: 'lib/login-session.ts',
+  },
+  {
+    kind: 'number', key: 'impersonationMaxMinutes', label: 'Impersonation max duration',
+    sub: 'An impersonated session expires after this long, whatever the normal session length is.',
+    unit: 'm', enforcement: 'enforced', enforcedBy: 'lib/login-session.ts',
+  },
   { kind: 'toggle', key: 'supportAccessRequiresTicket', label: 'Require support ticket', sub: 'Support access must carry a ticket or incident reference.' },
   { kind: 'toggle', key: 'dualApprovalForHighRisk', label: 'Dual approval', sub: 'Require a second approver for destructive or privileged actions.' },
 ];
@@ -71,6 +112,18 @@ const CONTINUITY_FIELDS: SettingField[] = [
   { kind: 'number', key: 'backupRtoHours', label: 'Recovery time objective', sub: 'Maximum acceptable restore time, hours.', unit: 'h' },
 ];
 
+/**
+ * The row's description, with what the platform will actually do about it.
+ *
+ * Appended rather than shown as a chip so it survives every surface that reads
+ * `sub` — including /admin/config, which lists the same policy values.
+ */
+function enforcementSub(f: SettingField): string {
+  return f.enforcement === 'enforced'
+    ? `${f.sub} · Enforced by the platform.`
+    : `${f.sub} · Recorded policy — the platform does not enforce this.`;
+}
+
 function formatValue(f: SettingField, value: number): string {
   return `${value}${f.unit ?? ''}`;
 }
@@ -78,13 +131,13 @@ function formatValue(f: SettingField, value: number): string {
 function renderField(f: SettingField, draft: Policy, onToggle: (key: keyof Policy, value: boolean) => void, onEditNumber: (f: SettingField) => void) {
   if (f.kind === 'toggle') {
     return (
-      <SadbSettingRow key={f.key} label={f.label} sub={f.sub}>
+      <SadbSettingRow key={f.key} label={f.label} sub={enforcementSub(f)}>
         <SadbToggle checked={Boolean(draft[f.key])} onChange={v => onToggle(f.key, v)} label={f.label} />
       </SadbSettingRow>
     );
   }
   return (
-    <SadbSettingRow key={f.key} label={f.label} sub={f.sub}>
+    <SadbSettingRow key={f.key} label={f.label} sub={enforcementSub(f)}>
       <SadbValueButton value={formatValue(f, draft[f.key] as number)} onClick={() => onEditNumber(f)} title={`Edit ${f.label.toLowerCase()}`} />
     </SadbSettingRow>
   );

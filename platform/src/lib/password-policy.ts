@@ -46,6 +46,22 @@ export const DEFAULT_MIN_PASSWORD_LENGTH = 12;
 export const MAX_PASSWORD_LENGTH = 64;
 
 /**
+ * The floor for a PATIENT's portal password, which is lower than staff.
+ *
+ * A staff account can read every chart in the facility; a portal account reads
+ * exactly one, its owner's. The portal also carries a real second factor (SMS
+ * OTP), and NIST SP 800-63B-4 puts the 8-character floor precisely at
+ * "password plus a second factor". Holding patients to the staff minimum would
+ * mostly succeed in excluding the older ones this is hardest to reach.
+ *
+ * Lives here rather than in `patient-portal-enrolment.ts` because the
+ * activation PAGE needs it, and that service reaches the patients database —
+ * importing it into a client component would drag PouchDB and `node:crypto`
+ * into the browser bundle.
+ */
+export const PORTAL_MIN_PASSWORD_LENGTH = 8;
+
+/**
  * Passwords that are refused outright.
  *
  * Two groups: the credentials that top every breach-corpus ranking, and the

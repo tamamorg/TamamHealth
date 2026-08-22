@@ -23,7 +23,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import type { InvitationOutcome } from '@/lib/user-invite';
 import {
-  Plus, KeyRound, UserX, UserCheck, Eye, EyeOff, RefreshCw, Mail, Upload,
+  Plus, KeyRound, UserX, UserCheck, Eye, EyeOff, RefreshCw, Mail, Upload, ShieldCheck,
 } from '@/components/icons/lucide';
 import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
@@ -40,7 +40,7 @@ import { getRoleConfig, labelRolesDistinctly } from '@/lib/permissions';
 import AccountRequestQueue from '@/components/admin/AccountRequestQueue';
 import BulkUserImportModal from '@/components/admin/BulkUserImportModal';
 import {
-  SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbTabs,
+  SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbTabs, SadbConfirmModal,
 } from '@/components/admin/sadb-ui';
 import { describeAccountState, canResendInvite } from '@/lib/account-state';
 import { describeInvitationOutcome } from '@/lib/invitation-copy';
@@ -64,6 +64,8 @@ export default function OrgUsersPage() {
   const { minLength: MIN_PASSWORD_LENGTH, tempLength } = usePasswordPolicy();
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [openWorkNotice, setOpenWorkNotice] = useState<string | null>(null);
+  const [mfaResetTarget, setMfaResetTarget] = useState<UserDoc | null>(null);
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [hospitals, setHospitals] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +100,14 @@ export default function OrgUsersPage() {
       icon: <KeyRound className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
       onClick: () => { setError(''); setShowResetModal(user._id); setResetPassword(''); },
     },
+    ...(user.totpEnabledAt
+      ? [{
+        key: 'reset-mfa',
+        label: t('orgUsers.resetTwoFactor'),
+        icon: <ShieldCheck className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />,
+        onClick: () => setMfaResetTarget(user),
+      }]
+      : []),
     ...(user.isActive && user._id !== currentUser?._id
       ? [{ key: 'deactivate', label: t('orgUsers.deactivate'), tone: 'danger' as const, icon: <UserX className="w-4 h-4" />, onClick: () => handleDeactivate(user._id) }]
       : []),
@@ -237,13 +247,34 @@ export default function OrgUsersPage() {
 
   const handleDeactivate = async (userId: string) => {
     try {
-      const { deactivateUser } = await import('@/lib/services/user-service');
-      await deactivateUser(userId, currentUser?._id, currentUser?.username);
+      // Same path the platform roster uses: revoke first, then say what the
+      // leaver still had booked. An org admin needs that at least as much as a
+      // platform operator does — they are the one who has to reassign it.
+      const { deactivateUserReportingOpenWork } = await import('@/lib/services/user-service');
+      const { openWork } = await deactivateUserReportingOpenWork(userId);
       showToast(t('orgUsers.successUserDeactivated'), 'success');
+      if (openWork?.hasOpenWork) {
+        const { describeOpenWork } = await import('@/lib/services/offboarding-service');
+        setOpenWorkNotice(describeOpenWork(openWork));
+      }
       await loadData();
     } catch (err: unknown) {
       const e = err as Error;
       showToast(e.message || t('orgUsers.errorDeactivateFailed'), 'error');
+    }
+  };
+
+  /** Clear a colleague's second factor — the lost-phone path. */
+  const handleResetMfa = async (user: UserDoc) => {
+    try {
+      const { resetUserMfa } = await import('@/lib/services/user-service');
+      const { message } = await resetUserMfa(user._id);
+      showToast(message || t('orgUsers.resetTwoFactorDone', { name: user.name }), 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t('orgUsers.resetTwoFactorFailed'), 'error');
+    } finally {
+      setMfaResetTarget(null);
     }
   };
 
@@ -330,6 +361,8 @@ export default function OrgUsersPage() {
     if (filterRole !== 'all' && u.role !== filterRole) return false;
     if (filterStatus === 'active' && !u.isActive) return false;
     if (filterStatus === 'inactive' && u.isActive) return false;
+    if (filterStatus === 'attention'
+      && !(u.isActive !== false && describeAccountState(u).needsAttention)) return false;
     const combined = [search, globalSearch].filter(Boolean).join(' ').toLowerCase().trim();
     if (combined) {
       const terms = combined.split(/\s+/);
@@ -403,6 +436,9 @@ export default function OrgUsersPage() {
               <option value="all">{t('orgUsers.allStatus')}</option>
               <option value="active">{t('orgUsers.statusActive')}</option>
               <option value="inactive">{t('orgUsers.statusInactive')}</option>
+              {/* The access review, as a filter rather than a separate screen:
+                  everything the rows already flag, gathered into one list. */}
+              <option value="attention">{t('orgUsers.filterNeedsAttention')}</option>
             </Select>
             {/* Read and write diverge here: the facility roles read this
                 list as their staff roster, but /api/users' WRITE_ROLES is
@@ -533,6 +569,26 @@ export default function OrgUsersPage() {
 
       {/* Create User Modal — the shared dialog, also opened from a facility's
           Staff tab with that facility locked in. */}
+
+      {openWorkNotice && (
+        <SadbConfirmModal
+          title={t('orgUsers.reassignTitle')}
+          body={openWorkNotice}
+          confirmLabel={t('orgUsers.reassignConfirm')}
+          onCancel={() => setOpenWorkNotice(null)}
+          onConfirm={() => setOpenWorkNotice(null)}
+        />
+      )}
+
+      {mfaResetTarget && (
+        <SadbConfirmModal
+          title={t('orgUsers.resetTwoFactorTitle', { name: mfaResetTarget.name })}
+          body={t('orgUsers.resetTwoFactorBody', { name: mfaResetTarget.name })}
+          confirmLabel={t('orgUsers.resetTwoFactor')}
+          onCancel={() => setMfaResetTarget(null)}
+          onConfirm={() => handleResetMfa(mfaResetTarget)}
+        />
+      )}
 
       {showImport && (
         <BulkUserImportModal

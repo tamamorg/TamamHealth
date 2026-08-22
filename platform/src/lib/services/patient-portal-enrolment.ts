@@ -32,20 +32,12 @@ import { patientsDB } from '../db';
 import type { PatientDoc } from '../db-types';
 import { issueInvite, hashInviteToken, inviteHashMatches, isInviteExpired } from '../user-invite';
 import { findByType } from './db-query';
+import { PORTAL_MIN_PASSWORD_LENGTH } from '../password-policy';
 
-/** Minimum length for a patient-chosen portal password. */
-export const PORTAL_MIN_PASSWORD_LENGTH = 8;
-
-/**
- * Why the patient floor is lower than the staff one.
- *
- * A staff account can read every chart in the facility; a portal account can
- * read exactly one, its owner's. The portal also runs a real second factor
- * (SMS OTP, `patient-portal-otp.ts`) where staff sign-in historically had
- * none — and NIST SP 800-63B-4 puts the 8-character floor precisely at
- * "password plus a second factor". Raising it to the staff minimum would
- * mostly succeed in excluding the older patients this is hardest to reach.
- */
+// The patient password floor, and why it is lower than the staff one, live in
+// `lib/password-policy.ts` — the activation page needs the same number and
+// cannot import this module, which reaches the patients database.
+export { PORTAL_MIN_PASSWORD_LENGTH } from '../password-policy';
 
 export interface PortalEnrolment {
   username: string;

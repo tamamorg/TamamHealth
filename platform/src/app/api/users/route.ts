@@ -373,6 +373,47 @@ async function postHandler(request: NextRequest) {
       );
       return audited(NextResponse.json({ success: true }), 'user.password_reset');
     }
+    // Clear a user's second factor, so they can enrol a new one.
+    //
+    // WHY THIS HAS TO EXIST. Enrolment issues ten single-use recovery codes
+    // precisely so a lost phone is survivable — but a person who loses the
+    // handset AND the paper is locked out of their own account with no way
+    // back, and on this platform that may be the only clinician at a facility
+    // with an eight-hour drive to the nearest colleague who could help.
+    // Without an administrative reset, the safety net has a hole exactly where
+    // the deployment is least able to cope with one.
+    //
+    // Guarded like every other mutation of an existing account: an org_admin
+    // may only do it inside their own tenant and never to a platform or
+    // national account. It grants nothing by itself — the user still has to
+    // know their password, and the enrolment gate puts them straight back into
+    // setting up a new authenticator.
+    if (action === 'reset_mfa') {
+      if (!body.userId) {
+        return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+      }
+      const target = await getUserById(body.userId as string);
+      if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      const authzError = targetMutationError(auth, target);
+      if (authzError) return authzError;
+      if (!target.totpEnabledAt) {
+        return NextResponse.json(
+          { error: `${target.name} does not have two-factor authentication set up.` },
+          { status: 400 },
+        );
+      }
+      const { disableTotp } = await import('@/lib/services/mfa-service');
+      await disableTotp(body.userId as string, auth.username);
+      return audited(
+        NextResponse.json({
+          success: true,
+          message: `${target.name} can sign in with their password now, and will be asked to set up `
+            + 'a new authenticator app. Confirm who you are speaking to before telling them.',
+        }),
+        'user.mfa_reset',
+      );
+    }
+
     // Re-send the set-your-password invitation.
     //
     // The invite issuer had exactly one call site — account creation — so an

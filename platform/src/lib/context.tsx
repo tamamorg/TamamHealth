@@ -140,6 +140,17 @@ async function hydrateAppUser(raw: {
  * labelling a database outage or a lockout as "Invalid credentials" — the one
  * message that tells the user to retype a password that was never wrong.
  */
+/**
+ * The slice of the platform's security policy a browser is given.
+ *
+ * Deliberately small. `/api/auth/me` sends an allow-list, not the whole
+ * config — break-glass and continuity settings are the operator's business.
+ */
+export interface PlatformClientPolicy {
+  /** Idle timeout ceiling, minutes. Nothing may configure a longer one. */
+  sessionTimeoutMinutes?: number;
+}
+
 export interface LoginFailure {
   status: number;
   /** The server's own error text, when it sent one. */
@@ -177,6 +188,8 @@ interface AppState {
    * to finish.
    */
   lastLoginChallenge: () => { method: 'totp' } | null;
+  /** Deployment-wide policy this client must honour — see `PlatformClientPolicy`. */
+  platformPolicy: PlatformClientPolicy;
   /** Why the most recent `login()` returned false, or null if the server was never reached. */
   lastLoginFailure: () => LoginFailure | null;
   logout: () => void;
@@ -241,6 +254,7 @@ interface AuthSlice {
   login: AppState['login'];
   lastLoginFailure: AppState['lastLoginFailure'];
   lastLoginChallenge: AppState['lastLoginChallenge'];
+  platformPolicy: AppState['platformPolicy'];
   logout: AppState['logout'];
   refreshCurrentUser: AppState['refreshCurrentUser'];
 }
@@ -353,6 +367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const data = await res.json();
             if (data.user) {
               setCurrentUser(await hydrateAppUser(data.user));
+              setPlatformPolicy(data.platform ?? {});
               setIsAuthenticated(true);
 
               // The platform session was restored from cookies, but the
@@ -566,6 +581,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * signed, bound to its own JWT audience so it can never be presented as a
    * session, and lives five minutes server-side regardless of what is kept here.
    */
+  /**
+   * Deployment-wide operational policy, from `/api/auth/me`.
+   *
+   * Kept beside the user rather than on it: it describes the platform, not the
+   * person, and it applies identically to every session on this deployment.
+   * Today it carries one value — the idle timeout that `useAutoLock` treats as
+   * a ceiling — which had been displayed on the security console since that
+   * screen shipped and read by nothing.
+   */
+  const [platformPolicy, setPlatformPolicy] = useState<PlatformClientPolicy>({});
   const mfaChallengeRef = useRef<{ mfaToken: string; username: string } | null>(null);
   const lastLoginChallenge = useCallback(
     () => (mfaChallengeRef.current ? { method: 'totp' as const } : null),
@@ -983,6 +1008,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (!data?.user) return;
       setCurrentUser(await hydrateAppUser(data.user));
+      setPlatformPolicy(data.platform ?? {});
     } catch {
       // Offline or unreachable — keep the identity we already have.
     }
@@ -1107,7 +1133,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // actions are stable, so they don't need to be in the dependency list.
   const authValue = useMemo<AuthSlice>(() => ({
     isAuthenticated, currentUser, dbReady, login, lastLoginFailure, lastLoginChallenge, logout, refreshCurrentUser,
-  }), [isAuthenticated, currentUser, dbReady, login, lastLoginFailure, lastLoginChallenge, logout, refreshCurrentUser]);
+    platformPolicy,
+  }), [isAuthenticated, currentUser, dbReady, login, lastLoginFailure, lastLoginChallenge, logout, refreshCurrentUser,
+    platformPolicy]);
 
   const syncValue = useMemo<SyncSlice>(() => ({
     isOnline, isNetworkUp, syncPaused, lastSync, syncStatus, syncNow, toggleOnline,

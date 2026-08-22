@@ -27,9 +27,14 @@ import RouteContextBar from '@/components/navigation/RouteContextBar';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { isAuthenticated, currentUser, dbReady, logout } = useAuth();
+  const { isAuthenticated, currentUser, dbReady, logout, platformPolicy } = useAuth();
   const orgTimeout = currentUser?.organization?.lockTimeoutMinutes;
-  const { isLocked, hasPin, unlock, verifyPin, setPin } = useAutoLock(isAuthenticated, orgTimeout);
+  // The platform's own idle policy is a ceiling over the facility/org/user
+  // chain — see useAutoLock. It was displayed on /admin/security and read by
+  // nothing until this was wired.
+  const { isLocked, hasPin, unlock, verifyPin, setPin } = useAutoLock(
+    isAuthenticated, orgTimeout, platformPolicy.sessionTimeoutMinutes,
+  );
   const isMobile = useIsMobileViewport();
   const mobileArchetype = currentUser ? getMobileShellArchetype(currentUser.role) : undefined;
   const useShell = isMobile && !!mobileArchetype;

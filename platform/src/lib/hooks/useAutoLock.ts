@@ -76,7 +76,19 @@ function parseIdleChoice(choice: string): number | undefined {
   return Number.isFinite(minutes) && minutes > 0 ? minutes : undefined;
 }
 
-export function useAutoLock(isAuthenticated: boolean, orgLockTimeoutMinutes?: number) {
+export function useAutoLock(
+  isAuthenticated: boolean,
+  orgLockTimeoutMinutes?: number,
+  /**
+   * The platform's own `sessionTimeoutMinutes` (Super-admin → Security).
+   *
+   * A CEILING, not another candidate: it is the strictest layer and it is set
+   * by the operator who answers for the whole deployment, so a facility must
+   * not be able to configure a longer idle window than the platform allows.
+   * The screen has displayed this number since it shipped and nothing read it.
+   */
+  platformSessionTimeoutMinutes?: number,
+) {
   const [isLocked, setIsLocked] = useState(false);
   const [hasPin, setHasPin] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,12 +139,27 @@ export function useAutoLock(isAuthenticated: boolean, orgLockTimeoutMinutes?: nu
       : (orgLockTimeoutMinutes && orgLockTimeoutMinutes > 0)
         ? orgLockTimeoutMinutes
         : undefined;
+
+    // Every layer below is capped by the platform's own value. Applied last
+    // and by `Math.min` so it can only ever shorten: a tenant may be stricter
+    // than the platform, never looser, and the same rule already governs what
+    // an individual may do to their facility's setting.
+    const capped = (value: number): number =>
+      (platformSessionTimeoutMinutes && platformSessionTimeoutMinutes > 0)
+        ? Math.min(value, platformSessionTimeoutMinutes)
+        : value;
+
     if (policyMin !== undefined) {
       const effective = userLockMin && userLockMin > 0 ? Math.min(policyMin, userLockMin) : policyMin;
-      return effective * 60_000;
+      return capped(effective) * 60_000;
     }
     if (userLockMin && userLockMin > 0) {
-      return userLockMin * 60_000;
+      return capped(userLockMin) * 60_000;
+    }
+    if (platformSessionTimeoutMinutes && platformSessionTimeoutMinutes > 0) {
+      // Nothing else configured: the platform policy IS the answer, rather
+      // than falling through to a hard-coded default that ignores it.
+      return platformSessionTimeoutMinutes * 60_000;
     }
     if (typeof window === 'undefined') return DEFAULT_TIMEOUT_MS;
     const saved = localStorage.getItem(LOCK_TIMEOUT_KEY);
@@ -141,7 +168,7 @@ export function useAutoLock(isAuthenticated: boolean, orgLockTimeoutMinutes?: nu
       if (!isNaN(parsed) && parsed > 0) return parsed;
     }
     return DEFAULT_TIMEOUT_MS;
-  }, [facilityLockMin, orgLockTimeoutMinutes, userLockMin]);
+  }, [facilityLockMin, orgLockTimeoutMinutes, userLockMin, platformSessionTimeoutMinutes]);
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);

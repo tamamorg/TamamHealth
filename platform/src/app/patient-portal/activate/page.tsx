@@ -17,7 +17,7 @@ import { useSearchParams } from 'next/navigation';
 import { Corners, loginStyles } from '@/components/login/login-chrome';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
-const MIN_PASSWORD_LENGTH = 8;
+import { PORTAL_MIN_PASSWORD_LENGTH as MIN_PASSWORD_LENGTH } from '@/lib/password-policy';
 
 function ActivateForm() {
   const { t } = useTranslation();

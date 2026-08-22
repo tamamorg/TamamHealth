@@ -134,6 +134,24 @@ export async function issueSessionResponse(
   // has no database. Never blocks the sign-in itself: the person has to get
   // far enough in to enrol, and the gate is what keeps them from going
   // further.
+  // How long an impersonated session may last. The console has advertised
+  // `impersonationMaxMinutes` since it shipped and nothing shortened anything,
+  // so a support session opened "for thirty minutes" lived the full session
+  // TTL like any other. Only applied when a role is actually being borrowed.
+  let ttlSeconds: number | undefined;
+  if (effective.actualRole) {
+    try {
+      const { getPlatformConfig } = await import('./services/platform-config-service');
+      const minutes = (await getPlatformConfig()).superAdminPolicies?.impersonationMaxMinutes;
+      if (Number.isFinite(minutes) && (minutes as number) > 0) ttlSeconds = (minutes as number) * 60;
+    } catch {
+      // A policy that cannot be read must not silently grant a LONGER session
+      // than the operator asked for, so fall back to the documented default
+      // rather than to the full session TTL.
+      ttlSeconds = 30 * 60;
+    }
+  }
+
   let mfaPending = false;
   try {
     const { isMfaRequiredFor } = await import('./services/mfa-service');
@@ -169,6 +187,7 @@ export async function issueSessionResponse(
     // or reset user straight to the "set your password" screen.
     mustChangePassword: user.mustChangePassword,
     mfaPending,
+    ttlSeconds,
     // Password epoch — a later change/reset invalidates this token.
     passwordUpdatedAt: user.passwordUpdatedAt,
   });
@@ -216,7 +235,8 @@ export async function issueSessionResponse(
     await logAudit(
       'session_impersonation_started', user._id, user.username,
       `${user.username} (${effective.actualRole}) signed in as ${effective.role}`
-        + `${effective.orgId ? ` in ${effective.orgId}` : ''}`,
+        + `${effective.orgId ? ` in ${effective.orgId}` : ''}`
+        + `${ttlSeconds ? ` — session capped at ${Math.round(ttlSeconds / 60)} minutes` : ''}`,
       true,
     );
   }

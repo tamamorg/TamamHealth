@@ -404,12 +404,29 @@ Every finding above, with the code that answers it.
 | P2-15 | Smaller items | Public request write audited; per-email dedupe; `summarizeOpenWork()` reports a leaver's unfinished work after access is revoked |
 | §4.3 | Patient portal had no enrolment | `lib/services/patient-portal-enrolment.ts`, `/api/patients/portal-access`, `/api/patient-portal/activate`, `/patient-portal/activate`, and a card on the chart's Demographics tab |
 
-**Verification.** 101 new unit tests across eight suites (password policy, TOTP, MFA
+### Second pass — finishing what the first left half-done
+
+A follow-up sweep for loose ends in the fixes themselves found seven, all now closed:
+
+| Loose end | Finished |
+|---|---|
+| P0-3 was only ⅗ done — `sessionTimeoutMinutes` and `impersonationMaxMinutes` were still decorative | The platform idle timeout is now a CEILING over the facility/org/user chain (`useAutoLock`, fed by `/api/auth/me`), and an impersonated session's JWT expires after `impersonationMaxMinutes` instead of the full 30-day TTL |
+| The other eleven console settings still implied enforcement | Every row on `/admin/security` now reads *Enforced by the platform* or *Recorded policy — the platform does not enforce this*; `/admin/config`'s summary says the same |
+| A user who lost their phone **and** their recovery codes had no way back | `reset_mfa` on `/api/users`, guarded like every other mutation, surfaced on both rosters behind a confirm that warns the caller may not be who they claim |
+| Org admins got no handover warning when closing an account | `/org-admin/users` uses the same `deactivateUserReportingOpenWork` path as the platform roster |
+| `findDormantAccounts` was written and never surfaced | Deleted; the access review is a **Needs attention** filter on both rosters, reading the same `describeAccountState` the rows do — one definition, not two |
+| `mfaEnabled`, `mfaRecoveryCodesRemaining`, `policyEnabled`, `appliesToRole`, `limit`, and a dead `twoFactor` default were exposed and read by nothing | Removed |
+| A patient handed an activation slip had no link to follow | "I have an activation code" on the portal sign-in page; the portal password floor now comes from the shared module instead of a fourth literal `8` |
+
+**Verification.** 112 new unit tests across nine suites (password policy, TOTP, MFA
 service, account state, bulk import, portal enrolment, users-route guards, approval
-route); full suite 151 suites / 1742 tests green; `npm run lint` 0 errors; `i18n:check`
-passes with both locales at parity; production build clean. Driven end to end in Chromium:
-the two-step sign-in, the enrolment gate, the forced-change 403, the impersonation refusal,
-the invite/reset pages, and a bulk import of six rows against a throwaway tenant.
+route, session and impersonation policy); full suite 152 suites / 1753 tests green;
+`npm run lint` 0 errors; `i18n:check` passes with both locales at parity; production build
+clean. Driven end to end in Chromium: the two-step sign-in, the enrolment gate, the
+forced-change 403, the impersonation refusal, the invite/reset pages, a bulk import of six
+rows against a throwaway tenant, the honesty labels on the security console, the
+Needs-attention review, and the administrative MFA reset. The impersonation cap was
+measured from the issued token — 30 minutes against an ordinary session's 30 days.
 
 Two defects were found by that browser pass and fixed: the CSV importer resolved the
 label "Doctor" to the `clinician` role (shared label, last-write-wins in the alias map),

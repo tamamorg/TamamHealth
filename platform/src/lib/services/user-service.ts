@@ -37,18 +37,16 @@ const VALID_ROLES = Object.keys(ROLE_LABEL) as UserRole[];
 // DB path against mocked databases.
 const isBrowserRuntime = () => typeof window !== 'undefined' && !process.env.JEST_WORKER_ID;
 
+/**
+ * A user document with every credential verifier removed.
+ *
+ * `totpEnabledAt` deliberately survives: WHEN a second factor was switched on
+ * is a fact about the account, not a secret, and it is what the rosters read
+ * to show who is protected. The secret, the recovery hashes and the spent-step
+ * counter are the credential, and they never cross this boundary.
+ */
 export type ClientSafeUser =
-  Omit<UserDoc, 'passwordHash' | 'pinHash' | 'totpSecret' | 'totpRecoveryCodeHashes' | 'totpLastUsedStep'>
-  & {
-    /**
-     * Whether a second factor is live on this account. Derived, because the
-     * secret itself may never cross this boundary but the roster still has to
-     * be able to show who is protected and who is not.
-     */
-    mfaEnabled: boolean;
-    /** How many single-use recovery codes remain. A count is not a credential. */
-    mfaRecoveryCodesRemaining: number;
-  };
+  Omit<UserDoc, 'passwordHash' | 'pinHash' | 'totpSecret' | 'totpRecoveryCodeHashes' | 'totpLastUsedStep'>;
 
 /** Strip credential verifiers before a user document crosses an API boundary. */
 export function redactUserForClient(user: UserDoc): ClientSafeUser {
@@ -68,11 +66,7 @@ export function redactUserForClient(user: UserDoc): ClientSafeUser {
     totpLastUsedStep: _totpLastUsedStep,
     ...safe
   } = user;
-  return {
-    ...safe,
-    mfaEnabled: Boolean(user.totpEnabledAt),
-    mfaRecoveryCodesRemaining: user.totpRecoveryCodeHashes?.length ?? 0,
-  };
+  return safe;
 }
 
 /** POST an action to /api/users and translate failures into readable errors. */
@@ -660,36 +654,11 @@ export async function countRemainingOrgAdmins(orgId: string, excludingUserId: st
     && u._id !== excludingUserId).length;
 }
 
-/**
- * Accounts that have never signed in, or have not signed in for `days`.
- *
- * The data half of a periodic access review. `lastLoginAt` is absent for an
- * account that has never been used, which for a freshly provisioned one is the
- * difference between an invitation that worked and one that silently never
- * arrived — so the two are reported separately rather than collapsed into a
- * single "stale" bucket that hides a broken mail gateway.
- */
-export interface DormantAccounts {
-  neverSignedIn: UserDoc[];
-  dormant: UserDoc[];
-}
-
-export async function findDormantAccounts(
-  scope?: DataScope,
-  days = 90,
-  now: number = Date.now(),
-): Promise<DormantAccounts> {
-  const cutoff = now - days * 86_400_000;
-  const users = (await getAllUsers(scope)).filter(u => u.isActive !== false);
-  return {
-    neverSignedIn: users.filter(u => !u.lastLoginAt),
-    dormant: users.filter(u => {
-      if (!u.lastLoginAt) return false;
-      const at = Date.parse(u.lastLoginAt);
-      return Number.isFinite(at) && at < cutoff;
-    }),
-  };
-}
+// An access review does not need a service function of its own. "Which
+// accounts need somebody to do something?" is answered once, by
+// `describeAccountState` in `lib/account-state.ts`, and both rosters apply it
+// to the list they already hold — a second implementation here would be a
+// second definition of "dormant" waiting to disagree with the rows.
 
 /**
  * Deactivate an account AND report what it still had open.
@@ -722,6 +691,18 @@ export async function deactivateUserReportingOpenWork(
  * `invite-delivery.deliverAccountInvite`, which this ends up calling through
  * `POST /api/users`.
  */
+/**
+ * Administratively clear a colleague's second factor.
+ *
+ * For the lost phone whose owner also lost the recovery codes — see the note
+ * on `reset_mfa` in `/api/users`. Browser-only: the server-side equivalent is
+ * `mfa-service.disableTotp`, which this reaches through the API.
+ */
+export async function resetUserMfa(id: string): Promise<{ message?: string }> {
+  const body = await postUsersApi({ action: 'reset_mfa', userId: id });
+  return { message: body.message as string | undefined };
+}
+
 export async function resendUserInvite(id: string): Promise<InvitationOutcome> {
   const body = await postUsersApi({ action: 'resend_invite', userId: id });
   return (body.invitation as InvitationOutcome) ?? { sent: false, reason: 'send_failed' };

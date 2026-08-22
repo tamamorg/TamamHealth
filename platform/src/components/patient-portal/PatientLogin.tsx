@@ -229,6 +229,11 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
           )}
 
           <div className="lg-links">
+            {/* A patient handed an activation slip at the desk has a code and
+                no account yet. The slip prints this address, but somebody who
+                arrives at the sign-in page first should not have to retype a
+                URL to find the one page that can help them. */}
+            <a href="/patient-portal/activate">{t('patientPortal.haveActivationCode')}</a>
             <a href="/login">Staff login</a>
             <a href={`mailto:support.tamam@gmail.com?subject=${encodeURIComponent('Trouble signing in to the patient portal')}`}>Trouble signing in?</a>
           </div>

@@ -248,12 +248,21 @@ export default function AdminConfigPage() {
                     <p className="sadb-empty">Loading…</p>
                   ) : (
                     <>
+                      {/* The three the platform actually applies are stated
+                          plainly; the rest are commitments the organisation
+                          answers for and the platform does not police. Saying
+                          which is which matters more here than anywhere,
+                          because this is the screen that reads as a summary of
+                          the deployment's posture. */}
                       <SadbKvRow label="MFA required" value={policies.mfaRequired ? 'Yes' : 'No'} />
                       <SadbKvRow label="Password minimum length" value={policies.passwordMinLength} />
                       <SadbKvRow label="Session timeout" value={`${policies.sessionTimeoutMinutes}m`} />
-                      <SadbKvRow label="Dual approval for high-risk actions" value={policies.dualApprovalForHighRisk ? 'Yes' : 'No'} />
-                      <SadbKvRow label="Audit retention" value={`${policies.auditRetentionYears}y`} />
-                      <SadbKvRow label="SSO enabled" value={policies.ssoEnabled ? 'Yes' : 'No'} />
+                      <SadbKvRow
+                        label="Dual approval for high-risk actions"
+                        value={`${policies.dualApprovalForHighRisk ? 'Yes' : 'No'} · not enforced`}
+                      />
+                      <SadbKvRow label="Audit retention" value={`${policies.auditRetentionYears}y · not enforced`} />
+                      <SadbKvRow label="SSO enabled" value={`${policies.ssoEnabled ? 'Yes' : 'No'} · not enforced`} />
                     </>
                   )}
                 </SadbCard>
