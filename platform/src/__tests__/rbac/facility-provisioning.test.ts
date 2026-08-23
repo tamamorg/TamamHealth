@@ -127,16 +127,21 @@ describe('the pages that host the create dialog', () => {
     expect(source(file)).toContain(marker);
   });
 
-  test('the Add button on the facility network paints its glyph white', () => {
+  test('the Add button on the facility network paints its glyph', () => {
     // globals.css repaints any lucide glyph with no INLINE colour to
-    // --icon-color, the same brand blue as the primary button's fill — the
-    // plus was a blank blue circle. A className cannot escape that rule; the
-    // `color` prop writes a literal stroke attribute, which beats it. Every
-    // other `EhrListHeaderButton primary` in the app already does this.
-    const header = source('components/facilities/FacilityNetworkView.tsx')
-      .split('EhrListHeaderButton primary')[1]
-      .split('</EhrListHeaderButton>')[0];
-    expect(header).toContain('color="#fff"');
+    // --icon-color, the same brand blue as a primary button's fill — a plus
+    // that inherits it is a blank blue circle. Two ways out: an inline
+    // `color` prop, which `EhrListHeaderButton primary` needs because nothing
+    // else paints it, or `.btn-primary`, which globals.css DOES paint
+    // (`.btn-primary svg.lucide`). The facility registry moved to the second
+    // when it took the organizations registry's search row (2026-08-23), so
+    // the assertion is that it uses one of them — not that it still uses the
+    // component it no longer renders.
+    const view = source('components/facilities/FacilityNetworkView.tsx');
+    const addButton = view.split('addFacility')[1] ?? '';
+    expect(
+      addButton.includes('color="#fff"') || view.includes('btn btn-primary btn-sm'),
+    ).toBe(true);
   });
 
   test('the dialog asks a platform operator which organization owns the facility', () => {

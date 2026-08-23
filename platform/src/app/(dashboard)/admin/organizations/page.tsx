@@ -140,7 +140,27 @@ function TenantRegistryPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
-  const [view, setView] = useState<'organizations' | 'facilities'>('organizations');
+  /**
+   * A facility-scoped link opens on Facilities, not on the registry.
+   *
+   * Every `?facility=`, `?new=`, `?state=` and `?county=` link in the product
+   * points here since /hospitals was deleted, and the registry is the default
+   * view — so without this the whole set of them landed the operator on a list
+   * of tenants with their request silently dropped. Read once, at mount: after
+   * that the tabs are the operator's to drive.
+   */
+  const [view, setView] = useState<'organizations' | 'facilities'>(() => {
+    if (typeof window === 'undefined') return 'organizations';
+    const params = new URLSearchParams(window.location.search);
+    // `?view=` names the tab outright. A facility's own page returns here with
+    // it, and without this the operator who clicked into a facility from the
+    // network list came back to the TENANT registry — a different list, on the
+    // other tab, with no way to tell that anything had been dropped.
+    const named = params.get('view');
+    if (named === 'facilities' || named === 'organizations') return named;
+    const facilityScoped = ['facility', 'new', 'state', 'county'].some(k => params.get(k));
+    return facilityScoped ? 'facilities' : 'organizations';
+  });
   const { showToast } = useToast();
   const { organizations, trashedOrganizations, loading, deactivate, getStats } = useOrganizations();
 

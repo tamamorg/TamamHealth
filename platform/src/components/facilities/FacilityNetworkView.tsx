@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
-  Building2, BedDouble, Users, Stethoscope, WifiOff,
-  Zap, ZapOff, Sun, Truck, Signal, Clock, Activity,
+  BedDouble, Users, Stethoscope, WifiOff,
+  Zap, ZapOff, Sun, Truck, Signal, Activity,
   MapPin, HeartPulse, X, Phone, Mail, UserPlus,
-  FlaskConical, Download, Eye, Settings, Plus, Edit3, Ban, RotateCcw,
+  FlaskConical, Download, Eye, Plus, Edit3, Ban, RotateCcw,
   Syringe, Baby, Pill, ShieldCheck, Microscope, ChevronDown,
 } from '@/components/icons/lucide';
 import {
@@ -24,9 +24,9 @@ import { isFacilityActive } from '@/lib/services/hospital-service';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { FilterSelect } from '@/components/filters';
-import EhrListHeader, { EhrListFilters, EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import { SadbCard, SadbChip, SadbSearch, SadbGridList, SadbGridRow, SadbKpiTile } from '@/components/admin/sadb-ui';
+import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import Modal from '@/components/Modal';
-import RowActionsPopup, { rowActionsFromElement, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import { CreateUserModal, CredentialHandoffModal, type CreatedCredentials } from '@/modules/identity/client';
 import { canCreateUsers } from '@/lib/people-nav';
 import FacilityManageTabs, {
@@ -60,13 +60,6 @@ const TYPE_LABEL_KEYS: Record<string, string> = {
   phcu: 'hospitals.typePhcu',
 };
 
-const TYPE_SHORT: Record<string, string> = {
-  national_referral: 'NR',
-  state_hospital: 'SH',
-  county_hospital: 'CH',
-  phcc: 'PHCC',
-  phcu: 'PHCU',
-};
 
 const OWNERSHIP_LABEL_KEYS: Record<string, string> = {
   public: 'hospitals.ownershipPublic',
@@ -89,11 +82,6 @@ const STATUS_COLORS: Record<string, string> = {
   closed: 'var(--text-muted)',
 };
 
-const METRIC_KEYS: PerformanceMetricKey[] = [
-  'reportingCompleteness', 'serviceReadinessScore', 'tracerMedicineAvailability',
-  'staffingScore', 'ancCoverage', 'immunizationCoverage', 'qualityScore',
-  'stockOutDays', 'opdVisitsPerMonth',
-];
 
 const PERCENTAGE_METRICS: PerformanceMetricKey[] = [
   'reportingCompleteness', 'serviceReadinessScore', 'tracerMedicineAvailability',
@@ -124,11 +112,20 @@ function normalizeMetricForColor(key: PerformanceMetricKey, value: number): numb
 }
 
 // ───────────────────────────── page ─────────────────────────────
+/** "Aug 2026" — the same shape a tenant row carries under its name. */
+function onboardedLabel(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+}
+
+/** Grid: Facility (wide) · Type · Location · Beds · Staff · Status. */
+const FACILITY_GRID = 'minmax(200px,1.6fr) repeat(5, minmax(96px,1fr))';
+
 function HospitalsPageInner() {
   const { t } = useTranslation();
   const { hospitals, loading, reload: reloadHospitals } = useHospitals();
   const { globalSearch, currentUser } = useApp();
-  const canManage = !!currentUser && MANAGE_ROLES.includes(currentUser.role);
   // Registering a facility is an organisation-level act, so it is narrower
   // than `canManage` (which also covers running one). This is the action that
   // used to exist only on a page with no nav row.
@@ -147,26 +144,22 @@ function HospitalsPageInner() {
   const searchParams = useSearchParams();
   const stateParam = searchParams.get('state');
   const countyParam = searchParams.get('county');
-  const [selectedHospital, setSelectedHospital] = useState<HospitalDoc | null>(null);
   // Which tab the profile should open on when it was reached from the list's
   // gear menu rather than from a row click or a ?tab= link.
-  const [pendingTab, setPendingTab] = useState<ProfileTabId | undefined>(undefined);
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState(() => stateParam || 'all');
 
-  // Auto-select hospital from URL query param. Re-run whenever the param
-  // changes — guarding on `!selectedHospital` previously froze the selection
-  // after the first auto-select, so navigating back to the page with a new
-  // ?facility= silently kept the old card open.
+  // `?facility=` (and the `?tab=` that may ride with it) used to open a panel
+  // over this list. Both now belong to the facility's own page, so an inbound
+  // link goes there instead of unfolding a card on top of the registry.
   const facilityIdParam = searchParams.get('facility');
-  // `?tab=` opens the profile on one of its management tabs. The old
-  // /hospitals/[hospitalId]/manage route redirects here carrying it.
-  const profileTabParam = parseProfileTab(searchParams.get('tab'));
+  const facilityTabParam = searchParams.get('tab');
   useEffect(() => {
-    if (!facilityIdParam || hospitals.length === 0) return;
-    const found = hospitals.find(h => h._id === facilityIdParam);
-    if (found) setSelectedHospital(found);
-  }, [facilityIdParam, hospitals]);
+    if (!facilityIdParam) return;
+    const query = facilityTabParam ? `?tab=${encodeURIComponent(facilityTabParam)}` : '';
+    router.replace(`/admin/facilities/${encodeURIComponent(facilityIdParam)}${query}`);
+  }, [facilityIdParam, facilityTabParam, router]);
 
   // `?new=1` — the global Add menu's "Add facility" entry, and the prompt the
   // user form shows when a facility-bound role has no facility to be assigned
@@ -180,7 +173,6 @@ function HospitalsPageInner() {
   const [filterOwnership, setFilterOwnership] = useState('all');
   const [filterService, setFilterService] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [colorMetric, setColorMetric] = useState<PerformanceMetricKey>('serviceReadinessScore');
 
   // Counties for selected state
   const availableCounties = useMemo(() => {
@@ -221,29 +213,15 @@ function HospitalsPageInner() {
   // seeded demo records), so averaging `|| 0` across every facility reported
   // "Avg reporting 0%" as a measured fact on real deployments. With no
   // measured facility at all the figures read '—', never a false zero.
-  const kpis = useMemo(() => {
-    const f = filteredHospitals;
-    const functional = f.filter(h => h.operationalStatus === 'functional').length;
-    const withPerf = f.filter(h => h.performance);
-    const avgReporting = withPerf.length
-      ? Math.round(withPerf.reduce((s, h) => s + (h.performance?.reportingCompleteness || 0), 0) / withPerf.length)
-      : null;
-    const avgReadiness = withPerf.length
-      ? Math.round(withPerf.reduce((s, h) => s + (h.performance?.serviceReadinessScore || 0), 0) / withPerf.length)
-      : null;
-    const coverageGaps = withPerf.filter(h => (h.performance?.immunizationCoverage || 0) < 50).length;
-    const totalStaff = f.reduce((s, h) => s + (h.doctors || 0) + (h.nurses || 0) + (h.clinicalOfficers || 0), 0);
-    const totalBeds = f.reduce((s, h) => s + (h.totalBeds || 0), 0);
-    return {
-      total: f.length,
-      pctFunctional: f.length ? Math.round((functional / f.length) * 100) : 0,
-      avgReporting,
-      avgReadiness,
-      coverageGaps,
-      hasPerformanceData: withPerf.length > 0,
-      staffPerBed: totalBeds ? (totalStaff / totalBeds).toFixed(1) : '—',
-    };
-  }, [filteredHospitals]);
+  // The two counts the legend carries. Everything else the old stat strip
+  // showed (reporting, readiness, coverage gaps, staff-per-bed) is a
+  // performance figure and belongs on the facility's own Performance section,
+  // not on a chip above the list.
+  const functionalCount = hospitals.filter(h => isFacilityActive(h) && (h.operationalStatus ?? 'functional') === 'functional').length;
+  const retiredCount = hospitals.filter(h => !isFacilityActive(h)).length;
+  const totalBeds = hospitals.reduce((sum, h) => sum + (h.totalBeds || 0), 0);
+  const totalStaff = hospitals.reduce((sum, h) => sum + (h.doctors || 0) + (h.nurses || 0) + (h.clinicalOfficers || 0), 0);
+
 
   // Badge count for the Filters pill — colorMetric is a display option, not a
   // row filter, so it's excluded.
@@ -290,93 +268,133 @@ function HospitalsPageInner() {
 
   return (
     <>
-      <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        {/* ── Facility Table / Profile ── */}
-        <div className="card-elevated flex flex-col" style={{ overflow: 'hidden', flex: 1, minHeight: 0 }}>
-          {selectedHospital ? (
-            <FacilityProfile
-              hospital={selectedHospital}
-              onClose={() => { setSelectedHospital(null); setPendingTab(undefined); }}
-              canManage={canManage}
-              canCreate={canCreate}
-              onEdit={() => setEditingFacility(selectedHospital)}
-              onRetire={() => setRetireTarget(selectedHospital)}
-              initialTab={pendingTab ?? profileTabParam}
-              onHospitalSaved={(saved) => { setSelectedHospital(saved); reloadHospitals(); }}
-            />
-          ) : (
-            <>
-              {/* No greeting and no title: this is a section of the
-                  Organizations page now, which already names itself and the
-                  signed-in user above. The header stays for what it uniquely
-                  carries — the network's stat row, the search and the
-                  filter/export/add actions. */}
-              <EhrListHeader
-                greeting={false}
-                title=""
-                stats={[
-                  { label: t('hospitals.kpiFacilities'), value: kpis.total, color: LIST_STAT_COLORS.muted },
-                  { label: t('hospitals.kpiFunctional'), value: `${kpis.pctFunctional}%`, color: getPerformanceColor(kpis.pctFunctional) },
-                  { label: t('hospitals.kpiReporting'), value: kpis.avgReporting === null ? '—' : `${kpis.avgReporting}%`, color: kpis.avgReporting === null ? LIST_STAT_COLORS.muted : getPerformanceColor(kpis.avgReporting) },
-                  { label: t('hospitals.kpiReadiness'), value: kpis.avgReadiness === null ? '—' : `${kpis.avgReadiness}%`, color: kpis.avgReadiness === null ? LIST_STAT_COLORS.muted : getPerformanceColor(kpis.avgReadiness) },
-                  { label: t('hospitals.kpiGaps'), value: kpis.hasPerformanceData ? kpis.coverageGaps : '—', color: !kpis.hasPerformanceData ? LIST_STAT_COLORS.muted : kpis.coverageGaps > 5 ? 'var(--color-danger)' : 'var(--color-warning)' },
-                  { label: t('hospitals.kpiStaffPerBed'), value: kpis.staffPerBed, color: LIST_STAT_COLORS.muted },
-                  // The Online/Offline chips are gone: they counted
-                  // HospitalDoc.syncStatus, a field frozen at creation that no
-                  // sync code ever updates — the split measured how records
-                  // were created, not connectivity.
-                ]}
-                search={{ value: search, onChange: setSearch, placeholder: t('hospitals.searchPlaceholder'), ariaLabel: t('hospitals.searchPlaceholder') }}
-                actions={
-                  <>
-                    <EhrListFilters
-                      activeCount={activeFilterCount}
-                      onClear={clearHospitalFilters}
-                      label={t('hospitals.filters')}
-                      panelWidth={560}
-                    >
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                        <FilterDropdown label={t('hospitals.filterState')} value={filterState} onChange={changeFilterState} options={[{ value: 'all', label: t('hospitals.allStates') }, ...states.map(s => ({ value: s, label: s }))]} />
-                        {availableCounties.length > 0 && (
-                          <FilterDropdown label={t('hospitals.filterCounty')} value={filterCounty} onChange={setFilterCounty} options={[{ value: 'all', label: t('hospitals.allCounties') }, ...availableCounties.map(c => ({ value: c, label: c }))]} />
-                        )}
-                        <FilterDropdown label={t('hospitals.filterType')} value={filterType} onChange={setFilterType} options={[{ value: 'all', label: t('hospitals.allTypes') }, ...Object.entries(TYPE_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
-                        <FilterDropdown label={t('hospitals.filterOwnership')} value={filterOwnership} onChange={setFilterOwnership} options={[{ value: 'all', label: t('hospitals.allOwnership') }, ...Object.entries(OWNERSHIP_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
-                        <FilterDropdown label={t('hospitals.filterService')} value={filterService} onChange={setFilterService} options={[{ value: 'all', label: t('hospitals.allServices') }, ...Object.entries(SERVICE_FLAG_ICONS).map(([k, v]) => ({ value: k, label: t(v.labelKey) }))]} />
-                        <FilterDropdown label={t('hospitals.filterStatus')} value={filterStatus} onChange={setFilterStatus} options={[{ value: 'all', label: t('hospitals.allStatus') }, ...Object.entries(STATUS_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
-                        <FilterDropdown label={t('hospitals.colorBy')} value={colorMetric} onChange={v => setColorMetric(v as PerformanceMetricKey)} options={METRIC_KEYS.map(k => ({ value: k, label: METRIC_LABELS[k] }))} />
-                      </div>
-                    </EhrListFilters>
-                    <EhrListHeaderButton onClick={handleExport} ariaLabel={t('action.export')}>
-                      <Download className="w-4 h-4" />
-                    </EhrListHeaderButton>
-                    {canCreate && (
-                      <EhrListHeaderButton primary onClick={() => setShowCreateFacility(true)} ariaLabel={t('orgHospitals.addFacility')}>
-                        {/* `color` (not a class) is required on the primary
-                            variant: globals.css repaints any lucide glyph with
-                            no inline colour to --icon-color, which is the same
-                            brand blue as this button's fill — the plus was
-                            invisible. The prop writes a literal stroke, which
-                            beats the rule. Same as /inquiries and /hr/*. */}
-                        <Plus size={16} color="#fff" />
-                      </EhrListHeaderButton>
-                    )}
-                  </>
-                }
-              />
-              <FacilityList
-                hospitals={filteredHospitals}
-                colorMetric={colorMetric}
-                // A plain row click opens the facility on Overview, so the tab
-                // a gear picked earlier must not follow the next facility in.
-                onSelect={h => { setPendingTab(undefined); setSelectedHospital(h); }}
-                canManage={canManage}
-                onOpenTab={(h, tabId) => { setPendingTab(tabId); setSelectedHospital(h); }}
-              />
-            </>
+      {/* ═══ Network vitals — the same tile strip the organizations tab
+          carries above its own registry. These four were a row of coloured
+          stat chips on an EhrListHeader; as tiles they read the same way on
+          both tabs, and the switch between them stops changing shape. ═══ */}
+      <div className="sadb-kpi-row">
+        <SadbKpiTile
+          label={t('hospitals.kpiFacilities')}
+          value={hospitals.length}
+          delta={`${functionalCount} ${t('hospitals.statusFunctional').toLowerCase()}`}
+          deltaTone={functionalCount > 0 ? 'up' : undefined}
+        />
+        <SadbKpiTile
+          label={t('hospitals.colBeds')}
+          value={totalBeds.toLocaleString()}
+          delta={t('hospitals.acrossNetwork')}
+        />
+        <SadbKpiTile
+          label={t('hospitals.colStaff')}
+          value={totalStaff.toLocaleString()}
+          delta={totalBeds ? t('hospitals.perBed', { value: (totalStaff / totalBeds).toFixed(1) }) : t('hospitals.acrossNetwork')}
+        />
+        <SadbKpiTile
+          label={t('orgHospitals.retired')}
+          value={retiredCount}
+          delta={retiredCount > 0 ? t('hospitals.retiredNote') : t('hospitals.allInService')}
+          deltaTone={retiredCount > 0 ? 'warn' : undefined}
+        />
+      </div>
+
+      {/* ═══ The facility registry, in the organizations registry's own
+          anatomy: a legend of counts on the card head, one search row, and a
+          grid list whose rows open the facility's page.
+
+          It used to be an EhrListHeader over a nine-column table, with the
+          facility PROFILE rendered inline in place of that table — clicking a
+          row replaced the list you were reading with one of its own rows. The
+          organizations tab beside it stopped doing that when its rows started
+          opening `/admin/organizations/[id]`; these rows open
+          `/admin/facilities/[id]`, and the two tabs now read as one screen. ═══ */}
+      <SadbCard
+        title={t('orgAdmin.facilities')}
+        action={
+          <div className="sadb-legend">
+            <span><i style={{ background: 'var(--text-muted)' }} />{t('orgAdmin.facilities')} ({hospitals.length})</span>
+            <span><i style={{ background: 'var(--color-success-800)' }} />{t('hospitals.statusFunctional')} ({functionalCount})</span>
+            {retiredCount > 0 && (
+              <span><i style={{ background: 'var(--color-danger-500)' }} />{t('orgHospitals.retired')} ({retiredCount})</span>
+            )}
+          </div>
+        }
+      >
+        <div className="sadb-search-row">
+          <SadbSearch value={search} onChange={setSearch} placeholder={t('hospitals.searchPlaceholder')} />
+          <EhrListFilters
+            activeCount={activeFilterCount}
+            onClear={clearHospitalFilters}
+            label={t('hospitals.filters')}
+            panelWidth={560}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+              <FilterDropdown label={t('hospitals.filterState')} value={filterState} onChange={changeFilterState} options={[{ value: 'all', label: t('hospitals.allStates') }, ...states.map(s => ({ value: s, label: s }))]} />
+              {availableCounties.length > 0 && (
+                <FilterDropdown label={t('hospitals.filterCounty')} value={filterCounty} onChange={setFilterCounty} options={[{ value: 'all', label: t('hospitals.allCounties') }, ...availableCounties.map(c => ({ value: c, label: c }))]} />
+              )}
+              <FilterDropdown label={t('hospitals.filterType')} value={filterType} onChange={setFilterType} options={[{ value: 'all', label: t('hospitals.allTypes') }, ...Object.entries(TYPE_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
+              <FilterDropdown label={t('hospitals.filterOwnership')} value={filterOwnership} onChange={setFilterOwnership} options={[{ value: 'all', label: t('hospitals.allOwnership') }, ...Object.entries(OWNERSHIP_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
+              <FilterDropdown label={t('hospitals.filterService')} value={filterService} onChange={setFilterService} options={[{ value: 'all', label: t('hospitals.allServices') }, ...Object.entries(SERVICE_FLAG_ICONS).map(([k, v]) => ({ value: k, label: t(v.labelKey) }))]} />
+              <FilterDropdown label={t('hospitals.filterStatus')} value={filterStatus} onChange={setFilterStatus} options={[{ value: 'all', label: t('hospitals.allStatus') }, ...Object.entries(STATUS_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
+            </div>
+          </EhrListFilters>
+          <button type="button" className="btn btn-secondary btn-sm flex-shrink-0" onClick={handleExport}>
+            <Download className="w-4 h-4" /> {t('action.export')}
+          </button>
+          {canCreate && (
+            <button type="button" className="btn btn-primary btn-sm flex-shrink-0" onClick={() => setShowCreateFacility(true)}>
+              <Plus className="w-4 h-4" /> {t('orgHospitals.addFacility')}
+            </button>
           )}
         </div>
-      </main>
+
+        <SadbGridList
+          template={FACILITY_GRID}
+          minWidth={880}
+          head={[
+            t('hospitals.colFacility'), t('hospitals.colType'), t('hospitals.colLocation'),
+            t('hospitals.colBeds'), t('hospitals.colStaff'), t('hospitals.colStatus'),
+          ]}
+          alignEndLast
+          empty={loading ? t('hospitals.loadingFacilities') : t('hospitals.emptyFacilities')}
+        >
+          {filteredHospitals.map(h => {
+            const retired = !isFacilityActive(h);
+            const staff = (h.doctors || 0) + (h.nurses || 0) + (h.clinicalOfficers || 0);
+            const onboarded = onboardedLabel(h.createdAt);
+            return (
+              <SadbGridRow
+                key={h._id}
+                template={FACILITY_GRID}
+                onClick={() => router.push(`/admin/facilities/${h._id}`)}
+              >
+                <span className="min-w-0">
+                  <span className="sadb-tenant-name truncate" style={{ color: retired ? 'var(--text-muted)' : undefined }}>
+                    {h.name}
+                  </span>
+                  <span className="sadb-tenant-sub truncate">
+                    {[
+                      h.ownership ? t(OWNERSHIP_LABEL_KEYS[h.ownership]) : null,
+                      onboarded ? t('orgAdmin.onboardedOn', { date: onboarded }) : null,
+                    ].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+                <span className="truncate">
+                  {TYPE_LABEL_KEYS[h.facilityType] ? t(TYPE_LABEL_KEYS[h.facilityType]) : h.facilityType}
+                </span>
+                <span className="truncate">{[h.town, h.state].filter(Boolean).join(', ') || '—'}</span>
+                <span className="sadb-tenant-num">{h.totalBeds ?? 0}</span>
+                <span className="sadb-tenant-num">{staff}</span>
+                <span style={{ textAlign: 'end' }}>
+                  <SadbChip tone={retired ? 'red' : 'green'}>
+                    {retired ? t('orgHospitals.retired') : t(STATUS_LABEL_KEYS[h.operationalStatus || 'functional'])}
+                  </SadbChip>
+                </span>
+              </SadbGridRow>
+            );
+          })}
+        </SadbGridList>
+      </SadbCard>
 
       {(showCreateFacility || editingFacility) && canCreate && (
         <FacilityFormModal
@@ -388,9 +406,6 @@ function HospitalsPageInner() {
             setEditingFacility(null);
             await reloadHospitals();
             if (wasEdit) {
-              // Keep the profile open on the record just edited, showing the
-              // saved values rather than the stale ones behind the dialog.
-              setSelectedHospital(hospital);
               showToast(t('orgHospitals.updatedToast', { name: hospital.name }), 'success');
             } else {
               setCreatedFacility(hospital.name);
@@ -413,7 +428,6 @@ function HospitalsPageInner() {
           onDone={async (updated, retired) => {
             setRetireTarget(null);
             await reloadHospitals();
-            setSelectedHospital(updated);
             showToast(
               t(retired ? 'orgHospitals.retiredToast' : 'orgHospitals.restoredToast', { name: updated.name }),
               'success',
@@ -508,171 +522,6 @@ function FilterDropdown({ label, value, onChange, options }: {
 // ═══════════════════════════════════════════
 //  Facility List (no selection)
 // ═══════════════════════════════════════════
-/**
- * Clip rather than wrap. The columns are equal width, so the two free-text
- * cells (facility name, location) are the ones that can outgrow their share —
- * and a wrapped cell makes that single row taller, which is exactly the uneven
- * rhythm the equal widths exist to prevent. Both carry a `title` so the full
- * value is still readable.
- */
-const ELLIPSIS = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const;
-
-function FacilityList({ hospitals, colorMetric, onSelect, canManage, onOpenTab }: {
-  hospitals: HospitalDoc[];
-  colorMetric: PerformanceMetricKey;
-  onSelect: (h: HospitalDoc) => void;
-  /** Whether this role has the facility's management tabs at all. */
-  canManage: boolean;
-  /** Open a facility straight on one of its tabs. */
-  onOpenTab: (hospital: HospitalDoc, tab: ProfileTabId) => void;
-}) {
-  const { t } = useTranslation();
-  // One popup for the whole list — the clicked row supplies its actions and
-  // position, so a hundred facilities cost one portal, not a hundred.
-  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
-  if (hospitals.length === 0) {
-    return (
-      <div style={{ padding: 48, textAlign: 'center' }}>
-        <Building2 style={{ width: 32, height: 32, color: 'var(--text-muted)', opacity: 0.3, margin: '0 auto 12px' }} />
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('hospitals.noFacilitiesMatch')}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="ehr-list-scroll">
-      {/* The floor is set by the widest cell, not by the narrowest screen: with
-          equal columns, `minWidth` is what decides whether a laptop scrolls the
-          table or squeezes every name into an ellipsis. At 1100 the columns
-          fell to ~138px and 18 of 41 facility names truncated; 1560 keeps a
-          column at ~185px — the same width it has on a large display — and lets
-          `.ehr-list-scroll` scroll instead. */}
-      <table className="data-table" style={{ minWidth: 1560, tableLayout: 'fixed' }}>
-        {/* One even rhythm across the row: the eight data columns are the same
-            width, and only the row number is narrower — a counter never needs
-            more than its digits.
-
-            The colgroup is the ONLY place widths are declared. `table-layout:
-            fixed` takes them from the first row it finds, so the per-<th>
-            widths that used to sit below disagreed with these and were simply
-            ignored — two sets of numbers, one of them fiction. Widths must
-            also stay exhaustive: a short colgroup leaves the last column to
-            absorb the remainder, which is what left Sync stranded mid-row
-            after the Manage column was removed. */}
-        <colgroup>
-          <col style={{ width: '4%' }} />
-          {Array.from({ length: 8 }, (_, i) => <col key={i} style={{ width: canManage ? '11.5%' : '12%' }} />)}
-          {/* Actions gutter — only when the role has tabs to jump to. Widths
-              must stay exhaustive (see above), so the data columns give up
-              half a point each to pay for it. */}
-          {canManage && <col style={{ width: '4%' }} />}
-        </colgroup>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'center' }}>#</th>
-            <th>{t('hospitals.colFacility')}</th>
-            <th>{t('hospitals.colType')}</th>
-            <th>{t('hospitals.colLocation')}</th>
-            <th>{t('hospitals.colStatus')}</th>
-            <th>{t('hospitals.colBeds')}</th>
-            <th>{t('hospitals.colStaff')}</th>
-            <th>{METRIC_LABELS[colorMetric]}</th>
-            {/* The Sync column was removed 2026-08: it displayed
-                HospitalDoc.syncStatus, which is frozen at creation — every
-                app-created facility read "offline" forever. Bring it back only
-                with a real per-facility liveness source (sync events). */}
-            {canManage && <th aria-label={t('hospitals.manage')} />}
-          </tr>
-        </thead>
-        <tbody>
-          {hospitals.map((h, i) => {
-            const metricVal = h.performance ? (h.performance[colorMetric as keyof typeof h.performance] as number) : 0;
-            const normVal = normalizeMetricForColor(colorMetric, metricVal);
-            const staff = (h.doctors || 0) + (h.nurses || 0) + (h.clinicalOfficers || 0);
-            return (
-              <tr key={h._id} onClick={() => onSelect(h)} style={{ cursor: 'pointer' }}>
-                <td style={{ textAlign: 'center' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
-                </td>
-                <td style={ELLIPSIS} title={h.name}>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{h.name}</span>
-                </td>
-                <td>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    {TYPE_SHORT[h.facilityType] || h.facilityType}
-                  </span>
-                </td>
-                <td style={{ ...ELLIPSIS, fontSize: 12, color: 'var(--text-secondary)' }} title={`${h.town}, ${h.state}`}>
-                  {h.town}, {h.state}
-                </td>
-                <td>
-                  {h.operationalStatus && (
-                    <span style={{ fontSize: 11, fontWeight: 600, color: STATUS_COLORS[h.operationalStatus] }}>
-                      {t(STATUS_LABEL_KEYS[h.operationalStatus])}
-                    </span>
-                  )}
-                </td>
-                <td className="stat-value" style={{ fontWeight: 600 }}>{h.totalBeds}</td>
-                <td className="stat-value" style={{ fontWeight: 600 }}>{staff}</td>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{
-                      flex: 1, height: 6, borderRadius: 3, background: `color-mix(in srgb, ${getPerformanceColor(normVal)} 16%, transparent)`, maxWidth: 72,
-                    }}>
-                      <div style={{
-                        width: `${Math.min(100, PERCENTAGE_METRICS.includes(colorMetric) ? metricVal : normVal)}%`,
-                        height: '100%', borderRadius: 3,
-                        background: getPerformanceColor(normVal),
-                      }} />
-                    </div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: getPerformanceColor(normVal), minWidth: 36 }}>
-                      {formatMetricValue(colorMetric, metricVal)}
-                    </span>
-                  </div>
-                </td>
-                {canManage && (
-                  /* The gear is a shortcut, not the only way in: the row still
-                     opens the facility on Overview. This is for the times you
-                     already know you want its roster or its stock, and would
-                     otherwise open the profile just to click a tab. */
-                  <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      aria-label={t('hospitals.manageTitle', { name: h.name })}
-                      aria-haspopup="menu"
-                      data-action="facility-tab-menu"
-                      data-tour="facility-row-tabs"
-                      onClick={e => {
-                        e.stopPropagation();
-                        setRowMenu(rowActionsFromElement(e.currentTarget, PROFILE_TABS.map(tabItem => ({
-                          key: tabItem.id,
-                          label: t(tabItem.labelKey),
-                          onClick: () => onOpenTab(h, tabItem.id),
-                        }))));
-                      }}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        width: 26, height: 26, borderRadius: 7, cursor: 'pointer',
-                        background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)',
-                      }}
-                    >
-                      <Settings style={{ width: 13, height: 13, color: 'var(--text-muted)' }} />
-                    </button>
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════
-//  Facility Profile Panel (with selection)
-// ═══════════════════════════════════════════
 
 /** The profile's own content is the first tab; the rest are the facility
  *  management tabs that used to be a page of their own. */
@@ -683,10 +532,6 @@ const PROFILE_TABS: { id: ProfileTabId; labelKey: string; icon: React.ElementTyp
   ...FACILITY_MANAGE_TABS,
 ];
 
-/** `?tab=` is only honoured for a tab that exists. */
-function parseProfileTab(value: string | null): ProfileTabId | undefined {
-  return PROFILE_TABS.some(item => item.id === value) ? value as ProfileTabId : undefined;
-}
 /**
  * One facility, in full. Exported so `/admin/facilities/[id]` can host it as a
  * page — the Facilities tab used to render it inline over its own list, which
@@ -901,8 +746,6 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
         </div>
       </div>
 
-      <hr className="section-divider" />
-
       {/* The facility's record and the work done on it, on one screen. These
           sections were a separate page reached by a "Manage" button, then a tab
           strip here; they are now the menu beside Edit facility in the header
@@ -918,22 +761,36 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
         />
       ) : (
       <>
-      {/* Quick stats row */}
-      <div className="kpi-grid" style={{ marginBottom: 16 }}>
-        <div className="kpi"><div className="icon-box-sm"><Users style={{ color: 'var(--accent-primary)' }} /></div><div className="kpi__body"><div className="kpi__value">{facilityCensus ? censusFor(facilityCensus, hospital._id).patients.toLocaleString() : '…'}</div><div className="kpi__label">{t('hospitals.statPatients')}</div></div></div>
-        <div className="kpi"><div className="icon-box-sm"><Activity style={{ color: 'var(--accent-primary)' }} /></div><div className="kpi__body"><div className="kpi__value">{facilityCensus ? censusFor(facilityCensus, hospital._id).todayVisits : '…'}</div><div className="kpi__label">{t('hospitals.statToday')}</div></div></div>
-        <div className="kpi"><div className="icon-box-sm"><BedDouble style={{ color: '#FFD2A6' }} /></div><div className="kpi__body"><div className="kpi__value">{hospital.totalBeds}</div><div className="kpi__label">{t('hospitals.statBeds')}</div></div></div>
-        <div className="kpi"><div className="icon-box-sm"><Stethoscope style={{ color: '#FFD2A6' }} /></div><div className="kpi__body"><div className="kpi__value">{totalStaff}</div><div className="kpi__label">{t('hospitals.statStaff')}</div></div></div>
+      {/* The admin console's tile strip, the same one the registry above this
+          page carries. It was an EHR icon-box row, which put a second visual
+          language on a page reached from a Sadb list — and two of its glyphs
+          were painted a raw #FFD2A6 that keyed to nothing. */}
+      <div className="sadb-kpi-row">
+        <SadbKpiTile
+          label={t('hospitals.statPatients')}
+          value={facilityCensus ? censusFor(facilityCensus, hospital._id).patients.toLocaleString() : '…'}
+          delta={t('hospitals.registeredHere')}
+        />
+        <SadbKpiTile
+          label={t('hospitals.statToday')}
+          value={facilityCensus ? censusFor(facilityCensus, hospital._id).todayVisits : '…'}
+          delta={t('hospitals.visitsToday')}
+        />
+        <SadbKpiTile
+          label={t('hospitals.statBeds')}
+          value={hospital.totalBeds}
+          delta={occupancyPct === null ? t('hospitals.noOccupancy') : t('hospitals.occupancyDelta', { value: occupancyPct })}
+        />
+        <SadbKpiTile
+          label={t('hospitals.statStaff')}
+          value={totalStaff}
+          delta={hospital.totalBeds ? t('hospitals.perBed', { value: (totalStaff / hospital.totalBeds).toFixed(1) }) : t('hospitals.establishedPosts')}
+        />
       </div>
-
-      <hr className="section-divider" />
 
       {/* Performance Metrics — horizontal bar chart style */}
       {hospital.performance && (
-        <div className="card-elevated" style={{ padding: 16, marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Eye style={{ width: 14, height: 14, color: 'var(--text-muted)' }} /> {t('hospitals.performanceMetrics')}
-          </div>
+        <SadbCard title={t('hospitals.performanceMetrics')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[...PERCENTAGE_METRICS, 'stockOutDays' as PerformanceMetricKey, 'opdVisitsPerMonth' as PerformanceMetricKey].map(key => {
               const val = hospital.performance![key as keyof typeof hospital.performance] as number;
@@ -952,17 +809,14 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
               );
             })}
           </div>
-        </div>
+        </SadbCard>
       )}
-
-      <hr className="section-divider" />
 
       {/* Sparkline + Services — side by side */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         {/* Trend */}
         {hospital.monthlyTrends && hospital.monthlyTrends.length > 0 && (
-          <div className="card-elevated" style={{ padding: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('hospitals.sixMonthTrend')}</div>
+          <SadbCard title={t('hospitals.sixMonthTrend')}>
             {hospital.monthlyTrends.every(m => !m.opdVisits && !m.reportingTimeliness) ? (
               <div style={{ height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'var(--text-muted)' }}>—</div>
             ) : (
@@ -977,12 +831,11 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
               <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 2, borderRadius: 1, background: 'var(--accent-primary)' }} />{t('hospitals.legendOpd')}</span>
               <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 2, borderRadius: 1, background: 'var(--color-success)' }} />{t('hospitals.legendReporting')}</span>
             </div>
-          </div>
+          </SadbCard>
         )}
 
         {/* Beds breakdown */}
-        <div className="card-elevated" style={{ padding: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('hospitals.bedsHeader', { count: hospital.totalBeds })}</div>
+        <SadbCard title={t('hospitals.bedsHeader', { count: hospital.totalBeds })}>
           <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
             {/* Same as the staff rows above: the colour chips keyed to nothing,
                 and "ICU" in danger red read as an alert about a ward type. */}
@@ -1001,16 +854,13 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
               </div>
             ))}
           </div>
-        </div>
+        </SadbCard>
       </div>
-
-      <hr className="section-divider" />
 
       {/* Staff + Services + Infrastructure — compact */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         {/* Staff */}
-        <div className="card-elevated" style={{ padding: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('hospitals.staffHeader', { count: totalStaff })}</div>
+        <SadbCard title={t('hospitals.staffHeader', { count: totalStaff })}>
           <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
             {/* Plain label/value rows. Each role used to carry a coloured dot
                 that keyed to nothing — no chart, no legend, no status — and one
@@ -1032,11 +882,10 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
               </div>
             ))}
           </div>
-        </div>
+        </SadbCard>
 
         {/* Infrastructure */}
-        <div className="card-elevated" style={{ padding: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('hospitals.infrastructure')}</div>
+        <SadbCard title={t('hospitals.infrastructure')}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {hospital.hasElectricity ? <InfraBadge icon={Zap} label={t('hospitals.infraPower')} color="#FDD95F" bg="rgba(253, 217, 95,0.10)" />
               : <InfraBadge icon={ZapOff} label={t('hospitals.infraNoPower')} color="#94A2B3" bg="rgba(93, 114, 139,0.10)" />}
@@ -1056,15 +905,12 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
               <span className="stat-value" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>{hospital.electricityHours}h</span>
             </div>
           )}
-        </div>
+        </SadbCard>
       </div>
-
-      <hr className="section-divider" />
 
       {/* Services + Sync */}
       {hospital.serviceFlags && (
-        <div className="card-elevated" style={{ padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('hospitals.servicesAvailable')}</div>
+        <SadbCard title={t('hospitals.servicesAvailable')}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {Object.entries(SERVICE_FLAG_ICONS).map(([key, { icon: FlagIcon, labelKey }]) => {
               const available = (hospital.serviceFlags as Record<string, boolean>)?.[key];
@@ -1075,7 +921,7 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
               );
             })}
           </div>
-        </div>
+        </SadbCard>
       )}
 
       {/* Footer: sync + GPS */}
