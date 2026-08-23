@@ -26,7 +26,6 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { FilterSelect } from '@/components/filters';
 import { SadbCard, SadbChip, SadbSearch, SadbGridList, SadbGridRow, SadbKpiTile } from '@/components/admin/sadb-ui';
-import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import Modal from '@/components/Modal';
 import { CreateUserModal, CredentialHandoffModal, type CreatedCredentials } from '@/modules/identity/client';
 import { canCreateUsers } from '@/lib/people-nav';
@@ -190,7 +189,14 @@ function HospitalsPageInner() {
       const combined = [search, globalSearch].filter(Boolean).join(' ').toLowerCase().trim();
       if (combined) {
         const terms = combined.split(/\s+/);
-        const haystack = [h.name || '', h.state || '', h.town || '', h.facilityType || '', ...(h.services || [])].join(' ').toLowerCase();
+        /* County, ownership and operational status were the Filters popover's
+           columns; with the popover gone the search box has to carry them, so
+           "public", "functional" and a county name each narrow the list. */
+        const haystack = [
+          h.name || '', h.state || '', h.county || '', h.town || '',
+          h.facilityType || '', h.ownership || '', h.operationalStatus || '',
+          ...(h.services || []),
+        ].join(' ').toLowerCase();
         if (!terms.every(term => haystack.includes(term))) return false;
       }
       if (orgParam && h.orgId !== orgParam) return false;
@@ -321,23 +327,6 @@ function HospitalsPageInner() {
       >
         <div className="sadb-search-row">
           <SadbSearch value={search} onChange={setSearch} placeholder={t('hospitals.searchPlaceholder')} />
-          <EhrListFilters
-            activeCount={activeFilterCount}
-            onClear={clearHospitalFilters}
-            label={t('hospitals.filters')}
-            panelWidth={560}
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-              <FilterDropdown label={t('hospitals.filterState')} value={filterState} onChange={changeFilterState} options={[{ value: 'all', label: t('hospitals.allStates') }, ...states.map(s => ({ value: s, label: s }))]} />
-              {availableCounties.length > 0 && (
-                <FilterDropdown label={t('hospitals.filterCounty')} value={filterCounty} onChange={setFilterCounty} options={[{ value: 'all', label: t('hospitals.allCounties') }, ...availableCounties.map(c => ({ value: c, label: c }))]} />
-              )}
-              <FilterDropdown label={t('hospitals.filterType')} value={filterType} onChange={setFilterType} options={[{ value: 'all', label: t('hospitals.allTypes') }, ...Object.entries(TYPE_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
-              <FilterDropdown label={t('hospitals.filterOwnership')} value={filterOwnership} onChange={setFilterOwnership} options={[{ value: 'all', label: t('hospitals.allOwnership') }, ...Object.entries(OWNERSHIP_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
-              <FilterDropdown label={t('hospitals.filterService')} value={filterService} onChange={setFilterService} options={[{ value: 'all', label: t('hospitals.allServices') }, ...Object.entries(SERVICE_FLAG_ICONS).map(([k, v]) => ({ value: k, label: t(v.labelKey) }))]} />
-              <FilterDropdown label={t('hospitals.filterStatus')} value={filterStatus} onChange={setFilterStatus} options={[{ value: 'all', label: t('hospitals.allStatus') }, ...Object.entries(STATUS_LABEL_KEYS).map(([v, l]) => ({ value: v, label: t(l) }))]} />
-            </div>
-          </EhrListFilters>
           <button type="button" className="btn btn-secondary btn-sm flex-shrink-0" onClick={handleExport}>
             <Download className="w-4 h-4" /> {t('action.export')}
           </button>

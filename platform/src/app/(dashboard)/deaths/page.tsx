@@ -13,7 +13,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
-import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 
 // Shared control styling inside the header's Filters popover.
 const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
@@ -59,7 +59,10 @@ export default function DeathsPage() {
     const q = patientLookup.toLowerCase();
     return (patients || [])
       .filter(p => !p.isDeceased && (
-        `${p.firstName} ${p.surname}`.toLowerCase().includes(q) ||
+        // Sex and registration state came off the Filters popover, so they
+        // belong in what a search matches — otherwise "female" and
+        // "registered" would have stopped narrowing anything.
+        `${p.firstName} ${p.surname} ${p.gender || ''}`.toLowerCase().includes(q) ||
         (p.hospitalNumber || '').toLowerCase().includes(q)
       ))
       .slice(0, 6);
@@ -257,28 +260,6 @@ export default function DeathsPage() {
             search={{ value: colFilters.name, onChange: v => setColFilter('name', v), placeholder: t('deaths.searchPlaceholder') || 'Search by name, certificate, cause…', ariaLabel: t('deaths.searchPlaceholder') || 'Search deaths' }}
             actions={
               <>
-                <EhrListFilters
-                  activeCount={(colFilters.sex ? 1 : 0) + (colFilters.registered ? 1 : 0)}
-                  onClear={() => { setColFilter('sex', ''); setColFilter('registered', ''); }}
-                  panelWidth={260}
-                >
-                  <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('nurse.colGender')}</span>
-                    <Select value={colFilters.sex} onChange={e => setColFilter('sex', e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle}>
-                      <option value="">All Genders</option>
-                      <option value="Male">{t('patient.male')}</option>
-                      <option value="Female">{t('patient.female')}</option>
-                    </Select>
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('deaths.colRegistered')}</span>
-                    <Select value={colFilters.registered} onChange={e => setColFilter('registered', e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle}>
-                      <option value="">All Status</option>
-                      <option value="yes">{t('deaths.yes')}</option>
-                      <option value="no">{t('deaths.no')}</option>
-                    </Select>
-                  </label>
-                </EhrListFilters>
                 {canRecordVitalEvents && (
                   <button data-tour="register-death-btn" onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ height: 38, whiteSpace: 'nowrap' }}>
                     <Plus className="w-4 h-4" /> {t('deaths.registerDeath')}

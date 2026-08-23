@@ -13,7 +13,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import EhrListHeader, { LIST_STAT_COLORS, EhrListFilters, EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { LIST_STAT_COLORS, EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
 import EmptyState from '@/components/EmptyState';
 import { Bell, BellOff, Check, ChevronRight, RefreshCw } from '@/components/icons/lucide';
 
@@ -90,7 +90,10 @@ function NotificationsPageInner() {
       if (source !== 'all' && n.type !== source) return false;
       if (status === 'unread' && n.read) return false;
       if (status !== 'all' && status !== 'unread' && n.severity !== status) return false;
-      if (q && !`${n.title} ${n.subtitle}`.toLowerCase().includes(q)) return false;
+      // The search box IS the filter now, so what the Filters popover used to
+      // narrow by — the notification's type and severity — has to be searchable
+      // text, or removing the popover would remove the capability with it.
+      if (q && !`${n.title} ${n.subtitle} ${n.type} ${n.severity}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [items, source, status, query]);
@@ -134,45 +137,6 @@ function NotificationsPageInner() {
                   the thing being read. They are the same two choices in the
                   header's shared Filters popover now, counts and all, and the
                   pill's badge says when the list is narrowed. */}
-              <EhrListFilters
-                activeCount={(status !== 'all' ? 1 : 0) + (source !== 'all' ? 1 : 0)}
-                onClear={() => { applyStatus('all'); applySource('all'); }}
-                panelWidth={280}
-              >
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>State</span>
-                  <Select
-                    value={status}
-                    onChange={e => applyStatus(e.target.value as StatusFilter)}
-                    className="w-full text-sm py-2 px-3"
-                    style={filterFieldStyle}
-                  >
-                    <option value="all">Everything ({count})</option>
-                    <option value="unread">Unread ({unreadCount})</option>
-                    <option value="critical">Critical ({severityCounts.critical})</option>
-                    <option value="warning">Needs action ({severityCounts.warning})</option>
-                    <option value="info">For information ({severityCounts.info})</option>
-                  </Select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Source</span>
-                  <Select
-                    value={source}
-                    onChange={e => applySource(e.target.value as SourceFilter)}
-                    className="w-full text-sm py-2 px-3"
-                    style={filterFieldStyle}
-                  >
-                    <option value="all">All sources ({count})</option>
-                    {NOTIFICATION_TYPE_ORDER
-                      .filter(type => (sourceCounts.get(type) || 0) > 0)
-                      .map(type => (
-                        <option key={type} value={type}>
-                          {NOTIFICATION_META[type].label} ({sourceCounts.get(type)})
-                        </option>
-                      ))}
-                  </Select>
-                </label>
-              </EhrListFilters>
               {unreadCount > 0 && (
                 <button
                   type="button"

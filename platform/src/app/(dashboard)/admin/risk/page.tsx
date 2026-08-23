@@ -19,7 +19,6 @@ import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -158,11 +157,14 @@ export default function RiskCenterPage() {
     [resolutions],
   );
 
+  /* The Filters popover is gone — the search box is the filter — so severity
+     and source have to be part of what a search matches, or "critical" and
+     "sync" would have stopped narrowing anything when the popover went. */
   const matches = useCallback((severity: SaSeverity, source: string, haystack: string) => {
     const q = search.trim().toLowerCase();
     if (severityFilter !== 'all' && severity !== severityFilter) return false;
     if (sourceFilter !== 'all' && source !== sourceFilter) return false;
-    if (q && !haystack.toLowerCase().includes(q)) return false;
+    if (q && !`${haystack} ${severity} ${source}`.toLowerCase().includes(q)) return false;
     return true;
   }, [search, severityFilter, sourceFilter]);
 
@@ -253,27 +255,6 @@ export default function RiskCenterPage() {
       >
         <div className="sadb-search-row">
           <SadbSearch value={search} onChange={setSearch} placeholder="Search signal or detail…" ariaLabel="Search risk signals" />
-          <EhrListFilters
-            activeCount={activeFilterCount}
-            onClear={() => { setSeverityFilter('all'); setSourceFilter('all'); }}
-          >
-            <FilterSelect
-              label="Severity"
-              value={severityFilter}
-              onChange={value => setSeverityFilter(value as 'all' | SaSeverity)}
-              neutralValue="all"
-              size="sm"
-              options={[{ value: 'all', label: 'All severities' }, ...SEVERITIES.map(x => ({ value: x, label: x[0].toUpperCase() + x.slice(1) }))]}
-            />
-            <FilterSelect
-              label="Source"
-              value={sourceFilter}
-              onChange={value => setSourceFilter(value as 'all' | RiskSource)}
-              neutralValue="all"
-              size="sm"
-              options={[{ value: 'all', label: 'All sources' }, ...SOURCES.map(x => ({ value: x, label: x }))]}
-            />
-          </EhrListFilters>
           {/* Deliberately "all shown", not "all": whatever the filters have
               narrowed to is what an operator has actually just looked at. */}
           {tab === 'open' && filteredOpen.length > 0 && (

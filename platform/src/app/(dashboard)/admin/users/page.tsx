@@ -19,7 +19,6 @@ import {
   SadbPage, SadbCard, SadbSearch, SadbConfirmModal, SadbTabs,
   SadbGridList, SadbGridRow, SadbChip, SadbKpiTile,
 } from '@/components/admin/sadb-ui';
-import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
 
 // Column template for the user list header + rows:
@@ -169,7 +168,13 @@ export default function AdminUsersPage() {
     // nothing became unmanageable — it just stopped being listed here.
     if (u.role === 'super_admin') return false;
       const q = search.toLowerCase();
-      const matchSearch = !q || u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (u.hospitalName || '').toLowerCase().includes(q);
+      // Role, organization and account state used to live in the Filters
+      // popover. With the search box carrying that job they have to be in the
+      // haystack, or "nurse", "inactive" and an org name would match nothing.
+      const matchSearch = !q || [
+        u.name, u.username, u.hospitalName || '', u.role, u.orgName || '',
+        u.isActive === false ? 'inactive' : 'active',
+      ].join(' ').toLowerCase().includes(q);
       const matchRole = filterRole === 'all' || u.role === filterRole;
       const matchOrg = filterOrg === 'all' || u.orgId === filterOrg;
       // "Needs attention" is the access review: everything a roster row is
@@ -374,42 +379,6 @@ export default function AdminUsersPage() {
         <div style={{ display: activeTab === 'people' ? undefined : 'none' }}>
           <div className="sadb-search-row">
             <SadbSearch value={search} onChange={setSearch} placeholder={t('adminUsers.searchPlaceholder')} />
-            <EhrListFilters
-              activeCount={(filterRole !== 'all' ? 1 : 0) + (filterOrg !== 'all' ? 1 : 0) + (filterReview ? 1 : 0)}
-              onClear={() => { setFilterRole('all'); setFilterOrg('all'); setFilterReview(false); }}
-            >
-              <FilterSelect
-                label={t('adminUsers.colRole')}
-                value={filterRole}
-                onChange={setFilterRole}
-                neutralValue="all"
-                size="sm"
-                options={[
-                  { value: 'all', label: t('adminUsers.allRoles') },
-                  ...ALL_ROLES.map(value => ({ value, label: `${roleLabel(value)} (${roleCounts[value] || 0})` })),
-                ]}
-              />
-              <FilterSelect
-                label={t('adminUsers.colOrganization')}
-                value={filterOrg}
-                onChange={setFilterOrg}
-                neutralValue="all"
-                size="sm"
-                options={[
-                  { value: 'all', label: t('adminUsers.allOrganizations') },
-                  ...organizations.map(o => ({ value: o._id, label: o.name })),
-                ]}
-              />
-              <button
-                type="button"
-                className={`btn btn-sm ${filterReview ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setFilterReview(v => !v)}
-                aria-pressed={filterReview}
-                title="Invitations nobody opened, accounts still on a temporary password, and accounts unused for 90 days"
-              >
-                Needs attention{needsAttention.length ? ` (${needsAttention.length})` : ''}
-              </button>
-            </EhrListFilters>
                         <button
               type="button"
               className="btn btn-primary btn-sm flex-shrink-0"

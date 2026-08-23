@@ -43,6 +43,28 @@ async function postOrganizationsApi(payload: Record<string, unknown>): Promise<R
 }
 
 export async function getAllOrganizations(): Promise<OrganizationDoc[]> {
+  // Server truth first, local replica as the offline answer.
+  //
+  // Organizations are written SERVER-side (the browser posts to the API), so
+  // the local replica only learns about one when pull replication delivers it
+  // — up to a poll interval later, and never on a device whose sync is off.
+  // The registry read from the replica alone, so a just-created organization
+  // was missing from the very console that created it: the handoff modal said
+  // "Administrator created" and the list behind it still showed the old
+  // tenants. The API applies the caller's scope (an org admin gets only their
+  // own organization), so this widens nothing.
+  if (isBrowserRuntime()) {
+    try {
+      const { apiFetch } = await import('../api-fetch');
+      const res = await apiFetch('/api/organizations');
+      if (res.ok) {
+        const body = await res.json() as { organizations?: OrganizationDoc[] };
+        if (Array.isArray(body.organizations)) return body.organizations;
+      }
+    } catch {
+      // Offline — the replica below is the answer that keeps the app working.
+    }
+  }
   const db = organizationsDB();
   return findByType<OrganizationDoc>(db, 'organization');
 }

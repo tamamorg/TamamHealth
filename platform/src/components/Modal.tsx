@@ -58,6 +58,7 @@ export default function Modal({
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const backdropArmedRef = useRef(false);
 
   // Portals require the DOM — only render after mount (also keeps SSR happy).
   useEffect(() => { setMounted(true); }, []);
@@ -127,7 +128,37 @@ export default function Modal({
   return createPortal(
     <div
       className="modal-portal-backdrop"
-      onClick={disableBackdropClose ? undefined : onClose}
+      onMouseDown={disableBackdropClose ? undefined : e => {
+        // Arm only when the press STARTS on the backdrop. A drag that begins
+        // inside the dialog (selecting text in a field) and releases over the
+        // backdrop used to fire the backdrop's onClick and close the form.
+        backdropArmedRef.current = e.target === e.currentTarget;
+      }}
+      onClick={disableBackdropClose ? undefined : e => {
+        if (e.target !== e.currentTarget) return;
+        if (!backdropArmedRef.current) return;
+        backdropArmedRef.current = false;
+        // A form the user has typed into does not vanish on a stray click.
+        // `value !== defaultValue` is exactly "modified since first render"
+        // for the text-like controls where the loss actually hurts; Esc and
+        // the form's own Cancel still close unconditionally, so this blocks
+        // nothing deliberate. Verified the hard way: a half-filled facility
+        // registration closed on a click that missed the submit button by a
+        // few pixels, silently, with every field lost.
+        const dialog = dialogRef.current;
+        if (dialog) {
+          const dirty = Array.from(
+            dialog.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'),
+          ).some(el => {
+            if (el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio')) {
+              return el.checked !== el.defaultChecked;
+            }
+            return el.value !== el.defaultValue;
+          });
+          if (dirty) return;
+        }
+        onClose();
+      }}
       style={{
         position: 'fixed',
         inset: 0,

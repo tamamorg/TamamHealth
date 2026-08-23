@@ -17,7 +17,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { toCsvRows, downloadCsvText, safeFilenamePart } from '@/lib/export-file';
 import type { ImmunizationDefaulter } from '@/lib/services/immunization-service';
 import type { ImmunizationDoc } from '@/lib/db-types';
-import EhrListHeader, { EhrListFilters, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import {
   Syringe, Search, Plus, X, CheckCircle2, Clock, AlertTriangle,
   XCircle, ChevronDown, ChevronUp, Users, ExternalLink, Edit3, Download,
@@ -388,24 +388,6 @@ export default function ImmunizationsPage() {
         search={{ value: tableSearch, onChange: setTableSearch, placeholder: 'Search children by name…', ariaLabel: 'Search children by name' }}
         actions={
           <>
-            <EhrListFilters
-              activeCount={vaccineFilter !== 'all' ? 1 : 0}
-              onClear={() => setVaccineFilter('all')}
-              panelWidth={260}
-            >
-              <label className="flex flex-col gap-1">
-                <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Vaccine</span>
-                <Select
-                  value={vaccineFilter}
-                  onChange={e => setVaccineFilter(e.target.value)}
-                  className="w-full text-sm py-2 px-3"
-                  style={filterFieldStyle}
-                >
-                  <option value="all">All vaccines</option>
-                  {VACCINES.map(v => <option key={v} value={v}>{v}</option>)}
-                </Select>
-              </label>
-            </EhrListFilters>
             {canRecordVitalEvents && (
               <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ gap: 8, height: 38, whiteSpace: 'nowrap' }}>
                 <Plus className="w-4 h-4" /> {t('immun.recordVaccination')}

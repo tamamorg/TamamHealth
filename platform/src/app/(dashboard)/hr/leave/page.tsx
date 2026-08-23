@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClipboardList, Plus } from '@/components/icons/lucide';
 import RequestLeaveDialog from '@/components/create-dialogs/RequestLeaveDialog';
-import EhrListHeader, { EhrListFilters, EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
 import RowStatusSelect from '@/components/ehr/RowStatusSelect';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
@@ -109,21 +109,6 @@ export default function HrLeavePage() {
           search={{ value: search, onChange: setSearch, placeholder: 'Search leave requests…', ariaLabel: 'Search leave requests' }}
           actions={
             <>
-              <EhrListFilters activeCount={statusFilter !== 'all' ? 1 : 0} onClear={() => setStatusFilterAndUrl('all')}>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.colStatus')}</label>
-                  <Select
-                    value={statusFilter}
-                    onChange={e => setStatusFilterAndUrl(e.target.value as LeaveStatus | 'all')}
-                    aria-label={t('hr.colStatus')}
-                  >
-                    <option value="all">All statuses</option>
-                    {LEAVE_STATUSES.map(s => (
-                      <option key={s} value={s}>{t(`hr.leaveStatus_${s}`)}</option>
-                    ))}
-                  </Select>
-                </div>
-              </EhrListFilters>
               <EhrListHeaderButton primary onClick={() => setOpen(true)} ariaLabel={t('hr.requestLeave')}>
                 <Plus className="w-4 h-4" color="#fff" />
               </EhrListHeaderButton>

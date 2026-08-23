@@ -1,13 +1,29 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { UserDoc, UserRole } from '../db-types';
 import { useDataScope } from './useDataScope';
 import { canReadStaffDirectory } from '@/modules/identity/client';
+/**
+ * How long a loaded staff directory stays fresh across tab switches.
+ *
+ * The directory changes when an administrator provisions or retires an
+ * account — a few times a week, not a few times a minute. The visibility
+ * refresh below used to refetch unconditionally, and the hook is mounted on
+ * every page (MessagingDock lives in the dashboard shell), so a clinician
+ * flicking between this tab and the lab system produced one full directory
+ * fetch per return, indefinitely — measured at ~10 requests/minute on an
+ * idle admin screen. Mutations still refresh immediately; only the "came
+ * back to the tab" path is throttled.
+ */
+const DIRECTORY_FRESH_MS = 60_000;
+
 export function useUsers() {
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const lastLoadedAtRef = useRef(0);
+  const inFlightRef = useRef(false);
   const scope = useDataScope();
   // The app shell mounts this hook for every signed-in role (MessagingDock),
   // but only some roles may read the directory. Without this check a front-desk
@@ -24,15 +40,21 @@ export function useUsers() {
       setLoading(false);
       return;
     }
+    // One request at a time: several consumers mounting together (the dock
+    // plus a page-level useUsers) must not each fire their own copy.
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     try {
       const { getAllUsers } = await import('@/modules/identity/services/user-service');
       const data = await getAllUsers(scope);
       setUsers(data);
       setError(null);
+      lastLoadedAtRef.current = Date.now();
     } catch (err) {
       setError('Failed to load users');
       console.error(err);
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   }, [scope, mayRead]);
@@ -45,7 +67,11 @@ export function useUsers() {
   // replication because user docs contain password/PIN hashes. Refresh when
   // the tab regains focus; mutations below also refresh immediately.
   useEffect(() => {
-    const refresh = () => { if (document.visibilityState === 'visible') void loadUsers(); };
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastLoadedAtRef.current < DIRECTORY_FRESH_MS) return;
+      void loadUsers();
+    };
     document.addEventListener('visibilitychange', refresh);
     return () => document.removeEventListener('visibilitychange', refresh);
   }, [loadUsers]);
