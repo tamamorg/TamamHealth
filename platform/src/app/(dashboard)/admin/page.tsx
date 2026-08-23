@@ -37,6 +37,7 @@ import {
   SadbChip, SadbGridList, SadbGridRow, SadbPlanChip, statusChip, effectiveOrgStatus,
 } from '@/components/admin/sadb-ui';
 import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
+import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import { Maximize2 } from '@/components/icons/lucide';
 import type {
@@ -362,6 +363,12 @@ export default function AdminDashboardPage() {
      scrolls instead of squeezing it away. */
   return (
     <main className="page-container page-enter sadb-scope" style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* The same greeting every other module opens with — this page rolls
+          its own <main> for the flex column, so it carries the header itself
+          rather than through SadbPage. */}
+      <div className="sadb-page-head">
+        <EhrPageGreeting module="Platform Dashboard" />
+      </div>
       <div className="sadb-page" style={{ flex: '1 1 auto', minHeight: 0 }}>
 
         {/* ═══ KPI tile row ═══ */}
