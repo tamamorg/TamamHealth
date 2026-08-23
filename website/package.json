@@ -11,7 +11,8 @@
     "build": "next build",
     "start": "next start --port 3001",
     "lint": "eslint .",
-    "i18n:check": "tsx scripts/check-i18n.mjs"
+    "i18n:check": "tsx scripts/check-i18n.mjs",
+    "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {
     "next": "^16.2.9",

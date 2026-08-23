@@ -11,6 +11,15 @@ COPY . .
 ARG NEXT_PUBLIC_PLATFORM_URL
 ENV NEXT_PUBLIC_PLATFORM_URL=${NEXT_PUBLIC_PLATFORM_URL}
 
+# Search-console ownership tokens. Same build-time rule: the tag has to be in
+# the HTML the crawler fetches, so it cannot be added by a runtime variable.
+# Absent is fine — the tag simply is not emitted — and DNS verification is the
+# alternative that needs no rebuild at all.
+ARG NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+ENV NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
+ARG NEXT_PUBLIC_BING_SITE_VERIFICATION
+ENV NEXT_PUBLIC_BING_SITE_VERIFICATION=${NEXT_PUBLIC_BING_SITE_VERIFICATION}
+
 RUN npm run build
 
 FROM node:20-alpine AS runner

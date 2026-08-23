@@ -3,6 +3,7 @@ import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import { getLocale } from "@/lib/i18n/server";
 import { localeConfig } from "@/lib/i18n";
+import StructuredData from "./structured-data";
 
 /** What the browser tab says. Short on purpose: a tab is ~25 characters
  *  before it truncates, so the tagline was being cut mid-word and every tab
@@ -51,6 +52,20 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
   },
+  /* Ownership proof for the two webmaster consoles that between them feed
+     every browser's default search — Google (Chrome, Firefox, Safari) and Bing
+     (Edge, and through it DuckDuckGo, Yahoo and Ecosia). Read from the
+     environment because the tokens are issued per property and per account:
+     hard-coding one would tie this repository to whichever console happened to
+     verify first, and leaving them out means the sitemap cannot be submitted
+     at all, which is the step a new domain actually needs. Absent values emit
+     no tag. */
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+      ? { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
+      : {},
+  },
 };
 
 export default async function RootLayout({
@@ -70,6 +85,7 @@ export default async function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600;700&display=swap"
           rel="stylesheet"
         />
+        <StructuredData />
       </head>
       <body>
         <LanguageProvider locale={locale}>{children}</LanguageProvider>

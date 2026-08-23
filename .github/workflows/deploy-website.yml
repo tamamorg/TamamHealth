@@ -219,6 +219,8 @@ jobs:
           provenance: false
           build-args: |
             NEXT_PUBLIC_PLATFORM_URL=${{ vars.NEXT_PUBLIC_PLATFORM_URL || 'https://app.tamamhealth.org' }}
+            NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=${{ vars.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }}
+            NEXT_PUBLIC_BING_SITE_VERIFICATION=${{ vars.NEXT_PUBLIC_BING_SITE_VERIFICATION }}
           tags: ${{ steps.meta.outputs.local_tag }}
           cache-from: type=gha,scope=website
           cache-to: type=gha,mode=max,scope=website
@@ -350,3 +352,14 @@ jobs:
           done
           echo "::error title=Site did not come up::/health-system never returned 200 after the restart."
           exit 1
+
+      # Tell the engines what changed, now that it is actually being served.
+      # Bing (and through it Edge, DuckDuckGo, Yahoo, Ecosia), Yandex, Seznam
+      # and Naver take a URL list from anyone who serves the matching key file;
+      # Google does not, and needs Search Console. Never fails the deploy: the
+      # site is live either way, and a refused submission is a thing to read in
+      # the log, not a reason to mark a good deploy red.
+      - name: Submit the sitemap to IndexNow
+        if: ${{ steps.gate.outputs.ready == 'true' }}
+        continue-on-error: true
+        run: node website/scripts/indexnow.mjs
