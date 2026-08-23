@@ -31448,3 +31448,21 @@ button.sadb-signal { cursor: pointer; }
 /* The role picker inside the change-role confirm. */
 .sadb-rolepick { display: flex; flex-direction: column; gap: 10px; }
 .sadb-rolepick select { width: 100%; }
+
+/* A card head that folds its own body. The whole head is the target — the
+   chevron says which way it will go, it is not the only place to click. */
+.sadb-card-head--toggle {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
+  text-align: start;
+  cursor: pointer;
+  font: inherit;
+}
+.sadb-card-head--toggle:hover .sadb-card-title { color: var(--accent-primary); }
+.sadb-card-caret {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+.sadb-card-head--toggle:hover .sadb-card-caret { color: var(--accent-primary); }

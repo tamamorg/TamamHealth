@@ -220,7 +220,12 @@ async function postHandler(request: NextRequest) {
     }
     if (auth.role === 'org_admin') {
       const { getHospitalById } = await import('@/lib/services/hospital-service');
-      const target = body.facilityId ? await getHospitalById(body.facilityId as string) : null;
+      // Scoped: after the tenant cutover the shared aggregate never receives a
+      // facility a clinic registers, so an unscoped read returns null and this
+      // cross-org guard silently passes on a facility it cannot see.
+      const target = body.facilityId
+        ? await getHospitalById(body.facilityId as string, { role: auth.role, orgId: auth.orgId })
+        : null;
       if (target && target.orgId && auth.orgId && target.orgId !== auth.orgId) {
         return forbidden('Cannot create wards in another organization');
       }

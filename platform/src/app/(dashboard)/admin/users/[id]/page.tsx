@@ -198,7 +198,7 @@ export default function AdminUserDetailPage() {
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              onClick={() => router.push(`/admin/organizations?facility=${encodeURIComponent(user.hospitalId!)}`)}
+              onClick={() => router.push(`/admin/facilities/${encodeURIComponent(user.hospitalId!)}`)}
             >
               <Building2 className="w-4 h-4" /> {t('adminUsers.openFacility')}
             </button>

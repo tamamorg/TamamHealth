@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
 
   const [profile, facility] = await Promise.all([
     getProviderProfileByUserId(hold.providerId).catch(() => null),
-    getHospitalById(facilityId).catch(() => null),
+    getHospitalById(facilityId, { role: 'org_admin', orgId }).catch(() => null),
   ]);
 
   const reference = generateBookingReference();

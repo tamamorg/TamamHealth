@@ -99,7 +99,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // behaviour for every tenant. Removing the route is what also empties
       // the Settings rail's System-administration group, which is gated on
       // `isPathAllowed(role, '/system-admin')`.
-      '/admin/organizations', '/reports', '/settings', '/settings/manage',
+      '/admin/organizations', '/admin/facilities', '/reports', '/settings', '/settings/manage',
       '/patients', '/pharmacy', '/messages',
       '/appointments',
       '/billing', '/payments', '/payments/claims',
@@ -237,7 +237,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // No '/appointments' either: a national ministry user has no clinic
       // book to keep. Both were grants no nav row and no link ever used.
       '/government',
-      '/admin/organizations', '/vital-statistics', '/immunizations',
+      '/admin/organizations', '/admin/facilities', '/vital-statistics', '/immunizations',
       '/anc', '/births', '/deaths', '/facility-assessments', '/data-quality',
       '/surveillance', '/reports', '/dhis2-export', '/public-stats', '/settings',
       '/epidemic-intelligence', '/mch-analytics',
@@ -252,7 +252,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     // only — no individual patient records, prescribing, dispensing, or billing.
     allowed: [
       '/dashboard/state',
-      '/admin/organizations', '/surveillance', '/epidemic-intelligence', '/mch-analytics',
+      '/admin/organizations', '/admin/facilities', '/surveillance', '/epidemic-intelligence', '/mch-analytics',
       '/vital-statistics', '/immunizations', '/anc', '/births', '/deaths',
       '/facility-assessments', '/data-quality', '/reports', '/dhis2-export',
       '/public-stats', '/messages', '/settings',
@@ -284,7 +284,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     allowed: [
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy',
-      '/surveillance', '/reports', '/admin/organizations', '/settings', '/settings/manage',
+      '/surveillance', '/reports', '/admin/organizations', '/admin/facilities', '/settings', '/settings/manage',
       '/facility-settings',
       '/it', '/system-admin',
       '/epidemic-intelligence', '/mch-analytics', '/my-facility', '/facility-overview',
@@ -312,7 +312,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard/data-entry', '/patients', '/facility-assessments',
       '/data-quality', '/reports', '/vital-statistics',
       '/immunizations', '/anc', '/births', '/deaths',
-      '/admin/organizations', '/messages', '/settings', '/it', '/system-admin',
+      '/admin/organizations', '/admin/facilities', '/messages', '/settings', '/it', '/system-admin',
       '/dhis2-export',
     ],
     defaultDashboard: '/dashboard/data-entry',
@@ -348,7 +348,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // Intelligence & population health
       '/epidemic-intelligence', '/mch-analytics', '/surveillance',
       // Network & facility
-      '/admin/organizations', '/my-facility', '/facility-overview', '/facility-assessments',
+      '/admin/organizations', '/admin/facilities', '/my-facility', '/facility-overview', '/facility-assessments',
       '/facility-settings',
       '/it', '/system-admin',
       // Reporting
@@ -424,7 +424,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     allowed: [
       '/dashboard/data-entry', '/patients', '/facility-assessments', '/data-quality',
       '/reports', '/vital-statistics', '/immunizations', '/anc', '/births', '/deaths',
-      '/admin/organizations', '/messages', '/settings', '/dhis2-export', '/system-admin',
+      '/admin/organizations', '/admin/facilities', '/messages', '/settings', '/dhis2-export', '/system-admin',
     ],
     defaultDashboard: '/dashboard/data-entry',
   },

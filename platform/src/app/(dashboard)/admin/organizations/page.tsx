@@ -21,7 +21,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useToast } from '@/components/Toast';
-import type { OrganizationDoc, UserRole } from '@/lib/db-types';
+import type { OrganizationDoc } from '@/lib/db-types';
+import { FACILITY_CONSOLE_ROLES } from '@/lib/facility-access';
 import { Plus, X, Maximize2 } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import FacilityNetworkView from '@/components/facilities/FacilityNetworkView';
@@ -40,18 +41,6 @@ import type { OrgAdminHandoff } from '@/components/admin/OrganizationForm';
 // page, so the 48px that column held goes back to the name and its counts.
 const GRID_TEMPLATE = 'minmax(200px,1.6fr) repeat(5, minmax(96px,1fr))';
 
-/**
- * Who may open this page at all.
- *
- * Inherited from the roles that had /hospitals in their nav before it was
- * deleted, plus the platform operator. `SadbPage` bounces anyone else to their
- * dashboard, and the route table (lib/role-routes.ts) has to agree — the Edge
- * proxy checks that, not this.
- */
-const ORGANIZATIONS_PAGE_ROLES: UserRole[] = [
-  'super_admin', 'org_admin', 'government', 'county_health_director',
-  'medical_superintendent', 'hrio', 'hospital_manager', 'records_hmis_officer',
-];
 
 /** What the grid needs per organization, beyond the OrganizationDoc itself. */
 interface OrgRowStats {
@@ -128,7 +117,7 @@ export default function AdminOrganizationsPage() {
   // render by accident.
   if (currentUser && currentUser.role !== 'super_admin') {
     return (
-      <SadbPage roles={ORGANIZATIONS_PAGE_ROLES}>
+      <SadbPage roles={[...FACILITY_CONSOLE_ROLES]}>
         <FacilityNetworkView />
       </SadbPage>
     );
@@ -158,9 +147,26 @@ function TenantRegistryPage() {
     // other tab, with no way to tell that anything had been dropped.
     const named = params.get('view');
     if (named === 'facilities' || named === 'organizations') return named;
-    const facilityScoped = ['facility', 'new', 'state', 'county'].some(k => params.get(k));
+    const facilityScoped = ['facility', 'new', 'state', 'county', 'org'].some(k => params.get(k));
     return facilityScoped ? 'facilities' : 'organizations';
   });
+
+  /**
+   * Re-read the query AFTER mount, because the lazy initializer above can run
+   * before a client-side navigation has committed its URL.
+   *
+   * That is how the organization page's expand icon — a `router.push` to
+   * `?org=…` — kept landing on the tenant registry: by the time the string was
+   * on `window.location`, the initial state had already been decided from the
+   * previous URL. Reading it once is right for the first paint and wrong for
+   * every push after it.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const named = params.get('view');
+    if (named === 'facilities' || named === 'organizations') { setView(named); return; }
+    if (['facility', 'new', 'state', 'county', 'org'].some(k => params.get(k))) setView('facilities');
+  }, []);
   const { showToast } = useToast();
   const { organizations, trashedOrganizations, loading, deactivate, getStats } = useOrganizations();
 
@@ -301,14 +307,17 @@ function TenantRegistryPage() {
     setShowForm(true);
   };
 
-  // Deep link: /admin/organizations?new=1 opens the create dialog directly
-  // (the dashboard's Organizations card "Add" head action) — same pattern as
-  // /admin/users, /hospitals and /org-admin/hospitals. Mount-only: the brand
-  // defaults it seeds may still be the constants at this point, which is the
-  // same fallback resolveCssVarToHex uses.
+  // Deep link: ?view=organizations&new=1 opens the New Organization dialog.
+  // `new` is claimed by this form ONLY under an explicit organizations view —
+  // every live sender of a bare `?new=1` (the org page's Add Facility, the
+  // global Add menu, the user form's no-facility prompt) means "create a
+  // FACILITY": the view initializer flips to the Facilities tab and its
+  // dialog opens there. Before this guard those links opened BOTH dialogs,
+  // stacked. Mount-only, like the other deep-link handlers here.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has('new')) openCreate();
-     
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('new') && params.get('view') === 'organizations') openCreate();
+
   }, []);
 
   // Declared below this effect, so the deep-link handler above reaches it
@@ -337,7 +346,7 @@ function TenantRegistryPage() {
   };
 
   return (
-    <SadbPage roles={ORGANIZATIONS_PAGE_ROLES}>
+    <SadbPage roles={[...FACILITY_CONSOLE_ROLES]}>
       {/* ═══ Organizations · Facilities — the registry and what it runs ═══ */}
       <div className="sadb-viewswitch" role="tablist" aria-label={t('orgAdmin.viewSwitchLabel')}>
         {(['organizations', 'facilities'] as const).map(id => (

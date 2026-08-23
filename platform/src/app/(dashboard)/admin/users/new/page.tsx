@@ -21,6 +21,7 @@ import { ArrowLeft } from '@/components/icons/lucide';
 import { SadbPage } from '@/components/admin/sadb-ui';
 import { UserForm, USER_FORM_SECTIONS, type UserCredentialHandoff } from '@/components/admin/UserForm';
 import { CredentialHandoffModal } from '@/modules/identity/client';
+import { returnToFromSearch } from '@/lib/navigation/return-to';
 
 export default function AdminUserCreatePage() {
   const { t } = useTranslation();
@@ -32,7 +33,20 @@ export default function AdminUserCreatePage() {
   // roster only when the operator closes it.
   const [handoff, setHandoff] = useState<UserCredentialHandoff | null>(null);
 
-  const backToRoster = () => router.push('/admin/users');
+  /**
+   * Where "back" goes, and where a finished account lands.
+   *
+   * The roster is only the default. Reached from an organization's page, this
+   * form belongs to THAT organization — sending the operator to the platform
+   * roster afterwards drops them somewhere they were not, with the tenant they
+   * were working in three clicks away. `returnTo` is validated as an internal
+   * path by `safeReturnTo`, so it cannot be pointed off-site.
+   */
+  const returnTo = returnToFromSearch(
+    typeof window === 'undefined' ? '' : window.location.search,
+    '/admin/users',
+  );
+  const backToRoster = () => router.push(returnTo);
 
   return (
     <SadbPage>

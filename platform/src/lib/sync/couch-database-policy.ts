@@ -62,6 +62,12 @@ export interface DatabasePolicy {
    * prevent.
    */
   membersFromOperatorList: boolean;
+  /**
+   * Roles that are members no matter what the operator's tenant list says, and
+   * whether or not the existing membership is preserved. For grants that are a
+   * property of the database rather than of who is deployed on it.
+   */
+  alwaysMemberRoles?: readonly string[];
 }
 
 export interface DatabasePolicyOptions {
@@ -124,6 +130,21 @@ export function databasePolicy(
       orgScopedValidator: orgScoped,
       serverOnlyValidator: READ_ONLY_DATABASES.includes(databaseName),
       memberRoles: memberOrgIds.map(orgId => `org:${orgId}`),
+      // The platform operator, on the global reference databases only.
+      //
+      // `super_admin` holds no `orgId` — it is not a tenant — so it matches
+      // none of the `org:` roles above and was locked out of the two databases
+      // it is most entitled to: the list of every organization, and the
+      // document carrying platform policy. Reading only: `serverOnlyValidator`
+      // refuses every non-admin write on these.
+      //
+      // Kept OUT of `memberRoles` on purpose. That field is the operator's
+      // tenant list, and its emptiness is the signal `resolveMemberRoles` uses
+      // to mean "nobody said" — folding a constant into it makes an unset
+      // COUCHDB_MEMBER_ORG_IDS look like a deliberate grant and writes
+      // `[role:super_admin]` over every tenant's membership, which is the
+      // lockout this branch exists to prevent, in the other direction.
+      alwaysMemberRoles: orgScoped ? [] : ['role:super_admin'],
       // Before cutover — and always, for the global reference databases — the
       // list is the operator's, and its absence means "unknown" rather than
       // "none".
@@ -168,16 +189,26 @@ export interface ResolvedMembers {
  * the intended end state once tenant databases are live.
  */
 export function resolveMemberRoles(
-  policy: Pick<DatabasePolicy, 'memberRoles' | 'membersFromOperatorList'>,
+  policy: Pick<DatabasePolicy, 'memberRoles' | 'membersFromOperatorList' | 'alwaysMemberRoles'>,
   currentRoles: readonly string[],
   options: { revokeUnlisted?: boolean } = {},
 ): ResolvedMembers {
+  const always = policy.alwaysMemberRoles ?? [];
+  // Union, order-stable: the constant grants ride along with whichever set
+  // wins below, so preserving a tenant list never drops them and applying a
+  // tenant list never replaces them.
+  const withAlways = (roles: readonly string[]) => {
+    const out = [...roles];
+    for (const role of always) if (!out.includes(role)) out.push(role);
+    return out;
+  };
+
   const wouldRevoke =
     policy.membersFromOperatorList &&
     policy.memberRoles.length === 0 &&
     currentRoles.length > 0;
   if (wouldRevoke && !options.revokeUnlisted) {
-    return { roles: [...currentRoles], preserved: true };
+    return { roles: withAlways(currentRoles), preserved: true };
   }
-  return { roles: policy.memberRoles, preserved: false };
+  return { roles: withAlways(policy.memberRoles), preserved: false };
 }

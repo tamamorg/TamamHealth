@@ -1,6 +1,6 @@
 'use client';
 
-import { AccountRequestQueue, BulkUserImportModal, CredentialHandoffModal, describeAccountState, generateTempPassword, usePasswordPolicy } from '@/modules/identity/client';
+import { AccountRequestQueue, CredentialHandoffModal, describeAccountState, generateTempPassword, usePasswordPolicy } from '@/modules/identity/client';
 import type { InvitationOutcome } from '@/modules/identity/client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,14 +9,16 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import type { UserDoc, UserRole } from '@/lib/db-types';
-import { UserPlus, RefreshCw, Eye, EyeOff, Upload } from '@/components/icons/lucide';
-import { isRowActivationKey } from '@/components/RowActionsPopup';
+import { UserPlus, RefreshCw, Eye, EyeOff, Maximize2, X } from '@/components/icons/lucide';
 
-import { avatarTint } from '@/lib/patient-utils';
 
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
-import { SadbPage, SadbCard, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
+import { UserForm } from '@/components/admin/UserForm';
+import {
+  SadbPage, SadbCard, SadbSearch, SadbConfirmModal, SadbTabs,
+  SadbGridList, SadbGridRow, SadbChip, SadbKpiTile,
+} from '@/components/admin/sadb-ui';
 import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
 
@@ -67,6 +69,13 @@ export default function AdminUsersPage() {
   const [showResetPassword, setShowResetPassword] = useState(true);
   // Credential hand-off — shown exactly once after a create or reset so the
   // admin can copy the temporary password before it is unrecoverable.
+  const activeCount = users.filter(u => u.isActive).length;
+  const adminCount = users.filter(u => u.role === 'super_admin' || u.role === 'org_admin').length;
+  // Invitations never opened, accounts never used, credentials still temporary
+  // — the three states `describeAccountState` separates, counted together
+  // because they all mean "somebody has to do something about this account".
+  const attentionCount = users.filter(u => u.isActive && describeAccountState(u).needsAttention).length;
+  const [showAddUser, setShowAddUser] = useState(false);
   const [handoff, setHandoff] = useState<{
     username: string;
     password: string;
@@ -110,7 +119,6 @@ export default function AdminUsersPage() {
   // Open work the just-deactivated account still owned, shown after the fact —
   // revoking access is never held up by it.
   const [openWorkNotice, setOpenWorkNotice] = useState<string | null>(null);
-  const [showImport, setShowImport] = useState(false);
 
   // Deep-link support: /admin/users?q=<name> arrives pre-filtered (the audit
   // log's "View in User Management" action), while ?user=<id> isolates and
@@ -316,22 +324,41 @@ export default function AdminUsersPage() {
 
   return (
     <SadbPage>
+      {/* ═══ Roster vitals — the same tile strip /admin/organizations opens
+          with. The tiles are the ONLY place these figures render: the head's
+          legend chips said the same four numbers again and are gone
+          (2026-08-23). ═══ */}
+      <div className="sadb-kpi-row">
+        <SadbKpiTile
+          label={t('adminUsers.statTotalUsers')}
+          value={users.length}
+          delta={t('adminUsers.acrossPlatform')}
+        />
+        <SadbKpiTile
+          label={t('adminUsers.statActiveUsers')}
+          value={activeCount}
+          delta={t('adminUsers.ofTotal', { total: users.length })}
+          deltaTone={activeCount > 0 ? 'up' : undefined}
+        />
+        <SadbKpiTile
+          label={t('adminUsers.needsAttention')}
+          value={attentionCount}
+          delta={attentionCount > 0 ? t('adminUsers.attentionNote') : t('adminUsers.allSettled')}
+          deltaTone={attentionCount > 0 ? 'warn' : undefined}
+        />
+        <SadbKpiTile
+          label={t('adminUsers.statAdminUsers')}
+          value={adminCount}
+          delta={t('adminUsers.adminNote')}
+        />
+      </div>
+
       {/* ═══ Roster + account requests — one card, organizations-style ═══
-          The KPI tile row is gone: its five figures ride the head's legend
-          chips (the same anatomy /admin/organizations draws), and the two
-          filter selects + review toggle moved into a Filters popover, so the
-          toolbar is search · Filters · Import · Add instead of six controls
-          fighting for one row. */}
+          The two filter selects and the review toggle live in a Filters
+          popover, so the toolbar is search · Filters · Add rather than six
+          controls fighting for one row. */}
       <SadbCard
         title={t('adminUsers.title')}
-        meta={
-          <span className="sadb-legend">
-            <span><i style={{ background: 'var(--text-muted)' }} />{t('adminUsers.statTotalUsers')} ({users.length})</span>
-            <span><i style={{ background: 'var(--color-success-800)' }} />{t('adminUsers.statActiveUsers')} ({users.filter(u => u.isActive).length})</span>
-            <span><i style={{ background: 'var(--color-danger-500)' }} />{t('adminUsers.statInactiveUsers')} ({users.filter(u => !u.isActive).length})</span>
-            <span><i style={{ background: 'var(--accent-primary)' }} />{t('adminUsers.statAdminUsers')} ({users.filter(u => u.role === 'super_admin' || u.role === 'org_admin').length})</span>
-          </span>
-        }
         action={
           <SadbTabs
             tabs={[
@@ -383,120 +410,68 @@ export default function AdminUsersPage() {
                 Needs attention{needsAttention.length ? ` (${needsAttention.length})` : ''}
               </button>
             </EhrListFilters>
-            {/* A facility going live has two hundred people and one dialog.
-                See lib/bulk-user-import.ts. */}
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm flex-shrink-0"
-              onClick={() => setShowImport(true)}
-              title="Import a list of users"
-            >
-              <Upload className="w-4 h-4" /> Import
-            </button>
-            <button
+                        <button
               type="button"
               className="btn btn-primary btn-sm flex-shrink-0"
-              onClick={() => router.push('/admin/users/new')}
+              onClick={() => setShowAddUser(true)}
             >
               <UserPlus className="w-4 h-4" /> Add user
             </button>
           </div>
 
-          {/* Same list anatomy as the clinical worklist and patient registry:
-              card-list wrapper, compact column head, card rows. */}
-          <div className="appointment-card-list">
-            {/* The column head is the table's frame, not a label for the
-                rows that happen to be loaded: it stays put while users
-                load and when a filter matches nothing, so the list never
-                collapses into a bare message. */}
-            <div className="appointment-card-head" aria-hidden="true" style={{ gridTemplateColumns: USER_GRID }}>
-              <span>{t('adminUsers.colName')}</span>
-              <span>{t('adminUsers.colRole')}</span>
-              <span>{t('adminUsers.colOrganization')}</span>
-              <span>{t('adminUsers.colHospital')}</span>
-              {/* Status values right-align (shared .appointment-card-status),
-                  so its label right-aligns to the same edge. */}
-              <span style={{ justifySelf: 'end', paddingInlineEnd: 6 }}>{t('adminUsers.colStatus')}</span>
-            </div>
-            {loading && (
-              <div className="appointment-card-empty">{t('adminUsers.loadingUsers')}</div>
-            )}
-            {!loading && filteredUsers.length === 0 && (
-              <div className="appointment-card-empty">{t('adminUsers.noUsersFound')}</div>
-            )}
-            {!loading && filteredUsers.map(u => (
-                  <div
-                    key={u._id}
-                    id={`admin-user-${u._id}`}
-                    className="ehr-appointment-row appointment-card-row"
-                    style={{
-                      gridTemplateColumns: USER_GRID,
-                      background: focusedUserId === u._id ? 'var(--overlay-subtle)' : undefined,
-                      outline: focusedUserId === u._id ? '2px solid var(--accent-primary)' : undefined,
-                      outlineOffset: focusedUserId === u._id ? -2 : undefined,
-                    }}
-                    aria-current={focusedUserId === u._id ? 'true' : undefined}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openUser(u._id)}
-                    onKeyDown={e => {
-                      if (isRowActivationKey(e.key)) {
-                        e.preventDefault();
-                        openUser(u._id);
-                      }
-                    }}
-                  >
-                    {/* User: square avatar + name/username */}
-                    <div className="ehr-appointment-identity">
-                      <div className="ehr-patient-icon" style={avatarTint(u.name)}>
-                        {u.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
-                      </div>
-                      <div className="ehr-appointment-main appointment-card-patient">
-                        <strong>{u.name}</strong>
-                        <p>{u.username}</p>
-                      </div>
-                    </div>
-
-                    {/* Role — value + scope, matching the shared row hierarchy. */}
-                    <div className="appointment-card-provider">
-                      <strong>{roleLabel(u.role)}</strong>
-                      <span>{u.department || u.specialty || 'Access role'}</span>
-                    </div>
-
-                    <div className="appointment-card-provider">
-                      <strong>{u.orgId ? (orgNameMap[u.orgId] || u.orgId) : 'Platform-level'}</strong>
-                      <span>{t('adminUsers.colOrganization')}</span>
-                    </div>
-
-                    <div className="appointment-card-provider">
-                      <strong>{u.hospitalName || 'Facility unassigned'}</strong>
-                      <span>{t('adminUsers.colHospital')}</span>
-                    </div>
-
-                    {/* Status pill — shared appointment pill metrics */}
-                    <div className="appointment-card-status">
-                      <span
-                        className="appointment-status-pill"
-                        style={u.isActive
-                          ? { borderColor: 'rgba(15, 160, 106,0.45)', background: 'rgba(15, 160, 106,0.10)', color: 'var(--color-success-text)' }
-                          : { borderColor: 'rgba(224, 49, 39,0.45)', background: 'rgba(224, 49, 39,0.10)', color: 'var(--color-danger-text)' }}
-                      >
-                        {u.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')}
-                      </span>
-                      {/* One line that can tell an unopened invitation from a
-                          never-used account from an abandoned one — see
-                          lib/account-state.ts for why those are three states
-                          and not one. */}
-                      <small style={describeAccountState(u).needsAttention
-                        ? { color: 'var(--color-warning-text, var(--text-secondary))' }
-                        : undefined}>
-                        {describeAccountState(u).label}
-                      </small>
-                    </div>
-
-                  </div>
-                ))}
-          </div>
+          {/* The registry's own grid — one row, one account, the same
+              anatomy /admin/organizations uses. It was the clinical worklist's
+              card list, which carried an initials plate per row and repeated
+              the column name UNDER every value ("Access role", "Organization",
+              "Hospital"): a header row and then the same words again, thirty
+              times down the page. */}
+          <SadbGridList
+            template={USER_GRID}
+            minWidth={880}
+            head={[
+              t('adminUsers.colName'), t('adminUsers.colRole'),
+              t('adminUsers.colOrganization'), t('adminUsers.colHospital'),
+              t('adminUsers.colStatus'),
+            ]}
+            alignEndLast
+            empty={loading ? t('adminUsers.loadingUsers') : t('adminUsers.noUsersFound')}
+          >
+            {!loading && filteredUsers.map(u => {
+              const account = describeAccountState(u);
+              return (
+                <SadbGridRow
+                  key={u._id}
+                  template={USER_GRID}
+                  onClick={() => openUser(u._id)}
+                >
+                  <span className="min-w-0">
+                    <span className="sadb-tenant-name truncate" style={{ color: u.isActive ? undefined : 'var(--text-muted)' }}>
+                      {u.name}
+                    </span>
+                    <span className="sadb-tenant-sub truncate">{u.username}</span>
+                  </span>
+                  <span className="truncate">{roleLabel(u.role)}</span>
+                  <span className="truncate">
+                    {u.orgId ? (orgNameMap[u.orgId] || u.orgId) : t('adminUsers.platformLevel')}
+                  </span>
+                  <span className="truncate">{u.hospitalName || t('adminUsers.facilityUnassigned')}</span>
+                  <span style={{ textAlign: 'end' }}>
+                    <SadbChip tone={u.isActive ? 'green' : 'red'}>
+                      {u.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')}
+                    </SadbChip>
+                    {/* One line that can tell an unopened invitation from a
+                        never-used account from an abandoned one — see
+                        lib/account-state.ts for why those are three states. */}
+                    <span className="sadb-tenant-sub" style={account.needsAttention
+                      ? { color: 'var(--color-warning-text, var(--text-secondary))' }
+                      : undefined}>
+                      {account.label}
+                    </span>
+                  </span>
+                </SadbGridRow>
+              );
+            })}
+          </SadbGridList>
         </div>
 
         {/* Mounted on both tabs, so the Requests badge is honest before anyone
@@ -507,6 +482,55 @@ export default function AdminUsersPage() {
       </SadbCard>
 
       {/* Credential hand-off — shown once after a create or reset */}
+      {/* Create user — dialog first, with an expand to the full page. The
+          same shape the organization form has: most accounts are four fields
+          and a role, which is a dialog's worth of work; the page is for when
+          the scope section needs room (a facility that has to be registered
+          before the account can be assigned to it). */}
+      {showAddUser && (
+        <Modal onClose={() => setShowAddUser(false)} width={560} labelledBy="add-user-title">
+          <div className="sadb-modal" style={{ minHeight: 0, overflowY: 'auto', maxHeight: 'min(78vh, 720px)' }}>
+            <div className="flex items-start justify-between gap-3 sadb-modal-copy">
+              <h2 id="add-user-title" className="sadb-modal-title">{t('adminUsers.createUser')}</h2>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setShowAddUser(false); router.push('/admin/users/new'); }}
+                  className="p-1.5 rounded-lg"
+                  style={{ background: 'var(--overlay-subtle)' }}
+                  aria-label={t('orgAdmin.openFullPage')}
+                  title={t('orgAdmin.openFullPage')}
+                  data-action="user-create-expand"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddUser(false)}
+                  className="p-1.5 rounded-lg"
+                  style={{ background: 'var(--overlay-subtle)' }}
+                  aria-label={t('action.close')}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <UserForm
+              onCancel={() => setShowAddUser(false)}
+              onSaved={({ user, handoff: h }) => {
+                setShowAddUser(false);
+                setUsers(prev => [user, ...prev]);
+                showToast(t('adminUsers.createdToast', { name: user.username }), 'success');
+                // The one-time password outlives the form that produced it, so
+                // the panel belongs to this page — the form unmounts with the
+                // dialog it was in.
+                setHandoff({ username: h.username, password: h.password, kind: 'created', invitation: h.invitation });
+              }}
+            />
+          </div>
+        </Modal>
+      )}
+
       {handoff && (
         <CredentialHandoffModal
           title={handoff.kind === 'created' ? t('adminUsers.handoffCreatedTitle') : t('adminUsers.handoffResetTitle')}
@@ -594,16 +618,6 @@ export default function AdminUsersPage() {
       )}
 
       {/* Deactivate confirm — the destructive path off the row menu. */}
-      {showImport && (
-        <BulkUserImportModal
-          onClose={() => setShowImport(false)}
-          onImported={() => { void reloadUsers(); }}
-          // A platform operator belongs to no organization, so the roster's own
-          // filter is what says which tenant these accounts are for.
-          orgId={filterOrg === 'all' ? undefined : filterOrg}
-          orgName={organizations.find(o => o._id === filterOrg)?.name}
-        />
-      )}
 
       {/* Shown after the account is closed, never as a gate on closing it. */}
       {openWorkNotice && (

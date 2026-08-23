@@ -115,7 +115,7 @@ async function postHandler(
         return NextResponse.json({ error: 'Choose a facility for this account' }, { status: 400 });
       }
       const { getHospitalById } = await import('@/lib/services/hospital-service');
-      const hospital = await getHospitalById(hospitalId);
+      const hospital = await getHospitalById(hospitalId, { role: 'org_admin', orgId });
       if (!accountRequestFacilityMatchesOrg(hospital, orgId)) {
         return NextResponse.json({ error: 'Choose a facility in this organisation' }, { status: 400 });
       }

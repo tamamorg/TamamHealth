@@ -17,7 +17,7 @@
  * HospitalDoc counters (2026-08 hardcoded-data sweep).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -29,9 +29,15 @@ import {
 } from '@/components/admin/sadb-ui';
 import { TENANT_ACTION_ICONS } from '@/components/admin/TenantCard';
 import { getPerformanceColor } from '@/lib/performance-colors';
-import { Maximize2 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { getRoleConfig } from '@/lib/permissions';
+import Modal from '@/components/Modal';
+import { Maximize2, X } from '@/components/icons/lucide';
+import { UserForm, type UserCredentialHandoff } from '@/components/admin/UserForm';
+import FacilityFormModal from '@/components/admin/FacilityFormModal';
+import { CredentialHandoffModal } from '@/modules/identity/client';
+import { useApp } from '@/lib/context';
+import { useToast } from '@/components/Toast';
 import type { UserDoc } from '@/lib/db-types';
 
 /* Roster columns: Account (name + username) · Role · Facility · Status */
@@ -77,6 +83,7 @@ function ScoreMeter({ value, label }: { value: number | null; label: string }) {
 export default function AdminOrganizationDetailPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const [facilitiesCollapsed, setFacilitiesCollapsed] = useState(false);
   const params = useParams<{ id: string }>();
   const orgId = params?.id;
 
@@ -90,28 +97,30 @@ export default function AdminOrganizationDetailPage() {
   /** '' = all facilities (the default view). */
   const [facilityFilter, setFacilityFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showAddFacility, setShowAddFacility] = useState(false);
+  const [handoff, setHandoff] = useState<UserCredentialHandoff | null>(null);
+  const { currentUser } = useApp();
+  const { showToast } = useToast();
 
-  useEffect(() => {
+  const loadOrgDetail = useCallback(async () => {
     if (!orgId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const [{ getAllUsers }, { getAllPatients }] = await Promise.all([
-          import('@/modules/identity/services/user-service'),
-          import('@/lib/services/patient-service'),
-        ]);
-        const [allUsers, allPatients] = await Promise.all([getAllUsers(), getAllPatients()]);
-        if (cancelled) return;
-        setUsers(allUsers.filter(u => u.orgId === orgId));
-        setPatientCount(allPatients.filter(p => p.orgId === orgId).length);
-      } catch (err) {
-        console.error('Failed to load organization detail:', err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+    try {
+      const [{ getAllUsers }, { getAllPatients }] = await Promise.all([
+        import('@/modules/identity/services/user-service'),
+        import('@/lib/services/patient-service'),
+      ]);
+      const [allUsers, allPatients] = await Promise.all([getAllUsers(), getAllPatients()]);
+      setUsers(allUsers.filter(u => u.orgId === orgId));
+      setPatientCount(allPatients.filter(p => p.orgId === orgId).length);
+    } catch (err) {
+      console.error('Failed to load organization detail:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [orgId]);
+
+  useEffect(() => { void loadOrgDetail(); }, [loadOrgDetail]);
 
   const orgFacilities = useMemo(
     () => hospitals.filter(h => h.orgId === orgId).sort((a, b) => a.name.localeCompare(b.name)),
@@ -200,10 +209,14 @@ export default function AdminOrganizationDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/organizations?new=1')}>
+            {/* Both dialogs open HERE and their results land here. They used
+                to navigate away — the facility to the registry, the account to
+                the platform roster — so staffing the tenant you were reading
+                ended on a page about every other tenant. */}
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddFacility(true)}>
               {TENANT_ACTION_ICONS.addFacility} {t('orgHospitals.addFacility')}
             </button>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/users?new=1')}>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowCreateUser(true)} data-action="org-create-user">
               {TENANT_ACTION_ICONS.addUser} {t('orgUsers.createUser')}
             </button>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push(`/admin/organizations?org=${org._id}&edit=1`)}>
@@ -274,21 +287,14 @@ export default function AdminOrganizationDetailPage() {
             : perf.assessed === orgFacilities.length
               ? t('orgAdmin.allAssessed', { count: orgFacilities.length })
               : t('orgAdmin.someAssessed', { assessed: perf.assessed, total: orgFacilities.length })}
-          action={
-            /* Expand, not a text link — same head affordance as the
-               dashboard's Organizations card. One destination at card
-               level: the facility network scoped to this org. */
-            <button
-              type="button"
-              className="p-1.5 rounded-md flex-shrink-0"
-              onClick={() => router.push(`/admin/organizations?org=${encodeURIComponent(org._id)}`)}
-              aria-label={t('orgAdmin.openFacilityNetwork')}
-              title={t('orgAdmin.openFacilityNetwork')}
-              data-action="org-facilities-expand"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
-          }
+          /* The head folds the table away — the longest thing on this page,
+             and rarely what you came for once you have read it. The chevron
+             replaces an expand icon that navigated to the facility network:
+             one head, one meaning, and each row already opens the facility it
+             names. */
+          collapsible
+          collapsed={facilitiesCollapsed}
+          onToggleCollapsed={() => setFacilitiesCollapsed(v => !v)}
         >
           <SadbGridList
             template={FACILITY_GRID}
@@ -303,14 +309,15 @@ export default function AdminOrganizationDetailPage() {
             alignEndLast
             empty={t('orgAdmin.noFacilities')}
           >
-            {/* One link per row now: the name opens the facility (whose own
-                page carries the performance tab). The old trailing
-                Performance link column held mostly whitespace; card-level
-                navigation lives in the head's expand icon instead. */}
+            {/* Straight to that facility's PERFORMANCE, which is what the
+                reporting and readiness columns beside the name are asking
+                about — the row used to bounce through
+                `/admin/organizations?facility=`, which is the registry, and
+                landed on the facility's Overview once it got there. */}
             {orgFacilities.map(h => (
               <SadbGridRow key={h._id} template={FACILITY_GRID}>
                 <span className="min-w-0">
-                  <Link href={`/admin/organizations?facility=${encodeURIComponent(h._id)}`} className="orgfac-name truncate">
+                  <Link href={`/admin/facilities/${encodeURIComponent(h._id)}?tab=performance`} className="orgfac-name truncate">
                     {h.name}
                   </Link>
                   <span className="sadb-tenant-sub truncate">
@@ -338,7 +345,7 @@ export default function AdminOrganizationDetailPage() {
         action={selectedFacility ? (
           /* The narrowed view offers the facility's own page — profile,
              wards, stock, staff: the create/update/retire surface. */
-          <SadbHeadLink onClick={() => router.push(`/admin/organizations?facility=${encodeURIComponent(selectedFacility._id)}`)}>
+          <SadbHeadLink onClick={() => router.push(`/admin/facilities/${encodeURIComponent(selectedFacility._id)}`)}>
             {t('orgAdmin.openFacility')}
           </SadbHeadLink>
         ) : undefined}
@@ -375,7 +382,7 @@ export default function AdminOrganizationDetailPage() {
             <SadbGridRow
               key={u._id}
               template={USER_GRID}
-              onClick={() => router.push(`/admin/users?user=${encodeURIComponent(u._id)}`)}
+              onClick={() => router.push(`/admin/users/${encodeURIComponent(u._id)}`)}
             >
               <span className="min-w-0">
                 <span className="sadb-tenant-name truncate">{u.name}</span>
@@ -392,6 +399,79 @@ export default function AdminOrganizationDetailPage() {
           ))}
         </SadbGridList>
       </SadbCard>
+
+      {/* Create user — dialog first, expand to the full page. The page is told
+          to come BACK here: this form belongs to this tenant, and finishing it
+          on the platform roster would drop the operator somewhere they never
+          were. */}
+      {showCreateUser && (
+        <Modal onClose={() => setShowCreateUser(false)} width={560} labelledBy="org-create-user-title">
+          <div className="sadb-modal" style={{ minHeight: 0, overflowY: 'auto', maxHeight: 'min(78vh, 720px)' }}>
+            <div className="flex items-start justify-between gap-3 sadb-modal-copy">
+              <h2 id="org-create-user-title" className="sadb-modal-title">{t('orgUsers.createUser')}</h2>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateUser(false);
+                    router.push(`/admin/users/new?returnTo=${encodeURIComponent(`/admin/organizations/${org._id}`)}`);
+                  }}
+                  className="p-1.5 rounded-lg"
+                  style={{ background: 'var(--overlay-subtle)' }}
+                  aria-label={t('orgAdmin.openFullPage')}
+                  title={t('orgAdmin.openFullPage')}
+                  data-action="org-user-create-expand"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateUser(false)}
+                  className="p-1.5 rounded-lg"
+                  style={{ background: 'var(--overlay-subtle)' }}
+                  aria-label={t('action.close')}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <UserForm
+              onCancel={() => setShowCreateUser(false)}
+              onSaved={({ handoff: h }) => {
+                setShowCreateUser(false);
+                void loadOrgDetail();
+                setHandoff(h);
+              }}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {showAddFacility && (
+        <FacilityFormModal
+          orgId={org._id}
+          onClose={() => setShowAddFacility(false)}
+          onSaved={hospital => {
+            setShowAddFacility(false);
+            showToast(t('orgHospitals.createdToast', { name: hospital.name }), 'success');
+            // The facility list on this page reads `useHospitals()`, which is
+            // live on the local database, so the new row arrives on its own.
+            void loadOrgDetail();
+          }}
+          actor={{ _id: currentUser?._id, username: currentUser?.username }}
+        />
+      )}
+
+      {handoff && (
+        <CredentialHandoffModal
+          title={t('adminUsers.handoffTitle')}
+          description={t('adminUsers.handoffDescription')}
+          username={handoff.username}
+          password={handoff.password}
+          invitation={handoff.invitation}
+          onClose={() => setHandoff(null)}
+        />
+      )}
     </SadbPage>
   );
 }

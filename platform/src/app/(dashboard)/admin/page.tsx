@@ -38,7 +38,7 @@ import {
 } from '@/components/admin/sadb-ui';
 import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
-import { Maximize2, Plus } from '@/components/icons/lucide';
+import { Maximize2 } from '@/components/icons/lucide';
 import type {
   AuditLogDoc, ConflictQueueDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
 } from '@/lib/db-types';
@@ -466,28 +466,19 @@ export default function AdminDashboardPage() {
             title="Organizations"
             meta={loading ? undefined : `${activeOrgs.length} active · ${trialOrgs.length} trial · ${suspendedOrgs.length} suspended`}
             action={
-              <>
-                {/* Straight into the create dialog — /admin/organizations
-                    opens it on the ?new=1 deep link. */}
-                {/* A real button, not a head link: it CREATES — straight into
-                    the New Organization dialog via the ?new=1 deep link. */}
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push('/admin/organizations?new=1')} data-action="orgs-add">
-                  <Plus className="w-3.5 h-3.5" /> Add
-                </button>
-                {/* ⤢, not a "Manage ›" text link: the same expand affordance
-                    the tenant and user cards carry — it promotes this card to
-                    the Organizations page. */}
-                <button
-                  type="button"
-                  className="p-1.5 rounded-md flex-shrink-0"
-                  onClick={() => router.push('/admin/organizations')}
-                  aria-label="Open organizations"
-                  title="Open organizations"
-                  data-action="orgs-expand"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
-                </button>
-              </>
+              /* ⤢ only (the Add button is gone, 2026-08-23): creating an
+                 organization lives on the registry page this promotes to,
+                 next to the list it adds to. */
+              <button
+                type="button"
+                className="p-1.5 rounded-md flex-shrink-0"
+                onClick={() => router.push('/admin/organizations')}
+                aria-label="Open organizations"
+                title="Open organizations"
+                data-action="orgs-expand"
+              >
+                <Maximize2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
+              </button>
             }
           />
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>

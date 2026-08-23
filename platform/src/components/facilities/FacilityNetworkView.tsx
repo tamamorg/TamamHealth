@@ -20,6 +20,7 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useApp } from '@/lib/context';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import { canCreateFacilities } from '@/lib/people-nav';
+import { FACILITY_MANAGE_ROLES } from '@/lib/facility-access';
 import { isFacilityActive } from '@/lib/services/hospital-service';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -41,9 +42,6 @@ import type { HospitalDoc, UserRole } from '@/lib/db-types';
 // so this list decides whether the profile shows them at all. Every service
 // call underneath is still scoped, so hiding the tabs is presentation, not
 // the barrier.
-const MANAGE_ROLES: UserRole[] = [
-  'super_admin', 'org_admin', 'medical_superintendent', 'hrio',
-];
 import {
   getPerformanceColor,
   METRIC_LABELS, type PerformanceMetricKey,
@@ -142,6 +140,7 @@ function HospitalsPageInner() {
   // the new facility; a tenant admin's own org is used and never asked for.
   const { organizations } = useOrganizations();
   const searchParams = useSearchParams();
+  const orgParam = searchParams.get('org');
   const stateParam = searchParams.get('state');
   const countyParam = searchParams.get('county');
   // Which tab the profile should open on when it was reached from the list's
@@ -194,6 +193,7 @@ function HospitalsPageInner() {
         const haystack = [h.name || '', h.state || '', h.town || '', h.facilityType || '', ...(h.services || [])].join(' ').toLowerCase();
         if (!terms.every(term => haystack.includes(term))) return false;
       }
+      if (orgParam && h.orgId !== orgParam) return false;
       if (filterState !== 'all' && h.state !== filterState) return false;
       if (filterCounty !== 'all' && h.county !== filterCounty) return false;
       if (filterType !== 'all' && h.facilityType !== filterType) return false;
@@ -205,7 +205,7 @@ function HospitalsPageInner() {
       }
       return true;
     });
-  }, [hospitals, search, globalSearch, filterState, filterCounty, filterType, filterOwnership, filterStatus, filterService]);
+  }, [hospitals, search, globalSearch, orgParam, filterState, filterCounty, filterType, filterOwnership, filterStatus, filterService]);
 
   // ── KPIs ──
   // Performance averages run over the facilities that HAVE performance data
@@ -412,8 +412,11 @@ function HospitalsPageInner() {
               setTimeout(() => setCreatedFacility(null), 4000);
             }
           }}
-          orgId={currentUser?.orgId}
-          organizations={currentUser?.orgId ? undefined : organizations}
+          /* A tenant admin's own org always wins; for the super-admin, an
+             inbound ?org= (the org page's "Add Facility") fixes the tenant so
+             the dialog doesn't re-ask which org the operator just left. */
+          orgId={currentUser?.orgId || orgParam || undefined}
+          organizations={(currentUser?.orgId || orgParam) ? undefined : organizations}
           actor={{ _id: currentUser?._id, username: currentUser?.username }}
           brandColor={currentUser?.branding?.primaryColor || 'var(--accent-primary)'}
         />

@@ -33,7 +33,7 @@ export async function GET(
   const [providers, reasons, facility] = await Promise.all([
     getPublishedProfiles(orgId, facilityId),
     getVisitReasonsForFacility(facilityId, orgId),
-    getHospitalById(facilityId).catch(() => null),
+    getHospitalById(facilityId, { role: 'org_admin', orgId }).catch(() => null),
   ]);
 
   return NextResponse.json({

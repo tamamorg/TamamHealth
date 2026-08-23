@@ -502,7 +502,9 @@ async function postHandler(request: NextRequest) {
         body.orgId = auth.orgId;
         if (body.hospitalId) {
           const { getHospitalById } = await import('@/lib/services/hospital-service');
-          const targetHospital = await getHospitalById(body.hospitalId as string);
+          const targetHospital = await getHospitalById(body.hospitalId as string, {
+            role: auth.role, orgId: auth.orgId,
+          });
           if (!targetHospital || (targetHospital.orgId && targetHospital.orgId !== auth.orgId)) {
             return forbidden('Cannot assign user to a facility outside your organization');
           }
@@ -529,7 +531,9 @@ async function postHandler(request: NextRequest) {
           return NextResponse.json({ error: FACILITY_REQUIRED_MESSAGE }, { status: 400 });
         }
         const { getHospitalById } = await import('@/lib/services/hospital-service');
-        const canonicalHospital = await getHospitalById(requestedHospitalId);
+        const canonicalHospital = await getHospitalById(requestedHospitalId, {
+          role: auth.role, orgId: requestedOrgId || auth.orgId,
+        });
         if (!canonicalHospital) {
           return NextResponse.json({ error: unknownFacilityMessage(requestedHospitalId) }, { status: 400 });
         }
@@ -585,7 +589,12 @@ async function postHandler(request: NextRequest) {
       body.orgId = auth.orgId;
       if (body.hospitalId) {
         const { getHospitalById } = await import('@/lib/services/hospital-service');
-        const targetHospital = await getHospitalById(body.hospitalId as string);
+        // Scoped so the lookup reads the ORG'S database, not only the shared
+        // aggregate — after the tenant cutover the aggregate never receives a
+        // facility a clinic registers. See serverHospitalDatabases().
+        const targetHospital = await getHospitalById(body.hospitalId as string, {
+          role: auth.role, orgId: auth.orgId,
+        });
         if (!targetHospital || (targetHospital.orgId && targetHospital.orgId !== auth.orgId)) {
           return forbidden('Cannot assign user to a facility outside your organization');
         }
@@ -600,7 +609,9 @@ async function postHandler(request: NextRequest) {
         return NextResponse.json({ error: FACILITY_REQUIRED_MESSAGE }, { status: 400 });
       }
       const { getHospitalById } = await import('@/lib/services/hospital-service');
-      const canonicalHospital = await getHospitalById(body.hospitalId as string);
+      const canonicalHospital = await getHospitalById(body.hospitalId as string, {
+        role: auth.role, orgId: (body.orgId as string | undefined) || auth.orgId,
+      });
       if (!canonicalHospital) {
         return NextResponse.json({ error: unknownFacilityMessage(body.hospitalId as string) }, { status: 400 });
       }

@@ -939,7 +939,7 @@ export default function FacilityManagementDashboard() {
                 head={['Facility', 'Type', 'Beds', 'Patients', "Today's visits"]}
               >
                 {hospitals.map((h: HospitalDoc) => (
-                  <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/admin/organizations?facility=${h._id}`)}>
+                  <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/admin/facilities/${h._id}`)}>
                     <span className="min-w-0">
                       <span className="sadb-tenant-name truncate">{h.name}</span>
                     </span>

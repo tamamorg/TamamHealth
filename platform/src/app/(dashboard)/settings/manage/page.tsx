@@ -47,7 +47,7 @@ export default function SettingsPage() {
   // went with their tabs on 2026-08-21: search, role/facility filters, the
   // user form, the reset-password dialog, the row-action menu, and the
   // twenty-five-field hospital form. Accounts are administered on
-  // /admin/users and /org-admin/users; facilities on /hospitals. Both now
+  // /admin/users and /org-admin/users; facilities on the facility console. Both now
   // share one dialog and one set of tenancy rules.
 
   if (!currentUser) return null;
@@ -99,7 +99,7 @@ export default function SettingsPage() {
                 have — every super_admin attempt threw.
 
             Accounts live on /admin/users and /org-admin/users; facilities live
-            on /hospitals. Both now share one dialog and one set of rules. */}
+            on the facility console. Both now share one dialog and one set of rules. */}
 
         {/* ═══════════════ FACILITY SYNC TAB ═══════════════ */}
         {/* The panel itself is shared: Settings → Integrations & sync renders

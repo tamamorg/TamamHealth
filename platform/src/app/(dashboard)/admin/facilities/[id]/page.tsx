@@ -21,11 +21,10 @@ import { SadbPage } from '@/components/admin/sadb-ui';
 import { FacilityProfile } from '@/components/facilities/FacilityNetworkView';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import { FACILITY_MANAGE_TABS } from '@/components/facilities/FacilityManageTabs';
-import type { HospitalDoc, UserRole } from '@/lib/db-types';
-
-/** Same grant the Facilities tab uses to decide who may manage a facility. */
-const MANAGE_ROLES: UserRole[] = ['super_admin', 'org_admin', 'medical_superintendent', 'hrio'];
-const CREATE_ROLES: UserRole[] = ['super_admin', 'org_admin'];
+import { FACILITY_CONSOLE_ROLES, canManageFacility } from '@/lib/facility-access';
+import { canCreateFacilities } from '@/lib/people-nav';
+import type { DataScope } from '@/lib/services/data-scope';
+import type { HospitalDoc } from '@/lib/db-types';
 
 type ProfileTabId = 'overview' | (typeof FACILITY_MANAGE_TABS)[number]['id'];
 
@@ -40,19 +39,31 @@ export default function AdminFacilityDetailPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
 
-  const canManage = !!currentUser && MANAGE_ROLES.includes(currentUser.role);
-  const canCreate = !!currentUser && CREATE_ROLES.includes(currentUser.role);
+  const canManage = canManageFacility(currentUser?.role);
+  const canCreate = canCreateFacilities(currentUser?.role ?? '');
 
   const load = useCallback(async () => {
+    if (!currentUser) return;
     try {
       const { getHospitalById } = await import('@/lib/services/hospital-service');
-      setHospital((await getHospitalById(facilityId)) ?? null);
+      // SCOPED. Read bare, this was a cross-tenant read waiting to happen: the
+      // local database holds every organization the device replicated, and an
+      // id in the URL is not a permission. `filterByScope` answers null for a
+      // facility outside the caller's tenant, which lands on "not found" below
+      // — the same answer as a facility that does not exist, which is the only
+      // thing the caller is entitled to know about someone else's.
+      const scope: DataScope = {
+        role: currentUser.role,
+        orgId: currentUser.orgId,
+        hospitalId: currentUser.hospitalId,
+      };
+      setHospital((await getHospitalById(facilityId, scope)) ?? null);
     } catch {
       setHospital(null);
     } finally {
       setLoading(false);
     }
-  }, [facilityId]);
+  }, [facilityId, currentUser]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -68,7 +79,7 @@ export default function AdminFacilityDetailPage() {
   })();
 
   return (
-    <SadbPage>
+    <SadbPage roles={[...FACILITY_CONSOLE_ROLES]}>
       <div className="patient-registration-toolbar">
         <button type="button" onClick={backToRegistry} className="patient-registration-back">
           <ArrowLeft className="w-4 h-4" /> {t('orgAdmin.backToFacilities')}

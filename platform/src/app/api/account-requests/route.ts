@@ -87,7 +87,10 @@ async function postHandler(request: NextRequest) {
       ]);
       const [org, hospital] = await Promise.all([
         getOrganizationById(orgId),
-        getHospitalById(hospitalId),
+        // Scoped to the org the requester chose, so a facility registered
+        // after the tenant cutover (which never reaches the shared aggregate)
+        // is still selectable on the public request form.
+        getHospitalById(hospitalId, { role: 'org_admin', orgId }),
       ]);
       if (!org || org.isActive === false || !accountRequestFacilityMatchesOrg(hospital, orgId)) {
         return NextResponse.json({ error: 'Choose a valid facility for that organisation' }, { status: 400 });

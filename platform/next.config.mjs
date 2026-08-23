@@ -12,6 +12,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || String(Date.now());
 
 const nextConfig = {
+  // Build output directory. Overridable so a production build can be verified
+  // without overwriting the `.next` a running dev server is serving from —
+  // doing that leaves the open browser requesting chunks the build replaced,
+  // which surfaces as "Failed to load chunk …" and looks like an app bug.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   // `X-Powered-By: Next.js` names the framework and its major behaviour to
   // anyone scanning, for no benefit to the app.
   poweredByHeader: false,

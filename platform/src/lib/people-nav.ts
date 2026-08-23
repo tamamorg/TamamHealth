@@ -46,7 +46,7 @@ export function canCreateUsers(role: UserRole | string): boolean {
 }
 
 /**
- * Where a role registers facilities. `/hospitals` is the network directory
+ * Where a role registers facilities. `/admin/organizations` hosts the network
  * every role with facility sight already has in its nav; it hosts the create
  * dialog so there is no second "Facilities" row competing with it. The
  * org-scoped editor at `/org-admin/hospitals` is the same registry embedded in

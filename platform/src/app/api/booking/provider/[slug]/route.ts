@@ -36,10 +36,10 @@ export async function GET(
 
   const [reasons, facility, locations] = await Promise.all([
     getVisitReasonsForFacility(facilityId, orgId),
-    getHospitalById(facilityId).catch(() => null),
+    getHospitalById(facilityId, { role: 'org_admin', orgId }).catch(() => null),
     // "+N more location" needs the names of everywhere this clinician works,
     // not just the practice being browsed.
-    Promise.all(profile.facilityIds.map(id => getHospitalById(id).catch(() => null))),
+    Promise.all(profile.facilityIds.map(id => getHospitalById(id, { role: 'org_admin', orgId }).catch(() => null))),
   ]);
 
   return NextResponse.json({

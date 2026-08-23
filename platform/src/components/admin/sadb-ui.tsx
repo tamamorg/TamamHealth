@@ -20,7 +20,7 @@ import { useCallback, useEffect, useState, type ComponentType, type ReactNode } 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import Modal from '@/components/Modal';
-import { AlertTriangle, ChevronRight, Pencil, Search } from '@/components/icons/lucide';
+import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Pencil, Search } from '@/components/icons/lucide';
 import type { SaSeverity } from '@/components/admin/sa-ui';
 import type { UserRole } from '@/lib/db-types';
 
@@ -113,23 +113,57 @@ export function SadbPage({ actions, roles = ['super_admin'], children }: {
 
 /* ── Card ──────────────────────────────────────────────────────────── */
 
-export function SadbCard({ title, meta, action, children, className = '' }: {
+export function SadbCard({
+  title, meta, action, children, className = '',
+  collapsible = false, collapsed = false, onToggleCollapsed,
+}: {
   title?: string; meta?: ReactNode; action?: ReactNode; children: ReactNode; className?: string;
+  /**
+   * Make the WHOLE head a toggle for the body.
+   *
+   * A long table on a page that carries several of them is worth folding away,
+   * and the head is the obvious place to click — so the chevron is a state
+   * indicator rather than the only target. `action` still renders beside it for
+   * anything that is not the toggle; a control in there must stop propagation
+   * or clicking it also folds the card.
+   */
+  collapsible?: boolean;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }) {
+  const head = (
+    <>
+      {title && <h3 className="sadb-card-title">{title}</h3>}
+      {(meta || action || collapsible) && (
+        <div className="flex items-center gap-3">
+          {meta && <span className="sadb-card-meta">{meta}</span>}
+          {action}
+          {collapsible && (
+            <span className="sadb-card-caret" aria-hidden="true">
+              {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </span>
+          )}
+        </div>
+      )}
+    </>
+  );
   return (
     <section className={`sadb-card ${className}`.trim()}>
       {(title || meta || action) && (
-        <header className="sadb-card-head">
-          {title && <h3 className="sadb-card-title">{title}</h3>}
-          {(meta || action) && (
-            <div className="flex items-center gap-3">
-              {meta && <span className="sadb-card-meta">{meta}</span>}
-              {action}
-            </div>
-          )}
-        </header>
+        collapsible ? (
+          <button
+            type="button"
+            className="sadb-card-head sadb-card-head--toggle"
+            aria-expanded={!collapsed}
+            onClick={onToggleCollapsed}
+          >
+            {head}
+          </button>
+        ) : (
+          <header className="sadb-card-head">{head}</header>
+        )
       )}
-      {children}
+      {!collapsed && children}
     </section>
   );
 }

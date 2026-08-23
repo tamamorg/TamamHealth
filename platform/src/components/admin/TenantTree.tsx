@@ -23,7 +23,7 @@ import type { HospitalDoc, UserDoc } from '@/lib/db-types';
 export const ORG_GRID_TEMPLATE = 'minmax(200px,1.6fr) repeat(5, minmax(96px,1fr))';
 
 /* Facility levels spelled out — the console shows two tenants side by side, so
-   the /hospitals abbreviations (NR, PHCC) would need a legend here. */
+   the facility-network abbreviations (NR, PHCC) would need a legend here. */
 export const FACILITY_TYPE_LABELS: Record<string, string> = {
   national_referral: 'National referral',
   state_hospital: 'State hospital',

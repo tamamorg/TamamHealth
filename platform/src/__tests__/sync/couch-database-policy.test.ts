@@ -124,10 +124,39 @@ describe('CouchDB database policy', () => {
       for (const name of ['tamamhealth_organizations', 'tamamhealth_platform_config']) {
         const policy = databasePolicy(name, afterCutover);
         expect(policy.memberRoles).toEqual(['org:org-a', 'org:org-b']);
+        // The platform operator rides alongside, never inside, the tenant
+        // list — it holds no `org:` role and matched none of these.
+        expect(policy.alwaysMemberRoles).toEqual(['role:super_admin']);
         expect(policy.orgScopedValidator).toBe(false);
         // Membership grants reading only — every browser write is still refused.
         expect(policy.serverOnlyValidator).toBe(true);
       }
+    });
+
+    it('does NOT admit the platform operator to an org-scoped database', () => {
+      // The operator reads the global reference data and nothing else. A
+      // `role:super_admin` member on a tenant aggregate — or on a tenant's own
+      // database — would be a cross-tenant read of clinical records.
+      for (const name of ['tamamhealth_patients', 'tamamhealth_lab_results']) {
+        const policy = databasePolicy(name, afterCutover);
+        expect(policy.memberRoles).not.toContain('role:super_admin');
+        expect(policy.alwaysMemberRoles ?? []).toEqual([]);
+      }
+      expect(databasePolicy('tamamhealth_patients--org-a', afterCutover).memberRoles)
+        .toEqual(['org:org-a']);
+    });
+
+    it('keeps the operator when an unset tenant list preserves existing members', () => {
+      // The regression this guards: folding the operator into `memberRoles`
+      // made an unset COUCHDB_MEMBER_ORG_IDS look like a deliberate grant, so
+      // a routine deploy wrote `[role:super_admin]` over every tenant's
+      // membership and cut all of them off the global reference data.
+      const policy = databasePolicy('tamamhealth_platform_config', {
+        ...afterCutover, memberOrgIds: [],
+      });
+      const resolved = resolveMemberRoles(policy, ['org:org-a', 'org:org-b']);
+      expect(resolved.preserved).toBe(true);
+      expect(resolved.roles).toEqual(['org:org-a', 'org:org-b', 'role:super_admin']);
     });
   });
 

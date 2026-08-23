@@ -80,7 +80,7 @@ const ALL_STATIONS = Object.keys(STATION_LABELS) as EncounterStationKey[];
 const ALL_PATIENT_PROFILES = Object.keys(PATIENT_PROFILE_LABELS) as PatientProfileKey[];
 const ALL_CHECKOUT_GATES = Object.keys(CHECKOUT_GATE_LABELS);
 
-/** Roles allowed on /hospitals/[id]/manage — mirrors that page's own gate, so
+/** Roles allowed on a facility's page — mirrors `FACILITY_MANAGE_ROLES`, so
  *  the picker never offers a link that lands on a redirect. */
 const FACILITY_PROFILE_ROLES = ['super_admin', 'org_admin', 'medical_superintendent', 'hrio'];
 
@@ -294,7 +294,7 @@ export function FacilitySettingsView({
                 })()}
                 <span className="fs-fac-act">
                   {canOpenProfile && (
-                    <Link href={`/admin/organizations?facility=${h._id}`} className="fs-fac-profile">Profile</Link>
+                    <Link href={`/admin/facilities/${h._id}`} className="fs-fac-profile">Profile</Link>
                   )}
                   <ChevronRight className="w-4 h-4 fs-fac-chev" aria-hidden />
                 </span>
@@ -606,7 +606,7 @@ export function FacilitySettingsView({
               </span>
             </div>
             {canOpenProfile && (
-              <Link href={`/admin/organizations?facility=${effectiveHospitalId}`} className="ehr-set-btn">Facility profile</Link>
+              <Link href={`/admin/facilities/${effectiveHospitalId}`} className="ehr-set-btn">Facility profile</Link>
             )}
             {!hospitalId && (
               <button type="button" className="ehr-set-btn" onClick={() => setSelectedHospitalId('')}>

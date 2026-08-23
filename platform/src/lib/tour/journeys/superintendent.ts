@@ -9,7 +9,7 @@ import { clinicalOfficerTourSteps } from '../clinical-officer-steps';
 // facility-wide oversight across clinical quality, HR, facility performance,
 // and finance. A facility's working tabs — Staff, Wards, Equipment, Inventory,
 // Schedules, Performance, Settings — used to be a separate screen at
-// `/hospitals/[hospitalId]/manage`, two sequential clicks away (select a
+// the facility's own page, two sequential clicks away (select a
 // facility, then Manage), which is why this tour could only describe them.
 // They now sit on the facility profile itself, and every row in the network
 // list carries a gear that opens straight onto one, so the stop below anchors

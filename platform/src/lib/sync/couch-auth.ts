@@ -286,7 +286,23 @@ export async function ensureCouchGatewayUser(input: {
 }): Promise<{ username: string; password: string }> {
   const secret = process.env.COUCHDB_GATEWAY_SECRET || '';
   if (secret.length < 32) throw new Error('[couch-auth] COUCHDB_GATEWAY_SECRET must be at least 32 characters');
-  const orgId = assertOrganizationId(input.orgId);
+  // A missing organization is a real identity, not a malformed one.
+  //
+  // This used to `assertOrganizationId(input.orgId)` and THROW, which the
+  // gateway route turns into a 502. The platform operator has no `orgId` — it
+  // is not a tenant — so every request it made for the two databases it is
+  // actually entitled to (`organizations` and `platform_config`, the global
+  // reference data) failed as "Sync gateway unavailable". The operator's
+  // browser therefore replicated nothing at all: its organization list and the
+  // platform config document only ever held what the local seed wrote, and a
+  // server-side change to either never arrived. That is how a recorded backup
+  // could sit in CouchDB while the Risk Center went on reporting none.
+  //
+  // Org-scoped databases are still refused, and one layer earlier:
+  // `resolveGatewayDatabase` returns null without an orgId, so the route
+  // answers 403 before reaching this function. Nothing here widens that — an
+  // operator with no `org:` role gets no tenant data from CouchDB either way.
+  const orgId = input.orgId ? assertOrganizationId(input.orgId) : '';
   // facilityIds joins the identity so a coverage change rotates the derived
   // password and re-provisions the claims, instead of leaving a stale grant.
   const facilities = [...(input.facilityIds ?? [])].sort().join(',');
@@ -300,7 +316,10 @@ export async function ensureCouchGatewayUser(input: {
     provisioning = ensureCouchUser({
       username,
       password,
-      orgId,
+      // '' means "no tenant"; ensureCouchUser already skips the `org:` claim
+      // for a falsy value, so the operator gets `role:super_admin` and nothing
+      // that would open a tenant's database.
+      orgId: orgId || undefined,
       hospitalId: input.hospitalId,
       facilityIds: input.facilityIds,
       platformRole: input.role,
