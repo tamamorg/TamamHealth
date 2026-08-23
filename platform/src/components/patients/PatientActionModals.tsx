@@ -21,6 +21,7 @@ import { Pill, ArrowRightLeft, X, AlertTriangle } from '@/components/icons/lucid
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
+import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useSettings } from '@/lib/settings/SettingsProvider';
@@ -132,6 +133,12 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
         route,
         frequency,
         duration: durationNote,
+        // The full-course quantity, stamped at write time so the pharmacy's
+        // stock gate and deduction start from the prescriber's own numbers
+        // rather than a fallback of 1. See lib/pharmacy/course-quantity.ts.
+        quantityToDispense: estimateCourseQuantity({
+          medication: medication.trim(), dose: dose.trim(), frequency, duration: duration.trim(),
+        }),
         prescribedBy: currentUser?.name || '',
         status: 'pending',
         orderStatus: 'received_in_pharmacy_queue',

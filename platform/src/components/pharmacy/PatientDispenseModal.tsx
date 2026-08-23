@@ -20,6 +20,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import Modal from '@/components/Modal';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -164,7 +165,7 @@ export default function PatientDispenseModal({
   };
 
   const clearForDispense = (rx: PrescriptionDoc) => {
-    const qty = rx.quantityToDispense || 1;
+    const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     const interactions = interactionsFor(rx);
     if (interactions.some(i => i.severity === 'contraindicated' || i.severity === 'serious')) {
@@ -201,7 +202,7 @@ export default function PatientDispenseModal({
       flagPayment(rx);
       return;
     }
-    const qty = rx.quantityToDispense || 1;
+    const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     if (!inv || inv.stockLevel < qty) {
       showToast(`Insufficient stock: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available, ${qty} needed for the full course.`, 'error');
@@ -271,7 +272,7 @@ export default function PatientDispenseModal({
   const stepFor = (rx: PrescriptionDoc) => {
     const stage = pharmacyStage(rx);
     const inv = findInventoryFor(rx.medication);
-    const qty = rx.quantityToDispense || 1;
+    const qty = estimateCourseQuantity(rx);
     const stockOk = !!inv && inv.stockLevel >= qty;
     // isClearedFor fails closed on an unknown balance — the fabricated
     // `useState(0)` this replaced made isFinanciallyCleared(0) read true
@@ -303,7 +304,7 @@ export default function PatientDispenseModal({
     const copy: Record<StepKey, { note: string; icon: LucideIcon; label: string; onClick: () => void }> = {
       received: { note: rx.prescribedBy ? `Ordered by ${rx.prescribedBy}` : 'Waiting in pharmacy queue', icon: ClipboardList, label: 'Receive order', onClick: () => startReview(rx) },
       review: { note: 'Confirm dose, frequency, patient, allergies and interactions.', icon: ClipboardList, label: 'Check order', onClick: () => startReview(rx) },
-      checked: { note: stockOk ? `${qty} ${inv?.unit || 'unit(s)'} available` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, icon: ShieldCheck, label: 'Clear stock and safety', onClick: () => clearForDispense(rx) },
+      checked: { note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || 'unit(s)'} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, icon: ShieldCheck, label: 'Clear stock and safety', onClick: () => clearForDispense(rx) },
       payment: {
         note: !balanceKnown
           ? 'Balance unavailable — verify before dispensing'
@@ -329,7 +330,7 @@ export default function PatientDispenseModal({
             {rows.map(rx => {
               const stage = pharmacyStage(rx);
               const inv = findInventoryFor(rx.medication);
-              const qty = rx.quantityToDispense || 1;
+              const qty = estimateCourseQuantity(rx);
               const step = stepFor(rx);
               const stockOk = !!inv && inv.stockLevel >= qty;
               return (

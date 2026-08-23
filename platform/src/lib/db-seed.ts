@@ -1711,6 +1711,13 @@ async function migratePatientPhotos(): Promise<void> {
     const { patients, MALE_PATIENT_PHOTOS, FEMALE_PATIENT_PHOTOS } = await import('@/data/mock');
     const pDB = patientsDB();
     const photoById = new Map<string, string>();
+    // Only the patients the SEED created may receive a demo portrait. This
+    // used to stamp a stock face on every photo-less document in the store —
+    // including real registrations, whose record then replicated to the
+    // server wearing a stranger's photo. A patient photo exists so staff can
+    // verify identity at the next visit; a plausible wrong face is worse
+    // there than no face, which is why real patients keep their initials.
+    const seedPatientIds = new Set(patients.map(p => p.id));
     for (const p of patients) {
       if (p.photoUrl) photoById.set(p.id, p.photoUrl);
     }
@@ -1719,6 +1726,7 @@ async function migratePatientPhotos(): Promise<void> {
     for (const row of res.rows) {
       const doc = row.doc as (PatientDoc & { _rev: string }) | null;
       if (!doc) continue;
+      if (!seedPatientIds.has(doc._id)) continue;
       if ((doc as { photoUrl?: string }).photoUrl) continue;
       // Prefer the face the mock already assigned; otherwise pick one from the
       // pool matching the patient's gender. Unknown/other gender falls to the

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import { medicationMatches } from '@/lib/services/dispensing-service';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context';
@@ -597,7 +598,7 @@ export default function PharmacyDashboardPage() {
   };
 
   const handleClearForDispense = (rx: PrescriptionDoc) => {
-    const qty = rx.quantityToDispense || 1;
+    const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     const interactions = getInteractionsForRx(rx);
     if (interactions.some(i => i.severity === 'contraindicated' || i.severity === 'serious')) {
@@ -651,7 +652,7 @@ export default function PharmacyDashboardPage() {
       handlePaymentStep(rx);
       return;
     }
-    const qty = rx.quantityToDispense || 1;
+    const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     if (!inv || inv.stockLevel < qty) {
       showToast(`Insufficient stock: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available, ${qty} needed for the full course.`, 'error');
@@ -787,7 +788,7 @@ export default function PharmacyDashboardPage() {
     const balance = patientBalanceFor(rx);
     const balanceKnown = isBalanceKnownFor(rx);
     const inv = findInventoryFor(rx.medication);
-    const qty = rx.quantityToDispense || 1;
+    const qty = estimateCourseQuantity(rx);
     const stockOk = !!inv && inv.stockLevel >= qty;
     const paymentClear = balanceKnown && isFinanciallyCleared(balance);
     const controlled = !!(inv?.controlledSchedule || inv?.requiresWitness);
@@ -815,7 +816,7 @@ export default function PharmacyDashboardPage() {
     const stepCopy: Record<WorkflowStepKey, { note: string; icon: LucideIcon; action: WorkflowStepAction }> = {
       received: { note: rx.prescribedBy ? `Ordered by ${rx.prescribedBy}` : 'Waiting in pharmacy queue', icon: ClipboardList, action: { label: 'Receive Order', onClick: () => handleStartReview(rx) } },
       review: { note: 'Confirm dose, frequency, patient, allergies and interactions.', icon: ClipboardList, action: { label: 'Check Order', onClick: () => handleStartReview(rx) } },
-      checked: { note: stockOk ? `${qty} ${inv?.unit || 'unit(s)'} available` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, icon: ShieldCheck, action: { label: 'Clear Stock and Safety', onClick: () => handleClearForDispense(rx) } },
+      checked: { note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || 'unit(s)'} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, icon: ShieldCheck, action: { label: 'Clear Stock and Safety', onClick: () => handleClearForDispense(rx) } },
       payment: { note: !balanceKnown ? 'Balance unavailable — verify before dispensing' : paymentClear ? 'Payment clear or no charge' : `${formatMoney(balance)} outstanding`, icon: Clock, action: { label: canAccess('/payments') ? 'Collect Payment' : 'Send to Cashier', onClick: () => handlePaymentStep(rx) } },
       dispensed: { note: 'Issue the full course and update inventory.', icon: Pill, action: { label: t('pharmacy.dispense'), onClick: () => handleDispense(rx) } },
       counseled: { note: 'Explain dose, timing, side effects and return precautions.', icon: CheckCircle2, action: { label: 'Record Counseling', onClick: () => handleCounsel(rx) } },

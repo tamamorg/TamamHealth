@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
+import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import TableCols from '@/components/TableCols';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
@@ -189,7 +190,7 @@ export default function PharmacyPage() {
   };
 
   const handleClearForDispense = (rx: typeof rxQueue[number]) => {
-    const qty = rx.quantityToDispense || 1;
+    const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     if (!inv || inv.stockLevel < qty) {
       advanceRx(rx, 'stockout_partial_referred', `Stockout recorded: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available.`);
@@ -311,7 +312,7 @@ export default function PharmacyPage() {
       handlePaymentStep(rx);
       return;
     }
-    const qty = overrideQty ?? ((rx.quantityToDispense || 1) - (rx.quantityDispensed || 0));
+    const qty = overrideQty ?? ((estimateCourseQuantity(rx)) - (rx.quantityDispensed || 0));
     const inv = findInventoryFor(rx.medication);
     // Clearance, stock and expiry are all re-checked inside the transaction
     // against live batch data — this only decides whether to collect a
@@ -396,7 +397,7 @@ export default function PharmacyPage() {
       // hand over what exists as a partial fill and the order stays open for
       // the balance. Only a genuinely empty shelf disables the button, and
       // "Record stockout" is the route forward there.
-      const dispenseQty = (rx.quantityToDispense || 1) - (rx.quantityDispensed || 0);
+      const dispenseQty = (estimateCourseQuantity(rx)) - (rx.quantityDispensed || 0);
       const onHand = stockOnHandFor(rx.medication);
       if (onHand <= 0) {
         return {
@@ -428,7 +429,7 @@ export default function PharmacyPage() {
     const balance = balanceFor(rx.patientId);
     const balanceKnown = isKnownFor(rx.patientId);
     const inv = findInventoryFor(rx.medication);
-    const qty = rx.quantityToDispense || 1;
+    const qty = estimateCourseQuantity(rx);
     const stockOk = !!inv && inv.stockLevel >= qty;
     const paymentClear = isClearedFor(rx.patientId);
     const action = workflowActionFor(rx);
@@ -453,7 +454,7 @@ export default function PharmacyPage() {
     const steps = [
       { key: 'received', label: 'Medication order received', note: rx.prescribedBy ? `Ordered by ${rx.prescribedBy}` : 'Waiting in pharmacy queue', done: completed.received },
       { key: 'review', label: 'Check medication order', note: 'Confirm dose, frequency, patient and allergies.', done: completed.review },
-      { key: 'checked', label: 'Stock and safety clearance', note: stockOk ? `${qty} ${inv?.unit || 'unit(s)'} available` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, done: completed.checked },
+      { key: 'checked', label: 'Stock and safety clearance', note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || 'unit(s)'} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, done: completed.checked },
       { key: 'payment', label: 'Receive / confirm payment', note: !balanceKnown ? 'Balance unavailable — verify before dispensing' : paymentClear ? 'Payment clear or no charge' : `${formatMoney(balance)} outstanding`, done: completed.payment },
       { key: 'dispensed', label: 'Dispense medication', note: 'Issue the full course and update inventory.', done: completed.dispensed },
       { key: 'counseled', label: 'Counsel patient', note: 'Explain dose, timing, side effects and return precautions.', done: completed.counseled },
