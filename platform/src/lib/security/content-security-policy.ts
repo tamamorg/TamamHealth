@@ -15,6 +15,24 @@ export function buildContentSecurityPolicy(input: {
   isDev: boolean;
   couchdbUrl?: string;
   posthogHost?: string;
+  /**
+   * Whether this response is going out over HTTPS.
+   *
+   * Decides `upgrade-insecure-requests`, which was emitted unconditionally.
+   * On an HTTP origin that directive rewrites every absolute `http://` URL the
+   * app is configured with to `https://` — including
+   * `NEXT_PUBLIC_COUCHDB_URL`, which is how the browser reaches the sync
+   * gateway. On a plain-HTTP deployment (local development, and any clinic
+   * server behind a terminating proxy that forwards as HTTP) every replication
+   * request became `https://…` against a listener that speaks no TLS and died
+   * as `ERR_SSL_PROTOCOL_ERROR`. Replication then failed silently: the app
+   * still worked, because it reads its own PouchDB, and nothing reached the
+   * server.
+   *
+   * Defaults to true, so a deployment that forgets to pass it keeps the
+   * hardening rather than losing it.
+   */
+  isSecureOrigin?: boolean;
 }): string {
   if (!/^[A-Za-z0-9+/_=-]+$/.test(input.nonce)) {
     throw new Error('CSP nonce contains invalid characters');
@@ -29,7 +47,7 @@ export function buildContentSecurityPolicy(input: {
     if (origin) connectOrigins.add(origin);
   }
 
-  return [
+  const directives = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${input.nonce}' 'strict-dynamic'${input.isDev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -42,6 +60,8 @@ export function buildContentSecurityPolicy(input: {
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
-    'upgrade-insecure-requests',
-  ].join('; ');
+  ];
+  // Only meaningful on an HTTPS origin, and actively harmful on an HTTP one.
+  if (input.isSecureOrigin !== false) directives.push('upgrade-insecure-requests');
+  return directives.join('; ');
 }

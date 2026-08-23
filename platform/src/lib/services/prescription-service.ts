@@ -107,6 +107,34 @@ export async function getPrescriptionsByPatient(patientId: string, scope?: DataS
 class SkipCheck extends Error {}
 
 /**
+ * Is the facility's "Allergy hard stop" switched on?
+ *
+ * Reads the facility's own `facility_settings` document, falling back to the
+ * in-memory store. The store is hydrated in the browser and holds defaults on
+ * the server, so asking it alone made the policy client-dependent: a hard stop
+ * a facility had enabled was enforced in the app and ignored by
+ * `/api/prescriptions`. Asking the facility means both paths get the same
+ * answer, and a clinician prescribing for a patient at another site gets THAT
+ * site's policy rather than their own.
+ *
+ * Failure is not a refusal: an unreadable settings document leaves the
+ * advisory behaviour in place rather than blocking care.
+ */
+async function allergyHardStopEnabled(hospitalId?: string): Promise<boolean> {
+  if (hospitalId) {
+    try {
+      const { getFacilitySettings } = await import('../settings/settings-service');
+      return (await getFacilitySettings(hospitalId)).clinicalPolicy.allergyHardStop;
+    } catch { /* fall through to the in-memory store */ }
+  }
+  try {
+    return getSettings().clinicalPolicy.allergyHardStop;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * A documented allergy blocked this order.
  *
  * Only thrown when the facility has "Allergy hard stop" enabled
@@ -117,9 +145,12 @@ class SkipCheck extends Error {}
  * Callers should surface `message` to the prescriber; it names the drug and
  * the allergy so the refusal is actionable rather than mysterious.
  *
- * Server-side (`/api/prescriptions`) the settings store is never hydrated, so
- * it holds the defaults and this cannot fire — API writes keep the advisory
- * behaviour. The route still answers 409 rather than 500 if it ever does.
+ * Enforced on BOTH paths. The policy is read from the facility's own
+ * `facility_settings` document rather than only from the browser's hydrated
+ * settings singleton — server-side that singleton holds the defaults, so an
+ * API write (mobile, an integration, a cron job) used to sail past a hard stop
+ * the facility had deliberately switched on. A safety control that only one
+ * client honours is not a control.
  */
 export class AllergyHardStopError extends Error {
   readonly alerts: StructuredAllergyAlert[];
@@ -342,7 +373,7 @@ export async function createPrescription(
       // Facility policy — "Allergy hard stop" turns the advisory alert into a
       // refusal. Collected here and thrown after the audit entry is written,
       // so a blocked order still leaves a record of why.
-      if (getSettings().clinicalPolicy.allergyHardStop) allergyHardStop = overrides;
+      if (await allergyHardStopEnabled(data.hospitalId)) allergyHardStop = overrides;
     }
   } catch (err) {
     // Advisory — a failed lookup must not block the prescription. A hard stop

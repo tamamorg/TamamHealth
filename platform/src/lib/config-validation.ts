@@ -249,6 +249,46 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
  * dashboard could take a clinic offline. These are printed at boot instead, so
  * the gap is visible on every deploy rather than discovered during an incident.
  */
+/**
+ * Sync configuration that is structurally broken, in ANY environment.
+ *
+ * These combinations do not merely weaken the deployment — they stop
+ * replication dead, and they do it silently. The app keeps working, because
+ * every screen reads the browser's own PouchDB; only the server stays empty.
+ * Production already refuses to boot on them (see the sync block in
+ * `validateProductionConfig`), but development failed open, so the way you
+ * found out was that a patient registered an hour ago existed on exactly one
+ * device.
+ *
+ * Kept separate from `productionConfigWarnings` because those are
+ * operability gaps ("no error sink configured"); these are "the thing you
+ * think is running is not running".
+ */
+export function syncConfigProblems(env: ConfigEnv): string[] {
+  const problems: string[] = [];
+  if (env.NEXT_PUBLIC_SYNC_ENABLED === 'false') return problems;
+
+  const gateway = env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED === 'true';
+  if (!gateway) return problems;
+
+  if (env.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED !== 'true') {
+    problems.push(
+      'NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=true with NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED unset: '
+      + 'the gateway resolves per-tenant database names only, while the browser asks for the shared ones, '
+      + 'so every org-scoped database answers 403 and nothing replicates. '
+      + 'Run `npm run db:migrate:couchdb-tenants` and set the flag to true, or turn the gateway off.',
+    );
+  }
+  if ((env.COUCHDB_GATEWAY_SECRET || '').length < 32) {
+    problems.push(
+      'NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=true but COUCHDB_GATEWAY_SECRET is unset or shorter than 32 characters: '
+      + 'the gateway cannot derive its per-user CouchDB credential, so every proxied sync request answers 502. '
+      + 'Generate one with `openssl rand -base64 48`.',
+    );
+  }
+  return problems;
+}
+
 export function productionConfigWarnings(env: ConfigEnv): string[] {
   const warnings: string[] = [];
   if (env.NEXT_PUBLIC_DEMO_MODE === 'true') return warnings;

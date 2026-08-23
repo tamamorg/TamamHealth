@@ -186,10 +186,19 @@ function warning(
  * NEWS2 supplies the adult low-systolic boundary and AHA/ACC guidance supplies
  * the severe-hypertension boundary because IITT does not define a general,
  * non-pregnancy numeric BP boundary.
+ *
+ * `isPregnant` exists because IITT's one numeric BP rule is a pregnancy rule,
+ * and it is a RED one: "PREGNANT WITH ANY OF … SBP ≥160 or DBP ≥110" sends the
+ * patient to the resuscitation area immediately. Without it a woman at 165/112
+ * — severe pre-eclampsia, and a leading cause of maternal death — cleared both
+ * general boundaries (>180 and >120) and this function returned nothing at
+ * all. Pregnancy status comes from the same active-ANC signal the chart header
+ * draws its pregnancy pill from.
  */
 export function getTriageVitalWarnings(
   vitals: TriageVitalsInput,
   patientAgeYears?: number,
+  options: { isPregnant?: boolean } = {},
 ): TriageVitalWarning[] {
   const blockingErrors = validateTriageVitals(vitals);
   const value = (field: TriageVitalField) => blockingErrors[field]
@@ -254,10 +263,25 @@ export function getTriageVitalWarnings(
     }
   }
 
-  if (isAdult && systolic !== null && (systolic <= 90 || systolic > 180)) {
+  // Pregnancy first: its boundary is both lower and more urgent than the
+  // general one, so checking the general rule first would let 165/112 through.
+  const pregnancyHypertension = options.isPregnant
+    && ((systolic !== null && systolic >= 160) || (diastolic !== null && diastolic >= 110));
+  if (pregnancyHypertension) {
+    const reading = [systolic, diastolic].every(v => v !== null)
+      ? `${systolic}/${diastolic} mmHg`
+      : `${systolic !== null ? `systolic ${systolic}` : `diastolic ${diastolic}`} mmHg`;
+    warnings.push(warning(
+      systolic !== null && systolic >= 160 ? 'systolic' : 'diastolic',
+      'IITT_PREGNANCY_HYPERTENSION_RED',
+      'RED',
+      `Blood pressure ${reading} in pregnancy meets RED criteria (SBP ≥160 or DBP ≥110); move to high-acuity care immediately and assess for pre-eclampsia.`,
+    ));
+  }
+  if (!pregnancyHypertension && isAdult && systolic !== null && (systolic <= 90 || systolic > 180)) {
     warnings.push(warning('systolic', 'ADULT_HIGH_RISK_SYSTOLIC_BP', 'YELLOW', `Systolic blood pressure ${systolic} mmHg requires immediate clinician review and repeat measurement.`));
   }
-  if (isAdult && diastolic !== null && (diastolic <= 40 || diastolic > 120)) {
+  if (!pregnancyHypertension && isAdult && diastolic !== null && (diastolic <= 40 || diastolic > 120)) {
     warnings.push(warning('diastolic', 'ADULT_HIGH_RISK_DIASTOLIC_BP', 'YELLOW', `Diastolic blood pressure ${diastolic} mmHg requires immediate clinician review and repeat measurement.`));
   }
 

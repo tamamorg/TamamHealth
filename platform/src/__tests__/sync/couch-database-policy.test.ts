@@ -115,6 +115,20 @@ describe('CouchDB database policy', () => {
     it('still installs the org-scoping validator on the aggregate', () => {
       expect(databasePolicy('tamamhealth_patients', afterCutover).orgScopedValidator).toBe(true);
     });
+
+    it('keeps the two global reference databases readable after cutover', () => {
+      // `organizations` and `platform_config` are not org-scoped, so the
+      // migration creates no tenant successor for them. Revoking their member
+      // roles with the aggregates locked every browser out of the record that
+      // names its own organization and the document carrying platform policy.
+      for (const name of ['tamamhealth_organizations', 'tamamhealth_platform_config']) {
+        const policy = databasePolicy(name, afterCutover);
+        expect(policy.memberRoles).toEqual(['org:org-a', 'org:org-b']);
+        expect(policy.orgScopedValidator).toBe(false);
+        // Membership grants reading only — every browser write is still refused.
+        expect(policy.serverOnlyValidator).toBe(true);
+      }
+    });
   });
 
   describe('server-only databases', () => {

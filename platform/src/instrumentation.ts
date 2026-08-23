@@ -2,7 +2,7 @@
  * Next.js Instrumentation — runs once on server startup.
  */
 
-import { productionConfigWarnings, validateProductionConfig } from './lib/config-validation';
+import { productionConfigWarnings, syncConfigProblems, validateProductionConfig } from './lib/config-validation';
 import * as Sentry from '@sentry/nextjs';
 
 // Capture failures from nested React Server Components and server request
@@ -15,8 +15,31 @@ export const onRequestError = Sentry.captureRequestError;
  * loudly on deploy than to silently ship a known-bad credential. The rules live
  * in lib/config-validation.ts so they are unit-testable.
  */
+/**
+ * Say it out loud when replication cannot work.
+ *
+ * Production refuses to boot on these; development used to accept them in
+ * silence, which is the worst place for this particular failure to hide — the
+ * app looks healthy because every screen reads the local database, and the
+ * server simply never receives anything.
+ */
+function reportSyncConfig(): void {
+  const problems = syncConfigProblems(process.env);
+  if (problems.length === 0) return;
+  console.warn('');
+  console.warn('  ------------------------------------------------------------');
+  console.warn('  SYNC IS DISABLED BY CONFIGURATION — nothing will reach CouchDB');
+  console.warn('  ------------------------------------------------------------');
+  for (const p of problems) console.warn(`  • ${p}`);
+  console.warn('  ------------------------------------------------------------');
+  console.warn('');
+}
+
 function assertProductionConfig(): void {
-  if (process.env.NODE_ENV !== 'production') return;
+  if (process.env.NODE_ENV !== 'production') {
+    reportSyncConfig();
+    return;
+  }
 
   const errors = validateProductionConfig(process.env);
 

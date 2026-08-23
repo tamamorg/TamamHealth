@@ -15,6 +15,19 @@ import {
   isPathAllowed,
 } from './lib/role-routes';
 
+/**
+ * Is this response going out over HTTPS?
+ *
+ * `x-forwarded-proto` first, because the app normally sits behind a
+ * terminating proxy and its own URL is then http regardless of what the
+ * browser spoke. Falls back to the request's own protocol.
+ */
+function isSecureRequest(request: NextRequest): boolean {
+  const forwarded = request.headers.get('x-forwarded-proto');
+  if (forwarded) return forwarded.split(',')[0].trim() === 'https';
+  return request.nextUrl.protocol === 'https:';
+}
+
 function nextWithCsp(request: NextRequest): NextResponse {
   const nonce = crypto.randomUUID().replace(/-/g, '');
   const policy = buildContentSecurityPolicy({
@@ -22,6 +35,7 @@ function nextWithCsp(request: NextRequest): NextResponse {
     isDev: process.env.NODE_ENV !== 'production',
     couchdbUrl: process.env.NEXT_PUBLIC_COUCHDB_URL,
     posthogHost: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    isSecureOrigin: isSecureRequest(request),
   });
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);

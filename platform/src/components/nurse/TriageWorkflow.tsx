@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useUsers } from '@/lib/hooks/useUsers';
+import { useANC } from '@/lib/hooks/useANC';
 import { useTriage } from '@/lib/hooks/useTriage';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
@@ -127,6 +128,7 @@ export default function TriageWorkflow({
   const facilitySettings = useSettings();
   const { patients } = usePatients();
   const { users } = useUsers();
+  const { visits: ancVisits } = useANC();
   // Portrait per patient id — the triage card shows the same face as the
   // register, falling back to initials when a patient has no photo on file.
   const triagePhotoById = useMemo(() => {
@@ -204,10 +206,20 @@ export default function TriageWorkflow({
     [lockedPatient, triagePatientId, patients]
   );
   const selectedPatientAge = selectedTriagePatient ? patientAge(selectedTriagePatient) ?? undefined : undefined;
+  /**
+   * Pregnant, by the same signal the chart header's pregnancy pill uses: an
+   * ANC record that has not yet been linked to a birth. IITT's only numeric
+   * blood-pressure rule is a pregnancy rule and it is a RED one, so triage has
+   * to know this or a pre-eclamptic reading passes silently.
+   */
+  const isSelectedPatientPregnant = useMemo(() => {
+    if (!selectedTriagePatient) return false;
+    return (ancVisits || []).some(visit => visit.patientId === selectedTriagePatient._id && !visit.linkedBirthId);
+  }, [ancVisits, selectedTriagePatient]);
   const vitalErrors = useMemo(() => validateTriageVitals(triageVitals), [triageVitals]);
   const vitalWarnings = useMemo(
-    () => getTriageVitalWarnings(triageVitals, selectedPatientAge),
-    [triageVitals, selectedPatientAge],
+    () => getTriageVitalWarnings(triageVitals, selectedPatientAge, { isPregnant: isSelectedPatientPregnant }),
+    [triageVitals, selectedPatientAge, isSelectedPatientPregnant],
   );
   const warningByVital = useMemo(() => {
     const result = new Map<TriageVitalField, TriageVitalWarning>();

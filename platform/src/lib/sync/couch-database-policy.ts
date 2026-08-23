@@ -103,17 +103,31 @@ export function databasePolicy(
   }
 
   if (BROWSER_DATABASES.has(databaseName)) {
-    const memberOrgIds = options.tenantDatabasesEnabled ? [] : (options.memberOrgIds ?? []);
+    const orgScoped = ORG_SCOPED_DATABASES.has(databaseName);
+    // Cutover revokes browser membership on the ORG-SCOPED aggregates, whose
+    // rows moved into per-organization databases — any member role left there
+    // would be a cross-tenant read.
+    //
+    // It must not revoke the two that are not org-scoped. `organizations` and
+    // `platform_config` are global reference data with no tenant successor:
+    // the migration creates no `--org-…` variant of them because there is
+    // nothing to split. Emptying their member roles locked every browser out
+    // of the record that names its own organization and the document carrying
+    // platform policy — a permanent 403 on every pull, on databases that are
+    // already read-only to the browser (`serverOnlyValidator` below refuses
+    // every non-admin write, so membership grants reading and nothing else).
+    const revoked = options.tenantDatabasesEnabled && orgScoped;
+    const memberOrgIds = revoked ? [] : (options.memberOrgIds ?? []);
     return {
       baseName: databaseName,
       orgId: null,
-      orgScopedValidator: ORG_SCOPED_DATABASES.has(databaseName),
+      orgScopedValidator: orgScoped,
       serverOnlyValidator: READ_ONLY_DATABASES.includes(databaseName),
       memberRoles: memberOrgIds.map(orgId => `org:${orgId}`),
-      // After cutover the aggregates are deliberately reachable by nobody;
-      // before it, the list is the operator's, and its absence means "unknown"
-      // rather than "none".
-      membersFromOperatorList: !options.tenantDatabasesEnabled,
+      // Before cutover — and always, for the global reference databases — the
+      // list is the operator's, and its absence means "unknown" rather than
+      // "none".
+      membersFromOperatorList: !revoked,
     };
   }
 
