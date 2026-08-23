@@ -26074,7 +26074,7 @@ table.patient-data-table.patient-data-table {
         list — a title row never does, a body wrapper almost always does. That
         is what stops a modal whose first child wraps everything from turning
         blue end to end.
-     4. `:not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal)`
+     4. `:not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy)`
         excludes the panel-surface classes outright. Guard 3 alone is not
         enough for a dialog whose body holds only buttons — the front-desk
         check-in modal (choice buttons, no inputs) matched as one giant
@@ -26085,8 +26085,12 @@ table.patient-data-table.patient-data-table {
         the entire popup came out blue-on-blue. `.sadb-modal` is the
         super-admin design-language panel (sadb-ui.tsx): its confirm variant
         is heading + copy + buttons with no form control, exactly the shape
-        that matched. A surface class marks a panel by definition, never a
-        title row. `.ehr-handoff-head` is the opposite case — a header that
+        that matched. `.sadb-modal-copy` is that panel's heading+body block,
+        and it needs naming separately: excluding only the panel left the copy
+        block one level deeper, where the `> * >` variant of this rule caught
+        it and painted a blue headband over a red-topped DANGER dialog —
+        white-on-blue title where the component asked for danger ink.
+        A surface class marks a panel by definition, never a title row. `.ehr-handoff-head` is the opposite case — a header that
         DOES have a class of its own, so it paints itself (below) rather than
         going through a fallback whose pull-back assumes a padded panel.
      5. Two explicit escape hatches, for the cases structure cannot judge:
@@ -26122,8 +26126,8 @@ table.patient-data-table.patient-data-table {
    The header's own box is untouched, so every dialog keeps the padding and
    spacing its component chose. */
 
-.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))),
-.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))),
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) {
   position: relative;
   /* Its own stacking context, so the bar can sit behind the header's content
      with `z-index: -1` without falling behind the panel's background. */
@@ -26135,8 +26139,8 @@ table.patient-data-table.patient-data-table {
   color: #fff !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))::before,
-.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))::before {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))::before,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))::before {
   content: '';
   position: absolute;
   z-index: -1;
@@ -26155,8 +26159,8 @@ table.patient-data-table.patient-data-table {
    flush on the bar and the body flush under it. `:where()` contributes no
    specificity, so any padding the component states — a utility class, its own
    rule, an inline style — still wins outright. */
-:where(.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))),
-:where(.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))) {
+:where(.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))),
+:where(.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))) {
   padding: 14px 18px;
   margin-bottom: 16px;
 }
@@ -26170,16 +26174,16 @@ table.patient-data-table.patient-data-table {
    separate `:not(:has(…))` rather than reusing the selector above: `:has()`
    may not contain another `:has()`, so the obvious `:has(> HEADER)` form
    parses as invalid and silently drops the whole rule. */
-.modal-portal-backdrop [role="dialog"]:has(> :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband) :is(h2, h3)):not(:has(> :is(div, header):first-child :is(input, select, textarea, form, table, ul, ol))),
-.modal-portal-backdrop [role="dialog"] > *:has(> :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband) :is(h2, h3)):not(:has(> :is(div, header):first-child :is(input, select, textarea, form, table, ul, ol))),
+.modal-portal-backdrop [role="dialog"]:has(> :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband) :is(h2, h3)):not(:has(> :is(div, header):first-child :is(input, select, textarea, form, table, ul, ol))),
+.modal-portal-backdrop [role="dialog"] > *:has(> :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband) :is(h2, h3)):not(:has(> :is(div, header):first-child :is(input, select, textarea, form, table, ul, ol))),
 .modal-portal-backdrop [role="dialog"]:has(> .modal-headband:first-child),
 .modal-portal-backdrop [role="dialog"] > *:has(> .modal-headband:first-child) {
   padding-top: 0 !important;
   overflow-x: clip;
 }
 
-.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) :is(h2, h3, p, span, small, b, strong, em, a, button),
-.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) :is(h2, h3, p, span, small, b, strong, em, a, button) {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) :is(h2, h3, p, span, small, b, strong, em, a, button),
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) :is(h2, h3, p, span, small, b, strong, em, a, button) {
   color: #fff !important;
 }
 
@@ -26232,27 +26236,27 @@ table.patient-data-table.patient-data-table {
 
 /* The subtitle line ("Step 1 of 4 · Visit") is muted grey inline — on blue it
    needs to stay secondary without disappearing. */
-.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) p,
-.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) p {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) p,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) p {
   color: rgba(255, 255, 255, 0.82) !important;
 }
 
 /* Close and back buttons: the tinted grey disc they carry inline is invisible
    on blue, so they become a translucent white one. */
-.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button,
-.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button {
   background: rgba(255, 255, 255, 0.16) !important;
   color: #fff !important;
   border-color: transparent !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button:hover,
-.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button:hover {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button:hover,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button:hover {
   background: rgba(255, 255, 255, 0.28) !important;
 }
 
-.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) svg,
-.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) svg {
+.modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) svg,
+.modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) svg {
   color: #fff !important;
   stroke: currentColor !important;
 }
@@ -27101,6 +27105,32 @@ table.patient-data-table.patient-data-table {
   cursor: pointer;
 }
 .ehr-mini-calendar .ehr-mini-calendar-goto:hover { background: #F2FCFF; }
+
+/* The list-page header's two lines, stacked. Every module header now opens
+   the way the clinical dashboards do — the signed-in person on the 24px line,
+   their role and the module beneath it — so the largest text on the page is
+   who is holding it rather than a word already printed in the rail, the module
+   menu and the browser tab. `inline-flex` because the row it sits in aligns
+   its children on the baseline (`items-end`), and a block would push the stats
+   row out of line with the greeting. */
+.ehr-list-header-copy {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+.ehr-list-header-copy .ehr-care-greeting-sub { margin: 0; }
+/* The greeting itself. #000, not --text-primary: this reproduces the
+   patients registry, whose title is true black. */
+.ehr-list-header-greeting {
+  font-family: var(--font-platform);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #000000;
+}
 
 /* The small-caps role line under the greeting — "Doctor · Clinical
    workspace" at 11.5px, 0.1em, 55% ink. */
@@ -30240,6 +30270,31 @@ button.sadb-signal { cursor: pointer; }
 }
 .sadb-usercard-head > .ehr-patient-icon { flex: none; }
 .sadb-usercard-id { min-width: 0; flex: 1 1 auto; }
+/* Dismissal, in the corner where a dialog's close belongs. The identity block
+   beside it grows, so this stays pinned to the top right. Quiet until hovered:
+   it is the one control here that does nothing. */
+.sadb-modal-close {
+  flex: none;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.sadb-modal-close:hover {
+  background: var(--overlay-subtle);
+  color: var(--text-primary);
+}
+.sadb-modal-close:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
 .sadb-usercard-id .sadb-modal-sub { margin-top: 3px; }
 .sadb-usercard-rows {
   border: 1px solid var(--border-light);
@@ -30822,63 +30877,159 @@ button.sadb-signal { cursor: pointer; }
    for the two traps in this stylesheet: the bare `label` rule, and
    `svg.lucide:not([style*="color"])`, which recolours any icon that does not
    set its own — so the rules below state their colours.
+
+   The panel rides the settings chrome rather than redrawing it: the head is
+   `.ehr-set-section-head` (icon plate, gradient, divider) and each tenant is
+   an `.ehr-set-row`, so the rows land on the same 18px inset as every other
+   settings panel. Before this, Trash drew its own header and used rows padded
+   `11px 0` — inside a card that pads nothing — so its content sat flush
+   against the card border while its neighbours were inset, which is what made
+   the page look unaligned rather than merely different.
    ---------------------------------------------------------------------- */
-.trash-head { margin-bottom: 14px; }
-.trash-head h3 {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 4px;
+
+/* ============ Data management (Settings) ===============================
+   Rides the same `ehr-set-row` grid as every other settings panel; only the
+   right-hand state cell and the database chips are its own. Scoped `dm-` for
+   the two traps at the top of this stylesheet — the bare `label` rule and
+   `svg.lucide:not([style*="color"])` — so the colours below are stated.
+   ---------------------------------------------------------------------- */
+.dm-row .ehr-set-row-label span { max-width: 68ch; }
+
+/* The measured answer, right-aligned opposite its label. Neutral by default:
+   a fact is not a warning until it says so. */
+.dm-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-muted);
 }
-.trash-head p { font-size: 12px; color: var(--text-muted); max-width: 62ch; }
+.dm-state svg { width: 14px; height: 14px; color: var(--text-muted); }
+.dm-state.is-ok { color: var(--color-success-800); }
+.dm-state.is-ok svg { color: var(--color-success-800); }
+.dm-state.is-warn { color: var(--color-warning-700); }
+.dm-state.is-warn svg { color: var(--color-warning-700); }
+
+/* Which databases are holding unsynced work — named, because "3 databases"
+   is not actionable and "Lab results, Prescriptions, Vitals" is. */
+.dm-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.dm-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--ehr-head);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  font-style: normal;
+  white-space: nowrap;
+}
+.dm-chip--warn {
+  background: rgba(179, 89, 0, 0.10);
+  border-color: rgba(179, 89, 0, 0.42);
+  color: var(--color-warning-700);
+}
+
+/* How many tenants are in Trash, on the head's trailing edge. */
+.trash-count {
+  flex: 0 0 auto;
+  min-width: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ehr-head);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
 
 .trash-empty {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 28px 0;
+  padding: 30px 18px;
   font-size: 12.5px;
   color: var(--text-muted);
 }
 .trash-empty svg { width: 15px; height: 15px; color: var(--accent-primary); }
 
-.trash-list { display: flex; flex-direction: column; }
-.trash-row {
-  display: flex;
+.trash-row { align-items: center; }
+.trash-row .ehr-set-row-label { min-width: 0; }
+/* The note below the list draws the closing hairline, so the last row
+   must not draw one too — `:last-child` never matches here (the note is
+   the section's last child), which is what left a doubled line. */
+.ehr-set-row.trash-row:last-of-type { border-bottom: 0; }
+
+/* What the tenant still holds, as chips rather than a run-on sentence: the
+   operator is scanning for the one number that blocks the delete. */
+.trash-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.trash-chip {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--table-row-border);
-}
-.trash-row:last-child { border-bottom: none; }
-.trash-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.trash-row-main b {
-  font-size: 13px;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--ehr-head);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 11px;
   font-weight: 700;
-  color: var(--text-primary);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.trash-row-main span { font-size: 11.5px; color: var(--text-muted); }
+.trash-chip svg { width: 12px; height: 12px; color: var(--text-muted); }
+.trash-chip--muted { background: transparent; border-color: transparent; color: var(--text-muted); font-weight: 600; }
+.trash-chip--muted svg { color: var(--text-muted); }
+/* The only holding that stops a delete outright, marked as such. */
+.trash-chip--block {
+  background: rgba(158, 27, 20, 0.08);
+  border-color: rgba(158, 27, 20, 0.42);
+  color: var(--color-danger-800);
+}
+.trash-chip--block svg { color: var(--color-danger-800); }
+
 .trash-row-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .trash-row-actions svg { width: 14px; height: 14px; }
 .trash-row-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* Type-the-name gate on a delete that destroys records with the tenant. */
+.trash-confirm-gate { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+.trash-confirm-hint {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
 /* The rule that makes a permanent delete refuse, said once rather than on
-   every row that cannot take one. */
+   every row that cannot take one. Sits on the card's own inset and takes the
+   divider from the row above it, so it reads as the panel's footer rather
+   than a paragraph dropped under it. */
 .trash-note {
   display: flex;
   align-items: flex-start;
   gap: 7px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-light);
+  margin: 0;
+  padding: 12px 18px 14px;
+  border-top: 1px solid #F5F7F8;
+  background: #FAFBFC;
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--text-muted);
-  max-width: 72ch;
 }
 .trash-note svg { flex: 0 0 auto; margin-top: 1px; color: var(--color-warning); }
+
+@media (max-width: 640px) {
+  .trash-row { grid-template-columns: minmax(0, 1fr); }
+  .trash-row-actions { justify-content: flex-end; }
+}

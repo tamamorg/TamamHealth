@@ -553,14 +553,20 @@ export function SadbEditorModal({ title, sub, value, onChange, onCancel, onApply
  *  audited; re-authentication is NOT claimed (no backend enforcement yet).
  *  Pass `noteValue`/`onNoteChange` to also capture an optional free-text
  *  note with the confirmation (e.g. a dismissal reason). */
-export function SadbConfirmModal({ title, body, confirmLabel = 'Confirm', onCancel, onConfirm, busy, auditNote = true, noteValue, onNoteChange, notePlaceholder }: {
-  title: string; body: ReactNode; confirmLabel?: string;
+export function SadbConfirmModal({ title, body, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onCancel, onConfirm, busy, confirmDisabled, auditNote = true, noteValue, onNoteChange, notePlaceholder, extra }: {
+  title: string; body: ReactNode; confirmLabel?: string; cancelLabel?: string;
   onCancel: () => void; onConfirm: () => void; busy?: boolean;
+  /** Blocks confirm without claiming the action is in flight (e.g. a
+   *  type-the-name gate that has not been satisfied yet). */
+  confirmDisabled?: boolean;
   /** Appends "This action is written to the audit log with your identity." */
   auditNote?: boolean;
   noteValue?: string;
   onNoteChange?: (v: string) => void;
   notePlaceholder?: string;
+  /** Rendered between the copy and the buttons — for a confirmation the
+   *  operator must actively satisfy, not just read. */
+  extra?: ReactNode;
 }) {
   return (
     <Modal onClose={onCancel} width={440} labelledBy="sadb-confirm-title">
@@ -571,6 +577,7 @@ export function SadbConfirmModal({ title, body, confirmLabel = 'Confirm', onCanc
             {body}{auditNote && ' This action is written to the audit log with your identity.'}
           </p>
         </div>
+        {extra}
         {onNoteChange && (
           <textarea
             className="sadb-modal-input"
@@ -582,8 +589,8 @@ export function SadbConfirmModal({ title, body, confirmLabel = 'Confirm', onCanc
           />
         )}
         <div className="sadb-modal-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
-          <button type="button" className="btn btn-sm sadb-btn-danger" onClick={onConfirm} disabled={busy}>{confirmLabel}</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>{cancelLabel}</button>
+          <button type="button" className="btn btn-sm sadb-btn-danger" onClick={onConfirm} disabled={busy || confirmDisabled}>{confirmLabel}</button>
         </div>
       </div>
     </Modal>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { patientFullName, patientDisplayName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
+import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { ScanLine, Hash, X, ArrowRight, Download, UserPlus } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -243,9 +244,7 @@ export default function PatientsPage() {
               {/* Title + patient stats (inline, right-aligned — mirrors the wards
                   "Current Admissions" header instead of separate stat cards). */}
               <div className="flex items-end justify-between gap-3 mb-3 flex-wrap">
-                <span style={{ fontFamily: "var(--font-platform)", fontWeight: 800, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000' }}>
-                  All patients
-                </span>
+                <EhrPageGreeting module={t('nav.patients')} />
                 <div className="flex items-center gap-3 flex-wrap justify-end pb-0.5">
                   {[
                     { label: t('patients.statRegistered'), value: patientKpis.total, color: 'var(--text-muted)' },

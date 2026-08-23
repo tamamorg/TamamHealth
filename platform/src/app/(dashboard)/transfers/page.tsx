@@ -1,5 +1,7 @@
 'use client';
 
+import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
+
 /**
  * Patient transfers — the full queue, as a page.
  *
@@ -125,9 +127,7 @@ export default function TransfersPage() {
         {/* ── Toolbar: title, counts, tabs, search ── */}
         <div className="px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <div className="flex items-end justify-between gap-3 mb-3 flex-wrap">
-            <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 800, fontSize: 24, lineHeight: '100%', color: '#000000' }}>
-              Patient transfers
-            </span>
+            <EhrPageGreeting module="Patient transfers" />
             <div className="flex items-center gap-3 flex-wrap justify-end pb-0.5">
               {[
                 { label: 'Awaiting you', value: incoming.length, color: 'var(--color-warning-text)' },

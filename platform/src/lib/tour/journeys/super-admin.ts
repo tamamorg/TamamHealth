@@ -36,8 +36,8 @@ export const SUPER_ADMIN_STEPS: TourStep[] = [
     id: 'orgs',
     route: '/admin/organizations',
     target: '.sadb-tenant-scroll',
-    title: 'Organizations',
-    body: 'Create tenants, edit branding, plans, and seat limits, and deactivate accounts — every organization’s data stays fully isolated from every other.',
+    title: 'Organizations & subscriptions',
+    body: 'Create tenants, edit branding, plans, and seat limits, and deactivate accounts — every organization’s data stays fully isolated from every other. The subscription vitals ride the KPI strip above the list, and each tenant’s own billing facts live on its page.',
     placement: 'top',
   },
   {
@@ -136,14 +136,8 @@ export const SUPER_ADMIN_STEPS: TourStep[] = [
     body: 'Look up any tenant or user, review support-access policy and its audit trail, or post an announcement — everything you need when a facility calls in.',
     placement: 'right',
   },
-  {
-    id: 'billing',
-    route: '/admin/billing',
-    target: '.sa-table-scroll',
-    title: 'Tenant billing',
-    body: 'Every subscription in one editable table — change plan, status, or seat limits inline, right where you’re already looking at them.',
-    placement: 'top',
-  },
+  // The standalone billing step is gone: /admin/billing merged into the
+  // Organizations registry (2026-08-23), whose step above now covers it.
   {
     id: 'analytics',
     route: '/admin/analytics',

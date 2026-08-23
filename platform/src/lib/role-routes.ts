@@ -53,7 +53,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/admin', '/admin/control', '/admin/organizations', '/admin/users', '/admin/system', '/admin/conflicts',
       // Command-center modules (risk, audit, support, sync, interop, data
       // governance, security, configuration, feature flags).
-      '/admin/risk', '/admin/audit', '/admin/support', '/admin/sync',
+      '/admin/risk', '/admin/audit', '/admin/announcements', '/admin/sync',
       '/admin/interop', '/admin/data', '/admin/security', '/admin/config', '/admin/flags',
       '/it', '/system-admin',
       '/admin/billing', '/admin/analytics',

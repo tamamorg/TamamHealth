@@ -42,13 +42,20 @@ export function describeInvitationOutcome(invitation?: InvitationOutcome): Invit
         mustSharePassword: true,
       };
     case 'not_configured':
+      // Name the setting. "Email is not configured" reads as a defect to the
+      // administrator in front of it, when it is a deployment setting nobody
+      // has filled in yet — and the person who can fix it is often the same
+      // person reading this.
       return {
-        message: 'Email is not configured on this deployment, so no invitation was sent. ' + SHARE,
+        message: 'Email is not configured on this deployment, so no invitation was sent. '
+          + 'To send invitations automatically, set EMAIL_PROVIDER (sendgrid, resend or smtp) '
+          + 'and its key in the deployment environment. ' + SHARE,
         mustSharePassword: true,
       };
     case 'no_app_url':
       return {
-        message: 'No application URL is configured, so the invitation link could not be built. ' + SHARE,
+        message: 'No application URL is configured, so the invitation link could not be built. '
+          + 'Set NEXT_PUBLIC_APP_URL in the deployment environment. ' + SHARE,
         mustSharePassword: true,
       };
     case 'send_failed':

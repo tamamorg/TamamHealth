@@ -608,6 +608,12 @@ export default function EhrCareDashboard({
   // panel toggles that swap what occupies the center.
   const primaryAction = actions[0];
   const headerTitle = greetingName ? `Welcome, ${abbreviateProviderName(greetingName)}` : title;
+  // Role, then module — the two halves of the eyebrow under the greeting. The
+  // module used to be the 24px line and the eyebrow the role alone, which read
+  // as two unrelated headers depending on whether a station knew who was
+  // signed in. `title` is the module name; front-desk passes "" and drops out.
+  const headerEyebrow = greetingSubtitle
+    || (greetingName ? [roleLabel, title].filter(Boolean).join(' · ') : roleLabel);
 
   // Every station header carries a Print action: the shared choose-what /
   // choose-format dialog over the board's current rows, never window.print()'s
@@ -676,8 +682,8 @@ export default function EhrCareDashboard({
                   out a hardcoded phrase ("Front Desk · Reception") that
                   matched no role in the product. The role's own label is the
                   one name every other surface already uses. */}
-              {(greetingSubtitle || roleLabel) && (
-                <p className="ehr-care-greeting-sub">{greetingSubtitle || roleLabel}</p>
+              {headerEyebrow && (
+                <p className="ehr-care-greeting-sub">{headerEyebrow}</p>
               )}
             </div>
           </div>

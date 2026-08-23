@@ -33,7 +33,7 @@ import EhrMiniCalendar, { parseIsoDate, startOfMonth, toIsoDate } from '@/compon
 import { calendarPeriodLabel, calendarPeriodRange, countInPeriod } from './_calendar-period';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { patientFullName } from '@/lib/patient-utils';
+import { abbreviateProviderName, patientFullName } from '@/lib/patient-utils';
 import { useApp } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -543,19 +543,22 @@ export default function AppointmentsPage() {
           <div className="ehr-schedule-primary-controls ehr-clinical-dashboard-header-main">
             <div className="ehr-greeting-row">
               <div className="ehr-care-header-copy">
-                <p className="ehr-care-greeting">Appointments</p>
-                {/* Who is looking, not where they are. The facility used to be
-                    printed here ("JUBA TEACHING HOSPITAL · SCHEDULE") while the
-                    top rail said the same thing three centimetres above it; the
-                    rail now carries organization over facility, so this line
-                    names the signed-in user instead — their role, then their
-                    name. Same shape on every page header, for every role. */}
-                <p className="ehr-care-greeting-sub">
-                  {currentUser ? getRoleConfig(currentUser.role).label : 'Schedule'}
+                {/* Who is looking, then what they are looking at as the role
+                    they hold. The facility used to be printed here ("JUBA
+                    TEACHING HOSPITAL · SCHEDULE") while the top rail said the
+                    same thing three centimetres above it; the rail now carries
+                    organization over facility, so this line names the
+                    signed-in user instead. Same shape on every page header,
+                    for every role — see EhrListHeader. */}
+                <p className="ehr-care-greeting">
+                  {currentUser?.name
+                    ? t('header.welcome', { name: abbreviateProviderName(currentUser.name) })
+                    : t('header.welcomeAnon')}
                 </p>
-                {currentUser?.name && (
-                  <p className="ehr-care-greeting-name">{currentUser.name}</p>
-                )}
+                <p className="ehr-care-greeting-sub">
+                  {[currentUser ? getRoleConfig(currentUser.role).label : '', t('nav.appointments')]
+                    .filter(Boolean).join(' · ')}
+                </p>
               </div>
             </div>
           </div>

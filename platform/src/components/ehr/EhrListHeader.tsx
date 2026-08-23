@@ -4,8 +4,15 @@
  * EhrListHeader — the shared list-page header, extracted from the patients
  * registry so every module presents the same shape:
  *
- *   Title (24px, left)                    ● Stat (n)  ● Stat (n)  ● Stat (n)
+ *   Welcome, Gatluak Puok  (24px)         ● Stat (n)  ● Stat (n)  ● Stat (n)
+ *   LAB TECHNICIAN · LABORATORY
  *   [ rounded search input………………………………… ]  [Filters] [Download] [custom…]
+ *
+ * The greeting is the same one the clinical dashboards open with, so a user
+ * moving between modules keeps reading the same header rather than a page
+ * title that changes shape per surface. `title` becomes the module half of the
+ * eyebrow; pass `greeting={false}` for a header that names a section instead
+ * of the page.
  *
  * The stats row is dot-chips, right-aligned, using the flat palette from the
  * patients header (muted/blue/amber/green/bronze). Search and actions are
@@ -14,6 +21,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Filter, X } from '@/components/icons/lucide';
+import { useAuth } from '@/lib/context';
+import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
 
 export interface EhrListHeaderStat {
   label: string;
@@ -57,6 +66,8 @@ export default function EhrListHeader({
   onTabChange,
   tabsAriaLabel,
   className = '',
+  moduleLabel,
+  greeting = true,
 }: {
   title: ReactNode;
   stats?: EhrListHeaderStat[];
@@ -79,17 +90,37 @@ export default function EhrListHeader({
   onTabChange?: (key: string) => void;
   tabsAriaLabel?: string;
   className?: string;
+  /**
+   * Overrides the module name in the eyebrow. Needed only when `title` is not
+   * a plain string — the eyebrow cannot read a ReactNode.
+   */
+  moduleLabel?: string;
+  /**
+   * Drops the greeting and prints `title` on its own. For a header that names
+   * a section rather than the page the operator just opened.
+   */
+  greeting?: boolean;
 }) {
+  const { currentUser } = useAuth();
   const hasSecondRow = Boolean(search || actions);
   const hasTabs = tabs.length > 0;
+
+  // `title` is the module name — it moves off the 24px line into the eyebrow
+  // beside the role. See EhrPageGreeting for why.
+  const moduleName = moduleLabel ?? (typeof title === 'string' ? title : undefined);
+
   return (
     <div className={`px-4 pt-4 pb-3 flex-shrink-0 ${className}`}>
       <div className={`flex items-end justify-between gap-3 flex-wrap ${hasSecondRow || hasTabs ? 'mb-3' : ''}`}>
         {/* #000, not --text-primary: the registry's title is true black and
             this header exists to reproduce the registry. */}
-        <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000' }}>
-          {title}
-        </span>
+        {greeting && currentUser ? (
+          <EhrPageGreeting module={moduleName} />
+        ) : (
+          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 500, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: '#000000' }}>
+            {title}
+          </span>
+        )}
         {stats.length > 0 && (
           <div className="flex items-center gap-3 flex-wrap justify-end pb-0.5">
             {stats.map(s => (

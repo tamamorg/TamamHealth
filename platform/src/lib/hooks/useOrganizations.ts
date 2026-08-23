@@ -79,13 +79,18 @@ export function useOrganizations() {
     await loadOrganizations();
   }, [loadOrganizations]);
 
-  /** Permanent. The service refuses while the tenant still owns records. */
+  /**
+   * Permanent. The service refuses while the tenant still owns records, unless
+   * `cascade` is set — then its facilities and staff accounts go with it.
+   * Patients block the delete either way.
+   */
   const purge = useCallback(async (
     id: string,
-    actorId?: string, actorUsername?: string
+    actorId?: string, actorUsername?: string,
+    options?: { cascade?: boolean },
   ) => {
     const { purgeOrganization } = await import('../services/organization-service');
-    await purgeOrganization(id, actorId, actorUsername);
+    await purgeOrganization(id, actorId, actorUsername, options);
     await loadOrganizations();
   }, [loadOrganizations]);
 

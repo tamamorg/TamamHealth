@@ -3,6 +3,7 @@
 import { AccountRequestQueue, BulkUserImportModal, CredentialHandoffModal, canResendInvite, describeAccountState, describeInvitationOutcome, generateTempPassword, roleNeedsFacility, roleNeedsOrganization, usePasswordPolicy, validateUserScope } from '@/modules/identity/client';
 import type { InvitationOutcome } from '@/modules/identity/client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -11,7 +12,7 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import type { UserDoc, UserRole } from '@/lib/db-types';
 import {
   UserX, UserCheck, UserPlus, Shield, Building2,
-  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Mail, Upload, Trash2} from '@/components/icons/lucide';
+  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Mail, Upload, Trash2, X, Maximize2} from '@/components/icons/lucide';
 import { isRowActivationKey } from '@/components/RowActionsPopup';
 
 import { avatarTint } from '@/lib/patient-utils';
@@ -21,7 +22,9 @@ import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
 import { activeFacilities } from '@/lib/services/hospital-service';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
-import { SadbPage, SadbCard, SadbKpiTile, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
+import { SadbPage, SadbCard, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
+import { EhrListFilters } from '@/components/ehr/EhrListHeader';
+import { FilterSelect } from '@/components/filters';
 
 // Column template for the user list header + rows:
 // User · Role · Organization · Facility · Status · Actions
@@ -46,6 +49,7 @@ const ALL_ROLES: UserRole[] = [
 ];
 
 export default function AdminUsersPage() {
+  const router = useRouter();
   const { t } = useTranslation();
   const roleLabel = (role: string) => t(`adminUsers.role_${role}`);
   const { currentUser } = useAuth();
@@ -418,14 +422,6 @@ export default function AdminUsersPage() {
     [users],
   );
 
-  const kpis = [
-    { label: t('adminUsers.statTotalUsers'), value: users.length },
-    { label: t('adminUsers.statActiveUsers'), value: users.filter(u => u.isActive).length },
-    { label: t('adminUsers.statInactiveUsers'), value: users.filter(u => !u.isActive).length },
-    { label: t('adminUsers.statAdminUsers'), value: users.filter(u => u.role === 'super_admin' || u.role === 'org_admin').length },
-    { label: 'Needs attention', value: needsAttention.length },
-  ];
-
   const inputStyle: React.CSSProperties = {
     background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)',
     borderRadius: '4px', padding: '10px 14px', color: 'var(--text-primary)',
@@ -438,17 +434,22 @@ export default function AdminUsersPage() {
 
   return (
     <SadbPage>
-      {/* ═══ KPI strip ═══ */}
-      <div className="sadb-kpi-row">
-        {kpis.map(k => <SadbKpiTile key={k.label} label={k.label} value={k.value} />)}
-      </div>
-
-      {/* ═══ Roster + account requests ═══ */}
-      {/* One card, two tabs, not a page of its own: a request that nobody
-          thinks to open is a person who never gets access. */}
+      {/* ═══ Roster + account requests — one card, organizations-style ═══
+          The KPI tile row is gone: its five figures ride the head's legend
+          chips (the same anatomy /admin/organizations draws), and the two
+          filter selects + review toggle moved into a Filters popover, so the
+          toolbar is search · Filters · Import · Add instead of six controls
+          fighting for one row. */}
       <SadbCard
         title={t('adminUsers.title')}
-        meta={activeTab === 'people' ? `${filteredUsers.length} of ${users.length}` : `${requestCounts.pending} pending`}
+        meta={
+          <span className="sadb-legend">
+            <span><i style={{ background: 'var(--text-muted)' }} />{t('adminUsers.statTotalUsers')} ({users.length})</span>
+            <span><i style={{ background: 'var(--color-success-800)' }} />{t('adminUsers.statActiveUsers')} ({users.filter(u => u.isActive).length})</span>
+            <span><i style={{ background: 'var(--color-danger-500)' }} />{t('adminUsers.statInactiveUsers')} ({users.filter(u => !u.isActive).length})</span>
+            <span><i style={{ background: 'var(--accent-primary)' }} />{t('adminUsers.statAdminUsers')} ({users.filter(u => u.role === 'super_admin' || u.role === 'org_admin').length})</span>
+          </span>
+        }
         action={
           <SadbTabs
             tabs={[
@@ -464,33 +465,51 @@ export default function AdminUsersPage() {
         <div style={{ display: activeTab === 'people' ? undefined : 'none' }}>
           <div className="sadb-search-row">
             <SadbSearch value={search} onChange={setSearch} placeholder={t('adminUsers.searchPlaceholder')} />
-            <Select value={filterRole} onChange={e => setFilterRole(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 200 }}>
-              <option value="all">{t('adminUsers.allRoles')}</option>
-              {ALL_ROLES.map(value => (
-                <option key={value} value={value}>{roleLabel(value)} ({roleCounts[value] || 0})</option>
-              ))}
-            </Select>
-            <Select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 200 }}>
-              <option value="all">{t('adminUsers.allOrganizations')}</option>
-              {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
-            </Select>
-            <button
-              type="button"
-              className={`btn btn-sm flex-shrink-0 ${filterReview ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setFilterReview(v => !v)}
-              aria-pressed={filterReview}
-              title="Invitations nobody opened, accounts still on a temporary password, and accounts unused for 90 days"
+            <EhrListFilters
+              activeCount={(filterRole !== 'all' ? 1 : 0) + (filterOrg !== 'all' ? 1 : 0) + (filterReview ? 1 : 0)}
+              onClear={() => { setFilterRole('all'); setFilterOrg('all'); setFilterReview(false); }}
             >
-              Needs attention{needsAttention.length ? ` (${needsAttention.length})` : ''}
-            </button>
+              <FilterSelect
+                label={t('adminUsers.colRole')}
+                value={filterRole}
+                onChange={setFilterRole}
+                neutralValue="all"
+                size="sm"
+                options={[
+                  { value: 'all', label: t('adminUsers.allRoles') },
+                  ...ALL_ROLES.map(value => ({ value, label: `${roleLabel(value)} (${roleCounts[value] || 0})` })),
+                ]}
+              />
+              <FilterSelect
+                label={t('adminUsers.colOrganization')}
+                value={filterOrg}
+                onChange={setFilterOrg}
+                neutralValue="all"
+                size="sm"
+                options={[
+                  { value: 'all', label: t('adminUsers.allOrganizations') },
+                  ...organizations.map(o => ({ value: o._id, label: o.name })),
+                ]}
+              />
+              <button
+                type="button"
+                className={`btn btn-sm ${filterReview ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setFilterReview(v => !v)}
+                aria-pressed={filterReview}
+                title="Invitations nobody opened, accounts still on a temporary password, and accounts unused for 90 days"
+              >
+                Needs attention{needsAttention.length ? ` (${needsAttention.length})` : ''}
+              </button>
+            </EhrListFilters>
             {/* A facility going live has two hundred people and one dialog.
                 See lib/bulk-user-import.ts. */}
             <button
               type="button"
               className="btn btn-secondary btn-sm flex-shrink-0"
               onClick={() => setShowImport(true)}
+              title="Import a list of users"
             >
-              <Upload className="w-4 h-4" /> Import list
+              <Upload className="w-4 h-4" /> Import
             </button>
             <button
               type="button"
@@ -620,6 +639,36 @@ export default function AdminUsersPage() {
                 <h2 id="admin-user-card-title" className="sadb-modal-title">{detailUser.name}</h2>
                 <p className="sadb-modal-sub">{detailUser.username} · {roleLabel(detailUser.role)}</p>
               </div>
+              {/* ⤢ promotes the card to the user's facility page (profile,
+                  staff, wards, stock — the create/update/retire surface),
+                  same corner pattern as the tenant card. Only when the
+                  account HAS a facility: an unassigned or org-wide account
+                  has no facility page to open. */}
+              {detailUser.hospitalId && (
+                <button
+                  type="button"
+                  className="sadb-modal-close"
+                  onClick={() => { const id = detailUser.hospitalId!; closeDetail(); router.push(`/hospitals?facility=${encodeURIComponent(id)}`); }}
+                  title="Open facility page"
+                  aria-label="Open facility page"
+                  data-action="usercard-expand"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              )}
+              {/* Dismissal belongs in the corner, not in the action row: down
+                  there it sat beside Change role, Reset password and Deactivate
+                  — three consequential buttons and one that just goes back —
+                  and it was the widest target of the four. */}
+              <button
+                type="button"
+                className="sadb-modal-close"
+                onClick={closeDetail}
+                title="Close"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             <div className="sadb-usercard-rows">
@@ -678,7 +727,6 @@ export default function AdminUsersPage() {
             </div>
 
             <div className="sadb-usercard-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={closeDetail}>Close</button>
               <div>
                 <button
                   type="button"

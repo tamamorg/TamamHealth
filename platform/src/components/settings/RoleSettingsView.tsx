@@ -46,6 +46,7 @@ import ServicePricingPage from '@/app/(dashboard)/org-admin/pricing/page';
 import ManagementSettingsPage from '@/app/(dashboard)/settings/manage/page';
 import ItOperationsPanel, { IT_OPERATIONS_JOB_COUNT } from '@/components/admin/ItOperationsPanel';
 import TrashPanel from './TrashPanel';
+import DataManagementPanel from './DataManagementPanel';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { SettingsHostProvider } from '@/components/settings/SettingsHost';
 import {
@@ -59,7 +60,7 @@ import {
 import { isDhis2Configured } from '@/lib/services/dhis2-sync-log-service';
 import {
   AlertTriangle, ArrowLeft, Bell, BedDouble, Building2, Check, ChevronRight, Clock,
-  CreditCard, FileText, FlaskConical, KeyRound, List, Lock, Palette, Pill,
+  CreditCard, Database, FileText, FlaskConical, KeyRound, List, Lock, Palette, Pill,
   RefreshCw, Server, Settings, Shield, Stethoscope, Trash2, User, Users, Zap, type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
@@ -325,6 +326,7 @@ export default function RoleSettingsView() {
         title: 'System',
         items: [
           { id: 'integrations-live', label: 'Integrations & sync', icon: RefreshCw },
+          { id: 'data-management', label: 'Data management', icon: Database },
         ],
       });
     }
@@ -365,6 +367,10 @@ export default function RoleSettingsView() {
           title: 'System',
           items: [
             { id: 'integrations-live', label: 'Integrations & sync', icon: RefreshCw },
+            // Sits beside sync on purpose: the two answer the same question
+            // from opposite ends — sync says what is moving, data management
+            // says what has not moved yet and what would be lost with it.
+            { id: 'data-management', label: 'Data management', icon: Database },
             { id: 'restricted', label: 'Restricted actions', icon: AlertTriangle },
           ],
         });
@@ -795,6 +801,9 @@ export default function RoleSettingsView() {
           <ManagementSettingsPage />
         </section>
       );
+    }
+    if (activePanel === 'data-management') {
+      return <DataManagementPanel />;
     }
     if (activePanel === 'trash') {
       return <TrashPanel />;

@@ -26,4 +26,18 @@ describe('sync machine caller proxy routing', () => {
     const request = requestForSync('GET', { host: 'app.example.org' });
     expect(isMachineCallerRequest('/api/sync', request)).toBe(false);
   });
+
+  it('lets the backup job past the session gate when it carries a signature', () => {
+    // Registered in MACHINE_CALLER_ROUTES alongside /api/sync. Without the
+    // entry the proxy refuses a correctly signed report before the route runs,
+    // and the Risk Center can never stop saying "No backup on record".
+    expect(isMachineCallerRequest('/api/admin/backup', requestForSync('POST', {
+      host: 'app.example.org',
+      'x-tamamhealth-signature': 'present-but-route-still-verifies-value',
+    }))).toBe(true);
+
+    expect(isMachineCallerRequest('/api/admin/backup', requestForSync('POST', {
+      host: 'app.example.org',
+    }))).toBe(false);
+  });
 });

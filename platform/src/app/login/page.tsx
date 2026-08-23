@@ -27,20 +27,46 @@ import { Corners, loginStyles } from '@/components/login/login-chrome';
 // Role picker options — every role in the platform, labeled like the rest of
 // the UI. Everyone signs in as their assigned role; only the platform
 // super-admin may pick a different one and enter that role's workspace.
-// Some roles share a display label (e.g. `doctor` and `clinician` are both
-// "Doctor"); those get the role key appended so the picker stays unambiguous.
+//
+// Two roles can share a display label. `doctor` and `clinician` are both
+// "Doctor", and their route tables are character-for-character the same, so
+// the picker used to offer "Doctor (doctor)" and "Doctor (clinician)" — two
+// rows, one destination, and a key nobody outside the codebase has ever seen.
+// This question ("which workspace do you want to enter?") has one answer for
+// both, so they collapse to one row.
+//
+// The collapse is conditional on purpose: same label but a DIFFERENT route set
+// would be two genuinely different workspaces wearing one name, and hiding one
+// of them would make a workspace unreachable. Those keep the disambiguating
+// suffix, which is the only case it was ever for.
 const ROLE_OPTIONS = (() => {
-  const labelCounts = new Map<string, number>();
-  for (const value of Object.keys(ROLE_ROUTE_TABLE) as UserRole[]) {
+  const roles = Object.keys(ROLE_ROUTE_TABLE) as UserRole[];
+  const workspaceOf = (value: UserRole) =>
+    `${ROLE_ROUTE_TABLE[value].defaultDashboard}|${[...ROLE_ROUTE_TABLE[value].allowed].sort().join(',')}`;
+
+  const byLabel = new Map<string, UserRole[]>();
+  for (const value of roles) {
     const label = getRoleConfig(value).label;
-    labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+    byLabel.set(label, [...(byLabel.get(label) ?? []), value]);
   }
-  return (Object.keys(ROLE_ROUTE_TABLE) as UserRole[])
-    .map((value) => {
-      const label = getRoleConfig(value).label;
-      return { value, label: (labelCounts.get(label) ?? 0) > 1 ? `${label} (${value})` : label };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const options: { value: UserRole; label: string }[] = [];
+  for (const [label, sharing] of byLabel) {
+    // Group the roles under this label by the workspace they open. One group
+    // means one row; more than one means the label is genuinely ambiguous.
+    const byWorkspace = new Map<string, UserRole[]>();
+    for (const value of sharing) {
+      const key = workspaceOf(value);
+      byWorkspace.set(key, [...(byWorkspace.get(key) ?? []), value]);
+    }
+    const ambiguous = byWorkspace.size > 1;
+    for (const group of byWorkspace.values()) {
+      // First key in the table wins — it is the canonical one for that
+      // workspace, and the picker only ever needs one way in.
+      options.push({ value: group[0], label: ambiguous ? `${label} (${group[0]})` : label });
+    }
+  }
+  return options.sort((a, b) => a.label.localeCompare(b.label));
 })();
 
 /**

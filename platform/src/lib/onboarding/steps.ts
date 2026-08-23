@@ -79,9 +79,10 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   // lists it, which left a step here that no derived plan could ever show.
   '/payments': { verb: 'Take a payment, then a claim', desc: 'Record a payment, issue a receipt, and view outstanding bills — then switch to Claims to create one and track it through to adjudication.', est: 3 },
   // Admin / org-admin
-  '/admin/organizations': { verb: 'Set up organizations', desc: 'Create and configure the organizations on the platform.', est: 2 },
+  // /admin/billing merged into /admin/organizations 2026-08-23, so the one
+  // step covers tenants AND their subscriptions.
+  '/admin/organizations': { verb: 'Set up organizations', desc: 'Create and configure the organizations on the platform, and review their subscriptions and seat limits.', est: 2 },
   '/admin/users': { verb: 'Manage all users', desc: 'Create accounts and assign roles across the platform.', est: 2 },
-  '/admin/billing': { verb: 'Review platform billing', desc: 'See subscriptions, usage, and invoices across tenants.', est: 2 },
   '/admin/analytics': { verb: 'Explore platform analytics', desc: 'Track adoption and usage across all organizations.', est: 2 },
   '/admin/system': { verb: 'Check system health', desc: 'Review the local data stores and the running build.', est: 2 },
   '/org-admin/users': { verb: 'Invite your team', desc: 'Create accounts for your staff and assign their roles.', est: 2 },

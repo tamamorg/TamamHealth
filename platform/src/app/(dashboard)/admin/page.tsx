@@ -23,8 +23,8 @@
  * platform/tenant user split, today's peak encounter hour).
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { apiFetch } from '@/lib/api-fetch';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
@@ -34,11 +34,9 @@ import { formatWhen } from '@/components/admin/sa-ui';
 import { buildRiskRows, readinessFromRisks } from '@/components/admin/risk-signals';
 import { getRiskResolutions, indexResolutions, isRiskResolved } from '@/lib/services/risk-resolution-service';
 import { SadbChip, SadbGridList, SadbGridRow, statusChip, effectiveOrgStatus } from '@/components/admin/sadb-ui';
-import { OrgFacilities, ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
-import TenantCard, { TENANT_ACTION_ICONS } from '@/components/admin/TenantCard';
+import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
-import Modal from '@/components/Modal';
-import { X, Maximize2} from '@/components/icons/lucide';
+import { Maximize2, Plus } from '@/components/icons/lucide';
 import type {
   AuditLogDoc, ConflictQueueDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
 } from '@/lib/db-types';
@@ -62,54 +60,6 @@ const TONE_STROKE: Record<Tone, string> = {
 function dayKey(iso: string): string {
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-interface DashboardPreview {
-  title: string;
-  context: string;
-  details: Array<{ label: string; value: ReactNode }>;
-  href: string;
-}
-
-function PreviewDialog({ preview, onClose, onOpen }: {
-  preview: DashboardPreview;
-  onClose: () => void;
-  onOpen: () => void;
-}) {
-  const titleId = 'admin-dashboard-preview-title';
-  return (
-    <Modal onClose={onClose} width={520} labelledBy={titleId}>
-      <div className="modal-panel">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="sadb-card-meta">{preview.context}</p>
-            <h2 id={titleId} className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{preview.title}</h2>
-          </div>
-          {/* Expand and close, once each. This card used to offer both again in
-              a footer row, so two buttons at the bottom restated two buttons at
-              the top and the reader had to compare them to be sure. */}
-          <span className="flex items-center gap-1 flex-shrink-0">
-            <button type="button" className="p-2 rounded-lg" onClick={onOpen} aria-label="Open full page" title="Open full page" data-action="preview-expand">
-              <Maximize2 className="w-4 h-4" />
-            </button>
-            <button type="button" className="p-2 rounded-lg" onClick={onClose} aria-label="Close preview">
-              <X className="w-4 h-4" />
-            </button>
-          </span>
-        </div>
-        <div className="py-5">
-          <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
-            {preview.details.map(detail => (
-              <div key={detail.label} className="sadb-kv" style={{ padding: '12px 14px' }}>
-                <span>{detail.label}</span>
-                <span className="sadb-kv-value">{detail.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </Modal>
-  );
 }
 
 function CardHead({ title, meta, action }: { title: string; meta?: string; action?: ReactNode }) {
@@ -142,9 +92,6 @@ function KvRow({ label, value, valueClass, chip, chipClass }: {
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const previewOpenedHere = useRef(false);
   const { currentUser } = useAuth();
   const { organizations } = useOrganizations();
   const { hospitals } = useHospitals();
@@ -345,24 +292,6 @@ export default function AdminDashboardPage() {
     return map;
   }, [users]);
 
-  /* Accounts per facility. Both attachments count — `hospitalId` is the home
-     site and `facilityIds` the extra ones a user covers — deduplicated per
-     user, since a home site listed again among the extras is one account at
-     one facility, not two. */
-  const usersByFacility = useMemo(() => {
-    const map = new Map<string, UserDoc[]>();
-    for (const u of users) {
-      const ids = new Set<string>();
-      if (u.hospitalId) ids.add(u.hospitalId);
-      for (const id of u.facilityIds || []) ids.add(id);
-      for (const id of ids) {
-        const list = map.get(id);
-        if (list) list.push(u); else map.set(id, [u]);
-      }
-    }
-    return map;
-  }, [users]);
-
   const orgRows = useMemo(
     () => [...organizations].sort((a, b) => a.name.localeCompare(b.name)),
     [organizations],
@@ -414,100 +343,15 @@ export default function AdminDashboardPage() {
     },
   ];
 
-  // The URL carries only stable, non-sensitive identifiers. All display copy
-  // is resolved again from the current scoped dashboard data, so stale or
-  // fabricated tokens cannot manufacture a preview.
-  const previewToken = searchParams.get('preview');
-  const preview: DashboardPreview | null = (() => {
-    if (!previewToken) return null;
-    if (previewToken.startsWith('kpi:')) {
-      const kpi = kpis.find(item => `kpi:${item.key}` === previewToken && item.href);
-      return kpi ? {
-        title: kpi.label,
-        context: 'Platform metric',
-        details: [
-          { label: 'Current value', value: kpi.value },
-          { label: 'Context', value: kpi.delta },
-        ],
-        href: kpi.href!,
-      } : null;
-    }
-    if (previewToken === 'signal:risk') {
-      return {
-        title: 'Platform risk',
-        context: 'Readiness signal',
-        details: [
-          { label: 'Open risks', value: openRisks.length },
-          { label: 'Audit failures', value: `${failedAudits.length} in the last 7 days` },
-        ],
-        href: '/admin/risk',
-      };
-    }
-    return null;
-  })();
-
-  /* The tenant card the Organizations list opens. Carried in the URL like the
-     KPI preview beside it, so a card survives a refresh and Back closes it —
-     and only as an id: every figure it shows is resolved again from the
-     scoped dashboard data, never from the link. */
-  const orgCardId = searchParams.get('org');
-  const orgCard = orgCardId ? orgRows.find(o => o._id === orgCardId) ?? null : null;
-  const orgCardOpenedHere = useRef(false);
-
-  const openOrgCard = (id: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('org', id);
-    orgCardOpenedHere.current = true;
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  };
-
-  const closeOrgCard = () => {
-    if (orgCardOpenedHere.current) {
-      orgCardOpenedHere.current = false;
-      router.back();
-      return;
-    }
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('org');
-    const query = params.toString();
-    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
-  };
-
-  /* Leaving for a page that owns a tenant-level form: drop the card from the
-     history entry first, so Back from there returns to a clean dashboard
-     rather than re-opening the card over it. */
-  const leaveForOrgPage = (href: string) => {
-    orgCardOpenedHere.current = false;
-    router.push(href);
-  };
-
-  const openPreview = (token: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('preview', token);
-    previewOpenedHere.current = true;
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  };
-
-  const closePreview = () => {
-    if (previewOpenedHere.current) {
-      previewOpenedHere.current = false;
-      router.back();
-      return;
-    }
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('preview');
-    const query = params.toString();
-    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
-  };
+  /* No intermediate popups on the dashboard any more: a KPI tile, the risk
+     signal, and a tenant row each navigate STRAIGHT to the page where the
+     thing can actually be acted on (2026-08-23). The preview dialog and the
+     tenant card added a stop between seeing a number and working on it; the
+     destination pages carry the same figures plus the actions. */
 
   const CIRC = 2 * Math.PI * 50;
 
   if (!currentUser || currentUser.role !== 'super_admin') return null;
-
-  const openFullPage = (target: DashboardPreview) => {
-    previewOpenedHere.current = false;
-    router.push(target.href);
-  };
 
   /* The page is a flex column so the last card can claim whatever height the
      rows above leave and scroll its own list inside it rather than growing the
@@ -528,8 +372,9 @@ export default function AdminDashboardPage() {
                 <p className={`sadb-kpi-delta ${k.deltaClass ?? ''}`}>{k.delta}</p>
               </>
             );
+            // Straight to the page that owns the figure — no preview stop.
             return k.href
-              ? <button key={k.key} type="button" className="sadb-kpi" onClick={() => openPreview(`kpi:${k.key}`)}>{body}</button>
+              ? <button key={k.key} type="button" className="sadb-kpi" onClick={() => router.push(k.href!)}>{body}</button>
               : <div key={k.label} className="sadb-kpi">{body}</div>;
           })}
         </div>
@@ -560,7 +405,7 @@ export default function AdminDashboardPage() {
                 <text x={62} y={77} textAnchor="middle" fontSize={9.5} letterSpacing={1.2} fill="var(--text-muted)">READINESS</text>
               </svg>
               <div className="sadb-readiness-signals">
-                <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => openPreview('signal:risk')}>
+                <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => router.push('/admin/risk')}>
                   <b>{openRisks.length ? `${openRisks.length} open risk${openRisks.length === 1 ? '' : 's'}` : 'No open risks'}</b>
                   <span>{failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days</span>
                 </button>
@@ -576,7 +421,10 @@ export default function AdminDashboardPage() {
           <div className="sadb-card">
             <CardHead
               title="Business snapshot"
-              action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/billing')}>Billing ›</button>}
+              action={
+                /* Billing merged into the Organizations registry 2026-08-23. */
+                <button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations')}>Billing ›</button>
+              }
             />
             <KvRow label="Active subscriptions" value={organizations.filter(o => o.subscriptionStatus === 'active').length} />
             <KvRow label="Trials" value={trialOrgs.length} />
@@ -619,8 +467,24 @@ export default function AdminDashboardPage() {
               <>
                 {/* Straight into the create dialog — /admin/organizations
                     opens it on the ?new=1 deep link. */}
-                <button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations?new=1')}>Add ›</button>
-                <button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations')}>Manage ›</button>
+                {/* A real button, not a head link: it CREATES — straight into
+                    the New Organization dialog via the ?new=1 deep link. */}
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push('/admin/organizations?new=1')} data-action="orgs-add">
+                  <Plus className="w-3.5 h-3.5" /> Add
+                </button>
+                {/* ⤢, not a "Manage ›" text link: the same expand affordance
+                    the tenant and user cards carry — it promotes this card to
+                    the Organizations page. */}
+                <button
+                  type="button"
+                  className="p-1.5 rounded-md flex-shrink-0"
+                  onClick={() => router.push('/admin/organizations')}
+                  aria-label="Open organizations"
+                  title="Open organizations"
+                  data-action="orgs-expand"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
+                </button>
               </>
             }
           />
@@ -640,7 +504,9 @@ export default function AdminDashboardPage() {
                   : null;
                 return (
                   <div key={org._id}>
-                    <SadbGridRow template={ORG_GRID_TEMPLATE} onClick={() => openOrgCard(org._id)}>
+                    {/* Straight to the organization's own page — facilities,
+                        roster, and every tenant action live there. */}
+                    <SadbGridRow template={ORG_GRID_TEMPLATE} onClick={() => router.push(`/admin/organizations/${org._id}`)}>
                       <span className="min-w-0 flex items-center gap-2">
                         <span className="min-w-0">
                           <span className="sadb-tenant-name truncate" style={{ color: org.isActive ? undefined : 'var(--text-muted)' }}>
@@ -667,55 +533,6 @@ export default function AdminDashboardPage() {
         </div>
 
       </div>
-      {preview && (
-        <PreviewDialog preview={preview} onClose={closePreview} onOpen={() => openFullPage(preview)} />
-      )}
-      {orgCard && (() => {
-        const facilities = facilitiesByOrg.get(orgCard._id) || [];
-        const onboarded = orgCard.createdAt ? new Date(orgCard.createdAt) : null;
-        const onboardedLabel = onboarded && !isNaN(onboarded.getTime())
-          ? onboarded.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
-          : null;
-        const orgPage = `/admin/organizations?org=${orgCard._id}`;
-        return (
-          <TenantCard
-            title={orgCard.name}
-            context={`Tenant · ${orgCard.orgType === 'public' ? 'Public' : 'Private'}${onboardedLabel ? ` · onboarded ${onboardedLabel}` : ''}`}
-            closeLabel="Close"
-            expandLabel="Open full page"
-            onClose={closeOrgCard}
-            onExpand={() => leaveForOrgPage(orgPage)}
-            bodyTitle="Facilities & accounts"
-            details={[
-              { label: 'Plan', value: <span className="capitalize">{orgCard.subscriptionPlan}</span> },
-              { label: 'Status', value: <SadbChip tone={statusChip(effectiveOrgStatus(orgCard))}>{effectiveOrgStatus(orgCard)}</SadbChip> },
-              { label: 'Facilities', value: `${facilities.length} / ${orgCard.maxHospitals}` },
-              { label: 'Users', value: loading ? '…' : `${usersByOrg.get(orgCard._id) || 0} / ${orgCard.maxUsers}` },
-              { label: 'Patients', value: loading ? '…' : (patientAgg.byOrg.get(orgCard._id) || 0).toLocaleString() },
-            ]}
-            actions={[
-              /* Create goes to the flow that owns the form; edit and deactivate
-                 go to the registry, which owns the organization form and the
-                 deactivate confirm. Both carry ?org= so the destination lands
-                 on this tenant instead of a list to search again. */
-              { key: 'add-facility', label: 'Add facility', icon: TENANT_ACTION_ICONS.addFacility, onClick: () => leaveForOrgPage('/hospitals?new=1') },
-              { key: 'add-user', label: 'Add user', icon: TENANT_ACTION_ICONS.addUser, onClick: () => leaveForOrgPage('/admin/users?new=1') },
-              { key: 'users', label: 'Manage users', icon: TENANT_ACTION_ICONS.users, onClick: () => leaveForOrgPage('/admin/users') },
-              { key: 'edit', label: 'Edit organization', icon: TENANT_ACTION_ICONS.edit, tone: 'primary' as const, onClick: () => leaveForOrgPage(`${orgPage}&edit=1`) },
-              ...(orgCard.isActive
-                ? [{ key: 'deactivate', label: 'Deactivate', icon: TENANT_ACTION_ICONS.deactivate, tone: 'danger' as const, onClick: () => leaveForOrgPage(`${orgPage}&card=1`) }]
-                : []),
-            ]}
-          >
-            <OrgFacilities
-              facilities={facilities}
-              usersByFacility={usersByFacility}
-              loading={loading}
-              onOpen={id => leaveForOrgPage(`/hospitals?facility=${id}`)}
-            />
-          </TenantCard>
-        );
-      })()}
     </main>
   );
 }

@@ -153,23 +153,43 @@ async function postHandler(request: NextRequest) {
       await restoreOrganization(body.orgId as string, auth.sub, auth.username);
       return NextResponse.json({ success: true });
     }
-    // Delete a tenant for good. The service refuses while the tenant still owns
-    // facilities, staff or patients — deleting the parent does not delete them,
-    // it strands them behind a scope match that can never succeed again.
+    // Delete a tenant for good. Deleting the parent does not delete what it
+    // owns — those documents carry the `orgId` as a plain string and would be
+    // stranded behind a scope match that can never succeed again. So the
+    // service either refuses, or (with `cascade`) removes the facilities and
+    // staff accounts along with the tenant. Only `super_admin` reaches here at
+    // all: WRITE_ROLES above is that role and nothing else.
     if (action === 'purge') {
       if (!body.orgId) {
         return NextResponse.json({ error: 'orgId is required' }, { status: 400 });
       }
       const { purgeOrganization, OrganizationNotEmptyError } = await import('@/lib/services/organization-service');
       try {
-        await purgeOrganization(body.orgId as string, auth.sub, auth.username);
+        await purgeOrganization(body.orgId as string, auth.sub, auth.username, {
+          cascade: body.cascade === true,
+        });
       } catch (err) {
         if (err instanceof OrganizationNotEmptyError) {
           const { hospitalCount, userCount, patientCount } = err.counts;
+          // Two different refusals, and the operator can act on only one of
+          // them. Telling someone to "move or remove them first" when the way
+          // through is the dialog they are already looking at is the kind of
+          // dead end that makes an admin console feel broken.
+          //
+          // The cascadable branch is reachable only when the tenant gained a
+          // facility or staff account after Trash counted it — the panel sends
+          // `cascade` whenever it knows of any — so it asks for a fresh count
+          // rather than describing a control that is not on screen.
+          const held = `Facilities: ${hospitalCount}, staff accounts: ${userCount}, patients: ${patientCount}.`;
           return NextResponse.json({
-            error: 'This organization still holds records, so it cannot be deleted. '
-              + `Facilities: ${hospitalCount}, staff accounts: ${userCount}, patients: ${patientCount}. `
-              + 'Move or remove them first, or leave the organization in Trash.',
+            error: err.cascadable
+              ? `This organization gained records since Trash last counted it. ${held} `
+                + 'Reload Trash and delete it again — the dialog will confirm removing them with it.'
+              : `This organization still holds ${patientCount} patient record(s), so it cannot be deleted. ${held} `
+                + 'Transfer or export the patients first — deleting the organization would strand their charts, '
+                + 'not remove them.',
+            counts: { hospitalCount, userCount, patientCount },
+            cascadable: err.cascadable,
           }, { status: 409 });
         }
         throw err;

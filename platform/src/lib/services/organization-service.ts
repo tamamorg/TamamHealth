@@ -268,10 +268,79 @@ export async function restoreOrganization(
 
 /** Thrown when a tenant still owns records, so deleting it would orphan them. */
 export class OrganizationNotEmptyError extends Error {
-  constructor(public readonly counts: { userCount: number; hospitalCount: number; patientCount: number }) {
+  constructor(
+    public readonly counts: { userCount: number; hospitalCount: number; patientCount: number },
+    /**
+     * Whether a platform operator could clear this by cascading. False means
+     * the tenant still holds patients, which no cascade here will remove.
+     */
+    public readonly cascadable = false,
+  ) {
     super('This organization still holds records.');
     this.name = 'OrganizationNotEmptyError';
   }
+}
+
+/** Options for {@link purgeOrganization}. */
+export interface PurgeOrganizationOptions {
+  /**
+   * Delete the tenant's facilities and staff accounts along with it, instead
+   * of refusing because they exist.
+   *
+   * This is the platform operator's offboarding path, and it is deliberately
+   * narrower than "delete everything": it covers the two record kinds that
+   * belong to the tenant as an administrative entity and reference nothing
+   * clinical. A tenant that still holds PATIENTS is refused even here —
+   * a patient's chart is spread across ~70 databases keyed by patientId, so
+   * removing the patient document would strand the clinical record instead of
+   * deleting it, which is the exact harm this guard exists to prevent. Export
+   * or transfer the patients first; then the cascade has nothing to orphan.
+   */
+  cascade?: boolean;
+}
+
+/**
+ * Delete every `hospital` or `user` document owned by one tenant.
+ *
+ * Used only by the cascade path of {@link purgeOrganization}. Deletions go out
+ * as a single `bulkDocs` write so a tenant with hundreds of staff is one round
+ * trip rather than hundreds, and each one emits a sync event so downstream
+ * consumers see the removal rather than silently keeping a record of a person
+ * who no longer has an account.
+ *
+ * Returns how many documents were removed, for the audit line.
+ */
+async function removeOrgOwnedDocs(
+  orgId: string,
+  type: 'hospital' | 'user',
+  actorId?: string,
+  actorUsername?: string,
+): Promise<number> {
+  const { usersDB, hospitalsDB } = await import('../db');
+  const db = type === 'user' ? usersDB() : hospitalsDB();
+  await ensureOrgIdIndex(db, type);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await (db as any).find({
+    selector: { type, orgId },
+    fields: ['_id', '_rev'],
+    limit: 100000,
+  });
+  const docs = (result.docs || []) as Array<{ _id: string; _rev: string }>;
+  if (docs.length === 0) return 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (db as any).bulkDocs(docs.map(d => ({ ...d, _deleted: true })));
+  for (const doc of docs) {
+    emitSyncEvent({
+      resourceType: type,
+      resourceId: doc._id,
+      operation: 'delete',
+      userId: actorId,
+      username: actorUsername,
+      orgId,
+    });
+  }
+  return docs.length;
 }
 
 /**
@@ -286,28 +355,53 @@ export class OrganizationNotEmptyError extends Error {
  * screen, and still on disk holding patient data. An empty tenant is the only
  * one that can be removed without creating that.
  *
+ * `options.cascade` is the platform operator's way through: instead of
+ * refusing because the tenant owns facilities and staff accounts, delete those
+ * with it, so nothing is left pointing at a tenant that is gone. Patients are
+ * not part of that and never will be — see PurgeOrganizationOptions.
+ *
  * Only reachable from Trash, which only holds deactivated tenants, so nothing
  * live can be deleted by a single mistaken click.
  */
 export async function purgeOrganization(
   id: string,
   actorId?: string,
-  actorUsername?: string
+  actorUsername?: string,
+  options: PurgeOrganizationOptions = {},
 ): Promise<void> {
   if (isBrowserRuntime()) {
-    await postOrganizationsApi({ action: 'purge', orgId: id });
+    await postOrganizationsApi({ action: 'purge', orgId: id, cascade: options.cascade === true });
     return;
   }
 
   const db = organizationsDB();
   const existing = await db.get(id) as OrganizationDoc;
   const stats = await getOrganizationStats(id);
-  if (stats.hospitalCount > 0 || stats.userCount > 0 || stats.patientCount > 0) {
-    throw new OrganizationNotEmptyError({
-      userCount: stats.userCount,
-      hospitalCount: stats.hospitalCount,
-      patientCount: stats.patientCount,
-    });
+  const counts = {
+    userCount: stats.userCount,
+    hospitalCount: stats.hospitalCount,
+    patientCount: stats.patientCount,
+  };
+
+  // Patients block every path. See PurgeOrganizationOptions.cascade.
+  if (stats.patientCount > 0) throw new OrganizationNotEmptyError(counts, false);
+
+  const blockers = stats.hospitalCount > 0 || stats.userCount > 0;
+  if (blockers && !options.cascade) throw new OrganizationNotEmptyError(counts, true);
+
+  if (blockers) {
+    // Order matters only for the audit trail: the dependants are recorded as
+    // removed before the tenant is, so a reader of the log never sees a
+    // deletion attributed to an organization that the log says was already gone.
+    const removedHospitals = await removeOrgOwnedDocs(id, 'hospital', actorId, actorUsername);
+    const removedUsers = await removeOrgOwnedDocs(id, 'user', actorId, actorUsername);
+    const { logAudit: logCascade } = await import('./audit-service');
+    await logCascade(
+      'organization_cascade_deleted', actorId, actorUsername,
+      `Deleted ${removedHospitals} facility record(s) and ${removedUsers} staff account(s) `
+      + `owned by organization "${existing.name}" as part of a permanent delete`,
+      true,
+    );
   }
 
   await db.remove(existing._id, existing._rev as string);

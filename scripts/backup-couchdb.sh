@@ -144,3 +144,42 @@ else
 fi
 
 log "couchdb backup complete: $S3_URI"
+
+# ── Tell the platform the backup happened ────────────────────────────────────
+# Without this the loop is open: backups run, nothing records them, and the
+# Risk Center carries a HIGH "No backup on record" that no successful backup can
+# clear. Reported only HERE — after the upload has been verified with HEAD — so
+# what is recorded is a backup that actually landed, never one that was merely
+# attempted.
+#
+# Signed the same way the CouchDB webhook is (see lib/sync-auth.ts): timestamp,
+# nonce, method, path and body joined by newlines, HMAC-SHA256 under
+# COUCHDB_WEBHOOK_SECRET. Best-effort — a reporting failure must not fail a
+# backup that already succeeded, so it warns and exits 0.
+if [ -n "${TAMAM_APP_URL:-}" ] && [ -n "${COUCHDB_WEBHOOK_SECRET:-}" ]; then
+  REPORT_PATH="/api/admin/backup"
+  REPORT_BODY="{\"completedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+  REPORT_TS=$(date -u +%s)
+  REPORT_NONCE=$(uuidgen 2>/dev/null | tr '[:upper:]' '[:lower:]' \
+    || python3 -c 'import uuid; print(uuid.uuid4())')
+  REPORT_SIG="sha256=$(printf '%s\n%s\nPOST\n%s\n%s' \
+      "$REPORT_TS" "$REPORT_NONCE" "$REPORT_PATH" "$REPORT_BODY" \
+    | openssl dgst -sha256 -hmac "$COUCHDB_WEBHOOK_SECRET" -r | cut -d' ' -f1)"
+  REPORT_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+      --max-time 15 \
+      --request POST "${TAMAM_APP_URL}${REPORT_PATH}" \
+      --header 'Content-Type: application/json' \
+      --header "x-tamamhealth-signature: ${REPORT_SIG}" \
+      --header "x-tamamhealth-timestamp: ${REPORT_TS}" \
+      --header "x-tamamhealth-nonce: ${REPORT_NONCE}" \
+      --data "$REPORT_BODY" \
+    || true)
+  case "$REPORT_CODE" in
+    200) log "reported backup to the platform" ;;
+    *)   log "WARNING: backup ran but reporting it returned ${REPORT_CODE:-no response};" \
+             "the Risk Center will still show no backup on record" ;;
+  esac
+else
+  log "TAMAM_APP_URL or COUCHDB_WEBHOOK_SECRET unset — backup NOT reported to the platform;" \
+      "the Risk Center will show no backup on record"
+fi

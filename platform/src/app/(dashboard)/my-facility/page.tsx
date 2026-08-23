@@ -203,7 +203,7 @@ export default function MyFacilityPage() {
   return (
     <>
       <main className="page-container page-enter">
-        <DashboardGreetingHeader actions={
+        <DashboardGreetingHeader module="My facility" actions={
           <>
             {error && (
               <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>

@@ -141,7 +141,7 @@ function FacilityOverview() {
   return (
     <>
       <main className="page-container page-enter">
-        <DashboardGreetingHeader />
+        <DashboardGreetingHeader module="Facility overview" />
         {/* ═══ MINISTRY OF HEALTH SUBMISSION GATE ═══ */}
         <div className="card-elevated p-5 mb-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">

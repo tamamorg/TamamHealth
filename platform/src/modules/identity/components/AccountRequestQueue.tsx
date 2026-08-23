@@ -250,8 +250,12 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
       {/* The header row stays put on an empty list, so the columns are still
           legible and the empty message reads as "none of these" rather than
           as a broken panel. */}
+      {/* Same column set as the user roster (Name · Role · Organization ·
+          Hospital · Status), so the Requests tab reads as the same table as
+          the People tab rather than a different report. The request date and
+          age ride the requester's meta line. */}
       <div className="arq-row arq-row--head" aria-hidden="true">
-        <span>Requester</span><span>Role</span><span>Where</span><span>Asked</span><span />
+        <span>Requester</span><span>Role</span><span>Organization</span><span>Hospital</span><span style={{ textAlign: 'end' }}>Status</span>
       </div>
 
       {loading ? (
@@ -275,18 +279,14 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
                     ? <em className="arq-verified" title={`Confirmed ${doc.emailVerifiedAt.slice(0, 10)}`}> · address confirmed</em>
                     : <em className="arq-unverified"> · address not confirmed</em>}
                   {doc.phone ? ` · ${doc.phone}` : ''}
+                  {` · asked ${(doc.createdAt || '').slice(0, 10)}`}
+                  {doc.status === 'pending' && <em className="arq-age">{describeAge(doc.createdAt)}</em>}
                 </span>
               </span>
               <span>{roleLabel(doc.requestedRole)}</span>
-              <span className="arq-meta">
-                {doc.orgName || 'No organisation given'}
-                {doc.hospitalName ? ` · ${doc.hospitalName}` : ''}
-              </span>
-              <span className="arq-meta">
-                {(doc.createdAt || '').slice(0, 10)}
-                {doc.status === 'pending' && <em className="arq-age">{describeAge(doc.createdAt)}</em>}
-              </span>
-              <span className={`arq-status arq-status--${doc.status}`}>{doc.status}</span>
+              <span className="arq-meta">{doc.orgName || 'No organisation given'}</span>
+              <span className="arq-meta">{doc.hospitalName || '—'}</span>
+              <span className={`arq-status arq-status--${doc.status}`} style={{ textAlign: 'end' }}>{doc.status}</span>
             </div>
 
             {doc.professionalRegistrationNumber && (
@@ -397,7 +397,9 @@ export default function AccountRequestQueue({ viewerRole, embedded = false, onCo
           user-select: all;
         }
         .arq-row {
-          display: grid; grid-template-columns: 1.6fr 1fr 1.6fr 0.7fr 0.8fr;
+          /* The user roster's proportions (name wide, then four even data
+             columns) so the two tabs read as one table. */
+          display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr 0.8fr;
           gap: 12px; align-items: center; padding: 10px 0;
         }
         .arq-row--head {

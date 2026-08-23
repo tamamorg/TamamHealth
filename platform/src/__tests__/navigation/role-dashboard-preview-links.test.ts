@@ -6,19 +6,20 @@ const source = (relativePath: string) =>
 
 describe('role dashboard preview links', () => {
   it('keeps preview actions explicit instead of navigating data cards immediately', () => {
+    // The super-admin dashboard is deliberately NOT in this list: its popups
+    // were removed 2026-08-23 — a tile, the risk signal, and a tenant row
+    // navigate straight to the page where the thing is acted on (see the
+    // direct-navigation test below). The role dashboards keep their previews.
     const dashboards = [
-      'app/(dashboard)/admin/page.tsx',
       'components/dashboards/SuperintendentDashboard.tsx',
       'components/dashboards/FacilityManagementDashboard.tsx',
     ];
 
     for (const dashboard of dashboards) {
       // The action, not the wording: it moved into the card head as an icon
-      // (the footer used to repeat the head's expand and close), and one of
-      // the three now takes its label from the locale file rather than a
-      // literal. What must not change is that a preview offers an explicit
-      // way to open the page instead of navigating the moment you click a
-      // card.
+      // (the footer used to repeat the head's expand and close). What must
+      // not change is that a preview offers an explicit way to open the page
+      // instead of navigating the moment you click a card.
       expect(source(dashboard)).toContain('data-action="preview-expand"');
     }
   });
@@ -42,7 +43,6 @@ describe('role dashboard preview links', () => {
   });
 
   it.each([
-    'app/(dashboard)/admin/page.tsx',
     'components/dashboards/SuperintendentDashboard.tsx',
     'components/dashboards/FacilityManagementDashboard.tsx',
   ])('stores %s previews in the URL and closes in-page previews with browser Back', dashboard => {
@@ -52,14 +52,24 @@ describe('role dashboard preview links', () => {
     expect(dashboardSource).toContain("params.delete('preview')");
   });
 
-  it('keeps admin preview URLs limited to validated opaque tokens', () => {
+  it('admin dashboard and registry navigate directly — no popup stops', () => {
+    // 2026-08-23: the super-admin dashboard's preview dialog and tenant card,
+    // and the registry's tenant pop card, were all removed. Every click lands
+    // on the page that owns the figure and its actions.
     const dashboard = source('app/(dashboard)/admin/page.tsx');
-    expect(dashboard).toContain("openPreview(`kpi:${k.key}`)");
-    expect(dashboard).toContain("openPreview('signal:risk')");
-    // Every token is resolved back to current dashboard data, never rendered
-    // from the URL — a stale or fabricated token yields no preview at all.
-    expect(dashboard).toContain("kpis.find(item => `kpi:${item.key}` === previewToken");
-    expect(dashboard).not.toContain('setPreview(');
+    expect(dashboard).not.toContain('PreviewDialog');
+    expect(dashboard).not.toContain("params.set('preview'");
+    expect(dashboard).not.toContain('TenantCard');
+    expect(dashboard).toContain('router.push(k.href!)');
+    expect(dashboard).toContain("router.push('/admin/risk')");
+    expect(dashboard).toContain('router.push(`/admin/organizations/${org._id}`)');
+
+    const registry = source('app/(dashboard)/admin/organizations/page.tsx');
+    expect(registry).not.toContain('TenantCard');
+    expect(registry).toContain('router.push(`/admin/organizations/${org._id}`)');
+    // The org page reaches the registry-owned deactivate confirm by deep link.
+    expect(registry).toContain("params.has('deactivate')");
+    expect(source('app/(dashboard)/admin/organizations/[id]/page.tsx')).toContain('&deactivate=1');
   });
 
   it('keeps the queues the dashboard dropped reachable from their own modules', () => {
@@ -68,7 +78,7 @@ describe('role dashboard preview links', () => {
     // Security & Compliance now — the dashboard keeps only the signals.
     expect(dashboard).not.toContain('title="Risk & incident queue"');
     expect(dashboard).not.toContain('title="Security watchlist"');
-    expect(dashboard).toContain("href: '/admin/risk'");
+    expect(dashboard).toContain("router.push('/admin/risk')");
     expect(dashboard).toContain("router.push('/admin/sync')");
     // The 14-day activity trend the dashboard used to draw lives on Analytics.
     expect(dashboard).not.toContain('ComposedChart');

@@ -22,6 +22,7 @@ import {
 } from '@/components/icons/lucide';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { getRoleConfig } from '@/lib/permissions';
+import { abbreviateProviderName } from '@/lib/patient-utils';
 import { useAuth } from '@/lib/context';
 import { SOUTH_SUDAN_STATES } from '@/data/south-sudan-geo';
 import { makeProjector } from '@/lib/maps/south-sudan-projection';
@@ -416,16 +417,21 @@ export default function GovernmentNationalDashboard() {
       {/* ── Header: what/where/when — no decorative hero ── */}
       <div className="gov-page-head">
         <div>
-          <h1>National Dashboard</h1>
-          <p>South Sudan · National · {periodLabel} — computed live from facility-reported data</p>
-          {/* Who is looking. Every other workspace header names the signed-in
-              user's role and name under its title; this console named neither,
-              so the one screen that speaks for the whole country did not say
-              whose session it was. */}
+          {/* Who is looking, then what they are looking at as the role they
+              hold — the shape every module header uses (see EhrListHeader).
+              This console named neither, so the one screen that speaks for the
+              whole country did not say whose session it was. */}
+          <h1>
+            {currentUser?.name
+              ? `Welcome, ${abbreviateProviderName(currentUser.name)}`
+              : 'National Dashboard'}
+          </h1>
           {currentUser && (
-            <p className="ehr-care-greeting-sub">{getRoleConfig(currentUser.role).label}</p>
+            <p className="ehr-care-greeting-sub">
+              {getRoleConfig(currentUser.role).label} · National dashboard
+            </p>
           )}
-          {currentUser?.name && <p className="ehr-care-greeting-name">{currentUser.name}</p>}
+          <p>South Sudan · National · {periodLabel} — computed live from facility-reported data</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button type="button" className="btn btn-secondary" onClick={() => router.push('/government/briefing')}>

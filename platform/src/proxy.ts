@@ -126,6 +126,13 @@ function isRemediationApiPath(pathname: string): boolean {
  */
 const MACHINE_CALLER_ROUTES: Record<string, string> = {
   '/api/sync': 'x-tamamhealth-signature',
+  // The backup job reporting that a backup finished. Same signature scheme as
+  // /api/sync, and for the same reason: the caller is a cron container with no
+  // session. Registering it here is what lets a signed report past the gate —
+  // without the entry the proxy refuses it before the route ever runs, which
+  // is indistinguishable from a bad signature and leaves the Risk Center
+  // reporting no backup on record forever.
+  '/api/admin/backup': 'x-tamamhealth-signature',
   '/api/patient-reminders/dispatch': 'x-reminder-dispatch-secret',
   '/api/patient-transfers/sweep': 'x-transfer-sweep-secret',
 };

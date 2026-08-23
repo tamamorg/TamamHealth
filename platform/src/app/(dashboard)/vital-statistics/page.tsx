@@ -1,5 +1,7 @@
 'use client';
 
+import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
+
 import { useState } from 'react';
 import { useVitalStatistics } from '@/lib/hooks/useVitalStatistics';
 import { Baby, Skull, AlertTriangle, Activity } from '@/components/icons/lucide';
@@ -26,9 +28,7 @@ export default function VitalStatisticsPage() {
     <>
       <main className="page-container page-enter">
         <div className="dash-card mb-4" style={{ padding: '16px 20px' }}>
-          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 800, fontSize: 24, lineHeight: '100%', color: 'var(--text-primary)' }}>
-            {t('vitalStats.topBarTitle')}
-          </span>
+          <EhrPageGreeting module={t('vitalStats.topBarTitle')} />
         </div>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>

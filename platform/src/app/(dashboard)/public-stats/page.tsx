@@ -1,5 +1,7 @@
 'use client';
 
+import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
+
 import { useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useVitalStatistics } from '@/lib/hooks/useVitalStatistics';
@@ -48,9 +50,7 @@ export default function PublicStatsPage() {
     <>
       <main className="page-container page-enter">
         <div className="dash-card mb-4" style={{ padding: '16px 20px' }}>
-          <span style={{ fontFamily: 'var(--font-platform)', fontWeight: 800, fontSize: 24, lineHeight: '100%', color: 'var(--text-primary)' }}>
-            {t('hospitalManager.publicStatistics')}
-          </span>
+          <EhrPageGreeting module={t('hospitalManager.publicStatistics')} />
         </div>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>

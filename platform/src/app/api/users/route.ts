@@ -258,6 +258,18 @@ async function lastAdminLockoutError(
   }
   if (target.role !== 'org_admin' || !target.orgId) return null;
 
+  // Rule 2 does not bind the platform operator. The docstring above has always
+  // said so — "a `super_admin` is exempt from rule 2 for other people's
+  // tenants (that is the point of a platform operator)" — but the check was
+  // never written, so the one role that exists to resolve a tenant's problems
+  // was refused by a guard designed to protect tenants from themselves.
+  // Decommissioning a tenant, or removing an administrator who should not have
+  // one, both legitimately leave an organization with no admin; the operator
+  // can then appoint one, which is precisely what nobody inside that
+  // organization could do. Rule 1 above still binds them: this exemption is
+  // reached only for OTHER people's accounts.
+  if (actor.role === 'super_admin') return null;
+
   const { countRemainingOrgAdmins } = await import('@/modules/identity/services/user-service');
   const remaining = await countRemainingOrgAdmins(target.orgId, target._id);
   if (remaining > 0) return null;

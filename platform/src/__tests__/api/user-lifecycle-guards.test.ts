@@ -181,3 +181,52 @@ describe('resending an invitation', () => {
     expect(deliverAccountInvite).not.toHaveBeenCalled();
   });
 });
+
+describe('the platform operator is not bound by the tenant guard', () => {
+  // The guard's own docstring has always said a super_admin is exempt from
+  // rule 2 — "that is the point of a platform operator" — but the check was
+  // never written, so the one role that exists to fix a tenant's problems was
+  // refused by a rule meant to protect tenants from themselves. Decommissioning
+  // a tenant and removing an administrator who should not have one both
+  // legitimately leave an organization with no admin; the operator can then
+  // appoint one, which nobody inside that organization could do.
+  const asOperator = () => {
+    actor.sub = 'user-superadmin';
+    actor.username = 'superadmin';
+    actor.role = 'super_admin';
+  };
+  const asOrgAdmin = () => {
+    actor.sub = 'user-org.admin';
+    actor.username = 'org.admin';
+    actor.role = 'org_admin';
+  };
+  afterEach(asOrgAdmin);
+
+  it('deletes the last administrator of an organization', async () => {
+    remainingAdmins = 0;
+    asOperator();
+    expect((await POST(post({ action: 'delete', userId: 'user-other.admin' }))).status).toBe(200);
+    expect(deleteUser).toHaveBeenCalled();
+  });
+
+  it('deactivates the last administrator of an organization', async () => {
+    remainingAdmins = 0;
+    asOperator();
+    expect((await POST(post({ action: 'deactivate', userId: 'user-other.admin' }))).status).toBe(200);
+  });
+
+  it('still cannot lock ITSELF out — rule 1 binds every role', async () => {
+    remainingAdmins = 5;
+    asOperator();
+    const response = await POST(post({ action: 'delete', userId: 'user-superadmin' }));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(/your own account/);
+  });
+
+  it('leaves the guard in place for an organization administrator', async () => {
+    remainingAdmins = 0;
+    const response = await POST(post({ action: 'delete', userId: 'user-other.admin' }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatch(/only active administrator/);
+  });
+});

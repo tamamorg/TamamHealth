@@ -14,20 +14,19 @@ import type { InvitationOutcome, OrgAdminFormData } from '@/modules/identity/cli
  * favor of SadbConfirmModal.
  */
 
-import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useToast } from '@/components/Toast';
 import type { OrganizationDoc, UserRole } from '@/lib/db-types';
-import { Plus, X, Edit3, Ban, RefreshCw, Eye, EyeOff, ShieldCheck } from '@/components/icons/lucide';
+import { Plus, X, RefreshCw, Eye, EyeOff, ShieldCheck, Building2} from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
-import TenantCard, { TENANT_ACTION_ICONS } from '@/components/admin/TenantCard';
 import Select from '@/components/Select';
 
 import {
-  SadbPage, SadbCard, SadbChip, SadbSearch, SadbGridList, SadbGridRow,
+  SadbPage, SadbCard, SadbChip, SadbKpiTile, SadbSearch, SadbGridList, SadbGridRow,
   SadbSettingRow, SadbToggle, SadbConfirmModal, statusChip, effectiveOrgStatus,
 } from '@/components/admin/sadb-ui';
 
@@ -46,6 +45,7 @@ type OrgFormData = {
   enabledRoles: UserRole[];
   contactEmail: string;
   country: string;
+  logoUrl: string;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -70,6 +70,7 @@ const emptyForm: OrgFormData = {
   // before this field existed until the super-admin narrows it on purpose.
   enabledRoles: assignableRolesForOrgAdmin('public'),
   contactEmail: '', country: 'South Sudan',
+  logoUrl: '',
   primaryColor: BRAND_PRIMARY, secondaryColor: BRAND_SECONDARY, accentColor: BRAND_PRIMARY,
   subscriptionPlan: 'professional', subscriptionStatus: 'trial',
   maxUsers: 50, maxHospitals: 10,
@@ -143,8 +144,8 @@ function coerceStoredColorToHex(raw: string | undefined, fallbackHex: string): s
 }
 
 /** Grid: Organization (wide) · Plan · Facilities · Users · Sync · Status. */
-// No trailing action gutter: clicking the row opens the pop card, so the 48px
-// that column held goes back to the organization name and its counts.
+// No trailing action gutter: clicking the row opens the organization's own
+// page, so the 48px that column held goes back to the name and its counts.
 const GRID_TEMPLATE = 'minmax(200px,1.6fr) repeat(5, minmax(96px,1fr))';
 
 /** What the grid needs per organization, beyond the OrganizationDoc itself. */
@@ -185,10 +186,11 @@ function tenantSync(
   };
 }
 
-/* The tenant pop card moved to components/admin/TenantCard so the super-admin
-   dashboard opens the SAME card instead of unfolding a row into a different
-   shape. This page keeps what only it knows — sync health, and the create /
-   edit / deactivate flows it owns — and passes them in. */
+/* The tenant pop card is gone (2026-08-23): a row navigates straight to
+   /admin/organizations/[id], where the facilities, the roster, and every
+   tenant action live. This page keeps the flows only it owns — the create /
+   edit form and the deactivate confirm (reached from the org page via the
+   ?deactivate=1 deep link). */
 
 function onboardedLabel(iso?: string): string | null {
   if (!iso) return null;
@@ -231,7 +233,11 @@ export default function AdminOrganizationsPage() {
     deepLinkApplied.current = true;
     setSearch(match.name);
     if (params.has('edit')) openEditRef.current?.(match);
-    else if (params.has('card')) setTenantCardId(match._id);
+    // `deactivate=1` opens the confirm directly — the org page's Deactivate
+    // sends it, since this registry owns the deactivate flow. (`card=1`, the
+    // old tenant-pop-card deep link, has no producer since the card was
+    // removed 2026-08-23.)
+    else if (params.has('deactivate')) setDeactivateTarget(match);
   }, [organizations]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -267,11 +273,6 @@ export default function AdminOrganizationsPage() {
     return () => { cancelled = true; };
   }, []);
   const [deactivateTarget, setDeactivateTarget] = useState<OrganizationDoc | null>(null);
-  // Clicking a row opens the tenant pop card rather than a bare menu: the same
-  // health figures the row shows, plus the actions, in one place. Held by id so
-  // an edit landing while the card is open re-reads the fresh doc.
-  const [tenantCardId, setTenantCardId] = useState<string | null>(null);
-  const tenantCard = tenantCardId ? organizations.find(o => o._id === tenantCardId) ?? null : null;
   const [deactivating, setDeactivating] = useState(false);
   // The "Administrator" section's toggle. On create it defaults ON — the
   // whole point is to collapse "create org" + "go create its admin at
@@ -397,6 +398,7 @@ export default function AdminOrganizationsPage() {
       // Stored colours are normally already valid hex; coerce covers a
       // legacy `var(--...)` string saved before this fix (or a missing
       // accentColor) so the picker never renders black.
+      logoUrl: org.logoUrl || '',
       primaryColor: coerceStoredColorToHex(org.primaryColor, brandDefaults.primary),
       secondaryColor: coerceStoredColorToHex(org.secondaryColor, brandDefaults.hover),
       accentColor: coerceStoredColorToHex(org.accentColor, brandDefaults.warning),
@@ -419,6 +421,21 @@ export default function AdminOrganizationsPage() {
     setAdminError(null);
     setShowForm(true);
   };
+  /** Read the picked file into a data URL on the form. Same 500KB ceiling and
+   *  same storage shape as the org-admin branding editor, so a logo set here
+   *  and one set there are the same field. */
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 512000) {
+      showToast(t('branding.errorLogoSize'), 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => setForm(p => ({ ...p, logoUrl: reader.result as string }));
+    reader.readAsDataURL(file);
+  };
+
   // The deep-link handler above calls this through the ref.
   openEditRef.current = openEdit;
 
@@ -493,6 +510,7 @@ export default function AdminOrganizationsPage() {
         enabledRoles: form.enabledRoles,
         contactEmail: form.contactEmail,
         country: form.country,
+        logoUrl: form.logoUrl || undefined,
         primaryColor: form.primaryColor,
         secondaryColor: form.secondaryColor,
         accentColor: form.accentColor,
@@ -602,6 +620,36 @@ export default function AdminOrganizationsPage() {
 
   return (
     <SadbPage>
+      {/* ═══ Subscription vitals — merged from /admin/billing (2026-08-23).
+          That page was this same tenant list wearing billing columns; its KPI
+          strip lives here now and the plan/status/seat-limit edits it offered
+          inline are the registry's own Edit Organization form. ═══ */}
+      <div className="sadb-kpi-row">
+        <SadbKpiTile
+          label={t('adminBilling.kpiActiveSubscriptions')}
+          value={activeOrgs.length}
+          delta={`of ${organizations.length} organizations`}
+          deltaTone={activeOrgs.length > 0 ? 'up' : undefined}
+        />
+        <SadbKpiTile
+          label={t('adminBilling.kpiTrialOrganizations')}
+          value={trialOrgs.length}
+          delta={trialOrgs.length > 0 ? 'Needs conversion follow-up' : 'None currently'}
+          deltaTone={trialOrgs.length > 0 ? 'warn' : undefined}
+        />
+        <SadbKpiTile
+          label={t('adminBilling.kpiSuspended')}
+          value={suspendedOrgs.length}
+          delta={suspendedOrgs.length > 0 ? 'Review and reconcile' : 'None suspended'}
+          deltaTone={suspendedOrgs.length > 0 ? 'warn' : undefined}
+        />
+        <SadbKpiTile
+          label={t('adminBilling.kpiTotalLicensedUsers')}
+          value={organizations.reduce((sum, o) => sum + o.maxUsers, 0)}
+          delta={`across ${organizations.length} organizations`}
+        />
+      </div>
+
       <SadbCard
         title={t('orgAdmin.title')}
         action={
@@ -642,7 +690,10 @@ export default function AdminOrganizationsPage() {
               <SadbGridRow
                 key={org._id}
                 template={GRID_TEMPLATE}
-                onClick={() => setTenantCardId(org._id)}
+                /* Straight to the organization's own page — no pop card stop
+                   (2026-08-23): facilities, roster, and the tenant actions
+                   all live there. */
+                onClick={() => router.push(`/admin/organizations/${org._id}`)}
               >
                 <span className="min-w-0">
                   <span className="sadb-tenant-name truncate" style={{ color: org.isActive ? undefined : 'var(--text-muted)' }}>
@@ -665,40 +716,6 @@ export default function AdminOrganizationsPage() {
         </SadbGridList>
       </SadbCard>
 
-      {tenantCard && (() => {
-        const stats = orgStats[tenantCard._id];
-        const sync = tenantSync(tenantCard, stats, orgSyncActive ? (orgSyncActive[tenantCard._id] ?? 0) : null);
-        const onboarded = onboardedLabel(tenantCard.createdAt);
-        const orgKind = tenantCard.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate');
-        return (
-          <TenantCard
-            title={tenantCard.name}
-            context={`${t('orgAdmin.tenantHealth')} · ${orgKind}${onboarded ? ` · onboarded ${onboarded}` : ''}`}
-            closeLabel={t('action.close')}
-            onClose={() => setTenantCardId(null)}
-            details={[
-              { label: t('orgAdmin.colPlan'), value: <span className="capitalize">{tenantCard.subscriptionPlan}</span> },
-              { label: t('orgAdmin.colStatus'), value: <SadbChip tone={statusChip(effectiveOrgStatus(tenantCard))}>{effectiveOrgStatus(tenantCard)}</SadbChip> },
-              { label: t('orgAdmin.colFacilities'), value: stats ? `${stats.hospitalCount} / ${tenantCard.maxHospitals}` : '…' },
-              { label: t('orgAdmin.colUsers'), value: stats ? `${stats.userCount} / ${tenantCard.maxUsers}` : '…' },
-              { label: t('orgAdmin.colSync'), value: <span style={{ color: sync.color }}>{sync.label}</span> },
-            ]}
-            actions={[
-              // Grow-the-tenant shortcuts navigate to the pages that own the
-              // create forms rather than opening a third dialog over this one.
-              { key: 'add-facility', label: t('orgHospitals.addFacility'), icon: TENANT_ACTION_ICONS.addFacility, onClick: () => router.push('/hospitals?new=1') },
-              { key: 'add-user', label: t('orgUsers.createUser'), icon: TENANT_ACTION_ICONS.addUser, onClick: () => router.push('/admin/users?new=1') },
-              { key: 'users', label: t('orgAdmin.manageUsers'), icon: TENANT_ACTION_ICONS.users, onClick: () => router.push('/admin/users') },
-              { key: 'edit', label: t('action.edit'), icon: TENANT_ACTION_ICONS.edit, tone: 'primary' as const, onClick: () => { setTenantCardId(null); openEdit(tenantCard); } },
-              // Deactivate only while the org is still live — the same rule the
-              // row actions menu applied before this card replaced it.
-              ...(tenantCard.isActive
-                ? [{ key: 'deactivate', label: t('orgAdmin.deactivate'), icon: TENANT_ACTION_ICONS.deactivate, tone: 'danger' as const, onClick: () => { setTenantCardId(null); setDeactivateTarget(tenantCard); } }]
-                : []),
-            ]}
-          />
-        );
-      })()}
 
       {/* Create/Edit Modal */}
       {showForm && (
@@ -710,7 +727,13 @@ export default function AdminOrganizationsPage() {
               outside the white card, on the dark backdrop. min-height: 0 is
               required alongside overflow-y for a flex child to actually
               shrink to (and then scroll within) its flex parent's height. */}
-          <div className="sadb-modal" style={{ minHeight: 0, overflowY: 'auto' }}>
+          {/* Capped well short of the viewport: the dialog box may grow to
+              100vh - 32px, which on a laptop is edge to edge and reads as a
+              page that failed to centre rather than a dialog. Constraining the
+              SCROLLER instead makes the box shrink to it, so the form sits in
+              the middle with the backdrop visible above and below and the
+              fields scroll inside. */}
+          <div className="sadb-modal" style={{ minHeight: 0, overflowY: 'auto', maxHeight: 'min(78vh, 720px)' }}>
             <div className="flex items-start justify-between gap-3 sadb-modal-copy">
               <h2 id="org-form-title" className="sadb-modal-title">
                 {editingId ? t('orgAdmin.editOrganization') : t('orgAdmin.createOrganization')}
@@ -800,6 +823,35 @@ export default function AdminOrganizationsPage() {
               {/* Branding */}
               <div>
                 <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionBranding')}</h4>
+                {/* The mark, with the colours it will sit against. A tenant
+                    could set three colours here but not the logo, so the one
+                    piece of branding staff actually recognise had to be added
+                    afterwards from the org-admin console — by somebody who
+                    does not exist yet at the moment an organization is
+                    created. Stored as a data URL on the org document, same as
+                    the branding editor writes. */}
+                <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
+                  <span
+                    className="flex items-center justify-center rounded-lg overflow-hidden flex-shrink-0"
+                    style={{ width: 56, height: 56, border: '1px solid var(--border-light)', background: 'var(--overlay-subtle)' }}
+                  >
+                    {form.logoUrl
+                      ? <img src={form.logoUrl} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                      : <Building2 className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
+                      {form.logoUrl ? t('orgAdmin.logoReplace') : t('orgAdmin.logoUpload')}
+                      <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                    </label>
+                    {form.logoUrl && (
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setForm(p => ({ ...p, logoUrl: '' }))}>
+                        {t('action.remove')}
+                      </button>
+                    )}
+                    <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('orgAdmin.logoHint')}</span>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {([
                     { key: 'primaryColor' as const, label: t('orgAdmin.colorPrimary') },

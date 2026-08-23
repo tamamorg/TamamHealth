@@ -1,5 +1,7 @@
 'use client';
 
+import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
+
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from '@/components/Modal';
 import { useStaffChat } from '@/lib/hooks/useStaffChat';
@@ -204,9 +206,7 @@ export default function MessagesPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-      <span className="flex-shrink-0 mb-2" style={{ fontFamily: 'var(--font-platform)', fontWeight: 800, fontSize: 24, lineHeight: '100%', letterSpacing: 0, color: 'var(--text-primary)' }}>
-        Messages
-      </span>
+      <EhrPageGreeting module="Messages" className="flex-shrink-0 mb-2" />
       <div className="msgs-shell">
 
         {/* ── Conversation list ── */}

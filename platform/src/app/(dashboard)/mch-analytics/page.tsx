@@ -61,7 +61,7 @@ export default function MCHAnalyticsPage() {
   return (
     <>
       <main className="page-container page-enter">
-        <DashboardGreetingHeader actions={
+        <DashboardGreetingHeader module="MCH analytics" actions={
           <>
             <div className="px-4 py-2 rounded-md flex items-center gap-2" style={{
               background: grade.bg,

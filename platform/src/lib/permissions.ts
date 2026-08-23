@@ -13,6 +13,7 @@ import {
   BarChart3,
   Building2,
   Hospital as HospitalIcon,
+  Megaphone,
   MessageSquare,
   Database,
   Download,
@@ -110,12 +111,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/hospitals', label: 'Facilities', icon: HospitalIcon, section: 'TENANTS' },
       // Account administration is listed once, under PEOPLE & HR below —
       // it was also here under TENANTS, giving one page two nav homes.
-      { href: '/admin/support', label: 'Support Operations', icon: MessageSquare, section: 'TENANTS' },
+      { href: '/admin/announcements', label: 'Announcements', icon: Megaphone, section: 'TENANTS' },
       { href: '/admin/system', label: 'System Health', icon: Server, section: 'PLATFORM OPERATIONS' },
       { href: '/admin/sync', label: 'Sync & Jobs', icon: RefreshCw, section: 'PLATFORM OPERATIONS' },
       { href: '/admin/interop', label: 'Interoperability', icon: Globe, section: 'PLATFORM OPERATIONS' },
       { href: '/admin/data', label: 'Data Governance', icon: Database, section: 'PLATFORM OPERATIONS' },
-      { href: '/admin/billing', label: 'Billing & Subscriptions', icon: CreditCard, section: 'BUSINESS' },
+      // Billing & Subscriptions merged into /admin/organizations 2026-08-23
+      // (the page was the tenant list wearing billing columns); the route
+      // stays registered as a redirect stub for old links.
       { href: '/admin/analytics', label: 'Usage Analytics', icon: TrendingUp, section: 'BUSINESS' },
       { href: '/reports', label: 'Reports', icon: ClipboardCheck, section: 'BUSINESS' },
       { href: '/admin/security', label: 'Security & Compliance', icon: Shield, section: 'GOVERNANCE' },
