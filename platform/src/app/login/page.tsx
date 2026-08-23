@@ -297,6 +297,12 @@ export default function LoginPage() {
             <p className="lg-lede">{t('login.subheadingIssued')}</p>
           </div>
 
+          {/* Informational only. This used to also DISABLE the submit button,
+              which held every sign-in hostage to the demo seed finishing —
+              41 measured seconds on a fresh device — even though sign-in is
+              server-first and reads none of what was being written. Only the
+              offline fallback needs the local store, and its own error copy
+              already explains that case. */}
           {!dbReady && (
             <div className="lg-boot"><span className="lg-spin" /> {t('login.initializingOffline')}</div>
           )}
@@ -428,7 +434,7 @@ export default function LoginPage() {
 
             {error && <div role="alert" className="lg-error">{error}</div>}
 
-            <button type="submit" disabled={loading || !dbReady} className="lg-btn blueprint">
+            <button type="submit" disabled={loading} className="lg-btn blueprint">
               {loading ? t('login.signingIn') : t('login.logIn')}
               <Corners />
             </button>
@@ -477,7 +483,7 @@ export default function LoginPage() {
                         key={account.username}
                         type="button"
                         className="lg-demo-row"
-                        disabled={loading || !dbReady}
+                        disabled={loading}
                         onClick={() => signInAsDemo(account)}
                       >
                         <span className="lg-demo-role">{getRoleConfig(account.role as UserRole).label}</span>

@@ -36,9 +36,13 @@ const findDb = (label: string, count: () => number) => ({
   }),
 });
 
+let orgMissing = false;
 jest.mock('@/lib/db', () => ({
   organizationsDB: () => ({
-    get: jest.fn(async () => ({ ...orgDoc })),
+    get: jest.fn(async () => {
+      if (orgMissing) throw Object.assign(new Error('missing'), { status: 404 });
+      return { ...orgDoc };
+    }),
     put: jest.fn(async (doc: Record<string, unknown>) => { put.push(doc); return { rev: '2-y' }; }),
     remove: jest.fn(async (id: string) => { removed.push(id); return { ok: true }; }),
   }),
@@ -52,6 +56,7 @@ jest.mock('@/lib/services/sync-event-service', () => ({ emitSyncEvent: jest.fn()
 import { purgeOrganization, restoreOrganization } from '@/lib/services/organization-service';
 
 beforeEach(() => {
+  orgMissing = false;
   removed.length = 0; put.length = 0;
   for (const key of Object.keys(bulkDeleted)) bulkDeleted[key].length = 0;
   owned = { users: 0, hospitals: 0, patients: 0 };
@@ -91,6 +96,14 @@ describe('deleting a tenant permanently', () => {
   it('marks a patient refusal as one no cascade clears', async () => {
     owned = { users: 0, hospitals: 0, patients: 41 };
     await expect(purgeOrganization('org-a')).rejects.toMatchObject({ cascadable: false });
+  });
+});
+
+describe('purging what is already gone', () => {
+  it('is a no-op, not an error — retries after a lost response must succeed', async () => {
+    orgMissing = true;
+    await expect(purgeOrganization('org-a', 'admin-1', 'operator')).resolves.toBeUndefined();
+    expect(removed).toEqual([]);
   });
 });
 

@@ -397,7 +397,18 @@ export async function purgeOrganization(
   }
 
   const db = organizationsDB();
-  const existing = await db.get(id) as OrganizationDoc;
+  let existing: OrganizationDoc;
+  try {
+    existing = await db.get(id) as OrganizationDoc;
+  } catch (err) {
+    // Already gone. A purge is retried exactly when the first attempt's
+    // response was lost — a client timeout over a slow stats fan-out did
+    // this in practice — and answering the retry with a 500 turns a
+    // completed deletion into an apparent failure. Deleting the deleted is
+    // the outcome the caller wanted; say so.
+    if ((err as { status?: number }).status === 404) return;
+    throw err;
+  }
   const stats = await getOrganizationStats(id);
   const counts = {
     userCount: stats.userCount,

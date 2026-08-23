@@ -18,6 +18,35 @@ import {
   tenantDatabasesEnabled,
 } from './sync-config';
 
+/**
+ * The clinical core: what a landing screen reads in its first seconds, for
+ * every role family — the worklist (appointments, encounters), the person
+ * (patients, medical records, triage, vitals via medical records), what moves
+ * next (prescriptions, lab), plus the stores that scope everything
+ * (organizations, hospitals, platform config) and the outbox. Everything not
+ * named here still replicates — one wave later.
+ */
+export const PRIORITY_SYNC_DATABASES: ReadonlySet<string> = new Set([
+  'tamamhealth_organizations',
+  'tamamhealth_platform_config',
+  'tamamhealth_hospitals',
+  'tamamhealth_patients',
+  'tamamhealth_appointments',
+  'tamamhealth_encounters',
+  'tamamhealth_triage',
+  'tamamhealth_medical_records',
+  'tamamhealth_prescriptions',
+  'tamamhealth_lab_results',
+  'tamamhealth_pharmacy_inventory',
+  'tamamhealth_wards',
+  'tamamhealth_conversations',
+  'tamamhealth_messages',
+  'tamamhealth_sync_events',
+]);
+
+/** How long the reference/history tail waits behind the clinical core. */
+export const SECOND_WAVE_DELAY_MS = 20_000;
+
 export type AggregateState =
   | 'disabled'
   | 'idle'
@@ -95,6 +124,8 @@ export class SyncManager {
   private _leader = false;
   /** Set to true while this tab is queued waiting for the leader to release. */
   private _pendingLeader = false;
+  private _secondWaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private _startSecondWave: (() => void) | null = null;
   /** lastSync value of the most recent clean settle, to debounce the mark. */
   private _lastCleanPoint: string | null = null;
   /** Resolved once we want to release the lock (on stopAll or destroy). */
@@ -195,42 +226,90 @@ export class SyncManager {
       ? parsedInterval
       : 15000;
 
-    for (const config of DATABASE_SYNC_CONFIGS) {
-      const localDB = getDB(config.localName);
-      const remoteUrl = getRemoteUrl(config.localName, couchdbUrl, {
-        orgScoped: config.orgScoped,
-        orgId: this.orgId,
-        tenantDatabasesEnabled: useTenantDatabases,
-      });
+    // Two waves rather than one stampede.
+    //
+    // Starting ~75 replications at once front-loads seventy-five checkpoint
+    // reads and first pulls onto the browser's ~6-connections-per-host budget
+    // in the exact seconds the user's landing screen is trying to load its own
+    // data. The first wave is the clinical core every landing page reads;
+    // everything else — reference data, HR, billing history, surveillance —
+    // starts twenty seconds later, when the connection budget is idle again.
+    // Nothing syncs less than before; the tail just queues behind the part
+    // the user is looking at. `stopAll` cancels the timer, so a logout during
+    // the window leaks nothing.
+    const firstWave = DATABASE_SYNC_CONFIGS.filter(c => PRIORITY_SYNC_DATABASES.has(c.localName));
+    const secondWave = DATABASE_SYNC_CONFIGS.filter(c => !PRIORITY_SYNC_DATABASES.has(c.localName));
 
-      const service = new SyncService({
-        localDB,
-        remoteUrl,
-        direction: config.direction,
-        orgId: config.orgScoped ? this.orgId : undefined,
-        // Facility scoping applies only to org-scoped databases; the shared
-        // reference databases carry no facility PHI.
-        entitlement: config.orgScoped
-          ? entitlementFor({ ...this.user, orgId: this.orgId })
-          : undefined,
-        // Drives the push filter so this device never tries to replicate docs
-        // its role may not write (which would wedge the push checkpoint).
-        writableRole: this.user?.role,
-        pullMode,
-        pullIntervalMs,
-        onChange: (status) => {
-          this.statuses.set(config.localName, status);
-          this.notifyChange();
-        },
-      });
+    const startConfigs = (configs: typeof DATABASE_SYNC_CONFIGS) => {
+      for (const config of configs) {
+        if (this.services.has(config.localName)) continue;
+        // The platform operator has no tenant, so it has no org-scoped
+        // replica to keep — and building a tenant database name without an
+        // orgId THROWS, which used to kill this loop at its first org-scoped
+        // entry. The operator's session then replicated nothing at all,
+        // including the two global databases it is entitled to: its
+        // organization registry and platform config only ever changed by
+        // reload. Skip what cannot apply; never let one database's failure
+        // strand the rest.
+        if (config.orgScoped && useTenantDatabases && !this.orgId) continue;
+        let localDB, remoteUrl;
+        try {
+          localDB = getDB(config.localName);
+          remoteUrl = getRemoteUrl(config.localName, couchdbUrl, {
+            orgScoped: config.orgScoped,
+            orgId: this.orgId,
+            tenantDatabasesEnabled: useTenantDatabases,
+          });
+        } catch (err) {
+          console.warn(`[sync] ${config.localName} could not start:`, err);
+          continue;
+        }
 
-      this.services.set(config.localName, service);
-      service.startSync();
-    }
+        const service = new SyncService({
+          localDB,
+          remoteUrl,
+          direction: config.direction,
+          orgId: config.orgScoped ? this.orgId : undefined,
+          // Facility scoping applies only to org-scoped databases; the shared
+          // reference databases carry no facility PHI.
+          entitlement: config.orgScoped
+            ? entitlementFor({ ...this.user, orgId: this.orgId })
+            : undefined,
+          // Drives the push filter so this device never tries to replicate docs
+          // its role may not write (which would wedge the push checkpoint).
+          writableRole: this.user?.role,
+          pullMode,
+          pullIntervalMs,
+          onChange: (status) => {
+            this.statuses.set(config.localName, status);
+            this.notifyChange();
+          },
+        });
+
+        this.services.set(config.localName, service);
+        service.startSync();
+      }
+    };
+
+    startConfigs(firstWave);
+    this._startSecondWave = () => {
+      this._startSecondWave = null;
+      if (this._secondWaveTimer) {
+        clearTimeout(this._secondWaveTimer);
+        this._secondWaveTimer = null;
+      }
+      startConfigs(secondWave);
+    };
+    this._secondWaveTimer = setTimeout(() => this._startSecondWave?.(), SECOND_WAVE_DELAY_MS);
   }
 
   /** Stop all sync services (call on logout) */
   stopAll(): void {
+    if (this._secondWaveTimer) {
+      clearTimeout(this._secondWaveTimer);
+      this._secondWaveTimer = null;
+    }
+    this._startSecondWave = null;
     for (const service of this.services.values()) {
       service.destroy();
     }
@@ -250,6 +329,9 @@ export class SyncManager {
   /** Force a one-shot sync on all databases */
   async syncNow(): Promise<void> {
     if (!isSyncEnabled()) return;
+    // "Now" means everything: an explicit sync during the staged-startup
+    // window pulls the deferred wave forward rather than silently skipping it.
+    this._startSecondWave?.();
 
     const promises = Array.from(this.services.values()).map(service =>
       service.syncNow().catch(() => {

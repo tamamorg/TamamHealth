@@ -243,12 +243,43 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setStepIndex(index);
   }, []);
 
+  // A dialog owns the screen while it is open. The tour card renders at
+  // z-9999 — above every modal — so an active tour sat ON TOP of whatever
+  // form the user opened mid-tour, hiding its fields behind the walkthrough
+  // that was supposed to explain them (observed live over the patient
+  // registration workspace). Watch for an open dialog and suspend the card;
+  // it returns, same step, when the dialog closes.
+  const [dialogOpen, setDialogOpen] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const check = () => setDialogOpen(!!document.querySelector('[role="dialog"]'));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [active]);
+
+  // Esc ends the tour, permanently — the same promise the ✕ makes. Every
+  // dismissable surface in the product answers Esc; the one whose whole job
+  // is teaching the interface should not be the exception. The listener
+  // yields to open dialogs: their own Esc handling closes THEM first.
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (document.querySelector('[role="dialog"]')) return;
+      finish();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active, finish]);
+
   const value = useMemo(() => ({ available: !!tour, start }), [tour, start]);
 
   return (
     <TourContext.Provider value={value}>
       {children}
-      {active && step && (
+      {active && step && !dialogOpen && (
         <TourCard
           step={step}
           rect={rect}

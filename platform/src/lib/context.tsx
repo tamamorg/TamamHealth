@@ -350,13 +350,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Seed database on first load (client-side only)
-      // In production, seeding only runs if DB is empty (isSeeded check inside seedDatabase)
-      try {
-        const { seedDatabase } = await import('./db-seed');
-        await seedDatabase();
-      } catch (err) {
-        console.error('[TamamHealth] Database seed error:', err);
+      // Seed database on first load (client-side only).
+      //
+      // Awaited in production, backgrounded in demo. The demo seed writes tens
+      // of thousands of documents and used to sit between page load and
+      // `setDbReady(true)` below — 41 seconds, measured, during which the
+      // login button was disabled even though sign-in is server-first and
+      // reads none of it. The demo seed's writes are all skip-if-exists puts
+      // under a Web Lock, so screens rendering while it still runs simply
+      // watch data stream in through their changes feeds; nothing reads a
+      // half-written document. Production stays awaited because its seed is a
+      // handful of bootstrap documents (initial org + admin) and finishing
+      // them before first paint costs nothing.
+      const { seedDatabase } = await import('./db-seed');
+      const { isSeeded } = await import('./db');
+      // Background only an ALREADY-seeded demo profile — its seed run is pure
+      // skip-if-exists maintenance. A fresh or version-bumped profile resets
+      // databases first, and a reset racing the UI's open handles is how
+      // half-empty first sessions happen; that one-time run stays awaited.
+      if (isDemoBuild && await isSeeded().catch(() => false)) {
+        seedDatabase().catch(err => console.error('[TamamHealth] Database seed error:', err));
+      } else {
+        try {
+          await seedDatabase();
+        } catch (err) {
+          console.error('[TamamHealth] Database seed error:', err);
+        }
       }
 
       // Check for existing session via cookie (skip API call if no cookie).
@@ -415,6 +434,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // logged-in user to /login (which then redirects to the *default*
       // dashboard, not the page they actually requested).
       setDbReady(true);
+      // One line of boot telemetry, permanently: how long a device took from
+      // navigation to interactive. This number was 41s for months and nobody
+      // could see it without instrumenting a browser by hand.
+      console.info(`[boot] interactive in ${Math.round(performance.now() / 100) / 10}s`);
     };
 
     init();
