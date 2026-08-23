@@ -14,7 +14,7 @@
  * once.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { ArrowLeft } from '@/components/icons/lucide';
@@ -42,10 +42,16 @@ export default function AdminUserCreatePage() {
    * were working in three clicks away. `returnTo` is validated as an internal
    * path by `safeReturnTo`, so it cannot be pointed off-site.
    */
-  const returnTo = returnToFromSearch(
-    typeof window === 'undefined' ? '' : window.location.search,
-    '/admin/users',
-  );
+  /*
+   * Read AFTER mount, not during render: a client-side `router.push` commits
+   * its URL after the first render of the destination, so computing this
+   * inline resolved `?returnTo=` to the fallback and sent the operator to the
+   * platform roster — the exact page this parameter exists to avoid.
+   */
+  const [returnTo, setReturnTo] = useState('/admin/users');
+  useEffect(() => {
+    setReturnTo(returnToFromSearch(window.location.search, '/admin/users'));
+  }, []);
   const backToRoster = () => router.push(returnTo);
 
   return (

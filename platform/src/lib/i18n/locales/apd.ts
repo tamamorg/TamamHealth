@@ -3411,6 +3411,7 @@ const apd: TranslationMap = {
   'nav.immunizations': 'تطعيمات',
   'nav.lab': 'نتائج المعمل',
   'nav.messages': 'رسائل',
+  'orgAdmin.requiredFieldsError': 'الاسم والمعرّف والإيميل مطلوبين — أول حقل فاضي اتعلّم فوق.',
   'nav.organizations': 'المنظمات',
   'orgAdmin.facilityNotFound': 'المرفق دا ما عاد موجود.',
   'orgAdmin.backToFacilities': 'رجوع للمرافق',

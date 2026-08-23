@@ -228,6 +228,19 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
   const [adminForm, setAdminForm] = useState<OrgAdminFormData>(emptyOrgAdminForm);
   const [showAdminPassword, setShowAdminPassword] = useState(true);
   const [adminError, setAdminError] = useState<string | null>(null);
+  /**
+   * Refused-submit message, rendered beside the buttons.
+   *
+   * handleSubmit used to `return` silently when a required field was empty —
+   * in a modal tall enough that name/slug/email are scrolled out of view by
+   * the time the operator reaches the submit button, so the click appeared to
+   * do nothing at all. The message lives in the footer because the footer is
+   * the one part of the form guaranteed to be on screen at the moment of the
+   * refusal; the first empty field is also scrolled back into view.
+   */
+  const [formError, setFormError] = useState<string | null>(null);
+  /** Slug follows the name until the operator edits it by hand. */
+  const [slugTouched, setSlugTouched] = useState(!!editingId);
 
   // One mount pass, before the user can have touched anything: resolve the
   // live brand tokens and re-seed the colour pickers with them (create mode
@@ -308,7 +321,13 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
   };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.slug || !form.contactEmail) return;
+    if (!form.name || !form.slug || !form.contactEmail) {
+      setFormError(t('orgAdmin.requiredFieldsError'));
+      const firstEmpty = !form.name ? 'org-form-name' : !form.slug ? 'org-form-slug' : 'org-form-email';
+      document.getElementById(firstEmpty)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    setFormError(null);
 
     // Applies on both paths — the toggle already defaults appropriately per
     // path (ON for create, OFF for edit). Validate BEFORE any organization
@@ -437,14 +456,22 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <label style={labelStyle}>{t('orgAdmin.labelName')}</label>
-            <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-              placeholder={t('orgAdmin.placeholderName')} style={inputStyle} />
+            <input type="text" value={form.name} onChange={e => {
+              const name = e.target.value;
+              // "Nile Care Group" → "nile-care-group", live, until the slug
+              // field is touched by hand. A required identifier the operator
+              // has to invent is a required identifier that gets left blank.
+              setForm(p => slugTouched
+                ? { ...p, name }
+                : { ...p, name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') });
+            }}
+              placeholder={t('orgAdmin.placeholderName')} style={inputStyle} id="org-form-name" />
           </div>
           <div>
             <label style={labelStyle}>{t('orgAdmin.labelSlug')}</label>
             <input type="text" value={form.slug}
-              onChange={e => setForm(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
-              placeholder={t('orgAdmin.placeholderSlug')} style={inputStyle} disabled={!!editingId} />
+              onChange={e => { setSlugTouched(true); setForm(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })); }}
+              placeholder={t('orgAdmin.placeholderSlug')} style={inputStyle} disabled={!!editingId} id="org-form-slug" />
           </div>
           <div>
             <label style={labelStyle}>{t('orgAdmin.labelOrgType')}</label>
@@ -464,7 +491,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
           </div>
           <div>
             <label style={labelStyle}>{t('orgAdmin.labelContactEmail')}</label>
-            <input type="email" value={form.contactEmail} onChange={e => setForm(p => ({ ...p, contactEmail: e.target.value }))}
+            <input type="email" id="org-form-email" value={form.contactEmail} onChange={e => setForm(p => ({ ...p, contactEmail: e.target.value }))}
               placeholder="support.tamam@gmail.com" style={inputStyle} />
           </div>
           <div>
@@ -700,6 +727,11 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
       </div>
 
       <div className="sadb-modal-actions" style={{ marginTop: 0, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
+        {formError && (
+          <p className="text-xs" role="alert" style={{ color: 'var(--color-danger-text)', marginInlineEnd: 'auto' }}>
+            {formError}
+          </p>
+        )}
         <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>
           {t('action.cancel')}
         </button>

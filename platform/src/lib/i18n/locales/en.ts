@@ -3419,6 +3419,7 @@ const en: TranslationMap = {
   'nav.immunizations': 'Immunizations',
   'nav.lab': 'Lab Results',
   'nav.messages': 'Messages',
+  'orgAdmin.requiredFieldsError': 'Name, slug and contact email are required — the first empty field is highlighted above.',
   'nav.organizations': 'Organizations',
   'orgAdmin.facilityNotFound': 'That facility no longer exists.',
   'orgAdmin.backToFacilities': 'Back to facilities',
