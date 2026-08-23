@@ -81,7 +81,7 @@ export const SUPERINTENDENT_STEPS: TourStep[] = [
   },
   {
     id: 'hospitals-oversight',
-    route: '/hospitals',
+    route: '/admin/organizations',
     // Not anchored: the network list runs to dozens of rows, so centering it
     // scrolls deep into the table and the card can end up off-screen. A
     // narrative card is the stable choice for a list this long.
@@ -91,7 +91,7 @@ export const SUPERINTENDENT_STEPS: TourStep[] = [
   },
   {
     id: 'facility-tabs',
-    route: '/hospitals',
+    route: '/admin/organizations',
     // The gear sits on the first row, at the top of the list, so this one IS
     // safe to anchor — unlike the list itself.
     target: '[data-tour="facility-row-tabs"]',

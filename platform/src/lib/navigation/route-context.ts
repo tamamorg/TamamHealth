@@ -109,10 +109,6 @@ const DYNAMIC_ROUTES: DynamicRoute[] = [
   dynamic(segments => segments.length === 2 && segments[0] === 'patients', '/patients', 'breadcrumb.patients', 'routeContext.patientRecord'),
   dynamic(segments => segments.length === 2 && segments[0] === 'notes', '/notes', 'routeContext.notes', 'routeContext.noteDetails'),
   dynamic(segments => segments.length === 2 && segments[0] === 'billing', '/billing', 'routeContext.billing', 'routeContext.billDetails'),
-  // /hospitals/[id]/manage redirects into the facility profile now (its tabs
-  // moved there), so this only labels the moment before the redirect lands —
-  // kept so that moment still says where you are and where Back goes.
-  dynamic(segments => segments.length === 3 && segments[0] === 'hospitals' && segments[2] === 'manage', '/hospitals', 'nav.hospitals', 'routeContext.manageFacility'),
   dynamic(segments => segments.length === 2 && segments[0] === 'rooming', '/dashboard', 'breadcrumb.dashboard', 'routeContext.rooming'),
   dynamic(segments => segments.length === 2 && segments[0] === 'triage', '/dashboard', 'breadcrumb.dashboard', 'routeContext.triage'),
   dynamic(segments => segments.length === 3 && segments[0] === 'wards' && segments[1] === 'mar', '/wards', 'routeContext.wards', 'routeContext.medicationAdministration'),

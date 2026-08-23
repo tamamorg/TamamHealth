@@ -307,7 +307,7 @@ export default function CreateUserModal({
                   // half-filled account — including its generated temporary
                   // password — and there was no route back.
                   if (onAddFacility && canCreateFacilities(currentUser?.role ?? '')) onAddFacility();
-                  else router.push('/hospitals');
+                  else router.push('/admin/organizations');
                 }}
                 className="btn btn-secondary btn-sm"
                 data-action="add-facility-inline"

@@ -22,19 +22,33 @@ const source = (relativePath: string) =>
   fs.readFileSync(path.join(process.cwd(), 'src', relativePath), 'utf8');
 
 const CREATION_SURFACES = [
-  'app/(dashboard)/admin/users/page.tsx',
+  // The staff-account form moved out of the roster page into a shared
+  // component (2026-08-23), hosted by /admin/users/new — the same split the
+  // organization form already has. The surface to pin is the form.
+  'components/admin/UserForm.tsx',
   // The org roster and a facility's Staff tab both create accounts through
   // this one dialog, so the surface to pin is the dialog — see
   // DELEGATING_SURFACES below for the pages that must keep using it rather
   // than growing a second form.
   'modules/identity/components/CreateUserModal.tsx',
-  'app/(dashboard)/admin/organizations/page.tsx',
+  // The create-organization flow's admin provisioning lives in the shared
+  // OrganizationForm (2026-08-23) — the registry modal and the full-page
+  // /admin/organizations/new both host it; see ORG_FORM_HOSTS.
+  'components/admin/OrganizationForm.tsx',
 ];
 
 /** Pages whose "create user" action must route through the shared dialog. */
 const DELEGATING_SURFACES = [
   'app/(dashboard)/org-admin/users/page.tsx',
   'components/facilities/FacilityManageTabs.tsx',
+];
+
+/** Pages whose organization create/edit must route through the shared form —
+ *  a second copy of the form is how the invitation outcome got dropped on
+ *  two user-creation surfaces, so the org form gets the same guard. */
+const ORG_FORM_HOSTS = [
+  'app/(dashboard)/admin/organizations/page.tsx',
+  'app/(dashboard)/admin/organizations/new/page.tsx',
 ];
 
 describe('every creation surface reports the invitation', () => {
@@ -47,6 +61,13 @@ describe('every creation surface reports the invitation', () => {
     // surfaces in the first place.
     expect(source(file)).toContain('CreateUserModal');
     expect(source(file)).not.toContain('createUserWithInvitation');
+  });
+
+  test.each(ORG_FORM_HOSTS)('%s hosts the shared organization form', file => {
+    expect(source(file)).toContain('OrganizationForm');
+    expect(source(file)).not.toContain('createUserWithInvitation');
+    // Both hosts must show the one-time credential panel the form hands up.
+    expect(source(file)).toContain('CredentialHandoffModal');
   });
 
   test.each(CREATION_SURFACES)('%s carries it into the hand-off', file => {

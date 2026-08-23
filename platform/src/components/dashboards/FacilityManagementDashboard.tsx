@@ -930,7 +930,7 @@ export default function FacilityManagementDashboard() {
           <SadbCard
             title="Facilities"
             meta={`${hospitals.length}`}
-            action={<SadbHeadLink onClick={() => router.push('/hospitals')}>Directory</SadbHeadLink>}
+            action={<SadbHeadLink onClick={() => router.push('/admin/organizations')}>Directory</SadbHeadLink>}
           >
             <div className="sadb-card-scroll">
               <SadbGridList
@@ -939,7 +939,7 @@ export default function FacilityManagementDashboard() {
                 head={['Facility', 'Type', 'Beds', 'Patients', "Today's visits"]}
               >
                 {hospitals.map((h: HospitalDoc) => (
-                  <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/hospitals/${h._id}/manage`)}>
+                  <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/admin/organizations?facility=${h._id}`)}>
                     <span className="min-w-0">
                       <span className="sadb-tenant-name truncate">{h.name}</span>
                     </span>

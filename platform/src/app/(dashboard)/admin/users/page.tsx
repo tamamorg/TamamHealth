@@ -1,6 +1,6 @@
 'use client';
 
-import { AccountRequestQueue, BulkUserImportModal, CredentialHandoffModal, canResendInvite, describeAccountState, describeInvitationOutcome, generateTempPassword, roleNeedsFacility, roleNeedsOrganization, usePasswordPolicy, validateUserScope } from '@/modules/identity/client';
+import { AccountRequestQueue, BulkUserImportModal, CredentialHandoffModal, describeAccountState, generateTempPassword, usePasswordPolicy } from '@/modules/identity/client';
 import type { InvitationOutcome } from '@/modules/identity/client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,18 +8,12 @@ import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
-import { useHospitals } from '@/lib/hooks/useHospitals';
 import type { UserDoc, UserRole } from '@/lib/db-types';
-import {
-  UserX, UserCheck, UserPlus, Shield, Building2,
-  KeyRound, RefreshCw, ShieldCheck, Eye, EyeOff, Mail, Upload, Trash2, X, Maximize2} from '@/components/icons/lucide';
+import { UserPlus, RefreshCw, Eye, EyeOff, Upload } from '@/components/icons/lucide';
 import { isRowActivationKey } from '@/components/RowActionsPopup';
 
 import { avatarTint } from '@/lib/patient-utils';
 
-import { canCreateFacilities } from '@/lib/people-nav';
-import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
-import { activeFacilities } from '@/lib/services/hospital-service';
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
 import { SadbPage, SadbCard, SadbSearch, SadbConfirmModal, SadbTabs } from '@/components/admin/sadb-ui';
@@ -67,20 +61,9 @@ export default function AdminUsersPage() {
   const [changingRole, setChangingRole] = useState(false);
   // "Add user" modal — super_admin can create users directly here instead of
   // detouring to /settings or /org-admin/users.
-  const { hospitals, reload: reloadHospitals } = useHospitals();
   // Registering a facility from inside the user dialog. A facility-bound role
   // cannot be saved without one, and telling an operator to leave, create it
   // elsewhere, and start the form again is the dead end this whole flow had.
-  const [showAddFacility, setShowAddFacility] = useState(false);
-  const emptyAddForm = { name: '', username: '', email: '', password: '', role: 'nurse' as UserRole, orgId: '', hospitalId: '' };
-  const [showAddUser, setShowAddUser] = useState(false);
-  const [addForm, setAddForm] = useState(emptyAddForm);
-  const [addSaving, setAddSaving] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
-  // Password visibility is tracked separately per dialog — Add user and
-  // Reset password used to share one `showAddPassword` boolean, so toggling
-  // visibility in one silently flipped the other the next time it opened.
-  const [showAddUserPassword, setShowAddUserPassword] = useState(true);
   const [showResetPassword, setShowResetPassword] = useState(true);
   // Credential hand-off — shown exactly once after a create or reset so the
   // admin can copy the temporary password before it is unrecoverable.
@@ -116,7 +99,6 @@ export default function AdminUsersPage() {
   // an account rewrites its `isActive` without a refetch), and a card holding
   // its own copy would go on showing the state the row had when it opened. It
   // also lets ?user=<id> open a card before the roster has finished loading.
-  const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [deactivating, setDeactivating] = useState(false);
   // Roster and account requests are two views of one card: approving a request
   // IS creating a user, so it belongs where users are managed rather than in a
@@ -128,7 +110,6 @@ export default function AdminUsersPage() {
   // Open work the just-deactivated account still owned, shown after the fact —
   // revoking access is never held up by it.
   const [openWorkNotice, setOpenWorkNotice] = useState<string | null>(null);
-  const [resendingId, setResendingId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
 
   // Deep-link support: /admin/users?q=<name> arrives pre-filtered (the audit
@@ -139,18 +120,18 @@ export default function AdminUsersPage() {
     const params = new URLSearchParams(window.location.search);
     const q = params.get('q');
     if (q) setSearch(q);
+    // Both deep links used to open a dialog over this roster; they now go to
+    // the page that replaced it, so an inbound link lands on the account (or
+    // the create form) rather than on a list with something floating over it.
     const user = params.get('user');
     if (user) {
       setFocusedUserId(user);
-      setDetailUserId(user);
+      router.replace(`/admin/users/${encodeURIComponent(user)}`);
+      return;
     }
     // ?new=1 — the facility dashboards' "Add user" buttons deep-link straight
-    // into the create form with a temporary password already generated.
-    if (params.has('new')) {
-      setAddForm({ ...emptyAddForm, password: generateTempPassword(tempLength) });
-      setShowAddUserPassword(true);
-      setShowAddUser(true);
-    }
+    // into the create form.
+    if (params.has('new')) router.replace('/admin/users/new');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -212,86 +193,6 @@ export default function AdminUsersPage() {
   // offering one from another tenant would produce a cross-tenant account
   // that /api/users rejects ("Assigned hospital does not belong to the
   // selected organization").
-  const needsOrg = roleNeedsOrganization(addForm.role);
-  const needsFacility = roleNeedsFacility(addForm.role);
-  const addFacilityChoices = useMemo(
-    // Retired facilities keep their records and stay readable, but nothing new
-    // is assigned to them — staffing a closed site is what retiring it stops.
-    () => (addForm.orgId ? activeFacilities(hospitals.filter(h => h.orgId === addForm.orgId)) : []),
-    [hospitals, addForm.orgId],
-  );
-
-  /**
-   * Changing the role changes what scope is required, so a stale facility from
-   * a previous selection must not ride along — an org_admin carrying a
-   * hospitalId is exactly the mismatch the server strips server-side, and
-   * leaving it in the form makes the dialog disagree with what gets saved.
-   */
-  const changeAddRole = (role: UserRole) => {
-    setAddError(null);
-    setAddForm(f => ({ ...f, role, hospitalId: roleNeedsFacility(role) ? f.hospitalId : '' }));
-  };
-
-  const handleAddUser = async () => {
-    if (!currentUser) return;
-    if (!addForm.name.trim() || !addForm.username.trim() || !addForm.password) {
-      setAddError('Name, username, and password are required');
-      return;
-    }
-    if (addForm.password.length < MIN_PASSWORD_LENGTH) {
-      setAddError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-      return;
-    }
-    // The organization and facility a role REQUIRES, checked with the same
-    // rules /api/users enforces. Without this the dialog cheerfully accepted
-    // "Organization: none / Facility: — None —" for a facility-bound role and
-    // only surfaced the problem as a 400 after the operator had typed
-    // everything, with the temporary password lost on the way back.
-    const scopeError = validateUserScope({
-      role: addForm.role,
-      orgId: addForm.orgId,
-      hospitalId: addForm.hospitalId,
-    });
-    if (scopeError) {
-      setAddError(scopeError);
-      return;
-    }
-    setAddSaving(true);
-    setAddError(null);
-    try {
-      // `createUserWithInvitation` is the same POST /api/users, kept whole:
-      // the route ALWAYS attempts an invitation and returns what happened, and
-      // this page used to discard that. An operator was shown a temporary
-      // password with no way to know a link had already been mailed — or, with
-      // no email field at all, that one never could be.
-      const { createUserWithInvitation } = await import('@/modules/identity/services/user-service');
-      const hospital = hospitals.find(h => h._id === addForm.hospitalId);
-      const { user: created, invitation } = await createUserWithInvitation({
-        name: addForm.name.trim(),
-        username: addForm.username.trim(),
-        email: addForm.email.trim() || undefined,
-        password: addForm.password,
-        role: addForm.role,
-        orgId: addForm.orgId || undefined,
-        hospitalId: addForm.hospitalId || undefined,
-        hospitalName: hospital?.name,
-      });
-      setUsers(prev => [created, ...prev]);
-      setShowAddUser(false);
-      showToast(`User ${created.username} created.`, 'success');
-      // Hand the credentials to the admin exactly once — the password is
-      // never retrievable again (only its hash is stored), and the user must
-      // replace it at first login.
-      setHandoff({ username: created.username, password: addForm.password, kind: 'created', invitation });
-      setAddForm(emptyAddForm);
-    } catch (err) {
-      setAddError((err as Error).message || 'Failed to create user');
-      showToast(err instanceof Error ? err.message : 'Failed to create user.', 'error');
-    } finally {
-      setAddSaving(false);
-    }
-  };
-
   const handleResetPassword = async () => {
     if (!currentUser || !resetUser) return;
     if (resetPasswordValue.length < MIN_PASSWORD_LENGTH) {
@@ -356,27 +257,6 @@ export default function AdminUsersPage() {
    * reset, which puts a plaintext credential back into the room. Re-issuing
    * kills the previous link, which is what "send it again" means.
    */
-  const handleResendInvite = async (user: UserDoc) => {
-    setResendingId(user._id);
-    try {
-      const { resendUserInvite } = await import('@/modules/identity/services/user-service');
-      const invitation = await resendUserInvite(user._id);
-      showToast(
-        describeInvitationOutcome(invitation).message,
-        invitation.sent ? 'success' : 'error',
-      );
-      // The document now carries a fresh invite window; reflect it in the row
-      // so the state line stops saying the old invitation expired.
-      setUsers(prev => prev.map(u => u._id === user._id
-        ? { ...u, inviteTokenHash: 'pending', inviteExpiresAt: invitation.sent ? invitation.expiresAt : u.inviteExpiresAt }
-        : u));
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not send the invitation.', 'error');
-    } finally {
-      setResendingId(null);
-    }
-  };
-
   const confirmDelete = async () => {
     if (!deleteTarget || !currentUser) return;
     setDeleting(true);
@@ -407,8 +287,10 @@ export default function AdminUsersPage() {
   const orgNameMap: Record<string, string> = {};
   organizations.forEach(o => { orgNameMap[o._id] = o.name; });
 
-  const detailUser = detailUserId ? users.find(u => u._id === detailUserId) ?? null : null;
-  const closeDetail = () => setDetailUserId(null);
+  // The roster row opens the account's own page. It used to open a dialog
+  // that had to close itself before any of its six actions could run, so every
+  // consequential action began by destroying the record it was about.
+  const openUser = (id: string) => router.push(`/admin/users/${encodeURIComponent(id)}`);
 
   // Role stats
   const roleCounts: Record<string, number> = {};
@@ -514,7 +396,7 @@ export default function AdminUsersPage() {
             <button
               type="button"
               className="btn btn-primary btn-sm flex-shrink-0"
-              onClick={() => { setAddForm({ ...emptyAddForm, password: generateTempPassword(tempLength) }); setShowAddUserPassword(true); setAddError(null); setShowAddUser(true); }}
+              onClick={() => router.push('/admin/users/new')}
             >
               <UserPlus className="w-4 h-4" /> Add user
             </button>
@@ -556,12 +438,11 @@ export default function AdminUsersPage() {
                     aria-current={focusedUserId === u._id ? 'true' : undefined}
                     role="button"
                     tabIndex={0}
-                    aria-haspopup="dialog"
-                    onClick={() => setDetailUserId(u._id)}
+                    onClick={() => openUser(u._id)}
                     onKeyDown={e => {
                       if (isRowActivationKey(e.key)) {
                         e.preventDefault();
-                        setDetailUserId(u._id);
+                        openUser(u._id);
                       }
                     }}
                   >
@@ -624,325 +505,6 @@ export default function AdminUsersPage() {
           <AccountRequestQueue viewerRole="super_admin" embedded onCountsChange={setRequestCounts} />
         </div>
       </SadbCard>
-
-      {/* ── Account card — everything the row knows, and everything you can
-             do to it, in one surface. Actions hand off to their own dialogs,
-             so the card closes as each one opens rather than stacking. ── */}
-      {detailUser && (
-        <Modal onClose={closeDetail} width={520} labelledBy="admin-user-card-title">
-          <div className="sadb-modal">
-            <div className="sadb-usercard-head">
-              <div className="ehr-patient-icon" style={avatarTint(detailUser.name)}>
-                {detailUser.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
-              </div>
-              <div className="sadb-usercard-id">
-                <h2 id="admin-user-card-title" className="sadb-modal-title">{detailUser.name}</h2>
-                <p className="sadb-modal-sub">{detailUser.username} · {roleLabel(detailUser.role)}</p>
-              </div>
-              {/* ⤢ promotes the card to the user's facility page (profile,
-                  staff, wards, stock — the create/update/retire surface),
-                  same corner pattern as the tenant card. Only when the
-                  account HAS a facility: an unassigned or org-wide account
-                  has no facility page to open. */}
-              {detailUser.hospitalId && (
-                <button
-                  type="button"
-                  className="sadb-modal-close"
-                  onClick={() => { const id = detailUser.hospitalId!; closeDetail(); router.push(`/hospitals?facility=${encodeURIComponent(id)}`); }}
-                  title="Open facility page"
-                  aria-label="Open facility page"
-                  data-action="usercard-expand"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-              )}
-              {/* Dismissal belongs in the corner, not in the action row: down
-                  there it sat beside Change role, Reset password and Deactivate
-                  — three consequential buttons and one that just goes back —
-                  and it was the widest target of the four. */}
-              <button
-                type="button"
-                className="sadb-modal-close"
-                onClick={closeDetail}
-                title="Close"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="sadb-usercard-rows">
-              <div className="sadb-usercard-row">
-                <span>{t('adminUsers.colStatus')}</span>
-                <span>
-                  <span
-                    className="appointment-status-pill"
-                    style={detailUser.isActive
-                      ? { borderColor: 'rgba(15, 160, 106,0.45)', background: 'rgba(15, 160, 106,0.10)', color: 'var(--color-success-text)' }
-                      : { borderColor: 'rgba(224, 49, 39,0.45)', background: 'rgba(224, 49, 39,0.10)', color: 'var(--color-danger-text)' }}
-                  >
-                    {detailUser.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')}
-                  </span>
-                </span>
-              </div>
-              <div className="sadb-usercard-row"><span>{t('adminUsers.colRole')}</span><span>{roleLabel(detailUser.role)}</span></div>
-              <div className="sadb-usercard-row"><span>Department</span><span>{detailUser.department || '—'}</span></div>
-              <div className="sadb-usercard-row"><span>Specialty</span><span>{detailUser.specialty || '—'}</span></div>
-              <div className="sadb-usercard-row"><span>Email</span><span>{detailUser.email || '—'}</span></div>
-              <div className="sadb-usercard-row"><span>Phone</span><span>{detailUser.phone || '—'}</span></div>
-              <div className="sadb-usercard-row">
-                <span>{t('adminUsers.colOrganization')}</span>
-                <span>{detailUser.orgId ? (orgNameMap[detailUser.orgId] || detailUser.orgId) : 'Platform-level'}</span>
-              </div>
-              <div className="sadb-usercard-row">
-                <span>{t('adminUsers.colHospital')}</span>
-                <span>{detailUser.hospitalName || 'Facility unassigned'}</span>
-              </div>
-              <div className="sadb-usercard-row">
-                <span>Credentials</span>
-                <span>{describeAccountState(detailUser).label}</span>
-              </div>
-              <div className="sadb-usercard-row">
-                <span>Last sign-in</span>
-                <span>
-                  {detailUser.lastLoginAt
-                    ? new Date(detailUser.lastLoginAt).toLocaleString()
-                    : 'Never'}
-                </span>
-              </div>
-              <div className="sadb-usercard-row">
-                <span>Created</span>
-                <span>{detailUser.createdAt ? new Date(detailUser.createdAt).toLocaleDateString() : '—'}</span>
-              </div>
-              {detailUser.deactivatedAt && (
-                <div className="sadb-usercard-row">
-                  <span>Deactivated</span>
-                  <span>
-                    {new Date(detailUser.deactivatedAt).toLocaleDateString()}
-                    {detailUser.deactivatedBy ? ` by ${detailUser.deactivatedBy}` : ''}
-                  </span>
-                </div>
-              )}
-              <div className="sadb-usercard-row"><span>User ID</span><span><code>{detailUser._id}</code></span></div>
-            </div>
-
-            <div className="sadb-usercard-actions">
-              <div>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => { const u = detailUser; closeDetail(); setChangeRoleUser(u); setNewRole(u.role); }}
-                >
-                  <Shield className="w-4 h-4" /> Change role
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    const u = detailUser;
-                    closeDetail();
-                    setResetUser(u);
-                    setResetPasswordValue(generateTempPassword(tempLength));
-                    setResetError(null);
-                    setShowResetPassword(true);
-                  }}
-                >
-                  <KeyRound className="w-4 h-4" /> Reset password
-                </button>
-                {/* Preferred over a reset: the person sets their own password
-                    from a single-use link, so no plaintext credential has to
-                    be relayed. Offered only when there is an address to send
-                    it to. */}
-                {canResendInvite(detailUser) && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    disabled={resendingId === detailUser._id}
-                    onClick={() => { const u = detailUser; closeDetail(); void handleResendInvite(u); }}
-                  >
-                    <Mail className="w-4 h-4" />
-                    {resendingId === detailUser._id ? 'Sending…' : 'Send invitation again'}
-                  </button>
-                )}
-                {/* Deactivating is destructive — it routes through the confirm
-                    dialog. Reactivating is one reversible click, so it runs. */}
-                {detailUser.isActive ? (
-                  <button
-                    type="button"
-                    className="btn btn-sm sadb-btn-danger"
-                    onClick={() => { const u = detailUser; closeDetail(); setDeactivateTarget(u); }}
-                  >
-                    <UserX className="w-4 h-4" /> {t('adminUsers.deactivate')}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={() => { const u = detailUser; closeDetail(); handleToggleActive(u._id, false, u.name); }}
-                  >
-                    <UserCheck className="w-4 h-4" /> {t('adminUsers.activate')}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-sm sadb-btn-danger"
-                  onClick={() => { const u = detailUser; closeDetail(); setDeleteTarget(u); }}
-                  data-action="delete-user"
-                >
-                  <Trash2 className="w-4 h-4" /> Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Add User Modal */}
-      {showAddUser && (
-        <Modal onClose={() => setShowAddUser(false)} width={440} labelledBy="add-user-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="add-user-title" className="sadb-modal-title">Add user</h2>
-              <p className="sadb-modal-sub">Create a platform account and hand the credentials to the staff member.</p>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Full name</label>
-                <input type="text" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
-              </div>
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Username</label>
-                <input type="text" value={addForm.username} onChange={e => setAddForm(f => ({ ...f, username: e.target.value }))} style={inputStyle} autoComplete="off" />
-              </div>
-              {/* Optional, but it is the difference between the new user
-                  choosing their own password from a single-use link and an
-                  administrator reading a temporary one out to them. */}
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Email (for the invitation)</label>
-                <input type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} autoComplete="off" data-field="user-email" />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold block" style={{ color: 'var(--text-muted)' }}>Temporary password</label>
-                  <button
-                    type="button"
-                    onClick={() => { setAddForm(f => ({ ...f, password: generateTempPassword(tempLength) })); setShowAddUserPassword(true); }}
-                    className="flex items-center gap-1 text-xs font-semibold"
-                    style={{ color: 'var(--accent-text)' }}
-                  >
-                    <RefreshCw className="w-3 h-3" /> Generate
-                  </button>
-                </div>
-                <div className="relative">
-                  <input
-                    type={showAddUserPassword ? 'text' : 'password'}
-                    value={addForm.password}
-                    onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))}
-                    style={{ ...inputStyle, paddingInlineEnd: 40, fontFamily: showAddUserPassword ? 'var(--font-mono, monospace)' : undefined }}
-                    autoComplete="new-password"
-                  />
-                  <button type="button" onClick={() => setShowAddUserPassword(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2">
-                    {showAddUserPassword
-                      ? <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                      : <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
-                  </button>
-                </div>
-                <p className="mt-1.5 text-[11px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                  <ShieldCheck className="w-3 h-3" /> Temporary — the user must set their own password at first login.
-                </p>
-              </div>
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Role</label>
-                <Select value={addForm.role} onChange={e => changeAddRole(e.target.value as UserRole)} style={selectStyle}>
-                  {ALL_ROLES.filter(r => r !== 'super_admin').map(r => (
-                    <option key={r} value={r}>{roleLabel(r)}</option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                  Organization{needsOrg ? ' *' : ''}
-                </label>
-                <Select value={addForm.orgId} onChange={e => setAddForm(f => ({ ...f, orgId: e.target.value, hospitalId: '' }))} style={selectStyle}>
-                  {/* "None" is only an option for the platform and national
-                      roles that genuinely have no tenant — offering it to a
-                      facility role is how an unscoped account gets made. */}
-                  <option value="">{needsOrg ? '— Select an organization —' : '— None (platform-level role) —'}</option>
-                  {organizations.filter(o => o.isActive !== false).map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
-                </Select>
-              </div>
-              {/* Organisation-wide roles (org_admin, government, county health
-                  director) are not bound to a facility, so the picker is not
-                  shown for them at all rather than shown and ignored. */}
-              {needsFacility && (
-                <div>
-                  <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Facility *</label>
-                  {addFacilityChoices.length > 0 ? (
-                    <Select value={addForm.hospitalId} onChange={e => setAddForm(f => ({ ...f, hospitalId: e.target.value }))} style={selectStyle}>
-                      <option value="">— Select a facility —</option>
-                      {addFacilityChoices.map(h => (
-                        <option key={h._id} value={h._id}>{h.name}</option>
-                      ))}
-                    </Select>
-                  ) : (
-                    <div
-                      className="rounded-lg px-3 py-2.5 text-xs"
-                      data-field="no-facilities"
-                      style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}
-                    >
-                      <p className="mb-1.5" style={{ color: 'var(--text-primary)' }}>
-                        {addForm.orgId ? 'This organization has no facilities yet.' : 'Select an organization first.'}
-                      </p>
-                      {addForm.orgId && (
-                        <>
-                          <p className="mb-2">A {roleLabel(addForm.role).toLowerCase()} works at a facility, so one has to exist before the account can be created.</p>
-                          {canCreateFacilities(currentUser?.role ?? '') && (
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => setShowAddFacility(true)}
-                              data-action="add-facility-inline"
-                            >
-                              <Building2 className="w-4 h-4" /> Add a facility
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              {addError && (
-                <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{addError}</p>
-              )}
-            </div>
-            <div className="sadb-modal-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddUser(false)} disabled={addSaving}>Cancel</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={handleAddUser} disabled={addSaving}>
-                {addSaving ? 'Creating…' : 'Create user'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Registering a facility without leaving the half-filled user form. */}
-      {showAddFacility && canCreateFacilities(currentUser?.role ?? '') && (
-        <CreateFacilityModal
-          onClose={() => setShowAddFacility(false)}
-          onCreated={async hospital => {
-            setShowAddFacility(false);
-            await reloadHospitals();
-            // Select what was just created — it is the only reason the
-            // operator opened this dialog mid-form.
-            setAddForm(f => ({ ...f, orgId: hospital.orgId || f.orgId, hospitalId: hospital._id }));
-            showToast(`Facility ${hospital.name} created.`, 'success');
-          }}
-          orgId={addForm.orgId || undefined}
-          organizations={addForm.orgId ? undefined : organizations}
-          actor={{ _id: currentUser?._id, username: currentUser?.username }}
-        />
-      )}
 
       {/* Credential hand-off — shown once after a create or reset */}
       {handoff && (

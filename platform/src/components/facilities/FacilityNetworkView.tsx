@@ -306,8 +306,14 @@ function HospitalsPageInner() {
             />
           ) : (
             <>
+              {/* No greeting and no title: this is a section of the
+                  Organizations page now, which already names itself and the
+                  signed-in user above. The header stays for what it uniquely
+                  carries — the network's stat row, the search and the
+                  filter/export/add actions. */}
               <EhrListHeader
-                title={t('hospitals.topBarTitle')}
+                greeting={false}
+                title=""
                 stats={[
                   { label: t('hospitals.kpiFacilities'), value: kpis.total, color: LIST_STAT_COLORS.muted },
                   { label: t('hospitals.kpiFunctional'), value: `${kpis.pctFunctional}%`, color: getPerformanceColor(kpis.pctFunctional) },
@@ -681,7 +687,13 @@ const PROFILE_TABS: { id: ProfileTabId; labelKey: string; icon: React.ElementTyp
 function parseProfileTab(value: string | null): ProfileTabId | undefined {
   return PROFILE_TABS.some(item => item.id === value) ? value as ProfileTabId : undefined;
 }
-function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRetire, initialTab, onHospitalSaved }: {
+/**
+ * One facility, in full. Exported so `/admin/facilities/[id]` can host it as a
+ * page — the Facilities tab used to render it inline over its own list, which
+ * is the pattern the organizations registry dropped when its rows started
+ * opening `/admin/organizations/[id]`.
+ */
+export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdit, onRetire, initialTab, onHospitalSaved }: {
   hospital: HospitalDoc;
   onClose: () => void;
   canManage: boolean;
@@ -1121,7 +1133,23 @@ function InfraBadge({ icon: Icon, label, color, bg }: { icon: React.ElementType;
   );
 }
 
-export default function HospitalsPage() {
+/**
+ * The facility network — every facility in scope, its performance, and the
+ * profile behind each one (staff, wards, equipment, inventory, schedules,
+ * performance, settings) plus create / edit / retire.
+ *
+ * This was the page at /hospitals, titled "Health Facility Performance". That
+ * route is gone (2026-08-23): a facility belongs to an organization, and
+ * asking an operator to leave the organization they are looking at, open a
+ * national list and filter their way back to it was a navigation that only
+ * made sense when the two screens were built at different times. It is a
+ * component now, hosted by /admin/organizations, which is the page that
+ * answers "who runs what".
+ *
+ * `filterByScope` still decides which facilities a role sees, exactly as it
+ * did here — the move changes the address, not the tenancy barrier.
+ */
+export default function FacilityNetworkView() {
   const { t } = useTranslation();
   return (
     <Suspense fallback={<div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 13 }}>{t('status.loading')}</div>}>

@@ -560,7 +560,7 @@ export default function GovernmentNationalDashboard() {
                         <span style={{ color: selected.alertCases > 0 ? RED : 'inherit' }}>{selected.alertCases.toLocaleString()} alert cases</span>
                         <span>{selected.immRecords.toLocaleString()} immunization records</span>
                         <span>{selected.completenessN > 0 ? `${Math.round(selected.completenessSum / selected.completenessN)}% reporting completeness` : 'No assessment on file'}</span>
-                        <button type="button" className="gov-open-link" onClick={() => router.push('/hospitals')}>
+                        <button type="button" className="gov-open-link" onClick={() => router.push('/admin/organizations')}>
                           Open facilities <ChevronRight className="w-3 h-3 inline" />
                         </button>
                       </div>

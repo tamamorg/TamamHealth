@@ -29029,6 +29029,11 @@ table.patient-data-table.patient-data-table {
   flex-shrink: 0;
   padding: 11px 14px;
   border-bottom: 1px solid var(--border-light);
+  /* A shade off white so the head reads as a head and the card reads as a
+     card. White-on-white left every heading floating over its own content. */
+  background: var(--overlay-subtle);
+  border-start-start-radius: 8px;
+  border-start-end-radius: 8px;
 }
 .sadb-card-title {
   margin: 0;
@@ -29118,7 +29123,8 @@ table.patient-data-table.patient-data-table {
   min-width: 0;
 }
 button.sadb-kpi { cursor: pointer; }
-button.sadb-kpi:hover { border-color: var(--brand-300); }
+/* Flat, so the hover is a border and a shade — never a lift or a glow. */
+button.sadb-kpi:hover { border-color: var(--brand-300); background: var(--tb-blue-50); }
 .sadb-kpi-label {
   margin: 0;
   font-family: var(--font-condensed);
@@ -29126,7 +29132,10 @@ button.sadb-kpi:hover { border-color: var(--brand-300); }
   font-size: 10.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  /* One rung up from muted: at 10.5px, tracked and uppercase, muted grey was
+     the least legible text on the page and it is the label that says what the
+     number means. */
+  color: var(--text-secondary);
 }
 .sadb-kpi-value {
   margin: 5px 0 0;
@@ -29162,6 +29171,48 @@ button.sadb-kpi:hover { border-color: var(--brand-300); }
 .sadb-chip--red { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: var(--color-danger-800); }
 .sadb-chip--blue { background: var(--tb-blue-50); border-color: var(--brand-400); color: var(--brand-800); }
 .sadb-chip--neutral { background: var(--ehr-head); border-color: var(--border-light); color: var(--text-muted); }
+
+/* ── Subscription plan chips ─────────────────────────────────────────────
+   A tier is a category, not a state, so it gets its own outline rather than
+   borrowing a status colour: plan read as plain text in every list, which
+   made "Professional" and "Enterprise" the same weight as the words around
+   them and left the tiers indistinguishable at a glance. Three outlines from
+   the existing palette — quiet, brand, top — with the fill kept at a tint so
+   the row's own text still leads. */
+.sadb-plan {
+  display: inline-flex;
+  align-items: center;
+  /* The chip is a direct grid child in these lists, and a grid item stretches
+     to its track by default — which drew a pill the full width of the PLAN
+     column. Hug the word instead. */
+  justify-self: start;
+  align-self: center;
+  width: fit-content;
+  padding: 2px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--bg-card-solid);
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: capitalize;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+/* Entry tier stays neutral — the default above. */
+.sadb-plan--professional {
+  background: var(--tb-blue-50);
+  border-color: var(--brand-400);
+  color: var(--brand-800);
+}
+/* Gold is the palette's attention fill; as an OUTLINE on a tier label it is
+   categorising, not warning — nothing here is amber for a reason of state. */
+.sadb-plan--enterprise {
+  background: var(--gold-100);
+  border-color: var(--gold-600);
+  color: var(--accent-orange-text);
+}
 
 /* ── Row 2: readiness · business · sync & interoperability ── */
 .sadb-row-2 {
@@ -29371,7 +29422,9 @@ button.sadb-signal { cursor: pointer; }
   font-weight: 600;
   color: var(--text-primary);
 }
-.sadb-tenant-row:hover { background: var(--color-slate-50); }
+/* A row that opens something should say so on approach: the tint is the
+   accent's lightest step rather than a neutral grey, which read as disabled. */
+.sadb-tenant-row:hover { background: var(--tb-blue-50); }
 .sadb-tenant-row:last-child { border-bottom: 0; }
 .sadb-tenant-name { display: block; font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
 .sadb-tenant-sub { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
@@ -30872,6 +30925,132 @@ button.sadb-signal { cursor: pointer; }
   .sadb-lower-row > .sadb-card { max-height: var(--sadb-lower-height, 460px); }
 }
 
+/* ── Full-page create form (/admin/organizations/new) ──────────────────
+   The register-patient page anatomy (/patients/new) in console clothes:
+   the same centered column, back toolbar (.patient-registration-toolbar /
+   -back are reused directly — they are generic chrome), and a sticky left
+   rail of jump links beside the form. Geometry mirrors .omrs-reg; fonts and
+   colours stay the console's own tokens — Carbon's typeface and slab palette
+   are the patient chart's identity, not the admin console's. */
+.sadb-regpage-shell {
+  width: calc(100% - 2 * 198px);
+  min-width: min(100%, 960px);
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-bottom: 28px;
+}
+
+.sadb-regpage {
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .sadb-regpage { grid-template-columns: minmax(0, 1fr); }
+  .sadb-regpage-rail { position: static; }
+}
+
+.sadb-regpage-rail {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.sadb-regpage-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+.sadb-regpage-note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+
+.sadb-regpage-jump {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+}
+
+.sadb-regpage-nav { display: flex; flex-direction: column; }
+
+.sadb-regpage-navitem {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  text-align: start;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-inline-start: 2px solid var(--border-light);
+  border-radius: 0;
+  cursor: pointer;
+}
+.sadb-regpage-navitem:hover {
+  color: var(--accent-text);
+  background: var(--overlay-subtle);
+  border-inline-start-color: var(--accent-primary);
+}
+.sadb-regpage-navitem:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
+/* The form column: the shared modal form body inside a console card. */
+.sadb-regpage-form { padding: 20px; }
+
+/* ── Header facts strip (org page) ─────────────────────────────────────
+   The tenant page's Billing & Subscriptions card, folded into the header
+   card as a hairline-separated second line: a card-title-style lead-in,
+   then inline label→value pairs. Values echo SadbKvRow's weight so the
+   same fact reads the same in either shape. */
+.sadb-headfacts {
+  width: 100%;
+  border-top: 1px solid var(--border-light);
+  padding-top: 10px;
+  column-gap: 24px;
+  row-gap: 8px;
+}
+.sadb-headfacts-title {
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.sadb-headfacts-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.sadb-headfacts-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.sadb-headfacts-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
 /* ============ Trash (Settings) =========================================
    Deactivated tenants, and the only place they are visible. Scoped `trash-`
    for the two traps in this stylesheet: the bare `label` rule, and
@@ -30886,6 +31065,137 @@ button.sadb-signal { cursor: pointer; }
    against the card border while its neighbours were inset, which is what made
    the page look unaligned rather than merely different.
    ---------------------------------------------------------------------- */
+
+/* Placeholder while an embedded console's chunk loads. Sized so the panel
+   does not collapse to nothing and jump when the real page arrives. */
+.ehr-set-embed-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  padding: 24px 18px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* Organizations · Facilities — the two views of the tenant page, after
+   /hospitals was deleted (2026-08-23). An underline strip rather than pills:
+   these are two views of one page, not two settings, and the underline is the
+   same device the list headers already use for their tabs. */
+.sadb-viewswitch {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+.sadb-viewswitch-tab {
+  padding: 0 0 9px;
+  margin-bottom: -1px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.sadb-viewswitch-tab.is-active {
+  border-bottom-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+.sadb-viewswitch-tab:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ============ Organization facilities & performance ====================
+   The tenant page's per-facility scores. A bar plus a number, because the
+   number alone makes a reader compare digits down a column while the bar
+   sorts the rows before they read any of them. Colour is the shared four-band
+   WHO ramp (`--perf-*`), so a score reads the same here as on the national
+   facility list. Scoped `orgfac-` past `svg.lucide` and the bare `label` rule.
+   ---------------------------------------------------------------------- */
+.orgfac-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.orgfac-meter-track {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 34px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ehr-head);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+.orgfac-meter-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-radius: 999px;
+}
+.orgfac-meter-value {
+  flex: 0 0 auto;
+  min-width: 34px;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* The facility's name, as the link to the facility. `sadb-tenant-name` gives
+   the type; this adds only the link affordance, so the row still reads as a
+   table rather than a page of blue text. */
+.orgfac-name {
+  display: block;
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.orgfac-name:hover { color: var(--accent-primary); text-decoration: underline; }
+.orgfac-name:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* The facility assessment block on the Performance tab — the scores the org
+   page's meters link to. Reuses `orgfac-meter` outright so a score cannot
+   drift between the two surfaces. */
+.fac-assess {
+  padding: 14px 16px 16px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 10px;
+  background: #fff;
+  margin-bottom: 14px;
+}
+.fac-assess-head {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.fac-assess-empty { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+.fac-assess-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px 20px;
+}
+.fac-assess-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fac-assess-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
 
 /* ============ Data management (Settings) ===============================
    Rides the same `ehr-set-row` grid as every other settings panel; only the
@@ -31033,3 +31343,108 @@ button.sadb-signal { cursor: pointer; }
   .trash-row { grid-template-columns: minmax(0, 1fr); }
   .trash-row-actions { justify-content: flex-end; }
 }
+
+/* ============ Admin user form + account page ===========================
+   The two surfaces that replaced the roster's dialogs. Scoped `uf-` and
+   `sadb-userpage-` for the traps this stylesheet carries: the bare `label`
+   rule force-uppercases every <label> (so the form labels are <span>), and
+   `svg.lucide:not([style*="color"])` recolours any icon that does not set its
+   own — every icon rule below states a colour.
+   ---------------------------------------------------------------------- */
+.uf-form { display: flex; flex-direction: column; gap: 22px; }
+.uf-section { display: flex; flex-direction: column; gap: 13px; scroll-margin-top: 76px; }
+.uf-section h3 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+.uf-field { display: flex; flex-direction: column; gap: 6px; }
+.uf-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.uf-labelrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.uf-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.uf-input:focus { outline: none; border-color: var(--accent-primary); }
+.uf-passwrap { position: relative; display: block; }
+.uf-input--pass { padding-inline-end: 42px; font-family: var(--font-mono, monospace); }
+.uf-eye {
+  position: absolute;
+  inset-inline-end: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+}
+.uf-eye svg { color: var(--text-muted); }
+.uf-generate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.uf-generate svg { color: var(--accent-text); }
+.uf-hint { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+.uf-hint--icon { display: inline-flex; align-items: center; gap: 5px; }
+.uf-hint--icon svg { flex: 0 0 auto; color: var(--color-success); }
+.uf-error { font-size: 12px; font-weight: 600; color: var(--color-danger-text); }
+.uf-nofacility {
+  padding: 11px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border-light);
+  background: var(--overlay-subtle);
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.uf-nofacility p:first-child { color: var(--text-primary); font-weight: 600; }
+.uf-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* One account, as a page: identity left, actions right, on one line — the
+   header shape /admin/organizations/[id] uses. */
+.sadb-userpage-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.sadb-userpage-id { min-width: 0; flex: 1 1 auto; }
+.sadb-userpage-id h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.sadb-userpage-id p { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+.sadb-userpage-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 0 0 auto; }
+.sadb-userpage-actions svg { width: 14px; height: 14px; }
+/* The role picker inside the change-role confirm. */
+.sadb-rolepick { display: flex; flex-direction: column; gap: 10px; }
+.sadb-rolepick select { width: 100%; }

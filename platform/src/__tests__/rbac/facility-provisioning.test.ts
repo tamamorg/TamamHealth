@@ -6,7 +6,7 @@
  *
  * `/org-admin/hospitals` owned the only create-a-facility form and had no nav
  * row anywhere; the "Facilities" row every admin does have pointed at
- * `/hospitals`, a read-only directory whose header offered a CSV export and
+ * the facility network view, a read-only directory whose header offered a CSV export and
  * nothing else. A platform operator could not create one at ALL: the one form
  * that admitted them stamped `currentUser.orgId` onto the document, and a
  * super_admin carries none, so `createHospital` rejected every attempt.
@@ -85,7 +85,7 @@ describe('who may register a facility', () => {
       const entry = buildAddMenuEntries({ role, allowedRoutes: allowedFor(role) })
         .find(e => e.key === 'facility');
       expect(entry).toBeDefined();
-      expect(entry!.href).toBe('/hospitals?new=1');
+      expect(entry!.href).toBe('/admin/organizations?new=1');
     }
   });
 
@@ -100,9 +100,9 @@ describe('who may register a facility', () => {
 
 describe('the pages that host the create dialog', () => {
   test.each([
-    'app/(dashboard)/hospitals/page.tsx',
+    'components/facilities/FacilityNetworkView.tsx',
     'app/(dashboard)/org-admin/hospitals/page.tsx',
-    'app/(dashboard)/admin/users/page.tsx',
+    'components/admin/UserForm.tsx',
     'app/(dashboard)/org-admin/users/page.tsx',
   ])('%s opens the shared dialog rather than its own copy', file => {
     // `CreateFacilityModal` is the create-only wrapper around the same
@@ -121,19 +121,19 @@ describe('the pages that host the create dialog', () => {
   });
 
   test.each([
-    ['app/(dashboard)/hospitals/page.tsx', "searchParams.get('new')"],
+    ['components/facilities/FacilityNetworkView.tsx', "searchParams.get('new')"],
     ['app/(dashboard)/org-admin/hospitals/page.tsx', "has('new')"],
   ])('%s honours the ?new=1 deep link the Add menu emits', (file, marker) => {
     expect(source(file)).toContain(marker);
   });
 
-  test('the Add button on /hospitals paints its glyph white', () => {
+  test('the Add button on the facility network paints its glyph white', () => {
     // globals.css repaints any lucide glyph with no INLINE colour to
     // --icon-color, the same brand blue as the primary button's fill — the
     // plus was a blank blue circle. A className cannot escape that rule; the
     // `color` prop writes a literal stroke attribute, which beats it. Every
     // other `EhrListHeaderButton primary` in the app already does this.
-    const header = source('app/(dashboard)/hospitals/page.tsx')
+    const header = source('components/facilities/FacilityNetworkView.tsx')
       .split('EhrListHeaderButton primary')[1]
       .split('</EhrListHeaderButton>')[0];
     expect(header).toContain('color="#fff"');
@@ -170,7 +170,7 @@ describe('the pages that host the create dialog', () => {
 
   test('retired facilities drop out of the assignment pickers', () => {
     for (const file of [
-      'app/(dashboard)/admin/users/page.tsx',
+      'components/admin/UserForm.tsx',
       'app/(dashboard)/org-admin/users/page.tsx',
     ]) {
       expect(source(file)).toContain('activeFacilities');
@@ -256,7 +256,7 @@ describe('the scope a staff account must carry', () => {
       'app/api/users/route.ts',
       'modules/identity/services/user-service.ts',
       'modules/identity/components/CreateUserModal.tsx',
-      'app/(dashboard)/admin/users/page.tsx',
+      'components/admin/UserForm.tsx',
     ]) {
       const text = source(file);
       expect(text).not.toMatch(/ROLES_WITHOUT_HOSPITAL\s*:\s*UserRole\[\]\s*=/);

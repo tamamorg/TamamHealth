@@ -16,6 +16,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal';
 import { useApp } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -47,6 +48,41 @@ import ManagementSettingsPage from '@/app/(dashboard)/settings/manage/page';
 import ItOperationsPanel, { IT_OPERATIONS_JOB_COUNT } from '@/components/admin/ItOperationsPanel';
 import TrashPanel from './TrashPanel';
 import DataManagementPanel from './DataManagementPanel';
+
+/**
+ * Platform operations and governance, embedded rather than linked.
+ *
+ * These seven consoles were seven primary-nav rows in the super-admin rail —
+ * the two largest groups in it — and every one of them is configuration or a
+ * read-only health view, which is what Settings is for. Moving them here
+ * shortens the operator's nav to the things they *do* (command, tenants,
+ * people) and puts the things they *set* behind one door.
+ *
+ * Loaded on demand: they are super-admin-only and heavy (charts, whole-store
+ * scans), and a static import would put all seven in the settings bundle that
+ * every role downloads to change their own password.
+ */
+const embedded = (load: () => Promise<{ default: React.ComponentType }>) =>
+  dynamic(load, { ssr: false, loading: () => <p className="ehr-set-embed-loading">Loading…</p> });
+
+const AdminSystemPage = embedded(() => import('@/app/(dashboard)/admin/system/page'));
+const AdminSyncPage = embedded(() => import('@/app/(dashboard)/admin/sync/page'));
+const AdminInteropPage = embedded(() => import('@/app/(dashboard)/admin/interop/page'));
+const AdminDataPage = embedded(() => import('@/app/(dashboard)/admin/data/page'));
+const AdminSecurityPage = embedded(() => import('@/app/(dashboard)/admin/security/page'));
+const AdminConfigPage = embedded(() => import('@/app/(dashboard)/admin/config/page'));
+const AdminFlagsPage = embedded(() => import('@/app/(dashboard)/admin/flags/page'));
+
+/** Settings panel id → the console it embeds, for the two groups above. */
+const EMBEDDED_ADMIN_PAGES: Record<string, React.ComponentType> = {
+  'plat-system': AdminSystemPage,
+  'plat-sync': AdminSyncPage,
+  'plat-interop': AdminInteropPage,
+  'plat-data': AdminDataPage,
+  'gov-security': AdminSecurityPage,
+  'gov-config': AdminConfigPage,
+  'gov-flags': AdminFlagsPage,
+};
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { SettingsHostProvider } from '@/components/settings/SettingsHost';
 import {
@@ -60,7 +96,7 @@ import {
 import { isDhis2Configured } from '@/lib/services/dhis2-sync-log-service';
 import {
   AlertTriangle, ArrowLeft, Bell, BedDouble, Building2, Check, ChevronRight, Clock,
-  CreditCard, Database, FileText, FlaskConical, KeyRound, List, Lock, Palette, Pill,
+  CreditCard, Database, FileText, Flag, FlaskConical, Globe, KeyRound, List, Lock, Palette, Pill,
   RefreshCw, Server, Settings, Shield, Stethoscope, Trash2, User, Users, Zap, type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
@@ -375,6 +411,30 @@ export default function RoleSettingsView() {
           ],
         });
       }
+    }
+
+    // Platform operations and governance — moved out of the super-admin
+    // primary nav (see lib/permissions.ts). Gated per item on the role's own
+    // route table rather than on the role name, so a role that gains one of
+    // these routes gains the panel with it.
+    const allowed = (path: string) => isPathAllowed(currentUser.role, path);
+    const platformItems: NavItem[] = [
+      { id: 'plat-system', label: 'System Health', icon: Server, path: '/admin/system' },
+      { id: 'plat-sync', label: 'Sync & Jobs', icon: RefreshCw, path: '/admin/sync' },
+      { id: 'plat-interop', label: 'Interoperability', icon: Globe, path: '/admin/interop' },
+      { id: 'plat-data', label: 'Data Governance', icon: Database, path: '/admin/data' },
+    ].filter(i => allowed(i.path)).map(({ path: _path, ...item }) => item);
+    if (platformItems.length > 0) {
+      groups.push({ title: 'Platform operations', items: platformItems });
+    }
+
+    const governanceItems: NavItem[] = [
+      { id: 'gov-security', label: 'Security & Compliance', icon: Shield, path: '/admin/security' },
+      { id: 'gov-config', label: 'Configuration', icon: Settings, path: '/admin/config' },
+      { id: 'gov-flags', label: 'Feature Flags', icon: Flag, path: '/admin/flags' },
+    ].filter(i => allowed(i.path)).map(({ path: _path, ...item }) => item);
+    if (governanceItems.length > 0) {
+      groups.push({ title: 'Governance', items: governanceItems });
     }
 
     if (showTrash) {
@@ -804,6 +864,14 @@ export default function RoleSettingsView() {
     }
     if (activePanel === 'data-management') {
       return <DataManagementPanel />;
+    }
+    const EmbeddedAdminPage = EMBEDDED_ADMIN_PAGES[activePanel];
+    if (EmbeddedAdminPage) {
+      return (
+        <section className="ehr-set-section settings-embedded-page">
+          <EmbeddedAdminPage />
+        </section>
+      );
     }
     if (activePanel === 'trash') {
       return <TrashPanel />;

@@ -40,6 +40,7 @@ import { useToast } from '@/components/Toast';
 import { isValidPhone, isValidEmail, normalizePhone, normalizeEmail } from '@/lib/field-formats';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { getPerformanceColor } from '@/lib/performance-colors';
 import { canCreateUsers } from '@/lib/people-nav';
 import { useApp } from '@/lib/context';
 
@@ -91,7 +92,7 @@ export default function FacilityManageTabs({ hospital, tab, scope, canWriteSetti
       {tab === 'equipment' && <EquipmentTab scope={scope} hospitalId={hospitalId} />}
       {tab === 'inventory' && <InventoryTab scope={scope} hospitalId={hospitalId} />}
       {tab === 'schedules' && <SchedulesTab hospitalId={hospitalId} />}
-      {tab === 'performance' && <PerformanceTab scope={scope} hospitalId={hospitalId} />}
+      {tab === 'performance' && <PerformanceTab scope={scope} hospitalId={hospitalId} hospital={hospital} />}
       {tab === 'settings' && (
         <SettingsTab hospital={hospital} canWrite={canWriteSettings} onSaved={onHospitalSaved} />
       )}
@@ -763,7 +764,9 @@ function SchedulesTab({ hospitalId }: { hospitalId: string }) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  PERFORMANCE TAB
 // ═══════════════════════════════════════════════════════════════════════════
-function PerformanceTab({ scope, hospitalId }: { scope: DataScope | undefined; hospitalId: string }) {
+function PerformanceTab({ scope, hospitalId, hospital }: {
+  scope: DataScope | undefined; hospitalId: string; hospital: HospitalDoc;
+}) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -875,20 +878,69 @@ function PerformanceTab({ scope, hospitalId }: { scope: DataScope | undefined; h
     { label: t('hospitals.kpiImmunizationsToday'), value: kpis.immunizationsToday,          icon: Syringe,     tint: 'var(--accent-primary)' },
   ];
 
+  /* The facility's last assessment, above today's throughput.
+     Two different questions wear the word "performance": what this facility
+     did today, and how well it is set up to do it at all. The tab answered
+     only the first, so a reader who arrived from a 52% reporting score — the
+     organization page links straight here — landed on a board that never
+     mentions reporting. Same scores, same four-band ramp, same component. */
+  const assessment = hospital.performance;
+  const scores: { label: string; value: number | undefined }[] = assessment ? [
+    { label: t('hospitals.kpiReporting'), value: assessment.reportingCompleteness },
+    { label: t('hospitals.kpiReadiness'), value: assessment.serviceReadinessScore },
+    { label: t('hospitals.colMedicines'), value: assessment.tracerMedicineAvailability },
+    { label: t('hospitals.colStaffing'), value: assessment.staffingScore },
+    { label: t('hospitals.colAncCoverage'), value: assessment.ancCoverage },
+    { label: t('hospitals.colEpiCoverage'), value: assessment.immunizationCoverage },
+  ] : [];
+
   return (
-    <div className="kpi-grid">
-      {cards.map(c => (
-        <div key={c.label} className="kpi">
-          <div className="icon-box-sm">
-            <c.icon style={{ color: c.tint }} />
+    <>
+      <div className="fac-assess">
+        <p className="fac-assess-head">{t('hospitals.assessmentTitle')}</p>
+        {scores.length === 0 ? (
+          <p className="fac-assess-empty">{t('hospitals.assessmentNone')}</p>
+        ) : (
+          <div className="fac-assess-grid">
+            {scores.map(sc => (
+              <div key={sc.label} className="fac-assess-item">
+                <span className="fac-assess-label">{sc.label}</span>
+                <span className="orgfac-meter">
+                  <span className="orgfac-meter-track">
+                    {typeof sc.value === 'number' && (
+                      <span
+                        className="orgfac-meter-fill"
+                        style={{ width: `${Math.max(0, Math.min(100, sc.value))}%`, background: getPerformanceColor(sc.value) }}
+                      />
+                    )}
+                  </span>
+                  <b
+                    className="orgfac-meter-value"
+                    style={{ color: typeof sc.value === 'number' ? getPerformanceColor(sc.value) : 'var(--text-muted)' }}
+                  >
+                    {typeof sc.value === 'number' ? `${sc.value}%` : '—'}
+                  </b>
+                </span>
+              </div>
+            ))}
           </div>
-          <div className="kpi__body">
-            <div className="kpi__value">{c.value}</div>
-            <div className="kpi__label">{c.label}</div>
+        )}
+      </div>
+
+      <div className="kpi-grid">
+        {cards.map(c => (
+          <div key={c.label} className="kpi">
+            <div className="icon-box-sm">
+              <c.icon style={{ color: c.tint }} />
+            </div>
+            <div className="kpi__body">
+              <div className="kpi__value">{c.value}</div>
+              <div className="kpi__label">{c.label}</div>
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </>
   );
 }
 

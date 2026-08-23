@@ -29,6 +29,7 @@ import {
   Database, HardDrive, Archive, RefreshCw, ShieldCheck, AlertTriangle, Loader2, ChevronRight,
 } from '@/components/icons/lucide';
 import { useApp } from '@/lib/context';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import { useRouter } from 'next/navigation';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
@@ -64,7 +65,20 @@ function readableDatabase(name: string): string {
   return base.charAt(0).toUpperCase() + base.slice(1);
 }
 
+/**
+ * PouchDB's own map/reduce index databases (`<db>-mrview-<hash>`).
+ *
+ * They hold index rows derived from documents this device already has, are
+ * rebuilt on demand, and replicate nowhere — so counting them as work that has
+ * not reached the server is wrong twice over. On a freshly seeded device they
+ * roughly double the number: 85 "unsynced databases" was 42 real ones and
+ * their indexes. `getDirtyDatabases` keeps them because the security wipe is
+ * right to be conservative about anything it cannot read; a report is not.
+ */
+const isViewIndex = (name: string) => name.includes('-mrview-');
+
 export default function DataManagementPanel() {
+  const { t } = useTranslation();
   const { currentUser } = useApp();
   const { showToast } = useToast();
   const router = useRouter();
@@ -79,14 +93,17 @@ export default function DataManagementPanel() {
       import('@/lib/db'),
     ]);
 
-    const unsynced = await getDirtyDatabases().catch(() => [] as string[]);
+    const unsynced = (await getDirtyDatabases().catch(() => [] as string[]))
+      .filter(name => !isViewIndex(name));
 
     // Document count across every local database. A database that will not
     // open contributes nothing rather than failing the whole measurement —
     // but if none of them opened, the answer is "unknown", not zero.
     let documents = 0;
     let readAny = false;
-    for (const name of await listLocalDatabases().catch(() => [] as string[])) {
+    const names = (await listLocalDatabases().catch(() => [] as string[]))
+      .filter(name => !isViewIndex(name));
+    for (const name of names) {
       try {
         const info = await getDB(name).info();
         documents += info.doc_count;
@@ -125,16 +142,13 @@ export default function DataManagementPanel() {
       // Skipped is not a failure — it is the guarantee working. A trail with
       // unsynced entries is the only copy of them, so it is never trimmed.
       if (result.skipped.length > 0) {
-        showToast(
-          `Removed ${removed} entries. ${result.skipped.length} trail(s) still hold unsynced entries and were kept.`,
-          'success',
-        );
+        showToast(t('dataMgmt.prunedKept', { removed, kept: result.skipped.length }), 'success');
       } else {
-        showToast(`Removed ${removed} entries older than ${LOCAL_AUDIT_RETENTION_DAYS} days.`, 'success');
+        showToast(t('dataMgmt.pruned', { removed, days: LOCAL_AUDIT_RETENTION_DAYS }), 'success');
       }
       await measure();
     } catch {
-      showToast('Could not prune the local trails.', 'error');
+      showToast(t('dataMgmt.pruneFailed'), 'error');
     } finally {
       setPruning(false);
     }
@@ -142,9 +156,9 @@ export default function DataManagementPanel() {
 
   const role = currentUser?.role;
   const destinations = [
-    { path: '/data-quality', label: 'Data quality', hint: 'Completeness and validity of what this facility has recorded.' },
-    { path: '/dhis2-export', label: 'DHIS2 export', hint: 'Aggregate reporting to the national HMIS.' },
-    { path: '/reports', label: 'Reports', hint: 'Scheduled and ad-hoc extracts.' },
+    { path: '/data-quality', label: t('dataMgmt.dataQuality'), hint: t('dataMgmt.dataQualityHint') },
+    { path: '/dhis2-export', label: t('dataMgmt.dhis2'), hint: t('dataMgmt.dhis2Hint') },
+    { path: '/reports', label: t('dataMgmt.reports'), hint: t('dataMgmt.reportsHint') },
   ].filter(d => role && isPathAllowed(role, d.path));
 
   const unsyncedCount = device?.unsynced.length ?? 0;
@@ -154,73 +168,83 @@ export default function DataManagementPanel() {
       <div className="ehr-set-section-head">
         <span><Database /></span>
         <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-          <h3>Data management</h3>
-          <small>Where this deployment&apos;s data is, and what has not been backed up yet</small>
+          <h3>{t('dataMgmt.title')}</h3>
+          <small>{t('dataMgmt.intro')}</small>
         </div>
         <button
           type="button"
           className="ehr-set-head-action"
           onClick={measure}
-          aria-label="Re-measure this device"
+          aria-label={t('dataMgmt.refreshAria')}
         >
-          <RefreshCw /> Refresh
+          <RefreshCw /> {t('dataMgmt.refresh')}
         </button>
       </div>
 
       {/* ── Unsynced work: the only thing here that can be permanently lost ── */}
       <div className="ehr-set-row dm-row">
         <div className="ehr-set-row-label">
-          <b>Work not yet on the server</b>
+          <b>{t('dataMgmt.unsyncedTitle')}</b>
           <span>
             {device === null
-              ? 'Checking every local database…'
+              ? t('dataMgmt.unsyncedChecking')
               : unsyncedCount === 0
-                ? 'Every local database matches the last completed sync.'
-                : `${unsyncedCount} database(s) hold writes that have not been proven to reach the server. `
-                  + 'Unknown counts as unsynced — a database that cannot be read is treated as holding work.'}
+                ? t('dataMgmt.unsyncedNone')
+                : t('dataMgmt.unsyncedSome', { count: unsyncedCount })}
           </span>
           {unsyncedCount > 0 && (
             <div className="dm-chips">
               {device!.unsynced.slice(0, 8).map(name => (
                 <em key={name} className="dm-chip dm-chip--warn">{readableDatabase(name)}</em>
               ))}
-              {unsyncedCount > 8 && <em className="dm-chip">+{unsyncedCount - 8} more</em>}
+              {unsyncedCount > 8 && <em className="dm-chip">{t('dataMgmt.more', { count: unsyncedCount - 8 })}</em>}
             </div>
           )}
         </div>
         <span className={`dm-state ${unsyncedCount > 0 ? 'is-warn' : 'is-ok'}`}>
           {device === null ? <Loader2 className="animate-spin" /> : unsyncedCount > 0 ? <AlertTriangle /> : <ShieldCheck />}
-          {device === null ? 'Checking' : unsyncedCount > 0 ? `${unsyncedCount} pending` : 'All synced'}
+          {device === null
+            ? t('dataMgmt.stateChecking')
+            : unsyncedCount > 0 ? t('dataMgmt.statePending', { count: unsyncedCount }) : t('dataMgmt.stateAllSynced')}
         </span>
       </div>
 
       {/* ── Durability: whether the browser may drop the above ── */}
       <div className="ehr-set-row dm-row">
         <div className="ehr-set-row-label">
-          <b>Local storage durability</b>
+          <b>{t('dataMgmt.durabilityTitle')}</b>
           <span>
             {device?.durable === 'persisted'
-              ? 'The browser has granted durable storage — records are not dropped under storage pressure.'
+              ? t('dataMgmt.durabilityPersisted')
               : device?.durable === 'evictable'
-                ? 'Storage is evictable. Under pressure the browser may drop unsynced records, so sync this device regularly.'
-                : 'This browser does not report whether storage is durable.'}
+                ? t('dataMgmt.durabilityEvictable')
+                : t('dataMgmt.durabilityUnknown')}
           </span>
         </div>
         <span className={`dm-state ${device?.durable === 'persisted' ? 'is-ok' : device?.durable === 'evictable' ? 'is-warn' : ''}`}>
           {device?.durable === 'persisted' ? <ShieldCheck /> : <HardDrive />}
-          {device?.durable === 'persisted' ? 'Durable' : device?.durable === 'evictable' ? 'Evictable' : 'Unknown'}
+          {device?.durable === 'persisted'
+            ? t('dataMgmt.durable')
+            : device?.durable === 'evictable' ? t('dataMgmt.evictable') : t('dataMgmt.unknown')}
         </span>
       </div>
 
       {/* ── Footprint ── */}
       <div className="ehr-set-row dm-row">
         <div className="ehr-set-row-label">
-          <b>On this device</b>
+          <b>{t('dataMgmt.deviceTitle')}</b>
           <span>
             {device === null
-              ? 'Measuring…'
-              : `${device.documents === null ? '—' : device.documents.toLocaleString()} documents`
-                + `${device.quotaBytes ? ` · ${formatBytes(device.usageBytes)} of ${formatBytes(device.quotaBytes)} granted` : ''}`}
+              ? t('dataMgmt.measuring')
+              : device.quotaBytes
+                ? t('dataMgmt.footprint', {
+                  documents: device.documents === null ? '—' : device.documents.toLocaleString(),
+                  used: formatBytes(device.usageBytes),
+                  quota: formatBytes(device.quotaBytes),
+                })
+                : t('dataMgmt.documents', {
+                  documents: device.documents === null ? '—' : device.documents.toLocaleString(),
+                })}
           </span>
         </div>
         <span className="dm-state">
@@ -232,31 +256,27 @@ export default function DataManagementPanel() {
       {/* ── Backup: the answer that makes the rest survivable ── */}
       <div className="ehr-set-row dm-row">
         <div className="ehr-set-row-label">
-          <b>Server backup</b>
+          <b>{t('dataMgmt.backupTitle')}</b>
           <span>
-            {backup === null
-              ? 'Reading backup status…'
-              : backup.detail}
+            {backup === null ? t('dataMgmt.backupReading') : backup.detail}
           </span>
         </div>
         <span className={`dm-state ${backup?.state === 'ok' ? 'is-ok' : backup?.state === 'unknown' ? '' : 'is-warn'}`}>
           {backup === null ? <Loader2 className="animate-spin" /> : backup.state === 'ok' ? <ShieldCheck /> : <AlertTriangle />}
           {backup === null
-            ? 'Reading'
+            ? t('dataMgmt.reading')
             : backup.lastBackupAt
-              ? `RPO ${backup.rpoHours}h`
-              : 'No backup on record'}
+              ? t('dataMgmt.rpo', { hours: backup.rpoHours })
+              : t('dataMgmt.noBackup')}
         </span>
       </div>
 
       {/* ── Retention: the one action on this panel ── */}
       <div className="ehr-set-row dm-row">
         <div className="ehr-set-row-label">
-          <b>Local trail retention</b>
+          <b>{t('dataMgmt.retentionTitle')}</b>
           <span>
-            The audit and controlled-substance trails replicate one way and are kept on the server in
-            full. This device keeps the last {LOCAL_AUDIT_RETENTION_DAYS} days. Pruning skips any trail
-            still holding unsynced entries — those are the only copy in existence.
+            {t('dataMgmt.retentionBody', { days: LOCAL_AUDIT_RETENTION_DAYS })}
           </span>
         </div>
         <button
@@ -265,7 +285,7 @@ export default function DataManagementPanel() {
           onClick={handlePrune}
           disabled={pruning}
         >
-          <Archive className="w-4 h-4" /> {pruning ? 'Pruning…' : 'Prune now'}
+          <Archive className="w-4 h-4" /> {pruning ? t('dataMgmt.pruning') : t('dataMgmt.prune')}
         </button>
       </div>
 
@@ -281,7 +301,7 @@ export default function DataManagementPanel() {
             className="btn btn-secondary btn-sm"
             onClick={() => router.push(dest.path)}
           >
-            Open <ChevronRight className="w-4 h-4" />
+            {t('dataMgmt.open')} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       ))}

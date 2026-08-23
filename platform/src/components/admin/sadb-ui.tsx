@@ -28,6 +28,20 @@ import type { UserRole } from '@/lib/db-types';
 
 /** The five chip tones drawn in the designs. */
 export type ChipTone = 'green' | 'yellow' | 'red' | 'blue' | 'neutral';
+
+/**
+ * A subscription tier, as a bordered label.
+ *
+ * Plans were plain text in every list — same weight as the org name beside
+ * them — so nothing distinguished a Basic tenant from an Enterprise one
+ * without reading the word. The outline carries the distinction; the fill
+ * stays a tint so the row still leads with who the tenant is.
+ */
+export function SadbPlanChip({ plan }: { plan: string }) {
+  const key = (plan || '').toLowerCase();
+  const variant = key === 'professional' || key === 'enterprise' ? ` sadb-plan--${key}` : '';
+  return <span className={`sadb-plan${variant}`}>{plan}</span>;
+}
 /** The four signal tones the dashboard logic works in. */
 export type Tone = 'ok' | 'warn' | 'danger' | 'muted';
 

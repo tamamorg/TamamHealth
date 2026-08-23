@@ -29,7 +29,7 @@ describe('role dashboard preview links', () => {
     ['components/dashboards/SuperintendentDashboard.tsx', 'alert=', 'app/(dashboard)/surveillance/page.tsx', "get('alert')"],
     ['components/dashboards/FacilityManagementDashboard.tsx', 'inquiry=', 'app/(dashboard)/inquiries/page.tsx', "get('inquiry')"],
     ['components/dashboards/FacilityManagementDashboard.tsx', 'request=', 'app/(dashboard)/hr/leave/page.tsx', "get('request')"],
-    ['app/(dashboard)/dashboard/state/page.tsx', 'county=', 'app/(dashboard)/hospitals/page.tsx', "get('county')"],
+    ['app/(dashboard)/dashboard/state/page.tsx', 'county=', 'components/facilities/FacilityNetworkView.tsx', "get('county')"],
   ])('pairs the %s deep link with a consuming target', (producer, emittedParam, consumer, consumedParam) => {
     expect(source(producer)).toContain(emittedParam);
     expect(source(consumer)).toContain(consumedParam);

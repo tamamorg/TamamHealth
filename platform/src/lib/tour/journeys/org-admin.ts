@@ -59,7 +59,7 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
     // used to be a separate screen behind a Manage button — they are tabs on
     // the facility itself now, which is why the tour can point at them.
     id: 'facility-tabs',
-    route: '/hospitals',
+    route: '/admin/organizations',
     target: '[data-tour="facility-row-tabs"]',
     placement: 'left',
     title: 'Inside one facility',

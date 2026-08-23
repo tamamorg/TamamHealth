@@ -53,7 +53,7 @@ export function canCreateUsers(role: UserRole | string): boolean {
  * Settings, and opens the same dialog.
  */
 export function facilitiesHrefForRole(role: UserRole | string): string | null {
-  return canCreateFacilities(role) ? '/hospitals' : null;
+  return canCreateFacilities(role) ? '/admin/organizations' : null;
 }
 
 /**

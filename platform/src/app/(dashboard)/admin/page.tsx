@@ -33,7 +33,9 @@ import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { formatWhen } from '@/components/admin/sa-ui';
 import { buildRiskRows, readinessFromRisks } from '@/components/admin/risk-signals';
 import { getRiskResolutions, indexResolutions, isRiskResolved } from '@/lib/services/risk-resolution-service';
-import { SadbChip, SadbGridList, SadbGridRow, statusChip, effectiveOrgStatus } from '@/components/admin/sadb-ui';
+import {
+  SadbChip, SadbGridList, SadbGridRow, SadbPlanChip, statusChip, effectiveOrgStatus,
+} from '@/components/admin/sadb-ui';
 import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import { Maximize2, Plus } from '@/components/icons/lucide';
@@ -517,7 +519,7 @@ export default function AdminDashboardPage() {
                           </span>
                         </span>
                       </span>
-                      <span className="capitalize">{org.subscriptionPlan}</span>
+                      <SadbPlanChip plan={org.subscriptionPlan} />
                       <span className="sadb-tenant-num">{facilities.length} / {org.maxHospitals}</span>
                       <span className="sadb-tenant-num">{loading ? '…' : `${usersByOrg.get(org._id) || 0} / ${org.maxUsers}`}</span>
                       <span className="sadb-tenant-num">{loading ? '…' : (patientAgg.byOrg.get(org._id) || 0).toLocaleString()}</span>

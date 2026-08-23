@@ -294,7 +294,7 @@ export function FacilitySettingsView({
                 })()}
                 <span className="fs-fac-act">
                   {canOpenProfile && (
-                    <Link href={`/hospitals/${h._id}/manage`} className="fs-fac-profile">Profile</Link>
+                    <Link href={`/admin/organizations?facility=${h._id}`} className="fs-fac-profile">Profile</Link>
                   )}
                   <ChevronRight className="w-4 h-4 fs-fac-chev" aria-hidden />
                 </span>
@@ -606,7 +606,7 @@ export function FacilitySettingsView({
               </span>
             </div>
             {canOpenProfile && (
-              <Link href={`/hospitals/${effectiveHospitalId}/manage`} className="ehr-set-btn">Facility profile</Link>
+              <Link href={`/admin/organizations?facility=${effectiveHospitalId}`} className="ehr-set-btn">Facility profile</Link>
             )}
             {!hospitalId && (
               <button type="button" className="ehr-set-btn" onClick={() => setSelectedHospitalId('')}>

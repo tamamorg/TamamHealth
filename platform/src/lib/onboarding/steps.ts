@@ -64,7 +64,7 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   // Read-only for most roles; for super_admin and org_admin this page also
   // hosts the create-a-facility dialog, and registering the first facility is
   // the step every staff account depends on (`roleNeedsFacility`).
-  '/hospitals': { verb: 'Set up your facilities', desc: 'Browse facilities, their status and capacity, and register a new one. Open a facility for its staff, wards, equipment, inventory, schedules and settings — including adding a staff account straight to it.', est: 3 },
+  '/admin/organizations': { verb: 'Set up organizations and facilities', desc: 'Create and configure the organizations on the platform and review their subscriptions, then browse the facilities they run — status, capacity, performance — and register new ones. Open a facility for its staff, wards, equipment, inventory, schedules and settings.', est: 4 },
   '/vital-statistics': { verb: 'Review vital statistics', desc: 'See births, deaths, and population-health indicators.', est: 2 },
   '/epidemic-intelligence': { verb: 'Open epidemic intelligence', desc: 'Monitor outbreak signals and early-warning indicators.', est: 2 },
   '/mch-analytics': { verb: 'Open MCH analytics', desc: 'Track maternal and child health programme performance.', est: 2 },
@@ -81,7 +81,6 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   // Admin / org-admin
   // /admin/billing merged into /admin/organizations 2026-08-23, so the one
   // step covers tenants AND their subscriptions.
-  '/admin/organizations': { verb: 'Set up organizations', desc: 'Create and configure the organizations on the platform, and review their subscriptions and seat limits.', est: 2 },
   '/admin/users': { verb: 'Manage all users', desc: 'Create accounts and assign roles across the platform.', est: 2 },
   '/admin/analytics': { verb: 'Explore platform analytics', desc: 'Track adoption and usage across all organizations.', est: 2 },
   '/admin/system': { verb: 'Check system health', desc: 'Review the local data stores and the running build.', est: 2 },

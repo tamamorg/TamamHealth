@@ -10,7 +10,7 @@
  *
  * Two long-standing gaps stay fixed here:
  *  • The create form lives in `CreateFacilityModal` and is opened from the
- *    network directory (`/hospitals`), the global Add menu, and here.
+ *    network directory (`/admin/organizations`), the global Add menu, and here.
  *  • `loadData` must not return early for accounts with no `orgId` —
  *    that is exactly the platform operator. Facility scoping is
  *    `filterByScope`'s job, not this component's.

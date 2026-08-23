@@ -21,11 +21,8 @@ import {
   Syringe,
   HeartPulse,
   Globe,
-  CreditCard,
-  Settings,
   Calendar,
   ScanLine,
-  Server,
   Gauge,
   // Bills have ONE nav home in every role: the Wallet on /payments (the Bills &
   // Claims workspace). The invoice list (/billing) and the claims queue
@@ -49,8 +46,6 @@ import {
   GitCompareArrows,
   ArrowRightLeft,
   FileText,
-  RefreshCw,
-  Flag,
   KeyRound,
   CalendarClock,
   ClipboardList,
@@ -108,22 +103,22 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/admin/risk', label: 'Risk Center', icon: ShieldAlert, section: 'COMMAND' },
       { href: '/admin/audit', label: 'Audit Logs', icon: FileText, section: 'COMMAND' },
       { href: '/admin/organizations', label: 'Organizations', icon: Building2, section: 'TENANTS' },
-      { href: '/hospitals', label: 'Facilities', icon: HospitalIcon, section: 'TENANTS' },
       // Account administration is listed once, under PEOPLE & HR below —
       // it was also here under TENANTS, giving one page two nav homes.
       { href: '/admin/announcements', label: 'Announcements', icon: Megaphone, section: 'TENANTS' },
-      { href: '/admin/system', label: 'System Health', icon: Server, section: 'PLATFORM OPERATIONS' },
-      { href: '/admin/sync', label: 'Sync & Jobs', icon: RefreshCw, section: 'PLATFORM OPERATIONS' },
-      { href: '/admin/interop', label: 'Interoperability', icon: Globe, section: 'PLATFORM OPERATIONS' },
-      { href: '/admin/data', label: 'Data Governance', icon: Database, section: 'PLATFORM OPERATIONS' },
+      // PLATFORM OPERATIONS and GOVERNANCE moved into Settings 2026-08-23.
+      // System Health, Sync & Jobs, Interoperability, Data Governance,
+      // Security & Compliance, Configuration and Feature Flags were the two
+      // largest groups in this rail and every one of them is configuration or
+      // a read-only health view — which is what Settings is for. They are
+      // embedded panels there now (RoleSettingsView), so the primary nav lists
+      // what the operator DOES and Settings holds what they SET. All seven
+      // routes stay in allowedRoutes: deep links and bookmarks still resolve.
       // Billing & Subscriptions merged into /admin/organizations 2026-08-23
       // (the page was the tenant list wearing billing columns); the route
       // stays registered as a redirect stub for old links.
       { href: '/admin/analytics', label: 'Usage Analytics', icon: TrendingUp, section: 'BUSINESS' },
       { href: '/reports', label: 'Reports', icon: ClipboardCheck, section: 'BUSINESS' },
-      { href: '/admin/security', label: 'Security & Compliance', icon: Shield, section: 'GOVERNANCE' },
-      { href: '/admin/config', label: 'Configuration', icon: Settings, section: 'GOVERNANCE' },
-      { href: '/admin/flags', label: 'Feature Flags', icon: Flag, section: 'GOVERNANCE' },
       // WORKSPACES removed 2026-08-19: the platform operator is not a clinical
       // user, and a menu of live facility stations put real patient queues one
       // click from the governance console. The clinical workspaces now belong
@@ -171,7 +166,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // This is staff-to-staff chat. It was labelled "Enquiries", which sent
       // anyone looking for inbound patient enquiries to the wrong screen —
       // those now have their own page, reachable from the People & HR menu.
-      { href: '/hospitals', label: 'Facilities', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
+      { href: '/admin/organizations', label: 'Organizations', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
       { href: '/wards', label: 'Bed Management', icon: BedDouble, section: 'FACILITIES & OPERATIONS' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'FACILITIES & OPERATIONS' },
       // One nav home for the money, same as every other role: /payments and
@@ -425,7 +420,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // Epidemic Intelligence has six tabs and the sidebar surfaced exactly one
       // of them, which read as a separate destination rather than as the tab it
       // is — reach it from the page's own tab strip.
-      { href: '/hospitals', label: 'Facilities & Services', icon: HospitalIcon, section: 'HEALTH SYSTEM PERFORMANCE' },
+      { href: '/admin/organizations', label: 'Organizations', icon: HospitalIcon, section: 'HEALTH SYSTEM PERFORMANCE' },
       { href: '/facility-assessments', label: 'Assessments & Readiness', icon: ClipboardCheck, section: 'HEALTH SYSTEM PERFORMANCE' },
       // Equity is a health-system-performance question, so it sits with the
       // other two rather than carrying a section of its own. Its 'High Burden'
@@ -464,7 +459,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     navItems: [
       { href: '/dashboard/state', label: 'County Overview', icon: LayoutDashboard },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
-      { href: '/hospitals', label: 'Facility Network', icon: HospitalIcon, section: 'OVERSIGHT' },
+      { href: '/admin/organizations', label: 'Organizations', icon: HospitalIcon, section: 'OVERSIGHT' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'OVERSIGHT' },
       { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'INTELLIGENCE' },
       { href: '/epidemic-intelligence', label: 'Epidemic Intelligence', icon: Biohazard, section: 'INTELLIGENCE' },
@@ -521,7 +516,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // under a 'MORE' heading invented to introduce it.
       { href: '/dashboard', label: 'Hospital Dashboard', icon: LayoutDashboard },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
-      { href: '/hospitals', label: 'Hospital Network', icon: HospitalIcon, section: 'ADMINISTRATION' },
+      { href: '/admin/organizations', label: 'Organizations', icon: HospitalIcon, section: 'ADMINISTRATION' },
       { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'ADMINISTRATION' },
       { href: '/equipment', label: 'Assets', icon: Package, section: 'ADMINISTRATION' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'ADMINISTRATION' },
@@ -586,7 +581,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/births', label: 'Births', icon: Baby, section: 'VITAL EVENTS' },
       { href: '/deaths', label: 'Deaths', icon: UserX, section: 'VITAL EVENTS' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'GOVERNANCE' },
-      { href: '/hospitals', label: 'Facility Network', icon: Building2, section: 'GOVERNANCE' },
+      { href: '/admin/organizations', label: 'Organizations', icon: Building2, section: 'GOVERNANCE' },
       { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'GOVERNANCE' },
     ],
     color: BRAND_PRIMARY,
@@ -639,7 +634,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/epidemic-intelligence', label: 'Epidemic Intelligence', icon: Biohazard, section: 'INTELLIGENCE' },
       { href: '/mch-analytics', label: 'MCH Analytics', icon: HeartPulse, section: 'INTELLIGENCE' },
       { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'INTELLIGENCE' },
-      { href: '/hospitals', label: 'Hospital Network', icon: HospitalIcon, section: 'FACILITY' },
+      { href: '/admin/organizations', label: 'Organizations', icon: HospitalIcon, section: 'FACILITY' },
       { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'FACILITY' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'FACILITY' },
       { href: '/equipment', label: 'Assets & Equipment', icon: Package, section: 'FACILITY' },
@@ -809,7 +804,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/deaths', label: 'Deaths', icon: UserX, section: 'VITAL EVENTS' },
       { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'GOVERNANCE' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'GOVERNANCE' },
-      { href: '/hospitals', label: 'Facility Network', icon: HospitalIcon, section: 'GOVERNANCE' },
+      { href: '/admin/organizations', label: 'Organizations', icon: HospitalIcon, section: 'GOVERNANCE' },
     ],
     color: BRAND_PRIMARY, gradientFrom: BRAND_SECONDARY, gradientTo: BRAND_PRIMARY, badgeLabel: 'HMIS Off.',
   },
