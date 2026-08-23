@@ -403,6 +403,58 @@ export const patientTransfersDB = () => getDB('tamamhealth_patient_transfers');
 // re-runs against the empty server.
 export const SEED_VERSION = 74;
 
+/**
+ * Delete local PouchDB databases whose IndexedDB backing is corrupt.
+ *
+ * The signature is a database that EXISTS with zero object stores — the
+ * remains of a create or delete that was interrupted (crash, tab kill,
+ * storage eviction mid-versionchange). PouchDB cannot open one: its upgrade
+ * transaction aborts ("Version change transaction was aborted") and every
+ * later touch throws NotFoundError — and because `listLocalDatabases()`
+ * enumerates IndexedDB by name, the wipe check, the dirty-database check and
+ * the sync manager all re-open the corpse forever. One such database left a
+ * dashboard on "Loading facility data…" indefinitely.
+ *
+ * Deleting is safe by construction: zero object stores means zero documents —
+ * there is nothing inside to lose. Runs in a few milliseconds when nothing is
+ * wrong; never throws (a repair that crashes boot is worse than the corruption
+ * it repairs).
+ */
+export async function repairCorruptLocalDatabases(): Promise<string[]> {
+  if (typeof indexedDB === 'undefined' || typeof indexedDB.databases !== 'function') return [];
+  const repaired: string[] = [];
+  try {
+    const names = (await indexedDB.databases())
+      .map(d => d.name)
+      .filter((n): n is string => !!n && n.startsWith('_pouch_'));
+    for (const name of names) {
+      const stores = await Promise.race([
+        new Promise<number | null>(resolve => {
+          const req = indexedDB.open(name);
+          req.onsuccess = () => { const db = req.result; const n = db.objectStoreNames.length; db.close(); resolve(n); };
+          req.onerror = () => resolve(null);
+          req.onblocked = () => resolve(-1);
+        }),
+        new Promise<number>(resolve => setTimeout(() => resolve(-1), 2000)),
+      ]);
+      // null = unopenable, 0 = the zero-store corpse. Both are unusable and
+      // both hold nothing; -1 (blocked/slow) is a healthy database someone
+      // else has open, so it is left alone.
+      if (stores === 0 || stores === null) {
+        await new Promise<void>(resolve => {
+          const del = indexedDB.deleteDatabase(name);
+          del.onsuccess = del.onerror = del.onblocked = () => resolve();
+        });
+        repaired.push(name);
+      }
+    }
+    if (repaired.length) console.warn('[db] repaired corrupt local databases:', repaired);
+  } catch {
+    // Enumeration itself failing means nothing can be repaired this boot.
+  }
+  return repaired;
+}
+
 export async function isSeeded(): Promise<boolean> {
   try {
     const db = getDB('tamamhealth_meta');

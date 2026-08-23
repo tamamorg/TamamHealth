@@ -334,6 +334,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Demo builds are exempt: the seeded dataset is the product there, it
       // contains no real patient, and wiping it on every visit would leave
       // the demo empty.
+      // Heal zero-store IndexedDB corpses BEFORE anything opens PouchDB —
+      // the wipe check and the seed both enumerate local databases, and one
+      // corrupt entry poisons every list they build. See
+      // repairCorruptLocalDatabases for the failure it ends.
+      try {
+        const { repairCorruptLocalDatabases } = await import('./db');
+        await repairCorruptLocalDatabases();
+      } catch { /* never block boot on the repair */ }
+
       const isDemoBuild = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
       const hasSessionCookie = document.cookie.split(';').some(c => {
         const name = c.trim().split('=')[0];
