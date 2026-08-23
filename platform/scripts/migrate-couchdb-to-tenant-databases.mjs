@@ -47,8 +47,13 @@ const headers = { Authorization: authHeader, 'Content-Type': 'application/json' 
 
 // CouchDB 3 rejects bare database names in `_replicator` documents with
 // `local_endpoints_not_supported`; persisted replications must name absolute
-// endpoints. (One-shot `/_replicate` still accepts local names, which is why
-// the initial copy above succeeds and only the continuous jobs fail.)
+// endpoints. One-shot `/_replicate` accepts local names — but only on a node
+// that can resolve its own bind address. With the stock `bind_address = any`
+// the server builds `http://any:5984/_session` for the internal replicator
+// login and dies on `{conn_failed,{error,nxdomain}}`, which reads like an auth
+// failure and is really a DNS one. Both calls therefore name absolute
+// endpoints through `endpoint()` below, so neither depends on how the node was
+// bound.
 //
 // The URL is resolved by the CouchDB server itself, not by this script, so it
 // defaults to the node's own loopback rather than to COUCHDB_URL — an operator
@@ -108,8 +113,8 @@ async function migrateOne(orgId, source) {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      source,
-      target,
+      source: endpoint(source),
+      target: endpoint(target),
       create_target: false,
       selector: { orgId: { $eq: orgId } },
     }),
