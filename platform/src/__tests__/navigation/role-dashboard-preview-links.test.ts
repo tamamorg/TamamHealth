@@ -66,25 +66,29 @@ describe('role dashboard preview links', () => {
     expect(dashboard).toContain('router.push(`/admin/organizations/${org._id}`)');
   });
 
-  it('registry rows open the shared row-actions menu, drill-down included', () => {
-    // 2026-08-24: the registry row is the one place a menu earns its stop.
-    // Spending the click on a drill-down left BOTH registries with no CRUD —
-    // an organization row jumped to Facilities, a facility row to People, and
-    // editing either meant hunting for the button in the bar above. The row
-    // now offers Edit / Deactivate / Open full page, and the drill-down
-    // survives as an entry in the same menu rather than being the whole click.
+  it('registry rows open the record itself — no menu in the way', () => {
+    // 2026-08-24: the row click was briefly a menu at the pointer (edit, drill
+    // down, deactivate, open full page). It is the record's own page again,
+    // because that page already carries every one of those actions — and a
+    // click that has already named a record should not then ask which of five
+    // things it meant.
     //
-    // This is the shared RowActionsPopup — a menu at the pointer, one portal
-    // for the list — NOT the old per-tenant pop card, which stays gone.
+    // Nothing is stranded by that: a facility is retired on the facility page,
+    // a person is deactivated on theirs, the tenant page still hands its
+    // Deactivate back here as ?deactivate=1, and a deactivated tenant is
+    // restored from the Trash panel — which is the only list that holds one.
     const registry = source('modules/tenancy/components/ManagementWorkspace.tsx');
     expect(registry).not.toContain('TenantCard');
-    expect(registry).toContain('RowActionsPopup');
-    expect(registry).toContain('rowActionsAt(event, organizationActions(org))');
-    expect(registry).toContain('rowActionsAt(event, facilityActions(facility))');
-    expect(registry).toContain('rowActionsAt(event, personActions(user))');
-    // The drill-down the row click used to be, kept as a menu entry.
-    expect(registry).toContain("scopeTo('facilities', org._id)");
-    expect(registry).toContain("scopeTo('people', facility.orgId ?? orgId, facility._id)");
+    expect(registry).not.toContain('RowActionsPopup');
+    expect(registry).not.toContain('rowActionsAt');
+    expect(registry).toContain('openRecord(organizationHref(org))');
+    expect(registry).toContain('openRecord(facilityHref(facility))');
+    expect(registry).toContain('openRecord(personHref(user._id))');
+    // A role whose allow-list has no such page gets an inert row rather than a
+    // link the Edge proxy bounces back to its dashboard.
+    expect(registry).toContain("opensRecord('/admin/users')");
+    expect(registry).toContain("params.has('deactivate')");
+    expect(source('components/settings/TrashPanel.tsx')).toContain('restore(');
   });
 
   it('keeps the queues the dashboard dropped reachable from their own modules', () => {

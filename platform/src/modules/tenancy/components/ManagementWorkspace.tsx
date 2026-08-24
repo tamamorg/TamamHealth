@@ -2,11 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Ban, Building2, Maximize2, Pencil, Plus, RotateCcw, Users } from '@/components/icons/lucide';
+import { Building2, Plus, Users } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
-import RowActionsPopup, { rowActionsAt, type RowActionsPopupState } from '@/components/RowActionsPopup';
-import type { RowAction } from '@/components/RowActionsMenu';
 import { useToast } from '@/components/Toast';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -14,6 +12,7 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { canCreateFacilities, canCreateUsers } from '@/lib/people-nav';
+import { isPathAllowed } from '@/lib/role-routes';
 import { activeFacilities } from '@/lib/services/hospital-service';
 import { OrganizationForm } from '@/components/admin/OrganizationForm';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
@@ -39,13 +38,19 @@ function initialView(): ManagementView {
   return VIEWS.includes(value as ManagementView) ? value as ManagementView : 'organizations';
 }
 
-/** A deactivate/reactivate awaiting confirmation. `active` is the record's
- *  state NOW, so the pending action is the opposite of it. */
-interface PendingStatusChange {
-  kind: 'organization' | 'facility' | 'person';
+/**
+ * An organization deactivation awaiting confirmation.
+ *
+ * Organizations only, and one direction only. A facility is retired and a
+ * person is deactivated on their own pages, which is where a row click now
+ * lands; bringing a deactivated tenant BACK is the Trash panel's job, since
+ * `useOrganizations` keeps trashed tenants out of every console list. What is
+ * left here is the confirm the tenant page hands back as
+ * `?org=<id>&deactivate=1` — the registry owns that dialog.
+ */
+interface PendingDeactivation {
   id: string;
   name: string;
-  active: boolean;
 }
 
 export default function ManagementWorkspace() {
@@ -66,10 +71,7 @@ export default function ManagementWorkspace() {
   const [editingOrg, setEditingOrg] = useState<OrganizationDoc | null>(null);
   const [editingFacility, setEditingFacility] = useState<HospitalDoc | null>(null);
   const [handoff, setHandoff] = useState<UserCredentialHandoff | null>(null);
-  /* One menu for the whole list — see RowActionsPopup: the open row and its
-     anchor are a single piece of page state, not one portal per row. */
-  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
-  const [pending, setPending] = useState<PendingStatusChange | null>(null);
+  const [pending, setPending] = useState<PendingDeactivation | null>(null);
   const [busy, setBusy] = useState(false);
   const handledDeepLink = useRef(false);
   const seededScope = useRef(false);
@@ -114,10 +116,10 @@ export default function ManagementWorkspace() {
     return true;
   }), [facilityId, orgId, userStore.users]);
 
-  /* What the tiles above the list count. Deactivated records stay in both
-     lists — the tile is where their number is stated, so a scope with dormant
-     accounts in it says so before you scroll. */
-  const inactiveOrganizations = organizations.filter(org => org.isActive === false).length;
+  /* Deactivated accounts stay in the People list wearing a chip, so the tile
+     states how many before you scroll. There is no organization equivalent:
+     `useOrganizations` takes a deactivated tenant out of every console list
+     and into the Trash panel, so this registry never holds one to count. */
   const inactivePeople = people.filter(user => user.isActive === false).length;
 
   /* Every list answers the scope chosen on the search row, the People list
@@ -167,7 +169,7 @@ export default function ManagementWorkspace() {
     if (scopedOrg && currentUser.role === 'super_admin') {
       if (params.has('edit')) { setEditingOrg(scopedOrg); setShowOrgEditor(true); }
       else if (params.has('deactivate') && scopedOrg.isActive !== false) {
-        setPending({ kind: 'organization', id: scopedOrg._id, name: scopedOrg.name, active: true });
+        setPending({ id: scopedOrg._id, name: scopedOrg.name });
       }
     }
     const userId = params.get('user');
@@ -198,123 +200,33 @@ export default function ManagementWorkspace() {
   };
   const showPrimaryAction = canAddOrganization || canAddFacility || canAddPerson;
 
-  /* ── Row actions ──────────────────────────────────────────────────────
-     Clicking a row opens these at the pointer rather than doing one thing
-     silently. Drilling down used to BE the row click, which left the two
-     registries with no CRUD at all: an organization row jumped to Facilities
-     and a facility row to People, and editing either meant finding the button
-     in the bar above. Now the drill-down is one entry among the actions, so
-     nothing is lost and Edit/Deactivate are reachable from the record itself.
+  /* ── Opening a record ─────────────────────────────────────────────────
+     A row click opens the record's own page. It used to open a menu at the
+     pointer — edit, drill down, deactivate, open full page — which put five
+     choices in front of an operator whose click already said which record
+     they meant, and buried the page that answers the question behind one of
+     them. Everything that menu offered lives on the page the row now opens:
+     each detail page carries its own edit and its own deactivate.
 
-     Each list gates on the same permission its existing bar button uses, so
-     the menu never offers what the toolbar would have refused. */
-  const mayEditOrganizations = currentUser.role === 'super_admin';
-  const mayEditFacilities = canCreateFacilities(currentUser.role);
-  const mayEditPeople = mayCreatePeople;
+     A role whose allow-list has no such page gets a row that does not
+     pretend to be clickable, rather than a link the Edge proxy bounces
+     straight back to its dashboard. */
+  const opensRecord = (base: string) => isPathAllowed(currentUser.role, base);
+  const openRecord = (href: string) => () => router.push(href);
+  const organizationHref = (org: OrganizationDoc) => `/admin/organizations/${encodeURIComponent(org._id)}`;
+  const facilityHref = (facility: HospitalDoc) => `/admin/facilities/${encodeURIComponent(facility._id)}`;
+  /* `returnTo` so Save on the person's page comes back to this list rather
+     than to the console the page itself belongs to. */
+  const personHref = (userId: string) =>
+    `/admin/users/${encodeURIComponent(userId)}?returnTo=${encodeURIComponent('/manage?view=people')}`;
 
-  const scopeTo = (view: ManagementView, org: string, facility = '') => {
-    setOrgId(org);
-    setFacilityId(facility);
-    setView(view);
-    const params = new URLSearchParams({ view });
-    if (org) params.set('org', org);
-    if (facility) params.set('facility', facility);
-    router.replace(`/manage?${params.toString()}`, { scroll: false });
-  };
-
-  const organizationActions = (org: OrganizationDoc): RowAction[] => {
-    const active = org.isActive !== false;
-    return [
-      ...(mayEditOrganizations ? [{
-        key: 'edit', label: t('management.editOrganization'), icon: <Pencil className="w-4 h-4" />,
-        onClick: () => { setEditingOrg(org); setShowOrgEditor(true); },
-      }] : []),
-      ...(visibleViews.includes('facilities') ? [{
-        key: 'facilities', label: t('management.viewFacilities'), icon: <Building2 className="w-4 h-4" />,
-        onClick: () => scopeTo('facilities', org._id),
-      }] : []),
-      ...(visibleViews.includes('people') ? [{
-        key: 'people', label: t('management.viewPeople'), icon: <Users className="w-4 h-4" />,
-        onClick: () => scopeTo('people', org._id),
-      }] : []),
-      {
-        key: 'open', label: t('management.openFullPage'), icon: <Maximize2 className="w-4 h-4" />,
-        onClick: () => router.push(`/admin/organizations/${encodeURIComponent(org._id)}`),
-      },
-      ...(mayEditOrganizations ? [{
-        key: 'status',
-        label: active ? t('management.deactivate') : t('management.reactivate'),
-        tone: (active ? 'danger' : 'success') as RowAction['tone'],
-        icon: active ? <Ban className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />,
-        onClick: () => setPending({ kind: 'organization', id: org._id, name: org.name, active }),
-      }] : []),
-    ];
-  };
-
-  const facilityActions = (facility: HospitalDoc): RowAction[] => [
-    ...(mayEditFacilities ? [{
-      key: 'edit', label: t('management.editFacility'), icon: <Pencil className="w-4 h-4" />,
-      onClick: () => { setEditingFacility(facility); setShowFacilityEditor(true); },
-    }] : []),
-    ...(visibleViews.includes('people') ? [{
-      key: 'people', label: t('management.viewPeople'), icon: <Users className="w-4 h-4" />,
-      onClick: () => scopeTo('people', facility.orgId ?? orgId, facility._id),
-    }] : []),
-    {
-      key: 'open', label: t('management.openFullPage'), icon: <Maximize2 className="w-4 h-4" />,
-      onClick: () => router.push(`/admin/facilities/${encodeURIComponent(facility._id)}`),
-    },
-    /* Deactivate only, never reactivate: this list is `activeFacilities`, so a
-       retired facility is not in it to be picked. Bringing one back is the
-       facility page's job. */
-    ...(mayEditFacilities ? [{
-      key: 'status', label: t('management.deactivate'), tone: 'danger' as const,
-      icon: <Ban className="w-4 h-4" />,
-      onClick: () => setPending({ kind: 'facility', id: facility._id, name: facility.name, active: true }),
-    }] : []),
-  ];
-
-  const personActions = (user: typeof people[number]): RowAction[] => {
-    const active = user.isActive !== false;
-    /* Deactivating yourself would end the session doing it. */
-    const isSelf = user._id === currentUser._id;
-    return [
-      {
-        key: 'open',
-        label: mayEditPeople ? t('management.editPerson') : t('management.openFullPage'),
-        icon: mayEditPeople ? <Pencil className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />,
-        onClick: () => router.push(`/admin/users/${encodeURIComponent(user._id)}?returnTo=${encodeURIComponent('/manage?view=people')}`),
-      },
-      ...(mayEditPeople && !isSelf ? [{
-        key: 'status',
-        label: active ? t('management.deactivate') : t('management.reactivate'),
-        tone: (active ? 'danger' : 'success') as RowAction['tone'],
-        icon: active ? <Ban className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />,
-        onClick: () => setPending({ kind: 'person', id: user._id, name: user.name, active }),
-      }] : []),
-    ];
-  };
-
-  /** Runs the confirmed deactivate/reactivate and reloads the list it changed. */
+  /** Runs the confirmed deactivation and reloads the list it changed. */
   const runPending = async () => {
     if (!pending || busy) return;
     setBusy(true);
     try {
-      if (pending.kind === 'organization') {
-        if (pending.active) await orgStore.deactivate(pending.id, currentUser._id, currentUser.username);
-        else await orgStore.restore(pending.id, currentUser._id, currentUser.username);
-      } else if (pending.kind === 'facility') {
-        const { setFacilityActive } = await import('@/lib/services/hospital-service');
-        await setFacilityActive(pending.id, false, currentUser._id, currentUser.username);
-        await hospitalStore.reload();
-      } else {
-        if (pending.active) await userStore.deactivate(pending.id, currentUser._id, currentUser.username);
-        else await userStore.reactivate(pending.id, currentUser._id, currentUser.username);
-      }
-      showToast(
-        t(pending.active ? 'management.toastDeactivated' : 'management.toastReactivated', { name: pending.name }),
-        'success',
-      );
+      await orgStore.deactivate(pending.id, currentUser._id, currentUser.username);
+      showToast(t('management.toastDeactivated', { name: pending.name }), 'success');
       setPending(null);
     } catch (error) {
       console.error('Management status change failed:', error);
@@ -337,8 +249,6 @@ export default function ManagementWorkspace() {
             <SadbKpiTile
               label={t('management.organizations')}
               value={organizations.length}
-              delta={inactiveOrganizations > 0 ? t('management.kpiInactive', { count: inactiveOrganizations }) : undefined}
-              deltaTone={inactiveOrganizations > 0 ? 'warn' : undefined}
               onClick={activeView === 'organizations' ? undefined : () => changeView('organizations')}
             />
           )}
@@ -439,7 +349,7 @@ export default function ManagementWorkspace() {
                 {activeView === 'organizations' && filteredOrganizations.map(org => {
                   const status = effectiveOrgStatus(org);
                   return (
-                    <SadbGridRow key={org._id} template={MGMT_GRID} onClick={event => setRowMenu(rowActionsAt(event, organizationActions(org)))}>
+                    <SadbGridRow key={org._id} template={MGMT_GRID} onClick={opensRecord('/admin/organizations') ? openRecord(organizationHref(org)) : undefined}>
                       <span className="min-w-0">
                         <span className="sadb-tenant-name truncate">{org.name}</span>
                         <span className="sadb-tenant-sub truncate">{org.slug}</span>
@@ -450,7 +360,7 @@ export default function ManagementWorkspace() {
                   );
                 })}
                 {activeView === 'facilities' && filteredFacilities.map(facility => (
-                  <SadbGridRow key={facility._id} template={MGMT_GRID} onClick={event => setRowMenu(rowActionsAt(event, facilityActions(facility)))}>
+                  <SadbGridRow key={facility._id} template={MGMT_GRID} onClick={opensRecord('/admin/facilities') ? openRecord(facilityHref(facility)) : undefined}>
                     <span className="min-w-0">
                       <span className="sadb-tenant-name truncate">{facility.name}</span>
                       <span className="sadb-tenant-sub truncate">{[facility.town, facility.state].filter(Boolean).join(', ')}</span>
@@ -462,7 +372,7 @@ export default function ManagementWorkspace() {
                 {activeView === 'people' && filteredPeople.map(user => {
                   const inactive = user.isActive === false;
                   return (
-                    <SadbGridRow key={user._id} template={MGMT_GRID} onClick={event => setRowMenu(rowActionsAt(event, personActions(user)))}>
+                    <SadbGridRow key={user._id} template={MGMT_GRID} onClick={opensRecord('/admin/users') ? openRecord(personHref(user._id)) : undefined}>
                       <span className="min-w-0">
                         <span className="sadb-tenant-name truncate">{user.name}</span>
                         <span className="sadb-tenant-sub truncate">@{user.username}</span>
@@ -528,15 +438,12 @@ export default function ManagementWorkspace() {
           onAddFacility={() => { setShowUserEditor(false); setShowFacilityEditor(true); }}
         />
       )}
-      <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
 
       {pending && (
         <SadbConfirmModal
-          title={t(pending.active ? 'management.confirmDeactivateTitle' : 'management.confirmReactivateTitle', { name: pending.name })}
-          body={pending.active
-            ? t(`management.confirmDeactivate${pending.kind === 'organization' ? 'Org' : pending.kind === 'facility' ? 'Facility' : 'Person'}`)
-            : t('management.confirmReactivateBody')}
-          confirmLabel={pending.active ? t('management.deactivate') : t('management.reactivate')}
+          title={t('management.confirmDeactivateTitle', { name: pending.name })}
+          body={t('management.confirmDeactivateOrg')}
+          confirmLabel={t('management.deactivate')}
           busy={busy}
           onCancel={() => { if (!busy) setPending(null); }}
           onConfirm={() => { void runPending(); }}
