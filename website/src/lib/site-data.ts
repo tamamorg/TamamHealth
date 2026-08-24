@@ -1002,17 +1002,17 @@ export const NEWS: NewsItem[] = [
     image: "/assets/derby/derby-05.jpg",
     imageAlt: "Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check at the Derby Entrepreneurship Center at Tufts",
     summary:
-      "Our first venture competition, and a $10,000 award — judged on a working offline-first record system rather than a slide deck, and spent on the first pilot clinics.",
+      "Our first venture competition, and a $10,000 award — judged on a working offline-first record system rather than a slide deck.",
     body: [
       "On April 10, 2026, at the Derby Entrepreneurship Center at Tufts, TamamHealth took second place in the Healthcare & Life Science track of the Tufts New Ventures Competition, and a $10,000 award with it. It was the first venture competition we had ever entered.",
       "The story we told the judges does not start in a lab or a lecture hall. It starts in Kakuma refugee camp, where our founder, Teny Makuach, grew up. The failures this platform is built to fix were never an abstraction to him — they were a queue with no order to it, a clinician rebuilding a history by asking the patient to remember it, a treatment given twice because nobody could see what had already been given. He built the first version of TamamHealth out of that. Ekow Williams and Toye Adebayo joined him having watched the same system fail the same way, first-hand. None of the three of us needed the problem explained.",
       "So we pitched from the product rather than about it. The live record system was on the screen behind us, running a full patient day with the network switched off: registration, triage, consultation, lab orders, dispensing, and the reports that go back to the Ministry. Nothing in the demo was a mock-up, and nothing in it required a connection.",
       "The judges score eight things, and one of them is whether this is the right team to solve this problem. That was the easiest answer we had. The rest came from the constraint rather than the ideal: 4% of South Sudan's facilities have a computer with internet, 13% have any on-site power, and there are 7.6 health workers per 10,000 people against a WHO norm of 44.5. A record system that assumes connectivity is a record system that fails there, so ours does not assume it.",
-      "The $10,000 goes straight into the pilot — tablets, solar charging, fingerprint readers and training for the first of ten clinics in Juba and greater South Sudan. It is the first funded step toward the $100,000 that launches all ten.",
+      "It was the first time the platform had been judged by people outside the team, and the answer came back on the thing itself rather than on the pitch around it. The work ahead is the one it was built for: ten clinics in Juba and greater South Sudan, on one record.",
     ],
     /* Set against the paragraph each one belongs to: the three founders beside
        the origin story, the pitch beside what we pitched, the Q&A beside the
-       judging, the award beside what it pays for. */
+       judging, the award beside the close. */
     bodyPhotos: [
       { after: 1, photos: [derby("derby-09")] },
       { after: 2, photos: [derby("derby-13"), derby("derby-07")] },

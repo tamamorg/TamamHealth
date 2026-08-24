@@ -37,7 +37,7 @@ export default async function AboutPage() {
                 <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(34px, 4vw, 48px)", lineHeight: 0.95, color: "#7CC7FF" }}>$10,000</span>
                 <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.35, color: "#FFFFFF" }}>{t("Second place, Healthcare & Life Science track — Tufts New Ventures Competition")}</span>
                 <p style={{ margin: "6px 0 0", fontSize: 14.5, lineHeight: 1.6, color: "rgba(255,255,255,0.76)" }}>
-                  {t("Our first venture competition — judged on a working platform, not a slide deck. The award funds the first deployments: tablets, solar power and training for the pilot clinics.")}
+                  {t("Our first venture competition — judged on a working platform, not a slide deck: a full patient day on screen with the network switched off.")}
                 </p>
                 <span className="fs115" style={{ marginTop: "auto", paddingTop: 14, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)" }}>
                   {t("Derby Entrepreneurship Center at Tufts · April 10, 2026")}
