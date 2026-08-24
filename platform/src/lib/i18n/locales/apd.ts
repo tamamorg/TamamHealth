@@ -3256,6 +3256,7 @@ const apd: TranslationMap = {
   'mar.reasonRefused': '(رفض العيان)',
   'mar.record': 'سجّل',
   'mar.recordAdministration': 'سجّل إعطاء الدوا',
+  'mar.outsideCourse': 'برا مدة العلاج الموصوفة',
   'mar.recordedAs': 'اتسجل كـ',
   'mar.required': 'مطلوب',
   'mar.returnToWards': 'ارجع للعنابر',

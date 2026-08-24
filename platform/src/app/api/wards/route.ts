@@ -38,8 +38,10 @@ export async function GET(request: NextRequest) {
     }
     // Census view: system-wide bed occupancy across all facilities
     if (view === 'census') {
-      const allWards = await getAllWards(scope);
-      const admissions = await getActiveAdmissions(scope);
+      const { getAllBeds } = await import('@/lib/services/ward-service');
+      const [allWards, admissions, allBeds] = await Promise.all([
+        getAllWards(scope), getActiveAdmissions(scope), getAllBeds(scope),
+      ]);
       // Group by facility
       const facilityMap = new Map<string, {
         facilityId: string;
@@ -62,8 +64,9 @@ export async function GET(request: NextRequest) {
           });
         }
         const f = facilityMap.get(fid)!;
-        const total = ward.totalBeds || 0;
-        const occupied = ward.occupiedBeds || 0;
+        const wardBeds = allBeds.filter(bed => bed.wardId === ward._id);
+        const total = wardBeds.length || ward.totalBeds || 0;
+        const occupied = wardBeds.filter(bed => bed.status === 'occupied').length;
         f.totalBeds += total;
         f.occupiedBeds += occupied;
         f.wards.push({

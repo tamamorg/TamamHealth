@@ -117,22 +117,38 @@ function isRemediationApiPath(pathname: string): boolean {
  *   - The header's VALUE is still verified in the route with a constant-time
  *     compare, so presence alone authorises nothing.
  */
-const MACHINE_CALLER_ROUTES: Record<string, string> = {
-  '/api/sync': 'x-tamamhealth-signature',
+const MACHINE_CALLER_ROUTES: Record<string, readonly string[]> = {
+  '/api/sync': ['x-tamamhealth-signature'],
   // The backup job reporting that a backup finished. Same signature scheme as
   // /api/sync, and for the same reason: the caller is a cron container with no
   // session. Registering it here is what lets a signed report past the gate —
   // without the entry the proxy refuses it before the route ever runs, which
   // is indistinguishable from a bad signature and leaves the Risk Center
   // reporting no backup on record forever.
-  '/api/admin/backup': 'x-tamamhealth-signature',
-  '/api/patient-reminders/dispatch': 'x-reminder-dispatch-secret',
-  '/api/patient-transfers/sweep': 'x-transfer-sweep-secret',
+  '/api/admin/backup': ['x-tamamhealth-signature'],
+  '/api/patient-reminders/dispatch': ['x-reminder-dispatch-secret'],
+  // Two headers, because the sweep has two callers. The shared secret is the
+  // original; `authorization` is the GitHub Actions OIDC token the cron moved
+  // to. Listing only the secret is what broke it: the workflow stopped sending
+  // that header, so the proxy refused every run with "Missing Origin header"
+  // 403 before the route's OIDC verification could run — an hourly failure that
+  // looked like a rejected token and was actually a request that never arrived.
+  '/api/patient-transfers/sweep': ['x-transfer-sweep-secret', 'authorization'],
 };
 
 export function isMachineCallerRequest(pathname: string, request: NextRequest): boolean {
-  const header = MACHINE_CALLER_ROUTES[pathname];
-  return Boolean(header && request.headers.get(header));
+  const headers = MACHINE_CALLER_ROUTES[pathname];
+  if (!headers) return false;
+  return headers.some(name => {
+    const value = request.headers.get(name);
+    if (!value) return false;
+    // `authorization` counts as a machine claim only as a bearer token. The
+    // exemption's safety rests on the header being unsettable cross-site: a
+    // form or <img> cannot send one, and a fetch that tries takes a CORS
+    // preflight the browser blocks. A staff session lives in a cookie, never
+    // here, so this cannot be used to strip CSRF from a logged-in victim.
+    return name !== 'authorization' || value.startsWith('Bearer ');
+  });
 }
 
 // The public pay-by-link checkout helper. No staff session exists (a payer

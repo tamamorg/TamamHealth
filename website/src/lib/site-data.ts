@@ -464,7 +464,7 @@ export const TEAM: TeamMember[] = [
   // 1080×1920 — the tallest source in the set; "center top" would crop 840px
   // of empty wall. 50% puts the head about an eighth down the square.
   { accent: "#015697", name: "Toye Adebayo", role: "Project Manager", image: "/assets/founder-toye.jpg", focus: "center 50%" },
-  { accent: "#015697", name: "Mark Dosu", role: "Software Developer", image: "/assets/Mark-Dosu.jpeg" },
+  { accent: "#015697", name: "Mark Dosu", role: "Developer", image: "/assets/Mark-Dosu.jpeg" },
   { accent: "#015697", name: "Chinonye Hycent", role: "Research Lead", image: "/assets/chinonye-hycent.jpg" },
   { accent: "#015697", name: "Isaac Kyalo", role: "Technical Lead", image: "/assets/isaac-kyalo.jpg" },
 ];
@@ -917,6 +917,19 @@ export interface Photo {
   src: string;
   alt: string;
   caption: string;
+  /**
+   * Intrinsic pixel size, rendered as the <img> width/height attributes.
+   *
+   * Load-bearing in the scrolling strip, not decorative metadata. The frames
+   * are sized `height: clamp(...); width: auto`, so a photo that has not
+   * downloaded yet has no width to give — the figure collapsed to 2px, its
+   * caption (`min-width: 100%`) wrapped to fourteen lines, and every frame in
+   * the flex row inherited that height. The result was a 260px photograph
+   * sitting in a 533px row. With the attributes present the browser knows the
+   * ratio before the bytes arrive and reserves the right width.
+   */
+  w: number;
+  h: number;
 }
 
 /** Photos from the Tufts New Ventures Competition, April 10, 2026 — in story
@@ -926,66 +939,92 @@ export const DERBY_PHOTOS: Photo[] = [
     src: "/assets/derby/derby-09.jpg",
     alt: "Toye Adebayo, Teny Makuach and Ekow Williams standing together with competition badges",
     caption: "Toye Adebayo, Teny Makuach and Ekow Williams before the results were announced.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-13.jpg",
     alt: "Teny Makuach pitching with a microphone, the live record system on the projector behind him",
     caption: "Teny pitching from the product itself — the live record system on screen, not a slide deck.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-07.jpg",
     alt: "Ekow Williams presenting with a microphone beside the lectern",
     caption: "Ekow making the case in the Healthcare & Life Science track.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-12.jpg",
     alt: "A team member answering questions with a microphone during the pitch",
     caption: "Taking the judges' questions — five minutes of them, after a five-minute pitch.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-08.jpg",
     alt: "The team demoing the platform on a laptop at a standing table during the reception",
     caption: "Demoing the record system between sessions.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-10.jpg",
     alt: "Ekow Williams in conversation at the reception",
     caption: "Ekow talking through the pilot.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-01.jpg",
     alt: "The team called up through an applauding audience as the results are announced",
     caption: "The moment the results were read out.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-02.jpg",
     alt: "The team receiving the oversized $10,000 check on stage",
     caption: "Receiving the award on stage.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-11.jpg",
     alt: "The team holding the $10,000 check together with the competition judges",
     caption: "The team with the judges and the $10,000 check.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-04.jpg",
     alt: "Founders laughing together while holding the check",
     caption: "Letting it sink in.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-03.jpg",
     alt: "The team posing with the check while a guest takes a photo",
     caption: "Photos with the check.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-05.jpg",
     alt: "Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check in front of the Derby Entrepreneurship Center banner",
     caption: "The founding team with the award.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-06.jpg",
     alt: "The three founders standing full-length with the check in front of the Derby Entrepreneurship Center banner",
     caption: "At the Derby Entrepreneurship Center at Tufts.",
+    w: 933,
+    h: 1400,
   },
 ];
 

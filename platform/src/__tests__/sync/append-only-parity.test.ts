@@ -30,6 +30,7 @@ import { ConflictPolicy, TABLE_CONFLICT_POLICY } from '@/lib/db/postgres';
 const TABLE_FOR_TYPE: Record<string, string> = {
   audit_log: 'audit_log',
   controlled_substance_log: 'controlled_substance_log',
+  medication_administration: 'medication_administrations',
   ledger_entry: 'ledger_entries',
 };
 

@@ -134,6 +134,9 @@ export async function unacknowledgeHandoff(
   for (let attempt = 0; attempt < 3; attempt++) {
     const existing = (await db.get(id)) as ShiftHandoffDoc;
     if (existing.status !== 'acknowledged') return existing;
+    if (!existing.acknowledgedBy || existing.acknowledgedBy !== byUserId) {
+      throw new Error('Only the staff member who acknowledged this handoff can reverse their acknowledgement.');
+    }
     const now = new Date().toISOString();
     const updated: ShiftHandoffDoc = {
       ...existing,

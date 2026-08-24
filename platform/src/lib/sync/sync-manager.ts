@@ -36,6 +36,7 @@ export const PRIORITY_SYNC_DATABASES: ReadonlySet<string> = new Set([
   'tamamhealth_triage',
   'tamamhealth_medical_records',
   'tamamhealth_prescriptions',
+  'tamamhealth_medication_administrations',
   'tamamhealth_lab_results',
   'tamamhealth_pharmacy_inventory',
   'tamamhealth_wards',
@@ -217,7 +218,7 @@ export class SyncManager {
     const couchdbUrl = getCouchDBUrl();
     const useTenantDatabases = tenantDatabasesEnabled();
 
-    // A single client runs ~76 databases. Left as continuous longpolls, their
+    // A single client runs ~77 databases. Left as continuous longpolls, their
     // pull feeds saturate the browser's per-host connection limit and starve
     // push, so new local writes never reach the server. 'poll' pulls release
     // their connection between cycles; push stays live. Overridable for

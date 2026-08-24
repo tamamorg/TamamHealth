@@ -24,6 +24,17 @@ export async function getDeathsByFacility(facilityId: string): Promise<DeathRegi
 
 export async function createDeath(data: Omit<DeathRegistrationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<DeathRegistrationDoc> {
   const db = deathsDB();
+  if (data.patientId) {
+    const duplicate = (await getAllDeaths()).find(death =>
+      death.patientId === data.patientId
+      && death.facilityId === data.facilityId
+      && death.dateOfDeath === data.dateOfDeath
+    );
+    if (duplicate) {
+      await reconcileAdmissionAfterDeath(duplicate);
+      return duplicate;
+    }
+  }
   const now = new Date().toISOString();
   const id = `death-${uuidv4()}`;
   const doc: DeathRegistrationDoc = {
@@ -61,7 +72,43 @@ export async function createDeath(data: Omit<DeathRegistrationDoc, '_id' | '_rev
     }
   }
 
+  await reconcileAdmissionAfterDeath(doc);
+
   return doc;
+}
+
+async function reconcileAdmissionAfterDeath(death: DeathRegistrationDoc): Promise<void> {
+  if (!death.patientId) return;
+  const { getActiveAdmissions, closeAdmissionForDeath } = await import('./ward-service');
+  const admission = (await getActiveAdmissions()).find(row =>
+    row.patientId === death.patientId && row.facilityId === death.facilityId
+  );
+  if (!admission) return;
+  const repairId = `repair:death-discharge:${death._id}`;
+  const { resolveWorkflowRepair, upsertWorkflowRepair } = await import('./workflow-repair-service');
+  const base = {
+    workflow: 'discharge' as const,
+    patientId: death.patientId,
+    admissionId: admission._id,
+    hospitalId: death.facilityId,
+    orgId: death.orgId,
+  };
+  await upsertWorkflowRepair(repairId, { ...base, status: 'open', currentStep: 'close_admission' });
+  try {
+    await closeAdmissionForDeath(admission._id, {
+      id: death._id,
+      cause: death.immediateCause || death.underlyingCause || 'Death registered',
+      certifiedBy: death.certifiedBy,
+    });
+    await resolveWorkflowRepair(repairId);
+  } catch (error) {
+    await upsertWorkflowRepair(repairId, {
+      ...base,
+      status: 'open',
+      currentStep: 'needs_repair',
+      lastError: error instanceof Error ? error.message : 'Admission could not be closed',
+    }).catch(() => undefined);
+  }
 }
 
 export async function updateDeath(id: string, data: Partial<DeathRegistrationDoc>): Promise<DeathRegistrationDoc | null> {

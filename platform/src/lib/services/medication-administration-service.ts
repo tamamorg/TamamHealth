@@ -1,4 +1,4 @@
-import { pharmacyInventoryDB, prescriptionsDB, wardDB } from '../db';
+import { medicationAdministrationsDB, pharmacyInventoryDB, prescriptionsDB, wardDB } from '../db';
 import type {
   MedicationAdministration,
   MedicationAdministrationDoc,
@@ -107,7 +107,7 @@ async function verifiedWitness(
 }
 
 export async function getAdministrationEvents(scope?: DataScope): Promise<MedicationAdministrationDoc[]> {
-  const events = await findByType<MedicationAdministrationDoc>(prescriptionsDB(), 'medication_administration');
+  const events = await findByType<MedicationAdministrationDoc>(medicationAdministrationsDB(), 'medication_administration');
   const visible = scope ? filterByScope(events, scope) : events;
   return visible.sort((a, b) => (a.recordedAt || '').localeCompare(b.recordedAt || ''));
 }
@@ -176,8 +176,8 @@ export function mergeAdministrationEvents(
 }
 
 export async function recordAdministration(input: AdministrationInput): Promise<MedicationAdministrationDoc> {
-  const db = prescriptionsDB();
-  const rx = await db.get(input.prescriptionId).catch(() => null) as PrescriptionDoc | null;
+  const db = medicationAdministrationsDB();
+  const rx = await prescriptionsDB().get(input.prescriptionId).catch(() => null) as PrescriptionDoc | null;
   if (!rx || rx.type !== 'prescription') {
     throw new MedicationAdministrationError('Medication order not found. Refresh the MAR.', 'ORDER_NOT_FOUND');
   }
@@ -277,9 +277,9 @@ export async function voidAdministration(
   reason: string,
 ): Promise<MedicationAdministrationDoc> {
   if (!reason.trim()) throw new MedicationAdministrationError('A correction reason is required.', 'REASON_REQUIRED');
-  const db = prescriptionsDB();
+  const db = medicationAdministrationsDB();
   const [rx, storedTarget, events] = await Promise.all([
-    db.get(prescriptionId).catch(() => null) as Promise<PrescriptionDoc | null>,
+    prescriptionsDB().get(prescriptionId).catch(() => null) as Promise<PrescriptionDoc | null>,
     db.get(administrationId).catch(() => null) as Promise<MedicationAdministrationDoc | null>,
     getAdministrationEventsForPrescription(prescriptionId),
   ]);

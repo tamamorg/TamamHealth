@@ -102,7 +102,7 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
     });
 
     // One audit row per proxied WRITE call — not per proxied request. This
-    // route also carries every pull-poll (~15s, across ~76 databases) and
+    // route also carries every pull-poll (~15s, across ~77 databases) and
     // every live push replication round-trip; logging all of that would bury
     // real writes in routine sync chatter. `isMutatingWrite` already screened
     // out reads and `_local` checkpoints, so anything reaching here is a

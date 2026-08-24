@@ -13,6 +13,7 @@ import { priorityOrder } from '@/lib/clinical/triage-display';
 import type { MedicationAdministration, PrescriptionDoc } from '@/lib/db-types';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
 import { todayIso } from '@/lib/date-utils';
+import { doseExpansionCutoff, scheduleForFrequency, scheduledForIso } from '@/lib/clinical-flow/medication-schedule';
 
 // Re-export the shared vital-flagging helper so a `./shared` importer keeps
 // working — the single source of truth lives in '@/lib/clinical/vitals'.
@@ -163,90 +164,7 @@ export function calculateTriagePriority(triage: TriageResult): 'RED' | 'YELLOW' 
  * one 24-hour day. Best-effort — falls back to standard q-times for the most
  * common patterns and a single "PRN" slot when nothing matches.
  */
-export function scheduleForFrequency(freq: string): string[] {
-  const f = (freq || '').toLowerCase().trim();
-  if (!f) return [];
-
-  if (f.includes('prn') || f.includes('as needed') || f.includes('as required')) return ['PRN'];
-  if (f === 'od' || f === 'qd' || f.includes('once') || f.includes('daily')) return ['08:00'];
-  if (f === 'bd' || f === 'bid' || f.includes('twice')) return ['08:00', '20:00'];
-  if (f === 'tds' || f === 'tid' || f.includes('three times') || f.includes('thrice')) {
-    return ['08:00', '14:00', '22:00'];
-  }
-  if (f === 'qds' || f === 'qid' || f.includes('four times')) {
-    return ['06:00', '12:00', '18:00', '00:00'];
-  }
-  const qMatch = f.match(/q\s*(\d+)\s*h/);
-  if (qMatch) {
-    const interval = parseInt(qMatch[1], 10);
-    if (interval > 0 && interval <= 24) {
-      const times: string[] = [];
-      for (let h = 0; h < 24; h += interval) {
-        times.push(`${h.toString().padStart(2, '0')}:00`);
-      }
-      return times;
-    }
-  }
-  return ['PRN'];
-}
-
-// Build the ISO datetime for a scheduled dose. PRN doses have no fixed clock
-// time, so they anchor to "now" (the moment the nurse opens the chart).
-function scheduledForISO(day: string, time: string): string {
-  if (time === 'PRN') return new Date(`${day}T00:00:00`).toISOString();
-  return new Date(`${day}T${time}:00`).toISOString();
-}
-
-/**
- * The point past which a prescription must stop producing new scheduled-dose
- * rows — either the moment it was stopped, or its prescribed course running
- * out. Without this, a discontinued or long-finished order keeps expanding
- * into "due"/"overdue" rows every day indefinitely. Returns null when neither
- * applies (still an open, unstopped course).
- */
-export function doseExpansionCutoff(rx: Pick<PrescriptionDoc, 'stoppedAt' | 'createdAt' | 'duration'>): number | null {
-  if (rx.stoppedAt) {
-    const stoppedMs = new Date(rx.stoppedAt).getTime();
-    if (Number.isFinite(stoppedMs)) return stoppedMs;
-  }
-  if (rx.createdAt && rx.duration) {
-    const days = statedDurationDays(rx.duration);
-    const startMs = new Date(rx.createdAt).getTime();
-    if (days !== null && Number.isFinite(startMs)) return startMs + days * 24 * 60 * 60 * 1000;
-  }
-  return null;
-}
-
-/**
- * Days the course explicitly runs for, or null when the text doesn't state one.
- *
- * Deliberately NOT `durationToDays`: that helper estimates a dispense quantity
- * and falls back to "assume 1 day" for anything it can't parse. `duration` is
- * free text that the chart's order modal merges with the instructions
- * ("<duration> — <instructions>"), so an ongoing med prescribed with only
- * instructions would inherit that 1-day default and silently stop coming due
- * on the MAR after its first day. No stated duration means no cutoff.
- */
-function statedDurationDays(duration: string): number | null {
-  const text = duration.trim().toLowerCase();
-  const m = text.match(/(\d+(?:\.\d+)?)\s*(day|week|month|hour|hr)/);
-  if (m) {
-    const value = parseFloat(m[1]);
-    const unit = m[2];
-    const days =
-      unit.startsWith('week') ? value * 7 :
-      unit.startsWith('month') ? value * 30 :
-      unit.startsWith('hour') || unit === 'hr' ? value / 24 :
-      value;
-    return Math.max(1, Math.ceil(days));
-  }
-  // A bare number is the one unambiguous shorthand: "7" means seven days.
-  if (/^\d+(?:\.\d+)?$/.test(text)) {
-    const n = parseFloat(text);
-    return n > 0 ? Math.ceil(n) : null;
-  }
-  return null;
-}
+export { doseExpansionCutoff, scheduleForFrequency } from '@/lib/clinical-flow/medication-schedule';
 
 // ============================================================
 // Hook: MAR entries sourced from REAL prescriptions + administration persistence
@@ -272,7 +190,7 @@ export function useMarEntries() {
     // patient's ongoing course shows up; cancelled/complete states never set
     // `status` to those values in this model so they fall through naturally.
     for (const rx of prescriptions) {
-      const times = scheduleForFrequency(rx.frequency);
+      const times = scheduleForFrequency(rx.frequency, rx.createdAt);
       if (times.length === 0) continue;
 
       // A discontinued order, or one whose prescribed course has already run
@@ -283,7 +201,7 @@ export function useMarEntries() {
       const cutoff = doseExpansionCutoff(rx);
 
       for (const time of times) {
-        const scheduledFor = scheduledForISO(day, time);
+        const scheduledFor = scheduledForIso(day, time);
         // Only a non-voided administration satisfies a scheduled dose. A voided
         // entry stays in the append-only history but the slot reverts to
         // due/overdue, so a dose marked given by mistake can be re-recorded.

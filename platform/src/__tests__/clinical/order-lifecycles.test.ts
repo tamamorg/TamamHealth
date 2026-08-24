@@ -64,8 +64,9 @@ describe('procedure lifecycle', () => {
 });
 
 describe('prescription (pharmacy) lifecycle', () => {
-  test('a prescription must be reviewed before it clears for dispensing', () => {
+  test('pharmacist review and clearance can be recorded in one action', () => {
     expect(prescription.can('received_in_pharmacy_queue', 'under_review')).toBe(true);
+    expect(prescription.can('received_in_pharmacy_queue', 'cleared_for_dispensing')).toBe(true);
     expect(prescription.can('under_review', 'cleared_for_dispensing')).toBe(true);
     expect(prescription.can('received_in_pharmacy_queue', 'dispensed')).toBe(false);
   });

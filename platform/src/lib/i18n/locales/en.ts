@@ -3264,6 +3264,7 @@ const en: TranslationMap = {
   'mar.reasonRefused': '(patient refusal)',
   'mar.record': 'Record',
   'mar.recordAdministration': 'Record administration',
+  'mar.outsideCourse': 'Outside the prescribed course',
   'mar.recordedAs': 'Recorded as',
   'mar.required': 'Required',
   'mar.returnToWards': 'Return to wards',

@@ -6,10 +6,11 @@ let uuidCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-ward-test` }));
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
-import { prescriptionsDB, wardDB } from '@/lib/db';
+import { followUpsDB, prescriptionsDB, wardDB } from '@/lib/db';
 import { putDoc, teardownTestDBs } from '../helpers/test-db';
 import {
   admitPatient,
+  completeBedTurnover,
   dischargePatient,
   reassignAdmissionBed,
   WardWorkflowError,
@@ -110,6 +111,12 @@ describe('admission and bed invariants', () => {
     const bed = await wardDB().get('bed-1') as BedDoc;
     expect(bed.status).toBe('cleaning');
     expect(bed.currentAdmissionId).toBeUndefined();
+    const followUps = await followUpsDB().allDocs({ include_docs: true });
+    expect(followUps.rows.map(row => (row.doc as { sourceVisitId?: string }).sourceVisitId)).toContain(admission._id);
+
+    const ready = await completeBedTurnover('bed-1', { id: 'nurse-1', name: 'Nurse Nyandeng' });
+    expect(ready.status).toBe('available');
+    expect(ready.lastCleanedAt).toBeTruthy();
   });
 
   it('claims a destination before releasing the old bed during a move', async () => {

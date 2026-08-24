@@ -176,6 +176,7 @@ export const referralsDB = () => getDB('tamamhealth_referrals');
 export const labResultsDB = () => getDB('tamamhealth_lab_results');
 export const diseaseAlertsDB = () => getDB('tamamhealth_disease_alerts');
 export const prescriptionsDB = () => getDB('tamamhealth_prescriptions');
+export const medicationAdministrationsDB = () => getDB('tamamhealth_medication_administrations');
 export const auditLogDB = () => getDB('tamamhealth_audit_log');
 export const usageEventsDB = () => getDB('tamamhealth_usage_events');
 export const messagesDB = () => getDB('tamamhealth_messages');
@@ -576,6 +577,7 @@ export const LOCAL_DATABASE_NAMES: readonly string[] = [
  */
 const RESET_EXCLUDED_DATABASES: readonly string[] = [
   'tamamhealth_controlled_substance_log',
+  'tamamhealth_medication_administrations',
 ];
 
 export async function resetAllDatabases(): Promise<void> {

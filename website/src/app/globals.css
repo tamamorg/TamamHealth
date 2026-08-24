@@ -612,10 +612,58 @@ header > div { min-width: 0; }
 }
 @media (max-width: 479px) {
   main section { padding-inline-start: 14px !important; padding-inline-end: 14px !important; }
-  .tm-g6 { grid-template-columns: 1fr !important; }
   .tm-steprow > summary { grid-template-columns: 34px 1fr auto !important; gap: 10px !important; }
   .tm-steprow > p { padding-inline-start: 44px !important; }
   .tm-pad-lg { padding: 22px 18px !important; }
+}
+
+/* ── Phone card rules (site-wide) ─────────────────────────────────────
+   Three rules, applied wherever a card carries a picture. They come from the
+   same reading of the evidence:
+
+   1. A photograph that SUPPORTS text becomes a leading thumbnail rather than
+      a full-width block — NN/g's mobile-list finding, that a thumbnail earns
+      the left edge when it helps the reader choose, and should be sized to
+      how much it helps. A news card's 4:3 figure was 253px of a 375px phone
+      before a word of the headline; at 116px it still shows the scene and the
+      card costs a third of the scroll.
+   2. A grid where the picture IS the content stays a grid. The team portraits
+      collapsed to one column below 480px, which turned six faces into six
+      337px squares; two columns keeps them recognisable at a fifth of the
+      height.
+   3. A section figure never eats the viewport: capped at max(200px, 30vh)
+      per web.dev's guidance on sizing media against the viewport, with
+      object-fit holding the crop.
+
+   What is NOT here is truncation. Clamping is for secondary copy, never for
+   a heading or a person's title, so a long title makes its card taller and
+   that is the correct outcome. */
+@media (max-width: 639px) {
+  /* 1 — news cards, on the home strip and in the /news explorer alike. */
+  .tm-newscard { flex-direction: row !important; align-items: stretch !important; }
+  /* The figure carries inline `width: 100%` and a 4:3 ratio from the
+     component, and its <img> is absolutely positioned — so BOTH have to be
+     overridden together. Dropping the ratio alone leaves a full-width box
+     with nothing to give it height, and the thumbnail collapses to 0px. */
+  .tm-newscard-fig {
+    width: 116px !important;
+    flex: none;
+    align-self: stretch;
+    aspect-ratio: auto !important;
+    min-height: 104px;
+  }
+  .tm-newscard-body { gap: 6px !important; padding: 13px 15px !important; }
+  .tm-newscard-body h3 { font-size: 16px !important; }
+  .tm-newscard-body > span { padding-top: 6px !important; font-size: 14.5px !important; }
+  /* 3 — a photograph inside a stacked split, which has no height of its own
+     once the two columns become one. */
+  main .tm-split .blueprint > img,
+  main .tm-split > .tm-figure > img { max-height: max(200px, 30vh); object-fit: cover; }
+}
+@media (max-width: 479px) {
+  /* 2 — two columns, not one: a face at 160px is still a face. */
+  .tm-g6 { grid-template-columns: repeat(2, 1fr) !important; }
+  .tm-newscard-fig { width: 104px !important; min-height: 96px; }
 }
 
 /* footer grid (audited layer — last in source, wins over the rules above) */

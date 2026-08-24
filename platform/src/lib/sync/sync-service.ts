@@ -113,7 +113,7 @@ export interface SyncServiceOptions {
    * How the PULL direction runs.
    *  - 'poll'  (default): periodic one-shot pulls that release their HTTP
    *    connection between cycles. This is the fix for push starvation — a
-   *    single client runs ~76 databases, and if every pull holds a live
+   *    single client runs ~77 databases, and if every pull holds a live
    *    longpoll open, they saturate the browser's ~6-connections-per-host
    *    limit and push never gets a slot to send new local writes.
    *  - 'live': the previous continuous longpoll behaviour (kept as an escape

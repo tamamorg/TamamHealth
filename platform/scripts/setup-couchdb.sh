@@ -107,6 +107,7 @@ DATABASES=(
   tamamhealth_phone_notes
   tamamhealth_platform_config
   tamamhealth_prescriptions
+  tamamhealth_medication_administrations
   tamamhealth_problems
   tamamhealth_procedures
   tamamhealth_program_enrollments

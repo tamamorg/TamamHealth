@@ -55,6 +55,7 @@ export async function createFollowUp(
     operation: 'create',
     resourceVersion: doc._rev,
     orgId: doc.orgId,
+    hospitalId: doc.hospitalId,
   });
   return doc;
 }

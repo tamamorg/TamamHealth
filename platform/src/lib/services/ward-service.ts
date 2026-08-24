@@ -622,6 +622,89 @@ export async function dischargePatient(
   }
 }
 
+/** Close the active bed episode after the death register is the source of truth. */
+export async function closeAdmissionForDeath(
+  admissionId: string,
+  death: { id: string; cause: string; certifiedBy: string },
+): Promise<AdmissionDoc> {
+  const db = wardDB();
+  const admission = await db.get(admissionId) as AdmissionDoc;
+  if (admission.status === 'deceased') return admission;
+  if (admission.status !== 'admitted') {
+    throw new WardWorkflowError('Only an active admission can be closed from a death record.', 'ADMISSION_NOT_ACTIVE');
+  }
+  const originalBedId = admission.bedId;
+  if (originalBedId) await updateBedStatus(originalBedId, 'cleaning');
+  const now = new Date().toISOString();
+  const updated = withPendingOfflineSync({
+    ...admission,
+    status: 'deceased' as const,
+    dischargeDate: now,
+    dischargeType: 'death' as const,
+    dischargeDiagnosis: death.cause,
+    dischargeSummary: `Death registered as ${death.id}.`,
+    dischargedBy: death.certifiedBy,
+    dischargedByName: death.certifiedBy,
+    followUpRequired: false,
+    medicationReconciled: true,
+    medicationReconciledAt: now,
+    lengthOfStay: Math.max(1, Math.ceil((Date.now() - new Date(admission.admissionDate).getTime()) / 86_400_000)),
+    updatedAt: now,
+  }, now);
+  try {
+    const response = await db.put(updated);
+    updated._rev = response.rev;
+    await updateWardOccupancy(updated.wardId);
+    await logAuditSafe('ADMISSION_CLOSED_AFTER_DEATH', death.certifiedBy, death.certifiedBy, `Closed ${updated.patientName}'s admission from death record ${death.id}`);
+    emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
+    return updated;
+  } catch (error) {
+    if (originalBedId) await restoreBedClaimIfUnassigned(originalBedId, admission).catch(() => undefined);
+    throw error;
+  }
+}
+
+export async function closeAdmissionForTransfer(
+  admissionId: string,
+  transfer: { id: string; destinationName: string; reason: string; actorId?: string; actorName?: string },
+): Promise<AdmissionDoc> {
+  const db = wardDB();
+  const admission = await db.get(admissionId) as AdmissionDoc;
+  if (admission.status === 'transferred') return admission;
+  if (admission.status !== 'admitted') throw new WardWorkflowError('Only an active admission can be transferred.', 'ADMISSION_NOT_ACTIVE');
+  const originalBedId = admission.bedId;
+  if (originalBedId) await updateBedStatus(originalBedId, 'cleaning');
+  const now = new Date().toISOString();
+  const updated = withPendingOfflineSync({
+    ...admission,
+    status: 'transferred' as const,
+    dischargeDate: now,
+    dischargeType: 'transfer' as const,
+    dischargeDiagnosis: admission.admittingDiagnosis,
+    dischargeSummary: `Transferred through ${transfer.id}. ${transfer.reason}`.trim(),
+    dischargedBy: transfer.actorId,
+    dischargedByName: transfer.actorName,
+    transferredTo: transfer.destinationName,
+    transferReason: transfer.reason,
+    followUpRequired: false,
+    medicationReconciled: true,
+    medicationReconciledAt: now,
+    lengthOfStay: Math.max(1, Math.ceil((Date.now() - new Date(admission.admissionDate).getTime()) / 86_400_000)),
+    updatedAt: now,
+  }, now);
+  try {
+    const response = await db.put(updated);
+    updated._rev = response.rev;
+    await updateWardOccupancy(updated.wardId);
+    await logAuditSafe('ADMISSION_TRANSFERRED', transfer.actorId, transfer.actorName, `Closed ${updated.patientName}'s admission for transfer ${transfer.id}`);
+    emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
+    return updated;
+  } catch (error) {
+    if (originalBedId) await restoreBedClaimIfUnassigned(originalBedId, admission).catch(() => undefined);
+    throw error;
+  }
+}
+
 /**
  * Recalculate and update ward occupancy counts.
  */
