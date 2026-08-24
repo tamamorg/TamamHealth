@@ -71,6 +71,7 @@ export async function GET() {
     status: healthy ? 'ok' : 'degraded',
     service: 'tamamhealth-platform',
     version: process.env.NEXT_PUBLIC_APP_VERSION || process.env.npm_package_version || 'unknown',
+    release: process.env.NEXT_PUBLIC_BUILD_ID || 'unknown',
     time: new Date().toISOString(),
     uptimeSeconds: Math.round(process.uptime()),
     checks: {

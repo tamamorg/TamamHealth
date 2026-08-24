@@ -53,24 +53,75 @@ jobs:
             exit 1
           fi
 
+      - name: Refuse an unconfigured deploy target before changing image tags
+        env:
+          TARGET: ${{ github.event.inputs.target || 'vps' }}
+          PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SEC: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          ACM_ARN: ${{ secrets.PROD_ACM_CERT_ARN }}
+          DOMAIN: ${{ secrets.PROD_DOMAIN }}
+          KEYPAIR: ${{ secrets.PROD_EC2_KEYPAIR }}
+          DB_PASSWORD: ${{ secrets.PROD_DB_MASTER_PASSWORD }}
+        run: |
+          missing=""
+          if [ "$TARGET" = "vps" ]; then
+            [ -n "$PROD_SSH_HOST" ] || missing="$missing PROD_SSH_HOST"
+            [ -n "$PROD_SSH_USER" ] || missing="$missing PROD_SSH_USER"
+            [ -n "$PROD_SSH_KEY" ] || missing="$missing PROD_SSH_KEY"
+          else
+            [ -n "$AWS_KEY" ] || missing="$missing AWS_ACCESS_KEY_ID"
+            [ -n "$AWS_SEC" ] || missing="$missing AWS_SECRET_ACCESS_KEY"
+            [ -n "$ACM_ARN" ] || missing="$missing PROD_ACM_CERT_ARN"
+            [ -n "$DOMAIN" ] || missing="$missing PROD_DOMAIN"
+            [ -n "$KEYPAIR" ] || missing="$missing PROD_EC2_KEYPAIR"
+            [ -n "$DB_PASSWORD" ] || missing="$missing PROD_DB_MASTER_PASSWORD"
+          fi
+          if [ -n "$missing" ]; then
+            echo "::error title=Production target not configured::Missing production-environment secrets:$missing"
+            exit 1
+          fi
+
       - name: Resolve target SHA
         id: resolve
         env:
           INPUT_SHA: ${{ github.event.inputs.sha }}
           HEAD_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "$INPUT_SHA" ]; then
-            SHORT="${INPUT_SHA:0:7}"
-          else
-            SHORT="${HEAD_SHA:0:7}"
-          fi
+          REQUESTED="${INPUT_SHA:-$HEAD_SHA}"
+          FULL_SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/$REQUESTED" --jq .sha)"
+          SHORT="${FULL_SHA:0:7}"
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           {
             echo "sha=$SHORT"
+            echo "full_sha=$FULL_SHA"
             echo "platform_image=ghcr.io/$OWNER/tamamhealth-platform"
             echo "website_image=ghcr.io/$OWNER/tamamhealth-website"
             echo "sync_worker_image=ghcr.io/$OWNER/tamamhealth-sync-worker"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Require a successful staging deploy for this exact SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FULL_SHA: ${{ steps.resolve.outputs.full_sha }}
+        run: |
+          RUN_ID="$(gh run list --workflow deploy-staging.yml --commit "$FULL_SHA" --limit 10 \
+            --json databaseId,conclusion \
+            --jq '[.[] | select(.conclusion == "success")][0].databaseId // empty')"
+          if [ -z "$RUN_ID" ]; then
+            echo "::error title=Staging evidence missing::No successful deploy-staging run exists for $FULL_SHA. Deploy and verify this exact commit on staging first."
+            exit 1
+          fi
+          VERIFIED="$(gh run view "$RUN_ID" --json jobs \
+            --jq '[.jobs[].steps[] | select(.name == "Verify staging health" and .conclusion == "success")] | length')"
+          if [ "$VERIFIED" != "1" ]; then
+            echo "::error title=Staging smoke test missing::deploy-staging run $RUN_ID did not pass the exact-release health check."
+            exit 1
+          fi
+          echo "Staging release evidence: run=$RUN_ID sha=$FULL_SHA"
 
       - uses: docker/setup-buildx-action@v4
 
@@ -135,27 +186,26 @@ jobs:
     environment: production
     steps:
       - name: Check whether SSH secrets are configured
-        id: gate
         env:
           PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
           PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
           PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
         run: |
-          if [ -n "$PROD_SSH_HOST" ] && [ -n "$PROD_SSH_USER" ] && [ -n "$PROD_SSH_KEY" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Production SSH not configured::Image was re-tagged as :production but no host was deployed. Set PROD_SSH_HOST/USER/KEY in the production environment to enable."
+          missing=""
+          [ -n "$PROD_SSH_HOST" ] || missing="$missing PROD_SSH_HOST"
+          [ -n "$PROD_SSH_USER" ] || missing="$missing PROD_SSH_USER"
+          [ -n "$PROD_SSH_KEY" ] || missing="$missing PROD_SSH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error title=Production deploy not configured::Image was tagged as production but no host can be deployed. Missing production-environment secrets:$missing"
+            exit 1
           fi
 
       - name: Set up SSH agent
-        if: steps.gate.outputs.ready == 'true'
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
 
       - name: Pull + restart stack
-        if: steps.gate.outputs.ready == 'true'
         env:
           HOST: ${{ secrets.PROD_SSH_HOST }}
           USER: ${{ secrets.PROD_SSH_USER }}
@@ -176,17 +226,22 @@ jobs:
       # 500, a dead CouchDB degrades /api/health to 503). Fail the deploy run
       # loudly instead of leaving that for a clinician to discover.
       - name: Verify production health
-        if: steps.gate.outputs.ready == 'true'
         env:
           HEALTH_URL: ${{ secrets.PROD_HEALTH_URL || 'https://app.tamamhealth.org/api/health' }}
         run: |
           for i in $(seq 1 30); do
             STATUS="$(curl -sS -m 10 -o /tmp/health.json -w '%{http_code}' "$HEALTH_URL" || echo 000)"
             if [ "$STATUS" = "200" ]; then
-              echo "Healthy after ${i} checks:"; cat /tmp/health.json; echo
-              exit 0
+              RELEASE="$(jq -r '.release // empty' /tmp/health.json)"
+              if [ "$RELEASE" = "${{ needs.promote-image.outputs.sha }}" ]; then
+                echo "Healthy at expected release $RELEASE after ${i} checks:"; cat /tmp/health.json; echo
+                exit 0
+              fi
+              echo "attempt ${i}: healthy response is stale release '${RELEASE:-unknown}', expected '${{ needs.promote-image.outputs.sha }}'"
+            else
+              echo "attempt ${i}: $HEALTH_URL -> $STATUS"
             fi
-            echo "attempt ${i}: $HEALTH_URL -> $STATUS"; sleep 10
+            sleep 10
           done
           echo "::error title=Production unhealthy::$HEALTH_URL never returned 200 after the deploy. Last body:"
           cat /tmp/health.json 2>/dev/null || true

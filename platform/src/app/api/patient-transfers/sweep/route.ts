@@ -29,14 +29,15 @@ import { timingSafeEqual } from 'node:crypto';
 import { forbidden, getAuthPayload, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { hasTransferCapability } from '@/lib/services/patient-transfer-permissions';
+import { verifyTransferSweepOidcToken } from '@/lib/github-actions-oidc';
 
 /**
- * Machine caller. A scheduled job has no user session, so it authenticates with
- * a shared secret — the same shape as the reminder-dispatch job. Compared in
- * constant time so the secret cannot be recovered byte-by-byte from response
- * timing. Unset secret = no machine access at all, rather than open access.
+ * Legacy machine caller for non-GitHub schedulers. The first-party hourly job
+ * uses a short-lived repository/workflow-bound GitHub OIDC token below. Keep
+ * this constant-time fallback for operators with their own scheduler; an unset
+ * secret grants nothing.
  */
-function isAuthorizedScheduler(request: NextRequest): boolean {
+function hasSharedSchedulerSecret(request: NextRequest): boolean {
   const expected = process.env.TRANSFER_SWEEP_SECRET;
   if (!expected) return false;
   const provided = request.headers.get('x-transfer-sweep-secret');
@@ -47,12 +48,19 @@ function isAuthorizedScheduler(request: NextRequest): boolean {
   return timingSafeEqual(a, b);
 }
 
+async function isAuthorizedScheduler(request: NextRequest): Promise<boolean> {
+  if (hasSharedSchedulerSecret(request)) return true;
+  const authorization = request.headers.get('authorization');
+  if (!authorization?.startsWith('Bearer ')) return false;
+  return verifyTransferSweepOidcToken(authorization.slice('Bearer '.length).trim());
+}
+
 async function postHandler(request: NextRequest) {
   try {
     // Either the scheduled job holding the shared secret, or an admin with the
     // force capability — sweeping applies transfers without a fresh human
     // decision, which is the same authority `patient.transfer.force` grants.
-    const isScheduler = isAuthorizedScheduler(request);
+    const isScheduler = await isAuthorizedScheduler(request);
     if (!isScheduler) {
       const auth = await getAuthPayload(request);
       if (!auth) return unauthorized();

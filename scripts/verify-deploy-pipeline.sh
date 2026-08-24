@@ -19,6 +19,16 @@ check() {
   fi
 }
 
+check_not() {
+  if ! "$@"; then
+    echo "  OK  not $*"
+    ok=$((ok + 1))
+  else
+    echo "  FAIL not $*"
+    fail=$((fail + 1))
+  fi
+}
+
 echo "=== Deploy pipeline verification ==="
 
 check test -f docker-compose.yml
@@ -44,6 +54,22 @@ check grep -q 'docker-compose.ghcr.yml' .github/workflows/deploy-staging.yml
 check grep -q 'IMAGE_TAG=staging' .github/workflows/deploy-staging.yml
 check grep -q 'docker-compose.ghcr.yml' .github/workflows/deploy-production.yml
 check grep -q 'IMAGE_TAG=production' .github/workflows/deploy-production.yml
+
+echo ""
+echo "=== Deploy gates fail closed and identify the release ==="
+check_not grep -q 'Skipping deploy' .github/workflows/deploy-staging.yml
+check_not grep -q 'no host was deployed' .github/workflows/deploy-production.yml
+check grep -q 'STAGING_HEALTH_URL' .github/workflows/deploy-staging.yml
+check grep -q 'Healthy at expected release' .github/workflows/deploy-staging.yml
+check grep -q "\.release // empty" .github/workflows/deploy-production.yml
+check grep -q 'Require a successful staging deploy for this exact SHA' .github/workflows/deploy-production.yml
+check grep -q 'Refuse an unconfigured deploy target before changing image tags' .github/workflows/deploy-production.yml
+check grep -q 'org.tamamhealth.build-id' platform/Dockerfile
+check grep -q 'AIRTEL_WEBHOOK_GATEWAY_VERIFIED' .github/workflows/ci.yml
+check grep -q 'MPESA_WEBHOOK_GATEWAY_VERIFIED' .github/workflows/ci.yml
+check grep -q 'id-token: write' .github/workflows/transfers-sweep-cron.yml
+check grep -q 'audience=tamamhealth-transfer-sweep' .github/workflows/transfers-sweep-cron.yml
+check_not grep -q 'secrets.TRANSFER_SWEEP_SECRET' .github/workflows/transfers-sweep-cron.yml
 
 echo ""
 echo "=== Demo-mode opt-out is baked into the image ==="

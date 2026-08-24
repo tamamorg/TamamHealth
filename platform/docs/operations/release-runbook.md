@@ -132,6 +132,11 @@ The run sits in `pending` until a reviewer approves the protected `production`
 environment. Open the run on GitHub → **Review deployments** → **Approve and
 deploy**.
 
+Before any image tag changes, the workflow now resolves the requested commit
+to its full SHA and requires a successful `deploy-staging` run whose
+`Verify staging health` step passed for that exact build. An image that was
+only published—or a healthy stale staging container—cannot be promoted.
+
 > **Clear the queue first.** Dispatched-but-unapproved runs pile up and stay
 > valid. Approving an old one silently ships an *older* build. Before approving,
 > check `gh run list --workflow=deploy-production.yml` and
@@ -146,9 +151,11 @@ gh run watch <run-id>
 It re-tags the three GHCR images as `production`, SSHes to the droplet, and runs
 `docker compose pull && up -d`.
 
-> **No smoke test, no auto-rollback.** The `vps` path deploys and stops there.
-> Unlike the App Platform path, nothing verifies the result and nothing rolls back
-> on failure. Verification below is manual and it is not optional.
+> **Health verification is automatic; workflow verification is still manual.**
+> The `vps` path now waits for `/api/health` and verifies that its `release`
+> matches the promoted short SHA, so a stale healthy container cannot make the
+> deployment look successful. It does not auto-roll back, and the role-based
+> browser checks below remain mandatory.
 
 ### Use `target=vps`, not App Platform
 

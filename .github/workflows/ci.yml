@@ -74,7 +74,9 @@ jobs:
           UPSTASH_REDIS_REST_URL: https://redis.example.invalid
           UPSTASH_REDIS_REST_TOKEN: ci-token
           AIRTEL_WEBHOOK_SECRET: ci-airtel-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+          AIRTEL_WEBHOOK_GATEWAY_VERIFIED: 'true'
           MPESA_WEBHOOK_SECRET: ci-mpesa-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+          MPESA_WEBHOOK_GATEWAY_VERIFIED: 'true'
           NEXT_TELEMETRY_DISABLED: '1'
 
       - name: Upload coverage

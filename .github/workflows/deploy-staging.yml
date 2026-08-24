@@ -1,10 +1,9 @@
 name: deploy-staging
 
 # Runs on every push to main. CI must pass first (workflow_run trigger), then
-# we build platform + website Docker images, publish them to GHCR, and — if
-# the SSH secrets are configured — pull + restart the stack on the staging
-# host. The image build/publish half always runs; the SSH deploy half is
-# opt-in so the pipeline stays green before the staging server is wired up.
+# we build platform + website Docker images, publish them to GHCR, then pull +
+# restart the staging stack. Missing deployment credentials are a failed
+# release gate, never a successful-but-skipped staging deployment.
 
 on:
   workflow_run:
@@ -131,27 +130,26 @@ jobs:
     environment: staging
     steps:
       - name: Check whether SSH secrets are configured
-        id: gate
         env:
           STAGING_SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
           STAGING_SSH_USER: ${{ secrets.STAGING_SSH_USER }}
           STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
         run: |
-          if [ -n "$STAGING_SSH_HOST" ] && [ -n "$STAGING_SSH_USER" ] && [ -n "$STAGING_SSH_KEY" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Staging SSH not configured::Skipping deploy. Set STAGING_SSH_HOST/USER/KEY in the staging environment to enable."
+          missing=""
+          [ -n "$STAGING_SSH_HOST" ] || missing="$missing STAGING_SSH_HOST"
+          [ -n "$STAGING_SSH_USER" ] || missing="$missing STAGING_SSH_USER"
+          [ -n "$STAGING_SSH_KEY" ] || missing="$missing STAGING_SSH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error title=Staging deploy not configured::Missing staging-environment secrets:$missing"
+            exit 1
           fi
 
       - name: Set up SSH agent
-        if: steps.gate.outputs.ready == 'true'
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
 
       - name: Pull + restart stack
-        if: steps.gate.outputs.ready == 'true'
         env:
           HOST: ${{ secrets.STAGING_SSH_HOST }}
           USER: ${{ secrets.STAGING_SSH_USER }}
@@ -167,3 +165,32 @@ jobs:
              docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d && \
              docker image prune -f && \
              echo 'Deployed sha=$SHA tag=staging'"
+
+      - name: Verify staging health
+        env:
+          HEALTH_URL: ${{ vars.STAGING_HEALTH_URL }}
+          SHA: ${{ needs.build-and-push.outputs.sha }}
+        run: |
+          if [ -z "$HEALTH_URL" ]; then
+            echo "::error title=Staging health URL not configured::Set the STAGING_HEALTH_URL environment variable after TLS is working on the staging hostname."
+            exit 1
+          fi
+          for i in $(seq 1 30); do
+            STATUS="$(curl -sS -m 10 -o /tmp/health.json -w '%{http_code}' "$HEALTH_URL" || echo 000)"
+            if [ "$STATUS" = "200" ]; then
+              RELEASE="$(jq -r '.release // empty' /tmp/health.json)"
+              if [ "$RELEASE" = "$SHA" ]; then
+                echo "Healthy at expected release $RELEASE after ${i} checks:"
+                cat /tmp/health.json
+                echo
+                exit 0
+              fi
+              echo "attempt ${i}: healthy response is stale release '${RELEASE:-unknown}', expected '$SHA'"
+            else
+              echo "attempt ${i}: $HEALTH_URL -> $STATUS"
+            fi
+            sleep 10
+          done
+          echo "::error title=Staging unhealthy::$HEALTH_URL never returned 200 after the deploy. Last body:"
+          cat /tmp/health.json 2>/dev/null || true
+          exit 1

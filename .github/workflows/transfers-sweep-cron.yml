@@ -13,9 +13,9 @@ name: patient-transfers-sweep
 # ends at 14:00 must not keep its access until the next morning, and an unmet
 # expiry is a live access-control gap, not a cosmetic delay.
 #
-# Required secrets (production environment):
-#   PLATFORM_BASE_URL       e.g. https://app.tamamhealth.org
-#   TRANSFER_SWEEP_SECRET   must match the platform's env var of the same name
+# Authentication uses GitHub's short-lived OIDC token, bound by the platform
+# to this repository, this workflow on main, and schedule/workflow_dispatch.
+# No long-lived production secret is required.
 #
 # The sweep is idempotent — it only acts on transfers whose clock has already
 # run out, and each one flips status before the next run sees it. A missed run
@@ -33,6 +33,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   # Two overlapping sweeps could both read the same accepted transfer before
@@ -60,28 +61,22 @@ jobs:
     # the same records, and it was not the cause.
     timeout-minutes: 10
     steps:
-      - name: Check configuration
-        id: gate
-        env:
-          BASE_URL: ${{ secrets.PLATFORM_BASE_URL }}
-          SWEEP_SECRET: ${{ secrets.TRANSFER_SWEEP_SECRET }}
-        run: |
-          if [ -n "$BASE_URL" ] && [ -n "$SWEEP_SECRET" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::error title=Transfer sweep not configured::PLATFORM_BASE_URL and TRANSFER_SWEEP_SECRET are unset, so the hourly transfer sweep did nothing — scheduled transfers do NOT take effect on their own and temporary grants do NOT lapse. Set them as repository secrets. This step FAILS rather than passing quietly: it reported success for weeks while doing nothing, and a green tick on a job that no-ops is how that went unnoticed."
-            exit 1
-          fi
-
       - name: Sweep
-        if: steps.gate.outputs.ready == 'true'
         env:
-          BASE_URL: ${{ secrets.PLATFORM_BASE_URL }}
-          SWEEP_SECRET: ${{ secrets.TRANSFER_SWEEP_SECRET }}
+          BASE_URL: ${{ vars.PLATFORM_BASE_URL || 'https://app.tamamhealth.org' }}
           AS_OF: ${{ inputs.asOf }}
         run: |
           set -euo pipefail
+          OIDC_RESPONSE="$(curl -sS --fail-with-body \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=tamamhealth-transfer-sweep")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_RESPONSE" | jq -r '.value // empty')"
+          if [ -z "$OIDC_TOKEN" ]; then
+            echo "::error title=OIDC token missing::GitHub did not issue a transfer-sweep identity token."
+            exit 1
+          fi
+          echo "::add-mask::$OIDC_TOKEN"
+
           URL="$BASE_URL/api/patient-transfers/sweep"
           if [ -n "${AS_OF:-}" ]; then
             URL="$URL?asOf=$(printf '%s' "$AS_OF" | jq -sRr @uri)"
@@ -93,7 +88,7 @@ jobs:
           RESPONSE=$(curl -sS --fail-with-body \
             --max-time 300 \
             -X POST \
-            -H "x-transfer-sweep-secret: $SWEEP_SECRET" \
+            -H "authorization: Bearer $OIDC_TOKEN" \
             -H 'content-type: application/json' \
             "$URL")
           echo "$RESPONSE"

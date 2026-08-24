@@ -73,13 +73,18 @@ describe('scheduled workflows are not gated on human approval', () => {
   });
 
   it('fails loudly when a sweep is unconfigured rather than passing empty', () => {
-    // Each of these reported success for weeks while doing nothing, because an
-    // unset secret only emitted a ::notice. A green tick on a job that no-ops
-    // is how that went unnoticed.
-    for (const name of ['transfers-sweep-cron.yml', 'reminders-cron.yml']) {
-      const text = readFileSync(join(WORKFLOWS, name), 'utf8');
-      expect(text).toMatch(/::error title=[^:]*not configured/);
-      expect(text).not.toMatch(/::notice title=[^:]*not configured/);
-    }
+    // Reminders still uses a shared secret and must reject an unset one.
+    const reminders = readFileSync(join(WORKFLOWS, 'reminders-cron.yml'), 'utf8');
+    expect(reminders).toMatch(/::error title=[^:]*not configured/);
+    expect(reminders).not.toMatch(/::notice title=[^:]*not configured/);
+
+    // Transfers no longer has a long-lived secret to misconfigure. Its OIDC
+    // request must itself fail loudly if GitHub cannot issue the short-lived
+    // workflow identity.
+    const transfers = readFileSync(join(WORKFLOWS, 'transfers-sweep-cron.yml'), 'utf8');
+    expect(transfers).toMatch(/id-token: write/);
+    expect(transfers).toMatch(/audience=tamamhealth-transfer-sweep/);
+    expect(transfers).toMatch(/::error title=OIDC token missing/);
+    expect(transfers).not.toMatch(/secrets\.TRANSFER_SWEEP_SECRET/);
   });
 });

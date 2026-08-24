@@ -35,15 +35,21 @@
 /**
  * Secrets that MUST be present whenever Doppler-mode is engaged.
  *
- * `JWT_SECRET` is always required.
+ * Session signing and payment-gateway verification values are always required.
  * `DATABASE_URL` is conditionally required: when the operator opts into
  *   Postgres analytics (presence in the Doppler config), it must arrive too.
  *
  * Add new entries here when you add a new boot-required secret to Doppler.
- * Optional integrations (RESEND_API_KEY, FLUTTERWAVE_SECRET_HASH, etc.) do
- * NOT belong here — those features fail at first use, not at boot.
+ * Optional integrations (RESEND_API_KEY, Flutterwave, etc.) do not belong
+ * here. Flutterwave is validated as a pair by config-validation when enabled.
  */
-const ALWAYS_REQUIRED: readonly string[] = ['JWT_SECRET'];
+const ALWAYS_REQUIRED: readonly string[] = [
+  'JWT_SECRET',
+  'AIRTEL_WEBHOOK_SECRET',
+  'AIRTEL_WEBHOOK_GATEWAY_VERIFIED',
+  'MPESA_WEBHOOK_SECRET',
+  'MPESA_WEBHOOK_GATEWAY_VERIFIED',
+];
 
 const CONDITIONALLY_REQUIRED: readonly string[] = ['DATABASE_URL'];
 

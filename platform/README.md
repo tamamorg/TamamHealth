@@ -674,7 +674,8 @@ Run `npm run setup` to configure automatically, or copy `.env.example` to `.env.
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_RELEASE` | Error reporting | _(no-op)_ |
 | `NEXT_PUBLIC_POSTHOG_KEY` / `_HOST` | Forward sanitized usage events (autocapture off) | _(CouchDB only)_ |
 | `PATIENT_PORTAL_OTP_ENABLED` | SMS second factor for the patient portal | `false` |
-| `REMINDER_DISPATCH_SECRET`, `TRANSFER_SWEEP_SECRET`, `TELEHEALTH_MAINTENANCE_SECRET` | Shared secrets for the scheduled cron jobs; unset = no machine access | |
+| `REMINDER_DISPATCH_SECRET`, `TELEHEALTH_MAINTENANCE_SECRET` | Shared secrets for scheduled integrations; unset = no machine access | |
+| `TRANSFER_SWEEP_SECRET` | Legacy fallback for non-GitHub transfer schedulers; GitHub Actions uses repository-bound OIDC | _(none)_ |
 | `DOPPLER_TOKEN` | Fetch secrets via the Doppler CLI at boot | _(env-file path)_ |
 
 **Optional integrations — SMS gateway:**

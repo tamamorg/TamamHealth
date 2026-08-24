@@ -60,8 +60,13 @@ Environment: **`production`**
 | `PROD_SSH_USER` | SSH user (usually `root`) |
 | `PROD_SSH_KEY` | **Separate** private key from staging |
 | `PROD_APP_DIR` | Optional; default `/opt/tamamhealth` |
+| `PROD_HEALTH_URL` | Optional readiness endpoint; defaults to `https://app.tamamhealth.org/api/health` |
 
 Use a different key than staging (`tamamhealth_prod`).
+
+Required staging environment variable: `STAGING_HEALTH_URL`, for example
+`https://app.staging.tamamhealth.org/api/health`. Set it only after the hostname
+has valid TLS and returns the platform health response.
 
 ---
 
@@ -79,7 +84,7 @@ approval as `deploy-production.yml`.
 | [`deploy-website.yml`](../../.github/workflows/deploy-website.yml) | `WEBSITE_SSH_HOST`, `WEBSITE_SSH_USER`, `WEBSITE_SSH_KEY` (only checked when `restart: ssh`, the default); `DIGITALOCEAN_ACCESS_TOKEN` (only for `restart: reboot`) |
 | [`backups-cron.yml`](../../.github/workflows/backups-cron.yml) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `BACKUP_BUCKET`, `BACKUP_PRIVKEY_GPG`, `BACKUP_PRIVKEY_PASSPHRASE`; optional `AWS_REGION` (default `af-south-1`), `AWS_ENDPOINT_URL`, repo/env var `DRILL_SKIP_POSTGRES` — see [`backups.md`](backups.md) |
 | [`reminders-cron.yml`](../../.github/workflows/reminders-cron.yml) | `PLATFORM_BASE_URL`, `REMINDER_DISPATCH_SECRET` |
-| [`transfers-sweep-cron.yml`](../../.github/workflows/transfers-sweep-cron.yml) | `PLATFORM_BASE_URL`, `TRANSFER_SWEEP_SECRET` |
+| [`transfers-sweep-cron.yml`](../../.github/workflows/transfers-sweep-cron.yml) | No secret; optional repository variable `PLATFORM_BASE_URL` (defaults to `https://app.tamamhealth.org`). Authentication uses a short-lived GitHub OIDC token restricted to the workflow on `main`. |
 
 `PLATFORM_BASE_URL` and `DIGITALOCEAN_ACCESS_TOKEN` are each shared across
 several of the rows above — set them once and every workflow that needs them
@@ -115,8 +120,8 @@ Ensure [`docker-compose.ghcr.yml`](../../docker-compose.ghcr.yml) exists in the 
 ## Verify
 
 1. Merge any commit to `main` → wait for **ci** then **deploy-staging**
-2. **deploy-staging** → job **ssh deploy to staging host** should not skip
-3. Log should show: `Deployed sha=… tag=staging`
+2. **deploy-staging** → job **ssh deploy to staging host** must pass; missing SSH or health-check configuration fails the run
+3. Log should show both `Deployed sha=… tag=staging` and `Healthy at expected release …`
 4. On staging droplet: `docker compose -f docker-compose.yml -f docker-compose.ghcr.yml ps`
 
 Production:
