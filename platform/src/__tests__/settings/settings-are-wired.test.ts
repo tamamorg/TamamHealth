@@ -129,11 +129,27 @@ describe('the safety and security claims specifically', () => {
   // These are named rather than left to the general rule because each one, if
   // it silently became a live-but-unwired control again, tells a clinician or
   // an administrator that a check is running when it is not.
-  const CLAIMS = [
+  /**
+   * Claims that were RETIRED — the control is gone, not merely marked.
+   *
+   * Each of these described a check a regulator would expect to exist:
+   * barcode-verified administration, a second review before a critical result
+   * is released, an immediate alert on a controlled-substance discrepancy.
+   * Marking them `pending` stopped them lying, but it left the claim standing
+   * on the page indefinitely. They were deleted in the Aug 2026 settings cull.
+   *
+   * Asserting their ABSENCE is stronger than the old rule: a future change
+   * that reintroduces one has to come back through this list, and the only way
+   * back is with an implementation.
+   */
+  const RETIRED_CLAIMS = [
     'security.twoFactor', 'lab.secondReview', 'lab.autoFlag', 'lab.notifyClinician',
     'mar.barcode', 'mar.missedReason', 'cs.discrepancy', 'cs.reconcile',
-    'vitals.rangeWarn', 'disp.paymentGate', 'stock.adjustReason',
+    'vitals.rangeWarn', 'disp.paymentGate',
   ];
+
+  /** Claims still on the page, which must stay pending-or-wired. */
+  const CLAIMS = ['stock.adjustReason'];
 
   it.each(CLAIMS)('%s is not presented as an active control', key => {
     const row = declared.find(d => d.key === key);
@@ -149,10 +165,18 @@ describe('the safety and security claims specifically', () => {
     expect(row.pending || isRead(key)).toBe(true);
   });
 
+  it.each(RETIRED_CLAIMS)('%s stays deleted', key => {
+    // Not "is pending" — gone. A safety affordance that cannot be honoured is
+    // better absent than permanently labelled "Not available yet".
+    expect(declared.find(d => d.key === key)).toBeUndefined();
+  });
+
   it('still covers a real set of claims, so the exemption above cannot empty it', () => {
     // `if (!row) return` would silently pass a list of keys that had all been
-    // renamed. At least most of them must still be declared somewhere.
+    // renamed. Every key in CLAIMS must still be declared somewhere; anything
+    // that leaves the page belongs in RETIRED_CLAIMS, where its absence is
+    // asserted rather than ignored.
     const present = CLAIMS.filter(key => declared.some(d => d.key === key));
-    expect(present.length).toBeGreaterThanOrEqual(CLAIMS.length - 2);
+    expect(present).toEqual(CLAIMS);
   });
 });

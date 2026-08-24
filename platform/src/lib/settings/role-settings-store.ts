@@ -45,7 +45,15 @@ export function roleSettingDefaults(role: UserRole): RoleSettingsValues {
     for (const row of section.rows) {
       // A `pending` row is declared but not wired (see RoleSettingRow). Serving
       // a default would let a reader believe the setting is in force.
-      if (row.kind === 'toggle' && row.pending) continue;
+      //
+      // This used to test `row.kind === 'toggle' && row.pending`, so the rule
+      // held for switches and not for dropdowns: every pending `select` still
+      // published its default. `ward.default` served "Maternity",
+      // `vitals.critical` served "Every 1 hour", `consult.template` served
+      // "SOAP" — each read back as a live value by anything that later asked
+      // the store, which is precisely what the comment above forbids. The kind
+      // of control was never what made a value trustworthy.
+      if ((row.kind === 'toggle' || row.kind === 'select') && row.pending) continue;
       if (row.kind === 'toggle' || row.kind === 'select') defaults[row.key] = row.def;
       else if (row.kind === 'text') defaults[row.key] = row.def;
     }
