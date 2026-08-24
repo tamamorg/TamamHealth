@@ -19,9 +19,11 @@
 import { useCallback, useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
+import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import Modal from '@/components/Modal';
 import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Pencil, Search } from '@/components/icons/lucide';
 import type { SaSeverity } from '@/components/admin/sa-ui';
+import { FilterDisclosure } from '@/components/ehr/EhrListHeader';
 import type { UserRole } from '@/lib/db-types';
 
 /* ── Tones ─────────────────────────────────────────────────────────── */
@@ -90,8 +92,20 @@ export function statusChip(status: string): ChipTone {
  *  Edge proxy check). Defaults to super_admin so the 17 existing /admin/*
  *  call sites are unchanged; org-admin console pages pass
  *  `roles={['org_admin', 'super_admin']}`. */
-export function SadbPage({ actions, roles = ['super_admin'], children }: {
+export function SadbPage({ greeting, actions, roles = ['super_admin'], children }: {
   actions?: ReactNode; roles?: UserRole[]; children: ReactNode;
+  /**
+   * Opt in to the "Welcome, {name} / ROLE · MODULE" header, passing the module
+   * half of the eyebrow.
+   *
+   * OPT-IN, not the default (2026-08-24): the greeting used to print on every
+   * SadbPage, and repeated across seventeen console screens it only pushed the
+   * content it introduced below the fold. A DASHBOARD is the exception — it is
+   * the screen a role lands on, so it is the one place the greeting and the
+   * role label are doing work rather than repeating the rail. Console screens
+   * pass nothing and keep the head for `actions` alone.
+   */
+  greeting?: string;
 }) {
   const { currentUser } = useAuth();
   const router = useRouter();
@@ -103,17 +117,15 @@ export function SadbPage({ actions, roles = ['super_admin'], children }: {
 
   if (!allowed) return null;
 
-  // No "Welcome, {name} / ROLE · MODULE" header here (2026-08-24): the rail
-  // already names the console and the page, so the greeting repeated on every
-  // admin screen only pushed the content it introduced below the fold. The
-  // head survives for `actions` alone.
   return (
     <main className="page-container page-enter sadb-scope">
-      {actions && (
-        <div className="sadb-page-head">
-          <div className="sadb-page-actions">{actions}</div>
-        </div>
-      )}
+      {greeting
+        ? <DashboardGreetingHeader module={greeting} actions={actions} />
+        : actions && (
+          <div className="sadb-page-head">
+            <div className="sadb-page-actions">{actions}</div>
+          </div>
+        )}
       <div className="sadb-page">{children}</div>
     </main>
   );
@@ -210,8 +222,12 @@ export function SadbTabs({ tabs, active, onChange, ariaLabel }: {
 }
 
 /** Condensed-uppercase head link ("Billing ›"). */
-export function SadbHeadLink({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return <button type="button" className="sadb-head-link" onClick={onClick}>{children} ›</button>;
+export function SadbHeadLink({ children, onClick, dataAction }: {
+  children: ReactNode; onClick: () => void;
+  /** Stable `data-action` hook for automation, when the label is translated. */
+  dataAction?: string;
+}) {
+  return <button type="button" className="sadb-head-link" onClick={onClick} data-action={dataAction}>{children} ›</button>;
 }
 
 /* ── Chips, KV rows, queue rows ────────────────────────────────────── */
@@ -282,8 +298,15 @@ export function SadbKpiTile({ label, value, delta, deltaTone, onClick }: {
 
 /* ── Search field ──────────────────────────────────────────────────── */
 
-export function SadbSearch({ value, onChange, placeholder, ariaLabel }: {
+export function SadbSearch({ value, onChange, placeholder, ariaLabel, filters }: {
   value: string; onChange: (v: string) => void; placeholder?: string; ariaLabel?: string;
+  /**
+   * Fold this list's filters into the field's trailing edge.
+   *
+   * A toolbar that carried a magnifier and a separate filter control had two
+   * affordances for one job, and the second named none of the axes it offered.
+   */
+  filters?: { activeCount: number; onClear?: () => void; label?: string; panelWidth?: 'trigger' | number; children: ReactNode };
 }) {
   return (
     <label className="sadb-search">
@@ -294,6 +317,16 @@ export function SadbSearch({ value, onChange, placeholder, ariaLabel }: {
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
       />
+      {filters && (
+        <FilterDisclosure
+          activeCount={filters.activeCount}
+          onClear={filters.onClear}
+          label={filters.label}
+          panelWidth={filters.panelWidth ?? 360}
+        >
+          {filters.children}
+        </FilterDisclosure>
+      )}
     </label>
   );
 }

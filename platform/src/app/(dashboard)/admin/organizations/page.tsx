@@ -7,6 +7,13 @@ export default async function OrganizationsRedirect({
 }) {
   const params = await searchParams;
   const next = new URLSearchParams({ view: params.view === 'facilities' ? 'facilities' : 'organizations' });
-  if (typeof params.new === 'string') next.set('new', params.new);
+  /* Carry the deep-link through. This used to forward `view` and `new` only,
+     so the tenant page's "Edit organization" and "Deactivate" — both of which
+     hand off as ?org=<id>&edit=1 / &deactivate=1 — landed on an unscoped
+     /manage with no dialog open, and the operator's action just vanished. */
+  for (const key of ['new', 'org', 'facility', 'edit', 'deactivate', 'q'] as const) {
+    const value = params[key];
+    if (typeof value === 'string') next.set(key, value);
+  }
   redirect(`/manage?${next.toString()}`);
 }

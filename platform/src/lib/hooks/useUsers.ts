@@ -18,7 +18,7 @@ import { canReadStaffDirectory } from '@/modules/identity/client';
  */
 const DIRECTORY_FRESH_MS = 60_000;
 
-export function useUsers() {
+export function useUsers(enabled = true) {
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export function useUsers() {
   // on every tab focus, filling the console with "Forbidden" and the server log
   // with denied requests. `/api/users` still enforces the rule; this only stops
   // asking a question whose answer is already known.
-  const mayRead = canReadStaffDirectory(scope?.role);
+  const mayRead = enabled && canReadStaffDirectory(scope?.role);
 
   const loadUsers = useCallback(async () => {
     if (!mayRead) {

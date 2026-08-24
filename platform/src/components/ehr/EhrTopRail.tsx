@@ -23,6 +23,8 @@ import { getRoleConfig } from '@/lib/permissions';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import type { NavItem } from '@/lib/permissions';
 import { usePatients } from '@/lib/hooks/usePatients';
+import { useOrganizations } from '@/lib/hooks/useOrganizations';
+import { useUsers } from '@/lib/hooks/useUsers';
 
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
@@ -87,7 +89,13 @@ export default function EhrTopRail() {
     || currentUser?.role === 'central_registration_clerk'
     || currentUser?.role === 'clinic_clerk';
   const { available: tourAvailable, start: startTour } = useTourContext();
-  const { patients } = usePatients();
+  // Search follows the signed-in person's work. A platform operator manages
+  // tenants, facilities and accounts; loading the national patient register
+  // into that rail was irrelevant and an unnecessary PHI read. Clinical roles
+  // retain patient search. Disabled hooks do not fetch or subscribe.
+  const { patients } = usePatients(!isPlatformAdmin);
+  const { organizations } = useOrganizations(isPlatformAdmin);
+  const { users: platformUsers } = useUsers(isPlatformAdmin);
   const { items: notifications, unreadCount } = useNotifications();
   const moduleBadges = useMemo(() => moduleBadgeCounts(notifications), [notifications]);
   const [query, setQuery] = useState('');
@@ -184,13 +192,46 @@ export default function EhrTopRail() {
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (needle.length < 2) return [];
+    if (isPlatformAdmin) {
+      const organizationMatches = organizations
+        .filter(org => `${org.name} ${org.slug} ${org.orgType} ${org.subscriptionStatus}`.toLowerCase().includes(needle))
+        .map(org => ({
+          key: `organization:${org._id}`,
+          title: org.name,
+          meta: `${t('topbar.searchOrganization')} · ${org.subscriptionStatus}`,
+          href: `/admin/organizations/${encodeURIComponent(org._id)}`,
+        }));
+      const facilityMatches = hospitals
+        .filter(hospital => `${hospital.name} ${hospital.town ?? ''} ${hospital.state ?? ''} ${hospital.facilityType ?? ''}`.toLowerCase().includes(needle))
+        .map(hospital => ({
+          key: `facility:${hospital._id}`,
+          title: hospital.name,
+          meta: `${t('topbar.searchFacility')} · ${[hospital.town, hospital.state].filter(Boolean).join(', ') || '—'}`,
+          href: `/admin/facilities/${encodeURIComponent(hospital._id)}`,
+        }));
+      const userMatches = platformUsers
+        .filter(user => `${user.name} ${user.username} ${user.role} ${user.hospitalName ?? ''} ${user.orgName ?? ''}`.toLowerCase().includes(needle))
+        .map(user => ({
+          key: `user:${user._id}`,
+          title: user.name,
+          meta: `${t('topbar.searchUser')} · @${user.username} · ${getRoleConfig(user.role).label}`,
+          href: `/admin/users/${encodeURIComponent(user._id)}`,
+        }));
+      return [...organizationMatches, ...facilityMatches, ...userMatches].slice(0, 8);
+    }
     return patients
       .filter(patient => {
         const haystack = `${patientFullName(patient)} ${patient.hospitalNumber || ''} ${patient.phone || ''}`.toLowerCase();
         return haystack.includes(needle);
       })
-      .slice(0, 6);
-  }, [patients, query]);
+      .slice(0, 6)
+      .map(patient => ({
+        key: `patient:${patient._id}`,
+        title: patientFullName(patient),
+        meta: [patient.hospitalNumber, patientGenderAge(patient), patient.phone ? formatPhoneShared(patient.phone) : ''].filter(Boolean).join(' · '),
+        href: `/patients/${encodeURIComponent(patient._id)}`,
+      }));
+  }, [hospitals, isPlatformAdmin, organizations, patients, platformUsers, query, t]);
 
   const clearSearch = () => {
     setQuery('');
@@ -202,9 +243,9 @@ export default function EhrTopRail() {
     setMobileSearchOpen(false);
   };
 
-  const openPatient = (id: string) => {
+  const openSearchResult = (href: string) => {
     clearSearch();
-    router.push(`/patients/${id}`);
+    router.push(href);
   };
 
   const openModule = (href?: string) => {
@@ -393,8 +434,8 @@ export default function EhrTopRail() {
         </button>
       )}
 
-      {(canSearchPatients || isNationalRole) ? (
-        <div className={`ehr-top-search ${mobileSearchOpen ? 'is-mobile-open' : ''}`} ref={boxRef} data-track="patient.search">
+      {(isPlatformAdmin || canSearchPatients || isNationalRole) ? (
+        <div className={`ehr-top-search ${mobileSearchOpen ? 'is-mobile-open' : ''}`} ref={boxRef} data-track="workspace.search">
           <Search className="w-4 h-4" />
           <input
             ref={searchInputRef}
@@ -404,9 +445,9 @@ export default function EhrTopRail() {
               setOpen(event.target.value.trim().length >= 2);
             }}
             onFocus={() => setOpen(query.trim().length >= 2)}
-            placeholder="Start typing a patient name, ID, or phone"
+            placeholder={isPlatformAdmin ? t('topbar.searchPlatformPlaceholder') : t('topbar.searchPatientPlaceholder')}
             type="search"
-            data-track="patient.search_input"
+            data-track="workspace.search_input"
           />
           {(query || mobileSearchOpen) && (
             <button type="button" onClick={query ? clearSearch : closeMobileSearch} aria-label={query ? 'Clear patient search' : 'Close patient search'}>
@@ -417,14 +458,12 @@ export default function EhrTopRail() {
           {open && (
             <div className="ehr-top-search-menu">
               {matches.length === 0 ? (
-                <p>No matching patients in this workspace.</p>
-              ) : matches.map(patient => (
-                <button key={patient._id} type="button" onMouseDown={event => { event.preventDefault(); openPatient(patient._id); }}>
+                <p>{t(isPlatformAdmin ? 'topbar.searchNoPlatformMatches' : 'topbar.searchNoPatientMatches')}</p>
+              ) : matches.map(match => (
+                <button key={match.key} type="button" onMouseDown={event => { event.preventDefault(); openSearchResult(match.href); }}>
                   <span>
-                    <strong>{patientFullName(patient)}</strong>
-                    <small>
-                      {[patient.hospitalNumber, patientGenderAge(patient), patient.phone ? formatPhoneShared(patient.phone) : ''].filter(Boolean).join(' · ')}
-                    </small>
+                    <strong>{match.title}</strong>
+                    <small>{match.meta}</small>
                   </span>
                 </button>
               ))}
@@ -436,7 +475,7 @@ export default function EhrTopRail() {
       )}
 
       <div className="ehr-top-actions">
-        {canSearchPatients && (
+        {(isPlatformAdmin || canSearchPatients) && (
           <button
             type="button"
             className="ehr-mobile-search-trigger"
@@ -444,8 +483,8 @@ export default function EhrTopRail() {
               setMobileSearchOpen(true);
               setOpen(query.trim().length >= 2);
             }}
-            aria-label="Search patients"
-            data-track="patient.search_mobile"
+            aria-label={isPlatformAdmin ? t('topbar.searchPlatformAria') : t('topbar.searchPatientsAria')}
+            data-track="workspace.search_mobile"
           >
             <Search className="w-4 h-4" />
           </button>

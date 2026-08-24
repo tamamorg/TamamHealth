@@ -57,6 +57,14 @@ interface MPesaWebhookBody {
 
 async function postHandler(req: NextRequest) {
   try {
+    if (
+      process.env.NODE_ENV === 'production'
+      && process.env.MPESA_WEBHOOK_GATEWAY_VERIFIED !== 'true'
+    ) {
+      console.warn('[M-Pesa Webhook] Callback disabled — upstream gateway verification has not been confirmed');
+      return NextResponse.json({ error: 'M-Pesa callback is not enabled' }, { status: 503 });
+    }
+
     const rawBody = await req.text();
 
     // Verify signature when a secret is configured (no-op in dev otherwise).

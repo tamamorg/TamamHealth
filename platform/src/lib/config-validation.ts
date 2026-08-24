@@ -222,25 +222,24 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   // --- Payment webhooks ------------------------------------------------------
   // Public money-movement callbacks must not run unsigned in production. The
   // individual routes keep a non-production fallback for local gateway testing.
-  if (
+  // Airtel and M-Pesa callbacks are optional integrations. The VERIFIED flag
+  // is also the production enable switch: their routes return 503 unless it is
+  // explicitly true. Only an enabled callback may make its secret boot-
+  // critical; otherwise a clinic that does not use that provider would lose
+  // the entire EHR because an unrelated payment integration is unconfigured.
+  if (env.AIRTEL_WEBHOOK_GATEWAY_VERIFIED === 'true' && (
     !env.AIRTEL_WEBHOOK_SECRET
     || env.AIRTEL_WEBHOOK_SECRET.length < 32
     || PLACEHOLDER.test(env.AIRTEL_WEBHOOK_SECRET)
-  ) {
-    errors.push('AIRTEL_WEBHOOK_SECRET must be a non-placeholder secret of at least 32 characters.');
+  )) {
+    errors.push('AIRTEL_WEBHOOK_SECRET must be a non-placeholder secret of at least 32 characters when the verified Airtel callback is enabled.');
   }
-  if (env.AIRTEL_WEBHOOK_GATEWAY_VERIFIED !== 'true') {
-    errors.push('AIRTEL_WEBHOOK_GATEWAY_VERIFIED=true is required: the upstream gateway must verify Airtel before adding the callback HMAC.');
-  }
-  if (
+  if (env.MPESA_WEBHOOK_GATEWAY_VERIFIED === 'true' && (
     !env.MPESA_WEBHOOK_SECRET
     || env.MPESA_WEBHOOK_SECRET.length < 32
     || PLACEHOLDER.test(env.MPESA_WEBHOOK_SECRET)
-  ) {
-    errors.push('MPESA_WEBHOOK_SECRET must be a non-placeholder secret of at least 32 characters.');
-  }
-  if (env.MPESA_WEBHOOK_GATEWAY_VERIFIED !== 'true') {
-    errors.push('MPESA_WEBHOOK_GATEWAY_VERIFIED=true is required: the upstream gateway must verify M-Pesa before adding the callback HMAC.');
+  )) {
+    errors.push('MPESA_WEBHOOK_SECRET must be a non-placeholder secret of at least 32 characters when the verified M-Pesa callback is enabled.');
   }
   if (env.FLUTTERWAVE_SECRET_HASH) {
     if (env.FLUTTERWAVE_SECRET_HASH.length < 32 || PLACEHOLDER.test(env.FLUTTERWAVE_SECRET_HASH)) {

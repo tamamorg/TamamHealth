@@ -756,6 +756,10 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
 
             {/* Search · filters · actions — one row, wrapping on narrow screens. */}
             <div className="bl-toolbar">
+              {/* One control: type to match, or open the disclosure at the
+                  field's trailing edge to narrow by balance/activity (accounts)
+                  or status/payer (claims). The funnel used to sit outside this
+                  box as a second control that also narrowed the same list. */}
               <div className="bl-search">
                 <Search size={16} />
                 <input
@@ -765,8 +769,8 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                   placeholder={tab === 'claims' ? 'Search claim, patient or payer…' : t('payments.searchPlaceholder')}
                   aria-label={tab === 'claims' ? 'Search claims' : t('payments.searchPlaceholder')}
                 />
+                <BillingFilterMenu fields={filterFields} />
               </div>
-              <BillingFilterMenu fields={filterFields} />
               <EhrRailMenu
                 variant="primary"
                 label="Actions"

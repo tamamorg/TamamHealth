@@ -336,6 +336,12 @@ export async function createHospital(
 
   const doc: HospitalDoc = {
     ...data,
+    // A registered site is active and functional unless the operator records
+    // otherwise later. Leaving these absent made newly created facilities show
+    // an "unknown" status even though every reader already treated absence as
+    // active/functional; persist the same truth the UI and filters use.
+    isActive: data.isActive ?? true,
+    operationalStatus: data.operationalStatus ?? 'functional',
     _id: `hosp-${shortId}`,
     type: 'hospital',
     syncStatus: 'offline',

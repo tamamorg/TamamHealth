@@ -53,7 +53,7 @@ echo "=== Workflow GHCR compose flags ==="
 check grep -q 'docker-compose.ghcr.yml' .github/workflows/deploy-staging.yml
 check grep -q 'IMAGE_TAG=staging' .github/workflows/deploy-staging.yml
 check grep -q 'docker-compose.ghcr.yml' .github/workflows/deploy-production.yml
-check grep -q 'IMAGE_TAG=production' .github/workflows/deploy-production.yml
+check grep -Fq "IMAGE_TAG='\$SHA'" .github/workflows/deploy-production.yml
 
 echo ""
 echo "=== Deploy gates fail closed and identify the release ==="

@@ -96,6 +96,8 @@ describe('org_admin -> facility', () => {
     const facility = await createHospital(facilityPayload(org._id), 'user-orgadmin', 'orgadmin');
 
     expect(facility.orgId).toBe(org._id);
+    expect(facility.isActive).toBe(true);
+    expect(facility.operationalStatus).toBe('functional');
     const visible = await getAllHospitals({ orgId: org._id, role: 'org_admin' });
     expect(visible.map(h => h._id)).toContain(facility._id);
   });

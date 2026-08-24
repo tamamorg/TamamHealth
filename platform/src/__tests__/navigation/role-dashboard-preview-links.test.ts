@@ -53,10 +53,10 @@ describe('role dashboard preview links', () => {
     expect(dashboardSource).toContain("params.delete('preview')");
   });
 
-  it('admin dashboard and registry navigate directly — no popup stops', () => {
-    // 2026-08-23: the super-admin dashboard's preview dialog and tenant card,
-    // and the registry's tenant pop card, were all removed. Every click lands
-    // on the page that owns the figure and its actions.
+  it('admin dashboard navigates directly — no popup stops', () => {
+    // 2026-08-23: the super-admin dashboard's preview dialog and tenant card
+    // were removed. Every click lands on the page that owns the figure and
+    // its actions.
     const dashboard = source('app/(dashboard)/admin/page.tsx');
     expect(dashboard).not.toContain('PreviewDialog');
     expect(dashboard).not.toContain("params.set('preview'");
@@ -64,10 +64,27 @@ describe('role dashboard preview links', () => {
     expect(dashboard).toContain('router.push(k.href!)');
     expect(dashboard).toContain("router.push('/admin/risk')");
     expect(dashboard).toContain('router.push(`/admin/organizations/${org._id}`)');
+  });
 
+  it('registry rows open the shared row-actions menu, drill-down included', () => {
+    // 2026-08-24: the registry row is the one place a menu earns its stop.
+    // Spending the click on a drill-down left BOTH registries with no CRUD —
+    // an organization row jumped to Facilities, a facility row to People, and
+    // editing either meant hunting for the button in the bar above. The row
+    // now offers Edit / Deactivate / Open full page, and the drill-down
+    // survives as an entry in the same menu rather than being the whole click.
+    //
+    // This is the shared RowActionsPopup — a menu at the pointer, one portal
+    // for the list — NOT the old per-tenant pop card, which stays gone.
     const registry = source('modules/tenancy/components/ManagementWorkspace.tsx');
     expect(registry).not.toContain('TenantCard');
-    expect(registry).toContain('setOrgId(org._id)');
+    expect(registry).toContain('RowActionsPopup');
+    expect(registry).toContain('rowActionsAt(event, organizationActions(org))');
+    expect(registry).toContain('rowActionsAt(event, facilityActions(facility))');
+    expect(registry).toContain('rowActionsAt(event, personActions(user))');
+    // The drill-down the row click used to be, kept as a menu entry.
+    expect(registry).toContain("scopeTo('facilities', org._id)");
+    expect(registry).toContain("scopeTo('people', facility.orgId ?? orgId, facility._id)");
   });
 
   it('keeps the queues the dashboard dropped reachable from their own modules', () => {

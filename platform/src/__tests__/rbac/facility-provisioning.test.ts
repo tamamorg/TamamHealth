@@ -176,6 +176,15 @@ describe('the pages that host the create dialog', () => {
     expect(source('components/admin/UserForm.tsx')).toContain('useAssignableFacilities');
     expect(source('app/api/hospitals/assignment-options/route.ts')).toContain('isFacilityActive');
   });
+
+  test('facility creation continues into an explicitly scoped first account', () => {
+    const workspace = source('modules/tenancy/components/ManagementWorkspace.tsx');
+    const modal = source('modules/identity/components/CreateUserModal.tsx');
+    expect(workspace).toContain('await reloadAssignableFacilities()');
+    expect(workspace).toContain('setShowUserEditor(true)');
+    expect(workspace).toContain('presetOrgId={orgId || undefined}');
+    expect(modal).toContain('presetOrgId={presetOrgId || preset?.orgId}');
+  });
 });
 
 describe('facility types are one vocabulary', () => {

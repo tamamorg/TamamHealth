@@ -16,7 +16,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
 import AddInquiryDialog from '@/components/create-dialogs/AddInquiryDialog';
 import Select from '@/components/Select';
-import EhrListHeader, { EhrListFilters, EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import RowStatusSelect, { type RowStatusOption } from '@/components/ehr/RowStatusSelect';
 import { MessageSquarePlus } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
@@ -276,43 +276,53 @@ export default function InquiriesPage() {
             { label: ENQUIRY_STATUS_LABELS.appointment_scheduled, value: summary.byStatus.appointment_scheduled, color: LIST_STAT_COLORS.purple },
             { label: ENQUIRY_STATUS_LABELS.closed, value: summary.byStatus.closed, color: LIST_STAT_COLORS.green },
           ]}
-          search={{ value: search, onChange: setSearch, placeholder: 'Search inquiries by patient, subject, or message…', ariaLabel: 'Search inquiries' }}
+          search={{
+            value: search, onChange: setSearch,
+            placeholder: 'Search inquiries by patient, subject, or message…', ariaLabel: 'Search inquiries',
+            filters: {
+              activeCount: activeFilterCount,
+              onClear: clearFilters,
+              panelWidth: 320,
+              children: (
+                <>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Status</span>
+                      <Select value={statusFilter} onChange={e => setStatusFilterAndUrl(e.target.value as EnquiryStatus | 'all')} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label="Filter by status">
+                        <option value="all">All statuses</option>
+                        {ENQUIRY_STATUSES.map(s => <option key={s} value={s}>{ENQUIRY_STATUS_LABELS[s]}</option>)}
+                      </Select>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Type</span>
+                      <Select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label="Filter by type">
+                        <option value="all">All types</option>
+                        {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                      </Select>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Assigned to</span>
+                      <Select value={assignedFilter} onChange={e => setAssignedFilterAndUrl(e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label="Filter by assigned staff">
+                        <option value="all">Everyone</option>
+                        <option value="unassigned">Unassigned</option>
+                        {facilityUsers.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+                      </Select>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>From</span>
+                        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} aria-label="From date" className="listpage-toolbar-date" style={{ width: '100%' }} />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>To</span>
+                        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} aria-label="To date" className="listpage-toolbar-date" style={{ width: '100%' }} />
+                      </label>
+                    </div>
+                </>
+              ),
+            },
+          }}
           actions={
             <>
-              <EhrListFilters activeCount={activeFilterCount} onClear={clearFilters} panelWidth={300}>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Status</span>
-                  <Select value={statusFilter} onChange={e => setStatusFilterAndUrl(e.target.value as EnquiryStatus | 'all')} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label="Filter by status">
-                    <option value="all">All statuses</option>
-                    {ENQUIRY_STATUSES.map(s => <option key={s} value={s}>{ENQUIRY_STATUS_LABELS[s]}</option>)}
-                  </Select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Type</span>
-                  <Select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label="Filter by type">
-                    <option value="all">All types</option>
-                    {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                  </Select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Assigned to</span>
-                  <Select value={assignedFilter} onChange={e => setAssignedFilterAndUrl(e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label="Filter by assigned staff">
-                    <option value="all">Everyone</option>
-                    <option value="unassigned">Unassigned</option>
-                    {facilityUsers.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
-                  </Select>
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>From</span>
-                    <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} aria-label="From date" className="listpage-toolbar-date" style={{ width: '100%' }} />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>To</span>
-                    <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} aria-label="To date" className="listpage-toolbar-date" style={{ width: '100%' }} />
-                  </label>
-                </div>
-              </EhrListFilters>
               <EhrListHeaderButton primary onClick={() => setAddOpen(true)} ariaLabel="Add inquiry">
                 <MessageSquarePlus size={16} color="#fff" />
               </EhrListHeaderButton>

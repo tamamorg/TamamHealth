@@ -224,11 +224,11 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           ssh "$USER@$HOST" \
             "cd $APP_DIR && \
-             export GH_OWNER='$GH_OWNER' IMAGE_TAG=production && \
+             export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA' && \
              docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull && \
              docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d && \
              docker image prune -f && \
-             echo 'Deployed sha=$SHA tag=production'"
+             echo 'Deployed immutable tag=$SHA'"
 
       # The stack can come up and still be broken (bad env refuses boot with a
       # 500, a dead CouchDB degrades /api/health to 503). Fail the deploy run

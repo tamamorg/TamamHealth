@@ -5,7 +5,7 @@
  * registry so every module presents the same shape:
  *
  *   Laboratory  (24px)                    ● Stat (n)  ● Stat (n)  ● Stat (n)
- *   [ rounded search input………………………………… ]  [Filters] [Download] [custom…]
+ *   [ rounded search input……………………… (2 ⌄) ]  [Download] [custom…]
  *
  * `title` is the page name and it is what the 24px line prints. It used to
  * print "Welcome, {name}" over a "ROLE · MODULE" eyebrow instead, with the
@@ -13,11 +13,16 @@
  *
  * The stats row is dot-chips, right-aligned, using the flat palette from the
  * patients header (muted/blue/amber/green/bronze). Search and actions are
- * optional slots so pages keep their own filter popovers and buttons.
+ * optional slots.
+ *
+ * Filters live INSIDE the search field (`search.filters`), not beside it. The
+ * toolbar used to carry an input whose placeholder read "Filter table" and a
+ * separate filter icon next to it — two affordances for one job, the second of
+ * which named nothing it would filter by. One control now does both.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type ChangeEvent, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { Filter, X } from '@/components/icons/lucide';
+import { ChevronDown, X } from '@/components/icons/lucide';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 
 export interface EhrListHeaderStat {
@@ -71,6 +76,22 @@ export default function EhrListHeader({
     onChange: (value: string) => void;
     placeholder?: string;
     ariaLabel?: string;
+    /**
+     * Fold this list's filters into the search field's trailing edge.
+     *
+     * Pass the panel contents as `children` and the applied count; the header
+     * renders one control instead of an input plus a separate filter button
+     * that meant the same thing. Omit for a list with nothing to filter by.
+     */
+    filters?: {
+      activeCount: number;
+      onClear?: () => void;
+      label?: string;
+      panelWidth?: 'trigger' | number;
+      children: ReactNode;
+      /** Guided-tour anchor for the folded trigger. */
+      dataTour?: string;
+    };
   };
   /** Rendered to the right of the search input (filter buttons, download, etc.). */
   actions?: ReactNode;
@@ -153,16 +174,19 @@ export default function EhrListHeader({
       {hasSecondRow && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {search && (
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <input
-                type="text"
-                value={search.value}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => search.onChange(e.target.value)}
-                placeholder={search.placeholder}
-                aria-label={search.ariaLabel || search.placeholder}
-                style={{ width: '100%', padding: '9px 18px', height: 38, borderRadius: 999, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
-              />
-            </div>
+            <EhrSearchFilter
+              value={search.value}
+              onChange={search.onChange}
+              placeholder={search.placeholder}
+              ariaLabel={search.ariaLabel}
+              activeCount={search.filters?.activeCount ?? 0}
+              onClear={search.filters?.onClear}
+              label={search.filters?.label}
+              panelWidth={search.filters?.panelWidth ?? 'trigger'}
+              dataTour={search.filters?.dataTour}
+            >
+              {search.filters?.children}
+            </EhrSearchFilter>
           )}
           {actions}
         </div>
@@ -238,24 +262,15 @@ export function EhrListHeaderButton({
  * scrolls internally, so the whole panel is always on screen whatever the
  * trigger's position or the panel's height.
  */
-export function EhrListFilters({
-  activeCount,
-  onClear,
-  children,
-  label = 'Filters',
-  panelWidth = 320,
-  align = 'right',
-}: {
-  /** Number of filters currently applied — drives the badge and the active/blue button state. */
-  activeCount: number;
-  /** Optional "Clear all" affordance in the panel header, shown only when activeCount > 0. */
-  onClear?: () => void;
-  children: ReactNode;
-  label?: string;
-  panelWidth?: number;
-  /** Which trigger edge the panel lines up with before clamping. */
-  align?: 'left' | 'right';
-}) {
+/**
+ * The anchored-popover machinery, shared by every filter disclosure.
+ *
+ * Extracted when the filter control moved inside the search field: the panel
+ * behaviour (portal to <body>, viewport clamping, close on Escape / outside
+ * click / scroll) is the part that was hard to get right, and it should not be
+ * reimplemented per anchor. Only the trigger differs.
+ */
+function useFilterPanel(anchorWidth: 'trigger' | number, align: 'left' | 'right') {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -265,7 +280,11 @@ export function EhrListFilters({
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const margin = 8;
-    const width = Math.min(panelWidth, window.innerWidth - margin * 2);
+    // `trigger` matches the anchor's own width — what the in-field control
+    // wants, so the panel reads as an extension of the search box rather than
+    // a floating card that happens to be near it.
+    const desired = anchorWidth === 'trigger' ? rect.width : anchorWidth;
+    const width = Math.min(Math.max(desired, 260), window.innerWidth - margin * 2);
     const rawLeft = align === 'right' ? rect.right - width : rect.left;
     setCoords({
       top: rect.bottom + 8,
@@ -275,7 +294,7 @@ export function EhrListFilters({
       // long filter list stays reachable instead of running off the fold.
       maxHeight: Math.max(180, window.innerHeight - rect.bottom - 8 - margin),
     });
-  }, [align, panelWidth]);
+  }, [align, anchorWidth]);
 
   useLayoutEffect(() => { if (open) place(); }, [open, place]);
 
@@ -304,38 +323,247 @@ export function EhrListFilters({
     };
   }, [open]);
 
+  return { open, setOpen, coords, triggerRef, panelRef };
+}
+
+/** The portalled panel body — identical wherever the trigger lives. */
+function FilterPanel({
+  panelRef, coords, label, activeCount, onClear, onClose, children,
+}: {
+  panelRef: RefObject<HTMLDivElement | null>;
+  coords: { top: number; left: number; width: number; maxHeight: number };
+  label: string;
+  activeCount: number;
+  onClear?: () => void;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return createPortal(
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-label={label}
+      className="ehr-list-filters-panel"
+      style={{ top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight }}
+    >
+      <div className="ehr-list-filters-head">
+        <span>{label}</span>
+        <div className="flex items-center gap-2">
+          {activeCount > 0 && onClear && (
+            <button type="button" onClick={onClear} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>Clear all</button>
+          )}
+          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label="Close">
+            <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          </button>
+        </div>
+      </div>
+      <div className="ehr-list-filters-body">{children}</div>
+    </div>,
+    document.body,
+  );
+}
+
+/**
+ * FilterDisclosure — the chevron-plus-count trigger and its panel, on its own.
+ *
+ * Exported so a search field that is NOT this module's own (the admin kit's
+ * `SadbSearch`, say) can fold its filters in without reimplementing the
+ * popover. The caller positions it inside their field; everything below the
+ * trigger — placement, clamping, Escape, outside-click — is handled here.
+ */
+export function FilterDisclosure({
+  activeCount = 0,
+  onClear,
+  label = 'Filters',
+  panelWidth = 'trigger',
+  children,
+}: {
+  activeCount?: number;
+  onClear?: () => void;
+  label?: string;
+  panelWidth?: 'trigger' | number;
+  children: ReactNode;
+}) {
+  const { open, setOpen, coords, triggerRef, panelRef } = useFilterPanel(panelWidth, 'right');
+  return (
+    <span ref={triggerRef} style={{ display: 'inline-flex', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={activeCount > 0 ? `${label}, ${activeCount} applied` : label}
+        title={activeCount > 0 ? `${label} (${activeCount} applied)` : label}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
+          height: 26, minWidth: 26, padding: activeCount > 0 ? '0 8px' : 0,
+          borderRadius: 999, border: 'none', cursor: 'pointer',
+          background: activeCount > 0 ? 'rgba(33,145,208,0.10)' : 'transparent',
+          color: activeCount > 0 ? 'var(--accent-primary)' : 'var(--text-muted)',
+        }}
+      >
+        {activeCount > 0 && (
+          <span className="text-[11px] font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{activeCount}</span>
+        )}
+        <ChevronDown className="w-4 h-4" style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
+      </button>
+      {open && coords && typeof document !== 'undefined' && (
+        <FilterPanel
+          panelRef={panelRef} coords={coords} label={label}
+          activeCount={activeCount} onClear={onClear} onClose={() => setOpen(false)}
+        >
+          {children}
+        </FilterPanel>
+      )}
+    </span>
+  );
+}
+
+/**
+ * EhrSearchFilter — the search field with its filters folded in.
+ *
+ * A list toolbar used to carry two controls that meant the same thing: an
+ * input whose placeholder read "Filter table", and a separate filter icon
+ * beside it. Two affordances for one job, and the icon-only button named
+ * nothing it would filter by. The disclosure now sits inside the field's
+ * trailing edge, so narrowing a list is one control: type to match, or open
+ * the chevron to pick from the list's own axes.
+ *
+ * The applied count moved with it, where it reads as a property of the field —
+ * "this list is narrowed" — which is what it always meant.
+ */
+export function EhrSearchFilter({
+  value,
+  onChange,
+  placeholder,
+  ariaLabel,
+  activeCount = 0,
+  onClear,
+  label = 'Filters',
+  panelWidth = 'trigger',
+  children,
+  dataTour,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  ariaLabel?: string;
+  /** Number of filters applied — drives the badge and the tinted disclosure. */
+  activeCount?: number;
+  onClear?: () => void;
+  label?: string;
+  /** `'trigger'` matches the field's width; a number pins it. */
+  panelWidth?: 'trigger' | number;
+  /** Panel contents. Omit to render a plain search field with no disclosure. */
+  children?: ReactNode;
+  /** Guided-tour anchor. The trigger lives in here now, so pages tag it through. */
+  dataTour?: string;
+}) {
+  const { open, setOpen, coords, triggerRef, panelRef } = useFilterPanel(panelWidth, 'right');
+  const hasFilters = Boolean(children);
+
+  return (
+    <div ref={triggerRef} data-tour={dataTour} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+      <input
+        type="text"
+        value={value}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={ariaLabel || placeholder}
+        style={{
+          width: '100%', height: 38, borderRadius: 999,
+          // Trailing room for the disclosure, so typed text never runs under it.
+          padding: hasFilters ? '9px 44px 9px 18px' : '9px 18px',
+          border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)',
+          fontSize: 13, color: 'var(--text-primary)', outline: 'none',
+        }}
+      />
+      {hasFilters && (
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label={activeCount > 0 ? `${label}, ${activeCount} applied` : label}
+          title={activeCount > 0 ? `${label} (${activeCount} applied)` : label}
+          style={{
+            position: 'absolute', top: 4, insetInlineEnd: 4,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
+            height: 30, minWidth: 30, padding: activeCount > 0 ? '0 8px' : 0,
+            borderRadius: 999, border: 'none', cursor: 'pointer',
+            background: activeCount > 0 ? 'rgba(33,145,208,0.10)' : 'transparent',
+            color: activeCount > 0 ? 'var(--accent-primary)' : 'var(--text-muted)',
+          }}
+        >
+          {activeCount > 0 && (
+            <span className="text-[11px] font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{activeCount}</span>
+          )}
+          <ChevronDown className="w-4 h-4" style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
+        </button>
+      )}
+      {open && coords && typeof document !== 'undefined' && (
+        <FilterPanel
+          panelRef={panelRef} coords={coords} label={label}
+          activeCount={activeCount} onClear={onClear} onClose={() => setOpen(false)}
+        >
+          {children}
+        </FilterPanel>
+      )}
+    </div>
+  );
+}
+
+export function EhrListFilters({
+  activeCount,
+  onClear,
+  children,
+  label = 'Filters',
+  panelWidth = 320,
+  align = 'right',
+}: {
+  /** Number of filters currently applied — drives the badge and the active/blue state. */
+  activeCount: number;
+  /** Optional "Clear all" affordance in the panel header, shown only when activeCount > 0. */
+  onClear?: () => void;
+  children: ReactNode;
+  label?: string;
+  panelWidth?: number;
+  /** Which trigger edge the panel lines up with before clamping. */
+  align?: 'left' | 'right';
+}) {
+  const { open, setOpen, coords, triggerRef, panelRef } = useFilterPanel(panelWidth, align);
+
   return (
     <div className="relative" ref={triggerRef}>
-      <EhrListHeaderButton onClick={() => setOpen(o => !o)} active={activeCount > 0} ariaExpanded={open} ariaLabel={label}>
-        <Filter className="w-4 h-4" />
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={activeCount > 0 ? `${label}, ${activeCount} applied` : label}
+        title={activeCount > 0 ? `${label} (${activeCount} applied)` : label}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          height: 38, padding: '0 14px', borderRadius: 999, cursor: 'pointer', flexShrink: 0,
+          fontSize: 13, fontWeight: 600,
+          border: activeCount > 0 ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)',
+          background: activeCount > 0 ? 'rgba(33,145,208,0.08)' : 'var(--bg-card-solid)',
+          color: activeCount > 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
+        }}
+      >
+        {label}
         {activeCount > 0 && (
-          <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
-            {activeCount}
-          </span>
+          <span className="text-[11px] font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>({activeCount})</span>
         )}
-      </EhrListHeaderButton>
-      {open && coords && typeof document !== 'undefined' && createPortal(
-        <div
-          ref={panelRef}
-          role="dialog"
-          aria-label={label}
-          className="ehr-list-filters-panel"
-          style={{ top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight }}
+        <ChevronDown className="w-3.5 h-3.5" style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
+      </button>
+      {open && coords && typeof document !== 'undefined' && (
+        <FilterPanel
+          panelRef={panelRef} coords={coords} label={label}
+          activeCount={activeCount} onClear={onClear} onClose={() => setOpen(false)}
         >
-          <div className="ehr-list-filters-head">
-            <span>{label}</span>
-            <div className="flex items-center gap-2">
-              {activeCount > 0 && onClear && (
-                <button type="button" onClick={onClear} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>Clear all</button>
-              )}
-              <button type="button" onClick={() => setOpen(false)} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label="Close">
-                <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-              </button>
-            </div>
-          </div>
-          <div className="ehr-list-filters-body">{children}</div>
-        </div>,
-        document.body,
+          {children}
+        </FilterPanel>
       )}
     </div>
   );

@@ -335,6 +335,35 @@
   min-width: 0;
 }
 .bl-search input::placeholder { color: var(--ehr-muted, #5D728B); }
+
+/* The filter disclosure, inside the field rather than beside it. Sized to sit
+   on the search row without changing its height, and tinted only once it is
+   actually narrowing the list. */
+.bl-search-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ehr-muted, #5D728B);
+  cursor: pointer;
+}
+.bl-search-filter:hover { color: var(--ehr-text, #113055); }
+.bl-search-filter.is-active {
+  padding: 0 8px;
+  background: var(--bl-teal-soft);
+  color: var(--bl-teal);
+}
+.bl-search-filter-count {
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
 /* Inside the patient chart, `.ehr-chart-page input` repaints every field with
    its own white box (and globals.css adds a blue focus ring), so the input drew
    a second border inside this one — one search box looking like two. `.bl-root`

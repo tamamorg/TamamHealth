@@ -26,6 +26,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
+import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
+import DashboardCreateActions from '@/components/dashboard/DashboardCreateActions';
 import { apiFetch } from '@/lib/api-fetch';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -362,6 +364,11 @@ export default function AdminDashboardPage() {
      scrolls instead of squeezing it away. */
   return (
     <main className="page-container page-enter sadb-scope" style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* The command center is a DASHBOARD, so it names who is signed in and
+          what they are looking at. The console screens behind it deliberately
+          do not (see SadbPage's `greeting`) — repeated on all of them the line
+          was noise, but on the screen a role lands on it is the header. */}
+      <DashboardGreetingHeader module="Platform dashboard" actions={<DashboardCreateActions />} />
       <div className="sadb-page" style={{ flex: '1 1 auto', minHeight: 0 }}>
 
         {/* ═══ KPI tile row ═══ */}

@@ -15,6 +15,7 @@ export interface CreatedCredentials {
 /** Modal host for the platform's single account editor. */
 export default function CreateUserModal({
   hospitals,
+  presetOrgId,
   presetHospitalId,
   lockFacility = false,
   onClose,
@@ -22,6 +23,9 @@ export default function CreateUserModal({
   onAddFacility,
 }: {
   hospitals: HospitalDoc[];
+  /** Keep the tenant scope even while a newly created facility is being
+   * fetched into the server-authoritative assignment list. */
+  presetOrgId?: string;
   presetHospitalId?: string;
   lockFacility?: boolean;
   onClose: () => void;
@@ -38,7 +42,7 @@ export default function CreateUserModal({
           {preset && <p className="sadb-modal-sub">{t('hospitals.addUserForFacility', { name: preset.name })}</p>}
         </div>
         <UserForm
-          presetOrgId={preset?.orgId}
+          presetOrgId={presetOrgId || preset?.orgId}
           presetHospitalId={presetHospitalId}
           lockOrganization={!!preset?.orgId}
           lockFacility={lockFacility}
