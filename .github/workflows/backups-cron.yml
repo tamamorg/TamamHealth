@@ -45,6 +45,8 @@ on:
 
 permissions:
   contents: read
+  # Raise/close the failure alarm — see .github/actions/alert-failure.
+  issues: write
 
 concurrency:
   group: backups-restore-drill
@@ -143,3 +145,12 @@ jobs:
         if: failure()
         run: |
           echo "::error title=Backup restore drill failed::Investigate immediately. See docs/operations/backups.md for the runbook."
+
+      # An unread red run is not an alarm. Opens one issue while this
+      # workflow is broken and closes it on the next success.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: No verified offsite backup. Local snapshots may exist on the droplet, but nothing has proven they restore.

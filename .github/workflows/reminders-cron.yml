@@ -27,6 +27,8 @@ on:
 
 permissions:
   contents: read
+  # Raise/close the failure alarm — see .github/actions/alert-failure.
+  issues: write
 
 concurrency:
   # Never let two dispatch runs overlap. Dispatch is idempotent at the record
@@ -52,17 +54,33 @@ jobs:
     # the same records, and it was not the cause.
     timeout-minutes: 10
     steps:
+      # Only the alarm action — this job does not otherwise need the repo,
+      # and a local `uses:` cannot resolve without a checkout. Sparse so it
+      # stays a few kilobytes rather than a full clone.
+      - name: Fetch the failure-alarm action
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions/alert-failure
+          sparse-checkout-cone-mode: false
+
       - name: Check configuration
         id: gate
         env:
           BASE_URL: ${{ secrets.PLATFORM_BASE_URL }}
           DISPATCH_SECRET: ${{ secrets.REMINDER_DISPATCH_SECRET }}
         run: |
-          if [ -n "$BASE_URL" ] && [ -n "$DISPATCH_SECRET" ]; then
+          # Name only what is actually missing. The previous message listed
+          # both secrets whichever was unset, so an operator holding a correctly
+          # set PLATFORM_BASE_URL was sent to re-check it — five days of failures
+          # pointed at the wrong half of the problem.
+          missing=""
+          [ -n "$BASE_URL" ]        || missing="$missing PLATFORM_BASE_URL"
+          [ -n "$DISPATCH_SECRET" ] || missing="$missing REMINDER_DISPATCH_SECRET"
+          if [ -z "$missing" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::error title=Reminder dispatch not configured::PLATFORM_BASE_URL and REMINDER_DISPATCH_SECRET are unset, so reminder dispatch did nothing — patients do NOT receive appointment reminders. Set them as repository secrets. This step FAILS rather than passing quietly: it reported success for weeks while doing nothing, and a green tick on a job that no-ops is how that went unnoticed."
+            echo "::error title=Reminder dispatch not configured::Missing repository secret(s):$missing. Reminder dispatch did nothing — patients do NOT receive appointment reminders. This step FAILS rather than passing quietly: it reported success for weeks while doing nothing, and a green tick on a job that no-ops is how that went unnoticed."
             exit 1
           fi
 
@@ -98,3 +116,12 @@ jobs:
             echo "::error title=Reminders permanently failed::$PERM reminder(s) exhausted their retries and were not delivered. Staff must follow these up manually."
             exit 1
           fi
+
+      # An unread red run is not an alarm. Opens one issue while this
+      # workflow is broken and closes it on the next success.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: Patients are not receiving appointment reminders — missed ANC, immunisation and follow-up visits.

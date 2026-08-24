@@ -11,6 +11,8 @@ on:
 permissions:
   contents: read
   packages: write
+  # Raise/close the failure alarm — see .github/actions/alert-failure.
+  issues: write
 
 concurrency:
   group: deploy-staging
@@ -119,12 +121,30 @@ jobs:
           cache-from: type=gha,scope=sync-worker
           cache-to: type=gha,mode=max,scope=sync-worker
 
+      # An unread red run is not an alarm. Opens one issue while this
+      # workflow is broken and closes it on the next success.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: Staging is not up to date, so nothing is being validated before production.
+
   ssh-deploy:
     name: ssh deploy to staging host
     needs: build-and-push
     runs-on: ubuntu-latest
     environment: staging
     steps:
+      # Only the alarm action — this job does not otherwise need the repo,
+      # and a local `uses:` cannot resolve without a checkout. Sparse so it
+      # stays a few kilobytes rather than a full clone.
+      - name: Fetch the failure-alarm action
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions/alert-failure
+          sparse-checkout-cone-mode: false
+
       - name: Check whether SSH secrets are configured
         env:
           STAGING_SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
@@ -190,3 +210,12 @@ jobs:
           echo "::error title=Staging unhealthy::$HEALTH_URL never returned 200 after the deploy. Last body:"
           cat /tmp/health.json 2>/dev/null || true
           exit 1
+
+      # An unread red run is not an alarm. Opens one issue while this
+      # workflow is broken and closes it on the next success.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: Staging is not up to date, so nothing is being validated before production.

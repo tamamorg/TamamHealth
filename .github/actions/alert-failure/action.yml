@@ -1,0 +1,112 @@
+name: Alert on workflow failure
+description: >
+  Opens one GitHub issue per broken workflow and closes it when the workflow
+  next succeeds, so a scheduled job cannot fail silently for weeks.
+
+# ── Why this exists ─────────────────────────────────────────────────────────
+#
+# An audit on 2026-08-24 found three scheduled jobs failing on a loop, none of
+# it visible anywhere a person would look:
+#
+#   backups-restore-drill   had NEVER succeeded — every run since 2026-07-01
+#   reminders-cron          failing daily for 5 days; patients received none
+#   transfers-sweep-cron    403 every hour, all day
+#
+# Every one of those had already printed a clear, human-readable error. Two of
+# them printed the exact missing secret names. The gap was never detection —
+# it was that nothing told anyone. A job that fails silently for two months is
+# indistinguishable from a job that does not exist.
+#
+# ── Why an issue, and not a Slack webhook ───────────────────────────────────
+#
+# No new secret, no external service, no third party to be down at the same
+# time. An issue emails watchers, survives, is assignable, and — unlike a chat
+# message — is still visible tomorrow. It also gives the alarm a natural OFF:
+# the issue closes itself on the next success, so an open issue always means a
+# currently-broken workflow rather than a pile of historical noise.
+
+inputs:
+  status:
+    description: >
+      The calling job's status. Call this step with always() so a success can
+      close a previously-opened alarm.
+    required: true
+  token:
+    description: Token with issues:write on this repository.
+    required: false
+    default: ${{ github.token }}
+  severity:
+    description: >
+      Free-text note shown at the top of the issue — what breaks for a real
+      person while this workflow is down.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const status   = '${{ inputs.status }}';
+          const severity = `${{ inputs.severity }}`;
+          const wf       = context.workflow;
+          const title    = `[automation] ${wf} is failing`;
+          const label    = 'automation-failure';
+          const runUrl   = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}` +
+                           `/actions/runs/${context.runId}`;
+
+          // One open issue per workflow. Search by title rather than by label
+          // alone so two broken workflows do not share one alarm.
+          const { data: open } = await github.rest.issues.listForRepo({
+            ...context.repo, state: 'open', labels: label, per_page: 100,
+          });
+          const existing = open.find(i => i.title === title);
+
+          if (status === 'success') {
+            // The alarm has an OFF switch, which is what keeps an open issue
+            // meaningful. Without this the tracker fills with alarms for
+            // things that fixed themselves and everyone stops reading it.
+            if (existing) {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: existing.number,
+                body: `Recovered — [${wf} succeeded](${runUrl}). Closing.`,
+              });
+              await github.rest.issues.update({
+                ...context.repo, issue_number: existing.number, state: 'closed',
+              });
+              core.notice(`Closed #${existing.number}: ${wf} recovered.`);
+            }
+            return;
+          }
+
+          if (status !== 'failure') return;   // cancelled / skipped are not alarms
+
+          const body = [
+            severity ? `**Impact:** ${severity}` : null,
+            '',
+            `\`${wf}\` failed. This issue stays open until the workflow succeeds again,`,
+            'at which point it closes itself.',
+            '',
+            `- Latest failed run: ${runUrl}`,
+            `- Triggered by: \`${context.eventName}\``,
+            '',
+            '<sub>Opened automatically by `.github/actions/alert-failure`.</sub>',
+          ].filter(l => l !== null).join('\n');
+
+          if (existing) {
+            // Deliberately NOT a comment per failure: an hourly job would post
+            // 24 a day and train everyone to mute the thread. Update the body
+            // so the issue always points at the most recent run instead.
+            await github.rest.issues.update({
+              ...context.repo, issue_number: existing.number, body,
+            });
+            core.warning(`${wf} still failing — updated #${existing.number}.`);
+            return;
+          }
+
+          const { data: created } = await github.rest.issues.create({
+            ...context.repo, title, body, labels: [label],
+          });
+          core.warning(`${wf} failed — opened #${created.number}.`);

@@ -12,6 +12,8 @@ on:
 
 permissions:
   contents: read
+  # Raise/close the failure alarm — see .github/actions/alert-failure.
+  issues: write
 
 concurrency:
   group: deploy-app-platform
@@ -101,3 +103,12 @@ jobs:
           echo "### App Platform deployment" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: \`${{ inputs.expected_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Deployment: \`${{ steps.deploy.outputs.deployment_id }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # An unread red run is not an alarm. Opens one issue while this
+      # workflow is broken and closes it on the next success.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: The App Platform deployment did not complete — that environment is running its previous build.

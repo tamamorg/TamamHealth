@@ -56,6 +56,39 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   //     has no key to decrypt), so do not combine it with browser write paths.
   // Only an explicit demo (fake data) may run without either.
   const isDemo = env.NEXT_PUBLIC_DEMO_MODE === 'true';
+
+  // ── Demo mode is a carve-out, not a mode a real deployment may run in ──────
+  //
+  // `NEXT_PUBLIC_DEMO_MODE=true` is the widest switch in this file. It waives
+  // the PHI-at-rest requirement below, short-circuits every production warning
+  // in `productionConfigWarnings`, and turns on the patient portal's demo
+  // fallback — nine routes that answer with FABRICATED clinical data (labs,
+  // records, prescriptions, immunizations, billing) whenever CouchDB is
+  // briefly unreachable. A patient could be shown results that were never
+  // taken.
+  //
+  // That is acceptable in exactly one deployment: the standalone demo, which
+  // has no datastore at all and therefore no real record to misrepresent —
+  // the same pair `isStandaloneDemo()` tests before it will authenticate a
+  // seeded account. Demo mode PLUS real CouchDB credentials is not a demo; it
+  // is production running with its safety assertions switched off.
+  //
+  // Until now the only thing keeping that combination out of production was a
+  // hardcoded build-arg in one workflow file. Build discipline is not a
+  // guarantee, and the blast radius here is patient-visible.
+  const couchConfigured = Boolean(
+    (env.COUCHDB_ADMIN_USER || env.COUCHDB_USER)
+    && (env.COUCHDB_ADMIN_PASSWORD || env.COUCHDB_PASSWORD),
+  );
+  if (isDemo && couchConfigured) {
+    errors.push(
+      'NEXT_PUBLIC_DEMO_MODE=true with CouchDB credentials configured — refusing to boot. '
+      + 'Demo mode waives the PHI-at-rest requirement and lets the patient portal answer with '
+      + 'fabricated clinical data when the database is unreachable, so it may only run on the '
+      + 'standalone demo (no datastore). Unset NEXT_PUBLIC_DEMO_MODE for a real deployment, or '
+      + 'remove the CouchDB credentials if this is genuinely a demo.',
+    );
+  }
   if (!isDemo && env.NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE === 'true') {
     errors.push('NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE must be false in production — destructive cleanup is an operator-only migration.');
   }
