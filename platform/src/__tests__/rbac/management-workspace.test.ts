@@ -5,10 +5,13 @@ import { managementViewsForRole } from '@/modules/tenancy';
 const source = (relative: string) => fs.readFileSync(path.join(process.cwd(), 'src', relative), 'utf8');
 
 describe('the consolidated management workspace', () => {
-  test('only the platform operator owns the Organizations view', () => {
+  test('keeps edits narrow while oversight roles share the read-only network view', () => {
     expect(managementViewsForRole('super_admin')).toEqual(['organizations', 'facilities', 'people']);
     for (const role of ['org_admin', 'medical_superintendent', 'hospital_manager'] as const) {
       expect(managementViewsForRole(role)).toEqual(['facilities', 'people']);
+    }
+    for (const role of ['government', 'county_health_director', 'hrio', 'records_hmis_officer'] as const) {
+      expect(managementViewsForRole(role)).toEqual(['organizations', 'facilities']);
     }
   });
 

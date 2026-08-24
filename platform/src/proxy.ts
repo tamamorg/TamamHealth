@@ -142,6 +142,13 @@ function isCheckoutApiPath(pathname: string): boolean {
   return pathname === '/api/checkout' || pathname.startsWith('/api/checkout/');
 }
 
+/** Payment providers call these server-to-server with their own signatures. */
+export function isWebhookApiPath(pathname: string): boolean {
+  return pathname === '/api/webhooks/airtel'
+    || pathname === '/api/webhooks/flutterwave'
+    || pathname === '/api/webhooks/mpesa';
+}
+
 function isCsrfExemptApiPath(pathname: string): boolean {
   if (CSRF_EXEMPT_API_PATHS.has(pathname)) return true;
   // Patient portal has its own JWT scheme; it issues + checks its own
@@ -240,6 +247,14 @@ export async function proxy(request: NextRequest) {
     return nextWithCsp(request);
   }
 
+  // Provider callbacks do not carry a staff cookie, our CSRF token, or
+  // necessarily an Origin header. Let the route verify its provider-specific
+  // signature; keeping these behind staff auth makes successful payments
+  // permanently remain pending.
+  if (isWebhookApiPath(pathname)) {
+    return nextWithCsp(request);
+  }
+
   // Auth API routes — always public (needed for login/logout flow, and for a
   // new user redeeming an invitation, who has no session by definition).
   if (
@@ -318,7 +333,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Liveness/readiness probe — intentionally unauthenticated (see health route).
-  if (pathname === '/api/health') {
+  if (pathname === '/api/health' || pathname === '/api/health/live') {
     return nextWithCsp(request);
   }
 
@@ -416,7 +431,9 @@ export async function proxy(request: NextRequest) {
 
   const payload = await verifyToken(token);
   if (!payload) {
-    const response = NextResponse.redirect(new URL('/login', request.url));
+    const response = pathname.startsWith('/api/')
+      ? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      : NextResponse.redirect(new URL('/login', request.url));
     response.cookies.set('tamamhealth-token', '', { maxAge: 0, path: '/' });
     logRequest(request, response, undefined, undefined, Date.now() - startTime);
     return response;

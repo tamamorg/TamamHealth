@@ -239,7 +239,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // No '/appointments' either: a national ministry user has no clinic
       // book to keep. Both were grants no nav row and no link ever used.
       '/government',
-      '/admin/organizations', '/admin/facilities', '/vital-statistics', '/immunizations',
+      '/manage', '/admin/organizations', '/admin/facilities', '/vital-statistics', '/immunizations',
       '/anc', '/births', '/deaths', '/facility-assessments', '/data-quality',
       '/surveillance', '/reports', '/dhis2-export', '/public-stats', '/settings',
       '/epidemic-intelligence', '/mch-analytics',
@@ -254,7 +254,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     // only — no individual patient records, prescribing, dispensing, or billing.
     allowed: [
       '/dashboard/state',
-      '/admin/organizations', '/admin/facilities', '/surveillance', '/epidemic-intelligence', '/mch-analytics',
+      '/manage', '/admin/organizations', '/admin/facilities', '/surveillance', '/epidemic-intelligence', '/mch-analytics',
       '/vital-statistics', '/immunizations', '/anc', '/births', '/deaths',
       '/facility-assessments', '/data-quality', '/reports', '/dhis2-export',
       '/public-stats', '/messages', '/settings',
@@ -315,7 +315,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard/data-entry', '/patients', '/facility-assessments',
       '/data-quality', '/reports', '/vital-statistics',
       '/immunizations', '/anc', '/births', '/deaths',
-      '/admin/organizations', '/admin/facilities', '/messages', '/settings', '/it', '/system-admin',
+      '/manage', '/admin/organizations', '/admin/facilities', '/messages', '/settings', '/it', '/system-admin',
       '/dhis2-export',
     ],
     defaultDashboard: '/dashboard/data-entry',
@@ -428,7 +428,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     allowed: [
       '/dashboard/data-entry', '/patients', '/facility-assessments', '/data-quality',
       '/reports', '/vital-statistics', '/immunizations', '/anc', '/births', '/deaths',
-      '/admin/organizations', '/admin/facilities', '/messages', '/settings', '/dhis2-export', '/system-admin',
+      '/manage', '/admin/organizations', '/admin/facilities', '/messages', '/settings', '/dhis2-export', '/system-admin',
     ],
     defaultDashboard: '/dashboard/data-entry',
   },

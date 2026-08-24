@@ -80,7 +80,11 @@ export interface SyncStatus {
   error: string | null;
 }
 
-import { replicationSelector, type FacilityEntitlement } from './facility-entitlements';
+import {
+  documentMatchesEntitlement,
+  replicationSelector,
+  type FacilityEntitlement,
+} from './facility-entitlements';
 
 export interface SyncServiceOptions {
   localDB: PouchDB.Database;
@@ -135,8 +139,12 @@ import { DOC_WRITE_ROLES, isAppendOnlyDatabase } from './write-permissions';
  * gateway fails closed on unknown document types; filtering them here keeps a
  * malformed legacy record from wedging every later write in the checkpoint.
  */
-function buildPushFilter(role: string | undefined, appendOnlyDatabase = false) {
-  return (doc: { _id?: string; _deleted?: boolean; type?: string }) => {
+export function buildPushFilter(
+  role: string | undefined,
+  entitlement: FacilityEntitlement,
+  appendOnlyDatabase = false,
+) {
+  return (doc: { _id?: string; _deleted?: boolean; type?: string; [key: string]: unknown }) => {
     if (typeof doc._id === 'string' && doc._id.indexOf('_design/') === 0) return false;
     if (doc._deleted === true) {
       // A tombstone carries no `type`, so the matrix below cannot judge it —
@@ -151,7 +159,8 @@ function buildPushFilter(role: string | undefined, appendOnlyDatabase = false) {
     if (!role || !doc.type) return false;
     const allowed = doc.type ? DOC_WRITE_ROLES[doc.type] : undefined;
     if (!allowed) return false;
-    return (allowed as readonly string[]).includes(role);
+    return (allowed as readonly string[]).includes(role)
+      && documentMatchesEntitlement(doc, entitlement);
   };
 }
 
@@ -161,7 +170,6 @@ export class SyncService {
   private localDB: PouchDB.Database;
   private remoteDB: PouchDB.Database;
   private direction: SyncDirection;
-  private orgId?: string;
   private onChange?: (status: SyncStatus) => void;
 
   private replication: PouchDB.Replication.Sync<object> | PouchDB.Replication.Replication<object> | null = null;
@@ -172,7 +180,7 @@ export class SyncService {
   private pushRep: PouchDB.Replication.Replication<object> | null = null;
   private pullRep: PouchDB.Replication.Replication<object> | null = null;
   private readonly selector: Record<string, unknown> | undefined;
-  private readonly pushFilter: (doc: { _id?: string; type?: string }) => boolean;
+  private readonly pushFilter: (doc: { _id?: string; _deleted?: boolean; type?: string; [key: string]: unknown }) => boolean;
   private readonly pullMode: 'poll' | 'live';
   private readonly pullIntervalMs: number;
   private pullTimer: ReturnType<typeof setTimeout> | null = null;
@@ -204,19 +212,19 @@ export class SyncService {
         apiFetch(url, { ...(requestOpts ?? {}), credentials: 'include' }),
     } as PouchDB.Configuration.RemoteDatabaseConfiguration);
     this.direction = opts.direction;
-    this.orgId = opts.orgId;
     this.onChange = opts.onChange;
     // Built once: the entitlement cannot change without a new session, and
     // rebuilding it per replication restart would risk the two directions of a
     // bidirectional sync disagreeing about scope.
-    this.selector = replicationSelector(
-      opts.entitlement ?? { orgId: opts.orgId, facilityIds: [], allFacilities: true },
-    );
+    const entitlement = opts.entitlement
+      ?? { orgId: opts.orgId, facilityIds: [], allFacilities: true };
+    this.selector = replicationSelector(entitlement);
     // `localDB.name` is the local PouchDB database name, which is exactly the
     // key `isAppendOnlyDatabase` is stated in — the remote may be a tenant
     // database (`…--org-x`), the local one never is.
     this.pushFilter = buildPushFilter(
       opts.writableRole,
+      entitlement,
       isAppendOnlyDatabase((opts.localDB as { name?: string }).name ?? ''),
     );
     this.pullMode = opts.pullMode ?? 'poll';
@@ -342,37 +350,42 @@ export class SyncService {
 
   /** Force a one-time sync (non-live) and return when complete */
   async syncNow(): Promise<void> {
-    const opts: PouchDB.Replication.ReplicateOptions = {
+    const pushOptions: PouchDB.Replication.ReplicateOptions = {
       batch_size: 200,
-      ...(this.orgId ? {
-        filter: (doc: Record<string, unknown>) => {
-          if ((doc._id as string)?.startsWith('_design/')) return true;
-          if (!doc.orgId) return true;
-          return doc.orgId === this.orgId;
-        },
-      } : {}),
+      filter: this.pushFilter as unknown as (doc: object) => boolean,
+    };
+    const pullOptions: PouchDB.Replication.ReplicateOptions = {
+      batch_size: 200,
+      ...(this.selector ? { selector: this.selector } : {}),
     };
 
     this.updateStatus({ state: 'active', error: null });
 
     try {
       if (this.direction === 'both') {
-        const result = await this.localDB.sync(this.remoteDB, opts);
+        // Keep directions independent here just like live replication: push
+        // uses the role + tenant filter, while pull uses the server-side
+        // entitlement selector. db.sync(options) applies one ambiguous option
+        // bag to both directions and previously bypassed facility scoping.
+        const [push, pull] = await Promise.all([
+          this.localDB.replicate.to(this.remoteDB, pushOptions),
+          this.localDB.replicate.from(this.remoteDB, pullOptions),
+        ]);
         this.updateStatus({
           state: 'idle',
           lastSync: new Date().toISOString(),
-          docsWritten: this._status.docsWritten + (result.push?.docs_written || 0),
-          docsRead: this._status.docsRead + (result.pull?.docs_read || 0),
+          docsWritten: this._status.docsWritten + (push.docs_written || 0),
+          docsRead: this._status.docsRead + (pull.docs_read || 0),
         });
       } else if (this.direction === 'push') {
-        const result = await this.localDB.replicate.to(this.remoteDB, opts);
+        const result = await this.localDB.replicate.to(this.remoteDB, pushOptions);
         this.updateStatus({
           state: 'idle',
           lastSync: new Date().toISOString(),
           docsWritten: this._status.docsWritten + (result.docs_written || 0),
         });
       } else {
-        const result = await this.localDB.replicate.from(this.remoteDB, opts);
+        const result = await this.localDB.replicate.from(this.remoteDB, pullOptions);
         this.updateStatus({
           state: 'idle',
           lastSync: new Date().toISOString(),

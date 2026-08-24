@@ -3,9 +3,8 @@
 /**
  * Facility Management — the org-admin console dashboard, rebuilt 2026-08-21
  * on the shared admin console kit (sadb-*) to mirror /admin's anatomy:
- * a KPI tile row, an operational row (weekly cash flow + today's
- * operations), the work queue as a tabbed sadb card, and the org's facility
- * matrix as a grid list. Until then it rode the clinical `EhrCareDashboard`
+ * a KPI tile row, an operational row (patient flow, cash, today), and the
+ * org's facility matrix as a grid list. Until then it rode the clinical `EhrCareDashboard`
  * shell (mini-calendar + queue + rail), which made the org admin's landing
  * page read as a care station while every other admin page read as a
  * console. The clinical shell itself is untouched — eight role dashboards
@@ -15,7 +14,13 @@
  *  • the clickable Facility Overview metrics — now KPI tiles (staffing and
  *    census) plus a Today's Operations card (the day-scoped figures), both
  *    keeping the ?preview= deep-linked FacilityMetricPreviewDialog;
- *  • the Weekly Cash Flow chart (same deferred recharts import);
+ *  • the week's cash — as a ring with its total in the middle and the two
+ *    amounts beside it (2026-08-24), which is the super-admin readiness
+ *    card's anatomy and its layout classes. Seven columns of stacked bars
+ *    spent the row's widest card saying less than "how much, and how much of
+ *    it landed", and that width now draws Patient Flow: admissions vs
+ *    outpatient encounters, the two ends of the same day's work, which
+ *    nothing on this page reported before;
  *  • the Add menu and the staff-accounts shortcut, in the page-actions row.
  * Dropped deliberately: the mini-calendar and day filtering — both were
  * already inert here (`filterRowsByDate={false}`; neither queue is a single
@@ -52,11 +57,11 @@ import { censusFor } from '@/lib/services/facility-census';
 import Modal from '@/components/Modal';
 import {
   SadbPage, SadbCard, SadbKpiTile, SadbKvRow,
-  SadbChip, SadbGridList, SadbGridRow, SadbHeadLink,
+  SadbGridList, SadbGridRow, SadbHeadLink,
 } from '@/components/admin/sadb-ui';
-import { toIsoDate } from '@/lib/date-utils';
+import { addDaysIso } from '@/lib/date-utils';
 import { formatMoney, titleCase } from '@/lib/format-utils';
-import { jubaDate, jubaTime } from '@/lib/time-juba';
+import { jubaDate, jubaTime, jubaWeekStart } from '@/lib/time-juba';
 import { usersHrefForRole } from '@/lib/people-nav';
 import { summariseEnquiries, getPatientEnquiries } from '@/lib/services/enquiry-service';
 import {
@@ -74,25 +79,24 @@ const WeeklyActivityChart = dynamic(() => import('./_FacilityCharts').then(m => 
   ssr: false,
   loading: () => <div style={{ width: '100%', height: 208 }} />,
 });
+const CashFlowDonut = dynamic(() => import('./_FacilityCharts').then(m => m.CashFlowDonut), {
+  ssr: false,
+  loading: () => <div style={{ width: '100%', height: '100%' }} />,
+});
 
-// Kept from the Cash Flow donut this chart replaced, so received/pending read
-// in the same two colours everywhere in the product.
+// The billing workspace's own cash ring draws these two, so received/pending
+// read in the same two colours everywhere in the product.
 const CASH_RECEIVED = '#0fa06a';
 const CASH_PENDING = 'var(--color-warning)';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-/** JS getDay() (0=Sun..6=Sat) → our Mon-first index (0=Mon..6=Sun). */
-function weekdayIndex(d: Date): number {
-  return (d.getDay() + 6) % 7;
-}
 
-/** Money axis in a narrow rail: full figures (SSP 1,250,000) blow the tick
- *  column out, so ticks go compact and the tooltip keeps the exact amount. */
-function compactAmount(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `${Math.round(value / 1_000)}k`;
-  return String(value);
-}
+/** Inpatient/outpatient keep the CVD-validated blue/orange pair the clinical
+ *  dashboards' day-activity chart uses (`--viz-inpatient` / `--viz-outpatient`
+ *  on .ehr-day-stats, the same two hex values), so the split means the same
+ *  thing to a reader who has seen it on a ward board. */
+const FLOW_INPATIENT = 'var(--chart-2)';
+const FLOW_OUTPATIENT = 'var(--chart-5)';
 
 /** Money billed on one day, split by what has actually been collected.
  *  Cancelled/waived/draft bills are excluded — nothing is owed on them, so
@@ -105,6 +109,13 @@ interface DailyCash {
 const CHARGEABLE_BILL_STATUSES = new Set([
   'pending', 'partial', 'paid', 'insurance_pending', 'insurance_approved',
 ]);
+
+/** One day's arrivals, split by where the patient went. */
+interface DailyFlow {
+  date: string;
+  inpatient: number;
+  outpatient: number;
+}
 
 /** Staffing-gap row shape returned by `getStaffingGaps` — duplicated here
  *  (rather than imported) because the service is loaded dynamically, same
@@ -275,14 +286,32 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
   };
 }
 
-type ExtraKey = 'billing' | 'enquiries' | 'availability' | 'leave' | 'schedule' | 'gaps';
+type ExtraKey = 'billing' | 'flow' | 'enquiries' | 'availability' | 'leave' | 'schedule' | 'gaps';
 const EXTRA_LABELS: Record<ExtraKey, string> = {
-  billing: 'billing', enquiries: 'inquiries', availability: 'staff availability',
-  leave: 'leave requests', schedule: 'shift schedule', gaps: 'staffing gaps',
+  billing: 'billing', flow: 'patient flow', enquiries: 'inquiries',
+  availability: 'staff availability', leave: 'leave requests',
+  schedule: 'shift schedule', gaps: 'staffing gaps',
 };
 
-/* Facility matrix columns: Facility · Type · Beds · Patients · Today's visits */
-const FAC_GRID = 'minmax(200px, 1.7fr) minmax(130px, 1fr) minmax(70px, 0.6fr) minmax(90px, 0.7fr) minmax(90px, 0.7fr)';
+/* Facility matrix columns: Facility · Type · Patients · Today's visits.
+   Four equal shares, not a weighted name column: the row reads as a table,
+   and a table whose first column takes half the width makes its figures look
+   like a footnote to the name. Beds left on 2026-08-24 — `totalBeds` is the
+   registry's capacity figure, not occupancy, so it answered a question about
+   the record rather than about the facility. */
+const FAC_GRID = 'repeat(4, minmax(140px, 1fr))';
+
+/** Facility tier → its own hue, so the column is scannable rather than a
+ *  stack of identical blue pills. Tinted `fmfac-tier-*` chips (globals.css)
+ *  rather than the kit's chip tones: green/yellow/red carry alarm meaning in
+ *  this console, and a facility's tier is not an alarm. */
+const TIER_CLASS: Record<string, string> = {
+  national_referral: 'fmfac-tier--national',
+  state_hospital: 'fmfac-tier--state',
+  county_hospital: 'fmfac-tier--county',
+  phcc: 'fmfac-tier--phcc',
+  phcu: 'fmfac-tier--phcu',
+};
 
 export default function FacilityManagementDashboard() {
   const { currentUser } = useAuth();
@@ -301,6 +330,7 @@ export default function FacilityManagementDashboard() {
   const { census: facilityCensus } = useFacilityCensus();
 
   const [cash, setCash] = useState<{ currency: string; days: DailyCash[] }>({ currency: 'SSP', days: [] });
+  const [flow, setFlow] = useState<DailyFlow[]>([]);
   const [enquiries, setEnquiries] = useState<MessageDoc[]>([]);
   const [availableProviderIds, setAvailableProviderIds] = useState<Set<string>>(new Set());
   const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
@@ -309,7 +339,7 @@ export default function FacilityManagementDashboard() {
   const [loadErrors, setLoadErrors] = useState<Set<ExtraKey>>(new Set());
   const [extraLoading, setExtraLoading] = useState(true);
   // Distinct from `extraLoading`, which only covers the FIRST load (it gates
-  // the whole-page spinner). A retry re-runs the same six fetches with the
+  // the whole-page spinner). A retry re-runs the same seven fetches with the
   // page already painted, and without its own flag the Retry button sat there
   // looking inert for the whole round trip.
   const [retrying, setRetrying] = useState(false);
@@ -319,10 +349,10 @@ export default function FacilityManagementDashboard() {
   const today = jubaDate();
   const facilityId = currentUser?.hospitalId;
 
-  // Billing, enquiries, provider availability, leave, and today's
-  // schedule/staffing-gaps are all fetched together; each is tracked
+  // Billing, patient flow, enquiries, provider availability, leave, and
+  // today's schedule/staffing-gaps are all fetched together; each is tracked
   // independently in `loadErrors` so a single failure degrades only its own
-  // card instead of the whole dashboard, and Retry re-runs all six.
+  // card instead of the whole dashboard, and Retry re-runs all seven.
   useEffect(() => {
     let cancelled = false;
     if (!hasLoadedExtraRef.current) setExtraLoading(true);
@@ -346,6 +376,39 @@ export default function FacilityManagementDashboard() {
         byDate.set(date, row);
       }
       return { currency: bills[0]?.currency || 'SSP', days: Array.from(byDate.values()) };
+    };
+    /* Arrivals per day, split by disposition. Counted from the records
+       themselves rather than any stored total, and reduced to a row per day
+       here so the page holds a week of counts instead of every encounter. */
+    const loadFlow = async (): Promise<DailyFlow[]> => {
+      const [{ getAllEncounters }, { getAllAdmissions }] = await Promise.all([
+        import('@/lib/services/encounter-service'),
+        import('@/lib/services/ward-service'),
+      ]);
+      const [encounters, admissions] = await Promise.all([
+        getAllEncounters(scope),
+        getAllAdmissions(scope),
+      ]);
+      const byDate = new Map<string, DailyFlow>();
+      const row = (date: string): DailyFlow => {
+        let r = byDate.get(date);
+        if (!r) { r = { date, inpatient: 0, outpatient: 0 }; byDate.set(date, r); }
+        return r;
+      };
+      // An admission grows out of an OPD encounter (`AdmissionDoc.encounterId`),
+      // so that encounter is counted ONCE — as the admission it became.
+      // Counting it on both bars would report one arrival twice and make a
+      // busy ward look like a busy clinic as well.
+      const admitted = new Set(admissions.map(a => a.encounterId).filter(Boolean));
+      for (const a of admissions) {
+        if (a.admissionDate) row(jubaDate(a.admissionDate)).inpatient++;
+      }
+      for (const e of encounters) {
+        if (admitted.has(e._id)) continue;
+        const at = e.startedAt || e.createdAt;
+        if (at) row(jubaDate(at)).outpatient++;
+      }
+      return Array.from(byDate.values());
     };
     const loadAvailability = async () => {
       // Recurrence-aware: a clinic that runs every Monday has no row dated
@@ -373,6 +436,7 @@ export default function FacilityManagementDashboard() {
 
     const runAll = () => Promise.allSettled([
       loadCash(),
+      loadFlow(),
       getPatientEnquiries(scope),
       loadAvailability(),
       loadLeave(),
@@ -388,8 +452,8 @@ export default function FacilityManagementDashboard() {
 
       // One automatic second attempt before showing anyone a red banner.
       //
-      // Each of the six loaders begins with a dynamic `import()`, so a single
-      // chunk that fails to arrive rejects all six at once — which is why the
+      // Each of the seven loaders begins with a dynamic `import()`, so a
+      // single chunk that fails to arrive rejects all seven at once — which is why the
       // banner reads "Couldn't load billing, inquiries, staff availability,
       // leave requests, shift schedule, staffing gaps" rather than naming one
       // thing. That is one transient network fault, not six broken subsystems,
@@ -401,8 +465,9 @@ export default function FacilityManagementDashboard() {
         results = await runAll();
         if (cancelled) return;
       }
-      const [billingRes, enquiriesRes, availRes, leaveRes, schedRes, gapsRes] = results;
+      const [billingRes, flowRes, enquiriesRes, availRes, leaveRes, schedRes, gapsRes] = results;
       if (billingRes.status === 'fulfilled') setCash(billingRes.value); else failed.add('billing');
+      if (flowRes.status === 'fulfilled') setFlow(flowRes.value); else failed.add('flow');
       if (enquiriesRes.status === 'fulfilled') setEnquiries(enquiriesRes.value); else failed.add('enquiries');
       if (availRes.status === 'fulfilled') setAvailableProviderIds(availRes.value); else failed.add('availability');
       if (leaveRes.status === 'fulfilled') setLeave(leaveRes.value); else failed.add('leave');
@@ -413,8 +478,9 @@ export default function FacilityManagementDashboard() {
       // at once whenever anything shared underneath them breaks — six identical
       // symptoms and no cause. Log what actually rejected.
       for (const [key, res] of [
-        ['billing', billingRes], ['enquiries', enquiriesRes], ['availability', availRes],
-        ['leave', leaveRes], ['schedule', schedRes], ['gaps', gapsRes],
+        ['billing', billingRes], ['flow', flowRes], ['enquiries', enquiriesRes],
+        ['availability', availRes], ['leave', leaveRes], ['schedule', schedRes],
+        ['gaps', gapsRes],
       ] as [ExtraKey, PromiseSettledResult<unknown>][]) {
         if (res.status === 'rejected') console.error(`[facility-dashboard] ${key} failed to load:`, res.reason);
       }
@@ -475,31 +541,54 @@ export default function FacilityManagementDashboard() {
     router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
-  // This week's cash, Monday-first. Days are matched on the local calendar date
-  // string rather than by parsing to Date: `encounterDate` is date-only, and
-  // `new Date('2026-08-12')` is UTC midnight, which lands on the previous day
-  // for anyone west of Greenwich.
-  const weekly = useMemo(() => {
-    const start = new Date(); start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - weekdayIndex(start)); // Monday of this week
-    return WEEKDAYS.map((label, i) => {
-      const d = new Date(start); d.setDate(start.getDate() + i);
-      const iso = toIsoDate(d);
-      const day = cash.days.find(c => c.date === iso);
-      return { day: label, received: day?.received || 0, pending: day?.pending || 0 };
-    });
-  }, [cash.days]);
+  /* This week, Monday-first, on the CLINICAL calendar: both cards below read
+     the same seven days, and a visit at 23:00 in Juba belongs to that day
+     wherever the browser happens to be. Days are matched as date strings —
+     `new Date('2026-08-12')` is UTC midnight, which lands on the previous day
+     for anyone west of Greenwich. */
+  const weekDays = useMemo(() => {
+    const start = jubaWeekStart();
+    return Array.from({ length: 7 }, (_, i) => addDaysIso(start, i));
+  }, []);
 
-  const cashSeries = useMemo(() => {
-    const money = {
-      axisFormat: compactAmount,
-      tooltipFormat: (v: number) => formatMoney(v, { currency: cash.currency }),
-    };
-    return [
-      { key: 'received', name: 'Received', color: CASH_RECEIVED, ...money },
-      { key: 'pending', name: 'Pending', color: CASH_PENDING, ...money },
-    ];
-  }, [cash.currency]);
+  /* Arrivals per day, admitted vs seen-and-sent-home. Inpatient is the first
+     series so it draws on the baseline: it is the smaller figure and the one
+     a manager tracks day to day, and a stacked segment is only comparable
+     across days when it sits on the axis. */
+  const weeklyFlow = useMemo(
+    () => weekDays.map((iso, i) => {
+      const day = flow.find(f => f.date === iso);
+      return { day: WEEKDAYS[i], inpatient: day?.inpatient || 0, outpatient: day?.outpatient || 0 };
+    }),
+    [weekDays, flow],
+  );
+
+  const flowSeries = useMemo(() => [
+    { key: 'inpatient', name: 'Inpatient', color: FLOW_INPATIENT },
+    { key: 'outpatient', name: 'Outpatient', color: FLOW_OUTPATIENT },
+  ], []);
+
+  /* The week's money as one total and its two parts — what the ring and its
+     two figures are drawn from. Seven columns of two stacked bars said less
+     about a week's billing than "how much, and how much of it landed", and
+     cost the row's widest card to say it. */
+  const cashWeek = useMemo(() => {
+    let received = 0;
+    let pending = 0;
+    for (const day of cash.days) {
+      if (!weekDays.includes(day.date)) continue;
+      received += day.received;
+      pending += day.pending;
+    }
+    return { received, pending, total: received + pending };
+  }, [cash.days, weekDays]);
+
+  /* A ring of nothing is a grey ring, not two zero-width slices — the donut
+     draws its own empty state when every slice is filtered out. */
+  const cashSlices = useMemo(() => [
+    { name: 'Received', value: cashWeek.received, color: CASH_RECEIVED },
+    { name: 'Pending', value: cashWeek.pending, color: CASH_PENDING },
+  ].filter(slice => slice.value > 0), [cashWeek]);
 
   const failedLabels = Array.from(loadErrors).map(k => EXTRA_LABELS[k]);
   if (usersError) failedLabels.push('staff accounts');
@@ -587,15 +676,47 @@ export default function FacilityManagementDashboard() {
         })}
       </div>
 
-      {/* ═══ Operational row: cash flow + today's operations ═══ */}
-      {/* No `items-start`: the two cards are one row of the dashboard and read
-          as a pair, so they end on the same line. The chart sets the height —
-          it has a fixed one — and the operations list spreads its four rows to
-          fill rather than stopping halfway down beside it. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3.5">
-        <SadbCard title="Weekly Cash Flow" meta={cash.currency}>
+      {/* ═══ Operational row: patient flow · cash · today ═══
+           No `items-start`: the three cards are one row of the dashboard and
+           read together, so they end on the same line. The chart sets the
+           height — it has a fixed one — and the ring and the operations list
+           spread to fill rather than stopping halfway down beside it. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-3.5">
+        {/* The week's arrivals: how many came, and how many stayed. Admissions
+            and outpatient encounters are the two ends of the same day's work,
+            and nothing on this page said either until now. */}
+        <SadbCard title="Patient Flow" meta="This week">
           <div className="px-3 pt-3 pb-1">
-            <WeeklyActivityChart data={weekly} chartType="bar" series={cashSeries} />
+            <WeeklyActivityChart data={weeklyFlow} chartType="bar" series={flowSeries} />
+          </div>
+        </SadbCard>
+
+        {/* Cash as a ring with its total in the middle and the two amounts
+            beside it — the same anatomy as the super-admin console's readiness
+            card, reusing its layout classes. */}
+        <SadbCard title="Cash Flow" meta={`${cash.currency} · this week`}>
+          <div className="sadb-readiness-body">
+            <div className="relative flex-shrink-0" style={{ width: 124, height: 124 }}>
+              <CashFlowDonut data={cashSlices} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2">
+                <span className="text-[13px] font-bold leading-tight text-center" style={{ color: 'var(--text-primary)' }}>
+                  {formatMoney(cashWeek.total, { currency: cash.currency })}
+                </span>
+                <span className="text-[9px] uppercase tracking-wide leading-tight mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Billed
+                </span>
+              </div>
+            </div>
+            <div className="sadb-readiness-signals">
+              <div className="sadb-signal sadb-signal--green">
+                <b>{formatMoney(cashWeek.received, { currency: cash.currency })}</b>
+                <span>Received</span>
+              </div>
+              <div className="sadb-signal sadb-signal--yellow">
+                <b>{formatMoney(cashWeek.pending, { currency: cash.currency })}</b>
+                <span>Pending</span>
+              </div>
+            </div>
           </div>
         </SadbCard>
 
@@ -639,7 +760,7 @@ export default function FacilityManagementDashboard() {
               <SadbGridList
                 template={FAC_GRID}
                 minWidth={640}
-                head={['Facility', 'Type', 'Beds', 'Patients', "Today's visits"]}
+                head={['Facility', 'Type', 'Patients', "Today's visits"]}
               >
                 {hospitals.map((h: HospitalDoc) => (
                   <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/admin/facilities/${h._id}`)}>
@@ -647,11 +768,10 @@ export default function FacilityManagementDashboard() {
                       <span className="sadb-tenant-name truncate">{h.name}</span>
                     </span>
                     <span>
-                      <SadbChip tone={h.facilityType === 'phcc' || h.facilityType === 'phcu' ? 'neutral' : 'blue'}>
+                      <span className={`fmfac-tier ${TIER_CLASS[h.facilityType] ?? ''}`.trim()}>
                         {facilityLabel(h.facilityType)}
-                      </SadbChip>
+                      </span>
                     </span>
-                    <span className="sadb-tenant-num">{h.totalBeds || 0}</span>
                     <span className="sadb-tenant-num">{facilityCensus ? censusFor(facilityCensus, h._id).patients : '…'}</span>
                     <span className="sadb-tenant-num">{facilityCensus ? censusFor(facilityCensus, h._id).todayVisits : '…'}</span>
                   </SadbGridRow>

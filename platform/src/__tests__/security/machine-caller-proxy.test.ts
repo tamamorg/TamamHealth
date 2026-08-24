@@ -125,3 +125,25 @@ describe('machine-caller exemption', () => {
     expect(res.status).not.toBe(403);
   });
 });
+
+describe('public infrastructure API hand-off', () => {
+  it('allows both health probes without a staff session', async () => {
+    expect((await proxy(new NextRequest('https://app.example.org/api/health'))).status).toBe(200);
+    expect((await proxy(new NextRequest('https://app.example.org/api/health/live'))).status).toBe(200);
+  });
+
+  it.each(['airtel', 'flutterwave', 'mpesa'])('lets the %s provider reach its signed webhook route', async provider => {
+    const res = await proxy(post(`https://app.example.org/api/webhooks/${provider}`));
+    expect(res.status).toBe(200);
+  });
+
+  it('returns JSON 401 instead of redirecting an API caller with a bad token', async () => {
+    const req = new NextRequest('https://app.example.org/api/patients', {
+      headers: { cookie: 'tamamhealth-token=not-a-valid-jwt' },
+    });
+    const res = await proxy(req);
+    expect(res.status).toBe(401);
+    expect(res.headers.get('location')).toBeNull();
+    await expect(res.json()).resolves.toEqual({ error: 'Unauthorized' });
+  });
+});

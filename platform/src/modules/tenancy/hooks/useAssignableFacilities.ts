@@ -10,13 +10,13 @@ import type { HospitalDoc } from '@/lib/db-types';
  * for clinical reads, but showing a local-only record in a central account
  * form creates a choice the server cannot honour.
  */
-export function useAssignableFacilities(orgId?: string) {
+export function useAssignableFacilities(orgId?: string, enabled = true) {
   const [facilities, setFacilities] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    if (!orgId) {
+    if (!enabled || !orgId) {
       setFacilities([]);
       setError(null);
       setLoading(false);
@@ -36,10 +36,9 @@ export function useAssignableFacilities(orgId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [enabled, orgId]);
 
   useEffect(() => { void reload(); }, [reload]);
 
   return { facilities, loading, error, reload };
 }
-

@@ -52,6 +52,48 @@ const FACILITY_FIELDS = [
   'recipientHospitalId',
 ] as const;
 
+type ReplicationDocument = {
+  _deleted?: boolean;
+  orgId?: unknown;
+  type?: unknown;
+  [key: string]: unknown;
+};
+
+/**
+ * Apply the same entitlement rules to an outgoing document that the Mango
+ * selector applies to incoming documents. A local PouchDB can contain records
+ * left by a previous user or facility, so role-based write permission alone is
+ * not enough to decide whether a record may be offered to the tenant server.
+ */
+export function documentMatchesEntitlement(
+  doc: ReplicationDocument,
+  entitlement: FacilityEntitlement,
+): boolean {
+  if (doc._deleted) return true;
+
+  if (entitlement.orgId) {
+    if (doc.orgId !== entitlement.orgId) {
+      const isExplicitlyGlobal = doc.orgId == null
+        && typeof doc.type === 'string'
+        && (GLOBAL_NO_ORG_TYPES as readonly string[]).includes(doc.type);
+      if (!isExplicitlyGlobal) return false;
+    }
+  }
+
+  if (entitlement.allFacilities) return true;
+
+  const tiedFacilities = FACILITY_FIELDS.flatMap(field => {
+    const value = doc[field];
+    if (typeof value === 'string' && value) return [value];
+    if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && !!item);
+    return [];
+  });
+
+  // Organisation-wide reference/configuration records have no facility tie.
+  if (tiedFacilities.length === 0) return true;
+  return tiedFacilities.some(facilityId => entitlement.facilityIds.includes(facilityId));
+}
+
 function noFacilityTieSelector(): Record<string, unknown> {
   return {
     $and: FACILITY_FIELDS.map(field => ({ [field]: { $exists: false } })),

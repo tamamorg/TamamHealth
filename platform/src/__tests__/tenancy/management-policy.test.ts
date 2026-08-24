@@ -27,10 +27,18 @@ describe('management policy', () => {
     expect(canPerformTenancyAction('medical_superintendent', 'access:disable')).toBe(false);
   });
 
+  it('gives public-health oversight roles read-only organization and facility access', () => {
+    for (const role of ['government', 'county_health_director', 'hrio', 'records_hmis_officer'] as const) {
+      expect(canPerformTenancyAction(role, 'organization:view')).toBe(true);
+      expect(canPerformTenancyAction(role, 'facility:view')).toBe(true);
+      expect(canPerformTenancyAction(role, 'organization:edit')).toBe(false);
+      expect(canPerformTenancyAction(role, 'person:view')).toBe(false);
+    }
+  });
+
   it('includes home and additional facilities in the same roster rule', () => {
     expect(userWorksAtFacility({ hospitalId: 'home', facilityIds: ['cover'] }, 'home')).toBe(true);
     expect(userWorksAtFacility({ hospitalId: 'home', facilityIds: ['cover'] }, 'cover')).toBe(true);
     expect(userWorksAtFacility({ hospitalId: 'home', facilityIds: ['cover'] }, 'other')).toBe(false);
   });
 });
-

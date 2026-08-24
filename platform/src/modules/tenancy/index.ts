@@ -3,6 +3,7 @@ import type { UserDoc, UserRole } from '@/lib/db-types';
 /** The roles that may open the shared organization, facility and people workspace. */
 export const TENANCY_WORKSPACE_ROLES: readonly UserRole[] = [
   'super_admin', 'org_admin', 'medical_superintendent', 'hospital_manager',
+  'government', 'county_health_director', 'hrio', 'records_hmis_officer',
 ];
 
 /**
@@ -21,9 +22,11 @@ export type ManagementView = 'organizations' | 'facilities' | 'people';
 
 /** Keep organization ownership platform-wide; tenant operators manage their own facilities and people. */
 export function managementViewsForRole(role: UserRole): readonly ManagementView[] {
-  return role === 'super_admin'
-    ? ['organizations', 'facilities', 'people']
-    : ['facilities', 'people'];
+  if (role === 'super_admin') return ['organizations', 'facilities', 'people'];
+  if (role === 'org_admin' || role === 'medical_superintendent' || role === 'hospital_manager') {
+    return ['facilities', 'people'];
+  }
+  return ['organizations', 'facilities'];
 }
 
 export type TenancyAction =
@@ -39,6 +42,7 @@ const ALL_ACTIONS: readonly TenancyAction[] = [
 ];
 const ORG_ACTIONS: readonly TenancyAction[] = ALL_ACTIONS.filter(action => action !== 'organization:create');
 const FACILITY_OVERSIGHT: readonly TenancyAction[] = ['organization:view', 'facility:view', 'person:view'];
+const NETWORK_OVERSIGHT: readonly TenancyAction[] = ['organization:view', 'facility:view'];
 const NO_TENANCY_ACTIONS: readonly TenancyAction[] = [];
 
 /** Explicit least-privilege matrix for every platform role. */
@@ -59,10 +63,10 @@ export const TENANCY_ACTIONS_BY_ROLE: Readonly<Record<UserRole, readonly Tenancy
   cashier: NO_TENANCY_ACTIONS,
   medical_biller: NO_TENANCY_ACTIONS,
   data_entry_clerk: NO_TENANCY_ACTIONS,
-  hrio: NO_TENANCY_ACTIONS,
-  records_hmis_officer: NO_TENANCY_ACTIONS,
-  government: NO_TENANCY_ACTIONS,
-  county_health_director: NO_TENANCY_ACTIONS,
+  hrio: NETWORK_OVERSIGHT,
+  records_hmis_officer: NETWORK_OVERSIGHT,
+  government: NETWORK_OVERSIGHT,
+  county_health_director: NETWORK_OVERSIGHT,
   central_registration_clerk: NO_TENANCY_ACTIONS,
   clinic_clerk: NO_TENANCY_ACTIONS,
   triage_nurse: NO_TENANCY_ACTIONS,

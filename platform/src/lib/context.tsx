@@ -1180,11 +1180,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * genuinely down, sync stays stopped regardless of preference.
    */
   const toggleOnline = useCallback(() => {
-    setWantsOnline(prev => {
-      const next = !prev;
-      if (next) setLastSync(new Date().toISOString());
-      return next;
-    });
+    setWantsOnline(prev => !prev);
   }, []);
 
   const syncPaused = !wantsOnline;

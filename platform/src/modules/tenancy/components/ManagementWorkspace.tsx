@@ -84,7 +84,8 @@ export default function ManagementWorkspace() {
     [hospitalStore.hospitals, orgId],
   );
   const selectedFacility = facilities.find(facility => facility._id === facilityId) ?? null;
-  const { facilities: assignableFacilities } = useAssignableFacilities(orgId);
+  const mayCreatePeople = canCreateUsers(currentUser?.role ?? '');
+  const { facilities: assignableFacilities } = useAssignableFacilities(orgId, mayCreatePeople);
   const people = useMemo(() => userStore.users.filter(user => {
     if (orgId && user.orgId !== orgId) return false;
     if (facilityId && !userWorksAtFacility(user, facilityId)) return false;
@@ -243,7 +244,7 @@ export default function ManagementWorkspace() {
                     );
                   })}
                   {activeView === 'facilities' && filteredFacilities.map(facility => (
-                    <SadbGridRow key={facility._id} template={MGMT_GRID} onClick={() => { setFacilityId(facility._id); setView('people'); router.replace(`/manage?view=people&org=${encodeURIComponent(orgId)}&facility=${encodeURIComponent(facility._id)}`, { scroll: false }); }}>
+                    <SadbGridRow key={facility._id} template={MGMT_GRID} onClick={visibleViews.includes('people') ? () => { setFacilityId(facility._id); setView('people'); router.replace(`/manage?view=people&org=${encodeURIComponent(orgId)}&facility=${encodeURIComponent(facility._id)}`, { scroll: false }); } : undefined}>
                       <span className="min-w-0">
                         <span className="sadb-tenant-name truncate">{facility.name}</span>
                         <span className="sadb-tenant-sub truncate">{[facility.town, facility.state].filter(Boolean).join(', ')}</span>

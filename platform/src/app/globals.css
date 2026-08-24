@@ -31919,3 +31919,58 @@ button.sadb-signal { cursor: pointer; }
   font-weight: 600;
   color: var(--text-muted);
 }
+
+/* ── Facility matrix tier chips (fmfac-*) ─────────────────────────────────
+   The Facility Management dashboard's facility list. Every row used to wear
+   the same blue pill (or grey for the two primary-care tiers), so the Type
+   column was a stack of identical shapes that had to be READ rather than
+   scanned. One hue per tier fixes that, and they are their own class rather
+   than the kit's chip tones because green/yellow/red mean alarm everywhere
+   else in this console — a facility's tier is not an alarm.
+
+   Hues come from the shared --chart-* palette, spaced so no two adjacent
+   tiers in the referral ladder share a family. Tints, not fills: the chip
+   sits inside a dense table row and a solid block per row would outshout the
+   facility names beside it.
+   ---------------------------------------------------------------------- */
+.fmfac-tier {
+  display: inline-block;
+  max-width: 100%;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-secondary);
+  background: var(--overlay-subtle);
+  border: 1px solid transparent;
+}
+.fmfac-tier--national {
+  color: var(--chart-1);
+  background: color-mix(in srgb, var(--chart-1) 11%, transparent);
+  border-color: color-mix(in srgb, var(--chart-1) 30%, transparent);
+}
+.fmfac-tier--state {
+  color: var(--chart-6);
+  background: color-mix(in srgb, var(--chart-6) 12%, transparent);
+  border-color: color-mix(in srgb, var(--chart-6) 32%, transparent);
+}
+.fmfac-tier--county {
+  color: var(--chart-4);
+  background: color-mix(in srgb, var(--chart-4) 12%, transparent);
+  border-color: color-mix(in srgb, var(--chart-4) 32%, transparent);
+}
+.fmfac-tier--phcc {
+  color: var(--chart-2);
+  background: color-mix(in srgb, var(--chart-2) 13%, transparent);
+  border-color: color-mix(in srgb, var(--chart-2) 34%, transparent);
+}
+.fmfac-tier--phcu {
+  color: var(--chart-5);
+  background: color-mix(in srgb, var(--chart-5) 13%, transparent);
+  border-color: color-mix(in srgb, var(--chart-5) 34%, transparent);
+}

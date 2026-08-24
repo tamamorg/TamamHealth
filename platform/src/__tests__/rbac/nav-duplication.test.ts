@@ -39,6 +39,14 @@ describe('nav rows are distinct destinations', () => {
     expect(Object.fromEntries(duplicated)).toEqual({});
   });
 
+  test('oversight roles use the canonical management workspace, not a retired duplicate', () => {
+    for (const role of ['government', 'county_health_director', 'hrio', 'records_hmis_officer'] as const) {
+      const hrefs = ROLE_PERMISSIONS[role].navItems.map(item => basePath(item.href));
+      expect(hrefs).toContain('/manage');
+      expect(hrefs).not.toContain('/admin/organizations');
+    }
+  });
+
   test('every nav row opens a route its role may reach', () => {
     // A query string never changes which page loads, so the gate is the base
     // path. Pinned here because collapsing a `?view=` row to its base is only

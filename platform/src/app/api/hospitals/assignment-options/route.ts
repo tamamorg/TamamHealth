@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
-import { TENANCY_WORKSPACE_ROLES } from '@/modules/tenancy';
+
+const ACCOUNT_PROVISIONING_ROLES = ['super_admin', 'org_admin'] as const;
 
 /**
  * Server-authoritative facility choices for central account provisioning.
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
-    if (!hasRole(auth, [...TENANCY_WORKSPACE_ROLES])) return forbidden();
+    if (!hasRole(auth, [...ACCOUNT_PROVISIONING_ROLES])) return forbidden();
 
     const requestedOrgId = new URL(request.url).searchParams.get('orgId')?.trim();
     const orgId = auth.role === 'super_admin' ? requestedOrgId : auth.orgId;
@@ -34,4 +35,3 @@ export async function GET(request: NextRequest) {
     return serverError();
   }
 }
-

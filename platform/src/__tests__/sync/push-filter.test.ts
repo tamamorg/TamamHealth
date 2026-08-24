@@ -9,24 +9,20 @@
  * so they never enter the stream, while letting everything the role CAN write
  * through unchanged.
  *
- * `buildPushFilter` is not exported (it is an internal of sync-service), so we
- * reconstruct the exact predicate here and assert it against DOC_WRITE_ROLES —
- * the same matrix the real filter consumes. The sync-service unit below keeps
- * the reconstruction honest by importing the matrix, not a copy.
+ * Exercise the production predicate directly so role and tenant/facility
+ * scoping cannot drift between the test and the replication stream.
  */
 import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
+import { buildPushFilter } from '@/lib/sync/sync-service';
 
-// Mirror of buildPushFilter(role) in sync-service.ts. Kept structurally
-// identical; DOC_WRITE_ROLES is imported so the role lists can never drift.
 function pushFilter(role: string | undefined) {
-  return (doc: { _id?: string; _deleted?: boolean; type?: string }) => {
-    if (typeof doc._id === 'string' && doc._id.indexOf('_design/') === 0) return false;
-    if (doc._deleted === true) return true;
-    if (!role || !doc.type) return false;
-    const allowed = doc.type ? DOC_WRITE_ROLES[doc.type] : undefined;
-    if (!allowed) return false;
-    return (allowed as readonly string[]).includes(role);
-  };
+  const filter = buildPushFilter(role, {
+    orgId: 'org-a',
+    facilityIds: ['fac-a'],
+    allFacilities: false,
+  });
+  return (doc: { _id?: string; _deleted?: boolean; type?: string; orgId?: string; hospitalId?: string }) =>
+    filter({ orgId: 'org-a', ...doc });
 }
 
 describe('push filter: design documents', () => {
@@ -85,6 +81,20 @@ describe('push filter: no role fails closed except for tombstones', () => {
     expect(f({ _id: 'rx-1', type: 'prescription' })).toBe(false);
     expect(f({ _id: '_design/idx-1' })).toBe(false);
     expect(f({ _id: 'old-1', _deleted: true })).toBe(true);
+  });
+});
+
+describe('push filter: tenant and facility entitlement', () => {
+  const f = pushFilter('front_desk');
+
+  test('pushes the signed-in facility and organization-wide records', () => {
+    expect(f({ _id: 'pat-a', type: 'patient', orgId: 'org-a', hospitalId: 'fac-a' })).toBe(true);
+    expect(f({ _id: 'org-config', type: 'patient', orgId: 'org-a' })).toBe(true);
+  });
+
+  test('drops records belonging to another organization or facility', () => {
+    expect(f({ _id: 'pat-b', type: 'patient', orgId: 'org-b', hospitalId: 'fac-a' })).toBe(false);
+    expect(f({ _id: 'pat-c', type: 'patient', orgId: 'org-a', hospitalId: 'fac-b' })).toBe(false);
   });
 });
 

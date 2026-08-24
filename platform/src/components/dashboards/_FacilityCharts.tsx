@@ -5,9 +5,9 @@
  * (~80–100 KB) is fetched only when the dashboard's charts actually render
  * (KAN-66 / MED-15).
  *
- * Kept as one module with two exports rather than two files: both charts sit
- * in the same row and are always shown together, so splitting them further
- * would cost a second round-trip for no benefit.
+ * Kept as one module rather than one file per chart: they sit in the same row
+ * and are always shown together, so splitting them further would cost a second
+ * round-trip for no benefit.
  *
  * Note recharts primitives cannot themselves be wrapped in `dynamic()` — the
  * library identifies children by component identity to tell an `<XAxis>` from
@@ -60,6 +60,10 @@ export interface WeeklyPoint {
   received?: number;
   pending?: number;
   canceled?: number;
+  /** Arrivals that day, split by where the patient went: admitted to a ward,
+   *  or seen and sent home. */
+  inpatient?: number;
+  outpatient?: number;
 }
 
 export interface WeeklySeries {
