@@ -5,11 +5,11 @@
  * editors stay on their dedicated org-admin pages; this panel summarizes those
  * areas and links to the canonical editor to avoid duplicate management UI.
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '@/lib/context';
 import {
   ArrowUpRight, Building2, CheckCircle, CreditCard, ExternalLink, Info, Lock,
-  Mail, Palette, Shield, Timer, Users, XCircle, Zap,
+  Mail, Palette, Shield, Timer, XCircle, Zap,
 } from '@/components/icons/lucide';
 import type { HospitalDoc, OrganizationDoc, UserDoc } from '@/lib/db-types';
 import type { FeeScheduleDoc } from '@/lib/db-types-billing';
@@ -23,8 +23,6 @@ export type OrganizationSettingsSection =
   | 'security'
   | 'modules'
   | 'branding'
-  | 'facilities'
-  | 'people'
   | 'billing';
 
 type Props = {
@@ -40,8 +38,6 @@ const sectionCopy: Record<OrganizationSettingsSection, { title: string; note: st
   security: { title: 'Security policy', note: 'Shared-device lock behavior for this organization', icon: Shield },
   modules: { title: 'Modules & feature access', note: 'Plan-gated modules available to this tenant', icon: Zap },
   branding: { title: 'Branding & patient-facing details', note: 'How this organization appears across staff and patient surfaces', icon: Palette },
-  facilities: { title: 'Facilities', note: 'Facility coverage and canonical management route', icon: Building2 },
-  people: { title: 'People & access', note: 'Account coverage and role distribution', icon: Users },
   billing: { title: 'Billing & service pricing', note: 'Charging setup, price catalog, and payment-facing details', icon: CreditCard },
 };
 
@@ -118,20 +114,6 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
     { key: 'communityHealth', label: t('orgSettings.flagCommunityHealth'), desc: t('orgSettings.flagCommunityHealthDesc') },
     { key: 'facilityAssessments', label: t('orgSettings.flagFacilityAssessments'), desc: t('orgSettings.flagFacilityAssessmentsDesc') },
   ] : [];
-
-  const roleCounts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const user of users) map.set(user.role, (map.get(user.role) || 0) + 1);
-    return Array.from(map.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6);
-  }, [users]);
-
-  const facilityTypes = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const hospital of hospitals) map.set(hospital.facilityType, (map.get(hospital.facilityType) || 0) + 1);
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
-  }, [hospitals]);
 
   if (loading) {
     return (
@@ -305,42 +287,6 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
         </>
       )}
 
-      {section === 'facilities' && (
-        <>
-          {header(goButton('Manage facilities', 'org-facilities-editor'))}
-          <div className="org-set-meter-row">
-            <UsageMeter label="Facilities configured" value={hospitals.length} max={org?.maxHospitals || 0} />
-          </div>
-          <OrgInfoCard title="Facility coverage" icon={<Building2 />}>
-            <div className="org-set-chip-row">
-              {facilityTypes.length ? facilityTypes.map(([type, count]) => (
-                <span key={type}>{humanize(type)} <b>{count}</b></span>
-              )) : <span>No facilities configured</span>}
-            </div>
-            <p className="org-set-copy">Facility creation, bed counts, location, services, and operational details are managed on the dedicated facilities page.</p>
-          </OrgInfoCard>
-        </>
-      )}
-
-      {section === 'people' && (
-        <>
-          {header(goButton('Manage users', 'org-people-editor'))}
-          <div className="org-set-meter-row">
-            <UsageMeter label="Users configured" value={users.length} max={org?.maxUsers || 0} />
-            <MiniStat label="Active" value={users.filter(user => user.isActive).length} />
-            <MiniStat label="Inactive" value={users.filter(user => !user.isActive).length} />
-          </div>
-          <OrgInfoCard title="Role distribution" icon={<Users />}>
-            <div className="org-set-chip-row">
-              {roleCounts.length ? roleCounts.map(([role, count]) => (
-                <span key={role}>{humanize(role)} <b>{count}</b></span>
-              )) : <span>No users configured</span>}
-            </div>
-            <p className="org-set-copy">Account creation, resets, facility assignment, and activation status live in user management to avoid conflicting controls.</p>
-          </OrgInfoCard>
-        </>
-      )}
-
       {section === 'billing' && (
         <>
           {header(goButton('Open service pricing', 'org-billing-editor'))}
@@ -422,8 +368,4 @@ function InfoRow({
 function formatDate(value?: string) {
   if (!value) return '-';
   return new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-}
-
-function humanize(value: string) {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 }

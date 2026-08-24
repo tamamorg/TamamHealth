@@ -7,6 +7,9 @@
  * to real app state (language, density, display name) by the settings view.
  */
 
+import { LANDING_ROUTES } from '@/lib/user-prefs';
+import { isPathAllowed } from '@/lib/role-routes';
+
 export type RoleSettingRow =
   /**
    * `pending` marks a row that is DECLARED but not WIRED — the control renders
@@ -168,23 +171,8 @@ const NURSE: RoleSettingsSpec = {
       ],
     },
     {
-      id: 'vitals', title: 'Vitals & rounds', icon: 'clock', note: 'Rounding reminders per acuity',
-      rows: [
-        sel('vitals.critical', 'Critical patients', 'Vitals interval for red acuity', 'Every 1 hour', ['Every 30 min', 'Every 1 hour', 'Every 2 hours'], true),
-        sel('vitals.watch', 'Watch patients', 'Vitals interval for yellow acuity', 'Every 4 hours', ['Every 2 hours', 'Every 4 hours', 'Every 6 hours'], true),
-        sel('vitals.stable', 'Stable patients', 'Vitals interval for green acuity', 'Every 8 hours', ['Every 6 hours', 'Every 8 hours', 'Every 12 hours'], true),
-        tg('vitals.rangeWarn', 'Warn on out-of-range vitals', 'Flags values outside the age-based range', true, true),
-        sel('vitals.units', 'Vitals units', 'Facility standard is metric', 'Metric (kg · °C)', ['Metric (kg · °C)', 'Imperial (lb · °F)'], true),
-      ],
-    },
-    {
       id: 'mar', title: 'Medication administration', icon: 'pill', note: 'MAR behaviour at the bedside',
       rows: [
-        // Not wired: the platform has no bedside barcode scanning, and nothing
-        // reads this key. Shown as unavailable rather than as a live safety check.
-        tg('mar.barcode', 'Barcode scan before administering', 'Confirms patient and drug', true, true),
-        sel('mar.reminder', 'Dose-due reminder', 'How early the MAR alerts you', '15 min before', ['5 min before', '15 min before', '30 min before'], true),
-        tg('mar.missedReason', 'Require a reason for a missed dose', 'Recorded in the audit log', true, true),
         lock('Controlled substance witness', 'Second signature at administration', 'Facility-managed'),
       ],
     },
@@ -192,7 +180,6 @@ const NURSE: RoleSettingsSpec = {
       tg('notify.vitals', 'Deteriorating vitals', 'Immediate alert on the station screen', true),
       tg('notify.overdueDoses', 'Overdue medication doses', 'Alerts once a dose passes its window', true),
       tg('notify.admissions', 'New admissions to my ward', 'When a patient is assigned a bed', true),
-      tg('notify.discharge', 'Discharge paperwork ready', 'Daily summary', false, true),
     ]),
     securitySection('10 min', true),
   ],
@@ -206,16 +193,6 @@ const PHARMACIST: RoleSettingsSpec = {
   sections: [
     accountSection('Dispense queue', ['Dispense queue', 'Stock', 'My dashboard']),
     {
-      id: 'dispensing', title: 'Dispensing', icon: 'pill', note: 'Applies to every prescription you fill',
-      rows: [
-        tg('disp.paymentGate', 'Block dispensing until payment or exemption', 'Payment-gated queue', true, true),
-        tg('disp.generic', 'Offer generic substitution', 'Suggests an in-stock equivalent', true, true),
-        tg('disp.labels', 'Print a label for every item', 'Patient name, drug, dose, date', true, true),
-        sel('disp.batch', 'Batch selection', 'Which batch is picked by default', 'Earliest expiry first', ['Earliest expiry first', 'Oldest stock first', 'Manual'], true),
-        tg('disp.counsel', 'Counsel prompt for new medicines', 'Shows key counselling points', true, true),
-      ],
-    },
-    {
       id: 'stock', title: 'Stock & reorder', icon: 'list', note: 'Thresholds that drive the alerts',
       rows: [
         sel('stock.reorder', 'Reorder trigger', 'When an item is flagged low', 'Below 30 days of cover', ['Below 14 days of cover', 'Below 30 days of cover', 'Below 60 days of cover']),
@@ -228,15 +205,10 @@ const PHARMACIST: RoleSettingsSpec = {
       id: 'controlled', title: 'Controlled substances', icon: 'shield', note: 'Register kept for inspection',
       rows: [
         lock('Witness signature required', 'Second staff member at dispensing', 'Facility-managed'),
-        tg('cs.reconcile', 'Daily register reconciliation', 'Prompts a count at close of day', true, true),
-        tg('cs.discrepancy', 'Alert on any discrepancy', 'Notifies the facility admin immediately', true, true),
       ],
     },
     notifySection([
-      tg('notify.stockOut', 'Stock-out risk', 'When an item falls below reorder level', true, true),
-      tg('notify.expiring', 'Expiring batches', 'Weekly summary of batches within 30 days', true, true),
       tg('notify.newRx', 'New prescriptions to dispense', 'Live queue notification', true),
-      tg('notify.po', 'Purchase order status', 'When a PO is approved or delivered', true, true),
     ]),
     securitySection('10 min', false),
   ],
@@ -253,34 +225,20 @@ const LAB: RoleSettingsSpec = {
       id: 'worklist', title: 'Worklist', icon: 'list', note: 'How orders are presented to you',
       rows: [
         sel('lab.sort', 'Sort orders by', 'Default order in the worklist', 'Urgency, then oldest', ['Urgency, then oldest', 'Oldest first', 'Newest first']),
-        sel('lab.bench', 'Bench filter', 'Only show tests you run', 'Chemistry · Microscopy', ['All benches', 'Chemistry · Microscopy', 'Haematology', 'Serology'], true),
         tg('lab.statTop', 'Show STAT orders at the top', 'Pins urgent orders regardless of sort', true),
         sel('lab.tat', 'Turnaround target', 'Drives the overdue highlight', '60 min', ['30 min', '60 min', '120 min']),
       ],
     },
     {
-      id: 'samples', title: 'Sample handling', icon: 'flask', note: 'Collection and labelling',
-      rows: [
-        tg('lab.barcode', 'Barcode label at collection', 'Prints a sample label on accession', true, true),
-        tg('lab.collector', 'Require collector identity', 'Records who drew the sample', true, true),
-        tg('lab.sampleAge', 'Warn on sample age', 'Flags samples past stability window', true, true),
-        sel('lab.reject', 'Reject reason list', 'Options offered when rejecting a sample', 'National standard', ['National standard', 'Facility list'], true),
-      ],
-    },
-    {
       id: 'results', title: 'Results & verification', icon: 'doc', note: 'Before a result reaches the clinician',
       rows: [
-        tg('lab.secondReview', 'Second review for critical values', 'A colleague verifies before release', true, true),
-        tg('lab.autoFlag', 'Auto-flag out-of-range values', 'Against the facility reference ranges', true, true),
-        tg('lab.notifyClinician', 'Notify the ordering clinician on release', 'In-app alert plus SMS if critical', true, true),
         lock('Reference ranges', 'Age and sex-specific ranges', 'Facility-managed'),
       ],
     },
     notifySection([
       tg('notify.stat', 'New STAT orders', 'Immediate alert on the bench screen', true),
       tg('notify.criticalUnacked', 'Unacknowledged critical results', 'Escalates after 15 minutes', true),
-      tg('notify.analyser', 'Analyser errors', 'When an instrument reports a fault', true, true),
-      tg('notify.reagent', 'Reagent stock low', 'Weekly summary', false, true),
+
     ]),
     securitySection('15 min', true),
   ],
@@ -292,24 +250,14 @@ const FRONTDESK: RoleSettingsSpec = {
   scope: 'You control registration and payment-desk behaviour. Tariffs, exemptions, and insurance contracts are facility-wide.',
   chips: ['Registration rules', 'Check-in routing', 'Payment desk', 'My alerts'],
   sections: [
-    accountSection('Check-in', ['Check-in', 'Payments', 'Patients', 'My dashboard']),
+    accountSection('Check-in', ['Check-in', 'Payments', 'Patients', 'Appointments', 'My dashboard']),
     {
       id: 'registration', title: 'Registration', icon: 'users', note: 'New patient records',
       rows: [
         tg('reg.phone', 'Require phone number', 'Unless the patient has none on record', true),
         tg('reg.geocode', 'Require geocode ID', 'Household identifier for follow-up', false),
         tg('reg.duplicates', 'Warn on possible duplicates', 'Matches name, age, and locality', true),
-        tg('reg.card', 'Print a patient card with QR code', 'Speeds up return visits', true, true),
-        sel('reg.district', 'Default district', 'Pre-filled on new registrations', 'Juba', ['Juba', 'Wau', 'Malakal', 'Bor', 'Bentiu'], true),
-      ],
-    },
-    {
-      id: 'routing', title: 'Check-in routing', icon: 'list', note: 'Where arrivals are sent',
-      rows: [
-        sel('route.department', 'Default department', 'Applied when none is chosen', 'OPD', ['OPD', 'Emergency', 'ANC', 'Under-five clinic'], true),
-        sel('route.acuity', 'Default acuity', 'Clerk may raise it, never lower it', 'Routine', ['Routine', 'Urgent'], true),
-        tg('route.triageFirst', 'Send every arrival to triage first', 'Nurse sets the final acuity', true, true),
-        tg('route.queueLength', 'Show live queue length per department', 'Helps balance the load', true, true),
+
       ],
     },
     {
@@ -323,10 +271,7 @@ const FRONTDESK: RoleSettingsSpec = {
       ],
     },
     notifySection([
-      tg('notify.unpaid', 'Unpaid invoices at discharge', 'Alerts before a patient leaves', true, true),
-      tg('notify.claims', 'Insurance claim rejections', 'When a payer rejects a claim', true, true),
       tg('notify.queue', 'Queue over capacity', 'When waits pass the target', true),
-      tg('notify.collections', 'Daily collection summary', 'Sent at close of shift', true, true),
     ]),
     securitySection('5 min', true),
   ],
@@ -365,10 +310,102 @@ const ADMIN: RoleSettingsSpec = {
       rows: [],
     },
     notifySection([
-      tg('notify.syncConflicts', 'Sync conflicts', 'When a record cannot merge automatically', true, true),
       tg('notify.surveillance', 'Surveillance signals', 'IDSR alert thresholds reached', true),
-      tg('notify.integrations', 'Failed integrations', 'Credential or connection errors', true, true),
-      tg('notify.weekly', 'Weekly facility summary', 'Attendance, collections, and stock', true, true),
+    ]),
+    securitySection('15 min', false),
+  ],
+};
+
+/**
+ * Radiologist — its own spec, not the lab technician's.
+ *
+ * This role used to be `{ ...LAB, title: 'Radiologist' }`, which changed the
+ * heading and nothing else. A radiologist was therefore offered a *Bench
+ * filter* of "Chemistry · Microscopy / Haematology / Serology", a *Reject
+ * reason list*, and *Barcode label at collection* — sample-handling controls
+ * for a discipline that handles no samples — and a start-up screen whose only
+ * options were the lab worklist.
+ *
+ * What genuinely transfers is the shape of a reporting queue: order it, pin
+ * the urgent ones, flag what is past target. Those three keys are shared with
+ * the lab on purpose — one worklist concept, one stored preference — which the
+ * settings guard explicitly allows across roles.
+ */
+const RADIOLOGY: RoleSettingsSpec = {
+  title: 'Radiologist', accent: 'var(--category-lab)',
+  subtitle: 'Reporting worklist, urgent studies, and turnaround targets',
+  scope: 'You control how your reporting worklist is ordered and when it flags overdue. Modality catalogue, protocols, and reporting templates are facility-wide.',
+  chips: ['Worklist order', 'Urgent studies', 'Turnaround', 'My alerts'],
+  sections: [
+    accountSection('My dashboard', ['My dashboard', 'Patients']),
+    {
+      id: 'worklist', title: 'Reporting worklist', icon: 'list', note: 'How studies are presented to you',
+      rows: [
+        sel('lab.sort', 'Sort studies by', 'Default order in your worklist', 'Urgency, then oldest', ['Urgency, then oldest', 'Oldest first', 'Newest first']),
+        tg('lab.statTop', 'Show STAT studies at the top', 'Pins urgent studies regardless of sort', true),
+        sel('lab.tat', 'Turnaround target', 'Drives the overdue highlight', '60 min', ['30 min', '60 min', '120 min']),
+      ],
+    },
+    notifySection([
+      tg('notify.stat', 'New STAT studies', 'Immediate alert on the reporting screen', true),
+      tg('notify.criticalUnacked', 'Unacknowledged critical findings', 'Escalates after 15 minutes', true),
+    ]),
+    securitySection('15 min', true),
+  ],
+};
+
+/**
+ * Midwife — the nurse spec's shape, with maternity as the subject.
+ *
+ * `{ ...NURSE, title: 'Midwife' }` gave a midwife a general-nursing ward list
+ * (Medical / Surgical / Maternity / Pediatric) and a scope note about triage
+ * scales. The role's actual routes are ANC, births, immunizations and the
+ * ward board, so the ward choice is a maternity area and the alerts are the
+ * ones a birth attendant is waiting on.
+ */
+const MIDWIFE: RoleSettingsSpec = {
+  title: 'Midwife', accent: 'var(--category-clinical)',
+  subtitle: 'Maternity area, shift pattern, and the alerts you are on call for',
+  scope: 'You can set your maternity area, shift, and alerts. Clinical protocols for labour and newborn care are facility-wide.',
+  chips: ['Maternity area', 'Shift', 'Handoff', 'My alerts'],
+  sections: [
+    accountSection('My dashboard', ['My dashboard', 'Ward board', 'Patients', 'Appointments']),
+    {
+      id: 'ward', title: 'Maternity area & shift', icon: 'bed', note: 'Drives your ward view and handoff',
+      rows: [
+        sel('ward.default', 'Default area', 'Loaded when you sign in', 'Labour ward', ['Antenatal', 'Labour ward', 'Postnatal', 'Newborn care'], true),
+        sel('ward.shift', 'Shift pattern', 'Used for handoff timing', 'Day · 07:00–19:00', ['Day · 07:00–19:00', 'Evening · 15:00–23:00', 'Night · 19:00–07:00'], true),
+        tg('ward.handoffPrompt', 'Prompt handoff at end of shift', 'Opens the handoff form 30 min before', true, true),
+      ],
+    },
+    notifySection([
+      tg('notify.vitals', 'Deteriorating vitals', 'Immediate alert on the ward screen', true),
+      tg('notify.admissions', 'New admissions to my area', 'When a mother is assigned a bed', true),
+    ]),
+    securitySection('10 min', true),
+  ],
+};
+
+/**
+ * Health authority — a ministry account, which runs no facility.
+ *
+ * `{ ...ADMIN, title: 'Health authority' }` handed government and county
+ * health director users the *Facility administrator* page: facility profile,
+ * clinical policy, integrations, offline sync. They administer none of it.
+ * Their routes are surveillance, vital statistics and cross-facility reporting,
+ * so what they actually own is their own alerts and session.
+ */
+const HEALTH_AUTHORITY: RoleSettingsSpec = {
+  title: 'Health authority', accent: 'var(--category-admin)',
+  subtitle: 'Surveillance alerts and session preferences',
+  scope: 'You review data across facilities. You set your own alerts and session preferences; each facility\'s configuration belongs to its own administrator.',
+  chips: ['My account', 'Surveillance alerts', 'My sessions'],
+  sections: [
+    // Offered broadly on purpose — `withReachableLandings` prunes whichever of
+    // these the specific authority role cannot enter.
+    accountSection('My dashboard', ['My dashboard', 'Reports', 'Appointments']),
+    notifySection([
+      tg('notify.surveillance', 'Surveillance signals', 'IDSR alert thresholds reached', true),
     ]),
     securitySection('15 min', false),
   ],
@@ -384,8 +421,6 @@ const GENERIC: RoleSettingsSpec = {
     accountSection('My dashboard', ['My dashboard', 'Patients']),
     notifySection([
       tg('notify.assigned', 'Work assigned to me', 'When an item lands in my queue', true),
-      tg('notify.mentions', 'Messages and mentions', 'When a colleague messages me', true, true),
-      tg('notify.summary', 'Daily summary', 'Sent at the start of the day', false, true),
     ]),
     securitySection('15 min', false),
   ],
@@ -393,8 +428,63 @@ const GENERIC: RoleSettingsSpec = {
 
 import type { UserRole } from '@/lib/db-types';
 
+/**
+ * Drop start-up screens this role cannot actually open.
+ *
+ * The "Start-up screen" options are written per spec, but several specs are
+ * shared by roles with different route tables — so the list was a union of
+ * what *some* holder of that spec could reach. A front-desk clerk was offered
+ * "Payments" and a cashier "Check-in", each being the other's route; a
+ * government account was offered "Patients"; and the whole Front-desk spec
+ * defaulted to a screen its own holders could not enter.
+ *
+ * None of it failed loudly: `resolveLandingPage` checks the route and quietly
+ * falls back to the role's default dashboard. So the dropdown offered a choice,
+ * accepted it, saved it, and then ignored it forever.
+ *
+ * Filtering here rather than hand-listing per role means a route-table change
+ * cannot reopen the gap. Labels absent from `LANDING_ROUTES` ("My dashboard",
+ * "Nursing station", …) always survive: they have no route of their own and
+ * resolve to the role's default, which every role can reach by definition.
+ */
+function withReachableLandings(spec: RoleSettingsSpec, role: UserRole): RoleSettingsSpec {
+  const account = spec.sections.find(s => s.id === 'account');
+  const row = account?.rows.find(r => 'key' in r && r.key === 'account.landing');
+  if (!account || !row || row.kind !== 'select') return spec;
+
+  const options = row.options.filter(o => {
+    const route = LANDING_ROUTES[o];
+    return route ? isPathAllowed(role, route) : true;
+  });
+  if (options.length === row.options.length) return spec;
+
+  // A default that was just filtered out would re-create the same silent
+  // fallback one level down. Prefer a label with no route of its own ("My
+  // dashboard", "Nursing station"), which resolves to whatever this role's
+  // default dashboard already is — landing a registration clerk on "Payments"
+  // because it sorted first is not a better answer than landing them home.
+  const def = options.includes(row.def)
+    ? row.def
+    : (options.find(o => !LANDING_ROUTES[o]) ?? options[0] ?? row.def);
+
+  // Rebuilt, never mutated: these specs are module-level constants shared by
+  // several roles, and editing one in place would hand the next role the
+  // previous one's filtered list.
+  return {
+    ...spec,
+    sections: spec.sections.map(section => section !== account ? section : {
+      ...section,
+      rows: section.rows.map(r => r !== row ? r : { ...row, options, def }),
+    }),
+  };
+}
+
 /** Which design spec a signed-in role sees — their own only. */
 export function specForRole(role: UserRole): RoleSettingsSpec {
+  return withReachableLandings(baseSpecForRole(role), role);
+}
+
+function baseSpecForRole(role: UserRole): RoleSettingsSpec {
   switch (role) {
     case 'doctor':
     case 'clinician':
@@ -406,13 +496,13 @@ export function specForRole(role: UserRole): RoleSettingsSpec {
     case 'rooming_nurse':
       return NURSE;
     case 'midwife':
-      return { ...NURSE, title: 'Midwife' };
+      return MIDWIFE;
     case 'pharmacist':
       return PHARMACIST;
     case 'lab_tech':
       return LAB;
     case 'radiologist':
-      return { ...LAB, title: 'Radiologist' };
+      return RADIOLOGY;
     case 'front_desk':
     case 'central_registration_clerk':
     case 'clinic_clerk':
@@ -427,7 +517,7 @@ export function specForRole(role: UserRole): RoleSettingsSpec {
       return ADMIN;
     case 'government':
     case 'county_health_director':
-      return { ...ADMIN, title: 'Health authority' };
+      return HEALTH_AUTHORITY;
     default:
       return GENERIC;
   }

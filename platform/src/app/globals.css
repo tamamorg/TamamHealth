@@ -30645,7 +30645,7 @@ button.sadb-signal { cursor: pointer; }
 }
 
 /* ============ Reports (rpt-*) ============================================
-   The reports catalogue and its statistics.
+   The report workspace.
 
    Scoped namespace on purpose, per the two traps this stylesheet carries: the
    bare `label` rule force-uppercases every <label>, and
@@ -30655,36 +30655,37 @@ button.sadb-signal { cursor: pointer; }
    else. Colours are tokens only — chart hues come from --chart-* and the
    stock ring from the reserved status palette; no literal hex belongs here.
 
-   The page is one panel that sizes to its content — header, insight strip,
-   a plot of bounded height, and (when generated) the table. The plot no
-   longer stretches to fill the viewport: eight ranked marks spread over
-   every pixel below the header read as an ocean of whitespace, not a chart.
+   Four bands down the page: the command bar, four KPI tiles, then one row
+   that claims the rest of the height — catalogue rail, plot, ranked figures
+   — and the generated table under the plot when it is open. Every column
+   scrolls inside itself, so the page ends where the viewport does.
+
+   This replaced a single centred card that sized to its content. The plot
+   still does not stretch without limit (eight ranked marks smeared over
+   1000px read as an empty field, not a chart) — it caps and centres, and
+   the room that used to sit blank beneath it now holds the names the axis
+   has to truncate.
    ------------------------------------------------------------------------ */
 
 .rpt-page {
   display: flex;
   flex-direction: column;
-  padding-bottom: 16px;
+  gap: 10px;
+  min-height: 0;
+  padding-bottom: 10px;
 }
 
-/* ── Statistics: one panel, one chart, a picker for the rest ── */
-.rpt-stats {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 auto;
-  border-radius: 10px;
-  background: var(--bg-card-solid);
-  border: 1px solid var(--border-light);
-  overflow: hidden;
-}
-.rpt-stats-head {
+/* ── Command bar: which report, what shape, and out ── */
+.rpt-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex: 0 0 auto;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border-light);
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
 }
 .rpt-stats-title { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1 1 auto; }
 .rpt-stats-title svg { width: 16px; height: 16px; color: var(--accent-primary); flex: 0 0 auto; }
@@ -30770,60 +30771,306 @@ button.sadb-signal { cursor: pointer; }
 .rpt-nav-csv:disabled { opacity: 0.45; cursor: default; }
 
 /* ── Headline figures, read off the chart below them ──
-   Flat text tiles separated by hairlines — no cards inside the card. */
-.rpt-insights {
-  display: flex;
+   Four tiles, not a hairline strip: a reporting page leads with its numbers,
+   and a tile that holds its place while the data loads keeps the workspace
+   below from jumping when it arrives. */
+.rpt-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
   flex: 0 0 auto;
-  gap: 28px;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--border-light);
 }
-.rpt-insight {
+.rpt-kpi {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
+  padding: 11px 14px 12px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
 }
-.rpt-insight + .rpt-insight {
-  border-inline-start: 1px solid var(--border-light);
-  padding-inline-start: 28px;
-}
-/* Stat-tile values keep the font's proportional figures — tabular digits
-   only belong in columns that must align. */
-.rpt-insight b {
-  font-size: 17px;
+.rpt-kpi-label {
+  font-size: 9.5px;
   font-weight: 700;
-  line-height: 1.2;
-  color: var(--text-primary);
-  max-width: 340px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.rpt-insight span {
+/* Stat-tile values keep the font's proportional figures — tabular digits
+   only belong in columns that must align. */
+.rpt-kpi-value {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rpt-kpi-note {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── The workspace row: rail · plot · figures ──
+   The three columns are siblings so each can scroll inside itself against
+   one shared height. `min-height: 0` on every one of them is what lets that
+   happen — without it a long rail would push the page into a scroll and the
+   plot would never know how tall it is. */
+.rpt-workspace {
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr) 292px;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 430px;
+}
+.rpt-rail,
+.rpt-main,
+.rpt-side { min-height: 0; min-width: 0; }
+
+/* Catalogue rail — the picker, not the old grid of preview cards. */
+.rpt-rail {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+.rpt-rail-head,
+.rpt-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--overlay-subtle);
+}
+.rpt-rail-head span,
+.rpt-side-head span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.rpt-rail-head b,
+.rpt-side-head b {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rpt-rail-scroll,
+.rpt-side-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+}
+.rpt-rail-group + .rpt-rail-group { margin-top: 6px; }
+.rpt-rail-group-title {
+  padding: 7px 8px 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.rpt-rail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  text-align: start;
+  cursor: pointer;
+}
+.rpt-rail-item:hover { background: var(--overlay-subtle); }
+/* The selected report is what the whole page is about, so it is marked by a
+   fill and a rule rather than by weight alone. */
+.rpt-rail-item.is-on {
+  background: color-mix(in srgb, var(--accent-primary) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent-primary);
+}
+.rpt-rail-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+.rpt-rail-item.is-on .rpt-rail-name { color: var(--accent-primary); font-weight: 700; }
+.rpt-rail-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.rpt-rail-meta > span:last-child {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rpt-rail-item:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: -2px;
+}
+
+/* Centre column: the plot card, and the table beneath it when generated.
+   The two split the column 58/42 with the plot on top, so opening the table
+   costs the chart height without flattening it. */
+.rpt-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rpt-plot-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 58%;
+  min-height: 220px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+.rpt-plot-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+/* ── Ranked figures beside the plot ──
+   The axis truncates "Western Bahr el Ghazal"; this column does not. Bars
+   are scaled to the LEADER, not to the total: the column is a ranking, and
+   a rate measure has no total to take a share of. */
+.rpt-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rpt-side-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+.rpt-side-card:first-child { flex: 1 1 auto; }
+.rpt-side-scroll { padding: 8px 12px 10px; }
+.rpt-break { padding: 7px 0; }
+.rpt-break + .rpt-break { border-top: 1px solid var(--border-light); }
+.rpt-break-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.rpt-break-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rpt-break-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+.rpt-break-track {
+  display: block;
+  height: 5px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--overlay-subtle);
+  overflow: hidden;
+}
+.rpt-break-fill { display: block; height: 100%; border-radius: 999px; }
+.rpt-break-share {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The report's own facts, under the ranking: what the figures are OF. */
+.rpt-facts { flex: 0 0 auto; }
+.rpt-facts-list { padding: 4px 12px 8px; }
+.rpt-facts-list > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+}
+.rpt-facts-list > div + div { border-top: 1px solid var(--border-light); }
+.rpt-facts-list dt {
   font-size: 10.5px;
   font-weight: 600;
   color: var(--text-muted);
-  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+}
+.rpt-facts-list dd {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 0;
+  text-align: end;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* The card sizes to its content and the plot is bounded rather than
-   stretched: eight ranked marks spread down a whole 1000px viewport read as
-   an empty field, not as a chart. */
+/* The card takes the height the workspace gives it; the plot fills that box
+   but caps and centres inside it, because eight ranked marks stretched down
+   a 900px column read as an empty field rather than as a chart. */
 .rpt-stats-body {
   display: flex;
-  flex: 0 0 auto;
-  height: clamp(340px, 46vh, 480px);
-  padding: 14px 18px 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 16px 14px;
 }
 /* The plot holds a considered measure rather than smearing eight marks
-   across an ultrawide panel. Standing columns want the narrower one — the
-   band is what sets their spacing, so a wide plot pushes them apart until
-   the group stops reading as one chart. Horizontal bars want the opposite:
-   length IS the value, so they get every pixel available. */
-.rpt-plot { width: 100%; max-width: 1200px; margin-inline: auto; height: 100%; min-height: 0; }
-.rpt-plot[data-kind='column'] { max-width: 860px; }
-.rpt-plot[data-kind='donut'] { max-width: 900px; }
+   across the panel. Standing columns want the narrower one — the band is
+   what sets their spacing, so a wide plot pushes them apart until the group
+   stops reading as one chart. Horizontal bars want the opposite: length IS
+   the value, so they get every pixel available. */
+.rpt-plot { width: 100%; max-width: 1100px; max-height: 620px; margin: auto; height: 100%; min-height: 0; }
+.rpt-plot[data-kind='column'] { max-width: 940px; }
+.rpt-plot[data-kind='donut'] { max-width: 620px; }
 .rpt-plot[data-kind='treemap'] { max-width: 1040px; }
 .rpt-panel-empty {
   display: flex;
@@ -30915,13 +31162,18 @@ button.sadb-signal { cursor: pointer; }
   color: var(--accent-primary);
 }
 
+/* Generated, the table shares the centre column with the plot rather than
+   pushing it off screen: the chart is the shape, the table is the record,
+   and a reader comparing the two should not have to scroll between them. */
 .rpt-table-wrap {
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
-  max-height: 46vh;
-  min-height: 0;
-  border-top: 1px solid var(--border-light);
+  flex: 1 1 42%;
+  min-height: 140px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
 }
 .rpt-table-cap {
   flex: 0 0 auto;
@@ -30967,15 +31219,30 @@ button.sadb-signal { cursor: pointer; }
 .rpt-table tbody tr.is-total td { font-weight: 700; color: var(--text-primary); background: var(--overlay-subtle); }
 .rpt-table tbody tr.is-section td { font-weight: 700; color: var(--text-primary); background: var(--overlay-light); }
 
+/* The rail and the header's dropdown are the SAME control; exactly one of
+   them is on screen at any width, so the page never carries two live copies
+   of one choice. */
+@media (min-width: 1281px) {
+  .rpt-bar .rpt-nav-select { display: none; }
+}
 @media (max-width: 1280px) {
-  /* Below this the header cannot hold the title and every control on one
-     line, so let it wrap deliberately rather than squeezing them. */
-  .rpt-stats-head { flex-wrap: wrap; }
+  /* No room for three columns: the rail folds away and the dropdown above
+     takes over choosing the report. */
+  .rpt-workspace { grid-template-columns: minmax(0, 1fr) 272px; }
+  .rpt-rail { display: none; }
+  .rpt-bar { flex-wrap: wrap; }
   .rpt-stats-nav { flex-wrap: wrap; }
 }
+@media (max-width: 1100px) {
+  .rpt-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 900px) {
-  .rpt-insights { flex-wrap: wrap; gap: 14px 22px; }
-  .rpt-insight + .rpt-insight { border-inline-start: none; padding-inline-start: 0; }
+  /* One column, stacked: the plot keeps a readable height and the ranking
+     follows it down the page rather than being dropped. */
+  .rpt-page { min-height: 100%; }
+  .rpt-workspace { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .rpt-plot-card { min-height: 320px; }
+  .rpt-side-card:first-child { flex: 0 0 auto; max-height: 320px; }
 }
 
 /* ── Dashboard lower row: work queue beside the facility matrix ───────────
@@ -31548,60 +31815,50 @@ button.sadb-signal { cursor: pointer; }
 }
 .sadb-card-head--toggle:hover .sadb-card-caret { color: var(--accent-primary); }
 
-/* ── Unified organization / facility / people workspace ──────────────── */
-.mgmt-shell { --mgmt-rail: 255px; color: var(--text-primary); }
-.mgmt-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
-.mgmt-header h1 { margin: 2px 0 4px; font-size: clamp(24px, 3vw, 34px); line-height: 1.08; letter-spacing: -0.035em; }
-.mgmt-header > div > p:last-child { max-width: 680px; color: var(--text-secondary); font-size: 13px; }
-.mgmt-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.mgmt-eyebrow { color: var(--accent-text); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.mgmt-layout { display: grid; grid-template-columns: var(--mgmt-rail) minmax(0, 1fr); min-height: 620px; border: 1px solid var(--border-light); background: var(--surface-primary); }
-.mgmt-scope { padding: 18px; border-inline-end: 1px solid var(--border-light); background: var(--overlay-subtle); display: flex; flex-direction: column; gap: 10px; }
-.mgmt-scope-title { color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.mgmt-scope select { width: 100%; min-width: 0; padding: 9px 32px 9px 10px; border: 1px solid var(--border-light); border-radius: 4px; background-color: var(--surface-primary); font-size: 12px; }
-.mgmt-scope > svg { width: 14px; height: 14px; margin-inline-start: 4px; color: var(--text-muted); transform: rotate(90deg); }
-[dir='rtl'] .mgmt-scope > svg { transform: rotate(90deg); }
-.mgmt-scope > span, .mgmt-scope > strong { font-size: 12px; }
-.mgmt-checklist { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border-light); display: grid; gap: 10px; }
-.mgmt-checklist h2 { font-size: 12px; font-weight: 800; }
-.mgmt-checklist div { display: flex; align-items: flex-start; gap: 8px; color: var(--text-secondary); font-size: 11.5px; line-height: 1.35; }
-.mgmt-checklist svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--text-muted); }
-.mgmt-step-dot { width: 12px; height: 12px; margin: 1px; flex: 0 0 auto; border: 1.5px solid var(--text-muted); border-radius: 50%; }
-.mgmt-checklist .done { color: var(--text-primary); }
-.mgmt-checklist .done svg { color: var(--color-success); }
-.mgmt-main { min-width: 0; padding: 18px; }
-.mgmt-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-light); margin-bottom: 14px; overflow-x: auto; }
+/* ── Unified organization / facility / people workspace ──────────────
+   Console-kit surface: the scope rail is a sadb card carrying the page name
+   and the two scope selects, and the work itself is one sadb card in the
+   shell's main column. Everything visual comes from the sadb block — what
+   lives here is the rail's own head, its scope fields, and the strip of
+   section tabs above the card. */
+.mgmt-shell { --mgmt-rail: 288px; color: var(--text-primary); }
+.mgmt-layout { display: grid; grid-template-columns: var(--mgmt-rail) minmax(0, 1fr); gap: 14px; align-items: start; }
+.mgmt-scope { padding: 0; }
+.mgmt-scope-head { padding: 14px; border-bottom: 1px solid var(--border-light); background: var(--overlay-subtle); }
+.mgmt-scope-head h1 { margin: 0; font-size: 20px; line-height: 1.15; letter-spacing: -0.02em; }
+.mgmt-rail-group { padding: 12px 10px; border-bottom: 1px solid var(--border-light); }
+.mgmt-rail-group:last-child { border-bottom: 0; }
+.mgmt-field { display: block; margin: 0 0 8px; padding: 0 10px; font-weight: 400; letter-spacing: normal; text-transform: none; }
+.mgmt-field:last-child { margin-bottom: 0; }
+.mgmt-field-label { display: block; margin-bottom: 4px; color: var(--text-muted); font-family: var(--font-condensed); font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.mgmt-field select { width: 100%; min-width: 0; height: 34px; padding: 0 30px 0 10px; border: 1px solid var(--border-light); border-radius: 7px; background-color: var(--bg-card-solid); color: var(--text-primary); font-size: 12.5px; font-weight: 700; }
+.mgmt-field select:focus { border-color: var(--brand-400); outline: none; }
+.mgmt-field select:disabled { background-color: var(--ehr-head); color: var(--text-muted); }
+.mgmt-field > strong { display: block; padding: 7px 0; color: var(--text-primary); font-size: 12.5px; }
+/* Section strip + the actions for the section, one line above the card.
+   The underline lives on the bar rather than the nav so the actions sit on
+   the same rule, and the active tab's 2px mark rides over it. */
+.mgmt-main-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border-light); }
+.mgmt-main-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 7px; }
+.mgmt-tabs { display: flex; gap: 4px; margin-bottom: -1px; overflow-x: auto; }
 .mgmt-tabs button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .mgmt-tabs button svg { width: 15px; height: 15px; }
 .mgmt-tabs button.active { border-bottom-color: var(--accent-primary); color: var(--accent-text); }
-.mgmt-search { position: relative; display: block; margin-bottom: 14px; }
-.mgmt-search > svg { position: absolute; inset-inline-start: 11px; top: 50%; width: 15px; height: 15px; transform: translateY(-50%); color: var(--text-muted); }
-.mgmt-search input { width: 100%; padding: 10px 12px 10px 36px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--surface-primary); font-size: 13px; }
-[dir='rtl'] .mgmt-search input { padding: 10px 36px 10px 12px; }
-.mgmt-list-head, .mgmt-row { display: grid; grid-template-columns: minmax(220px, 1.4fr) minmax(140px, .8fr) minmax(90px, .4fr); gap: 16px; align-items: center; }
-.mgmt-list-head { padding: 8px 12px; color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.mgmt-list { border-top: 1px solid var(--border-light); }
-.mgmt-row { width: 100%; padding: 13px 12px; border: 0; border-bottom: 1px solid var(--border-light); background: transparent; color: var(--text-secondary); text-align: start; font-size: 12px; }
-.mgmt-row:hover, .mgmt-row:focus-visible { background: var(--overlay-subtle); }
-.mgmt-row > span { min-width: 0; }
-.mgmt-row strong, .mgmt-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mgmt-row strong { color: var(--text-primary); font-size: 13px; }
-.mgmt-row small { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
-.mgmt-empty { padding: 36px 12px; color: var(--text-muted); text-align: center; font-size: 13px; }
+/* Which people list — sized to its label, so the search keeps the rest of
+   the line (`.sadb-search-row > select` already sets the shared height). */
+.mgmt-mode-select { flex: 0 0 auto; width: auto; min-width: 172px; padding: 0 30px 0 12px; border: 1px solid var(--border-light); border-radius: 8px; background-color: var(--ehr-head); color: var(--text-primary); font-size: 12.5px; font-weight: 700; }
+.mgmt-mode-select:focus { border-color: var(--brand-400); outline: none; }
 .mgmt-form-modal { max-height: min(82vh, 850px); overflow-y: auto; }
 .mgmt-user-modal .uf-form { padding-top: 4px; }
 .uf-facility-grants { border: 0; padding: 0; }
 .uf-checklist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin-top: 8px; }
 .uf-checkrow { display: flex !important; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; }
 .uf-checkrow input { width: 15px; height: 15px; }
+@media (max-width: 900px) {
+  .mgmt-layout { grid-template-columns: minmax(0, 1fr); }
+  .mgmt-main-bar { align-items: stretch; flex-direction: column; gap: 10px; }
+  .mgmt-main-actions { padding-bottom: 10px; }
+}
 @media (max-width: 760px) {
-  .mgmt-header { align-items: flex-start; flex-direction: column; }
-  .mgmt-layout { grid-template-columns: 1fr; }
-  .mgmt-scope { border-inline-end: 0; border-bottom: 1px solid var(--border-light); }
-  .mgmt-checklist { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .mgmt-checklist h2 { grid-column: 1 / -1; }
-  .mgmt-list-head { display: none; }
-  .mgmt-row { grid-template-columns: 1fr auto; }
-  .mgmt-row > span:nth-child(2) { display: none; }
   .uf-checklist { grid-template-columns: 1fr; }
 }

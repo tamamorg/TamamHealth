@@ -7,7 +7,7 @@ export default async function UsersRedirect({
 }) {
   const params = await searchParams;
   const next = new URLSearchParams({ view: 'people' });
-  for (const key of ['new', 'q', 'user']) {
+  for (const key of ['new', 'q', 'user', 'tab']) {
     const value = params[key];
     if (typeof value === 'string') next.set(key, value);
   }

@@ -20,8 +20,8 @@ import { INVITE_TTL_HOURS } from '@/modules/identity/provisioning/user-invite';
 import { ROLE_LABEL } from '@/lib/role-display';
 
 /** Where an approver lands to act on the queue, by tier. */
-function queuePathFor(tier: AccountRequestDoc['approverTier']): string {
-  return tier === 'super_admin' ? '/admin/users?tab=requests' : '/org-admin/users?tab=requests';
+function queuePathFor(): string {
+  return '/manage?view=people&tab=requests';
 }
 
 function roleLabelFor(doc: AccountRequestDoc): string {
@@ -67,7 +67,7 @@ export async function notifyRequestSubmitted(
  */
 export async function notifyApproversOfRequest(doc: AccountRequestDoc): Promise<number> {
   try {
-    const queueUrl = buildAppUrl(queuePathFor(doc.approverTier));
+    const queueUrl = buildAppUrl(queuePathFor());
     if (!queueUrl) return 0;
 
     const { getAllUsers } = await import('@/modules/identity/services/user-service');

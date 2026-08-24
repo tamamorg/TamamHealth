@@ -8,7 +8,7 @@ import {
   AlertTriangle, type LucideIcon
 } from '@/components/icons/lucide';
 import { buildReportChart, type ReportChart as ReportChartData } from '@/lib/reports/report-chart-data';
-import { supportsPartToWhole, type ReportChartKind } from './_ReportCharts';
+import { supportsPartToWhole, type ReportChartKind, type RankedPoint } from './_ReportCharts';
 import { DISEASE_COLOR } from '@/lib/chart-colors';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EmptyState from '@/components/EmptyState';
@@ -747,6 +747,36 @@ export default function ReportsPage() {
     return { isRate, total, top, share };
   }, [activeChart]);
 
+  /** The one hue this report's marks draw in — its section's slot. */
+  const sectionAccent = SECTION_ACCENT[activeReport?.category ?? ''] ?? 'var(--chart-2)';
+
+  /** The chart's marks as figures, for the column beside the plot.
+   *
+   *  Same points, same order, same hues — but with room for the names an
+   *  axis has to truncate, and with each value written out rather than
+   *  measured off a bar. The share is dropped for rate measures, where a
+   *  percentage of a percentage means nothing. */
+  const breakdown = useMemo(() => {
+    if (!activeChart || !chartInsights || activeChart.points.length === 0) return null;
+    const points = activeChart.points as RankedPoint[];
+    const max = Math.max(...points.map(pt => Math.abs(pt.value)));
+    return points.map(pt => ({
+      label: pt.label,
+      value: pt.value,
+      // Grey for the folded tail, the entity's own hue when every category
+      // has one (diseases), the section accent otherwise — the same rule the
+      // ranked forms draw by. In donut/treemap the plot switches to the
+      // categorical scale for slice identity; this column stays one hue,
+      // which reads as one measure rather than as a second, contradictory
+      // identity for the same names.
+      color: pt.label === 'Other' ? 'var(--text-muted)' : (pt.color ?? sectionAccent),
+      width: max > 0 ? Math.max(2, Math.round((Math.abs(pt.value) / max) * 100)) : 0,
+      share: !chartInsights.isRate && chartInsights.total > 0
+        ? Math.round((pt.value / chartInsights.total) * 100)
+        : null,
+    }));
+  }, [activeChart, chartInsights, sectionAccent]);
+
   /* Donut and treemap encode a share of a total, so they are offered only when
    * the values actually add up. Falling back rather than disabling silently:
    * stepping from a count report to a rate report while a donut is on screen
@@ -801,187 +831,339 @@ export default function ReportsPage() {
 
   return (
     <main className="page-container page-enter rpt-page">
-      {/* ── The page: one graph, and the controls to choose what it draws ──
-           There is no catalogue of cards any more. Sixteen reports all reduce
-           to the same shape, so sixteen cards each carrying a preview of that
-           shape said nothing the dropdown does not, and pushed the actual
-           chart into a corner. Pick a report, read it, generate the table,
-           export it — all without leaving one panel. */}
-      <section className="rpt-stats">
-        <header className="rpt-stats-head">
-          <div className="rpt-stats-title">
-            <BarChart3 />
-            <div>
-              <i className="rpt-eyebrow">{t('nav.reports')}</i>
-              <b>{t(reportNameKey[chartReport] ?? chartReport)}</b>
-              <span>
-                {activeChart
-                  ? t('reports.chartCaption', {
-                      measure: activeChart.valueLabel,
-                      category: activeChart.categoryLabel,
-                    })
-                  : t(reportDescKey[chartReport] ?? '')}
-                {activeChart?.truncated && ` ${t('reports.chartTopOnly')}`}
-              </span>
-            </div>
-            {activeReport && (
-              <span className={`rpt-chip rpt-chip--${activeReport.period.toLowerCase()}`}>
-                {t(periodKey[activeReport.period] ?? activeReport.period)}
-              </span>
-            )}
-          </div>
+      {/* ── The page: a report workspace ────────────────────────────────
+           Command bar, four headline figures, then one row that owns the
+           rest of the height — catalogue on the left, plot in the middle,
+           the same marks as named figures on the right.
 
-          <div className="rpt-stats-nav">
-            {/* Step to the neighbouring report without opening the dropdown. */}
-            <button
-              type="button"
-              className="rpt-nav-btn"
-              aria-label={t('reports.chartPrev')}
-              onClick={() => stepChart(-1)}
-            >
-              <ChevronLeft />
-            </button>
-            <span className="rpt-nav-pos">{chartIndex + 1}/{chartableReports.length}</span>
-            <button
-              type="button"
-              className="rpt-nav-btn"
-              aria-label={t('reports.chartNext')}
-              onClick={() => stepChart(1)}
-            >
-              <ChevronRight />
-            </button>
-
-            {/* Grouped by category, so the five groupings the catalogue used
-                to spend a screen on survive as the shape of this list. */}
-            <Select
-              className="rpt-nav-select"
-              value={chartReport}
-              aria-label={t('reports.chartPick')}
-              onChange={e => { setChartReport(e.target.value); setTableOpen(false); }}
-            >
-              {reports.map(section => (
-                <optgroup key={section.category} label={t(categoryKey[section.category] ?? section.category)}>
-                  {section.items.map(item => (
-                    <option key={item.name} value={item.name}>
-                      {t(reportNameKey[item.name] ?? item.name)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </Select>
-
-            {/* The honest period: all records to date (see the note where the
-                fake month dropdown used to be defined). */}
-            <span className="text-xs font-semibold px-2.5 py-1.5 rounded-lg" style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)', whiteSpace: 'nowrap' }}>
-              {t('reports.periodAllRecords')}
+           It used to be a single centred card that sized to its content,
+           which left half a tall viewport empty beneath an eight-bar chart
+           while the names the reader most needed were truncated on the axis
+           ("Western Bahr el…"). Nothing below is new data: it is the same
+           report, given the room to say what it already knew. */}
+      <header className="rpt-bar">
+        <div className="rpt-stats-title">
+          <BarChart3 />
+          <div>
+            <i className="rpt-eyebrow">{t('nav.reports')}</i>
+            <b>{t(reportNameKey[chartReport] ?? chartReport)}</b>
+            <span>
+              {activeChart
+                ? t('reports.chartCaption', {
+                    measure: activeChart.valueLabel,
+                    category: activeChart.categoryLabel,
+                  })
+                : t(reportDescKey[chartReport] ?? '')}
+              {activeChart?.truncated && ` ${t('reports.chartTopOnly')}`}
             </span>
-
-            {/* Chart form. Only the honest ones for this data shape are here
-                — see the note at the top of _ReportCharts.tsx for why line and
-                area are not among them. */}
-            <div className="rpt-kinds" role="radiogroup" aria-label={t('reports.chartForm')}>
-              {CHART_KINDS.map(kind => {
-                const blocked = kind.partToWhole && !partToWholeOk;
-                return (
-                  <button
-                    key={kind.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={effectiveKind === kind.id}
-                    className={effectiveKind === kind.id ? 'is-on' : ''}
-                    disabled={blocked}
-                    title={blocked ? t('reports.chartFormUnavailable') : t(kind.labelKey)}
-                    aria-label={t(kind.labelKey)}
-                    onClick={() => setChartKind(kind.id)}
-                  >
-                    <kind.icon />
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              type="button"
-              className={`rpt-nav-generate ${tableOpen ? 'is-on' : ''}`.trim()}
-              aria-expanded={tableOpen}
-              disabled={dataLoading}
-              onClick={() => setTableOpen(open => !open)}
-            >
-              {tableOpen
-                ? <><ChevronUp /> {t('action.close')}</>
-                : <><FileText /> {t('reports.generate')}</>}
-            </button>
-
-            <button
-              type="button"
-              className="rpt-nav-csv"
-              disabled={dataLoading}
-              data-track="reports.export_csv"
-              onClick={() => {
-                const { rows, title } = generateReportData(chartReport);
-                if (rows.length) downloadCsv(rows, safeFilenamePart(title));
-              }}
-            >
-              <Download /> {t('reports.downloadCsv')}
-            </button>
           </div>
-        </header>
-
-        {/* Headline figures for the selected report — a reporting page should
-            lead with its numbers, not make the reader measure bars for them. */}
-        {!dataLoading && activeChart && chartInsights && (
-          <div className="rpt-insights">
-            <div className="rpt-insight">
-              <b>{(chartInsights.isRate ? chartInsights.top.value : chartInsights.total).toLocaleString()}</b>
-              <span>
-                {activeChart.valueLabel}
-                {chartInsights.isRate && ` · ${t('reports.insightHighest')}`}
-              </span>
-            </div>
-            <div className="rpt-insight">
-              <b>{chartInsights.top.label}</b>
-              <span>
-                {chartInsights.share !== null
-                  ? t('reports.insightTopShare', { value: chartInsights.top.value.toLocaleString(), share: chartInsights.share })
-                  : t('reports.insightTopValue', { value: chartInsights.top.value.toLocaleString() })}
-              </span>
-            </div>
-            <div className="rpt-insight">
-              <b>{activeChart.categoryCount.toLocaleString()}</b>
-              <span>{t('reports.insightCategoryCount', { category: activeChart.categoryLabel })}</span>
-            </div>
-          </div>
-        )}
-
-        <div className="rpt-stats-body">
-          {dataLoading ? (
-            <p className="rpt-panel-empty">
-              <Loader2 className="animate-spin" /> {t('reports.loadingReportData')}
-            </p>
-          ) : activeChart ? (
-            <div className="rpt-plot" data-kind={effectiveKind}>
-              <ReportChart
-                kind={effectiveKind}
-                points={activeChart.points}
-                valueLabel={activeChart.valueLabel}
-                accent={SECTION_ACCENT[activeReport?.category ?? ''] ?? 'var(--chart-2)'}
-              />
-            </div>
-          ) : (
-            <p className="rpt-panel-empty">{t('reports.noDataForReport')}</p>
+          {activeReport && (
+            <span className={`rpt-chip rpt-chip--${activeReport.period.toLowerCase()}`}>
+              {t(periodKey[activeReport.period] ?? activeReport.period)}
+            </span>
           )}
         </div>
 
-        {tableOpen && !dataLoading && (
-          <div className="rpt-table-wrap">
-            <div className="rpt-table-cap">
-              <span>{t(reportNameKey[chartReport] ?? chartReport)}</span>
-              <b>{t('reports.rowsAvailable', { count: reportPreviews.get(chartReport)?.rowCount ?? 0 })}</b>
-            </div>
-            {renderTable(chartReport)}
+        <div className="rpt-stats-nav">
+          {/* Step to the neighbouring report without leaving the plot. */}
+          <button
+            type="button"
+            className="rpt-nav-btn"
+            aria-label={t('reports.chartPrev')}
+            onClick={() => stepChart(-1)}
+          >
+            <ChevronLeft />
+          </button>
+          <span className="rpt-nav-pos">{chartIndex + 1}/{chartableReports.length}</span>
+          <button
+            type="button"
+            className="rpt-nav-btn"
+            aria-label={t('reports.chartNext')}
+            onClick={() => stepChart(1)}
+          >
+            <ChevronRight />
+          </button>
+
+          {/* The same choice the rail offers, for the widths where the rail
+              is not on screen — hidden by CSS wherever it IS, so the page
+              never carries two live copies of one control. */}
+          <Select
+            className="rpt-nav-select"
+            value={chartReport}
+            aria-label={t('reports.chartPick')}
+            onChange={e => { setChartReport(e.target.value); setTableOpen(false); }}
+          >
+            {reports.map(section => (
+              <optgroup key={section.category} label={t(categoryKey[section.category] ?? section.category)}>
+                {section.items.map(item => (
+                  <option key={item.name} value={item.name}>
+                    {t(reportNameKey[item.name] ?? item.name)}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </Select>
+
+          <button
+            type="button"
+            className={`rpt-nav-generate ${tableOpen ? 'is-on' : ''}`.trim()}
+            aria-expanded={tableOpen}
+            disabled={dataLoading}
+            onClick={() => setTableOpen(open => !open)}
+          >
+            {tableOpen
+              ? <><ChevronUp /> {t('action.close')}</>
+              : <><FileText /> {t('reports.generate')}</>}
+          </button>
+
+          <button
+            type="button"
+            className="rpt-nav-csv"
+            disabled={dataLoading}
+            data-track="reports.export_csv"
+            onClick={() => {
+              const { rows, title } = generateReportData(chartReport);
+              if (rows.length) downloadCsv(rows, safeFilenamePart(title));
+            }}
+          >
+            <Download /> {t('reports.downloadCsv')}
+          </button>
+        </div>
+      </header>
+
+      {/* Headline figures for the selected report — a reporting page should
+          lead with its numbers, not make the reader measure bars for them.
+          The tiles hold their places while the data loads so the workspace
+          below does not jump once it arrives. */}
+      <div className="rpt-kpis">
+        <article className="rpt-kpi">
+          <p className="rpt-kpi-label">
+            {activeChart?.valueLabel ?? t('reports.statsTitle')}
+            {chartInsights?.isRate ? ` · ${t('reports.insightHighest')}` : ''}
+          </p>
+          <p className="rpt-kpi-value">
+            {chartInsights
+              ? (chartInsights.isRate ? chartInsights.top.value : chartInsights.total).toLocaleString()
+              : '—'}
+          </p>
+          <p className="rpt-kpi-note">{t('reports.periodAllRecords')}</p>
+        </article>
+
+        <article className="rpt-kpi">
+          <p className="rpt-kpi-label">
+            {t('reports.kpiTopLabel', { category: activeChart?.categoryLabel ?? '' })}
+          </p>
+          <p className="rpt-kpi-value" title={chartInsights?.top.label}>
+            {chartInsights?.top.label ?? '—'}
+          </p>
+          <p className="rpt-kpi-note">
+            {chartInsights
+              ? (chartInsights.share !== null
+                  ? t('reports.kpiTopNote', {
+                      value: chartInsights.top.value.toLocaleString(),
+                      share: chartInsights.share,
+                    })
+                  : chartInsights.top.value.toLocaleString())
+              : '—'}
+          </p>
+        </article>
+
+        <article className="rpt-kpi">
+          <p className="rpt-kpi-label">
+            {t('reports.insightCategoryCount', { category: activeChart?.categoryLabel ?? '' })}
+          </p>
+          <p className="rpt-kpi-value">{activeChart?.categoryCount.toLocaleString() ?? '—'}</p>
+          <p className="rpt-kpi-note">
+            {!activeChart
+              ? '—'
+              : activeChart.truncated
+                ? t('reports.kpiChartedTop', { count: activeChart.points.filter(pt => pt.label !== 'Other').length })
+                : t('reports.kpiChartedAll')}
+          </p>
+        </article>
+
+        <article className="rpt-kpi">
+          <p className="rpt-kpi-label">{t('reports.kpiRows')}</p>
+          <p className="rpt-kpi-value">
+            {dataLoading ? '—' : (reportPreviews.get(chartReport)?.rowCount ?? 0).toLocaleString()}
+          </p>
+          <p className="rpt-kpi-note">
+            {activeReport ? t(categoryKey[activeReport.category] ?? activeReport.category) : '—'}
+          </p>
+        </article>
+      </div>
+
+      <div className="rpt-workspace">
+        {/* ── Catalogue rail ──────────────────────────────────────────────
+             Not the card catalogue this page used to open with — that drew
+             the same chart sixteen times before you had chosen anything.
+             This is a picker: the five sections as headings, each report as
+             one line with its cadence and how many rows it will generate. */}
+        <aside className="rpt-rail" aria-label={t('reports.railTitle')}>
+          <div className="rpt-rail-head">
+            <span>{t('reports.railTitle')}</span>
+            <b>{chartableReports.length}</b>
           </div>
-        )}
-      </section>
+          <div className="rpt-rail-scroll">
+            {reports.map(section => (
+              <div key={section.category} className="rpt-rail-group">
+                <p className="rpt-rail-group-title">
+                  {t(categoryKey[section.category] ?? section.category)}
+                </p>
+                {section.items.map(item => {
+                  const on = item.name === chartReport;
+                  return (
+                    <button
+                      key={item.name}
+                      type="button"
+                      className={`rpt-rail-item${on ? ' is-on' : ''}`}
+                      aria-current={on ? 'true' : undefined}
+                      onClick={() => { setChartReport(item.name); setTableOpen(false); }}
+                    >
+                      <span className="rpt-rail-name">{t(reportNameKey[item.name] ?? item.name)}</span>
+                      <span className="rpt-rail-meta">
+                        <span className={`rpt-chip rpt-chip--${item.period.toLowerCase()}`}>
+                          {t(periodKey[item.period] ?? item.period)}
+                        </span>
+                        <span>
+                          {dataLoading
+                            ? '…'
+                            : t('reports.rowsAvailable', { count: reportPreviews.get(item.name)?.rowCount ?? 0 })}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        {/* ── The plot, and the table it summarises ─────────────────────── */}
+        <section className="rpt-main">
+          <div className="rpt-plot-card">
+            {/* No caption here: the bar above already names the measure and
+                the category, and a chart card that repeats its own page
+                header twice is two lines saying one thing. */}
+            <div className="rpt-plot-head">
+              {/* The form control sits on the thing it forms. Only the honest
+                  shapes for this data are offered — see the note at the top of
+                  _ReportCharts.tsx for why line and area are not among them. */}
+              <div className="rpt-kinds" role="radiogroup" aria-label={t('reports.chartForm')}>
+                {CHART_KINDS.map(kind => {
+                  const blocked = kind.partToWhole && !partToWholeOk;
+                  return (
+                    <button
+                      key={kind.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={effectiveKind === kind.id}
+                      className={effectiveKind === kind.id ? 'is-on' : ''}
+                      disabled={blocked}
+                      title={blocked ? t('reports.chartFormUnavailable') : t(kind.labelKey)}
+                      aria-label={t(kind.labelKey)}
+                      onClick={() => setChartKind(kind.id)}
+                    >
+                      <kind.icon />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="rpt-stats-body">
+              {dataLoading ? (
+                <p className="rpt-panel-empty">
+                  <Loader2 className="animate-spin" /> {t('reports.loadingReportData')}
+                </p>
+              ) : activeChart ? (
+                <div className="rpt-plot" data-kind={effectiveKind}>
+                  <ReportChart
+                    kind={effectiveKind}
+                    points={activeChart.points}
+                    valueLabel={activeChart.valueLabel}
+                    accent={sectionAccent}
+                  />
+                </div>
+              ) : (
+                <p className="rpt-panel-empty">{t('reports.noDataForReport')}</p>
+              )}
+            </div>
+          </div>
+
+          {tableOpen && !dataLoading && (
+            <div className="rpt-table-wrap">
+              <div className="rpt-table-cap">
+                <span>{t(reportNameKey[chartReport] ?? chartReport)}</span>
+                <b>{t('reports.rowsAvailable', { count: reportPreviews.get(chartReport)?.rowCount ?? 0 })}</b>
+              </div>
+              {renderTable(chartReport)}
+            </div>
+          )}
+        </section>
+
+        {/* ── The marks, as figures ───────────────────────────────────────
+             An axis has no room for "Western Bahr el Ghazal", so the plot
+             truncates it; this column has the room. Same order, same hues,
+             full names — the shape on the left, the record on the right. */}
+        <aside className="rpt-side">
+          <div className="rpt-side-card">
+            <div className="rpt-side-head">
+              <span>{t('reports.breakdownTitle')}</span>
+              <b>{activeChart?.categoryLabel}</b>
+            </div>
+            <div className="rpt-side-scroll">
+              {breakdown ? breakdown.map(row => (
+                <div key={row.label} className="rpt-break">
+                  <span className="rpt-break-top">
+                    <span className="rpt-break-name" title={row.label}>{row.label}</span>
+                    <b className="rpt-break-value">{row.value.toLocaleString()}</b>
+                  </span>
+                  <span className="rpt-break-track">
+                    <span className="rpt-break-fill" style={{ width: `${row.width}%`, background: row.color }} />
+                  </span>
+                  {row.share !== null && (
+                    <span className="rpt-break-share">{t('reports.shareOfTotal', { share: row.share })}</span>
+                  )}
+                </div>
+              )) : (
+                <p className="rpt-panel-empty">
+                  {dataLoading ? t('reports.loadingReportData') : t('reports.noDataForReport')}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* What the figures above are OF — the facts a reader needs before
+              quoting a number out of this page. */}
+          <div className="rpt-side-card rpt-facts">
+            <div className="rpt-side-head">
+              <span>{t('reports.aboutTitle')}</span>
+            </div>
+            <dl className="rpt-facts-list">
+              <div>
+                <dt>{t('reports.aboutSection')}</dt>
+                <dd>{activeReport ? t(categoryKey[activeReport.category] ?? activeReport.category) : '—'}</dd>
+              </div>
+              <div>
+                <dt>{t('reports.aboutCadence')}</dt>
+                <dd>{activeReport ? t(periodKey[activeReport.period] ?? activeReport.period) : '—'}</dd>
+              </div>
+              <div>
+                <dt>{t('reports.aboutMeasure')}</dt>
+                <dd>{activeChart?.valueLabel ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{t('reports.aboutGroupedBy')}</dt>
+                <dd>{activeChart?.categoryLabel ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{t('reports.aboutWindow')}</dt>
+                <dd>{t('reports.periodAllRecords')}</dd>
+              </div>
+            </dl>
+          </div>
+        </aside>
+      </div>
     </main>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, Check, ChevronRight, Plus, Search, Users } from '@/components/icons/lucide';
+import { Building2, Plus, Users } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -13,7 +13,11 @@ import { canCreateFacilities, canCreateUsers } from '@/lib/people-nav';
 import { activeFacilities } from '@/lib/services/hospital-service';
 import { OrganizationForm } from '@/components/admin/OrganizationForm';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
-import { CredentialHandoffModal, CreateUserModal } from '@/modules/identity/client';
+import { AccountRequestQueue, CredentialHandoffModal, CreateUserModal } from '@/modules/identity/client';
+import {
+  SadbCard, SadbChip, SadbGridList, SadbGridRow, SadbSearch,
+  effectiveOrgStatus, statusChip,
+} from '@/components/admin/sadb-ui';
 import type { UserCredentialHandoff } from '@/components/admin/UserForm';
 import type { HospitalDoc, OrganizationDoc } from '@/lib/db-types';
 import { managementViewsForRole, TENANCY_WORKSPACE_ROLES, type ManagementView, userWorksAtFacility } from '../index';
@@ -21,10 +25,19 @@ import { useAssignableFacilities } from '../hooks/useAssignableFacilities';
 
 const VIEWS: readonly ManagementView[] = ['organizations', 'facilities', 'people'];
 
+/** One column template for all three lists, so switching section does not
+ *  re-flow the row anatomy under the reader. */
+const MGMT_GRID = 'minmax(220px, 1.7fr) minmax(130px, .9fr) minmax(96px, .55fr)';
+
 function initialView(): ManagementView {
   if (typeof window === 'undefined') return 'organizations';
   const value = new URLSearchParams(window.location.search).get('view');
   return VIEWS.includes(value as ManagementView) ? value as ManagementView : 'organizations';
+}
+
+function initialPeopleMode(): 'staff' | 'requests' {
+  if (typeof window === 'undefined') return 'staff';
+  return new URLSearchParams(window.location.search).get('tab') === 'requests' ? 'requests' : 'staff';
 }
 
 export default function ManagementWorkspace() {
@@ -35,6 +48,7 @@ export default function ManagementWorkspace() {
   const hospitalStore = useHospitals();
   const userStore = useUsers();
   const [view, setView] = useState<ManagementView>(initialView);
+  const [peopleMode, setPeopleMode] = useState<'staff' | 'requests'>(initialPeopleMode);
   const [orgId, setOrgId] = useState('');
   const [facilityId, setFacilityId] = useState('');
   const [search, setSearch] = useState('');
@@ -45,20 +59,28 @@ export default function ManagementWorkspace() {
   const [editingFacility, setEditingFacility] = useState<HospitalDoc | null>(null);
   const [handoff, setHandoff] = useState<UserCredentialHandoff | null>(null);
   const handledDeepLink = useRef(false);
+  const seededScope = useRef(false);
   const visibleViews = currentUser ? managementViewsForRole(currentUser.role) : VIEWS;
   const activeView = visibleViews.includes(view) ? view : (visibleViews[0] ?? 'facilities');
 
   const organizations = useMemo(() => {
     if (orgStore.organizations.length) return orgStore.organizations;
     return currentUser?.organization ? [currentUser.organization] : [];
-  }, [currentUser?.organization, orgStore.organizations]);
+  }, [currentUser, orgStore.organizations]);
 
+  /* Seed the working scope ONCE. This used to re-assert it on every run, and
+     `organizations` gets a new identity each time the store ticks — so
+     choosing "All organizations" set the empty string and the next tick put
+     the user's own organization straight back. The rail's first option was
+     unpickable. */
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || seededScope.current) return;
     const params = new URLSearchParams(window.location.search);
-    const requestedOrg = params.get('org');
+    const seed = params.get('org') || currentUser.orgId || organizations[0]?._id || '';
+    if (!seed) return; // the organization store has not answered yet
+    seededScope.current = true;
+    setOrgId(current => current || seed);
     const requestedFacility = params.get('facility');
-    setOrgId(current => current || requestedOrg || currentUser.orgId || organizations[0]?._id || '');
     if (requestedFacility) setFacilityId(current => current || requestedFacility);
   }, [currentUser, organizations]);
 
@@ -75,11 +97,20 @@ export default function ManagementWorkspace() {
     return true;
   }), [facilityId, orgId, userStore.users]);
 
+  /* Every list answers the scope chosen in the rail, the People list included:
+     pick an organization and the Organizations list is that organization, pick
+     a facility and the Facilities list is that facility. `organizations` and
+     `facilities` stay whole above this line because they are what the two rail
+     selects offer — narrowing them there would strand you on the current
+     choice with nothing else to pick. */
+  const scopedOrganizations = orgId ? organizations.filter(org => org._id === orgId) : organizations;
+  const scopedFacilities = facilityId ? facilities.filter(facility => facility._id === facilityId) : facilities;
+
   const query = search.trim().toLowerCase();
-  const filteredOrganizations = organizations.filter(org => !query
+  const filteredOrganizations = scopedOrganizations.filter(org => !query
     || org.name.toLowerCase().includes(query)
     || org.slug.toLowerCase().includes(query));
-  const filteredFacilities = facilities.filter(facility => !query
+  const filteredFacilities = scopedFacilities.filter(facility => !query
     || facility.name.toLowerCase().includes(query)
     || facility.state.toLowerCase().includes(query)
     || (facility.town ?? '').toLowerCase().includes(query));
@@ -114,8 +145,19 @@ export default function ManagementWorkspace() {
     router.replace(`/manage?${params.toString()}`, { scroll: false });
   };
 
+  const changePeopleMode = (next: 'staff' | 'requests') => {
+    setPeopleMode(next);
+    const params = new URLSearchParams({ view: 'people' });
+    if (next === 'requests') params.set('tab', 'requests');
+    if (orgId) params.set('org', orgId);
+    if (facilityId) params.set('facility', facilityId);
+    router.replace(`/manage?${params.toString()}`, { scroll: false });
+  };
+
   if (!currentUser || !TENANCY_WORKSPACE_ROLES.includes(currentUser.role)) return null;
 
+  const peopleRequestsAvailable = canCreateUsers(currentUser.role);
+  const activePeopleMode = peopleRequestsAvailable ? peopleMode : 'staff';
   const canAddOrganization = currentUser.role === 'super_admin' && activeView === 'organizations';
   const canAddFacility = canCreateFacilities(currentUser.role) && activeView === 'facilities' && !!orgId;
   const canAddPerson = canCreateUsers(currentUser.role) && activeView === 'people' && !!orgId;
@@ -126,119 +168,155 @@ export default function ManagementWorkspace() {
   };
   const showPrimaryAction = canAddOrganization || canAddFacility || canAddPerson;
 
-  const onboarding = [
-    { label: t('management.setupOrganization'), done: !!selectedOrg },
-    { label: t('management.setupFacility'), done: facilities.length > 0 },
-    { label: t('management.setupAdministrator'), done: userStore.users.some(user => user.orgId === orgId && user.role === 'org_admin' && user.isActive !== false) },
-    { label: t('management.setupStaff'), done: userStore.users.some(user => user.orgId === orgId && user.role !== 'org_admin' && user.isActive !== false) },
-  ];
+  const showRoster = activeView !== 'people' || activePeopleMode === 'staff';
 
   return (
-    <main className="page-container page-enter mgmt-shell">
-      <header className="mgmt-header">
-        <div>
-          <p className="mgmt-eyebrow">{t('management.eyebrow')}</p>
-          <h1>{t('management.title')}</h1>
-          <p>{t('management.subtitle')}</p>
-        </div>
-        <div className="mgmt-header-actions">
-          {activeView === 'organizations' && selectedOrg && currentUser.role === 'super_admin' && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setEditingOrg(selectedOrg); setShowOrgEditor(true); }}>
-              {t('management.editOrganization')}
-            </button>
-          )}
-          {activeView === 'facilities' && selectedFacility && canCreateFacilities(currentUser.role) && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setEditingFacility(selectedFacility); setShowFacilityEditor(true); }}>
-              {t('management.editFacility')}
-            </button>
-          )}
-          {showPrimaryAction && (
-            <button type="button" className="btn btn-primary btn-sm" onClick={openPrimaryAction} data-tour={activeView === 'facilities' ? 'org-hospitals-add' : activeView === 'people' ? 'org-users-create-btn' : undefined}>
-              <Plus className="w-4 h-4" /> {activeView === 'organizations'
-                ? t('management.addOrganization')
-                : activeView === 'facilities' ? t('management.addFacility') : t('management.addPerson')}
-            </button>
-          )}
-        </div>
-      </header>
-
+    <main className="page-container page-enter sadb-scope mgmt-shell">
       <div className="mgmt-layout">
-        <aside className="mgmt-scope" aria-label={t('management.scopeLabel')}>
-          <div className="mgmt-scope-title">{t('management.scopeLabel')}</div>
-          {currentUser.role === 'super_admin' ? (
-            <select value={orgId} onChange={event => { setOrgId(event.target.value); setFacilityId(''); }}>
-              <option value="">{t('management.allOrganizations')}</option>
-              {organizations.map(org => <option key={org._id} value={org._id}>{org.name}</option>)}
-            </select>
-          ) : <strong>{selectedOrg?.name ?? currentUser.organization?.name}</strong>}
-          <ChevronRight aria-hidden="true" />
-          <select value={facilityId} onChange={event => setFacilityId(event.target.value)} disabled={!orgId}>
-            <option value="">{t('management.allFacilities')}</option>
-            {facilities.map(facility => <option key={facility._id} value={facility._id}>{facility.name}</option>)}
-          </select>
-          <ChevronRight aria-hidden="true" />
-          <span>{activeView === 'people' ? t('management.people') : t(`management.${activeView}`)}</span>
+        <aside className="sadb-card mgmt-scope" aria-label={t('management.scopeLabel')}>
+          <div className="mgmt-scope-head">
+            <h1>{t('management.title')}</h1>
+          </div>
 
-          {orgId && (
-            <section className="mgmt-checklist">
-              <h2>{t('management.setupTitle')}</h2>
-              {onboarding.map(item => (
-                <div key={item.label} className={item.done ? 'done' : undefined}>
-                  {item.done ? <Check aria-hidden="true" /> : <span className="mgmt-step-dot" aria-hidden="true" />}
-                  <span>{item.label}</span>
-                </div>
-              ))}
-            </section>
-          )}
+          <div className="mgmt-rail-group">
+            <p className="sadb-rail-title">{t('management.scopeLabel')}</p>
+            <label className="mgmt-field">
+              <span className="mgmt-field-label">{t('management.organizationField')}</span>
+              {currentUser.role === 'super_admin' ? (
+                <select value={orgId} onChange={event => { setOrgId(event.target.value); setFacilityId(''); }}>
+                  <option value="">{t('management.allOrganizations')}</option>
+                  {organizations.map(org => <option key={org._id} value={org._id}>{org.name}</option>)}
+                </select>
+              ) : <strong>{selectedOrg?.name ?? currentUser.organization?.name}</strong>}
+            </label>
+            <label className="mgmt-field">
+              <span className="mgmt-field-label">{t('management.facilityField')}</span>
+              <select value={facilityId} onChange={event => setFacilityId(event.target.value)} disabled={!orgId}>
+                <option value="">{t('management.allFacilities')}</option>
+                {facilities.map(facility => <option key={facility._id} value={facility._id}>{facility.name}</option>)}
+              </select>
+            </label>
+          </div>
         </aside>
 
-        <section className="mgmt-main">
-          <nav className="mgmt-tabs" aria-label={t('management.viewsLabel')}>
-            {visibleViews.map(item => (
-              <button key={item} type="button" data-tour={`manage-tab-${item}`} className={activeView === item ? 'active' : undefined} onClick={() => changeView(item)}>
-                {item === 'organizations' ? <Building2 /> : item === 'facilities' ? <Building2 /> : <Users />}
-                {t(`management.${item}`)}
-              </button>
-            ))}
-          </nav>
-          <label className="mgmt-search">
-            <Search aria-hidden="true" />
-            <span className="sr-only">{t('management.search')}</span>
-            <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('management.searchPlaceholder')} />
-          </label>
+        <div className="sadb-shell-main">
+          <div className="mgmt-main-bar">
+            <nav className="mgmt-tabs" aria-label={t('management.viewsLabel')}>
+              {visibleViews.map(item => (
+                <button key={item} type="button" data-tour={`manage-tab-${item}`} className={activeView === item ? 'active' : undefined} onClick={() => changeView(item)}>
+                  {item === 'organizations' ? <Building2 /> : item === 'facilities' ? <Building2 /> : <Users />}
+                  {t(`management.${item}`)}
+                </button>
+              ))}
+            </nav>
+            <div className="mgmt-main-actions">
+              {activeView === 'organizations' && selectedOrg && currentUser.role === 'super_admin' && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setEditingOrg(selectedOrg); setShowOrgEditor(true); }}>
+                  {t('management.editOrganization')}
+                </button>
+              )}
+              {activeView === 'facilities' && selectedFacility && canCreateFacilities(currentUser.role) && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setEditingFacility(selectedFacility); setShowFacilityEditor(true); }}>
+                  {t('management.editFacility')}
+                </button>
+              )}
+              {showPrimaryAction && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={openPrimaryAction} data-tour={activeView === 'facilities' ? 'org-hospitals-add' : activeView === 'people' ? 'org-users-create-btn' : undefined}>
+                  <Plus className="w-4 h-4" /> {activeView === 'organizations'
+                    ? t('management.addOrganization')
+                    : activeView === 'facilities' ? t('management.addFacility') : t('management.addPerson')}
+                </button>
+              )}
+            </div>
+          </div>
 
-          <div className="mgmt-list-head" aria-hidden="true">
-            <span>{activeView === 'people' ? t('management.person') : t('management.name')}</span>
-            <span>{t('management.scope')}</span>
-            <span>{t('management.status')}</span>
-          </div>
-          <div className="mgmt-list" data-tour={activeView === 'facilities' ? 'org-hospitals-table' : activeView === 'people' ? 'org-users-list' : undefined}>
-            {activeView === 'organizations' && filteredOrganizations.map(org => (
-              <button key={org._id} type="button" className="mgmt-row" onClick={() => { setOrgId(org._id); setView('facilities'); router.replace(`/manage?view=facilities&org=${encodeURIComponent(org._id)}`, { scroll: false }); }}>
-                <span><strong>{org.name}</strong><small>{org.slug}</small></span>
-                <span>{org.orgType}</span><span>{org.subscriptionStatus}</span>
-              </button>
-            ))}
-            {activeView === 'facilities' && filteredFacilities.map(facility => (
-              <button key={facility._id} type="button" className="mgmt-row" onClick={() => { setFacilityId(facility._id); setView('people'); router.replace(`/manage?view=people&org=${encodeURIComponent(orgId)}&facility=${encodeURIComponent(facility._id)}`, { scroll: false }); }}>
-                <span><strong>{facility.name}</strong><small>{facility.town}, {facility.state}</small></span>
-                <span>{facility.facilityType}</span><span>{t('management.active')}</span>
-              </button>
-            ))}
-            {activeView === 'people' && filteredPeople.map(user => (
-              <button key={user._id} type="button" className="mgmt-row" disabled={!canCreateUsers(currentUser.role)} onClick={() => router.push(`/admin/users/${encodeURIComponent(user._id)}?returnTo=${encodeURIComponent('/manage?view=people')}`)}>
-                <span><strong>{user.name}</strong><small>@{user.username}</small></span>
-                <span>{user.hospitalName ?? user.orgName ?? t('management.organizationWide')}</span>
-                <span>{user.isActive === false ? t('management.inactive') : t('management.active')}</span>
-              </button>
-            ))}
-            {((activeView === 'organizations' && filteredOrganizations.length === 0)
-              || (activeView === 'facilities' && filteredFacilities.length === 0)
-              || (activeView === 'people' && filteredPeople.length === 0)) && (
-              <p className="mgmt-empty">{t('management.empty')}</p>
+          <SadbCard>
+            {/* One toolbar line: which people list, then the search over it.
+                The roster / requests switch is a select rather than a second
+                pill strip — one tab strip per screen, and the strip above
+                already owns that shape. */}
+            <div className="sadb-search-row">
+              {activeView === 'people' && peopleRequestsAvailable && (
+                <select
+                  className="mgmt-mode-select"
+                  aria-label={t('management.peopleViewsLabel')}
+                  value={activePeopleMode}
+                  onChange={event => changePeopleMode(event.target.value as 'staff' | 'requests')}
+                >
+                  <option value="staff">{t('management.staffAccounts')}</option>
+                  <option value="requests">{t('management.accountRequests')}</option>
+                </select>
+              )}
+              {showRoster && (
+                <SadbSearch value={search} onChange={setSearch} placeholder={t('management.searchPlaceholder')} ariaLabel={t('management.search')} />
+              )}
+            </div>
+
+            {showRoster && (
+              <div data-tour={activeView === 'facilities' ? 'org-hospitals-table' : activeView === 'people' ? 'org-users-list' : undefined}>
+                <SadbGridList
+                  template={MGMT_GRID}
+                  minWidth={620}
+                  head={[
+                    activeView === 'people' ? t('management.person') : t('management.name'),
+                    t('management.scope'),
+                    t('management.status'),
+                  ]}
+                  alignEndLast
+                  empty={t('management.empty')}
+                >
+                  {activeView === 'organizations' && filteredOrganizations.map(org => {
+                    const status = effectiveOrgStatus(org);
+                    return (
+                      <SadbGridRow key={org._id} template={MGMT_GRID} onClick={() => { setOrgId(org._id); setView('facilities'); router.replace(`/manage?view=facilities&org=${encodeURIComponent(org._id)}`, { scroll: false }); }}>
+                        <span className="min-w-0">
+                          <span className="sadb-tenant-name truncate">{org.name}</span>
+                          <span className="sadb-tenant-sub truncate">{org.slug}</span>
+                        </span>
+                        <span className="truncate">{org.orgType}</span>
+                        <span style={{ textAlign: 'end' }}><SadbChip tone={statusChip(status)}>{status}</SadbChip></span>
+                      </SadbGridRow>
+                    );
+                  })}
+                  {activeView === 'facilities' && filteredFacilities.map(facility => (
+                    <SadbGridRow key={facility._id} template={MGMT_GRID} onClick={() => { setFacilityId(facility._id); setView('people'); router.replace(`/manage?view=people&org=${encodeURIComponent(orgId)}&facility=${encodeURIComponent(facility._id)}`, { scroll: false }); }}>
+                      <span className="min-w-0">
+                        <span className="sadb-tenant-name truncate">{facility.name}</span>
+                        <span className="sadb-tenant-sub truncate">{[facility.town, facility.state].filter(Boolean).join(', ')}</span>
+                      </span>
+                      <span className="truncate">{facility.facilityType}</span>
+                      <span style={{ textAlign: 'end' }}><SadbChip tone="green">{t('management.active')}</SadbChip></span>
+                    </SadbGridRow>
+                  ))}
+                  {activeView === 'people' && filteredPeople.map(user => {
+                    const inactive = user.isActive === false;
+                    const open = canCreateUsers(currentUser.role)
+                      ? () => router.push(`/admin/users/${encodeURIComponent(user._id)}?returnTo=${encodeURIComponent('/manage?view=people')}`)
+                      : undefined;
+                    return (
+                      <SadbGridRow key={user._id} template={MGMT_GRID} onClick={open}>
+                        <span className="min-w-0">
+                          <span className="sadb-tenant-name truncate">{user.name}</span>
+                          <span className="sadb-tenant-sub truncate">@{user.username}</span>
+                        </span>
+                        <span className="truncate">{user.hospitalName ?? user.orgName ?? t('management.organizationWide')}</span>
+                        <span style={{ textAlign: 'end' }}>
+                          <SadbChip tone={inactive ? 'neutral' : 'green'}>
+                            {inactive ? t('management.inactive') : t('management.active')}
+                          </SadbChip>
+                        </span>
+                      </SadbGridRow>
+                    );
+                  })}
+                </SadbGridList>
+              </div>
             )}
-          </div>
-        </section>
+
+            {activeView === 'people' && activePeopleMode === 'requests' && (
+              <AccountRequestQueue viewerRole={currentUser.role} embedded />
+            )}
+          </SadbCard>
+        </div>
       </div>
 
       {showOrgEditor && (

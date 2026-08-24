@@ -106,12 +106,15 @@ describe('role settings store', () => {
 describe('pending rows', () => {
   it('are excluded from the defaults the store serves', () => {
     const defaults = roleSettingDefaults('nurse');
-    // `mar.barcode` needs barcode scanning, which the platform does not have.
-    const marRow = specForRole('nurse').sections
+    // `ward.default` is declared but the ward board does not yet read a
+    // preferred ward, so the row renders "Not available yet" and the store
+    // must not serve a value for it. (`mar.barcode` held this role until the
+    // Aug 2026 cull deleted it outright — see settings-are-wired.test.ts.)
+    const wardRow = specForRole('nurse').sections
       .flatMap(s => s.rows)
-      .find(r => 'key' in r && r.key === 'mar.barcode');
-    expect(marRow && 'pending' in marRow && marRow.pending).toBe(true);
-    expect(defaults['mar.barcode']).toBeUndefined();
+      .find(r => 'key' in r && r.key === 'ward.default');
+    expect(wardRow && 'pending' in wardRow && wardRow.pending).toBe(true);
+    expect(defaults['ward.default']).toBeUndefined();
   });
 
   it('leave the wired rows alone', () => {

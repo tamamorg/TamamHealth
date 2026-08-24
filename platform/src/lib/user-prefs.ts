@@ -79,7 +79,12 @@ export function applyDensity(density: Density): void {
  * per-role "My dashboard" / "Facility dashboard" / "Nursing station"
  * entries — falls through to the role's default dashboard.
  */
-const LANDING_ROUTES: Record<string, string> = {
+/**
+ * Start-up screen label → route. Exported so the settings specs can be tested
+ * against it: a role offered a landing option it cannot enter is a dropdown
+ * that silently does nothing, since `resolveLandingPage` falls back instead.
+ */
+export const LANDING_ROUTES: Record<string, string> = {
   'Patients': '/patients',
   'Appointments': '/appointments',
   'Consultation': '/consultation',
