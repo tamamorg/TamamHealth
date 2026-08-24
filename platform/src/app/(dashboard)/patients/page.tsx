@@ -20,7 +20,7 @@ import FingerprintIdentifyModal from '@/components/FingerprintIdentifyModal';
 import { isFingerprintEnabled } from '@/lib/services/fingerprint-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
-import { EhrListFilters } from '@/components/ehr/EhrListHeader';
+import { EhrSearchFilter } from '@/components/ehr/EhrListHeader';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -262,27 +262,19 @@ export default function PatientsPage() {
               </div>
               {/* Search + filter row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {/* Search wrapper — flex:1 so it fills remaining space; input inside uses width:100% from global CSS */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <input
-                    type="text"
-                    value={localSearch}
-                    onChange={e => setLocalSearch(e.target.value)}
-                    placeholder="Search by name or patient ID…"
-                    style={{ padding: '9px 18px', height: 38, borderRadius: 999, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
-                  />
-                </div>
-                {/* Filters — the shared portalled popover. It used to be an
-                    absolutely-positioned panel inside this toolbar, which the
-                    card's own `overflow: hidden` clipped: the right-hand
-                    column and the lower checkboxes were unreadable and
-                    unreachable. */}
-                <EhrListFilters
+                {/* One control. The registry used to carry this input beside a
+                    filter button that narrowed the same list; the disclosure
+                    now lives at the field's trailing edge. The panel is still
+                    portalled, because the card's `overflow: hidden` clipped it
+                    when it was absolutely positioned in this toolbar. */}
+                <EhrSearchFilter
+                  value={localSearch}
+                  onChange={setLocalSearch}
+                  placeholder="Search by name or patient ID…"
                   activeCount={activeFilterCount}
                   onClear={clearFilters}
                   label={t('patients.filtersTitle')}
                   panelWidth={560}
-                  align="left"
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                     <label className="flex flex-col gap-1">
@@ -334,7 +326,7 @@ export default function PatientsPage() {
                       ))}
                     </div>
                   </div>
-                </EhrListFilters>
+                </EhrSearchFilter>
                 <button
                   type="button"
                   onClick={handleDownloadCsv}

@@ -6,7 +6,7 @@ import { makeCoalescer } from './live-reload';
 import { organizationsDB } from '../db';
 import { useApp } from '../context';
 
-export function useOrganizations() {
+export function useOrganizations(enabled = true) {
   const [organizations, setOrganizations] = useState<OrganizationDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +15,12 @@ export function useOrganizations() {
   const orgId = currentUser?.orgId;
 
   const loadOrganizations = useCallback(async () => {
+    if (!enabled) {
+      setOrganizations([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
       const { getAllOrganizations } = await import('../services/organization-service');
@@ -35,12 +41,13 @@ export function useOrganizations() {
     } finally {
       setLoading(false);
     }
-  }, [orgId, role]);
+  }, [enabled, orgId, role]);
 
   useEffect(() => { loadOrganizations(); }, [loadOrganizations]);
 
   // Live PouchDB subscription — reflect writes arriving from sync/other tabs.
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     const reload = makeCoalescer(() => { if (!cancelled) loadOrganizations(); });
     const changes = organizationsDB().changes({ since: 'now', live: true, include_docs: false })
@@ -51,7 +58,7 @@ export function useOrganizations() {
       reload.cancel();
       try { changes.cancel(); } catch { /* noop */ }
     };
-  }, [loadOrganizations]);
+  }, [enabled, loadOrganizations]);
 
   const create = useCallback(async (
     data: Omit<OrganizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,

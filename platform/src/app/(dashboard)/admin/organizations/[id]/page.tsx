@@ -12,7 +12,13 @@
  * entry, because org-level administration already lives behind "Edit
  * organization".
  *
- * Header is one line: identity on the left, the actions on the right.
+ * Header is one line: identity on the left, the tenant-wide actions on the
+ * right. Creating an account is NOT one of them — an account is provisioned
+ * against a facility, so "Create user" lives in the roster head and appears
+ * once a facility is selected, opening the form already scoped to it.
+ * Org-level accounts (roles that take no facility) are still created from the
+ * platform roster at /admin/users.
+ *
  * Counts are computed from live records — never from the write-once
  * HospitalDoc counters (2026-08 hardcoded-data sweep).
  */
@@ -165,15 +171,15 @@ export default function AdminOrganizationDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-            {/* Both dialogs open HERE and their results land here. They used
-                to navigate away — the facility to the registry, the account to
-                the platform roster — so staffing the tenant you were reading
-                ended on a page about every other tenant. */}
+            {/* Add facility opens HERE and its result lands here. It used to
+                navigate to the registry, so staffing the tenant you were
+                reading ended on a page about every other tenant.
+
+                Create user is deliberately NOT on this line — an account is
+                provisioned against a facility, so it belongs to the roster
+                head once one is selected, not to the tenant header. */}
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddFacility(true)}>
               {TENANT_ACTION_ICONS.addFacility} {t('orgHospitals.addFacility')}
-            </button>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowCreateUser(true)} data-action="org-create-user">
-              {TENANT_ACTION_ICONS.addUser} {t('orgUsers.createUser')}
             </button>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push(`/admin/organizations?org=${org._id}&edit=1`)}>
               {TENANT_ACTION_ICONS.edit} {t('orgAdmin.editOrganization')}
@@ -230,11 +236,20 @@ export default function AdminOrganizationDetailPage() {
         title={selectedFacility ? selectedFacility.name : t('orgAdmin.allUsers')}
         meta={loading ? undefined : `${visibleUsers.length} of ${users.length}`}
         action={selectedFacility ? (
-          /* The narrowed view offers the facility's own page — profile,
-             wards, stock, staff: the create/update/retire surface. */
-          <SadbHeadLink onClick={() => router.push(`/admin/facilities/${encodeURIComponent(selectedFacility._id)}`)}>
-            {t('orgAdmin.openFacility')}
-          </SadbHeadLink>
+          /* Facility-scoped actions, both of them about the facility named in
+             this head. Create user sits here rather than in the tenant header
+             because the selector above already answers "which facility?" —
+             the dialog opens pointed at it instead of asking again. Open
+             facility offers that facility's own page — profile, wards, stock,
+             staff: the create/update/retire surface. */
+          <>
+            <SadbHeadLink dataAction="org-create-user" onClick={() => setShowCreateUser(true)}>
+              {t('orgUsers.createUser')}
+            </SadbHeadLink>
+            <SadbHeadLink onClick={() => router.push(`/admin/facilities/${encodeURIComponent(selectedFacility._id)}`)}>
+              {t('orgAdmin.openFacility')}
+            </SadbHeadLink>
+          </>
         ) : undefined}
       >
         <div className="sadb-search-row" style={{ paddingBottom: 12 }}>
@@ -323,6 +338,8 @@ export default function AdminOrganizationDetailPage() {
               </div>
             </div>
             <UserForm
+              presetOrgId={org._id}
+              presetHospitalId={selectedFacility?._id}
               onCancel={() => setShowCreateUser(false)}
               onSaved={({ handoff: h }) => {
                 setShowCreateUser(false);
@@ -338,14 +355,18 @@ export default function AdminOrganizationDetailPage() {
         <FacilityFormModal
           orgId={org._id}
           onClose={() => setShowAddFacility(false)}
-          onSaved={hospital => {
+          onSaved={async hospital => {
             setShowAddFacility(false);
             showToast(t('orgHospitals.createdToast', { name: hospital.name }), 'success');
             // Facilities are written SERVER-side now, so the local changes
             // feed `useHospitals` listens to never fires for this create —
             // ask the hook to refetch alongside the org detail.
-            void reloadHospitals();
-            void loadOrgDetail();
+            setFacilityFilter(hospital._id);
+            await Promise.all([reloadHospitals(), loadOrgDetail()]);
+            // A facility has no implicit human owner. Continue directly to the
+            // scoped account form so the operator explicitly decides who can
+            // access it, with the new facility already selected.
+            setShowCreateUser(true);
           }}
           actor={{ _id: currentUser?._id, username: currentUser?.username }}
         />

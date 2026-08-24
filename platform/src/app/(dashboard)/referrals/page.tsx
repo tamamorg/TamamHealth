@@ -22,7 +22,7 @@ import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import ReferralFilters, { type ReferralFilterState } from '@/components/referrals/ReferralFilters';
+import ReferralFilterFields, { referralFilterCount, type ReferralFilterState } from '@/components/referrals/ReferralFilters';
 import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/referrals/RowActionsMenu';
 import ReferralFormModal from '@/components/referrals/ReferralFormModal';
@@ -565,7 +565,31 @@ export default function ReferralsPage() {
               { label: 'Pending / awaiting response', value: pendingCount, color: LIST_STAT_COLORS.green },
               { label: 'Completed', value: completedCount, color: LIST_STAT_COLORS.bronze },
             ]}
-            search={{ value: localSearch, onChange: setLocalSearch, placeholder: 'Search by patient, hospital, or department…', ariaLabel: 'Filter table' }}
+            search={{
+              value: localSearch, onChange: setLocalSearch,
+              placeholder: 'Search by patient, hospital, or department…', ariaLabel: 'Filter table',
+              // The referral axes fold into the field beside them; free-text
+              // match and structured narrowing are the same job.
+              filters: {
+                activeCount: referralFilterCount(colFilters),
+                onClear: clearColFilters,
+                label: t('patients.filtersTitle'),
+                children: (
+                  <ReferralFilterFields
+                    filters={colFilters}
+                    setFilter={setColFilter}
+                    urgencyOptions={urgencyOptions}
+                    statusOptions={[
+                      { v: 'sent', l: getStatusLabel('sent') },
+                      { v: 'received', l: getStatusLabel('received') },
+                      { v: 'seen', l: getStatusLabel('seen') },
+                      { v: 'completed', l: getStatusLabel('completed') },
+                      { v: 'cancelled', l: getStatusLabel('cancelled') },
+                    ]}
+                  />
+                ),
+              },
+            }}
             actions={
               <>
                 <Select
@@ -579,19 +603,6 @@ export default function ReferralsPage() {
                   <option value="incoming">{`Incoming referrals${newIncomingCount > 0 ? ` (${newIncomingCount} new)` : ''}`}</option>
                   <option value="outgoing">Outgoing referrals</option>
                 </Select>
-                <ReferralFilters
-                  filters={colFilters}
-                  setFilter={setColFilter}
-                  clearAll={clearColFilters}
-                  urgencyOptions={urgencyOptions}
-                  statusOptions={[
-                    { v: 'sent', l: getStatusLabel('sent') },
-                    { v: 'received', l: getStatusLabel('received') },
-                    { v: 'seen', l: getStatusLabel('seen') },
-                    { v: 'completed', l: getStatusLabel('completed') },
-                    { v: 'cancelled', l: getStatusLabel('cancelled') },
-                  ]}
-                />
                 <EhrListHeaderButton onClick={handleDownloadCsv} ariaLabel="Download">
                   <Download className="w-4 h-4" />
                 </EhrListHeaderButton>

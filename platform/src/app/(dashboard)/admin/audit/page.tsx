@@ -17,7 +17,6 @@ import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import type { AuditLogDoc, RiskResolutionDoc } from '@/lib/db-types';
-import { EhrListFilters } from '@/components/ehr/EhrListHeader';
 import { FilterSelect } from '@/components/filters';
 import { X } from '@/components/icons/lucide';
 import {
@@ -193,7 +192,55 @@ export default function AuditLogsPage() {
         }
       >
         <div className="sadb-search-row">
-          <SadbSearch value={search} onChange={setSearch} placeholder="Search action, user, or details…" ariaLabel="Search audit log" />
+          <SadbSearch
+            value={search} onChange={setSearch}
+            placeholder="Search action, user, or details…" ariaLabel="Search audit log"
+            filters={{
+              activeCount: activeFilterCount,
+              onClear: () => { setSuccessFilter('all'); setRiskFilter('all'); setOrgFilter('all'); setRange('7d'); setUserScope(null); },
+              children: (
+                <>
+                <FilterSelect
+                  label="Result"
+                  value={successFilter}
+                  onChange={value => setSuccessFilter(value as SuccessFilter)}
+                  neutralValue="all"
+                  size="sm"
+                  options={[{ value: 'all', label: 'All results' }, { value: 'success', label: 'Success' }, { value: 'failure', label: 'Failure' }]}
+                />
+                <FilterSelect
+                  label="Risk"
+                  value={riskFilter}
+                  onChange={value => setRiskFilter(value as RiskFilter)}
+                  neutralValue="all"
+                  size="sm"
+                  options={[{ value: 'all', label: 'All risk' }, ...SEVERITIES.map(s => ({ value: s, label: s[0].toUpperCase() + s.slice(1) }))]}
+                />
+                <FilterSelect
+                  label="Organization"
+                  value={orgFilter}
+                  onChange={setOrgFilter}
+                  neutralValue="all"
+                  size="sm"
+                  options={[{ value: 'all', label: 'All organizations' }, ...organizations.map(org => ({ value: org._id, label: org.name }))]}
+                />
+                <FilterSelect
+                  label="Date range"
+                  value={range}
+                  onChange={value => setRange(value as RangeFilter)}
+                  neutralValue="7d"
+                  size="sm"
+                  options={[
+                    { value: '24h', label: 'Last 24h' },
+                    { value: '7d', label: 'Last 7 days' },
+                    { value: '30d', label: 'Last 30 days' },
+                    { value: 'all', label: 'All time' },
+                  ]}
+                />
+                </>
+              ),
+            }}
+          />
           {/* The scope is a visible, removable state — not an invisible filter
               and not text silently typed into the search box on the reviewer's
               behalf, which is what it used to be. */}
@@ -208,45 +255,6 @@ export default function AuditLogsPage() {
             </button>
           )}
           <button type="button" className="btn btn-primary btn-sm flex-shrink-0" onClick={exportCsv}>Export evidence (CSV)</button>
-          <EhrListFilters activeCount={activeFilterCount} onClear={() => { setSuccessFilter('all'); setRiskFilter('all'); setOrgFilter('all'); setRange('7d'); setUserScope(null); }}>
-            <FilterSelect
-              label="Result"
-              value={successFilter}
-              onChange={value => setSuccessFilter(value as SuccessFilter)}
-              neutralValue="all"
-              size="sm"
-              options={[{ value: 'all', label: 'All results' }, { value: 'success', label: 'Success' }, { value: 'failure', label: 'Failure' }]}
-            />
-            <FilterSelect
-              label="Risk"
-              value={riskFilter}
-              onChange={value => setRiskFilter(value as RiskFilter)}
-              neutralValue="all"
-              size="sm"
-              options={[{ value: 'all', label: 'All risk' }, ...SEVERITIES.map(s => ({ value: s, label: s[0].toUpperCase() + s.slice(1) }))]}
-            />
-            <FilterSelect
-              label="Organization"
-              value={orgFilter}
-              onChange={setOrgFilter}
-              neutralValue="all"
-              size="sm"
-              options={[{ value: 'all', label: 'All organizations' }, ...organizations.map(org => ({ value: org._id, label: org.name }))]}
-            />
-            <FilterSelect
-              label="Date range"
-              value={range}
-              onChange={value => setRange(value as RangeFilter)}
-              neutralValue="7d"
-              size="sm"
-              options={[
-                { value: '24h', label: 'Last 24h' },
-                { value: '7d', label: 'Last 7 days' },
-                { value: '30d', label: 'Last 30 days' },
-                { value: 'all', label: 'All time' },
-              ]}
-            />
-          </EhrListFilters>
         </div>
         {/* No pager: every matching event lives in one scroll area, and the
             head's "Showing X of Y" meta states the count. */}

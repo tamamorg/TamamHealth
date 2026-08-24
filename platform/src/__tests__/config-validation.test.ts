@@ -97,13 +97,22 @@ describe('production configuration validation', () => {
     expect(errors).toMatch(/AIRTEL_WEBHOOK_SECRET/);
   });
 
-  it('requires provider verification for every enabled payment callback', () => {
+  it('allows unused payment callbacks to stay disabled', () => {
+    const env = validEnvironment();
+    delete env.AIRTEL_WEBHOOK_GATEWAY_VERIFIED;
+    delete env.AIRTEL_WEBHOOK_SECRET;
+    env.MPESA_WEBHOOK_GATEWAY_VERIFIED = 'false';
+    delete env.MPESA_WEBHOOK_SECRET;
+    expect(validateProductionConfig(env)).toEqual([]);
+  });
+
+  it('requires a strong secret for every enabled payment callback', () => {
     const gatewayEnv = validEnvironment();
-    delete gatewayEnv.AIRTEL_WEBHOOK_GATEWAY_VERIFIED;
-    gatewayEnv.MPESA_WEBHOOK_GATEWAY_VERIFIED = 'false';
+    delete gatewayEnv.AIRTEL_WEBHOOK_SECRET;
+    gatewayEnv.MPESA_WEBHOOK_SECRET = 'short';
     const gatewayErrors = validateProductionConfig(gatewayEnv).join('\n');
-    expect(gatewayErrors).toMatch(/AIRTEL_WEBHOOK_GATEWAY_VERIFIED/);
-    expect(gatewayErrors).toMatch(/MPESA_WEBHOOK_GATEWAY_VERIFIED/);
+    expect(gatewayErrors).toMatch(/AIRTEL_WEBHOOK_SECRET/);
+    expect(gatewayErrors).toMatch(/MPESA_WEBHOOK_SECRET/);
 
     const flutterwaveEnv = validEnvironment();
     flutterwaveEnv.FLUTTERWAVE_SECRET_HASH = 'flutterwave-hash-0123456789-abcdefghijklmnopqrstuvwxyz';

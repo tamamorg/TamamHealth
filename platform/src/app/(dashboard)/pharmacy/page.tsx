@@ -5,7 +5,7 @@ import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import TableCols from '@/components/TableCols';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
-import { Pill, AlertTriangle, Loader2, Plus, X, Printer, ChevronRight, AlertOctagon, Filter, Download, Check, ExternalLink } from '@/components/icons/lucide';
+import { Pill, AlertTriangle, Loader2, Plus, X, Printer, ChevronRight, AlertOctagon, Download, Check, ExternalLink } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/lib/context';
@@ -61,18 +61,9 @@ export default function PharmacyPage() {
   // Category / stock-status filtering now lives in the shared header + table
   // toolbar (categoryFilter / statusFilter below) rather than per-column funnels.
   const [colFilters, setColFilters] = useState({ qPatient: '', qMedication: '', qPrescribedBy: '', iMedication: '' });
-  // Header "Filters" popover (category + stock status) — mirrors the patients
-  // registry's Filters dropdown pattern, separate from the per-column funnels.
-  const [showHeaderFilters, setShowHeaderFilters] = useState(false);
-  const headerFilterRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!showHeaderFilters) return;
-    const onDown = (e: MouseEvent) => { if (headerFilterRef.current && !headerFilterRef.current.contains(e.target as Node)) setShowHeaderFilters(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowHeaderFilters(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [showHeaderFilters]);
+  // Header filters (category + stock status) live inside the search field —
+  // see EhrSearchFilter, which owns the popover. Only the applied count is
+  // still this page's business.
   // Patients tab — which patient's prescription view is open (patient _id)
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const { globalSearch, setGlobalSearch, currentUser } = useApp();
@@ -854,7 +845,41 @@ export default function PharmacyPage() {
             { label: t('pharmacy.kpiDispensedToday'), value: totalDispensedToday, color: LIST_STAT_COLORS.amber },
             { label: 'Low stock', value: lowStock, color: LIST_STAT_COLORS.green },
           ]}
-          search={!(activeTab === 'patients' && activePatient) ? { value: tableSearch, onChange: setTableSearch, placeholder: 'Filter table', ariaLabel: 'Filter table' } : undefined}
+          search={!(activeTab === 'patients' && activePatient) ? {
+            value: tableSearch, onChange: setTableSearch,
+            placeholder: 'Filter table', ariaLabel: 'Filter table',
+            // Category and status fold into the field that already filters
+            // this table, instead of a second control that also filtered it.
+            filters: {
+              activeCount: headerFilterCount,
+              onClear: () => { setCategoryFilter('all'); setStatusFilter('all'); },
+              label: t('patients.filtersTitle'),
+              panelWidth: 420,
+              children: (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('pharmacy.category')}</span>
+                    <Select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
+                      <option value="all">{t('patients.all')}</option>
+                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </Select>
+                  </label>
+                  {statusFilterRelevant && (
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('pharmacy.statusLabel')}</span>
+                      <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
+                        <option value="all">{t('patients.all')}</option>
+                        <option value="adequate">{t('pharmacy.inStock')}</option>
+                        <option value="low">{t('pharmacy.invStatus_low')}</option>
+                        <option value="critical">{t('pharmacy.invStatus_critical')}</option>
+                        <option value="expired">{t('pharmacy.invStatus_expired')}</option>
+                      </Select>
+                    </label>
+                  )}
+                </div>
+              ),
+            },
+          } : undefined}
           actions={
             <>
               {/* View switcher. Was a six-tab strip under the header, which ran
@@ -883,60 +908,6 @@ export default function PharmacyPage() {
                   <option key={tab.key} value={tab.key}>{tab.label}</option>
                 ))}
               </Select>
-              <div className="relative" ref={headerFilterRef}>
-                <EhrListHeaderButton
-                  onClick={() => setShowHeaderFilters(s => !s)}
-                  active={headerFilterCount > 0}
-                  ariaExpanded={showHeaderFilters}
-                  ariaLabel={t('patients.filtersTitle')}
-                >
-                  <Filter className="w-4 h-4" />
-                  {headerFilterCount > 0 && (
-                    <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
-                      {headerFilterCount}
-                    </span>
-                  )}
-                </EhrListHeaderButton>
-                {showHeaderFilters && (
-                  <div
-                    className="absolute end-0 mt-2 rounded-2xl overflow-hidden z-50"
-                    style={{ width: 'min(92vw, 420px)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
-                  >
-                    <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('patients.filtersTitle')}</span>
-                      <div className="flex items-center gap-2">
-                        {headerFilterCount > 0 && (
-                          <button type="button" onClick={() => { setCategoryFilter('all'); setStatusFilter('all'); }} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>{t('nurse.clearAllFilters')}</button>
-                        )}
-                        <button type="button" onClick={() => setShowHeaderFilters(false)} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label={t('action.close')}>
-                          <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                      <label className="flex flex-col gap-1">
-                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('pharmacy.category')}</span>
-                        <Select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
-                          <option value="all">{t('patients.all')}</option>
-                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                        </Select>
-                      </label>
-                      {statusFilterRelevant && (
-                        <label className="flex flex-col gap-1">
-                          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('pharmacy.statusLabel')}</span>
-                          <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
-                            <option value="all">{t('patients.all')}</option>
-                            <option value="adequate">{t('pharmacy.inStock')}</option>
-                            <option value="low">{t('pharmacy.invStatus_low')}</option>
-                            <option value="critical">{t('pharmacy.invStatus_critical')}</option>
-                            <option value="expired">{t('pharmacy.invStatus_expired')}</option>
-                          </Select>
-                        </label>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
               {anyColFilter && (
                 <EhrListHeaderButton onClick={clearColFilters} ariaLabel={t('nurse.clearAllFilters')}>
                   <X className="w-4 h-4" />

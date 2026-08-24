@@ -29191,7 +29191,10 @@ table.patient-data-table.patient-data-table {
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   min-width: 0;
 }
-button.sadb-kpi { cursor: pointer; }
+/* Chrome centres a button's content box vertically whatever its `display` is,
+   so a clickable tile's label sat half a line below the plain-div tiles in
+   the same row. Column flex is the one layout that overrides that. */
+button.sadb-kpi { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; cursor: pointer; }
 /* Flat, so the hover is a border and a shade — never a lift or a glow. */
 button.sadb-kpi:hover { border-color: var(--brand-300); background: var(--tb-blue-50); }
 .sadb-kpi-label {
@@ -30866,6 +30869,91 @@ button.sadb-signal { cursor: pointer; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Rail filter — search, then the two narrowing selects. Sits between the head
+   and the scroller, so the list scrolls under a filter that stays put. */
+.rpt-rail-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+.rpt-rail-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: var(--bg-input, var(--bg-card-solid));
+}
+.rpt-rail-search svg { flex: none; color: var(--text-muted); }
+.rpt-rail-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.rpt-rail-search input::placeholder { color: var(--text-muted); }
+/* The clear affordance the type=search UA control draws sits on a white ground
+   we do not paint; hide it and let the Clear button below own the job. */
+.rpt-rail-search input::-webkit-search-cancel-button { display: none; }
+.rpt-rail-search:focus-within { border-color: var(--accent-primary); }
+.rpt-rail-selects {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.rpt-rail-select {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: var(--bg-card-solid);
+  font-size: 11px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.rpt-rail-select:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
+.rpt-rail-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+.rpt-rail-clear:hover { color: var(--accent-hover); }
+/* Why the picked report is not in the list below it. */
+.rpt-rail-note,
+.rpt-rail-empty {
+  margin: 0;
+  padding: 10px 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.rpt-rail-note {
+  margin-bottom: 4px;
+  border-radius: 7px;
+  background: var(--overlay-subtle);
+}
+.rpt-rail-empty { text-align: center; }
+
 .rpt-rail-scroll,
 .rpt-side-scroll {
   flex: 1 1 auto;
@@ -31808,25 +31896,19 @@ button.sadb-signal { cursor: pointer; }
 .sadb-card-head--toggle:hover .sadb-card-caret { color: var(--accent-primary); }
 
 /* ── Unified organization / facility / people workspace ──────────────
-   Console-kit surface: the scope rail is a sadb card carrying the page name
-   and the two scope selects, and the work itself is one sadb card in the
-   shell's main column. Everything visual comes from the sadb block — what
-   lives here is the rail's own head, its scope fields, and the strip of
-   section tabs above the card. */
-.mgmt-shell { --mgmt-rail: 288px; color: var(--text-primary); }
-.mgmt-layout { display: grid; grid-template-columns: var(--mgmt-rail) minmax(0, 1fr); gap: 14px; align-items: start; }
-.mgmt-scope { padding: 0; }
-.mgmt-scope-head { padding: 14px; border-bottom: 1px solid var(--border-light); background: var(--overlay-subtle); }
-.mgmt-scope-head h1 { margin: 0; font-size: 20px; line-height: 1.15; letter-spacing: -0.02em; }
-.mgmt-rail-group { padding: 12px 10px; border-bottom: 1px solid var(--border-light); }
-.mgmt-rail-group:last-child { border-bottom: 0; }
-.mgmt-field { display: block; margin: 0 0 8px; padding: 0 10px; font-weight: 400; letter-spacing: normal; text-transform: none; }
-.mgmt-field:last-child { margin-bottom: 0; }
-.mgmt-field-label { display: block; margin-bottom: 4px; color: var(--text-muted); font-family: var(--font-condensed); font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-.mgmt-field select { width: 100%; min-width: 0; height: 34px; padding: 0 30px 0 10px; border: 1px solid var(--border-light); border-radius: 7px; background-color: var(--bg-card-solid); color: var(--text-primary); font-size: 12.5px; font-weight: 700; }
-.mgmt-field select:focus { border-color: var(--brand-400); outline: none; }
-.mgmt-field select:disabled { background-color: var(--ehr-head); color: var(--text-muted); }
-.mgmt-field > strong { display: block; padding: 7px 0; color: var(--text-primary); font-size: 12.5px; }
+   Console-kit surface: a KPI band, the strip of section tabs, and the work
+   itself in one sadb card whose search row carries the scope selects.
+   Everything visual comes from the sadb block — what lives here is the tab
+   strip and the width the two scope selects hold on that row.
+
+   The scope used to be a 288px rail down the left: a card headed "Facilities
+   & people" over "Working scope", holding the organization and facility
+   selects a column away from the list they narrowed, and repeating a page
+   name the nav rail already carries. */
+.mgmt-shell { color: var(--text-primary); }
+/* Wide enough for an organization name, capped so the search still owns the
+   rest of the row (`.sadb-search-row > select` sets the shared height). */
+.mgmt-scope-select { width: auto; min-width: 190px; max-width: 260px; padding-inline-end: 36px; font-weight: 700; }
 /* Section strip + the actions for the section, one line above the card.
    The underline lives on the bar rather than the nav so the actions sit on
    the same rule, and the active tab's 2px mark rides over it. */
@@ -31836,8 +31918,6 @@ button.sadb-signal { cursor: pointer; }
 .mgmt-tabs button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .mgmt-tabs button svg { width: 15px; height: 15px; }
 .mgmt-tabs button.active { border-bottom-color: var(--accent-primary); color: var(--accent-text); }
-/* Which people list — sized to its label, so the search keeps the rest of
-   the line (`.sadb-search-row > select` already sets the shared height). */
 .mgmt-form-modal { max-height: min(82vh, 850px); overflow-y: auto; }
 .mgmt-user-modal .uf-form { padding-top: 4px; }
 .uf-facility-grants { border: 0; padding: 0; }
@@ -31845,7 +31925,6 @@ button.sadb-signal { cursor: pointer; }
 .uf-checkrow { display: flex !important; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; }
 .uf-checkrow input { width: 15px; height: 15px; }
 @media (max-width: 900px) {
-  .mgmt-layout { grid-template-columns: minmax(0, 1fr); }
   .mgmt-main-bar { align-items: stretch; flex-direction: column; gap: 10px; }
   .mgmt-main-actions { padding-bottom: 10px; }
 }

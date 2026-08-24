@@ -91,8 +91,8 @@ runtime_secrets = {
   COUCHDB_WEBHOOK_SECRET      = "<≥32 random chars>"
   UPSTASH_REDIS_REST_URL      = "<upstash url>"
   UPSTASH_REDIS_REST_TOKEN    = "<upstash token>"
-  AIRTEL_WEBHOOK_SECRET       = "<≥32 random chars>"
-  MPESA_WEBHOOK_SECRET        = "<≥32 random chars>"
+  # Optional: add each secret and set its matching
+  # *_WEBHOOK_GATEWAY_VERIFIED=true only after the verified gateway is live.
   DATABASE_CA_CERT_BASE64     = "<doctl databases get-ca output>"
   SUPERADMIN_INITIAL_PASSWORD = "<strong secret — NOT 'Superadmin!'>"
 }

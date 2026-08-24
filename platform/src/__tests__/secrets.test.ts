@@ -7,22 +7,18 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test('Doppler mode fails before boot when payment verification values were not injected', () => {
-  process.env = { NODE_ENV: 'test', DOPPLER_TOKEN: 'dp.st.test', JWT_SECRET: 'jwt-present' };
+test('Doppler mode fails before boot when session signing was not injected', () => {
+  process.env = { NODE_ENV: 'test', DOPPLER_TOKEN: 'dp.st.test' };
   jest.spyOn(console, 'error').mockImplementation(() => {});
 
-  expect(() => assertDopplerEnv()).toThrow(/AIRTEL_WEBHOOK_SECRET/);
+  expect(() => assertDopplerEnv()).toThrow(/JWT_SECRET/);
 });
 
-test('Doppler mode accepts the complete always-required secret set', () => {
+test('Doppler mode does not require optional payment integrations', () => {
   process.env = {
     NODE_ENV: 'test',
     DOPPLER_TOKEN: 'dp.st.test',
     JWT_SECRET: 'jwt-present',
-    AIRTEL_WEBHOOK_SECRET: 'airtel-present',
-    AIRTEL_WEBHOOK_GATEWAY_VERIFIED: 'true',
-    MPESA_WEBHOOK_SECRET: 'mpesa-present',
-    MPESA_WEBHOOK_GATEWAY_VERIFIED: 'true',
   };
 
   expect(() => assertDopplerEnv()).not.toThrow();

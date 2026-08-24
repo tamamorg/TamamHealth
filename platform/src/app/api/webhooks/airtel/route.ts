@@ -49,6 +49,14 @@ interface AirtelWebhookBody {
 
 async function postHandler(req: NextRequest) {
   try {
+    if (
+      process.env.NODE_ENV === 'production'
+      && process.env.AIRTEL_WEBHOOK_GATEWAY_VERIFIED !== 'true'
+    ) {
+      console.warn('[Airtel Webhook] Callback disabled — upstream gateway verification has not been confirmed');
+      return NextResponse.json({ error: 'Airtel callback is not enabled' }, { status: 503 });
+    }
+
     const rawBody = await req.text();
 
     const signature = req.headers.get('x-auth-signature');

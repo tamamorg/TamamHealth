@@ -1,14 +1,15 @@
 'use client';
 
 /**
- * One funnel icon for a whole toolbar's worth of filters.
+ * A whole toolbar's worth of filters, folded into the search field.
  *
  * The billing work queue filters on two axes per tab (balance + activity for
  * accounts, status + payer for claims). Rendered inline those were four
- * labelled dropdowns competing with the search box, so they live behind a
- * single 38px `listpage-icon-btn` funnel instead — the same control the
- * appointments toolbar uses, with the same `is-active` tint once a filter is
- * narrowing the list, plus a count so the user knows how many are on.
+ * labelled dropdowns competing with the search box, so they live behind one
+ * disclosure — which now sits INSIDE that box rather than as a funnel button
+ * beside it. The toolbar had a magnifier and a funnel side by side, both
+ * narrowing the same list; the funnel named none of the axes below. The count
+ * stays, where it reads as a property of the field.
  *
  * The panel is portalled to <body> with fixed positioning so a card's
  * `overflow` can never clip it.
@@ -16,7 +17,8 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Filter } from '@/components/icons/lucide';
+import { ChevronDown, X } from '@/components/icons/lucide';
+
 import Select from '@/components/Select';
 import type { FilterOption } from '@/components/filters';
 
@@ -82,8 +84,7 @@ export default function BillingFilterMenu({ fields }: { fields: FilterField[] })
       <button
         ref={btnRef}
         type="button"
-        className={`listpage-icon-btn${activeCount > 0 ? ' is-active' : ''}`}
-        style={{ position: 'relative' }}
+        className={`bl-search-filter${activeCount > 0 ? ' is-active' : ''}`}
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -91,19 +92,8 @@ export default function BillingFilterMenu({ fields }: { fields: FilterField[] })
         title={activeCount > 0 ? `Filters (${activeCount} applied)` : 'Filters'}
         aria-label={activeCount > 0 ? `Filters, ${activeCount} applied` : 'Filters'}
       >
-        <Filter size={16} />
-        {activeCount > 0 && (
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, padding: '0 4px',
-              borderRadius: 999, background: 'var(--accent-primary)', color: '#fff',
-              fontSize: 10, fontWeight: 800, lineHeight: '16px', textAlign: 'center',
-            }}
-          >
-            {activeCount}
-          </span>
-        )}
+        {activeCount > 0 && <span aria-hidden className="bl-search-filter-count">{activeCount}</span>}
+        <ChevronDown size={16} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
       </button>
 
       {open && coords && typeof document !== 'undefined' && createPortal(

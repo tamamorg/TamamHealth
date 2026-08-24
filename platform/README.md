@@ -647,8 +647,6 @@ Run `npm run setup` to configure automatically, or copy `.env.example` to `.env.
 | `PHI_AT_REST_STRATEGY` *or* `PHI_ENCRYPTION_ENABLED` + `PHI_ENCRYPTION_KEY` | Declare how PHI is protected at rest | `openssl rand -base64 32` |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` *or* `SINGLE_REPLICA_ACK` | Shared rate-limit + revocation state across replicas | |
 | `NEXT_PUBLIC_SYNC_ENABLED`, `COUCHDB_URL`, `NEXT_PUBLIC_COUCHDB_URL`, `COUCHDB_WEBHOOK_SECRET` | Shared CouchDB replication | `openssl rand -hex 32` |
-| `MPESA_WEBHOOK_SECRET`, `AIRTEL_WEBHOOK_SECRET` | HMAC secrets for the verified payment gateways | `openssl rand -hex 32` |
-| `MPESA_WEBHOOK_GATEWAY_VERIFIED`, `AIRTEL_WEBHOOK_GATEWAY_VERIFIED` | Set both to `true` only after the upstream gateways verify provider state | |
 
 **Optional:**
 
@@ -663,6 +661,8 @@ Run `npm run setup` to configure automatically, or copy `.env.example` to `.env.
 | `NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED` + `COUCHDB_GATEWAY_SECRET` | Proxy replication through `/api/couch` on the app origin | `false` |
 | `NEXT_PUBLIC_SYNC_PULL_MODE` / `NEXT_PUBLIC_SYNC_PULL_INTERVAL_MS` | Debug overrides for pull replication | `poll` / `15000` |
 | `NEXT_PUBLIC_AUTO_LOCK_DISABLED` | Turn off the inactivity screen lock (dev only) | `false` |
+| `MPESA_WEBHOOK_SECRET`, `AIRTEL_WEBHOOK_SECRET` | HMAC secrets; required only for the matching enabled callback | _(none)_ |
+| `MPESA_WEBHOOK_GATEWAY_VERIFIED`, `AIRTEL_WEBHOOK_GATEWAY_VERIFIED` | Set a provider to `true` only after its upstream gateway verifies provider state and adds the HMAC; otherwise its callback returns 503 | `false` |
 | `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Telehealth video (all three or none) | _(video reports itself unavailable)_ |
 | `EMAIL_PROVIDER` + `RESEND_API_KEY` / `SENDGRID_API_KEY` / `SMTP_URL` | Outbound email | _(disabled)_ |
 | `FLUTTERWAVE_SECRET_HASH` + `FLUTTERWAVE_SECRET_KEY` | Optional Flutterwave signature and transaction-verification credentials | |

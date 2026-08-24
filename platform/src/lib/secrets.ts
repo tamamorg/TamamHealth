@@ -35,7 +35,8 @@
 /**
  * Secrets that MUST be present whenever Doppler-mode is engaged.
  *
- * Session signing and payment-gateway verification values are always required.
+ * Session signing is always required. Payment gateways are optional and are
+ * validated only when their verified callback flag enables them.
  * `DATABASE_URL` is conditionally required: when the operator opts into
  *   Postgres analytics (presence in the Doppler config), it must arrive too.
  *
@@ -45,10 +46,6 @@
  */
 const ALWAYS_REQUIRED: readonly string[] = [
   'JWT_SECRET',
-  'AIRTEL_WEBHOOK_SECRET',
-  'AIRTEL_WEBHOOK_GATEWAY_VERIFIED',
-  'MPESA_WEBHOOK_SECRET',
-  'MPESA_WEBHOOK_GATEWAY_VERIFIED',
 ];
 
 const CONDITIONALLY_REQUIRED: readonly string[] = ['DATABASE_URL'];

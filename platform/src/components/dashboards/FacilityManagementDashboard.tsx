@@ -59,6 +59,7 @@ import {
   SadbPage, SadbCard, SadbKpiTile, SadbKvRow,
   SadbGridList, SadbGridRow, SadbHeadLink,
 } from '@/components/admin/sadb-ui';
+import DashboardCreateActions from '@/components/dashboard/DashboardCreateActions';
 import { addDaysIso } from '@/lib/date-utils';
 import { formatMoney, titleCase } from '@/lib/format-utils';
 import { jubaDate, jubaDateRangeUtc, jubaTime, jubaWeekStart } from '@/lib/time-juba';
@@ -615,12 +616,15 @@ export default function FacilityManagementDashboard() {
   }
 
   return (
-    <SadbPage roles={['org_admin', 'hospital_manager', 'super_admin']}>
-      {/* No panel header. "Facility Management" now rides in the app header
-          under the organization's name, and the two record actions that sat
-          here — the staff roster and Add — moved to the rail beside it, so
-          they are reachable from every page of the console rather than only
-          this one. The page opens straight into its numbers. */}
+    <SadbPage
+      roles={['org_admin', 'hospital_manager', 'super_admin']}
+      /* This is a DASHBOARD, so it keeps the greeting and the role label the
+         console screens gave up — it is where the role lands, and the line
+         naming who you are signed in as belongs on the landing screen rather
+         than on all seventeen screens behind it. */
+      greeting="Facility management"
+      actions={<DashboardCreateActions />}
+    >
 
       {/* While a retry is in flight the strip reports THAT, not the stale
           failure: pressing Retry and seeing the same red banner sit there is

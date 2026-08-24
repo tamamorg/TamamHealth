@@ -6,7 +6,7 @@ import { patientsDB } from '../db';
 import { makeCoalescer } from './live-reload';
 import { useApp } from '../context';
 
-export function usePatients() {
+export function usePatients(enabled = true) {
   const [patients, setPatients] = useState<PatientDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +17,12 @@ export function usePatients() {
   ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
 
   const loadPatients = useCallback(async () => {
+    if (!enabled) {
+      setPatients([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     try {
       const { getAllPatients } = await import('../services/patient-service');
       const data = await getAllPatients(scope);
@@ -28,7 +34,7 @@ export function usePatients() {
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, [enabled, scope]);
 
   useEffect(() => {
     loadPatients();
@@ -37,6 +43,7 @@ export function usePatients() {
   // Live PouchDB subscription: re-load whenever a patient is created,
   // updated, or marked deceased anywhere in the app. Replaces 30s polling.
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     const reload = makeCoalescer(() => { if (!cancelled) loadPatients(); });
     const changes = patientsDB().changes({ since: 'now', live: true, include_docs: false })
@@ -47,7 +54,7 @@ export function usePatients() {
       reload.cancel();
       try { changes.cancel(); } catch { /* noop */ }
     };
-  }, [loadPatients]);
+  }, [enabled, loadPatients]);
 
   const search = useCallback(async (query: string) => {
     if (!query) {

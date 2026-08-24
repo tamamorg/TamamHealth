@@ -214,6 +214,7 @@ jobs:
           ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
 
       - name: Pull + restart stack
+        id: deploy
         env:
           HOST: ${{ secrets.PROD_SSH_HOST }}
           USER: ${{ secrets.PROD_SSH_USER }}
@@ -224,11 +225,13 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           ssh "$USER@$HOST" \
             "cd $APP_DIR && \
-             export GH_OWNER='$GH_OWNER' IMAGE_TAG=production && \
+             previous_platform=\$(docker inspect \$(docker compose -f docker-compose.yml -f docker-compose.ghcr.yml ps -q platform) --format '{{.Image}}') && \
+             test -n \"\$previous_platform\" && \
+             printf '%s' \"\$previous_platform\" > '.tamamhealth-rollback-platform-$SHA' && \
+             export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA' && \
              docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull && \
              docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d && \
-             docker image prune -f && \
-             echo 'Deployed sha=$SHA tag=production'"
+             echo 'Deployed immutable tag=$SHA'"
 
       # The stack can come up and still be broken (bad env refuses boot with a
       # 500, a dead CouchDB degrades /api/health to 503). Fail the deploy run
@@ -254,6 +257,57 @@ jobs:
           echo "::error title=Production unhealthy::$HEALTH_URL never returned 200 after the deploy. Last body:"
           cat /tmp/health.json 2>/dev/null || true
           exit 1
+
+      # A failed health gate is already an outage; reporting it without
+      # restoring the previously running image leaves the clinic down until a
+      # human notices. The deploy step records only the prior immutable image
+      # ID (never secrets). Recreate just the platform service from that exact
+      # image, then prove the rollback itself is healthy.
+      - name: Roll back unhealthy platform image
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        env:
+          HOST: ${{ secrets.PROD_SSH_HOST }}
+          USER: ${{ secrets.PROD_SSH_USER }}
+          APP_DIR: ${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}
+          SHA: ${{ needs.build-production-images.outputs.sha }}
+          GH_OWNER: ${{ github.repository_owner }}
+          HEALTH_URL: ${{ secrets.PROD_HEALTH_URL || 'https://app.tamamhealth.org/api/health' }}
+        run: |
+          ssh "$USER@$HOST" \
+            "set -eu; \
+             cd '$APP_DIR'; \
+             previous_platform=\$(cat '.tamamhealth-rollback-platform-$SHA'); \
+             test -n \"\$previous_platform\"; \
+             rollback_tag='tamamhealth-platform:rollback-$SHA'; \
+             docker image tag \"\$previous_platform\" \"\$rollback_tag\"; \
+             printf 'services:\n  platform:\n    image: %s\n' \"\$rollback_tag\" > '.tamamhealth-rollback-$SHA.yml'; \
+             export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA'; \
+             docker compose -f docker-compose.yml -f docker-compose.ghcr.yml -f '.tamamhealth-rollback-$SHA.yml' up -d --no-deps --force-recreate platform; \
+             docker image rm \"\$rollback_tag\" >/dev/null 2>&1 || true; \
+             rm -f '.tamamhealth-rollback-$SHA.yml' '.tamamhealth-rollback-platform-$SHA'"
+          for i in $(seq 1 18); do
+            STATUS="$(curl -sS -m 10 -o /tmp/rollback-health.json -w '%{http_code}' "$HEALTH_URL" || echo 000)"
+            if [ "$STATUS" = "200" ]; then
+              echo "Rollback restored production after ${i} checks:"; cat /tmp/rollback-health.json; echo
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error title=Rollback failed::$HEALTH_URL did not recover after restoring the previous platform image."
+          exit 1
+
+      - name: Clean superseded images after a healthy deploy
+        if: ${{ success() && steps.deploy.outcome == 'success' }}
+        env:
+          HOST: ${{ secrets.PROD_SSH_HOST }}
+          USER: ${{ secrets.PROD_SSH_USER }}
+          APP_DIR: ${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}
+          SHA: ${{ needs.build-production-images.outputs.sha }}
+        run: |
+          ssh "$USER@$HOST" \
+            "cd '$APP_DIR' && \
+             rm -f '.tamamhealth-rollback-platform-$SHA' && \
+             docker image prune -f"
 
   aws-deploy:
     name: cloudformation deploy to af-south-1 (aws target)

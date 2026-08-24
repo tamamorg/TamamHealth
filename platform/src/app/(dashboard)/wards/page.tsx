@@ -5,14 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { Plus, X, AlertTriangle, CheckCircle2, Filter } from '@/components/icons/lucide';
+import { Plus, X, AlertTriangle, CheckCircle2 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
-import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
 
 /* The admissions list is the shared appointment/worklist card row — the same
@@ -58,8 +58,6 @@ export default function WardsPage() {
   const [dischargeFor, setDischargeFor] = useState<AdmissionDoc | null>(null);
   const [filterWard, setFilterWard] = useState<string>('');
   const [admissionSearch, setAdmissionSearch] = useState('');
-  const [showWardFilter, setShowWardFilter] = useState(false);
-  const wardFilterRef = useRef<HTMLDivElement>(null);
   const activeFilterCount = filterWard ? 1 : 0;
   const clearFilters = () => { setFilterWard(''); };
 
@@ -205,41 +203,35 @@ export default function WardsPage() {
               { label: t('ward.kpiAvailable'), value: availableBeds, color: LIST_STAT_COLORS.green },
               { label: t('ward.kpiOccupancy'), value: `${occupancyRate}%`, color: occupancyRate > 90 ? 'var(--color-danger-text)' : occupancyRate > 75 ? LIST_STAT_COLORS.amber : LIST_STAT_COLORS.blue },
             ]}
-            search={{ value: admissionSearch, onChange: setAdmissionSearch, placeholder: 'Search by patient, ward, or diagnosis…' }}
+            search={{
+              value: admissionSearch,
+              onChange: setAdmissionSearch,
+              placeholder: 'Search by patient, ward, or diagnosis…',
+              // Ward choice folded into the field beside it: the input already
+              // narrows this list, and a second control that also narrowed it
+              // said nothing about what it narrowed by.
+              ...(facilityWards.length > 0 ? {
+                filters: {
+                  activeCount: activeFilterCount,
+                  onClear: clearFilters,
+                  label: 'Filter by ward',
+                  children: (
+                    <Select
+                      value={filterWard}
+                      onChange={e => setFilterWard(e.target.value)}
+                      style={{ width: 'auto', minWidth: '100%', height: 36, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', fontSize: 13 }}
+                    >
+                      <option value="">All wards</option>
+                      {facilityWards.map(w => (
+                        <option key={w._id} value={w._id}>{w.name} ({w.occupiedBeds}/{w.totalBeds})</option>
+                      ))}
+                    </Select>
+                  ),
+                },
+              } : {}),
+            }}
             actions={
               <>
-                {facilityWards.length > 0 && (
-                  <div className="relative" ref={wardFilterRef}>
-                    <EhrListHeaderButton onClick={() => setShowWardFilter(s => !s)} active={activeFilterCount > 0} ariaExpanded={showWardFilter} ariaLabel="Filters">
-                      <Filter className="w-4 h-4" />
-                      {activeFilterCount > 0 && (
-                        <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
-                          {activeFilterCount}
-                        </span>
-                      )}
-                    </EhrListHeaderButton>
-                    {showWardFilter && (
-                      <div className="absolute start-0 mt-2 rounded-2xl overflow-hidden z-50"
-                        style={{ width: 240, background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: '0 16px 48px rgba(0,0,0,0.15)' }}>
-                        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Filter by ward</span>
-                          {activeFilterCount > 0 && (
-                            <button onClick={() => { clearFilters(); setShowWardFilter(false); }} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>Clear</button>
-                          )}
-                        </div>
-                        <div className="p-3">
-                          <Select value={filterWard} onChange={e => { setFilterWard(e.target.value); setShowWardFilter(false); }}
-                            style={{ width: 'auto', minWidth: '100%', height: 36, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', fontSize: 13 }}>
-                            <option value="">All wards</option>
-                            {facilityWards.map(w => (
-                              <option key={w._id} value={w._id}>{w.name} ({w.occupiedBeds}/{w.totalBeds})</option>
-                            ))}
-                          </Select>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
                 <button
                   onClick={() => setAdmitOpen(true)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: 'var(--accent-primary)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
