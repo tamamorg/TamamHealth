@@ -11,8 +11,11 @@ const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
   'medical_superintendent', 'front_desk', 'pharmacist',
 ];
+// Mirrors FACILITY_MANAGE_ROLES (lib/facility-access.ts): every role whose UI
+// offers facility create/edit must be able to reach this route, because the
+// browser no longer writes facilities locally.
 const WRITE_ROLES: UserRole[] = [
-  'super_admin', 'org_admin', 'medical_superintendent',
+  'super_admin', 'org_admin', 'medical_superintendent', 'hrio',
 ];
 export async function GET(request: NextRequest) {
   try {
@@ -54,23 +57,30 @@ async function postHandler(request: NextRequest) {
     const { sanitizePayload } = await import('@/lib/validation');
     body = sanitizePayload(body);
     const action = body.action as string;
-    // Update hospital status
+    // Update a facility. The whole editable surface, not just status fields —
+    // the browser routes updateFacility/setFacilityActive through here now, so
+    // beds, services, coordinates and retirement all arrive on this action.
+    // Identity and tenancy stay server-owned: updateHospitalStatus already
+    // pins _id/_rev/orgId from the stored document, and the scope check hides
+    // other tenants' facilities from scoped callers.
     if (action === 'update' && body.id) {
       const { updateHospitalStatus } = await import('@/lib/services/hospital-service');
       const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
-      const updated = await updateHospitalStatus(body.id as string, {
-        status: body.status as string | undefined,
-        syncStatus: body.syncStatus as string | undefined,
-        patientCount: body.patientCount !== undefined ? Number(body.patientCount) : undefined,
-        todayVisits: body.todayVisits !== undefined ? Number(body.todayVisits) : undefined,
-      } as Parameters<typeof updateHospitalStatus>[1], buildScopeFromAuth(auth));
+      const { action: _action, id, _id, _rev, type: _type, orgId: _orgId, createdAt: _createdAt, ...patch } = body as Record<string, unknown>;
+      const updated = await updateHospitalStatus(
+        id as string,
+        patch as Parameters<typeof updateHospitalStatus>[1],
+        buildScopeFromAuth(auth),
+      );
       if (!updated) return NextResponse.json({ error: 'Hospital not found' }, { status: 404 });
       return NextResponse.json({ hospital: updated });
     }
-    // Create new hospital
-    if (!body.name || !body.state || !body.lga) {
+    // Create new hospital. Location is state + town (the facility form's
+    // fields and validateFacilityForm's rule); `lga` is a legacy alias some
+    // API consumers still send and is accepted, never required.
+    if (!body.name || !body.state || !(body.town || body.lga)) {
       return NextResponse.json(
-        { error: 'name, state, and lga are required' },
+        { error: 'name, state, and town are required' },
         { status: 400 }
       );
     }
@@ -96,6 +106,13 @@ async function postHandler(request: NextRequest) {
     const hospital = await createHospital(body as Parameters<typeof createHospital>[0], auth.sub, auth.username);
     return NextResponse.json({ hospital }, { status: 201 });
   } catch (err) {
+    if (err instanceof Error && err.name === 'ValidationError') {
+      const fields = (err as Error & { fields?: Record<string, string> }).fields;
+      return NextResponse.json(
+        { error: fields ? Object.values(fields)[0] : err.message, fields },
+        { status: 400 },
+      );
+    }
     logApiError('[API /hospitals POST]', err);
     return serverError();
   }

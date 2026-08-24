@@ -9,6 +9,51 @@ import { ValidationError } from '../validation';
 const IS_BROWSER = typeof window !== 'undefined';
 
 /**
+ * Facility WRITES are managed centrally, exactly like organizations and users.
+ *
+ * The browser used to write facilities to its local replica and rely on push
+ * replication to carry them up. Two sessions can never keep that promise:
+ *   • super_admin / government have no orgId, so their devices deliberately
+ *     sync NO org-scoped database — a facility created in the platform console
+ *     stayed on that device forever, while /api/users kept answering that it
+ *     "has not reached the server yet";
+ *   • any tenant device that is offline (or whose sync is broken) shows a
+ *     "created" facility that no other device — and no server check — can see.
+ * The server write lands in the aggregate, the per-org continuous replications
+ * carry it into the tenant database, and pull replication delivers it to every
+ * device — including, eventually, the one that created it.
+ */
+const isBrowserRuntime = () => typeof window !== 'undefined' && !process.env.JEST_WORKER_ID;
+
+async function postHospitalsApi(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { apiFetch } = await import('../api-fetch');
+  let res: Response;
+  try {
+    res = await apiFetch('/api/hospitals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Do NOT fall back to a local write: on the sessions that most use this
+    // form it cannot replicate, so it would report success and leave the
+    // facility invisible to the server — the exact failure this path removes.
+    throw new Error('Facilities are managed centrally and require a connection. Check your internet and try again.');
+  }
+  const body = await res.json().catch(() => ({})) as Record<string, unknown>;
+  if (!res.ok) {
+    const error = new Error((body.error as string) || `Facility request failed (${res.status})`);
+    // The facility form shows per-field messages when it has them; the API
+    // forwards ValidationError fields, so hand them through.
+    if (body.fields && typeof body.fields === 'object') {
+      (error as Error & { fields?: Record<string, string> }).fields = body.fields as Record<string, string>;
+    }
+    throw error;
+  }
+  return body;
+}
+
+/**
  * The databases a SERVER read has to consult for one organization's facilities.
  *
  * Server-side `getDB(name)` takes the name verbatim, so `hospitalsDB()` is
@@ -37,6 +82,26 @@ function serverHospitalDatabases(orgId?: string) {
 }
 
 export async function getAllHospitals(scope?: DataScope): Promise<HospitalDoc[]> {
+  // Server truth first in the browser, the local replica as the offline
+  // answer. Facilities are WRITTEN server-side, so the replica only learns of
+  // one when pull replication delivers it — and the sessions that manage
+  // facilities most (super_admin, government) deliberately sync no org-scoped
+  // database at all, so their replica would never learn of it.
+  if (isBrowserRuntime()) {
+    try {
+      const { apiFetch } = await import('../api-fetch');
+      const res = await apiFetch('/api/hospitals');
+      if (res.ok) {
+        const body = await res.json() as { hospitals?: HospitalDoc[] };
+        if (Array.isArray(body.hospitals)) {
+          const all = body.hospitals;
+          return scope ? filterByScope(all, scope) : all;
+        }
+      }
+    } catch {
+      // Offline — the replica below is the answer.
+    }
+  }
   const databases = serverHospitalDatabases(scope?.orgId);
   const seen = new Map<string, HospitalDoc>();
   for (const db of databases) {
@@ -56,6 +121,21 @@ export async function getAllHospitals(scope?: DataScope): Promise<HospitalDoc[]>
 }
 
 export async function getHospitalById(id: string, scope?: DataScope): Promise<HospitalDoc | null> {
+  if (isBrowserRuntime()) {
+    try {
+      const { apiFetch } = await import('../api-fetch');
+      const res = await apiFetch(`/api/hospitals?id=${encodeURIComponent(id)}`);
+      if (res.ok) {
+        const body = await res.json() as { hospital?: HospitalDoc };
+        if (body.hospital) {
+          return scope && filterByScope([body.hospital], scope).length === 0 ? null : body.hospital;
+        }
+      }
+      if (res.status === 404) return null;
+    } catch {
+      // Offline — fall through to the replica.
+    }
+  }
   try {
     let hospital: HospitalDoc | null = null;
     for (const db of serverHospitalDatabases(scope?.orgId)) {
@@ -196,6 +276,11 @@ export async function createHospital(
   actorId?: string,
   actorUsername?: string
 ): Promise<HospitalDoc> {
+  if (isBrowserRuntime()) {
+    const body = await postHospitalsApi({ ...data });
+    return body.hospital as HospitalDoc;
+  }
+
   // A facility with no organisation is not a saved facility, however cleanly
   // the local write succeeds — the same two failure modes `createPatient`
   // refuses for a patient:
@@ -284,6 +369,16 @@ export async function updateHospitalStatus(
   data: Partial<HospitalDoc>,
   scope?: DataScope,
 ): Promise<HospitalDoc | null> {
+  if (isBrowserRuntime()) {
+    try {
+      const body = await postHospitalsApi({ action: 'update', id, ...data });
+      return (body.hospital as HospitalDoc) ?? null;
+    } catch {
+      // Callers treat null as "update failed" and say so; keeping that
+      // contract beats inventing a second error channel here.
+      return null;
+    }
+  }
   const db = hospitalsDB();
   try {
     const existing = await db.get(id) as HospitalDoc;

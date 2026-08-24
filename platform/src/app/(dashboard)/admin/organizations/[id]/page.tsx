@@ -88,7 +88,7 @@ export default function AdminOrganizationDetailPage() {
   const orgId = params?.id;
 
   const { organizations, loading: orgsLoading } = useOrganizations();
-  const { hospitals } = useHospitals();
+  const { hospitals, reload: reloadHospitals } = useHospitals();
   const org = organizations.find(o => o._id === orgId) ?? null;
 
   const [users, setUsers] = useState<UserDoc[]>([]);
@@ -454,8 +454,10 @@ export default function AdminOrganizationDetailPage() {
           onSaved={hospital => {
             setShowAddFacility(false);
             showToast(t('orgHospitals.createdToast', { name: hospital.name }), 'success');
-            // The facility list on this page reads `useHospitals()`, which is
-            // live on the local database, so the new row arrives on its own.
+            // Facilities are written SERVER-side now, so the local changes
+            // feed `useHospitals` listens to never fires for this create —
+            // ask the hook to refetch alongside the org detail.
+            void reloadHospitals();
             void loadOrgDetail();
           }}
           actor={{ _id: currentUser?._id, username: currentUser?.username }}
