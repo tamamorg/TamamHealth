@@ -26,12 +26,12 @@ import { isHrefAllowed } from '@/components/ehr/ehr-navigation';
  * Returns null for roles that may not administer accounts.
  */
 export function usersHrefForRole(role: UserRole | string): string | null {
-  if (role === 'super_admin') return '/admin/users';
+  if (role === 'super_admin') return '/manage?view=people';
   // The org-scoped accounts page is the single staff list: the separate HR
   // "Staff Roster" was the same roster under another name and has been
   // removed, so the roles that ran a facility read their people here too.
   if (role === 'org_admin' || role === 'medical_superintendent' || role === 'hospital_manager') {
-    return '/org-admin/users';
+    return '/manage?view=people';
   }
   return null;
 }
@@ -53,7 +53,7 @@ export function canCreateUsers(role: UserRole | string): boolean {
  * Settings, and opens the same dialog.
  */
 export function facilitiesHrefForRole(role: UserRole | string): string | null {
-  return canCreateFacilities(role) ? '/admin/organizations' : null;
+  return canCreateFacilities(role) ? '/manage?view=facilities' : null;
 }
 
 /**
@@ -97,16 +97,17 @@ export interface AddMenuEntry {
 export function buildAddMenuEntries({ role, allowedRoutes }: PeopleNavContext): AddMenuEntry[] {
   const usersHref = usersHrefForRole(role);
   const facilitiesHref = facilitiesHrefForRole(role);
+  const withNew = (href: string) => `${href}${href.includes('?') ? '&' : '?'}new=1`;
   const candidates: AddMenuEntry[] = [
     // Facility first: a facility-bound role cannot be saved without one
     // (`roleNeedsFacility`), so registering the site genuinely precedes hiring
     // into it. This entry is what was missing — the create form existed, but
     // nothing in the running app pointed at it.
     ...(facilitiesHref
-      ? [{ key: 'facility', label: 'Add facility', href: `${facilitiesHref}?new=1` } as AddMenuEntry]
+      ? [{ key: 'facility', label: 'Add facility', href: withNew(facilitiesHref) } as AddMenuEntry]
       : []),
     ...(usersHref && canCreateUsers(role)
-      ? [{ key: 'staff', label: 'Add staff member', href: `${usersHref}?new=1` } as AddMenuEntry]
+      ? [{ key: 'staff', label: 'Add staff member', href: withNew(usersHref) } as AddMenuEntry]
       : []),
     { key: 'inquiry', label: 'Add patient inquiry', href: '/inquiries?new=1' },
     { key: 'shift', label: 'Create shift', href: '/hr/schedule?new=1' },

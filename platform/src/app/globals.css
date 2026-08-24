@@ -4052,6 +4052,44 @@ html:has(.ehr-top-rail) {
   background: transparent;
 }
 
+.ehr-module-menu-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 7px;
+  background: var(--ehr-page-bg);
+}
+
+.ehr-module-menu-search svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--ehr-muted);
+}
+
+.ehr-module-menu-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ehr-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ehr-module-menu-search button {
+  width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 !important;
+  justify-content: center !important;
+}
+
 .ehr-module-menu-head span {
   display: block;
   color: var(--ehr-muted);
@@ -4102,6 +4140,44 @@ html:has(.ehr-top-rail) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ehr-module-menu section > button.ehr-module-group {
+  min-height: 40px;
+  padding-inline: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.ehr-module-menu section > button.ehr-module-group small {
+  margin-inline-start: auto;
+  min-width: 20px;
+  color: var(--ehr-muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.ehr-module-menu section > button.ehr-module-group .ehr-module-group-chevron {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.18s ease;
+}
+
+.ehr-module-menu section > button.ehr-module-group.is-expanded {
+  background: var(--ehr-blue-light);
+  color: var(--ehr-blue);
+}
+
+.ehr-module-menu section > button.ehr-module-group.is-expanded .ehr-module-group-chevron {
+  transform: rotate(90deg);
+}
+
+.ehr-module-menu-empty {
+  margin: 18px 8px;
+  color: var(--ehr-muted);
+  font-size: 12px;
+  text-align: center;
 }
 
 /* Hover is a quiet tint, NOT the filled pill. Sharing one rule with `.active`
@@ -31133,12 +31209,13 @@ button.sadb-signal { cursor: pointer; }
   border-radius: 3px;
 }
 
-/* ============ Organization facilities & performance ====================
-   The tenant page's per-facility scores. A bar plus a number, because the
-   number alone makes a reader compare digits down a column while the bar
-   sorts the rows before they read any of them. Colour is the shared four-band
-   WHO ramp (`--perf-*`), so a score reads the same here as on the national
-   facility list. Scoped `orgfac-` past `svg.lucide` and the bare `label` rule.
+/* ============ Facility performance meter ===============================
+   One score as a bar plus a number, because the number alone makes a reader
+   compare digits down a column while the bar sorts the rows before they read
+   any of them. Colour is the shared four-band WHO ramp (`--perf-*`), so a
+   score reads the same here as on the national facility list. Used by the
+   facility Performance tab; scoped `orgfac-` past `svg.lucide` and the bare
+   `label` rule.
    ---------------------------------------------------------------------- */
 .orgfac-meter {
   display: inline-flex;
@@ -31171,26 +31248,8 @@ button.sadb-signal { cursor: pointer; }
   text-align: end;
 }
 
-/* The facility's name, as the link to the facility. `sadb-tenant-name` gives
-   the type; this adds only the link affordance, so the row still reads as a
-   table rather than a page of blue text. */
-.orgfac-name {
-  display: block;
-  color: var(--text-strong);
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-}
-.orgfac-name:hover { color: var(--accent-primary); text-decoration: underline; }
-.orgfac-name:focus-visible {
-  outline: 2px solid var(--brand-400);
-  outline-offset: 2px;
-  border-radius: 3px;
-}
-
-/* The facility assessment block on the Performance tab — the scores the org
-   page's meters link to. Reuses `orgfac-meter` outright so a score cannot
-   drift between the two surfaces. */
+/* The facility assessment block on the Performance tab — where these meters
+   are drawn. */
 .fac-assess {
   padding: 14px 16px 16px;
   border: 1px solid var(--ehr-border);
@@ -31488,3 +31547,61 @@ button.sadb-signal { cursor: pointer; }
   color: var(--text-muted);
 }
 .sadb-card-head--toggle:hover .sadb-card-caret { color: var(--accent-primary); }
+
+/* ── Unified organization / facility / people workspace ──────────────── */
+.mgmt-shell { --mgmt-rail: 255px; color: var(--text-primary); }
+.mgmt-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+.mgmt-header h1 { margin: 2px 0 4px; font-size: clamp(24px, 3vw, 34px); line-height: 1.08; letter-spacing: -0.035em; }
+.mgmt-header > div > p:last-child { max-width: 680px; color: var(--text-secondary); font-size: 13px; }
+.mgmt-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mgmt-eyebrow { color: var(--accent-text); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.mgmt-layout { display: grid; grid-template-columns: var(--mgmt-rail) minmax(0, 1fr); min-height: 620px; border: 1px solid var(--border-light); background: var(--surface-primary); }
+.mgmt-scope { padding: 18px; border-inline-end: 1px solid var(--border-light); background: var(--overlay-subtle); display: flex; flex-direction: column; gap: 10px; }
+.mgmt-scope-title { color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.mgmt-scope select { width: 100%; min-width: 0; padding: 9px 32px 9px 10px; border: 1px solid var(--border-light); border-radius: 4px; background-color: var(--surface-primary); font-size: 12px; }
+.mgmt-scope > svg { width: 14px; height: 14px; margin-inline-start: 4px; color: var(--text-muted); transform: rotate(90deg); }
+[dir='rtl'] .mgmt-scope > svg { transform: rotate(90deg); }
+.mgmt-scope > span, .mgmt-scope > strong { font-size: 12px; }
+.mgmt-checklist { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border-light); display: grid; gap: 10px; }
+.mgmt-checklist h2 { font-size: 12px; font-weight: 800; }
+.mgmt-checklist div { display: flex; align-items: flex-start; gap: 8px; color: var(--text-secondary); font-size: 11.5px; line-height: 1.35; }
+.mgmt-checklist svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--text-muted); }
+.mgmt-step-dot { width: 12px; height: 12px; margin: 1px; flex: 0 0 auto; border: 1.5px solid var(--text-muted); border-radius: 50%; }
+.mgmt-checklist .done { color: var(--text-primary); }
+.mgmt-checklist .done svg { color: var(--color-success); }
+.mgmt-main { min-width: 0; padding: 18px; }
+.mgmt-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-light); margin-bottom: 14px; overflow-x: auto; }
+.mgmt-tabs button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.mgmt-tabs button svg { width: 15px; height: 15px; }
+.mgmt-tabs button.active { border-bottom-color: var(--accent-primary); color: var(--accent-text); }
+.mgmt-search { position: relative; display: block; margin-bottom: 14px; }
+.mgmt-search > svg { position: absolute; inset-inline-start: 11px; top: 50%; width: 15px; height: 15px; transform: translateY(-50%); color: var(--text-muted); }
+.mgmt-search input { width: 100%; padding: 10px 12px 10px 36px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--surface-primary); font-size: 13px; }
+[dir='rtl'] .mgmt-search input { padding: 10px 36px 10px 12px; }
+.mgmt-list-head, .mgmt-row { display: grid; grid-template-columns: minmax(220px, 1.4fr) minmax(140px, .8fr) minmax(90px, .4fr); gap: 16px; align-items: center; }
+.mgmt-list-head { padding: 8px 12px; color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.mgmt-list { border-top: 1px solid var(--border-light); }
+.mgmt-row { width: 100%; padding: 13px 12px; border: 0; border-bottom: 1px solid var(--border-light); background: transparent; color: var(--text-secondary); text-align: start; font-size: 12px; }
+.mgmt-row:hover, .mgmt-row:focus-visible { background: var(--overlay-subtle); }
+.mgmt-row > span { min-width: 0; }
+.mgmt-row strong, .mgmt-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mgmt-row strong { color: var(--text-primary); font-size: 13px; }
+.mgmt-row small { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
+.mgmt-empty { padding: 36px 12px; color: var(--text-muted); text-align: center; font-size: 13px; }
+.mgmt-form-modal { max-height: min(82vh, 850px); overflow-y: auto; }
+.mgmt-user-modal .uf-form { padding-top: 4px; }
+.uf-facility-grants { border: 0; padding: 0; }
+.uf-checklist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin-top: 8px; }
+.uf-checkrow { display: flex !important; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; }
+.uf-checkrow input { width: 15px; height: 15px; }
+@media (max-width: 760px) {
+  .mgmt-header { align-items: flex-start; flex-direction: column; }
+  .mgmt-layout { grid-template-columns: 1fr; }
+  .mgmt-scope { border-inline-end: 0; border-bottom: 1px solid var(--border-light); }
+  .mgmt-checklist { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mgmt-checklist h2 { grid-column: 1 / -1; }
+  .mgmt-list-head { display: none; }
+  .mgmt-row { grid-template-columns: 1fr auto; }
+  .mgmt-row > span:nth-child(2) { display: none; }
+  .uf-checklist { grid-template-columns: 1fr; }
+}

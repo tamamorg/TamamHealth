@@ -35,11 +35,10 @@ describe('role dashboard preview links', () => {
     expect(source(consumer)).toContain(consumedParam);
   });
 
-  it('focuses staff accounts on both role-specific user pages', () => {
+  it('focuses staff accounts in the shared people workspace', () => {
     const dashboard = source('components/dashboards/FacilityManagementDashboard.tsx');
     expect(dashboard).toContain("withFocus(staffListHref, 'user'");
-    expect(source('app/(dashboard)/admin/users/page.tsx')).toContain("params.get('user')");
-    expect(source('app/(dashboard)/org-admin/users/page.tsx')).toContain("params.get('user')");
+    expect(source('modules/tenancy/components/ManagementWorkspace.tsx')).toContain("params.get('user')");
   });
 
   it.each([
@@ -64,12 +63,9 @@ describe('role dashboard preview links', () => {
     expect(dashboard).toContain("router.push('/admin/risk')");
     expect(dashboard).toContain('router.push(`/admin/organizations/${org._id}`)');
 
-    const registry = source('app/(dashboard)/admin/organizations/page.tsx');
+    const registry = source('modules/tenancy/components/ManagementWorkspace.tsx');
     expect(registry).not.toContain('TenantCard');
-    expect(registry).toContain('router.push(`/admin/organizations/${org._id}`)');
-    // The org page reaches the registry-owned deactivate confirm by deep link.
-    expect(registry).toContain("params.has('deactivate')");
-    expect(source('app/(dashboard)/admin/organizations/[id]/page.tsx')).toContain('&deactivate=1');
+    expect(registry).toContain('setOrgId(org._id)');
   });
 
   it('keeps the queues the dashboard dropped reachable from their own modules', () => {

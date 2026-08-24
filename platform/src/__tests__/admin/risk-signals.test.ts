@@ -14,7 +14,7 @@
  */
 
 import {
-  buildRiskRows, readinessFromRisks, SEVERITY_WEIGHT, type RiskInputs,
+  buildRiskRows, readinessFromRisks, READINESS_SOURCE_CAP, SEVERITY_WEIGHT, type RiskInputs,
 } from '@/components/admin/risk-signals';
 import { indexResolutions, isRiskResolved } from '@/lib/services/risk-resolution-service';
 import type { AuditLogDoc, OrganizationDoc, RiskResolutionDoc } from '@/lib/db-types';
@@ -195,8 +195,19 @@ describe('readinessFromRisks', () => {
     expect(readinessFromRisks(rows)).toBe(100 - SEVERITY_WEIGHT.high - SEVERITY_WEIGHT.low);
   });
 
-  test('it floors at zero rather than going negative', () => {
+  test('a noisy source has diminishing impact and cannot erase every other signal', () => {
     const many = Array.from({ length: 40 }, (_, i) => auditFailure(`a${i}`, 'login_failed', HOUR));
-    expect(readinessFromRisks(buildRiskRows({ ...emptyInputs(), auditLogs: many }))).toBe(0);
+    expect(readinessFromRisks(buildRiskRows({ ...emptyInputs(), auditLogs: many }))).toBe(100 - READINESS_SOURCE_CAP);
+  });
+
+  test('independent risk sources still accumulate', () => {
+    const rows = buildRiskRows({
+      ...emptyInputs(),
+      auditLogs: Array.from({ length: 40 }, (_, i) => auditFailure(`a${i}`, 'login_failed', HOUR)),
+      organizations: [org('o1', { subscriptionStatus: 'trial' })],
+      backupRpoHours: 24,
+      backupAgeHours: null,
+    });
+    expect(readinessFromRisks(rows)).toBe(60);
   });
 });

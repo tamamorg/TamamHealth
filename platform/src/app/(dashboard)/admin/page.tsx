@@ -37,7 +37,6 @@ import {
   SadbChip, SadbGridList, SadbGridRow, SadbPlanChip, statusChip, effectiveOrgStatus,
 } from '@/components/admin/sadb-ui';
 import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
-import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import { Maximize2 } from '@/components/icons/lucide';
 import type {
@@ -363,12 +362,6 @@ export default function AdminDashboardPage() {
      scrolls instead of squeezing it away. */
   return (
     <main className="page-container page-enter sadb-scope" style={{ display: 'flex', flexDirection: 'column' }}>
-      {/* The same greeting every other module opens with — this page rolls
-          its own <main> for the flex column, so it carries the header itself
-          rather than through SadbPage. */}
-      <div className="sadb-page-head">
-        <EhrPageGreeting module="Platform Dashboard" />
-      </div>
       <div className="sadb-page" style={{ flex: '1 1 auto', minHeight: 0 }}>
 
         {/* ═══ KPI tile row ═══ */}
@@ -402,12 +395,14 @@ export default function AdminDashboardPage() {
             <div className="sadb-readiness-body">
               <svg width={124} height={124} viewBox="0 0 124 124" className="flex-shrink-0" role="img" aria-label={`Platform readiness ${readiness}%`}>
                 <circle cx={62} cy={62} r={50} fill="none" stroke="var(--ehr-row-rule, #F1F3F5)" strokeWidth={11} />
-                <circle
-                  cx={62} cy={62} r={50} fill="none"
-                  stroke={TONE_STROKE[readinessTone]} strokeWidth={11} strokeLinecap="round"
-                  strokeDasharray={`${((readiness / 100) * CIRC).toFixed(1)} ${CIRC.toFixed(2)}`}
-                  transform="rotate(-90 62 62)"
-                />
+                {readiness > 0 && (
+                  <circle
+                    cx={62} cy={62} r={50} fill="none"
+                    stroke={TONE_STROKE[readinessTone]} strokeWidth={11} strokeLinecap="round"
+                    strokeDasharray={`${((readiness / 100) * CIRC).toFixed(1)} ${CIRC.toFixed(2)}`}
+                    transform="rotate(-90 62 62)"
+                  />
+                )}
                 <text x={62} y={59} textAnchor="middle" fontFamily="var(--font-condensed)" fontSize={28} fontWeight={700} fill="var(--text-primary)">
                   {loading ? '…' : `${readiness}%`}
                 </text>

@@ -41,10 +41,7 @@ import { useFacilitySync, FacilitySyncButton, FacilitySyncDetail } from '@/compo
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import OrganizationSettingsPanel, { type OrganizationSettingsSection } from '@/components/settings/OrganizationSettingsPanel';
 import OrgBrandingPage from '@/app/(dashboard)/org-admin/branding/page';
-import OrgHospitalsPage from '@/app/(dashboard)/org-admin/hospitals/page';
-import OrgUsersPage from '@/app/(dashboard)/org-admin/users/page';
 import ServicePricingPage from '@/app/(dashboard)/org-admin/pricing/page';
-import ManagementSettingsPage from '@/app/(dashboard)/settings/manage/page';
 import ItOperationsPanel, { IT_OPERATIONS_JOB_COUNT } from '@/components/admin/ItOperationsPanel';
 import TrashPanel from './TrashPanel';
 import DataManagementPanel from './DataManagementPanel';
@@ -137,8 +134,6 @@ const ORG_SETTINGS_PANEL_IDS = new Set([
   'org-security',
   'org-modules',
   'org-branding',
-  'org-facilities',
-  'org-people',
   'org-billing',
 ]);
 
@@ -171,7 +166,7 @@ export default function RoleSettingsView() {
   const { canManageUsers, canAccess } = usePermissions();
   const { users, update: updateUser } = useUsers();
   const { hospitals } = useHospitals();
-  const { locale, setLocale } = useTranslation();
+  const { t, locale, setLocale } = useTranslation();
   const facilitySettings = useSettings();
 
   const spec = useMemo(() => (currentUser ? specForRole(currentUser.role) : null), [currentUser]);
@@ -338,11 +333,9 @@ export default function RoleSettingsView() {
         ],
       });
       groups.push({
-        title: 'Operations setup',
+        title: 'Facility configuration',
         items: [
-          { id: 'org-facilities', label: 'Facilities', icon: Building2, badge: hospitals.length ? String(hospitals.length) : undefined },
-          ...(showFacility ? [{ id: 'facility-config', label: 'Facility configuration', icon: Stethoscope }] : []),
-          { id: 'org-people', label: 'People & access', icon: Users, badge: users.length ? String(users.length) : undefined },
+          ...(showFacility ? [{ id: 'facility-config', label: 'Clinical setup', icon: Stethoscope }] : []),
         ],
       });
       groups.push({
@@ -861,31 +854,10 @@ export default function RoleSettingsView() {
         </section>
       );
     }
-    if (activePanel === 'org-facilities-editor') {
-      return (
-        <section className="ehr-set-section settings-embedded-page">
-          <OrgHospitalsPage />
-        </section>
-      );
-    }
-    if (activePanel === 'org-people-editor') {
-      return (
-        <section className="ehr-set-section settings-embedded-page">
-          <OrgUsersPage />
-        </section>
-      );
-    }
     if (activePanel === 'org-billing-editor') {
       return (
         <section className="ehr-set-section settings-embedded-page">
           <ServicePricingPage />
-        </section>
-      );
-    }
-    if (activePanel === 'manage-screen') {
-      return (
-        <section className="ehr-set-section settings-embedded-page">
-          <ManagementSettingsPage />
         </section>
       );
     }
@@ -970,8 +942,6 @@ export default function RoleSettingsView() {
     if (activePanel === id) return true;
     const editorParent: Record<string, string> = {
       'org-branding-editor': 'org-branding',
-      'org-facilities-editor': 'org-facilities',
-      'org-people-editor': 'org-people',
       'org-billing-editor': 'org-billing',
     };
     return editorParent[activePanel] === id;

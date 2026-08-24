@@ -18,7 +18,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
@@ -28,7 +27,6 @@ import {
   statusChip, effectiveOrgStatus,
 } from '@/components/admin/sadb-ui';
 import { TENANT_ACTION_ICONS } from '@/components/admin/TenantCard';
-import { getPerformanceColor } from '@/lib/performance-colors';
 import Select from '@/components/Select';
 import { getRoleConfig } from '@/lib/permissions';
 import Modal from '@/components/Modal';
@@ -39,51 +37,14 @@ import { CredentialHandoffModal } from '@/modules/identity/client';
 import { useApp } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import type { UserDoc } from '@/lib/db-types';
+import { userWorksAtFacility } from '@/modules/tenancy/client';
 
 /* Roster columns: Account (name + username) · Role · Facility · Status */
 const USER_GRID = 'minmax(220px, 1.6fr) minmax(140px, 1fr) minmax(160px, 1.1fr) minmax(90px, 0.7fr)';
 
-/* Facility columns: Facility · Reporting · Readiness · Beds · Status.
-   The name column is wider for its two lines; the rest share the width
-   evenly — the per-row Performance link column is gone (2026-08-23), its
-   destination promoted to the card head's expand icon. */
-const FACILITY_GRID = 'minmax(200px, 1.6fr) repeat(4, minmax(110px, 1fr))';
-
-/**
- * One performance score, as a bar and a number.
- *
- * The number alone makes a reader compare digits across rows; the bar makes
- * the same comparison pre-attentive — four facilities at 82 / 64 / 41 / 90 sort
- * themselves before you have read any of them. Colour comes from the shared
- * four-band WHO ramp, so a score means the same here as on every other
- * performance surface in the product.
- *
- * `null` renders as an empty track and an em dash: a facility that has never
- * been assessed has no score, and drawing that as a zero-length red bar would
- * report a failing facility where there is simply no measurement.
- */
-function ScoreMeter({ value, label }: { value: number | null; label: string }) {
-  return (
-    <span className="orgfac-meter" title={value === null ? `${label}: not assessed` : `${label}: ${value}%`}>
-      <span className="orgfac-meter-track">
-        {value !== null && (
-          <span
-            className="orgfac-meter-fill"
-            style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: getPerformanceColor(value) }}
-          />
-        )}
-      </span>
-      <b className="orgfac-meter-value" style={{ color: value === null ? 'var(--text-muted)' : getPerformanceColor(value) }}>
-        {value === null ? '—' : `${value}%`}
-      </b>
-    </span>
-  );
-}
-
 export default function AdminOrganizationDetailPage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const [facilitiesCollapsed, setFacilitiesCollapsed] = useState(false);
   const params = useParams<{ id: string }>();
   const orgId = params?.id;
 
@@ -132,8 +93,7 @@ export default function AdminOrganizationDetailPage() {
    *
    * Averaged over the facilities that HAVE been assessed, not over all of
    * them: counting an unassessed facility as zero would report a tenant as
-   * failing for not having been visited yet. `assessed` is carried alongside
-   * so the card can say what the average is actually over.
+   * failing for not having been visited yet.
    */
   const perf = useMemo(() => {
     const assessed = orgFacilities.filter(h => h.performance);
@@ -143,7 +103,6 @@ export default function AdminOrganizationDetailPage() {
     };
     const functional = orgFacilities.filter(h => h.operationalStatus === 'functional').length;
     return {
-      assessed: assessed.length,
       reporting: mean(p => p.reportingCompleteness),
       readiness: mean(p => p.serviceReadinessScore),
       functional,
@@ -156,13 +115,10 @@ export default function AdminOrganizationDetailPage() {
 
   /* A user belongs to a facility view through either attachment: `hospitalId`
      is the home site, `facilityIds` the extra sites they cover. */
-  const worksAt = (u: UserDoc, hid: string) =>
-    u.hospitalId === hid || (u.facilityIds || []).includes(hid);
-
   const visibleUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users
-      .filter(u => (!facilityFilter || worksAt(u, facilityFilter)))
+      .filter(u => (!facilityFilter || userWorksAtFacility(u, facilityFilter)))
       .filter(u => !q || `${u.name} ${u.username}`.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [users, facilityFilter, search]);
@@ -254,9 +210,8 @@ export default function AdminOrganizationDetailPage() {
 
       {/* ═══ Tenant vitals — live counts against the plan's limits ═══ */}
       <div className="sadb-kpi-row">
-        {/* The facilities tile carries the tenant's readiness and scrolls to
-            the list it summarises — a count that answers "how many" and a
-            delta that answers "how well", which is the pair an operator
+        {/* The facilities tile carries the tenant's readiness alongside the
+            count — "how many" and "how well", which is the pair an operator
             opening a tenant page is actually asking about. */}
         <SadbKpiTile
           label={t('government.colFacilities')}
@@ -265,77 +220,9 @@ export default function AdminOrganizationDetailPage() {
             ? (orgFacilities.length ? 'not yet assessed' : undefined)
             : `${perf.readiness}% avg readiness · ${perf.pctFunctional}% functional`}
           deltaTone={perf.readiness !== null && perf.readiness < 60 ? 'warn' : 'up'}
-          onClick={() => document.getElementById('org-facilities')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
         />
         <SadbKpiTile label={t('breadcrumb.users')} value={loading ? '…' : `${users.length} / ${org.maxUsers}`} />
         <SadbKpiTile label={t('breadcrumb.patients')} value={patientCount === null ? '…' : patientCount.toLocaleString()} />
-      </div>
-
-      {/* ═══ Facilities and how they are performing ═══
-          The Health Facility Performance page answers this for the whole
-          country; a tenant page has to answer it for one tenant, and sending
-          the operator to a national list to filter their way back to the
-          organization they were already looking at is not an answer. Same
-          scores, same four-band ramp, same destination on click — scoped to
-          the org, and read from the facility documents rather than recomputed
-          differently here. ═══ */}
-      <div id="org-facilities">
-        <SadbCard
-          title={t('orgAdmin.facilitiesPerformance')}
-          meta={orgFacilities.length === 0
-            ? undefined
-            : perf.assessed === orgFacilities.length
-              ? t('orgAdmin.allAssessed', { count: orgFacilities.length })
-              : t('orgAdmin.someAssessed', { assessed: perf.assessed, total: orgFacilities.length })}
-          /* The head folds the table away — the longest thing on this page,
-             and rarely what you came for once you have read it. The chevron
-             replaces an expand icon that navigated to the facility network:
-             one head, one meaning, and each row already opens the facility it
-             names. */
-          collapsible
-          collapsed={facilitiesCollapsed}
-          onToggleCollapsed={() => setFacilitiesCollapsed(v => !v)}
-        >
-          <SadbGridList
-            template={FACILITY_GRID}
-            minWidth={760}
-            head={[
-              t('government.colFacilities'),
-              t('hospitals.kpiReporting'),
-              t('hospitals.kpiReadiness'),
-              t('orgAdmin.beds'),
-              t('orgUsers.colStatus'),
-            ]}
-            alignEndLast
-            empty={t('orgAdmin.noFacilities')}
-          >
-            {/* Straight to that facility's PERFORMANCE, which is what the
-                reporting and readiness columns beside the name are asking
-                about — the row used to bounce through
-                `/admin/organizations?facility=`, which is the registry, and
-                landed on the facility's Overview once it got there. */}
-            {orgFacilities.map(h => (
-              <SadbGridRow key={h._id} template={FACILITY_GRID}>
-                <span className="min-w-0">
-                  <Link href={`/admin/facilities/${encodeURIComponent(h._id)}?tab=performance`} className="orgfac-name truncate">
-                    {h.name}
-                  </Link>
-                  <span className="sadb-tenant-sub truncate">
-                    {[h.county, h.state].filter(Boolean).join(' · ') || h.town || '—'}
-                  </span>
-                </span>
-                <ScoreMeter value={h.performance?.reportingCompleteness ?? null} label={t('hospitals.kpiReporting')} />
-                <ScoreMeter value={h.performance?.serviceReadinessScore ?? null} label={t('hospitals.kpiReadiness')} />
-                <span className="sadb-tenant-num">{h.totalBeds ? h.totalBeds.toLocaleString() : '—'}</span>
-                <span style={{ textAlign: 'end' }}>
-                  <SadbChip tone={h.operationalStatus === 'functional' ? 'green' : h.operationalStatus === 'non_functional' ? 'red' : 'yellow'}>
-                    {h.operationalStatus || 'unknown'}
-                  </SadbChip>
-                </span>
-              </SadbGridRow>
-            ))}
-          </SadbGridList>
-        </SadbCard>
       </div>
 
       {/* ═══ The roster — every account by default, one facility on demand ═══ */}

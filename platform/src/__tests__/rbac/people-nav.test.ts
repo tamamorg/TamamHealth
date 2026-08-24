@@ -70,13 +70,13 @@ describe('PEOPLE & HR nav section', () => {
     // The HR module's "Staff Roster" was the same roster as this page, so it
     // was removed and the facility roles read their people here instead.
     const accountsHref = (role: UserRole) =>
-      peopleItems(role).map(i => i.href).find(h => h.endsWith('/users')) ?? null;
-    expect(accountsHref('super_admin')).toBe('/admin/users');
-    expect(accountsHref('org_admin')).toBe('/org-admin/users');
-    expect(accountsHref('hospital_manager')).toBe('/org-admin/users');
-    expect(accountsHref('medical_superintendent')).toBe('/org-admin/users');
+      ROLE_PERMISSIONS[role].navItems.map(i => i.href).find(h => h === '/manage') ?? null;
+    expect(accountsHref('super_admin')).toBe('/manage');
+    expect(accountsHref('org_admin')).toBe('/manage');
+    expect(accountsHref('hospital_manager')).toBe('/manage');
+    expect(accountsHref('medical_superintendent')).toBe('/manage');
     // The nav row and the Add-menu target must not drift apart.
-    for (const role of HR_ROLES) expect(accountsHref(role)).toBe(usersHrefForRole(role));
+    for (const role of HR_ROLES) expect(usersHrefForRole(role)?.startsWith(accountsHref(role)!)).toBe(true);
   });
 
   test('no role keeps a second staff list beside the accounts page', () => {
@@ -109,7 +109,7 @@ describe('PEOPLE & HR nav section', () => {
       const visible = uniqueAllowedNavItems(ROLE_PERMISSIONS[role].navItems, allowedFor(role));
       const groups = groupNavItemsBySection(visible).filter(g => g.section === 'PEOPLE & HR');
       expect(groups).toHaveLength(1);
-      expect(groups[0].items.length).toBeGreaterThanOrEqual(5);
+      expect(groups[0].items.length).toBeGreaterThanOrEqual(4);
     }
   });
 
@@ -118,8 +118,7 @@ describe('PEOPLE & HR nav section', () => {
       ROLE_PERMISSIONS.super_admin.navItems, allowedFor('super_admin'),
     );
     const groups = groupNavItemsBySection(visible).filter(g => g.section === 'PEOPLE');
-    expect(groups).toHaveLength(1);
-    expect(groups[0].items.map(i => i.href)).toEqual(['/admin/users', '/transfers']);
+    expect(groups).toHaveLength(0);
   });
 
   test('no role lists the same destination twice across its whole nav', () => {
@@ -145,7 +144,7 @@ describe('buildAddMenuEntries', () => {
   test('org_admin can add a facility, staff, inquiries, shifts, leave and payroll', () => {
     const entries = buildAddMenuEntries({ role: 'org_admin', allowedRoutes: allowedFor('org_admin') });
     expect(entries.map(e => e.key)).toEqual(['facility', 'staff', 'inquiry', 'shift', 'leave', 'payroll']);
-    expect(entries.find(e => e.key === 'staff')!.href).toBe('/org-admin/users?new=1');
+    expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?view=people&new=1');
   });
 
   test('"Add facility" comes before "Add staff member" — a facility role cannot be saved without one', () => {
@@ -160,7 +159,7 @@ describe('buildAddMenuEntries', () => {
 
   test('super_admin adds staff through the platform accounts page', () => {
     const entries = buildAddMenuEntries({ role: 'super_admin', allowedRoutes: allowedFor('super_admin') });
-    expect(entries.find(e => e.key === 'staff')!.href).toBe('/admin/users?new=1');
+    expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?view=people&new=1');
   });
 
   test('there is no separate "create user account" action — staff and login are one record', () => {
@@ -170,7 +169,7 @@ describe('buildAddMenuEntries', () => {
     // users console's create form. (This used to also assert a "Creates their
     // login too" subline; the menu no longer renders per-item clarifiers, so
     // the rule is pinned to the destination instead of to copy.)
-    expect(entries.find(e => e.key === 'staff')!.href).toMatch(/\/users\?new=1$/);
+    expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?view=people&new=1');
   });
 
   test('a role that cannot administer accounts keeps the entries it can use', () => {
@@ -196,14 +195,14 @@ describe('buildAddMenuEntries', () => {
 });
 
 describe('usersHrefForRole', () => {
-  test('each admin role points at its own existing accounts page — no third users screen', () => {
-    expect(usersHrefForRole('super_admin')).toBe('/admin/users');
-    expect(usersHrefForRole('org_admin')).toBe('/org-admin/users');
+  test('each admin role points at the shared people workspace', () => {
+    expect(usersHrefForRole('super_admin')).toBe('/manage?view=people');
+    expect(usersHrefForRole('org_admin')).toBe('/manage?view=people');
   });
 
   test('the facility roles read the staff list on the org-scoped accounts page', () => {
-    expect(usersHrefForRole('hospital_manager')).toBe('/org-admin/users');
-    expect(usersHrefForRole('medical_superintendent')).toBe('/org-admin/users');
+    expect(usersHrefForRole('hospital_manager')).toBe('/manage?view=people');
+    expect(usersHrefForRole('medical_superintendent')).toBe('/manage?view=people');
   });
 
   test('clinical roles get nothing', () => {

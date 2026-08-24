@@ -38,8 +38,11 @@ export async function getPlatformConfig(): Promise<PlatformConfigDoc> {
   const db = platformConfigDB();
   try {
     return await db.get(CONFIG_ID) as PlatformConfigDoc;
-  } catch {
-    // Create default config if it doesn't exist
+  } catch (error) {
+    // Only a genuine miss should create the singleton. Authentication,
+    // storage, and other read failures must remain visible to the caller.
+    if ((error as { status?: number }).status !== 404) throw error;
+
     const now = new Date().toISOString();
     const doc: PlatformConfigDoc = {
       ...DEFAULT_CONFIG,
@@ -47,9 +50,19 @@ export async function getPlatformConfig(): Promise<PlatformConfigDoc> {
       createdAt: now,
       updatedAt: now,
     };
-    const resp = await db.put(doc);
-    doc._rev = resp.rev;
-    return doc;
+    try {
+      const resp = await db.put(doc);
+      doc._rev = resp.rev;
+      return doc;
+    } catch (putError) {
+      // React StrictMode can run both initializers together, and replication
+      // can land the singleton between our get and put. In either case the
+      // 409 means another writer won, so return the winning revision.
+      if ((putError as { status?: number }).status === 409) {
+        return await db.get(CONFIG_ID) as PlatformConfigDoc;
+      }
+      throw putError;
+    }
   }
 }
 

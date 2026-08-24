@@ -551,6 +551,7 @@ function normalizePoolIdentity(doc: Record<string, unknown>): void {
 // Helper: put a doc, silently skip if it already exists (409 conflict)
 async function safePut(db: PouchDB.Database, doc: Record<string, unknown>): Promise<void> {
   try {
+    if (IS_DEMO && !doc.dataOrigin) doc.dataOrigin = 'demo_seed';
     normalizePoolIdentity(doc);
     await db.put(doc);
   } catch (err: unknown) {

@@ -76,7 +76,7 @@ describe('who may register a facility', () => {
     for (const role of ADMIN_ROLES) {
       const href = facilitiesHrefForRole(role)!;
       const navHrefs = ROLE_PERMISSIONS[role].navItems.map(i => i.href);
-      expect(navHrefs).toContain(href);
+      expect(navHrefs).toContain(href.split('?')[0]);
     }
   });
 
@@ -85,7 +85,7 @@ describe('who may register a facility', () => {
       const entry = buildAddMenuEntries({ role, allowedRoutes: allowedFor(role) })
         .find(e => e.key === 'facility');
       expect(entry).toBeDefined();
-      expect(entry!.href).toBe('/admin/organizations?new=1');
+      expect(entry!.href).toBe('/manage?view=facilities&new=1');
     }
   });
 
@@ -101,9 +101,8 @@ describe('who may register a facility', () => {
 describe('the pages that host the create dialog', () => {
   test.each([
     'components/facilities/FacilityNetworkView.tsx',
-    'app/(dashboard)/org-admin/hospitals/page.tsx',
+    'modules/tenancy/components/ManagementWorkspace.tsx',
     'components/admin/UserForm.tsx',
-    'app/(dashboard)/org-admin/users/page.tsx',
   ])('%s opens the shared dialog rather than its own copy', file => {
     // `CreateFacilityModal` is the create-only wrapper around the same
     // component; either name means the caller is on the shared form.
@@ -122,7 +121,7 @@ describe('the pages that host the create dialog', () => {
 
   test.each([
     ['components/facilities/FacilityNetworkView.tsx', "searchParams.get('new')"],
-    ['app/(dashboard)/org-admin/hospitals/page.tsx', "has('new')"],
+    ['modules/tenancy/components/ManagementWorkspace.tsx', "params.has('new')"],
   ])('%s honours the ?new=1 deep link the Add menu emits', (file, marker) => {
     expect(source(file)).toContain(marker);
   });
@@ -174,12 +173,8 @@ describe('the pages that host the create dialog', () => {
   });
 
   test('retired facilities drop out of the assignment pickers', () => {
-    for (const file of [
-      'components/admin/UserForm.tsx',
-      'app/(dashboard)/org-admin/users/page.tsx',
-    ]) {
-      expect(source(file)).toContain('activeFacilities');
-    }
+    expect(source('components/admin/UserForm.tsx')).toContain('useAssignableFacilities');
+    expect(source('app/api/hospitals/assignment-options/route.ts')).toContain('isFacilityActive');
   });
 });
 
@@ -194,10 +189,7 @@ describe('facility types are one vocabulary', () => {
   test('no page keeps a private list — Settings once offered only three', () => {
     // A three-entry list meant a PHCC or PHCU, the commonest facilities in
     // South Sudan, could not be created from Settings at all.
-    for (const file of [
-      'app/(dashboard)/org-admin/hospitals/page.tsx',
-      'components/admin/FacilityFormModal.tsx',
-    ]) {
+    for (const file of ['components/admin/FacilityFormModal.tsx']) {
       const text = source(file);
       expect(text).not.toMatch(/const FACILITY_TYPES\s*=/);
       expect(text).toContain("from '@/lib/facility-types'");
@@ -260,7 +252,6 @@ describe('the scope a staff account must carry', () => {
     for (const file of [
       'app/api/users/route.ts',
       'modules/identity/services/user-service.ts',
-      'modules/identity/components/CreateUserModal.tsx',
       'components/admin/UserForm.tsx',
     ]) {
       const text = source(file);
@@ -274,7 +265,8 @@ describe('the scope a staff account must carry', () => {
     }
     // Pages that delegate must not quietly grow their own list back.
     for (const file of [
-      'app/(dashboard)/org-admin/users/page.tsx',
+      'modules/identity/components/CreateUserModal.tsx',
+      'modules/tenancy/components/ManagementWorkspace.tsx',
       'components/facilities/FacilityManageTabs.tsx',
     ]) {
       const text = source(file);

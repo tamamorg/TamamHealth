@@ -90,7 +90,6 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/nurse/TriageWorkflow.tsx': 14,
   'src/components/settings/FacilitySettingsView.tsx': 14,
   'src/components/settings/RoleSettingsView.tsx': 13,
-  'src/app/(dashboard)/admin/users/page.tsx': 11,
   'src/app/(dashboard)/blood-bank/page.tsx': 11,
   'src/components/patients/BillingTab.tsx': 11,
   'src/app/request-account/page.tsx': 10,

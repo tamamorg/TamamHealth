@@ -9,6 +9,7 @@ import TourCard from '@/components/tour/TourCard';
 import { buildGenericTour } from './generic-steps';
 import { journeyTourForRole } from './journey-tours';
 import { hasSeenTour, markTourSeen } from './tour-storage';
+import { hasBlockingDialog } from './tour-dom';
 import type { TourDefinition } from './types';
 
 // Journey tours (one per role, derived from docs/USER-JOURNEYS.md) take
@@ -252,7 +253,11 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   useEffect(() => {
     if (!active) return;
-    const check = () => setDialogOpen(!!document.querySelector('[role="dialog"]'));
+    // The tour card is itself an accessible dialog. Counting it here creates
+    // an oscillation: render card -> detect "dialog" -> hide card -> detect no
+    // dialog -> render card, forever. Only suspend for a dialog owned by the
+    // application underneath the tour.
+    const check = () => setDialogOpen(hasBlockingDialog());
     check();
     const observer = new MutationObserver(check);
     observer.observe(document.body, { childList: true, subtree: true });
@@ -267,7 +272,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (document.querySelector('[role="dialog"]')) return;
+      if (hasBlockingDialog()) return;
       finish();
     };
     window.addEventListener('keydown', onKey);

@@ -35,10 +35,7 @@ const code = (rel: string) =>
 // `/settings/manage` was a third account-administration surface until
 // 2026-08-21, when its User Management tab was removed — accounts live on
 // /admin/users and /org-admin/users, which are the two listed here.
-const SURFACES = [
-  'app/(dashboard)/admin/users/page.tsx',
-  'app/(dashboard)/org-admin/users/page.tsx',
-];
+const SURFACES = ['app/(dashboard)/admin/users/[id]/page.tsx'];
 
 describe('activation uses its own action', () => {
   test.each(SURFACES)('%s does not flip isActive through updateUser', file => {

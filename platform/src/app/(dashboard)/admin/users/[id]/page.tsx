@@ -142,7 +142,7 @@ export default function AdminUserDetailPage() {
 
   if (loading) {
     return (
-      <SadbPage>
+      <SadbPage roles={['super_admin', 'org_admin']}>
         <p className="sadb-empty">{t('adminUsers.loadingUser')}</p>
       </SadbPage>
     );
@@ -150,7 +150,7 @@ export default function AdminUserDetailPage() {
 
   if (!user) {
     return (
-      <SadbPage>
+      <SadbPage roles={['super_admin', 'org_admin']}>
         <div className="patient-registration-toolbar">
           <button type="button" onClick={backToRoster} className="patient-registration-back">
             <ArrowLeft className="w-4 h-4" /> {t('adminUsers.backToUsers')}
@@ -165,7 +165,7 @@ export default function AdminUserDetailPage() {
   const account = describeAccountState(user);
 
   return (
-    <SadbPage>
+    <SadbPage roles={['super_admin', 'org_admin']}>
       <div className="patient-registration-toolbar">
         <button type="button" onClick={backToRoster} className="patient-registration-back">
           <ArrowLeft className="w-4 h-4" /> {t('adminUsers.backToUsers')}

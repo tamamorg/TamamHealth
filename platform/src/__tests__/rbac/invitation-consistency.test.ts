@@ -26,11 +26,6 @@ const CREATION_SURFACES = [
   // component (2026-08-23), hosted by /admin/users/new — the same split the
   // organization form already has. The surface to pin is the form.
   'components/admin/UserForm.tsx',
-  // The org roster and a facility's Staff tab both create accounts through
-  // this one dialog, so the surface to pin is the dialog — see
-  // DELEGATING_SURFACES below for the pages that must keep using it rather
-  // than growing a second form.
-  'modules/identity/components/CreateUserModal.tsx',
   // The create-organization flow's admin provisioning lives in the shared
   // OrganizationForm (2026-08-23) — the registry modal and the full-page
   // /admin/organizations/new both host it; see ORG_FORM_HOSTS.
@@ -39,7 +34,8 @@ const CREATION_SURFACES = [
 
 /** Pages whose "create user" action must route through the shared dialog. */
 const DELEGATING_SURFACES = [
-  'app/(dashboard)/org-admin/users/page.tsx',
+  'modules/identity/components/CreateUserModal.tsx',
+  'modules/tenancy/components/ManagementWorkspace.tsx',
   'components/facilities/FacilityManageTabs.tsx',
 ];
 
@@ -47,7 +43,7 @@ const DELEGATING_SURFACES = [
  *  a second copy of the form is how the invitation outcome got dropped on
  *  two user-creation surfaces, so the org form gets the same guard. */
 const ORG_FORM_HOSTS = [
-  'app/(dashboard)/admin/organizations/page.tsx',
+  'modules/tenancy/components/ManagementWorkspace.tsx',
   'app/(dashboard)/admin/organizations/new/page.tsx',
 ];
 
@@ -89,7 +85,7 @@ describe('every creation surface reports the invitation', () => {
     // renders the shared CredentialHandoffModal (like /admin/users), which is
     // where the one copy chain lives.
     expect(source('modules/identity/components/CredentialHandoffModal.tsx')).toContain('describeInvitationOutcome');
-    expect(source('app/(dashboard)/org-admin/users/page.tsx')).toContain('CredentialHandoffModal');
+    expect(source('modules/tenancy/components/ManagementWorkspace.tsx')).toContain('CredentialHandoffModal');
   });
 });
 

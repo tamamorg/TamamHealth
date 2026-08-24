@@ -17,10 +17,8 @@
  */
 
 import { useCallback, useEffect, useState, type ComponentType, type ReactNode } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
-import { getRoleConfig } from '@/lib/permissions';
-import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
 import Modal from '@/components/Modal';
 import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Pencil, Search } from '@/components/icons/lucide';
 import type { SaSeverity } from '@/components/admin/sa-ui';
@@ -92,20 +90,11 @@ export function statusChip(status: string): ChipTone {
  *  Edge proxy check). Defaults to super_admin so the 17 existing /admin/*
  *  call sites are unchanged; org-admin console pages pass
  *  `roles={['org_admin', 'super_admin']}`. */
-export function SadbPage({ actions, roles = ['super_admin'], greeting = true, module: moduleOverride, children }: {
+export function SadbPage({ actions, roles = ['super_admin'], children }: {
   actions?: ReactNode; roles?: UserRole[]; children: ReactNode;
-  /**
-   * The "Welcome, {name} / ROLE · MODULE" header every clinical and facility
-   * page opens with. On by default; a page whose whole header IS the record it
-   * shows (a form hosted full-page, say) can opt out.
-   */
-  greeting?: boolean;
-  /** Overrides the module half of the eyebrow when the nav cannot name it. */
-  module?: string;
 }) {
   const { currentUser } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
   const allowed = !!currentUser && roles.includes(currentUser.role);
 
   useEffect(() => {
@@ -114,25 +103,15 @@ export function SadbPage({ actions, roles = ['super_admin'], greeting = true, mo
 
   if (!allowed) return null;
 
-  // The admin consoles were the one family of pages that did not open with
-  // the platform's greeting header, so moving from a ward board to the
-  // organizations registry read as crossing into a different product. The
-  // module name comes from the signed-in role's own nav — the label the user
-  // just clicked — and only a pathname that IS a nav destination gets the
-  // greeting: a record page (/admin/users/<id>, /admin/organizations/new)
-  // opens on the record's own name, exactly like a patient chart does.
-  const navLabel = currentUser
-    ? getRoleConfig(currentUser.role).navItems?.find(i => i.href.split(/[?#]/)[0] === pathname)?.label
-    : undefined;
-  const moduleLabel = moduleOverride ?? navLabel;
-  const showGreeting = greeting && !!moduleLabel;
-
+  // No "Welcome, {name} / ROLE · MODULE" header here (2026-08-24): the rail
+  // already names the console and the page, so the greeting repeated on every
+  // admin screen only pushed the content it introduced below the fold. The
+  // head survives for `actions` alone.
   return (
     <main className="page-container page-enter sadb-scope">
-      {(showGreeting || actions) && (
+      {actions && (
         <div className="sadb-page-head">
-          {showGreeting && <EhrPageGreeting module={moduleLabel} />}
-          {actions && <div className="sadb-page-actions">{actions}</div>}
+          <div className="sadb-page-actions">{actions}</div>
         </div>
       )}
       <div className="sadb-page">{children}</div>

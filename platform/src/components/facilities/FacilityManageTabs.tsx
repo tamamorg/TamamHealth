@@ -43,6 +43,7 @@ import { todayIso } from '@/lib/date-utils';
 import { getPerformanceColor } from '@/lib/performance-colors';
 import { canCreateUsers } from '@/lib/people-nav';
 import { useApp } from '@/lib/context';
+import { userWorksAtFacility } from '@/modules/tenancy/client';
 
 // ── Permission ───────────────────────────────────────────────────────────────
 /** Roles that may open a facility's management tabs. */
@@ -190,7 +191,7 @@ function StaffTab({ scope, hospitalId, hospital, refreshToken }: {
       const { getAllUsers } = await import('@/modules/identity/services/user-service');
       const all = await getAllUsers(scope);
       // Narrow to this facility (data-scope already restricted to orgId).
-      setUsers(all.filter(u => u.hospitalId === hospitalId));
+      setUsers(all.filter(u => userWorksAtFacility(u, hospitalId)));
     } catch {
       setError(t('hospitals.errorLoadStaff'));
     } finally {

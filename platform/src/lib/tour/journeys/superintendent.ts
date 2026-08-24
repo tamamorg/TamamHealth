@@ -81,23 +81,13 @@ export const SUPERINTENDENT_STEPS: TourStep[] = [
   },
   {
     id: 'hospitals-oversight',
-    route: '/admin/organizations',
+    route: '/manage',
     // Not anchored: the network list runs to dozens of rows, so centering it
     // scrolls deep into the table and the card can end up off-screen. A
     // narrative card is the stable choice for a list this long.
     target: '',
     title: 'Hospital network',
     body: 'Every facility you oversee, with occupancy, staffing, and performance metrics side by side. Open one for its full profile — the record on Overview, and beside it the tabs you actually work in: staff, wards, equipment, inventory, schedules, and performance.',
-  },
-  {
-    id: 'facility-tabs',
-    route: '/admin/organizations',
-    // The gear sits on the first row, at the top of the list, so this one IS
-    // safe to anchor — unlike the list itself.
-    target: '[data-tour="facility-row-tabs"]',
-    placement: 'left',
-    title: 'Straight to a facility\u2019s work',
-    body: 'This gear opens the same tabs without opening the profile first — pick Staff, Wards, Inventory or Settings and the facility opens on it. Useful when you already know what you came to check.',
   },
   {
     id: 'payments-oversight',

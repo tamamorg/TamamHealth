@@ -75,21 +75,27 @@ function assignableRoleError(actorRole: UserRole, targetRole: UserRole | undefin
 }
 
 /**
- * Why a facility the admin just picked can be unknown here.
- *
- * The pickers read the browser's local replica; this route reads the server's
- * copy. Accounts are provisioned centrally (password hashing must not happen
- * client-side), so the facility has to have REACHED the server before staff
- * can be pinned to it — and a facility registered on a device is a local write
- * that replication carries up afterwards.
- *
- * The bare "Assigned hospital was not found" this replaces named a facility
- * the admin could see on screen, so it read as a bug in the form rather than
- * as a state that resolves itself. Say what is actually true instead.
+ * Machine-readable reasons for a central account-assignment refusal. The
+ * editor reads the same central facility source, so this is a race/integrity
+ * guard rather than an expected part of the workflow.
  */
-function unknownFacilityMessage(hospitalId: string): string {
-  return `Facility ${hospitalId} has not reached the server yet, so no account can be assigned to it. `
-    + 'If it was just registered, let sync finish and try again; otherwise pick another facility.';
+type FacilityAssignmentReason = 'not_found' | 'wrong_organization' | 'inactive';
+
+function facilityNotAssignable(
+  hospitalId: string,
+  reason: FacilityAssignmentReason,
+): NextResponse {
+  const message = reason === 'inactive'
+    ? 'This facility is retired and cannot receive new account assignments.'
+    : reason === 'wrong_organization'
+      ? 'This facility does not belong to the selected organization.'
+      : 'This facility is not available for account assignment. Refresh the facility list and choose an available facility.';
+  return NextResponse.json({
+    error: message,
+    code: 'FACILITY_NOT_ASSIGNABLE',
+    reason,
+    facilityId: hospitalId,
+  }, { status: 400 });
 }
 
 /**
@@ -126,10 +132,13 @@ async function canonicalAdditionalFacilities(input: {
     const id = ids[index];
     const facility = facilities[index];
     if (!facility) {
-      return { response: NextResponse.json({ error: unknownFacilityMessage(id) }, { status: 400 }) };
+      return { response: facilityNotAssignable(id, 'not_found') };
     }
     if (!input.orgId || !facility.orgId || facility.orgId !== input.orgId) {
-      return { response: forbidden('Cannot grant access to a facility outside the user\'s organization') };
+      return { response: facilityNotAssignable(id, 'wrong_organization') };
+    }
+    if (facility.isActive === false) {
+      return { response: facilityNotAssignable(id, 'inactive') };
     }
   }
   return { ids };
@@ -578,14 +587,12 @@ async function postHandler(request: NextRequest) {
           role: auth.role, orgId: requestedOrgId || auth.orgId,
         });
         if (!canonicalHospital) {
-          return NextResponse.json({ error: unknownFacilityMessage(requestedHospitalId) }, { status: 400 });
+          return facilityNotAssignable(requestedHospitalId, 'not_found');
         }
         if (requestedOrgId && canonicalHospital.orgId && requestedOrgId !== canonicalHospital.orgId) {
-          return NextResponse.json(
-            { error: 'Assigned hospital does not belong to the selected organization' },
-            { status: 400 },
-          );
+          return facilityNotAssignable(requestedHospitalId, 'wrong_organization');
         }
+        if (canonicalHospital.isActive === false) return facilityNotAssignable(requestedHospitalId, 'inactive');
         canonicalHospitalName = canonicalHospital.name;
         canonicalOrgId = canonicalHospital.orgId || requestedOrgId;
       }
@@ -666,14 +673,12 @@ async function postHandler(request: NextRequest) {
         role: auth.role, orgId: (body.orgId as string | undefined) || auth.orgId,
       });
       if (!canonicalHospital) {
-        return NextResponse.json({ error: unknownFacilityMessage(body.hospitalId as string) }, { status: 400 });
+        return facilityNotAssignable(body.hospitalId as string, 'not_found');
       }
       if (body.orgId && canonicalHospital.orgId && body.orgId !== canonicalHospital.orgId) {
-        return NextResponse.json(
-          { error: 'Assigned hospital does not belong to the selected organization' },
-          { status: 400 },
-        );
+        return facilityNotAssignable(body.hospitalId as string, 'wrong_organization');
       }
+      if (canonicalHospital.isActive === false) return facilityNotAssignable(body.hospitalId as string, 'inactive');
       // Never trust client-supplied names or a contradictory tenant. Login
       // scope comes from these fields, so persist the canonical relationship.
       body.hospitalName = canonicalHospital.name;

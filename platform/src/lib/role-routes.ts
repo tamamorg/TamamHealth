@@ -49,6 +49,7 @@ const NURSE_MODULE_ROUTES = [
 export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
   super_admin: {
     allowed: [
+      '/manage',
       '/facility-management',
       '/admin', '/admin/control', '/admin/organizations', '/admin/users', '/admin/system', '/admin/conflicts',
       // Command-center modules (risk, audit, support, sync, interop, data
@@ -82,12 +83,13 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
 
   org_admin: {
     allowed: [
+      '/manage',
       '/facility-management',
       // No '/org-admin' root: the Org Overview dashboard it served was merged
       // into /facility-management on 2026-08-19. The route still exists as a
       // redirect stub, and leaving it off this list is what makes the Edge
       // proxy send an old bookmark straight to the real dashboard.
-      '/org-admin/users', '/org-admin/hospitals',
+      '/org-admin/users', '/org-admin/hospitals', '/admin/users',
       '/org-admin/branding', '/org-admin/settings', '/org-admin/pricing',
       '/org-admin/analytics',
       '/facility-settings',
@@ -282,6 +284,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     // Restricted". Oversight of these registers is via /reports,
     // /vital-statistics and /data-quality, which this role does have.
     allowed: [
+      '/manage',
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy',
       '/surveillance', '/reports', '/admin/organizations', '/admin/facilities', '/settings', '/settings/manage',
@@ -342,6 +345,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
 
   hospital_manager: {
     allowed: [
+      '/manage',
       // Facility Management is the manager's home dashboard (the former standalone
       // /dashboard/hospital-manager page was merged into it and deleted).
       '/facility-management',

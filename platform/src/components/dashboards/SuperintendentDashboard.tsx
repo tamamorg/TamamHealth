@@ -23,6 +23,7 @@ import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 import Modal from '@/components/Modal';
 import { todayIso } from '@/lib/date-utils';
+import { userWorksAtFacility } from '@/modules/tenancy/client';
 
 
 interface SuperintendentPreview {
@@ -102,7 +103,7 @@ export default function SuperintendentDashboard() {
   }, []);
 
   const facilityUsers = useMemo(
-    () => (facilityId ? users.filter(u => u.hospitalId === facilityId) : users),
+    () => (facilityId ? users.filter(u => userWorksAtFacility(u, facilityId)) : users),
     [users, facilityId],
   );
 

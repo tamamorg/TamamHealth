@@ -203,6 +203,11 @@ export const RAIL_SHORTCUT_COUNT = 4;
 /** How many more the dashboard header strip carries, below the rail's four. */
 export const PAGE_HEADER_NAV_COUNT = 5;
 
+/** Management dashboards already contain task tabs and action queues. */
+const ROLES_WITHOUT_DASHBOARD_NAV_STRIP = new Set<UserRole>([
+  'super_admin', 'org_admin', 'hospital_manager',
+]);
+
 /**
  * The navigations a dashboard promotes into its own header strip: the next
  * rung down the same priority order the rail uses, so the two rows read as one
@@ -222,6 +227,8 @@ export function getPageHeaderNavItems(
   homeHref?: string,
   count = PAGE_HEADER_NAV_COUNT,
 ): NavItem[] {
+  if (role && ROLES_WITHOUT_DASHBOARD_NAV_STRIP.has(role)) return [];
+  if (role === 'medical_superintendent') count = Math.min(count, 2);
   // Ask for both tiers at once and drop the rail's share, so the header picks
   // up exactly where the rail left off with no separate ordering to keep in
   // sync. No over-fetch and no home filter needed: dashboard and home routes

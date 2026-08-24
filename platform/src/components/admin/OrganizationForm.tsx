@@ -215,13 +215,11 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
   const [form, setForm] = useState<OrgFormData>(() => seedForm(editing));
   const [formLoading, setFormLoading] = useState(false);
 
-  // The "Administrator" section's toggle. On create it defaults ON — the
-  // whole point is to collapse "create org" + "go create its admin at
-  // /admin/users" into one step, so the shortcut should be the default, not
-  // an opt-in extra click. On edit it defaults OFF — editing an org's name or
-  // plan must never silently mint a user account; issuing a login is an
-  // explicit, separate decision there.
-  const [createAdmin, setCreateAdmin] = useState(!editing);
+  // Organization and identity writes are separate resumable steps. The setup
+  // checklist makes a missing administrator visible after save, without a
+  // failed account provision turning a successful organization save into an
+  // ambiguous partial failure.
+  const [createAdmin, setCreateAdmin] = useState(false);
   // Password seeded in the mount effect below, not here: this component
   // renders on the server for the /admin/organizations/new page, and a random
   // value in the initializer would hydrate differently than it rendered.

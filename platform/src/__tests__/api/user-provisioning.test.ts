@@ -127,7 +127,9 @@ it('rejects an additional facility owned by another organization', async () => {
     orgId: 'org-a', hospitalId: 'hosp-a', facilityIds: ['hosp-outside'],
   }));
 
-  expect(response.status).toBe(403);
+  expect(response.status).toBe(400);
   expect(mockCreateUser).not.toHaveBeenCalled();
-  expect((await response.json()).error).toMatch(/outside the user's organization/i);
+  expect(await response.json()).toEqual(expect.objectContaining({
+    code: 'FACILITY_NOT_ASSIGNABLE', reason: 'wrong_organization',
+  }));
 });

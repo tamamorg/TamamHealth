@@ -46,7 +46,6 @@ import {
   GitCompareArrows,
   ArrowRightLeft,
   FileText,
-  KeyRound,
   CalendarClock,
   ClipboardList,
 } from '@/components/icons/lucide';
@@ -102,10 +101,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/admin', label: 'Platform Dashboard', icon: Gauge, section: 'COMMAND' },
       { href: '/admin/risk', label: 'Risk Center', icon: ShieldAlert, section: 'COMMAND' },
       { href: '/admin/audit', label: 'Audit Logs', icon: FileText, section: 'COMMAND' },
-      { href: '/admin/organizations', label: 'Organizations', icon: Building2, section: 'TENANTS' },
+      { href: '/manage', label: 'Facilities & People', icon: Building2, section: 'TENANTS' },
       // Account administration is listed once, under PEOPLE & HR below —
       // it was also here under TENANTS, giving one page two nav homes.
       { href: '/admin/announcements', label: 'Announcements', icon: Megaphone, section: 'TENANTS' },
+      { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'TENANTS' },
       // PLATFORM OPERATIONS and GOVERNANCE moved into Settings 2026-08-23.
       // System Health, Sync & Jobs, Interoperability, Data Governance,
       // Security & Compliance, Configuration and Feature Flags were the two
@@ -141,8 +141,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // run — those belong to the roles that employ the people, all of which
       // already have them. The routes stay registered for exactly that reason;
       // only this console stops advertising them.
-      { href: '/admin/users', label: 'User Accounts', icon: KeyRound, section: 'PEOPLE' },
-      { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'PEOPLE' },
     ],
     color: BRAND_SECONDARY,
     gradientFrom: BRAND_DARKER,
@@ -166,7 +164,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // This is staff-to-staff chat. It was labelled "Enquiries", which sent
       // anyone looking for inbound patient enquiries to the wrong screen —
       // those now have their own page, reachable from the People & HR menu.
-      { href: '/admin/organizations', label: 'Organizations', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
+      { href: '/manage', label: 'Facilities & People', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
       { href: '/wards', label: 'Bed Management', icon: BedDouble, section: 'FACILITIES & OPERATIONS' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'FACILITIES & OPERATIONS' },
       // One nav home for the money, same as every other role: /payments and
@@ -183,7 +181,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // workforce area is reachable from the module menu instead of hiding
       // behind a single "Doctors & Staff" link that landed on a roster with
       // no way back out to leave, shifts or payroll.
-      { href: '/org-admin/users', label: 'User Accounts', icon: KeyRound, section: 'PEOPLE & HR' },
       { href: '/hr/leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
       { href: '/hr/schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
       { href: '/hr/payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
@@ -516,7 +513,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // under a 'MORE' heading invented to introduce it.
       { href: '/dashboard', label: 'Hospital Dashboard', icon: LayoutDashboard },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
-      { href: '/admin/organizations', label: 'Organizations', icon: HospitalIcon, section: 'ADMINISTRATION' },
+      { href: '/manage', label: 'Facilities & People', icon: HospitalIcon, section: 'ADMINISTRATION' },
       { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'ADMINISTRATION' },
       { href: '/equipment', label: 'Assets', icon: Package, section: 'ADMINISTRATION' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'ADMINISTRATION' },
@@ -529,7 +526,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // so the row was a second door onto an embedded panel. Both routes stay
       // in allowedRoutes for deep links.
       // PEOPLE & HR — the whole workforce area in one section (see org_admin).
-      { href: '/org-admin/users', label: 'User Accounts', icon: KeyRound, section: 'PEOPLE & HR' },
       { href: '/hr/leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
       { href: '/hr/schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
       { href: '/hr/payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
@@ -634,12 +630,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/epidemic-intelligence', label: 'Epidemic Intelligence', icon: Biohazard, section: 'INTELLIGENCE' },
       { href: '/mch-analytics', label: 'MCH Analytics', icon: HeartPulse, section: 'INTELLIGENCE' },
       { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'INTELLIGENCE' },
-      { href: '/admin/organizations', label: 'Organizations', icon: HospitalIcon, section: 'FACILITY' },
+      { href: '/manage', label: 'Facilities & People', icon: HospitalIcon, section: 'FACILITY' },
       { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'FACILITY' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'FACILITY' },
       { href: '/equipment', label: 'Assets & Equipment', icon: Package, section: 'FACILITY' },
       // PEOPLE & HR — the whole workforce area in one section (see org_admin).
-      { href: '/org-admin/users', label: 'User Accounts', icon: KeyRound, section: 'PEOPLE & HR' },
       { href: '/hr/leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
       { href: '/hr/schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
       { href: '/hr/payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },

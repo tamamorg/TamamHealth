@@ -19,6 +19,7 @@
     "setup:couchdb:validators": "node --import tsx scripts/install-validate-doc-updates.mjs",
     "db:migrate:couchdb-tenants": "node --import tsx scripts/migrate-couchdb-to-tenant-databases.mjs",
     "db:verify:couchdb-tenants": "node --import tsx scripts/verify-couchdb-tenant-migration.mjs",
+    "db:audit:demo-artifacts": "node scripts/audit-production-demo-artifacts.mjs",
     "db:strip-totp": "node --import tsx scripts/strip-totp-fields.mjs",
     "docs:api": "typedoc",
     "i18n:check": "node scripts/check-i18n.mjs"

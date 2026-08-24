@@ -29,9 +29,7 @@ export const SETTINGS_HOSTED_ROUTES: Record<string, string> = {
   '/system-admin': 'sysadmin-apps',
   '/it': 'sysadmin-itops',
   '/facility-settings': 'facility-config',
-  '/settings/manage': 'manage-screen',
-  '/org-admin/users': 'org-people-editor',
-  '/org-admin/hospitals': 'org-facilities-editor',
+  '/settings/manage': 'facility-config',
   '/org-admin/branding': 'org-branding-editor',
   '/org-admin/pricing': 'org-billing-editor',
 };

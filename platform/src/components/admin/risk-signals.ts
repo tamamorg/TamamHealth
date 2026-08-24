@@ -63,6 +63,12 @@ export const SEVERITY_ORDER: Record<SaSeverity, number> = { critical: 0, high: 1
 /** Readiness cost of leaving one risk open, by severity. */
 export const SEVERITY_WEIGHT: Record<SaSeverity, number> = { critical: 12, high: 8, medium: 5, low: 2 };
 
+/** A single noisy subsystem can lower readiness by at most this many points. */
+export const READINESS_SOURCE_CAP = 30;
+
+/** Controls how quickly repeated risks from one source approach the cap. */
+const READINESS_CURVE_SCALE = 26;
+
 /** Failed audit entries older than this are no longer treated as open risk. */
 const AUDIT_WINDOW_MS = 7 * 24 * 3600 * 1000;
 
@@ -194,15 +200,28 @@ export function buildRiskRows(input: RiskInputs): RiskRow[] {
 }
 
 /**
- * Platform readiness, 0–100, as the cost of everything still open.
+ * Platform readiness, 0–100, as the cost of the subsystems with open risk.
  *
  * Previously each screen scored readiness from its own mix of raw counts, which
  * meant resolving a risk in the Risk Center could not move the dashboard donut
  * — the donut was not counting risks, it was counting sources. Scoring the open
  * rows makes the two agree by construction: the number on the dashboard is the
- * queue on the Risk Center page.
+ * queue on the Risk Center page. Within each source, repeated rows have
+ * diminishing impact and a hard cap. This keeps a large conflict backlog
+ * visible without allowing it to erase otherwise healthy independent signals.
  */
 export function readinessFromRisks(openRows: RiskRow[]): number {
-  const cost = openRows.reduce((sum, r) => sum + SEVERITY_WEIGHT[r.severity], 0);
+  const weightedBySource = new Map<RiskSource, number>();
+  for (const row of openRows) {
+    weightedBySource.set(
+      row.source,
+      (weightedBySource.get(row.source) ?? 0) + SEVERITY_WEIGHT[row.severity]
+    );
+  }
+
+  const cost = Array.from(weightedBySource.values()).reduce((sum, sourceWeight) => {
+    const curved = READINESS_SOURCE_CAP * (1 - Math.exp(-sourceWeight / READINESS_CURVE_SCALE));
+    return sum + Math.min(READINESS_SOURCE_CAP, Math.round(curved));
+  }, 0);
   return Math.max(0, Math.min(100, 100 - cost));
 }

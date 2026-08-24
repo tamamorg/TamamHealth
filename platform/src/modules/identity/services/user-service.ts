@@ -88,7 +88,13 @@ async function postUsersApi(payload: Record<string, unknown>): Promise<Record<st
   }
   const body = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {
-    throw new Error((body.error as string) || `User request failed (${res.status})`);
+    const error = new Error((body.error as string) || `User request failed (${res.status})`) as Error & {
+      code?: string; reason?: string; facilityId?: string;
+    };
+    error.code = typeof body.code === 'string' ? body.code : undefined;
+    error.reason = typeof body.reason === 'string' ? body.reason : undefined;
+    error.facilityId = typeof body.facilityId === 'string' ? body.facilityId : undefined;
+    throw error;
   }
   return body;
 }

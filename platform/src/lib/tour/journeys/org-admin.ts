@@ -6,7 +6,7 @@ import { finishStep, messagingStep } from './_shared';
 // router.replace()s to /settings — see that page's own comment) — routing a
 // tour step there would fight the redirect every time pathname changes, so
 // the "org settings" stop below targets /settings directly, where the
-// Organization nav group (Profile, Branding, Facilities, People, Billing,
+// Organization nav group (Profile, Branding, Billing,
 // Security…) actually lives now.
 export const ORG_ADMIN_STEPS: TourStep[] = [
   {
@@ -39,7 +39,7 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
   },
   {
     id: 'hospitals',
-    route: '/org-admin/hospitals',
+    route: '/manage',
     target: '[data-tour="org-hospitals-table"]',
     title: 'Your facilities',
     body: 'Every hospital, clinic, and health post in your organization, with beds and today’s visits at a glance.',
@@ -47,27 +47,16 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
   },
   {
     id: 'hospitals-add',
-    route: '/org-admin/hospitals',
+    route: '/manage',
     target: '[data-tour="org-hospitals-add"]',
     title: 'Onboard a new facility',
     body: 'Name, state, town, and facility type — a new site is ready to assign staff and price services against as soon as it’s created.',
     placement: 'left',
   },
   {
-    // The registry above lists the facilities; this is where one is worked.
-    // Staff, wards, equipment, inventory, schedules, performance and settings
-    // used to be a separate screen behind a Manage button — they are tabs on
-    // the facility itself now, which is why the tour can point at them.
-    id: 'facility-tabs',
-    route: '/admin/organizations',
-    target: '[data-tour="facility-row-tabs"]',
-    placement: 'left',
-    title: 'Inside one facility',
-    body: 'Open a facility for its record, and the tabs beside it — Staff, Wards, Equipment, Inventory, Schedules, Performance, Settings. This gear skips the trip: pick a tab and the facility opens straight on it.',
-  },
-  {
     id: 'users',
-    route: '/org-admin/users',
+    route: '/manage',
+    preClickSelector: '[data-tour="manage-tab-people"]',
     target: '[data-tour="org-users-list"]',
     title: 'Staff accounts',
     body: 'Every account in the organization: create staff, reset passwords, deactivate. New accounts are provisioned centrally with a temporary password the user must change at first login — so they can sign in on any device.',
@@ -75,7 +64,8 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
   },
   {
     id: 'users-create',
-    route: '/org-admin/users',
+    route: '/manage',
+    preClickSelector: '[data-tour="manage-tab-people"]',
     target: '[data-tour="org-users-create-btn"]',
     title: 'Add a staff member',
     body: 'Set their name, role, and hospital — the temporary password shown after creating is theirs to change at first login. The same dialog opens from a facility\u2019s Staff tab with that facility already filled in, which is the shorter route when you are hiring into one site.',
@@ -110,17 +100,8 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
     route: '/settings',
     target: '.ehr-set-nav',
     title: 'Organization settings, all in one place',
-    body: 'Profile, subscription, branding, modules, facilities, people, billing, security policy, and integrations — the full org configuration lives under this Organization section of Settings.',
+    body: 'Profile, subscription, branding, modules, billing, security policy, and integrations live here. Facilities and people stay in Management, so each job has one home.',
     placement: 'right',
-  },
-  {
-    id: 'facility-sync',
-    route: '/settings/manage',
-    target: '[data-tour="settings-sync-panel"]',
-    preClickSelector: '[data-tour="settings-tab-sync"]',
-    title: 'Facility Sync to the national HMIS',
-    body: 'Push each facility’s data to DHIS2 from here, and watch what was included in the last push — separate from the org-wide picture on Org Overview and Analytics.',
-    placement: 'top',
   },
   messagingStep('/facility-management'),
   finishStep('/facility-management'),

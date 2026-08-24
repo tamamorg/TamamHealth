@@ -34,6 +34,7 @@ import FacilityManageTabs, {
 } from '@/components/facilities/FacilityManageTabs';
 import type { DataScope } from '@/lib/services/data-scope';
 import type { HospitalDoc, UserRole } from '@/lib/db-types';
+import { userWorksAtFacility } from '@/modules/tenancy/client';
 
 // Roles that can work a facility (Staff, Wards, Equipment, Inventory,
 // Schedules, Performance, Settings). Those tabs live on this page now — the
@@ -604,7 +605,7 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
       try {
         const { getAllUsers } = await import('@/modules/identity/services/user-service');
         const all = await getAllUsers(scope);
-        if (!cancelled) setStaffAccounts(all.filter(u => u.hospitalId === hospital._id).length);
+        if (!cancelled) setStaffAccounts(all.filter(u => userWorksAtFacility(u, hospital._id)).length);
       } catch {
         // A roster that cannot be read is not a roster of zero — leave it
         // unknown rather than reporting an absence the query never proved.

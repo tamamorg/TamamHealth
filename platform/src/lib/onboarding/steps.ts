@@ -61,6 +61,7 @@ export const ROUTE_GUIDE: Record<string, { verb: string; desc: string; est?: num
   '/surveillance': { verb: 'Report disease surveillance', desc: 'File a case or outbreak alert and watch community disease trends.', est: 2 },
   '/my-facility': { verb: 'Review your facility profile', desc: 'Confirm your facility’s details, beds, services, and staff.', est: 2 },
   '/reports': { verb: 'Run a report', desc: 'Generate the routine reports your role is responsible for.', est: 2 },
+  '/manage': { verb: 'Set up facilities and people', desc: 'Manage the organization structure, register facilities, and create staff accounts from one workspace.', est: 3 },
   // Read-only for most roles; for super_admin and org_admin this page also
   // hosts the create-a-facility dialog, and registering the first facility is
   // the step every staff account depends on (`roleNeedsFacility`).

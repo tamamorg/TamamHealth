@@ -23,10 +23,9 @@ import {
   generateTempPassword, roleNeedsFacility, roleNeedsOrganization,
   usePasswordPolicy, validateUserScope,
 } from '@/modules/identity/client';
+import { useAssignableFacilities } from '@/modules/tenancy/client';
 import type { InvitationOutcome } from '@/modules/identity/client';
 import { canCreateFacilities } from '@/lib/people-nav';
-import { activeFacilities } from '@/lib/services/hospital-service';
-import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -61,21 +60,35 @@ const ROLE_OPTIONS: UserRole[] = [
 
 const EMPTY = {
   name: '', username: '', email: '', password: '',
-  role: 'nurse' as UserRole, orgId: '', hospitalId: '',
+  role: 'nurse' as UserRole, orgId: '', hospitalId: '', facilityIds: [] as string[],
 };
 
-export function UserForm({ onCancel, onSaved }: {
+export interface UserFormProps {
   onCancel: () => void;
   /** Fires after the account exists. `handoff` carries the one-time password. */
   onSaved: (result: { user: UserDoc; handoff: UserCredentialHandoff }) => void;
-}) {
+  presetOrgId?: string;
+  presetHospitalId?: string;
+  lockOrganization?: boolean;
+  lockFacility?: boolean;
+  onAddFacility?: () => void;
+}
+
+export function UserForm({
+  onCancel, onSaved, presetOrgId = '', presetHospitalId = '',
+  lockOrganization = false, lockFacility = false, onAddFacility,
+}: UserFormProps) {
   const { t } = useTranslation();
   const { currentUser } = useApp();
-  const { hospitals } = useHospitals();
   const { organizations } = useOrganizations();
   const { minLength: MIN_PASSWORD_LENGTH, tempLength } = usePasswordPolicy();
 
-  const [form, setForm] = useState(() => ({ ...EMPTY, password: generateTempPassword(tempLength) }));
+  const [form, setForm] = useState(() => ({
+    ...EMPTY,
+    orgId: presetOrgId || currentUser?.orgId || '',
+    hospitalId: presetHospitalId,
+    password: generateTempPassword(tempLength),
+  }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(true);
@@ -85,12 +98,16 @@ export function UserForm({ onCancel, onSaved }: {
   const needsOrg = roleNeedsOrganization(form.role);
   const needsFacility = roleNeedsFacility(form.role);
 
-  const facilityChoices = useMemo(
-    // Retired facilities keep their records and stay readable, but nothing new
-    // is assigned to them — staffing a closed site is what retiring it stops.
-    () => (form.orgId ? activeFacilities(hospitals.filter(h => h.orgId === form.orgId)) : []),
-    [hospitals, form.orgId],
-  );
+  const {
+    facilities: facilityChoices,
+    loading: facilitiesLoading,
+    error: facilitiesError,
+    reload: reloadFacilities,
+  } = useAssignableFacilities(form.orgId);
+  const organizationChoices = useMemo(() => currentUser?.role === 'super_admin'
+    ? organizations
+    : organizations.filter(org => org._id === currentUser?.orgId),
+  [currentUser?.orgId, currentUser?.role, organizations]);
 
   /**
    * Changing the role changes what scope is required, so a stale facility from
@@ -100,7 +117,12 @@ export function UserForm({ onCancel, onSaved }: {
    */
   const changeRole = (role: UserRole) => {
     setError(null);
-    setForm(f => ({ ...f, role, hospitalId: roleNeedsFacility(role) ? f.hospitalId : '' }));
+    setForm(f => ({
+      ...f,
+      role,
+      hospitalId: roleNeedsFacility(role) ? f.hospitalId : '',
+      facilityIds: roleNeedsFacility(role) ? f.facilityIds : [],
+    }));
   };
 
   const submit = async () => {
@@ -124,6 +146,10 @@ export function UserForm({ onCancel, onSaved }: {
       setError(scopeError);
       return;
     }
+    if (needsFacility && facilitiesError) {
+      setError(t('management.assignmentOptionsUnavailable'));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -132,7 +158,7 @@ export function UserForm({ onCancel, onSaved }: {
       // can tell the operator whether a link was mailed or a password must be
       // read out.
       const { createUserWithInvitation } = await import('@/modules/identity/services/user-service');
-      const hospital = hospitals.find(h => h._id === form.hospitalId);
+      const hospital = facilityChoices.find(h => h._id === form.hospitalId);
       const { user, invitation } = await createUserWithInvitation({
         name: form.name.trim(),
         username: form.username.trim(),
@@ -142,6 +168,7 @@ export function UserForm({ onCancel, onSaved }: {
         orgId: form.orgId || undefined,
         hospitalId: form.hospitalId || undefined,
         hospitalName: hospital?.name,
+        facilityIds: form.facilityIds,
       });
       onSaved({ user, handoff: { username: user.username, password: form.password, invitation } });
     } catch (err) {
@@ -225,7 +252,8 @@ export function UserForm({ onCancel, onSaved }: {
             <span className="uf-label">{t('adminUsers.colOrganization')}{needsOrg ? ' *' : ''}</span>
             <Select
               value={form.orgId} className="uf-input"
-              onChange={e => setForm(f => ({ ...f, orgId: e.target.value, hospitalId: '' }))}
+              disabled={lockOrganization}
+              onChange={e => setForm(f => ({ ...f, orgId: e.target.value, hospitalId: '', facilityIds: [] }))}
             >
               {/* "None" is only an option for the platform and national roles
                   that genuinely have no tenant — offering it to a facility role
@@ -233,7 +261,7 @@ export function UserForm({ onCancel, onSaved }: {
               <option value="">
                 {needsOrg ? t('adminUsers.selectOrganization') : t('adminUsers.noOrganization')}
               </option>
-              {organizations.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
+              {organizationChoices.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
             </Select>
           </div>
           {/* Organisation-wide roles (org_admin, government, county health
@@ -242,9 +270,21 @@ export function UserForm({ onCancel, onSaved }: {
           {needsFacility && (
             <div className="uf-field">
               <span className="uf-label">{t('adminUsers.colHospital')} *</span>
-              {facilityChoices.length > 0 ? (
+              {facilitiesLoading ? (
+                <div className="uf-nofacility" data-field="facilities-loading">
+                  <p>{t('management.loadingAssignmentOptions')}</p>
+                </div>
+              ) : facilitiesError ? (
+                <div className="uf-nofacility" data-field="facilities-error" role="alert">
+                  <p>{t('management.assignmentOptionsUnavailable')}</p>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => void reloadFacilities()}>
+                    <RefreshCw className="w-4 h-4" /> {t('management.retry')}
+                  </button>
+                </div>
+              ) : facilityChoices.length > 0 ? (
                 <Select
                   value={form.hospitalId} className="uf-input"
+                  disabled={lockFacility}
                   onChange={e => setForm(f => ({ ...f, hospitalId: e.target.value }))}
                 >
                   <option value="">{t('adminUsers.selectFacility')}</option>
@@ -259,7 +299,7 @@ export function UserForm({ onCancel, onSaved }: {
                       {canCreateFacilities(currentUser?.role ?? '') && (
                         <button
                           type="button" className="btn btn-secondary btn-sm"
-                          onClick={() => setShowAddFacility(true)}
+                          onClick={() => onAddFacility ? onAddFacility() : setShowAddFacility(true)}
                           data-action="add-facility-inline"
                         >
                           <Building2 className="w-4 h-4" /> {t('adminUsers.addAFacility')}
@@ -271,6 +311,29 @@ export function UserForm({ onCancel, onSaved }: {
               )}
             </div>
           )}
+          {needsFacility && form.hospitalId && facilityChoices.some(h => h._id !== form.hospitalId) && (
+            <fieldset className="uf-field uf-facility-grants">
+              <legend className="uf-label">{t('orgUsers.additionalFacilities')}</legend>
+              <small className="uf-hint">{t('orgUsers.additionalFacilitiesHint')}</small>
+              <div className="uf-checklist">
+                {facilityChoices.filter(h => h._id !== form.hospitalId).map(hospital => (
+                  <label key={hospital._id} className="uf-checkrow">
+                    <input
+                      type="checkbox"
+                      checked={form.facilityIds.includes(hospital._id)}
+                      onChange={event => setForm(current => ({
+                        ...current,
+                        facilityIds: event.target.checked
+                          ? [...new Set([...current.facilityIds, hospital._id])]
+                          : current.facilityIds.filter(id => id !== hospital._id),
+                      }))}
+                    />
+                    <span>{hospital.name}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
         </section>
 
         {error && <p className="uf-error" role="alert">{error}</p>}
@@ -279,7 +342,7 @@ export function UserForm({ onCancel, onSaved }: {
           <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={saving}>
             {t('action.cancel')}
           </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={submit} disabled={saving}>
+          <button type="button" className="btn btn-primary btn-sm" onClick={submit} disabled={saving || (needsFacility && facilitiesLoading)}>
             {saving ? t('adminUsers.creating') : t('adminUsers.createUser')}
           </button>
         </div>
@@ -293,6 +356,7 @@ export function UserForm({ onCancel, onSaved }: {
           onCreated={hospital => {
             setShowAddFacility(false);
             setForm(f => ({ ...f, hospitalId: hospital._id }));
+            void reloadFacilities();
           }}
         />
       )}

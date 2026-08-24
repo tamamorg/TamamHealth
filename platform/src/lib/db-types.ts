@@ -9,6 +9,8 @@ export interface BaseDoc {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  /** Explicit provenance for records created by the opt-in demo seed. */
+  dataOrigin?: 'demo_seed';
   /**
    * Device-local sync lifecycle. This is separate from domain fields named
    * `syncStatus` (for example facility online/offline status) and is safe to

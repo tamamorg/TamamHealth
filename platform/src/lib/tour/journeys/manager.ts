@@ -34,7 +34,7 @@ export const MANAGER_STEPS: TourStep[] = [
   },
   {
     id: 'hospitals',
-    route: '/admin/organizations',
+    route: '/manage',
     // Not anchored: the network list runs to dozens of rows, so centering it
     // scrolls deep into the table and the card can end up off-screen. A
     // narrative card is the stable choice for a list this long.

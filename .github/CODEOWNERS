@@ -77,6 +77,7 @@
 /platform/src/modules/identity/core/            @makuachteny
 /platform/src/modules/identity/policy/          @makuachteny
 /platform/src/modules/identity/provisioning/    @makuachteny
+/platform/src/modules/tenancy/                 @makuachteny
 /platform/src/lib/field-encryption.ts           @makuachteny
 /platform/src/lib/config-validation.ts          @makuachteny
 /fingerprint-bridge/                            @makuachteny
