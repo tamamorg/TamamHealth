@@ -157,6 +157,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     // Settings so org admins do not see duplicate management surfaces.
     navItems: [
       { href: '/facility-management', label: 'Dashboard', icon: Gauge },
+      // The three inbound queues (inquiries, pending leave, available staff)
+      // left the dashboard for their own page on 2026-08-24 — a surface you
+      // work, not a card you glance at.
+      { href: '/facility-management/queue', label: 'Work Queue', icon: ClipboardList },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
       // The separate /org-admin "Org Overview" dashboard was merged into this
       // one on 2026-08-19 and deleted, so the org admin has one home rather
@@ -626,6 +630,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     allowedRoutes: [...ROLE_ROUTE_TABLE.hospital_manager.allowed],
     navItems: [
       { href: '/facility-management', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/facility-management/queue', label: 'Work Queue', icon: ClipboardList },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
       { href: '/epidemic-intelligence', label: 'Epidemic Intelligence', icon: Biohazard, section: 'INTELLIGENCE' },
       { href: '/mch-analytics', label: 'MCH Analytics', icon: HeartPulse, section: 'INTELLIGENCE' },

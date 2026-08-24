@@ -29135,9 +29135,9 @@ table.patient-data-table.patient-data-table {
 }
 .sadb-head-link:hover { color: var(--accent-hover); }
 
-/* Card-head tabs — one card, two lists (roster / account requests). Pill
-   shapes rather than underlines: the head is a 12px condensed strip, and an
-   underline there would read as a second border under the card head. */
+/* Card-head tabs. Pill shapes rather than underlines: the head is a 12px
+   condensed strip, and an underline there would read as a second border
+   under the card head. */
 .sadb-tabs {
   display: flex;
   align-items: center;
@@ -31846,8 +31846,6 @@ button.sadb-signal { cursor: pointer; }
 .mgmt-tabs button.active { border-bottom-color: var(--accent-primary); color: var(--accent-text); }
 /* Which people list — sized to its label, so the search keeps the rest of
    the line (`.sadb-search-row > select` already sets the shared height). */
-.mgmt-mode-select { flex: 0 0 auto; width: auto; min-width: 172px; padding: 0 30px 0 12px; border: 1px solid var(--border-light); border-radius: 8px; background-color: var(--ehr-head); color: var(--text-primary); font-size: 12.5px; font-weight: 700; }
-.mgmt-mode-select:focus { border-color: var(--brand-400); outline: none; }
 .mgmt-form-modal { max-height: min(82vh, 850px); overflow-y: auto; }
 .mgmt-user-modal .uf-form { padding-top: 4px; }
 .uf-facility-grants { border: 0; padding: 0; }
@@ -31861,4 +31859,63 @@ button.sadb-signal { cursor: pointer; }
 }
 @media (max-width: 760px) {
   .uf-checklist { grid-template-columns: 1fr; }
+}
+
+/* ============ Facility work queue (fmq-*) ================================
+   /facility-management/queue — the three inbound queues that used to be the
+   last card on the Facility Management dashboard.
+
+   Almost all of this page is the shared admin kit (sadb-*); what is here is
+   only the part the kit does not do on its own: making the queue panel claim
+   the page's height. A queue is read top-to-bottom and worked through, so it
+   should end where the viewport does and scroll inside itself — as a card
+   that sized to its content, an empty queue was one line of text over a
+   screenful of nothing, which is what moved it off the dashboard.
+
+   Scoped `fmq-` per the stylesheet's two traps (the bare `label` rule and the
+   global `svg.lucide` recolour). Tokens only.
+   ------------------------------------------------------------------------ */
+
+/* `.sadb-page > *` pins every console block to its content height; the queue
+   shell is the one child that wants the leftover space, so the page has to
+   have some to give. */
+.sadb-page:has(> .fmq-shell) { min-height: 100%; }
+.fmq-shell {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 360px;
+}
+.fmq-shell .sadb-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* The kit's shell tops-aligns its two columns; here the rail runs the full
+     height beside the panel, the way the super-admin settings rail does. */
+  align-items: stretch;
+}
+.fmq-shell .sadb-shell-main { min-height: 0; }
+.fmq-panel { flex: 1 1 auto; min-height: 0; }
+
+/* What this queue is, under its search box — one line, so the panel says what
+   it holds before the first row rather than only in the rail. */
+.fmq-note {
+  padding: 0 14px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* An empty queue is the common case for a well-worked one, so it is centred
+   in the panel with its way out, rather than left hanging under the head. */
+.fmq-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100%;
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
 }

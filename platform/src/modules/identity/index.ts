@@ -83,12 +83,6 @@ export {
   ORG_REQUIRED_MESSAGE, FACILITY_REQUIRED_MESSAGE,
 } from './policy/user-scope-rules';
 export { STAFF_DIRECTORY_READ_ROLES, canReadStaffDirectory } from './policy/staff-directory-access';
-export {
-  PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES, ROLES_REQUIRING_REGISTRATION,
-  ACCOUNT_REQUEST_ROLES_WITHOUT_FACILITY, IDENTITY_ATTESTATION_METHODS,
-  isRequestableRole, approverTierFor, accountRequestRoleNeedsFacility,
-  accountRequestFacilityMatchesOrg, roleRequiresRegistrationNumber, isValidAttestation,
-} from './policy/account-request-roles';
 
 // ── Provisioning ────────────────────────────────────────────────────────────
 export {
@@ -138,9 +132,3 @@ export {
 // ── Email this domain sends ─────────────────────────────────────────────────
 export { sendWelcomeEmail, renderWelcomeEmail, type WelcomeEmailInput } from './email/user-welcome';
 export { sendPasswordResetEmail, renderPasswordResetEmail, type PasswordResetEmailInput } from './email/password-reset';
-export {
-  sendAccountRequestVerifyEmail, renderAccountRequestVerifyEmail, type AccountRequestVerifyInput,
-} from './email/account-request-verify';
-export {
-  sendAccountRequestAlertEmail, renderAccountRequestAlertEmail, type AccountRequestAlertInput,
-} from './email/account-request-alert';

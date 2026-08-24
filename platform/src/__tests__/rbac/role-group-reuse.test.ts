@@ -97,7 +97,6 @@ describe('the groups are usable from a route at all', () => {
     const migrated = [
       'users/route.ts', 'prescriptions/route.ts', 'medical-records/route.ts',
       'medical-records/[id]/route.ts', 'organizations/route.ts',
-      'account-requests/route.ts', 'account-requests/[id]/route.ts',
       'usage/events/route.ts', 'usage/summary/route.ts',
     ];
     for (const rel of migrated) {

@@ -442,11 +442,6 @@ export default function LoginPage() {
 
           <div className="lg-links">
             <a href="/patient-portal">{t('login.patientPortal')}</a>
-            {/* A mailto asked someone with no account to compose an email to
-                an address that cannot verify them, and the reply was a human
-                copying a password into a message. This goes to a form whose
-                answer is an account, routed to whoever is allowed to grant it. */}
-            <a href="/request-account">{t('login.requestAccount')}</a>
             {/* The string for this existed in both locales from the day the
                 login page shipped and was rendered nowhere, because there was
                 no flow behind it: every forgotten password was an

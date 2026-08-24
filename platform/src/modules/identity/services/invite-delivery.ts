@@ -1,18 +1,14 @@
 /**
  * Getting a set-your-password link to the person who needs it.
  *
- * This lived inside `POST /api/users` as a local function, which meant only
- * ONE of the two ways an account can be created ever sent an invitation. The
- * other — approving an account request — called `createUser` directly and
- * handed the approver a temporary password to relay by phone, even though the
- * requester had typed their email address into the form for exactly this
- * purpose. Two provisioning entry points had already been collapsed onto one
- * write path; this collapses them onto one delivery path too.
+ * This lived inside `POST /api/users` as a local function, so it served only
+ * the caller it happened to sit in and every other path handed out a temporary
+ * password to relay by phone. Pulling it out gave the provisioning entry points
+ * one delivery path, the way they already shared one write path.
  *
- * Three callers now share it:
- *   - `POST /api/users`                    — an administrator creates an account
- *   - `POST /api/account-requests/:id`     — an approver grants a request
- *   - `POST /api/auth/forgot-password`     — a user asks to set a new password
+ * Two callers share it:
+ *   - `POST /api/users`                — an administrator creates an account
+ *   - `POST /api/auth/forgot-password` — a user asks to set a new password
  *
  * It never throws. A mail gateway that is down, unconfigured, or missing a
  * base URL must not fail account creation: the account is the thing that

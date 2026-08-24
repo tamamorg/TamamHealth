@@ -105,7 +105,6 @@ export default function ForgotPasswordPage() {
 
               <div className="lg-links">
                 <Link href="/login">{t('forgotPassword.backToSignIn')}</Link>
-                <Link href="/request-account">{t('login.requestAccount')}</Link>
               </div>
 
               <span className="lg-offline">{t('forgotPassword.noEmailNote')}</span>

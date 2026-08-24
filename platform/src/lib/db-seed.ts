@@ -2103,8 +2103,7 @@ async function seedDatabaseExclusive(): Promise<void> {
   // shared users database on the server and nothing else, so a locally hashed
   // password would authenticate nobody. They exist as staff RECORDS — the
   // names, roles and facilities the seeded clinical data refers to — and the
-  // accounts that can actually sign in are created by an administrator or by
-  // approving an account request.
+  // accounts that can actually sign in are created by an administrator.
   const db = usersDB();
   let userIdx = 0;
   for (const u of defaultUsers) {

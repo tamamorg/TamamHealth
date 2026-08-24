@@ -42,12 +42,6 @@ export {
   ORG_REQUIRED_MESSAGE, FACILITY_REQUIRED_MESSAGE,
 } from './policy/user-scope-rules';
 export { STAFF_DIRECTORY_READ_ROLES, canReadStaffDirectory } from './policy/staff-directory-access';
-export {
-  PLATFORM_APPROVAL_ROLES, REQUESTABLE_ROLES, ROLES_REQUIRING_REGISTRATION,
-  ACCOUNT_REQUEST_ROLES_WITHOUT_FACILITY, IDENTITY_ATTESTATION_METHODS,
-  isRequestableRole, approverTierFor, accountRequestRoleNeedsFacility,
-  accountRequestFacilityMatchesOrg, roleRequiresRegistrationNumber, isValidAttestation,
-} from './policy/account-request-roles';
 
 // ── Invitation state, without the token ─────────────────────────────────────
 // `invite-window` is the crypto-free half of the invitation: how long one
@@ -110,5 +104,4 @@ export { usePasswordPolicy } from './hooks/usePasswordPolicy';
 export { default as ForcePasswordChange } from './components/ForcePasswordChange';
 export { default as CreateUserModal, type CreatedCredentials } from './components/CreateUserModal';
 export { default as CredentialHandoffModal, formatCredentialHandoffText } from './components/CredentialHandoffModal';
-export { default as AccountRequestQueue } from './components/AccountRequestQueue';
 export { default as BulkUserImportModal } from './components/BulkUserImportModal';

@@ -27,8 +27,10 @@ describe('role dashboard preview links', () => {
   it.each([
     ['app/(dashboard)/admin/security/page.tsx', 'log=', 'app/(dashboard)/admin/audit/page.tsx', "get('log')"],
     ['components/dashboards/SuperintendentDashboard.tsx', 'alert=', 'app/(dashboard)/surveillance/page.tsx', "get('alert')"],
-    ['components/dashboards/FacilityManagementDashboard.tsx', 'inquiry=', 'app/(dashboard)/inquiries/page.tsx', "get('inquiry')"],
-    ['components/dashboards/FacilityManagementDashboard.tsx', 'request=', 'app/(dashboard)/hr/leave/page.tsx', "get('request')"],
+    // The queue left the Facility Management dashboard for its own page on
+    // 2026-08-24; the deep links moved with it.
+    ['app/(dashboard)/facility-management/queue/page.tsx', 'inquiry=', 'app/(dashboard)/inquiries/page.tsx', "get('inquiry')"],
+    ['app/(dashboard)/facility-management/queue/page.tsx', 'request=', 'app/(dashboard)/hr/leave/page.tsx', "get('request')"],
     ['app/(dashboard)/dashboard/state/page.tsx', 'county=', 'components/facilities/FacilityNetworkView.tsx', "get('county')"],
   ])('pairs the %s deep link with a consuming target', (producer, emittedParam, consumer, consumedParam) => {
     expect(source(producer)).toContain(emittedParam);
@@ -36,8 +38,8 @@ describe('role dashboard preview links', () => {
   });
 
   it('focuses staff accounts in the shared people workspace', () => {
-    const dashboard = source('components/dashboards/FacilityManagementDashboard.tsx');
-    expect(dashboard).toContain("withFocus(staffListHref, 'user'");
+    const queue = source('app/(dashboard)/facility-management/queue/page.tsx');
+    expect(queue).toContain("withFocus(staffListHref, 'user'");
     expect(source('modules/tenancy/components/ManagementWorkspace.tsx')).toContain("params.get('user')");
   });
 

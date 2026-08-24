@@ -12,9 +12,6 @@
  * still compose it.
  *
  * Everything the old shell did is still here, re-homed:
- *  • the three queue tabs (Inquiries / Pending Leave / Active Staff) with
- *    quick triage — a row opens a detail dialog carrying the inquiry status
- *    ladder and the approve/reject pair, mirroring /inquiries and /hr/leave;
  *  • the clickable Facility Overview metrics — now KPI tiles (staffing and
  *    census) plus a Today's Operations card (the day-scoped figures), both
  *    keeping the ?preview= deep-linked FacilityMetricPreviewDialog;
@@ -23,6 +20,14 @@
  * Dropped deliberately: the mini-calendar and day filtering — both were
  * already inert here (`filterRowsByDate={false}`; neither queue is a single
  * day's schedule).
+ *
+ * The three queue tabs (Inquiries / Pending Leave / Active Staff) left this
+ * page on 2026-08-24 for /facility-management/queue — a work queue is a
+ * surface you WORK, and as the dashboard's last card it spent a screen of
+ * whitespace saying "No recent inquiries". The dashboard keeps the counts
+ * (KPI tiles and Today's Operations); the rows, the search and the triage
+ * dialogs live on the queue's own page. `buildFacilityOverview` still returns
+ * the rows — it is the tested combiner both surfaces are defined against.
  *
  * The user-management table that predated all of this stays gone: accounts
  * are managed on /org-admin/users (or /admin/users); this screen previews
@@ -44,22 +49,21 @@ import { useWards } from '@/lib/hooks/useWards';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
 import { censusFor } from '@/lib/services/facility-census';
-import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
-import Select from '@/components/Select';
 import {
-  SadbPage, SadbCard, SadbTabs, SadbSearch, SadbKpiTile, SadbKvRow,
-  SadbChip, SadbQueueRow, SadbGridList, SadbGridRow, SadbHeadLink, type ChipTone,
+  SadbPage, SadbCard, SadbKpiTile, SadbKvRow,
+  SadbChip, SadbGridList, SadbGridRow, SadbHeadLink,
 } from '@/components/admin/sadb-ui';
 import { toIsoDate } from '@/lib/date-utils';
 import { formatMoney, titleCase } from '@/lib/format-utils';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import { usersHrefForRole } from '@/lib/people-nav';
-import { ROLE_LABEL } from '@/lib/role-display';
+import { summariseEnquiries, getPatientEnquiries } from '@/lib/services/enquiry-service';
 import {
-  ENQUIRY_STATUS_LABELS, ENQUIRY_STATUSES, deriveEnquiryStatus, enquiryType, enquiryAssignee,
-  summariseEnquiries, getPatientEnquiries, type EnquiryStatus,
-} from '@/lib/services/enquiry-service';
+  activeStaffOf, buildInquiryRows, buildPendingLeaveRows, buildStaffRows,
+  INQUIRY_DIGEST_LIMIT, INQUIRY_SEARCH_LIMIT,
+  type FacilityInquiryRow, type FacilityLeaveRow, type FacilityStaffRow,
+} from '@/lib/facility-work-queue';
 import type { MessageDoc, UserDoc, PatientDoc, StaffScheduleDoc, HospitalDoc } from '@/lib/db-types';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 
@@ -112,23 +116,6 @@ interface StaffingGap {
   currentStaff: number;
 }
 
-function formatClockTimeOrUndefined(iso?: string): string | undefined {
-  if (!iso) return undefined;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
-
-/** Inquiry ladder → the kit's chip tones. */
-function enquiryChipTone(status: EnquiryStatus): ChipTone {
-  switch (status) {
-    case 'new': return 'yellow';
-    case 'contacted': return 'blue';
-    case 'appointment_scheduled': return 'green';
-    case 'closed': return 'neutral';
-    default: return 'neutral';
-  }
-}
-
 const DOCTOR_ROLES = new Set(['doctor', 'clinical_officer', 'clinician']);
 const NURSE_ROLES = new Set(['nurse', 'midwife']);
 
@@ -163,13 +150,6 @@ export interface FacilityOverviewMetric {
   value: number | string;
   href: string;
   tone?: 'neutral' | 'warning' | 'danger' | 'success';
-}
-
-function withFocus(href: string, key: string, value: string): string {
-  const [path, query = ''] = href.split('?');
-  const params = new URLSearchParams(query);
-  params.set(key, value);
-  return `${path}?${params.toString()}`;
 }
 
 function FacilityMetricPreviewDialog({ metric, onClose, onOpen }: {
@@ -209,42 +189,10 @@ function FacilityMetricPreviewDialog({ metric, onClose, onOpen }: {
   );
 }
 
-export interface FacilityInquiryRow {
-  id: string;
-  name: string;
-  type: string;
-  channel: string;
-  date: string;
-  time?: string;
-  status: EnquiryStatus;
-  statusLabel: string;
-  assignee: string | null;
-}
-
-/** A row on the Active Staff queue tab — enabled accounts marked available
- *  today, shaped like the other two tabs' rows. */
-export interface FacilityStaffRow {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  /** e.g. "Morning · 08:00–16:00", or null when today carries no schedule row. */
-  shift: string | null;
-}
-
-export interface FacilityLeaveRow {
-  id: string;
-  requesterName: string;
-  leaveType: string;
-  days: number;
-  startDate: string;
-  endDate: string;
-  role: string;
-  facility: string;
-  reason?: string;
-  requestedAt: string;
-  status: LeaveRequestDoc['status'];
-}
+/* Row shapes and their builders are shared with the queue's own page — see
+   lib/facility-work-queue.ts. Re-exported here because this module's
+   `FacilityOverview` is their published contract (and its test suite's). */
+export type { FacilityInquiryRow, FacilityLeaveRow, FacilityStaffRow };
 
 export interface FacilityOverview {
   metrics: FacilityOverviewMetric[];
@@ -281,11 +229,7 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
 
   const doctors = users.filter(u => DOCTOR_ROLES.has(u.role));
   const nurses = users.filter(u => NURSE_ROLES.has(u.role));
-  // One staff-state figure, not two: "active" (an enabled account) barely moved
-  // off Total Staff, so the useful number is the intersection — enabled *and*
-  // marked available today. It reads beside the queue heading rather than in the
-  // Facility Overview rail, so the count a manager acts on sits with the work.
-  const activeStaff = users.filter(u => u.isActive !== false && availableProviderIds.has(u._id));
+  const activeStaff = activeStaffOf(users, availableProviderIds);
   const pendingLeave = leave.filter(l => l.status === 'pending');
   const unfilledShifts = staffingGaps.reduce((sum, g) => sum + g.gap, 0);
   const enquirySummary = summariseEnquiries(enquiries);
@@ -308,75 +252,19 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
     { key: 'shifts-unfilled', label: 'Unfilled Shifts', value: unfilledShifts, href: '/hr/schedule?gaps=1', tone: unfilledShifts > 0 ? 'danger' : undefined },
   ];
 
-  // Recent Inquiries: the idle view is a top-5 digest of the newest (callers
-  // pass enquiries already newest-first); a search widens the window to 20
-  // matches — same idle-digest/search-widens trade-off the old per-user table
-  // on this dashboard used.
-  const q = search.trim().toLowerCase();
-  const matchesQuery = (m: MessageDoc) => {
-    if (!q) return true;
-    const haystack = `${m.patientName || ''} ${enquiryType(m)} ${enquiryAssignee(m) || ''}`.toLowerCase();
-    return haystack.includes(q);
-  };
-  const filteredEnquiries = enquiries.filter(matchesQuery);
-  const inquiryRows: FacilityInquiryRow[] = filteredEnquiries.slice(0, q ? 20 : 5).map(m => {
-    const status = deriveEnquiryStatus(m);
-    const at = m.sentAt || m.createdAt || '';
-    return {
-      id: m._id,
-      name: m.patientName || 'Patient',
-      type: enquiryType(m),
-      channel: (m.channel || 'app').toUpperCase(),
-      date: at.slice(0, 10),
-      time: formatClockTimeOrUndefined(at),
-      status,
-      statusLabel: ENQUIRY_STATUS_LABELS[status],
-      assignee: enquiryAssignee(m),
-    };
-  });
-
-  // Pending Leave tab: same idle-digest-free, search-widens shape as HR's own
-  // landing dashboard (`dashboard/hr/page.tsx`'s `filteredPending`) — no cap,
-  // since a facility's pending-decision queue runs short by nature.
-  const matchesLeaveQuery = (r: LeaveRequestDoc) => {
-    if (!q) return true;
-    const haystack = `${r.userName || ''} ${r.role || ''} ${r.leaveType || ''} ${r.facilityName || ''}`.toLowerCase();
-    return haystack.includes(q);
-  };
-  const pendingLeaveRows: FacilityLeaveRow[] = pendingLeave.filter(matchesLeaveQuery).map(r => ({
-    id: r._id,
-    requesterName: r.userName,
-    leaveType: r.leaveType,
-    days: r.days,
-    startDate: r.startDate,
-    endDate: r.endDate,
-    role: r.role,
-    facility: r.facilityName,
-    reason: r.reason,
-    requestedAt: r.requestedAt,
-    status: r.status,
-  }));
-
-  // Active Staff rows — the same `search` text as the other two tabs, matched
-  // against the fields the row actually shows.
-  const activeStaffRows: FacilityStaffRow[] = activeStaff
-    .map(u => {
-      const shift = schedules.find(s => s.userId === u._id);
-      return {
-        id: u._id,
-        name: u.name,
-        role: ROLE_LABEL[u.role] || u.role.replace(/_/g, ' '),
-        department: u.department || u.hospitalName || 'General',
-        shift: shift ? `${titleCase(shift.shiftType)} · ${shift.startTime}–${shift.endTime}` : null,
-      };
-    })
-    .filter(r => !q || `${r.name} ${r.role} ${r.department}`.toLowerCase().includes(q))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // The three queues, shaped by the shared builders the queue page uses. Here
+  // they are a digest — top 5, widening to 20 on a search; there they are the
+  // whole queue.
+  const { rows: inquiryRows, matchCount: inquiryMatchCount } = buildInquiryRows(
+    enquiries, search, search.trim() ? INQUIRY_SEARCH_LIMIT : INQUIRY_DIGEST_LIMIT,
+  );
+  const pendingLeaveRows = buildPendingLeaveRows(leave, search);
+  const activeStaffRows = buildStaffRows(activeStaff, schedules, search);
 
   return {
     metrics,
     inquiryRows,
-    inquiryMatchCount: filteredEnquiries.length,
+    inquiryMatchCount,
     pendingLeaveRows,
     activeStaff: {
       rows: activeStaffRows,
@@ -393,36 +281,8 @@ const EXTRA_LABELS: Record<ExtraKey, string> = {
   leave: 'leave requests', schedule: 'shift schedule', gaps: 'staffing gaps',
 };
 
-type QueueTab = 'inquiries' | 'leave' | 'staff';
-
-/** The inquiry ladder, as the detail dialog's picker renders it. */
-const ENQUIRY_STATUS_OPTIONS = ENQUIRY_STATUSES.map(value => ({ value, label: ENQUIRY_STATUS_LABELS[value] }));
-
-const CENTER_TITLES: Record<QueueTab, string> = {
-  inquiries: 'Recent Inquiries',
-  leave: 'Pending Leave',
-  staff: 'Active Staff',
-};
-
-const SEARCH_PLACEHOLDERS: Record<QueueTab, string> = {
-  inquiries: 'Search inquiries by name, type, or assignee…',
-  leave: 'Search leave requests by name, role, or type…',
-  staff: 'Search staff by name, role, or department…',
-};
-
-// Same approver role list as the full HR page's leave tab (src/app/(dashboard)/hr/page.tsx)
-// and its own landing dashboard (dashboard/hr/page.tsx) — who can decide a
-// pending leave request from this dashboard's queue.
-const LEAVE_APPROVER_ROLES = new Set(['org_admin', 'medical_superintendent', 'hospital_manager', 'super_admin']);
-
 /* Facility matrix columns: Facility · Type · Beds · Patients · Today's visits */
 const FAC_GRID = 'minmax(200px, 1.7fr) minmax(130px, 1fr) minmax(70px, 0.6fr) minmax(90px, 0.7fr) minmax(90px, 0.7fr)';
-
-/** Which queue row is open in the detail dialog. */
-type QueueDetail =
-  | { kind: 'inquiry'; id: string }
-  | { kind: 'leave'; id: string }
-  | { kind: 'staff'; id: string };
 
 export default function FacilityManagementDashboard() {
   const { currentUser } = useAuth();
@@ -431,7 +291,6 @@ export default function FacilityManagementDashboard() {
   const searchParams = useSearchParams();
   const previewOpenedHere = useRef(false);
   const scope = useDataScope();
-  const { showToast } = useToast();
 
   const { users, loading: usersLoading, error: usersError, reload: reloadUsers } = useUsers();
   const { patients, loading: patientsLoading } = usePatients();
@@ -456,13 +315,6 @@ export default function FacilityManagementDashboard() {
   const [retrying, setRetrying] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const hasLoadedExtraRef = useRef(false);
-  // Shared by both queue tabs — each tab filters its own dataset by the same
-  // text so switching tabs never leaves a stale, unrelated filter in place.
-  const [queueSearch, setQueueSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<QueueTab>('inquiries');
-  // The queue detail dialog — where a row's quick actions live now that a
-  // sadb queue row is a single button (no inline expansion).
-  const [detail, setDetail] = useState<QueueDetail | null>(null);
 
   const today = jubaDate();
   const facilityId = currentUser?.hospitalId;
@@ -587,7 +439,9 @@ export default function FacilityManagementDashboard() {
 
   const overview = useMemo(() => buildFacilityOverview({
     today,
-    search: queueSearch,
+    // No queue on this page any more, so nothing to filter by: the rows the
+    // combiner still returns feed only its counts.
+    search: '',
     users,
     usersUnavailable,
     patients,
@@ -598,7 +452,7 @@ export default function FacilityManagementDashboard() {
     availableProviderIds,
     usersHref: staffListHref,
     availableBeds,
-  }), [today, queueSearch, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, staffListHref, availableBeds]);
+  }), [today, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, staffListHref, availableBeds]);
 
   const metricPreview = overview.metrics.find(metric => metric.key === searchParams.get('preview')) || null;
 
@@ -647,82 +501,9 @@ export default function FacilityManagementDashboard() {
     ];
   }, [cash.currency]);
 
-  // The global "Add" menu — permission-gated entries from people-nav. The three
-  const updateEnquiryStatusLocally = (id: string, status: EnquiryStatus) => {
-    setEnquiries(prev => prev.map(m => (m._id === id ? { ...m, enquiryStatus: status } : m)));
-  };
-
-  // Quick triage from the dashboard's own queue — the detail dialog's status
-  // picker puts any rung of the ladder one pick away; full triage
-  // (reassignment, notes) stays on /inquiries, which owns that surface.
-  const setEnquiryStatusAction = async (id: string, status: EnquiryStatus) => {
-    try {
-      const { setEnquiryStatus } = await import('@/lib/services/enquiry-service');
-      await setEnquiryStatus(id, status);
-      updateEnquiryStatusLocally(id, status);
-      showToast(`Inquiry marked ${ENQUIRY_STATUS_LABELS[status].toLowerCase()}.`, 'success');
-    } catch (err) {
-      console.error('Failed to update inquiry status', err);
-      showToast('Could not update the inquiry.', 'error');
-    }
-  };
-
-  const isLeaveApprover = !!currentUser && LEAVE_APPROVER_ROLES.has(currentUser.role);
-
-  // Approve/reject a pending leave request from the dashboard's own queue —
-  // mirrors dashboard/hr/page.tsx's `decideLeaveAction`. `decideLeave` catches
-  // its own "cannot approve your own leave" invariant internally and resolves
-  // to `null` rather than rejecting, so both that case and a hard failure
-  // (import/network) are surfaced as a toast, never an unhandled rejection.
-  const decideLeaveLocally = (id: string, updated: LeaveRequestDoc) => {
-    setLeave(prev => prev.map(l => (l._id === id ? updated : l)));
-  };
-  const decideLeaveAction = async (id: string, status: 'approved' | 'rejected') => {
-    if (!currentUser) return;
-    try {
-      const { decideLeave } = await import('@/lib/services/leave-service');
-      const updated = await decideLeave(id, {
-        status,
-        decidedBy: currentUser._id,
-        decidedByName: currentUser.name,
-      });
-      if (!updated) {
-        showToast("You can't decide your own leave request.", 'error');
-        return;
-      }
-      decideLeaveLocally(id, updated);
-      setDetail(null);
-      showToast(status === 'approved' ? 'Leave request approved.' : 'Leave request rejected.', 'success');
-    } catch (err) {
-      console.error('Failed to decide leave request', err);
-      showToast('Could not update the leave request.', 'error');
-    }
-  };
-
   const failedLabels = Array.from(loadErrors).map(k => EXTRA_LABELS[k]);
   if (usersError) failedLabels.push('staff accounts');
   const hasErrors = failedLabels.length > 0;
-
-  const inquiriesFailed = loadErrors.has('enquiries');
-  const leaveFailed = loadErrors.has('leave');
-  const hasQuery = queueSearch.trim().length > 0;
-
-  // Empty state, its action, and the search placeholder all follow the active
-  // tab — each queue tab reads its own data source and its own failure mode.
-  const staffFailed = overview.activeStaff.unavailable || loadErrors.has('availability');
-  const emptyTitle = activeTab === 'staff'
-    ? (staffFailed ? "Couldn't load staff" : hasQuery ? 'No staff match your search' : 'No staff available right now')
-    : activeTab === 'inquiries'
-      ? (inquiriesFailed ? "Couldn't load inquiries" : hasQuery ? 'No inquiries match your search' : 'No recent inquiries')
-      : (leaveFailed ? "Couldn't load leave requests" : hasQuery ? 'No leave requests match your search' : 'No leave requests waiting on a decision');
-  const emptyActionLabel = activeTab === 'staff'
-    ? (staffFailed ? 'Retry' : 'View roster')
-    : (activeTab === 'inquiries' ? inquiriesFailed : leaveFailed) ? 'Retry' : 'View all';
-  const onEmptyAction = activeTab === 'staff'
-    ? (staffFailed ? retryAll : () => router.push(overview.activeStaff.href))
-    : activeTab === 'inquiries'
-      ? (inquiriesFailed ? retryExtra : () => router.push('/inquiries'))
-      : (leaveFailed ? retryExtra : () => router.push('/hr/leave'));
 
   const initialLoading = usersLoading || patientsLoading || wardsLoading || extraLoading;
 
@@ -733,18 +514,9 @@ export default function FacilityManagementDashboard() {
      the tile row is one line, not two. */
   const TILE_KEYS = ['staff-total', 'doctors', 'nurses', 'patients', 'beds', 'inquiries-open'];
 
-  const detailInquiry = detail?.kind === 'inquiry' ? overview.inquiryRows.find(r => r.id === detail.id) ?? null : null;
-  const detailLeave = detail?.kind === 'leave' ? overview.pendingLeaveRows.find(r => r.id === detail.id) ?? null : null;
-  const detailStaff = detail?.kind === 'staff' ? overview.activeStaff.rows.find(r => r.id === detail.id) ?? null : null;
-
   const unfilledShifts = metricByKey('shifts-unfilled')?.value ?? 0;
-  const pendingLeaveCount = overview.pendingLeaveRows.length;
-
-  const queueEmpty = activeTab === 'inquiries'
-    ? overview.inquiryRows.length === 0
-    : activeTab === 'leave'
-      ? overview.pendingLeaveRows.length === 0
-      : overview.activeStaff.rows.length === 0;
+  // The unfiltered count — this page no longer carries the queue's search box.
+  const pendingLeaveCount = metricByKey('leave-pending')?.value ?? 0;
 
   // Written-out facility tier ("National Referral", "Phcc" stays "PHCC").
   const facilityLabel = (ft: string) =>
@@ -841,96 +613,27 @@ export default function FacilityManagementDashboard() {
             <SadbKvRow
               label="Pending leave"
               chip={String(pendingLeaveCount)}
-              chipTone={pendingLeaveCount > 0 ? 'yellow' : 'neutral'}
+              chipTone={typeof pendingLeaveCount === 'number' && pendingLeaveCount > 0 ? 'yellow' : 'neutral'}
             />
             <SadbKvRow label="Staff available now" value={String(overview.activeStaff.count)} valueTone={overview.activeStaff.unavailable ? 'warn' : undefined} />
           </div>
         </SadbCard>
       </div>
 
-      {/* ═══ Lower row: the work queue beside the facility matrix ═══
-           Both lists grow with the data; stacked full-width they ran the
-           page into a long scroll. Capped and side by side, each scrolls
-           inside its own card and the dashboard ends with the viewport. */}
-      <div className="sadb-lower-row">
-        {/* ═══ Work queue — inquiries · pending leave · active staff ═══ */}
-        <SadbCard
-          className={hospitals.length > 0 ? undefined : 'is-wide'}
-          title={CENTER_TITLES[activeTab]}
-          meta={activeTab === 'inquiries'
-            ? `${overview.inquiryRows.length} of ${overview.inquiryMatchCount}`
-            : activeTab === 'leave'
-              ? `${overview.pendingLeaveRows.length} pending`
-              : `${overview.activeStaff.rows.length} available`}
-          action={
-            <SadbTabs
-              tabs={[
-                { key: 'inquiries', label: 'Inquiries', count: overview.inquiryRows.length },
-                { key: 'leave', label: 'Pending Leave', count: overview.pendingLeaveRows.length },
-                { key: 'staff', label: 'Active Staff', count: overview.activeStaff.rows.length },
-              ]}
-              active={activeTab}
-              onChange={tab => setActiveTab(tab as QueueTab)}
-              ariaLabel="Work queue views"
-            />
-          }
-        >
-          <div className="sadb-search-row" style={{ paddingBottom: 12 }}>
-            <SadbSearch value={queueSearch} onChange={setQueueSearch} placeholder={SEARCH_PLACEHOLDERS[activeTab]} />
-          </div>
-
-          <div className="sadb-card-scroll">
-            {queueEmpty ? (
-              <div className="sadb-empty" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span className="flex-1">{emptyTitle}</span>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={onEmptyAction}>{emptyActionLabel}</button>
-              </div>
-            ) : activeTab === 'inquiries' ? (
-              overview.inquiryRows.map(r => (
-                <SadbQueueRow
-                  key={r.id}
-                  chip={r.statusLabel}
-                  chipTone={enquiryChipTone(r.status)}
-                  title={r.name}
-                  sub={`${r.type} · ${r.channel} · ${r.assignee || 'Unassigned'}`}
-                  when={r.time ? `${r.date} ${r.time}` : r.date}
-                  onClick={() => setDetail({ kind: 'inquiry', id: r.id })}
-                />
-              ))
-            ) : activeTab === 'leave' ? (
-              overview.pendingLeaveRows.map(r => (
-                <SadbQueueRow
-                  key={r.id}
-                  chip={titleCase(r.leaveType)}
-                  chipTone="yellow"
-                  title={r.requesterName}
-                  sub={`${r.days} day${r.days === 1 ? '' : 's'} · ${r.startDate} → ${r.endDate} · ${r.facility}`}
-                  when={r.requestedAt.slice(0, 10)}
-                  onClick={() => setDetail({ kind: 'leave', id: r.id })}
-                />
-              ))
-            ) : (
-              overview.activeStaff.rows.map(r => (
-                <SadbQueueRow
-                  key={r.id}
-                  chip={r.shift ? 'On shift' : 'Available'}
-                  chipTone={r.shift ? 'green' : 'blue'}
-                  title={r.name}
-                  sub={`${r.role} · ${r.department}`}
-                  when={r.shift || undefined}
-                  onClick={() => setDetail({ kind: 'staff', id: r.id })}
-                />
-              ))
-            )}
-          </div>
-        </SadbCard>
-
-        {/* ═══ Facility matrix — the org's registered facilities ═══ */}
-        {hospitals.length > 0 && (
+      {/* ═══ The org's registered facilities ═══
+           The work queue used to sit beside this list; it moved to
+           /facility-management/queue on 2026-08-24, so the matrix takes the
+           whole row rather than keeping half of it warm for a card that is no
+           longer here. It stays inside `sadb-lower-row` for that row's height
+           cap: the list grows with the data, and uncapped it runs the page
+           into a scroll no dashboard should have. */}
+      {hospitals.length > 0 && (
+        <div className="sadb-lower-row">
           <SadbCard
+            className="is-wide"
             title="Facilities"
             meta={`${hospitals.length}`}
-            action={<SadbHeadLink onClick={() => router.push('/admin/organizations')}>Directory</SadbHeadLink>}
+            action={<SadbHeadLink onClick={() => router.push('/facility-management/queue')}>Work queue</SadbHeadLink>}
           >
             <div className="sadb-card-scroll">
               <SadbGridList
@@ -956,8 +659,8 @@ export default function FacilityManagementDashboard() {
               </SadbGridList>
             </div>
           </SadbCard>
-        )}
-      </div>
+        </div>
+      )}
 
       {metricPreview && (
         <FacilityMetricPreviewDialog
@@ -968,94 +671,6 @@ export default function FacilityManagementDashboard() {
             router.push(metricPreview.href);
           }}
         />
-      )}
-
-      {/* ═══ Queue detail dialog — the row's quick actions ═══ */}
-      {detailInquiry && (
-        <Modal onClose={() => setDetail(null)} width={440} labelledBy="fm-inquiry-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="fm-inquiry-title" className="sadb-modal-title">{detailInquiry.name}</h2>
-              <p className="sadb-modal-sub">{detailInquiry.type} · {detailInquiry.channel}</p>
-            </div>
-            <div className="rounded-lg overflow-hidden mb-3" style={{ border: '1px solid var(--border-light)' }}>
-              <SadbKvRow label="Status" chip={detailInquiry.statusLabel} chipTone={enquiryChipTone(detailInquiry.status)} />
-              <SadbKvRow label="Assigned to" value={detailInquiry.assignee || 'Unassigned'} />
-              <SadbKvRow label="Received" value={detailInquiry.time ? `${detailInquiry.date} ${detailInquiry.time}` : detailInquiry.date} />
-            </div>
-            {/* The picker is the control: every rung of the inquiry ladder is
-                one pick away, mirroring the ladder /inquiries owns. */}
-            <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--text-muted)' }}>Set status</label>
-            <Select
-              value={detailInquiry.status}
-              onChange={e => setEnquiryStatusAction(detailInquiry.id, e.target.value as EnquiryStatus)}
-              style={{ width: '100%' }}
-            >
-              {ENQUIRY_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </Select>
-            <div className="sadb-modal-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDetail(null)}>Close</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push(`/inquiries?inquiry=${encodeURIComponent(detailInquiry.id)}`)}>
-                Open full page
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {detailLeave && (
-        <Modal onClose={() => setDetail(null)} width={440} labelledBy="fm-leave-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="fm-leave-title" className="sadb-modal-title">{detailLeave.requesterName}</h2>
-              <p className="sadb-modal-sub">{titleCase(detailLeave.leaveType)} · {detailLeave.days} day{detailLeave.days === 1 ? '' : 's'}</p>
-            </div>
-            <div className="rounded-lg overflow-hidden mb-3" style={{ border: '1px solid var(--border-light)' }}>
-              <SadbKvRow label="Dates" value={`${detailLeave.startDate} → ${detailLeave.endDate}`} />
-              <SadbKvRow label="Role" value={detailLeave.role ? titleCase(detailLeave.role) : '—'} />
-              <SadbKvRow label="Facility" value={detailLeave.facility} />
-              <SadbKvRow label="Reason" value={detailLeave.reason || 'No reason given'} />
-            </div>
-            <div className="sadb-modal-actions" style={isLeaveApprover && detailLeave.status === 'pending' ? { justifyContent: 'space-between' } : undefined}>
-              {isLeaveApprover && detailLeave.status === 'pending' && (
-                <span className="flex gap-2">
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => decideLeaveAction(detailLeave.id, 'approved')}>
-                    Approve
-                  </button>
-                  <button type="button" className="sadb-action-btn is-danger" onClick={() => decideLeaveAction(detailLeave.id, 'rejected')}>
-                    Reject
-                  </button>
-                </span>
-              )}
-              <span className="flex gap-2">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDetail(null)}>Close</button>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push(`/hr/leave?request=${encodeURIComponent(detailLeave.id)}`)}>
-                  Open full page
-                </button>
-              </span>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {detailStaff && (
-        <Modal onClose={() => setDetail(null)} width={420} labelledBy="fm-staff-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="fm-staff-title" className="sadb-modal-title">{detailStaff.name}</h2>
-              <p className="sadb-modal-sub">{detailStaff.role} · {detailStaff.department}</p>
-            </div>
-            <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
-              <SadbKvRow label="Availability" value={detailStaff.shift || 'Available without a scheduled shift'} />
-            </div>
-            <div className="sadb-modal-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDetail(null)}>Close</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push(withFocus(staffListHref, 'user', detailStaff.id))}>
-                Open full page
-              </button>
-            </div>
-          </div>
-        </Modal>
       )}
 
     </SadbPage>

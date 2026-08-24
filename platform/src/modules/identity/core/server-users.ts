@@ -336,8 +336,7 @@ export async function authenticateUser(
   // have accepted three dozen demo credentials. A deployment should not be one
   // missing environment variable away from a public login.
   //
-  // Accounts are now created exactly one way: by an administrator, or by
-  // approving an account request, which calls the same `createUser`.
+  // Accounts are created exactly one way: by an administrator.
   //
   // The one exception is a deployment that HAS no users database: the
   // standalone demo. There is no document to read and no administrator to
