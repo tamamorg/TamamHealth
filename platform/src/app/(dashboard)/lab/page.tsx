@@ -9,7 +9,7 @@ import PatientName from '@/components/PatientName';
 import Badge from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { useRouter } from 'next/navigation';
-import { FlaskConical, AlertTriangle, X, Plus, Radio, Filter, Download } from '@/components/icons/lucide';
+import { FlaskConical, AlertTriangle, X, Plus, Radio, Download } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import LabOrderModal from '@/components/lab/order/LabOrderModal';
 import { LAB_WORKFLOW_STEP_LABEL, stepForStage } from '@/components/lab/workflow/lab-workflow-types';
@@ -101,18 +101,10 @@ export default function LabPage() {
   const anyFilterActive = anyColFilter || !!quickSearch;
   const clearColFilters = () => { setColFilters({ patient: '', test: '', specimen: '', status: '', result: '', orderedBy: '', worklist: '' }); setQuickSearch(''); };
   // Header "Filters" popover (test type + status) — mirrors the patients
-  // registry's Filters dropdown pattern, separate from the per-column funnels.
-  const [showHeaderFilters, setShowHeaderFilters] = useState(false);
-  const headerFilterRef = useRef<HTMLDivElement>(null);
+  // registry's Filters pattern, separate from the per-column funnels. The
+  // popover itself now belongs to the search field (EhrSearchFilter), so only
+  // the applied count is still this page's business.
   const headerFilterCount = [colFilters.test, colFilters.status, colFilters.worklist].filter(Boolean).length;
-  useEffect(() => {
-    if (!showHeaderFilters) return;
-    const onDown = (e: MouseEvent) => { if (headerFilterRef.current && !headerFilterRef.current.contains(e.target as Node)) setShowHeaderFilters(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowHeaderFilters(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [showHeaderFilters]);
   const { globalSearch } = useApp();
   const { results: labResults, loading: labLoading, reload: reloadLabs } = useLabResults();
   const { patients } = usePatients();
@@ -323,77 +315,54 @@ export default function LabPage() {
                 ...(labStats.sendOut > 0 ? [{ label: 'Send-outs', value: labStats.sendOut, color: LIST_STAT_COLORS.muted }] : []),
                 ...(labStats.collectionDue > 0 ? [{ label: 'Draws due', value: labStats.collectionDue, color: LIST_STAT_COLORS.amber }] : []),
               ]}
-              search={{ value: quickSearch, onChange: setQuickSearch, placeholder: 'Filter table', ariaLabel: 'Filter table' }}
+              search={{
+                value: quickSearch, onChange: setQuickSearch,
+                placeholder: 'Filter table', ariaLabel: 'Filter table',
+                // The registry's own axes, folded into the field that already
+                // narrows it. The tour still spotlights this trigger — it just
+                // lives inside the search box now.
+                filters: {
+                  activeCount: headerFilterCount,
+                  onClear: clearColFilters,
+                  label: t('patients.filtersTitle'),
+                  panelWidth: 420,
+                  dataTour: 'lab-registry-filters',
+                  children: (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('lab.testName')}</span>
+                        <Select value={colFilters.test} onChange={e => setColFilter('test', e.target.value)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
+                          <option value="">{t('patients.all')}</option>
+                          {testTypeOptions.map(name => <option key={name} value={name}>{name}</option>)}
+                        </Select>
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('lab.status')}</span>
+                        <Select value={colFilters.status} onChange={e => setColFilter('status', e.target.value)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
+                          <option value="">{t('patients.all')}</option>
+                          <option value="pending">{t('lab.filterPending')}</option>
+                          <option value="in_progress">{t('lab.inProgress')}</option>
+                          <option value="completed">{t('referral.completed')}</option>
+                        </Select>
+                      </label>
+                      {/* The queue's own worklists — the same table, narrowed
+                          to one job, rather than four separate screens. */}
+                      <label className="flex flex-col gap-1 sm:col-span-2">
+                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('lab.worklist')}</span>
+                        <Select value={colFilters.worklist} onChange={e => setColFilter('worklist', e.target.value)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
+                          <option value="">{t('lab.worklistAll')}</option>
+                          <option value="due">{t('lab.worklistDue')}</option>
+                          <option value="scheduled">{t('lab.worklistScheduled')}</option>
+                          <option value="send_out">{t('lab.worklistSendOut')}</option>
+                          <option value="overdue_review">{t('lab.worklistOverdueReview')}</option>
+                        </Select>
+                      </label>
+                    </div>
+                  ),
+                },
+              }}
               actions={
                 <>
-                  {/* data-tour: the guided tour spotlights this filter trigger
-                      to introduce the registry's own worklists (draws due,
-                      scheduled, send-outs, overdue review) — EhrListHeaderButton
-                      doesn't forward a data-tour prop, so it's tagged here on
-                      its existing wrapper instead of adding a new element. */}
-                  <div className="relative" ref={headerFilterRef} data-tour="lab-registry-filters">
-                    <EhrListHeaderButton
-                      onClick={() => setShowHeaderFilters(s => !s)}
-                      active={headerFilterCount > 0}
-                      ariaExpanded={showHeaderFilters}
-                      ariaLabel={t('patients.filtersTitle')}
-                    >
-                      <Filter className="w-4 h-4" />
-                      {headerFilterCount > 0 && (
-                        <span className="absolute inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold" style={{ top: -4, right: -4, background: 'var(--accent-primary)', color: '#fff' }}>
-                          {headerFilterCount}
-                        </span>
-                      )}
-                    </EhrListHeaderButton>
-                    {showHeaderFilters && (
-                      <div
-                        className="absolute end-0 mt-2 rounded-2xl overflow-hidden z-50"
-                        style={{ width: 'min(92vw, 420px)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-lg, 0 16px 48px rgba(0,0,0,0.2))' }}
-                      >
-                        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('patients.filtersTitle')}</span>
-                          <div className="flex items-center gap-2">
-                            {headerFilterCount > 0 && (
-                              <button type="button" onClick={() => { setColFilter('test', ''); setColFilter('status', ''); setColFilter('worklist', ''); }} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>{t('nurse.clearAllFilters')}</button>
-                            )}
-                            <button type="button" onClick={() => setShowHeaderFilters(false)} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label={t('action.close')}>
-                              <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                          <label className="flex flex-col gap-1">
-                            <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('lab.testName')}</span>
-                            <Select value={colFilters.test} onChange={e => setColFilter('test', e.target.value)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
-                              <option value="">{t('patients.all')}</option>
-                              {testTypeOptions.map(name => <option key={name} value={name}>{name}</option>)}
-                            </Select>
-                          </label>
-                          <label className="flex flex-col gap-1">
-                            <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('lab.status')}</span>
-                            <Select value={colFilters.status} onChange={e => setColFilter('status', e.target.value)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
-                              <option value="">{t('patients.all')}</option>
-                              <option value="pending">{t('lab.filterPending')}</option>
-                              <option value="in_progress">{t('lab.inProgress')}</option>
-                              <option value="completed">{t('referral.completed')}</option>
-                            </Select>
-                          </label>
-                          {/* The queue's own worklists — the same table, narrowed
-                              to one job, rather than four separate screens. */}
-                          <label className="flex flex-col gap-1 sm:col-span-2">
-                            <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('lab.worklist')}</span>
-                            <Select value={colFilters.worklist} onChange={e => setColFilter('worklist', e.target.value)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
-                              <option value="">{t('lab.worklistAll')}</option>
-                              <option value="due">{t('lab.worklistDue')}</option>
-                              <option value="scheduled">{t('lab.worklistScheduled')}</option>
-                              <option value="send_out">{t('lab.worklistSendOut')}</option>
-                              <option value="overdue_review">{t('lab.worklistOverdueReview')}</option>
-                            </Select>
-                          </label>
-                        </div>
-                      </div>
-                    )}
-                  </div>
                   {anyFilterActive && (
                     <EhrListHeaderButton onClick={clearColFilters} ariaLabel={t('nurse.clearAllFilters')}>
                       <X className="w-4 h-4" />

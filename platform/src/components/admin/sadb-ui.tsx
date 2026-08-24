@@ -22,6 +22,7 @@ import { useAuth } from '@/lib/context';
 import Modal from '@/components/Modal';
 import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Pencil, Search } from '@/components/icons/lucide';
 import type { SaSeverity } from '@/components/admin/sa-ui';
+import { FilterDisclosure } from '@/components/ehr/EhrListHeader';
 import type { UserRole } from '@/lib/db-types';
 
 /* ── Tones ─────────────────────────────────────────────────────────── */
@@ -282,8 +283,15 @@ export function SadbKpiTile({ label, value, delta, deltaTone, onClick }: {
 
 /* ── Search field ──────────────────────────────────────────────────── */
 
-export function SadbSearch({ value, onChange, placeholder, ariaLabel }: {
+export function SadbSearch({ value, onChange, placeholder, ariaLabel, filters }: {
   value: string; onChange: (v: string) => void; placeholder?: string; ariaLabel?: string;
+  /**
+   * Fold this list's filters into the field's trailing edge.
+   *
+   * A toolbar that carried a magnifier and a separate filter control had two
+   * affordances for one job, and the second named none of the axes it offered.
+   */
+  filters?: { activeCount: number; onClear?: () => void; label?: string; panelWidth?: 'trigger' | number; children: ReactNode };
 }) {
   return (
     <label className="sadb-search">
@@ -294,6 +302,16 @@ export function SadbSearch({ value, onChange, placeholder, ariaLabel }: {
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
       />
+      {filters && (
+        <FilterDisclosure
+          activeCount={filters.activeCount}
+          onClear={filters.onClear}
+          label={filters.label}
+          panelWidth={filters.panelWidth ?? 360}
+        >
+          {filters.children}
+        </FilterDisclosure>
+      )}
     </label>
   );
 }
