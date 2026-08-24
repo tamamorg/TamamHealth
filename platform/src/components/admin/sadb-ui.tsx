@@ -265,9 +265,15 @@ export function SadbQueueRow({ chip, chipTone, title, sub, when, onClick }: {
 }) {
   const body = (
     <>
-      {chip !== undefined && <SadbChip tone={chipTone ?? 'neutral'}>{chip}</SadbChip>}
+      {/* The chip rides beside the name, not as a leading column. As a
+          column, a queue of four NEW rows read as a stacked rail of four
+          identical pills with the names pushed aside — the status was the
+          loudest thing on the card and it said the same word four times. */}
       <span className="sadb-queue-copy">
-        <span className="sadb-queue-title">{title}</span>
+        <span className="sadb-queue-title">
+          <span className="sadb-queue-title-text">{title}</span>
+          {chip !== undefined && <SadbChip tone={chipTone ?? 'neutral'}>{chip}</SadbChip>}
+        </span>
         {sub && <span className="sadb-queue-sub">{sub}</span>}
       </span>
       {when && <time className="sadb-queue-when">{when}</time>}

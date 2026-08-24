@@ -29453,8 +29453,14 @@ button.sadb-signal { cursor: pointer; }
 .sadb-queue-row:last-child { border-bottom: 0; }
 .sadb-queue-row .sadb-chip { flex: none; }
 .sadb-queue-copy { min-width: 0; flex: 1; }
+/* The name gives way; the status chip beside it never wraps or shrinks. */
+.sadb-queue-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sadb-queue-title .sadb-chip { flex: none; }
 .sadb-queue-title {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
