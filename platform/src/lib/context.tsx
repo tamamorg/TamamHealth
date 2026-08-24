@@ -34,6 +34,8 @@ interface AppUser {
   actualRole?: UserRole;
   hospitalId?: string;
   hospitalName?: string;
+  /** Additional facilities this user is explicitly entitled to work in. */
+  facilityIds?: string[];
   hospital?: HospitalDoc;
   /** Staff-directory department. Used to route department-addressed patient
    *  transfers to the right inbox — a transfer sent to "Paediatrics" with no
@@ -559,10 +561,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           role: currentUser.role,
           orgId: currentUser.orgId,
           hospitalId: currentUser.hospitalId,
-          // No `facilityIds` yet: there is no per-user multi-facility grant
-          // field on the user record, so cross-facility access is currently
-          // role-derived only (see MULTI_FACILITY_ROLES). Adding explicit
-          // grants needs a field on UserDoc and a screen to manage it.
+          facilityIds: currentUser.facilityIds,
         },
         onChange: (status) => {
           setSyncStatus(status);
@@ -592,6 +591,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isAuthenticated,
     currentUser?.orgId,
     currentUser?.hospitalId,
+    currentUser?.facilityIds,
     currentUser?.role,
   ]);  
 

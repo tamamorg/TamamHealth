@@ -92,6 +92,49 @@ function unknownFacilityMessage(hospitalId: string): string {
     + 'If it was just registered, let sync finish and try again; otherwise pick another facility.';
 }
 
+/**
+ * Validate and canonicalize a user's additional facility grants.
+ *
+ * Facility ids are authorization claims: they become CouchDB roles, JWT
+ * claims, replication selectors and service/API read scope. They therefore
+ * receive the same server-side ownership check as the home facility and are
+ * never accepted as an opaque client array.
+ */
+async function canonicalAdditionalFacilities(input: {
+  raw: unknown;
+  homeFacilityId?: string;
+  orgId?: string;
+  actorRole: UserRole;
+}): Promise<{ ids: string[] } | { response: NextResponse }> {
+  if (input.raw === undefined) return { ids: [] };
+  if (!Array.isArray(input.raw) || input.raw.some(id => typeof id !== 'string')) {
+    return { response: NextResponse.json({ error: 'facilityIds must be an array of facility IDs' }, { status: 400 }) };
+  }
+
+  const ids = [...new Set(
+    input.raw.map(id => id.trim()).filter(id => id && id !== input.homeFacilityId),
+  )];
+  if (ids.length > 20) {
+    return { response: NextResponse.json({ error: 'A user cannot be assigned to more than 20 additional facilities' }, { status: 400 }) };
+  }
+
+  const { getHospitalById } = await import('@/lib/services/hospital-service');
+  const facilities = await Promise.all(ids.map(id => (
+    getHospitalById(id, { role: input.actorRole, orgId: input.orgId })
+  )));
+  for (let index = 0; index < ids.length; index++) {
+    const id = ids[index];
+    const facility = facilities[index];
+    if (!facility) {
+      return { response: NextResponse.json({ error: unknownFacilityMessage(id) }, { status: 400 }) };
+    }
+    if (!input.orgId || !facility.orgId || facility.orgId !== input.orgId) {
+      return { response: forbidden('Cannot grant access to a facility outside the user\'s organization') };
+    }
+  }
+  return { ids };
+}
+
 async function validateActiveOrganization(orgId: string | undefined): Promise<NextResponse | null> {
   if (!orgId) {
     return NextResponse.json({ error: 'Organization assignment is required' }, { status: 400 });
@@ -550,6 +593,15 @@ async function postHandler(request: NextRequest) {
         const organizationError = await validateActiveOrganization(canonicalOrgId);
         if (organizationError) return organizationError;
       }
+      const additionalFacilities = roleNeedsFacility(effectiveRole)
+        ? await canonicalAdditionalFacilities({
+            raw: body.facilityIds ?? existingUser.facilityIds ?? [],
+            homeFacilityId: requestedHospitalId,
+            orgId: canonicalOrgId,
+            actorRole: auth.role,
+          })
+        : { ids: [] };
+      if ('response' in additionalFacilities) return additionalFacilities.response;
 
       const updated = await updateUser(
         body.userId as string,
@@ -559,6 +611,7 @@ async function postHandler(request: NextRequest) {
           role: body.role as UserRole | undefined,
           hospitalId: roleNeedsFacility(effectiveRole) ? requestedHospitalId : undefined,
           hospitalName: roleNeedsFacility(effectiveRole) ? canonicalHospitalName : undefined,
+          facilityIds: additionalFacilities.ids,
           orgId: canonicalOrgId,
           orgName: await resolveOrgName(canonicalOrgId),
           isActive: body.isActive as boolean | undefined,
@@ -635,6 +688,15 @@ async function postHandler(request: NextRequest) {
       const seatError = await validateSeatAvailable(body.orgId as string | undefined);
       if (seatError) return seatError;
     }
+    const additionalFacilities = roleNeedsFacility(targetRole)
+      ? await canonicalAdditionalFacilities({
+          raw: body.facilityIds,
+          homeFacilityId: body.hospitalId as string | undefined,
+          orgId: body.orgId as string | undefined,
+          actorRole: auth.role,
+        })
+      : { ids: [] };
+    if ('response' in additionalFacilities) return additionalFacilities.response;
     const newPhoto = normalisePhoto(body.photoUrl);
     if ('error' in newPhoto) {
       return NextResponse.json({ error: newPhoto.error }, { status: 400 });
@@ -648,6 +710,7 @@ async function postHandler(request: NextRequest) {
         role: body.role as UserRole,
         hospitalId: body.hospitalId as string | undefined,
         hospitalName: body.hospitalName as string | undefined,
+        facilityIds: additionalFacilities.ids,
         orgId: body.orgId as string | undefined,
         orgName: await resolveOrgName(body.orgId as string | undefined),
         photoUrl: newPhoto.value ?? undefined,

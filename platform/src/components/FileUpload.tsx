@@ -87,10 +87,18 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
     <div>
       {/* Drop zone */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={t('fileUpload.dropPrompt')}
         onDragOver={e => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
+        onKeyDown={event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          fileInputRef.current?.click();
+        }}
         className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all"
         style={{
           borderColor: dragOver ? 'var(--tamamhealth-blue)' : 'var(--border-light)',
@@ -116,12 +124,12 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
 
       {/* Errors */}
       {errors.length > 0 && (
-        <div className="mt-3 space-y-1">
+        <div className="mt-3 space-y-1" role="alert" aria-live="assertive">
           {errors.map((err, i) => (
             <div key={i} className="flex items-center gap-2 p-2 rounded-lg text-xs" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>
               <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
               {err}
-              <button onClick={() => setErrors(prev => prev.filter((_, j) => j !== i))} className="ms-auto">
+              <button type="button" aria-label={t('common.dismissNotification')} onClick={() => setErrors(prev => prev.filter((_, j) => j !== i))} className="ms-auto">
                 <X className="w-3 h-3" />
               </button>
             </div>
@@ -168,6 +176,8 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
                 <Eye className="w-3.5 h-3.5" style={{ color: 'var(--tamamhealth-blue)' }} />
               </button>
               <button
+                type="button"
+                aria-label={`${t('fileUpload.remove')}: ${att.name}`}
                 onClick={(e) => { e.stopPropagation(); onRemove(att.id); }}
                 className="p-1.5 rounded transition-colors flex-shrink-0"
                 style={{ background: 'rgba(224, 49, 39,0.12)' }}
@@ -198,7 +208,7 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
                 <span className="text-sm font-semibold">{previewAttachment.name}</span>
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatSize(previewAttachment.sizeBytes)}</span>
               </div>
-              <button onClick={() => setPreviewAttachment(null)} className="p-1 rounded" style={{ background: 'var(--overlay-subtle)' }}>
+              <button type="button" aria-label={t('common.dismissNotification')} onClick={() => setPreviewAttachment(null)} className="p-1 rounded" style={{ background: 'var(--overlay-subtle)' }}>
                 <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               </button>
             </div>

@@ -10,7 +10,10 @@
  */
 import type { ChargeCategory } from '../db-types-billing';
 import type { DataScope } from './data-scope';
-import { priceFor, chargeForServices, type ChargeContext, type ChargeLineRequest } from './fee-schedule-service';
+import {
+  getActiveFees, priceFromFees, chargeForServices,
+  type ChargeContext, type ChargeLineRequest,
+} from './fee-schedule-service';
 import { addDirective } from './directive-service';
 import { logAuditSafe } from './audit-service';
 
@@ -62,12 +65,16 @@ export async function buildSuperbillPreview(
   currency = 'SSP',
 ): Promise<SuperbillPreview> {
   const lines: SuperbillLine[] = [];
+  // One catalog read for the whole preview. Previously every line called
+  // priceFor(), repeating the same PouchDB/CouchDB scan N times.
+  const needsCatalog = selections.some(selection => selection.unitPrice == null);
+  const fees = needsCatalog ? await getActiveFees(scope) : [];
   for (const sel of selections) {
     const quantity = sel.quantity ?? 1;
     let unitPrice = sel.unitPrice;
     let description = sel.description;
     if (unitPrice == null) {
-      const fee = await priceFor(sel.category, scope, sel.serviceCode);
+      const fee = priceFromFees(fees, sel.category, sel.serviceCode);
       if (fee) {
         unitPrice = fee.unitPrice;
         description = description || fee.serviceName;

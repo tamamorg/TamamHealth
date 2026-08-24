@@ -26,18 +26,20 @@
  * never by deletion). The invariant the ticket asks for holds either way:
  * you never end up with stock movement and no dispense record, or the reverse.
  */
-import { pharmacyInventoryDB } from '../db';
+import { pharmacyInventoryDB, prescriptionsDB } from '../db';
 import type {
   PharmacyInventoryDoc, PrescriptionDoc, DispenseAllocation, UserRole,
 } from '../db-types';
 import { findByType } from './db-query';
 import { recordMovement } from './controlled-substance-service';
-import { updatePrescription, effectivePrescriptionStatus } from './prescription-service';
+import { effectivePrescriptionStatus, updatePrescription } from './prescription-service';
 
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { jubaDate } from '../time-juba';
 import { getUserById } from '@/modules/identity/services/user-service';
+import { v4 as uuidv4 } from 'uuid';
+import { withPendingOfflineSync } from '../sync/offline-metadata';
 
 export type DispenseErrorCode =
   | 'NOT_CLEARED'
@@ -106,6 +108,120 @@ const DISPENSABLE_STAGES = new Set(['cleared_for_dispensing']);
  *  dispense action is a courtesy in front of this — the real gate is here,
  *  so a hole in any one surface's role check cannot itself dispense a drug. */
 const DISPENSING_ROLES: UserRole[] = ['pharmacist'];
+
+/** A claim only spans the local stock/register/order commit sequence. */
+const DISPENSE_LOCK_TTL_MS = 2 * 60 * 1000;
+
+interface DispenseClaim {
+  id: string;
+  prescription: PrescriptionDoc;
+}
+
+/** Atomically claim a cleared prescription before any stock moves. */
+async function claimPrescriptionForDispense(id: string, dispenserId: string): Promise<DispenseClaim> {
+  const db = prescriptionsDB();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const existing = await db.get(id) as PrescriptionDoc;
+    if (!DISPENSABLE_STAGES.has(effectivePrescriptionStatus(existing)) || existing.status === 'discontinued') {
+      throw new DispenseError('This order is no longer cleared for dispensing.', 'NOT_CLEARED');
+    }
+
+    const nowMs = Date.now();
+    if (existing.dispenseLock && Date.parse(existing.dispenseLock.expiresAt) > nowMs) {
+      throw new DispenseError(
+        'This order is already being dispensed at another workstation. Wait for it to finish, then refresh.',
+        'NOT_CLEARED',
+      );
+    }
+
+    const claimId = `dispense-${uuidv4()}`;
+    const claimedAt = new Date(nowMs).toISOString();
+    const claimed: PrescriptionDoc = {
+      ...existing,
+      dispenseLock: {
+        id: claimId,
+        claimedAt,
+        expiresAt: new Date(nowMs + DISPENSE_LOCK_TTL_MS).toISOString(),
+        dispenserId,
+      },
+      updatedAt: claimedAt,
+    };
+    try {
+      const response = await db.put(claimed);
+      claimed._rev = response.rev;
+      return { id: claimId, prescription: claimed };
+    } catch (err: unknown) {
+      if ((err as { status?: number }).status === 409 && attempt < 4) continue;
+      throw err;
+    }
+  }
+  throw new DispenseError('Could not claim the order after repeated conflicts.', 'WRITE_FAILED');
+}
+
+/** Release only the claim owned by this dispense; never clear another tab's. */
+async function releaseDispenseClaim(prescriptionId: string, claimId: string): Promise<void> {
+  const db = prescriptionsDB();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const existing = await db.get(prescriptionId) as PrescriptionDoc;
+      if (existing.dispenseLock?.id !== claimId) return;
+      const updated = { ...existing, updatedAt: new Date().toISOString() };
+      delete updated.dispenseLock;
+      await db.put(updated);
+      return;
+    } catch (err: unknown) {
+      if ((err as { status?: number }).status === 409 && attempt < 4) continue;
+      await logAuditSafe(
+        'PHARMACY_CLAIM_RELEASE_FAILED', undefined, undefined,
+        `Could not release dispense claim ${claimId} on prescription ${prescriptionId}.`,
+      ).catch(() => {});
+      return;
+    }
+  }
+}
+
+/** Commit the order only if the caller still owns the atomic dispense claim. */
+async function completeClaimedDispense(
+  prescriptionId: string,
+  claimId: string,
+  data: Partial<PrescriptionDoc>,
+): Promise<PrescriptionDoc | null> {
+  const db = prescriptionsDB();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const existing = await db.get(prescriptionId) as PrescriptionDoc;
+      if (existing.dispenseLock?.id !== claimId) return null;
+      // A prescriber may discontinue the order while the pharmacy is reading
+      // stock. The lock survives that update, but discontinuation wins.
+      if (!DISPENSABLE_STAGES.has(effectivePrescriptionStatus(existing)) || existing.status === 'discontinued') {
+        return null;
+      }
+      const updated: PrescriptionDoc = withPendingOfflineSync({
+        ...existing,
+        ...data,
+        _id: existing._id,
+        _rev: existing._rev,
+        updatedAt: new Date().toISOString(),
+      });
+      delete updated.dispenseLock;
+      const response = await db.put(updated);
+      updated._rev = response.rev;
+      await logAuditSafe('PRESCRIPTION_UPDATED', undefined, undefined, `Prescription ${prescriptionId} status: ${updated.status}`);
+      emitSyncEvent({
+        resourceType: 'prescription',
+        resourceId: updated._id,
+        operation: 'update',
+        resourceVersion: updated._rev,
+        hospitalId: updated.hospitalId,
+      });
+      return updated;
+    } catch (err: unknown) {
+      if ((err as { status?: number }).status === 409 && attempt < 4) continue;
+      return null;
+    }
+  }
+  return null;
+}
 
 /** Dose strengths ("500mg", "5mg/mL", "80/480mg", "10 IU") and pack forms. */
 const STRENGTH_RE = /\b\d+(?:[./]\d+)*\s*(?:mg|mcg|g|ml|l|iu|units?|%)(?:\s*\/\s*\d*\s*(?:ml|l|mg|dose))?\b/gi;
@@ -419,7 +535,8 @@ async function reverseControlledEntries(
  * if a later step fails.
  */
 export async function dispenseMedication(input: DispenseInput): Promise<DispenseResult> {
-  const { prescription: rx, quantity } = input;
+  let rx = input.prescription;
+  const { quantity } = input;
 
   // ── 1. Validate. Nothing is written before every check passes. ──
   //
@@ -449,6 +566,21 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
       'Only a pharmacist may dispense medication.',
       'NOT_AUTHORISED',
     );
+  }
+  if (dispenserDoc) {
+    const entitledFacilities = new Set([
+      dispenserDoc.hospitalId,
+      ...(dispenserDoc.facilityIds ?? []),
+    ].filter((id): id is string => Boolean(id)));
+    if (!entitledFacilities.has(input.facilityId)) {
+      throw new DispenseError(
+        'The pharmacist is not assigned to the dispensing facility.',
+        'NOT_AUTHORISED',
+      );
+    }
+    if (input.orgId && dispenserDoc.orgId && dispenserDoc.orgId !== input.orgId) {
+      throw new DispenseError('The pharmacist must belong to the same organisation.', 'NOT_AUTHORISED');
+    }
   }
 
   // Legacy prescriptions carry no `orderStatus`. The gate used to read the raw
@@ -483,6 +615,13 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
   // write, so an unintended short fill costs nothing.
   const requested = rx.quantityToDispense || quantity;
   const totalDispensed = (rx.quantityDispensed || 0) + quantity;
+  if (totalDispensed > requested) {
+    const remaining = Math.max(0, requested - (rx.quantityDispensed || 0));
+    throw new DispenseError(
+      `Dispense quantity exceeds the prescribed course; ${remaining} ${rx.medication} remain.`,
+      'BAD_QUANTITY',
+    );
+  }
   const outcome: 'full' | 'partial' = totalDispensed < requested ? 'partial' : 'full';
 
   const batches = await getDispensableBatches(rx.medication, input.facilityId);
@@ -552,7 +691,11 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
         'WITNESS_INVALID',
       );
     }
-    if (input.facilityId && witnessDoc.hospitalId && witnessDoc.hospitalId !== input.facilityId) {
+    const witnessFacilities = new Set([
+      witnessDoc.hospitalId,
+      ...(witnessDoc.facilityIds ?? []),
+    ].filter((id): id is string => Boolean(id)));
+    if (input.facilityId && !witnessFacilities.has(input.facilityId)) {
       throw new DispenseError(
         'The witness must be staff at the dispensing facility.',
         'WITNESS_INVALID',
@@ -585,10 +728,39 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     );
   }
 
+  // Atomically reserve the prescription itself. Inventory revision conflicts
+  // prevent negative stock, but without this claim two workstations could both
+  // decrement different/ample batches and then write the same stale
+  // `quantityDispensed`, losing one allocation while stock moved twice.
+  const claim = await claimPrescriptionForDispense(rx._id, input.dispenserId);
+  rx = claim.prescription;
+
+  // Recompute from the claimed, current document. Another partial fill may
+  // have landed between the queue read and this claim.
+  const claimedRequested = rx.quantityToDispense || quantity;
+  const claimedTotalDispensed = (rx.quantityDispensed || 0) + quantity;
+  if (claimedTotalDispensed > claimedRequested) {
+    await releaseDispenseClaim(rx._id, claim.id);
+    const remaining = Math.max(0, claimedRequested - (rx.quantityDispensed || 0));
+    throw new DispenseError(
+      `Dispense quantity exceeds the prescribed course; ${remaining} ${rx.medication} remain.`,
+      'BAD_QUANTITY',
+    );
+  }
+  const claimedOutcome: 'full' | 'partial' = claimedTotalDispensed < claimedRequested ? 'partial' : 'full';
+  if (claimedOutcome === 'partial' && !input.allowPartial) {
+    await releaseDispenseClaim(rx._id, claim.id);
+    throw new DispenseError(
+      `This fills ${claimedTotalDispensed} of ${claimedRequested} ${rx.medication}. Confirm a partial fill to dispense less than the prescribed course.`,
+      'PARTIAL_NOT_ALLOWED',
+    );
+  }
+
   // ── 2. Apply the batch decrements, remembering each for rollback. ──
   const applied: DispenseAllocation[] = [];
   const rollback = async () => {
     for (const a of applied) await revertBatchDecrement(a);
+    await releaseDispenseClaim(rx._id, claim.id);
   };
 
   try {
@@ -663,17 +835,17 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
 
   let updated: PrescriptionDoc | null = null;
   try {
-    updated = await updatePrescription(rx._id, {
+    updated = await completeClaimedDispense(rx._id, claim.id, {
       // A partial fill leaves the order live so the balance can still be
       // collected; only a full fill closes it.
-      status: outcome === 'full' ? 'dispensed' : 'pending',
-      orderStatus: outcome === 'full' ? 'dispensed' : 'stockout_partial_referred',
+      status: claimedOutcome === 'full' ? 'dispensed' : 'pending',
+      orderStatus: claimedOutcome === 'full' ? 'dispensed' : 'stockout_partial_referred',
       dispensedAt: now,
-      quantityDispensed: totalDispensed,
+      quantityDispensed: claimedTotalDispensed,
       dispenseAllocations: [...(rx.dispenseAllocations || []), ...applied],
       dispensedBy: input.dispenserId,
       dispensedByName: input.dispenserName,
-      dispenseOutcome: outcome,
+      dispenseOutcome: claimedOutcome,
       ...(input.note ? { dispenseNote: input.note } : {}),
       ...(controlledLogId ? { controlledLogId } : {}),
     });
@@ -701,14 +873,14 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
   await logAuditSafe('PRESCRIPTION_DISPENSED', input.dispenserId, input.dispenserName,
     `Dispensed ${quantity} ${controlledBatch?.unit || plan.allocations[0]?.batch.unit || 'unit(s)'} of ${rx.medication} to ${rx.patientName} `
     + `from batch(es) ${applied.map(a => a.batchNumber).join(', ')} (Rx: ${rx._id})`
-    + (outcome === 'partial' ? ` — PARTIAL fill, ${requested - totalDispensed} outstanding` : ''),
+    + (claimedOutcome === 'partial' ? ` — PARTIAL fill, ${claimedRequested - claimedTotalDispensed} outstanding` : ''),
   );
 
   return {
     prescription: updated,
     allocations: applied,
     quantityDispensed: quantity,
-    outcome,
+    outcome: claimedOutcome,
     controlledLogId,
     ...(controlledLogIds.length > 0 ? { controlledLogIds } : {}),
   };

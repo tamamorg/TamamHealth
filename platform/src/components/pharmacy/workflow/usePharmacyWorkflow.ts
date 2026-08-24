@@ -241,7 +241,7 @@ export function usePharmacyWorkflow(
       dispenserId: currentUser?._id || 'pharmacy',
       dispenserName: currentUser?.name || 'Pharmacy',
       dispenserRole: currentUser?.role,
-      facilityId: currentUser?.hospitalId || rx.hospitalId || '',
+      facilityId: rx.hospitalId || currentUser?.hospitalId || '',
       facilityName: currentUser?.hospitalName,
       orgId: currentUser?.orgId || rx.orgId,
       witnessId: dispenseDraft.witnessId || undefined,

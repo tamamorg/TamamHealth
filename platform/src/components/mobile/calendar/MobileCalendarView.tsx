@@ -37,7 +37,19 @@ export default function MobileCalendarView() {
           dayAppointments.map((appt) => {
             const initials = patientInitials({ firstName: appt.patientName.split(' ')[0], surname: appt.patientName.split(' ').slice(-1)[0] });
             return (
-              <article key={appt._id} className="mobile-appt-card" onClick={() => shell.openChart(appt.patientId)} role="button" tabIndex={0}>
+              <article
+                key={appt._id}
+                className="mobile-appt-card"
+                onClick={() => shell.openChart(appt.patientId)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    shell.openChart(appt.patientId);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+              >
                 <strong className="mobile-appt-time">{appt.appointmentTime}</strong>
                 <span className="mobile-appt-avatar" style={avatarTint(appt.patientName)}>{initials}</span>
                 <span className="mobile-appt-meta">

@@ -20,7 +20,15 @@ interface MobileDashboardViewProps {
 function AppointmentCard({ appt, onOpen }: { appt: AppointmentDoc; onOpen: () => void }) {
   const initials = patientInitials({ firstName: appt.patientName.split(' ')[0], surname: appt.patientName.split(' ').slice(-1)[0] });
   return (
-    <article className="mobile-appt-card" onClick={onOpen} role="button" tabIndex={0}>
+    <article
+      className="mobile-appt-card"
+      onClick={onOpen}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen(); }
+      }}
+      role="button"
+      tabIndex={0}
+    >
       <strong className="mobile-appt-time">{appt.appointmentTime}</strong>
       <span className="mobile-appt-avatar" style={avatarTint(appt.patientName)}>
         {initials}
@@ -36,7 +44,15 @@ function AppointmentCard({ appt, onOpen }: { appt: AppointmentDoc; onOpen: () =>
 
 function SimpleRowCard({ title, subtitle, status, onOpen }: { title: string; subtitle: string; status?: string; onOpen?: () => void }) {
   return (
-    <article className="mobile-chart-card mobile-chart-row-card" onClick={onOpen} role={onOpen ? 'button' : undefined} tabIndex={onOpen ? 0 : undefined}>
+    <article
+      className="mobile-chart-card mobile-chart-row-card"
+      onClick={onOpen}
+      onKeyDown={event => {
+        if (onOpen && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onOpen(); }
+      }}
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+    >
       <div>
         <strong>{title}</strong>
         <small>{subtitle}</small>

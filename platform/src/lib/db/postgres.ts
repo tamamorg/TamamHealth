@@ -440,6 +440,13 @@ function assertPolicyForTable(table: string): ConflictPolicy {
 
 let pool: Pool | null = null;
 
+/** Bounded, operator-tunable pool size per application instance. */
+export function postgresPoolMax(raw = process.env.POSTGRES_POOL_MAX): number {
+  if (!raw) return 10;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 1 && parsed <= 50 ? parsed : 10;
+}
+
 function getPool(): Pool {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
@@ -450,7 +457,7 @@ function getPool(): Pool {
     const ssl = postgresSslOptions();
     const config: PoolConfig = {
       connectionString: connectionStringForExplicitSsl(connectionString, ssl),
-      max: 10,
+      max: postgresPoolMax(),
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
       // Verify the provider certificate in production. A cluster-specific CA

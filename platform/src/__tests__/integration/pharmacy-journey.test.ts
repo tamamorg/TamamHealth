@@ -186,6 +186,64 @@ it('refuses to dispense an order nobody cleared', async () => {
   expect(batch.stockLevel).toBe(40);
 });
 
+it('serializes concurrent dispensing of the same prescription', async () => {
+  await seedWorld();
+  const { prescription } = await createPrescription({
+    patientId: PATIENT._id, patientName: PATIENT.name,
+    medication: 'Insulin (soluble/regular)', dose: '10 IU', route: 'subcutaneous',
+    frequency: 'BD', duration: '30 days', prescribedBy: DOCTOR.name,
+    status: 'pending', hospitalId: HOSP, orgId: ORG, quantityToDispense: 2,
+  } as never);
+  await clearForDispensing(prescription._id);
+  const current = (await getPrescriptionsByPatient(PATIENT._id)).find(p => p._id === prescription._id)!;
+  const input = {
+    prescription: current,
+    quantity: 2,
+    dispenserId: PHARMACIST._id,
+    dispenserName: PHARMACIST.name,
+    facilityId: HOSP,
+    orgId: ORG,
+  };
+
+  const results = await Promise.allSettled([
+    dispenseMedication(input),
+    dispenseMedication(input),
+  ]);
+  expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+  expect(results.filter(result => result.status === 'rejected')).toHaveLength(1);
+
+  const batch = await pharmacyInventoryDB().get('inv-insulin') as { stockLevel: number };
+  expect(batch.stockLevel).toBe(38);
+  const saved = (await getPrescriptionsByPatient(PATIENT._id)).find(p => p._id === prescription._id)!;
+  expect(saved.quantityDispensed).toBe(2);
+  expect(saved.dispenseAllocations).toHaveLength(1);
+  expect(saved.dispenseLock).toBeUndefined();
+});
+
+it('refuses to dispense more than the prescribed course', async () => {
+  await seedWorld();
+  const { prescription } = await createPrescription({
+    patientId: PATIENT._id, patientName: PATIENT.name,
+    medication: 'Insulin (soluble/regular)', dose: '10 IU', route: 'subcutaneous',
+    frequency: 'BD', duration: '30 days', prescribedBy: DOCTOR.name,
+    status: 'pending', hospitalId: HOSP, orgId: ORG, quantityToDispense: 2,
+  } as never);
+  await clearForDispensing(prescription._id);
+  const current = (await getPrescriptionsByPatient(PATIENT._id)).find(p => p._id === prescription._id)!;
+
+  await expect(dispenseMedication({
+    prescription: current,
+    quantity: 3,
+    dispenserId: PHARMACIST._id,
+    dispenserName: PHARMACIST.name,
+    facilityId: HOSP,
+    orgId: ORG,
+  })).rejects.toThrow(/exceeds the prescribed course/i);
+
+  const batch = await pharmacyInventoryDB().get('inv-insulin') as { stockLevel: number };
+  expect(batch.stockLevel).toBe(40);
+});
+
 it('blocks facility checkout while a procedure is still in progress', async () => {
   await seedWorld();
   const arrival = await createArrivalEncounter({

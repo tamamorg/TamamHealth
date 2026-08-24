@@ -75,6 +75,7 @@ export default function CreateUserModal({
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<UserRole>('doctor');
   const [hospitalId, setHospitalId] = useState(presetHospitalId || '');
+  const [facilityIds, setFacilityIds] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   // The minimum this deployment enforces (Security settings → Password
@@ -178,6 +179,7 @@ export default function CreateUserModal({
         role,
         hospitalId: needsHospital ? hospitalId : undefined,
         hospitalName: needsHospital ? selectedHospital?.name : undefined,
+        facilityIds: needsHospital ? facilityIds : [],
         // A facility carries the org that owns it; a platform operator adding
         // staff to a tenant's facility must not stamp their own (absent) org.
         orgId: selectedHospital?.orgId ?? currentUser?.orgId,
@@ -326,6 +328,31 @@ export default function CreateUserModal({
                 ))}
               </Select>
             </div>
+          )}
+
+          {needsHospital && hospitalId && hospitals.some(h => h._id !== hospitalId) && (
+            <fieldset className="rounded px-3 py-2.5" style={{ border: '1px solid var(--border-light)' }}>
+              <legend className="px-1 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                {t('orgUsers.additionalFacilities')}
+              </legend>
+              <p className="mb-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                {t('orgUsers.additionalFacilitiesHint')}
+              </p>
+              <div className="grid gap-2">
+                {hospitals.filter(h => h._id !== hospitalId).map(h => (
+                  <label key={h._id} className="flex items-center gap-2 text-sm normal-case tracking-normal font-normal">
+                    <input
+                      type="checkbox"
+                      checked={facilityIds.includes(h._id)}
+                      onChange={event => setFacilityIds(current => event.target.checked
+                        ? [...new Set([...current, h._id])]
+                        : current.filter(id => id !== h._id))}
+                    />
+                    {h.name}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
           )}
 
           {error && (

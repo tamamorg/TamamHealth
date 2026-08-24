@@ -613,6 +613,18 @@ export interface PrescriptionDoc extends BaseDoc {
    * recall: without it there is no way to answer "who received batch X?".
    */
   dispenseAllocations?: DispenseAllocation[];
+  /**
+   * Short-lived compare-and-swap claim held while stock is being moved.
+   * Prevents two workstations from dispensing the same cleared order at once.
+   * A stale claim may be replaced after its expiry so a crashed tab cannot
+   * strand the prescription permanently.
+   */
+  dispenseLock?: {
+    id: string;
+    claimedAt: string;
+    expiresAt: string;
+    dispenserId: string;
+  };
   /** Identity of the pharmacist who performed the dispense. */
   dispensedBy?: string;
   dispensedByName?: string;

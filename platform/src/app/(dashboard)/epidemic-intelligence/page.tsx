@@ -222,7 +222,18 @@ export default function EpidemicIntelligencePage() {
     const isExpanded = expandedAlert === i;
     return (
       <div key={i}>
-        <div className="epi-alert-row" onClick={() => setExpandedAlert(isExpanded ? null : i)}>
+        <div
+          className="epi-alert-row"
+          role="button"
+          tabIndex={0}
+          aria-expanded={isExpanded}
+          onClick={() => setExpandedAlert(isExpanded ? null : i)}
+          onKeyDown={event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            setExpandedAlert(isExpanded ? null : i);
+          }}
+        >
           <div className="epi-alert-main">
             <Chip tone={severityTone(alert.severity)}>{alert.severity}</Chip>
             <div className="epi-alert-text">

@@ -25,6 +25,27 @@ describe('filterByScope: organisation isolation', () => {
     expect(out.map((d) => d._id)).toEqual(['a']);
   });
 
+  test('an explicitly multi-facility user sees home and granted sites only', () => {
+    const out = filterByScope(docs, scope({
+      role: 'doctor',
+      orgId: 'org-moh-ss',
+      hospitalId: 'hosp-001',
+      facilityIds: ['hosp-002'],
+    }));
+    expect(out.map((d) => d._id).sort()).toEqual(['a', 'b']);
+    expect(out.map((d) => d._id)).not.toContain('c');
+  });
+
+  test('a facility-bound user with no entitlement fails closed for PHI', () => {
+    const out = filterByScope(docs, scope({
+      role: 'doctor',
+      orgId: 'org-moh-ss',
+      hospitalId: undefined,
+      facilityIds: [],
+    }));
+    expect(out).toEqual([]);
+  });
+
   test("another org's patients are never returned", () => {
     const out = filterByScope(docs, scope({ role: 'doctor', orgId: 'org-moh-ss', hospitalId: 'hosp-001' }));
     expect(out.map((d) => d._id)).not.toContain('c');
@@ -72,10 +93,13 @@ describe('filterByScope: cross-org referral exception (KAN-101)', () => {
 });
 
 describe('buildScopeFromAuth', () => {
-  test('carries role, org and hospital from the JWT payload', () => {
-    const s = buildScopeFromAuth({ role: 'nurse', orgId: 'org-moh-ss', hospitalId: 'hosp-003' } as Parameters<typeof buildScopeFromAuth>[0]);
+  test('carries role, org and all entitled facilities from the JWT payload', () => {
+    const s = buildScopeFromAuth({
+      role: 'nurse', orgId: 'org-moh-ss', hospitalId: 'hosp-003', facilityIds: ['hosp-004'],
+    } as Parameters<typeof buildScopeFromAuth>[0]);
     expect(s.role).toBe('nurse');
     expect(s.orgId).toBe('org-moh-ss');
     expect(s.hospitalId).toBe('hosp-003');
+    expect(s.facilityIds).toEqual(['hosp-004']);
   });
 });

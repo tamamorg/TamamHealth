@@ -64,14 +64,43 @@ export function usePrescriptions(patientId?: string) {
    * an id, because the transaction needs the order's clearance state and
    * facility to decide whether the dispense is legal at all.
    *
-   * This calls the service directly rather than the API route so dispensing
-   * still works offline — the atomicity guarantee comes from the service
-   * being one compensating transaction, not from the HTTP hop. `/api/
-   * prescriptions/:id` runs the same function for server-side callers.
+   * Online dispensing is committed against the central CouchDB through the
+   * API, so the prescription compare-and-swap claim serializes different
+   * workstations. A confirmed-offline device uses the same compensating
+   * transaction locally and syncs later; an ambiguous network failure never
+   * falls back locally because the server may already have committed it.
    */
   const dispense = useCallback(async (
     input: import('../services/dispensing-service').DispenseInput,
   ) => {
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      const { apiFetch } = await import('../api-fetch');
+      let response: Response;
+      try {
+        response = await apiFetch(`/api/prescriptions/${encodeURIComponent(input.prescription._id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'dispense',
+            quantity: input.quantity,
+            witnessId: input.witnessId,
+            witnessName: input.witnessName,
+            allowPartial: input.allowPartial === true,
+            note: input.note,
+          }),
+        });
+      } catch {
+        throw new Error(
+          'The dispense result could not be confirmed. Do not retry until you refresh the order and stock position.',
+        );
+      }
+      const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error((body.error as string) || `Dispense failed (${response.status})`);
+      }
+      await loadPrescriptions();
+      return body as unknown as import('../services/dispensing-service').DispenseResult;
+    }
     const { dispenseMedication } = await import('../services/dispensing-service');
     const result = await dispenseMedication(input);
     await loadPrescriptions();

@@ -122,6 +122,15 @@ export async function priceFor(
   serviceCode?: string,
 ): Promise<FeeScheduleDoc | null> {
   const fees = await getActiveFees(scope);
+  return priceFromFees(fees, category, serviceCode);
+}
+
+/** Resolve a price from an already-loaded catalog (no I/O). */
+export function priceFromFees(
+  fees: readonly FeeScheduleDoc[],
+  category: ChargeCategory,
+  serviceCode?: string,
+): FeeScheduleDoc | null {
   if (serviceCode) {
     const exact = fees.find(f => f.serviceCode === serviceCode);
     if (exact) return exact;
@@ -168,11 +177,16 @@ export interface ChargeContext {
  */
 export async function chargeForServices(ctx: ChargeContext, lines: ChargeLineRequest[]): Promise<BillingDoc | null> {
   const items: BillLineItem[] = [];
+  // Load the catalog at most once. The old loop called priceFor() for every
+  // unpriced line, and priceFor() scans/filters the fee database each time — a
+  // 12-line superbill produced 12 identical reads and index checks.
+  const needsCatalog = lines.some(line => line.unitPrice == null);
+  const fees = needsCatalog ? await getActiveFees(ctx.scope) : [];
   for (const line of lines) {
     let unitPrice = line.unitPrice;
     let description = line.description;
     if (unitPrice == null) {
-      const fee = await priceFor(line.category, ctx.scope, line.serviceCode);
+      const fee = priceFromFees(fees, line.category, line.serviceCode);
       if (!fee) continue; // nothing catalogued — skip rather than charge 0
       unitPrice = fee.unitPrice;
       description = description || fee.serviceName;

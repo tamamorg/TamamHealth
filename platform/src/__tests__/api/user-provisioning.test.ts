@@ -15,8 +15,10 @@ jest.mock('@/modules/identity/core/api-auth', () => ({
   logApiError: jest.fn(),
 }));
 jest.mock('@/lib/services/hospital-service', () => ({
-  getHospitalById: jest.fn(async () => ({
-    _id: 'hosp-a', name: 'Canonical Hospital', orgId: 'org-a',
+  getHospitalById: jest.fn(async (id: string) => ({
+    _id: id,
+    name: id === 'hosp-a' ? 'Canonical Hospital' : `Facility ${id}`,
+    orgId: id === 'hosp-outside' ? 'org-b' : 'org-a',
   })),
 }));
 jest.mock('@/lib/services/organization-service', () => ({
@@ -103,4 +105,29 @@ it('rejects invisible leading or trailing spaces instead of storing a different 
 
   expect(response.status).toBe(400);
   expect(mockCreateUser).not.toHaveBeenCalled();
+});
+
+it('canonicalizes explicit multi-facility grants and removes the home-site duplicate', async () => {
+  const response = await POST(post({
+    username: 'doctor.cover', name: 'Doctor Cover', role: 'doctor', password: 'TempPass!123',
+    orgId: 'org-a', hospitalId: 'hosp-a',
+    facilityIds: ['hosp-b', 'hosp-b', 'hosp-a'],
+  }));
+
+  expect(response.status).toBe(201);
+  expect(mockCreateUser).toHaveBeenCalledWith(expect.objectContaining({
+    hospitalId: 'hosp-a',
+    facilityIds: ['hosp-b'],
+  }), 'user-superadmin', 'superadmin');
+});
+
+it('rejects an additional facility owned by another organization', async () => {
+  const response = await POST(post({
+    username: 'doctor.escape', name: 'Doctor Escape', role: 'doctor', password: 'TempPass!123',
+    orgId: 'org-a', hospitalId: 'hosp-a', facilityIds: ['hosp-outside'],
+  }));
+
+  expect(response.status).toBe(403);
+  expect(mockCreateUser).not.toHaveBeenCalled();
+  expect((await response.json()).error).toMatch(/outside the user's organization/i);
 });

@@ -3944,6 +3944,8 @@ const en: TranslationMap = {
   'orgUsers.errorResetFailed': 'Failed to reset password.',
   'orgUsers.errorSelectHospital': 'Please select a hospital for this role.',
   'orgUsers.fieldAssignedHospital': 'Assigned Hospital',
+  'orgUsers.additionalFacilities': 'Additional facilities',
+  'orgUsers.additionalFacilitiesHint': 'Optional. Grant access only to the other sites where this person works.',
   'orgUsers.noFacilitiesTitle': 'No facilities yet',
   'orgUsers.noFacilitiesBody': 'This role works at a facility, and your organization does not have one yet. Add the first facility, then come back and create the staff who work there.',
   'orgUsers.noFacilitiesAction': 'Add a facility',

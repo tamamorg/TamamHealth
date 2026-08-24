@@ -1,4 +1,5 @@
 import type { UserRole } from '../db-types';
+import { entitlementFor } from '../sync/facility-entitlements';
 
 /**
  * Document `type`s that are legitimately stored WITHOUT any hospital field and
@@ -33,6 +34,8 @@ const NATIONAL_ROLES = new Set<UserRole>([
 export interface DataScope {
   orgId?: string;
   hospitalId?: string;
+  /** Additional facilities this user is explicitly entitled to work in. */
+  facilityIds?: string[];
   payam?: string;
   county?: string;
   state?: string;
@@ -101,19 +104,26 @@ export function filterByScope<T extends Record<string, any>>(
     ));
   }
 
-  // Non-admin roles that have a hospitalId are further scoped
-  const ADMIN_ROLES: UserRole[] = ['super_admin', 'org_admin', 'government'];
-  if (!ADMIN_ROLES.includes(scope.role) && scope.hospitalId) {
-    const hospId = scope.hospitalId;
+  // Apply the same facility entitlement used by CouchDB replication. Keeping
+  // two different interpretations here caused a particularly dangerous split:
+  // the JWT and CouchDB user carried `facilityIds`, while API/service reads
+  // silently discarded them. A clinician covering two sites either saw only
+  // their home site or had to be promoted to an org-wide role.
+  //
+  // `entitlementFor` also fails closed when a facility-bound account has no
+  // home/explicit facility: only org-wide reference records pass, never PHI.
+  const entitlement = entitlementFor(scope);
+  if (!entitlement.allFacilities) {
+    const allowedFacilityIds = new Set(entitlement.facilityIds);
     filtered = filtered.filter(d => {
       const matches =
-        d.hospitalId === hospId ||
-        d.registrationHospital === hospId ||
-        d.lastVisitHospital === hospId ||
-        d.fromHospitalId === hospId ||
-        d.toHospitalId === hospId ||
-        d.recipientHospitalId === hospId ||
-        d.facilityId === hospId;
+        allowedFacilityIds.has(d.hospitalId) ||
+        allowedFacilityIds.has(d.registrationHospital) ||
+        allowedFacilityIds.has(d.lastVisitHospital) ||
+        allowedFacilityIds.has(d.fromHospitalId) ||
+        allowedFacilityIds.has(d.toHospitalId) ||
+        allowedFacilityIds.has(d.recipientHospitalId) ||
+        allowedFacilityIds.has(d.facilityId);
       if (matches) return true;
 
       // No-hospital docs: tightened to close the cross-facility leak where ANY
@@ -161,6 +171,7 @@ export function buildScopeFromAuth(auth: {
   role: string;
   orgId?: string;
   hospitalId?: string;
+  facilityIds?: string[];
   payam?: string;
   county?: string;
   state?: string;
@@ -171,6 +182,7 @@ export function buildScopeFromAuth(auth: {
     role: auth.role as UserRole,
     orgId: auth.orgId,
     hospitalId: auth.hospitalId,
+    facilityIds: auth.facilityIds,
     payam: auth.payam,
     county: auth.county,
     state: auth.state,

@@ -58,6 +58,7 @@ import type {
 } from '@/lib/clinical-notes/types';
 import './clinical-notes.css';
 import Select from '@/components/Select';
+import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
 
 const AUTOSAVE_MS = 900;
 
@@ -132,6 +133,12 @@ export default function ClinicalNoteEditor({
   // first one's pending text.
   const pendingSaves = useRef<Record<string, Partial<NoteSectionContent>>>({});
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
+  const { confirmNavigation } = useUnsavedChangesWarning(
+    () => Object.keys(pendingSaves.current).length > 0,
+  );
+  const navigateAway = useCallback((href: string) => {
+    if (confirmNavigation()) router.push(href);
+  }, [confirmNavigation, router]);
 
   // ── Load ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -347,7 +354,7 @@ export default function ClinicalNoteEditor({
       case 'manage_allergies': setShowAllergies(true); return;
       case 'prescribe': setShowPrescribe(true); return;
       case 'record_vitals':
-        router.push(`/patients/${note.patientId}?tab=vitals`);
+        navigateAway(`/patients/${note.patientId}?tab=vitals`);
         return;
       // Opens FollowUpModal, which only collects the form; the write
       // (createFollowUp, then recordPlanAction) happens in
@@ -371,7 +378,7 @@ export default function ClinicalNoteEditor({
       // encounterId/noteId ride along so the immunization, once placed, can
       // link back to this visit and note.
       case 'order_vaccine':
-        router.push(`/immunizations?patientId=${note.patientId}&encounterId=${note.encounterId || ''}&noteId=${noteId}`);
+        navigateAway(`/immunizations?patientId=${note.patientId}&encounterId=${note.encounterId || ''}&noteId=${noteId}`);
         return;
       // Opens PatientEducationModal — the old router.push to /messages read
       // neither param, so nothing was ever sent. handleSendEducation sends
@@ -624,13 +631,13 @@ export default function ClinicalNoteEditor({
 
           {/* Chart shortcuts as icon tiles */}
           <div className="cn-quick-links">
-            <button type="button" className="cn-quick-link" onClick={() => router.push(`/patients/${note.patientId}`)}>
+            <button type="button" className="cn-quick-link" onClick={() => navigateAway(`/patients/${note.patientId}`)}>
               <FileText size={16} aria-hidden /> Facesheet
             </button>
-            <button type="button" className="cn-quick-link" onClick={() => router.push(`/patients/${note.patientId}?tab=immunizations`)}>
+            <button type="button" className="cn-quick-link" onClick={() => navigateAway(`/patients/${note.patientId}?tab=immunizations`)}>
               <Syringe size={16} aria-hidden /> Immunize
             </button>
-            <button type="button" className="cn-quick-link" onClick={() => router.push(`/patients/${note.patientId}?tab=vitals`)}>
+            <button type="button" className="cn-quick-link" onClick={() => navigateAway(`/patients/${note.patientId}?tab=vitals`)}>
               <Activity size={16} aria-hidden /> Flowsheets
             </button>
           </div>
@@ -648,7 +655,7 @@ export default function ClinicalNoteEditor({
                   type="button"
                   className="cn-note-row"
                   title={`${getNoteType(n.noteType).label} — ${n.serviceDate}`}
-                  onClick={() => router.push(`/notes/${n._id}`)}
+                  onClick={() => navigateAway(`/notes/${n._id}`)}
                 >
                   <span className="cn-note-row-top">
                     <b>{getNoteType(n.noteType).label}</b>
@@ -734,7 +741,7 @@ export default function ClinicalNoteEditor({
                   key={lab.id}
                   type="button"
                   className="cn-rail-row"
-                  onClick={() => router.push(`/patients/${note.patientId}?tab=labs&focus=${encodeURIComponent(lab.id)}`)}
+                  onClick={() => navigateAway(`/patients/${note.patientId}?tab=labs&focus=${encodeURIComponent(lab.id)}`)}
                 >
                   <span className="cn-rail-row-main">{lab.testName}</span>
                   <span className="cn-rail-row-meta">{lab.date}</span>
@@ -774,7 +781,7 @@ export default function ClinicalNoteEditor({
                     type="button"
                     className="cn-rail-row cn-rail-row-stacked"
                     title={doc.title}
-                    onClick={() => router.push(`/patients/${note.patientId}?tab=documents&focus=${encodeURIComponent(doc._id)}`)}
+                    onClick={() => navigateAway(`/patients/${note.patientId}?tab=documents&focus=${encodeURIComponent(doc._id)}`)}
                   >
                     <span className="cn-rail-row-main">
                       {doc.createdAt ? `${new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })} - ` : ''}{doc.title || doc.fileName}
@@ -947,7 +954,7 @@ export default function ClinicalNoteEditor({
         <button
           type="button"
           className="cn-btn"
-          onClick={() => router.push(`/billing?patientId=${note.patientId}`)}
+          onClick={() => navigateAway(`/billing?patientId=${note.patientId}`)}
         >
           <DollarSign size={14} /> Capture Charge
         </button>
@@ -977,7 +984,7 @@ export default function ClinicalNoteEditor({
         <button
           type="button"
           className="cn-btn"
-          onClick={() => router.push(`/patients/${note.patientId}?tab=overview`)}
+          onClick={() => navigateAway(`/patients/${note.patientId}?tab=overview`)}
         >
           <ClipboardList size={14} /> Care Checklist
         </button>

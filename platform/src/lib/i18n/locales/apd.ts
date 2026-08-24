@@ -3936,6 +3936,8 @@ const apd: TranslationMap = {
   'orgUsers.errorResetFailed': 'فشل في إعادة تعيين كلمة السر.',
   'orgUsers.errorSelectHospital': 'اختار مستشفى للدور دا من فضلك.',
   'orgUsers.fieldAssignedHospital': 'المستشفى المخصص',
+  'orgUsers.additionalFacilities': 'مرافق إضافية',
+  'orgUsers.additionalFacilitiesHint': 'اختياري. ادي صلاحية بس للمواقع التانية الزول دا بيشتغل فيها.',
   'orgUsers.noFacilitiesTitle': 'ما في مرافق لسه',
   'orgUsers.noFacilitiesBody': 'الدور دا بيشتغل في مرفق، ومنظمتك ما عندها مرفق لسه. زيد أول مرفق، وبعدين ارجع وسجّل الموظفين اللي بيشتغلوا فيهو.',
   'orgUsers.noFacilitiesAction': 'زيد مرفق',

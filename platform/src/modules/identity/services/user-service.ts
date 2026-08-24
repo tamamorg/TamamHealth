@@ -131,6 +131,8 @@ interface CreateUserData {
   role: UserRole;
   hospitalId?: string;
   hospitalName?: string;
+  /** Additional facilities beyond the user's home facility. */
+  facilityIds?: string[];
   orgId?: string;
   /**
    * Organization display name. Stamped by POST /api/users from the
@@ -159,6 +161,7 @@ async function provisionViaApi(data: CreateUserData): Promise<Record<string, unk
     role: data.role,
     hospitalId: data.hospitalId,
     hospitalName: data.hospitalName,
+    facilityIds: data.facilityIds,
     orgId: data.orgId,
     photoUrl: data.photoUrl,
     department: data.department,
@@ -257,6 +260,9 @@ export async function createUser(
     role: data.role,
     hospitalId: needsHospital ? data.hospitalId : undefined,
     hospitalName: needsHospital ? data.hospitalName : undefined,
+    facilityIds: needsHospital
+      ? [...new Set(data.facilityIds ?? [])].filter(id => id && id !== data.hospitalId)
+      : [],
     orgId: data.orgId,
     orgName: data.orgName,
     photoUrl: data.photoUrl,
@@ -286,6 +292,8 @@ interface UpdateUserData {
   role?: UserRole;
   hospitalId?: string;
   hospitalName?: string;
+  /** Additional facilities beyond the user's home facility. */
+  facilityIds?: string[];
   isActive?: boolean;
   /** Data URL, or null to clear the photo back to initials. */
   photoUrl?: string | null;
