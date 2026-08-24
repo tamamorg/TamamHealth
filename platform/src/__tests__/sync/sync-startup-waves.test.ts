@@ -10,6 +10,8 @@
 
 import { PRIORITY_SYNC_DATABASES, SECOND_WAVE_DELAY_MS } from '@/lib/sync/sync-manager';
 import { DATABASE_SYNC_CONFIGS } from '@/lib/sync/sync-config';
+import fs from 'node:fs';
+import path from 'node:path';
 
 describe('the priority set', () => {
   it('names only databases that actually exist in the sync map', () => {
@@ -40,5 +42,13 @@ describe('the delay', () => {
   it('is long enough to clear first paint and short enough to go unnoticed', () => {
     expect(SECOND_WAVE_DELAY_MS).toBeGreaterThanOrEqual(5_000);
     expect(SECOND_WAVE_DELAY_MS).toBeLessThanOrEqual(60_000);
+  });
+});
+
+describe('login startup', () => {
+  it('does not immediately bypass the stagger with a manual full sync', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'src/lib/context.tsx'), 'utf8');
+    expect(source).toContain('manager.startAll();');
+    expect(source).not.toMatch(/manager\.startAll\(\);\s*(?:\/\/[^\n]*\n\s*)*manager\.syncNow\(/);
   });
 });

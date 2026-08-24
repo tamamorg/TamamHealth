@@ -4,25 +4,38 @@ import { useState, useEffect, useCallback } from 'react';
 import type { OrganizationDoc } from '../db-types';
 import { makeCoalescer } from './live-reload';
 import { organizationsDB } from '../db';
+import { useApp } from '../context';
 
 export function useOrganizations() {
   const [organizations, setOrganizations] = useState<OrganizationDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { currentUser } = useApp();
+  const role = currentUser?.role;
+  const orgId = currentUser?.orgId;
 
   const loadOrganizations = useCallback(async () => {
     try {
       setError(null);
       const { getAllOrganizations } = await import('../services/organization-service');
       const data = await getAllOrganizations();
-      setOrganizations(data);
+      // The organizations database is shared reference data and can contain
+      // every tenant. The API returns a scoped answer when online; enforce the
+      // same boundary on the offline fallback instead of exposing the whole
+      // replica to an org/facility role.
+      const visible = role === 'super_admin' || role === 'government'
+        ? data
+        : orgId
+          ? data.filter(organization => organization._id === orgId)
+          : [];
+      setOrganizations(visible);
     } catch (err) {
       console.error(err);
       setError('Failed to load organizations');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [orgId, role]);
 
   useEffect(() => { loadOrganizations(); }, [loadOrganizations]);
 

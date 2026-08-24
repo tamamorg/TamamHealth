@@ -229,12 +229,26 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   ) {
     errors.push('AIRTEL_WEBHOOK_SECRET must be a non-placeholder secret of at least 32 characters.');
   }
+  if (env.AIRTEL_WEBHOOK_GATEWAY_VERIFIED !== 'true') {
+    errors.push('AIRTEL_WEBHOOK_GATEWAY_VERIFIED=true is required: the upstream gateway must verify Airtel before adding the callback HMAC.');
+  }
   if (
     !env.MPESA_WEBHOOK_SECRET
     || env.MPESA_WEBHOOK_SECRET.length < 32
     || PLACEHOLDER.test(env.MPESA_WEBHOOK_SECRET)
   ) {
     errors.push('MPESA_WEBHOOK_SECRET must be a non-placeholder secret of at least 32 characters.');
+  }
+  if (env.MPESA_WEBHOOK_GATEWAY_VERIFIED !== 'true') {
+    errors.push('MPESA_WEBHOOK_GATEWAY_VERIFIED=true is required: the upstream gateway must verify M-Pesa before adding the callback HMAC.');
+  }
+  if (env.FLUTTERWAVE_SECRET_HASH) {
+    if (env.FLUTTERWAVE_SECRET_HASH.length < 32 || PLACEHOLDER.test(env.FLUTTERWAVE_SECRET_HASH)) {
+      errors.push('FLUTTERWAVE_SECRET_HASH must be a non-placeholder secret of at least 32 characters.');
+    }
+    if (!env.FLUTTERWAVE_SECRET_KEY || PLACEHOLDER.test(env.FLUTTERWAVE_SECRET_KEY)) {
+      errors.push('FLUTTERWAVE_SECRET_KEY is required when Flutterwave webhooks are enabled so transactions can be verified before posting.');
+    }
   }
 
   return errors;

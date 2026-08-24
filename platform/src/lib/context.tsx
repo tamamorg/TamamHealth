@@ -597,7 +597,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // --- Sync gating: the manager runs only when the user wants to be online
   // AND the OS reports the network is up. If either drops, stopAll(). When
-  // both come back, startAll() and trigger an immediate syncNow().
+  // both come back, startAll() restores live push and staggered polling.
   //
   // We deliberately do NOT poke setLastSync() here. The previous version
   // wrote `new Date().toISOString()` the instant startAll() was called, which
@@ -613,8 +613,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (isOnline) {
       if (!manager.isRunning) {
         manager.startAll();
-        // Best-effort kickoff — failures surface via per-DB status.
-        manager.syncNow().catch(() => {});
       }
     } else {
       if (manager.isRunning) {

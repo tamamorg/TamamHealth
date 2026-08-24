@@ -96,7 +96,7 @@ describe('the groups are usable from a route at all', () => {
     // A regression here means somebody inlined a group back into a route.
     const migrated = [
       'users/route.ts', 'prescriptions/route.ts', 'medical-records/route.ts',
-      'medical-records/[id]/route.ts', 'organizations/route.ts',
+      'medical-records/[id]/route.ts',
       'usage/events/route.ts', 'usage/summary/route.ts',
     ];
     for (const rel of migrated) {

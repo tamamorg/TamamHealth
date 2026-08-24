@@ -130,6 +130,8 @@ export class SyncManager {
   private _lastCleanPoint: string | null = null;
   /** Resolved once we want to release the lock (on stopAll or destroy). */
   private _lockReleaser: (() => void) | null = null;
+  /** Coalesce repeated Sync Now clicks into one all-database operation. */
+  private _syncNowPromise: Promise<void> | null = null;
 
   constructor(opts: SyncManagerOptions = {}) {
     this.orgId = opts.orgId;
@@ -329,16 +331,23 @@ export class SyncManager {
   /** Force a one-shot sync on all databases */
   async syncNow(): Promise<void> {
     if (!isSyncEnabled()) return;
-    // "Now" means everything: an explicit sync during the staged-startup
-    // window pulls the deferred wave forward rather than silently skipping it.
-    this._startSecondWave?.();
-
-    const promises = Array.from(this.services.values()).map(service =>
-      service.syncNow().catch(() => {
-        // Individual failures are tracked per-DB
-      })
-    );
-    await Promise.allSettled(promises);
+    if (this._syncNowPromise) return this._syncNowPromise;
+    this._syncNowPromise = (async () => {
+      // "Now" means everything only when a person explicitly asks for it.
+      // Automatic startup uses startAll() alone, preserving the two waves.
+      this._startSecondWave?.();
+      const promises = Array.from(this.services.values()).map(service =>
+        service.syncNow().catch(() => {
+          // Individual failures are tracked per-DB
+        })
+      );
+      await Promise.allSettled(promises);
+    })();
+    try {
+      await this._syncNowPromise;
+    } finally {
+      this._syncNowPromise = null;
+    }
   }
 
   /** Get the current aggregate status */

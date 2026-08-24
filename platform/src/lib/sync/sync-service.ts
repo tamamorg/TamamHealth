@@ -185,6 +185,7 @@ export class SyncService {
   private readonly pullIntervalMs: number;
   private pullTimer: ReturnType<typeof setTimeout> | null = null;
   private pullCycleRep: PouchDB.Replication.Replication<object> | null = null;
+  private oneShotReps = new Set<PouchDB.Replication.Replication<object>>();
   private stopped = true;
   private retryCount = 0;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -368,8 +369,8 @@ export class SyncService {
         // entitlement selector. db.sync(options) applies one ambiguous option
         // bag to both directions and previously bypassed facility scoping.
         const [push, pull] = await Promise.all([
-          this.localDB.replicate.to(this.remoteDB, pushOptions),
-          this.localDB.replicate.from(this.remoteDB, pullOptions),
+          this.runOneShot('push', pushOptions),
+          this.runOneShot('pull', pullOptions),
         ]);
         this.updateStatus({
           state: 'idle',
@@ -378,14 +379,14 @@ export class SyncService {
           docsRead: this._status.docsRead + (pull.docs_read || 0),
         });
       } else if (this.direction === 'push') {
-        const result = await this.localDB.replicate.to(this.remoteDB, pushOptions);
+        const result = await this.runOneShot('push', pushOptions);
         this.updateStatus({
           state: 'idle',
           lastSync: new Date().toISOString(),
           docsWritten: this._status.docsWritten + (result.docs_written || 0),
         });
       } else {
-        const result = await this.localDB.replicate.from(this.remoteDB, pullOptions);
+        const result = await this.runOneShot('pull', pullOptions);
         this.updateStatus({
           state: 'idle',
           lastSync: new Date().toISOString(),
@@ -393,6 +394,13 @@ export class SyncService {
         });
       }
     } catch (err: unknown) {
+      // stopSync() deliberately cancels tracked one-shot replications on
+      // logout/offline. That is a clean shutdown, not a sync failure to leave
+      // behind as a red status when the next session starts.
+      if (this.stopped) {
+        this.updateStatus({ state: 'idle', error: null });
+        return;
+      }
       const msg = err instanceof Error ? err.message : 'Sync failed';
       this.updateStatus({ state: 'error', error: msg });
       throw err;
@@ -442,6 +450,21 @@ export class SyncService {
   }
 
   // --- Private helpers ---
+
+  private async runOneShot(
+    direction: 'push' | 'pull',
+    options: PouchDB.Replication.ReplicateOptions,
+  ): Promise<PouchDB.Replication.ReplicationResultComplete<object>> {
+    const rep = direction === 'push'
+      ? this.localDB.replicate.to(this.remoteDB, options)
+      : this.localDB.replicate.from(this.remoteDB, options);
+    this.oneShotReps.add(rep);
+    try {
+      return await rep;
+    } finally {
+      this.oneShotReps.delete(rep);
+    }
+  }
 
   // Status + conflict-surfacing for a replication 'change' event. Shared by
   // the live replications and the periodic pull cycle.
@@ -544,6 +567,8 @@ export class SyncService {
     for (const rep of [this.replication, this.pushRep, this.pullRep, this.pullCycleRep]) {
       (rep as { cancel?: () => void } | null)?.cancel?.();
     }
+    for (const rep of this.oneShotReps) rep.cancel();
+    this.oneShotReps.clear();
     this.replication = null;
     this.pushRep = null;
     this.pullRep = null;

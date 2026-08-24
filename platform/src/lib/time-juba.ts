@@ -43,6 +43,17 @@ export function jubaWeekStart(d: Date | string | number = new Date()): string {
   return `${j.getUTCFullYear()}-${String(j.getUTCMonth() + 1).padStart(2, '0')}-${String(j.getUTCDate()).padStart(2, '0')}`;
 }
 
+/** Convert half-open Juba calendar dates to UTC instants for indexed queries. */
+export function jubaDateRangeUtc(fromDate: string, toDateExclusive: string): { from: string; to: string } {
+  const toUtc = (value: string): string => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) throw new Error(`Invalid ISO date: ${value}`);
+    const [, year, month, day] = match;
+    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)) - JUBA_OFFSET_MS).toISOString();
+  };
+  return { from: toUtc(fromDate), to: toUtc(toDateExclusive) };
+}
+
 /**
  * "Now" as a Date whose LOCAL fields (getHours/getDate/…) equal the current
  * Africa/Juba wall-clock — regardless of the viewer's browser timezone.

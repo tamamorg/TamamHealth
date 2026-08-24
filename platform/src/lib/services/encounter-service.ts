@@ -102,6 +102,25 @@ export async function getAllEncounters(scope?: DataScope): Promise<EncounterDoc[
   return scope ? filterByScope(rows, scope) : rows;
 }
 
+/** Indexed encounter read bounded to a half-open instant range. */
+export async function getEncountersInRange(
+  range: { from: string; to: string },
+  scope: DataScope,
+): Promise<EncounterDoc[]> {
+  const db = encountersDB();
+  const operator = { $gte: range.from, $lt: range.to };
+  const [byStart, byCreated] = await Promise.all([
+    findByType<EncounterDoc>(db, 'clinical_encounter', { startedAt: operator }, { indexFields: ['type', 'startedAt'] }),
+    findByType<EncounterDoc>(db, 'clinical_encounter', { createdAt: operator }, { indexFields: ['type', 'createdAt'] }),
+  ]);
+  const unique = new Map([...byStart, ...byCreated].map(encounter => [encounter._id, encounter]));
+  const rows = [...unique.values()].filter(encounter => {
+    const at = encounter.startedAt || encounter.createdAt;
+    return !!at && at >= range.from && at < range.to;
+  });
+  return filterByScope(rows, scope);
+}
+
 /** Open (non-closed) encounters a clinician can resume, newest first. */
 export async function getResumableEncounters(clinicianId?: string): Promise<EncounterDoc[]> {
   const rows = await findByType<EncounterDoc>(encountersDB(), 'clinical_encounter', {}, { indexFields: ['type'] });

@@ -62,6 +62,10 @@ function orgAdmin(orgId: string): AuthPayload {
   return { sub: 'admin-a', username: 'admin-a', name: 'Admin A', role: 'org_admin', orgId };
 }
 
+function workspaceUser(role: AuthPayload['role'], orgId?: string): AuthPayload {
+  return { sub: `${role}-user`, username: `${role}-user`, name: role, role, orgId };
+}
+
 function getRequest(url: string): NextRequest {
   return new NextRequest(url);
 }
@@ -190,4 +194,30 @@ test('org admins see only their organization and cannot request foreign stats', 
   });
   const nationalList = await organizationsGET(getRequest('http://test/api/organizations'));
   expect((await nationalList.json()).organizations).toHaveLength(2);
+});
+
+test.each([
+  'medical_superintendent',
+  'hospital_manager',
+  'county_health_director',
+  'hrio',
+  'records_hmis_officer',
+] as const)('%s can open the management workspace but sees only its organization', async role => {
+  await putDoc(organizationsDB(), { _id: ORG_A, type: 'organization', name: 'Org A', slug: 'a' });
+  await putDoc(organizationsDB(), { _id: ORG_B, type: 'organization', name: 'Org B', slug: 'b' });
+  mockGetAuth.mockResolvedValue(workspaceUser(role, ORG_A));
+
+  const response = await organizationsGET(getRequest('http://test/api/organizations'));
+  expect(response.status).toBe(200);
+  expect((await response.json()).organizations.map((org: { _id: string }) => org._id)).toEqual([ORG_A]);
+});
+
+test('government oversight can list all organizations', async () => {
+  await putDoc(organizationsDB(), { _id: ORG_A, type: 'organization', name: 'Org A', slug: 'a' });
+  await putDoc(organizationsDB(), { _id: ORG_B, type: 'organization', name: 'Org B', slug: 'b' });
+  mockGetAuth.mockResolvedValue(workspaceUser('government'));
+
+  const response = await organizationsGET(getRequest('http://test/api/organizations'));
+  expect(response.status).toBe(200);
+  expect((await response.json()).organizations.map((org: { _id: string }) => org._id).sort()).toEqual([ORG_A, ORG_B]);
 });

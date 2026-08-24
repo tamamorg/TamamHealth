@@ -4,9 +4,8 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
-import Badge from '@/components/Badge';
-import EmptyState from '@/components/EmptyState';
-import { BedDouble, ChevronRight, Plus, X, AlertTriangle, CheckCircle2, Filter, ExternalLink } from '@/components/icons/lucide';
+import PatientAvatar from '@/components/patients/PatientAvatar';
+import { Plus, X, AlertTriangle, CheckCircle2, Filter } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
@@ -16,9 +15,34 @@ import type { AdmissionDoc } from '@/lib/db-types-ward';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
 
-// Shared column template for the admissions table header + rows:
-// Patient · Ward · Diagnosis · Severity · Discharge action
-const ADMISSION_GRID = 'minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 2fr) 96px 132px';
+/* The admissions list is the shared appointment/worklist card row — the same
+   surface, grid, type scale and status pill the patient registry uses, so a
+   ward board and the registry read as one product. Five columns:
+   Patient · Admitted · Ward · Diagnosis · Severity.
+
+   The per-row Discharge button is gone (2026-08-24): the ROW is the control
+   now. Clicking a patient opens their dialog, where discharging is one of the
+   actions rather than the only one the list could offer — and a 132px column
+   of identical buttons stopped being the loudest thing in every row. */
+const SEVERITY_PILL: Record<AdmissionDoc['severity'], string> = {
+  critical: 'status-cancelled',
+  severe: 'status-arrived',
+  moderate: 'status-scheduled',
+  mild: 'status-completed',
+};
+/** The avatar wants a first/last name; an admission carries one string. The
+ *  patient record is preferred when it is loaded — it also carries the photo. */
+function avatarNameOf(fullName: string): { firstName: string; surname: string } {
+  const parts = fullName.trim().split(/\s+/);
+  return { firstName: parts[0] || fullName, surname: parts.length > 1 ? parts[parts.length - 1] : '' };
+}
+
+const SEVERITY_LABEL: Record<AdmissionDoc['severity'], string> = {
+  critical: 'ward.severityCritical',
+  severe: 'ward.severitySevere',
+  moderate: 'ward.severityModerate',
+  mild: 'ward.severityMild',
+};
 
 export default function WardsPage() {
   const router = useRouter();
@@ -226,77 +250,86 @@ export default function WardsPage() {
             }
           />
           <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
-          {filteredAdmissions.length === 0 ? (
-            <EmptyState
-              icon={BedDouble}
-              title={t('ward.currentAdmissions')}
-              message={filterWard ? t('ward.noActiveAdmissionsInWard') : t('ward.noActiveAdmissions')}
-            />
-          ) : (
-            <div>
-              {/* Table header */}
-              <div
-                className="grid items-center gap-3 px-4 py-2.5 sticky top-0 z-10"
-                style={{
-                  gridTemplateColumns: ADMISSION_GRID,
-                  background: 'var(--bg-card-solid)',
-                  borderBottom: '1px solid var(--border-light)',
-                }}
-              >
-                {[t('ward.colPatient'), t('ward.colWard'), t('ward.colDiagnosis'), t('ward.severity'), ''].map((h, i) => (
-                  <div key={i} className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</div>
-                ))}
-              </div>
-              {filteredAdmissions.map(a => {
-                const sevTone = a.severity === 'critical' ? 'danger' : a.severity === 'severe' ? 'warning' : a.severity === 'moderate' ? 'info' : 'success';
-                const days = Math.max(1, Math.ceil((Date.now() - new Date(a.admissionDate).getTime()) / 86400000));
-                return (
-                  <div
-                    key={a._id}
-                    className="grid items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--table-row-hover)]"
-                    style={{
-                      gridTemplateColumns: ADMISSION_GRID,
-                      borderBottom: '1px solid var(--border-light)',
-                      background: a.severity === 'critical' ? 'rgba(224, 49, 39, 0.04)' : 'transparent',
-                    }}
-                  >
-                    {/* Patient */}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <PatientName patientId={a.patientId} name={a.patientName} nameClassName="text-[12.5px]" />
-                        <button
-                          type="button"
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--overlay-subtle)] flex-shrink-0"
-                          title={`Open ${a.patientName}'s chart`}
-                          aria-label={`Open ${a.patientName}'s chart`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/patients/${a.patientId}?tab=overview`);
-                          }}
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </button>
+            <div className="appointment-card-surface wards-list-surface">
+              <div className="appointment-card-flow">
+                {/* The column head is the board's frame, not a label for the
+                    rows that happen to be loaded: it stays put when a filter
+                    matches nothing, so the list never collapses into a bare
+                    message. */}
+                <div className="appointment-card-head" aria-hidden="true">
+                  <span>{t('ward.colPatient')}</span>
+                  <span>{t('ward.colAdmitted')}</span>
+                  <span>{t('ward.colWard')}</span>
+                  <span>{t('ward.colDiagnosis')}</span>
+                  <span>{t('ward.severity')}</span>
+                </div>
+
+                {filteredAdmissions.length === 0 && (
+                  <div className="appointment-card-empty">
+                    {filterWard ? t('ward.noActiveAdmissionsInWard') : t('ward.noActiveAdmissions')}
+                  </div>
+                )}
+
+                {filteredAdmissions.map(a => {
+                  const days = Math.max(1, Math.ceil((Date.now() - new Date(a.admissionDate).getTime()) / 86400000));
+                  const patient = patients.find(p => p._id === a.patientId);
+                  const open = () => setDischargeFor(a);
+                  return (
+                    <div
+                      key={a._id}
+                      className="ehr-appointment-row appointment-card-row"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={t('ward.openAdmission', { name: a.patientName })}
+                      /* The name inside is a real link to the chart, so both
+                         handlers step aside when the event started on it —
+                         cheaper and more honest than a wrapper that swallows
+                         every event around it. */
+                      onClick={e => { if (!(e.target as HTMLElement).closest('a')) open(); }}
+                      onKeyDown={e => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        if ((e.target as HTMLElement).closest('a')) return;
+                        e.preventDefault();
+                        open();
+                      }}
+                    >
+                      <div className="ehr-appointment-identity">
+                        <PatientAvatar patient={patient ?? avatarNameOf(a.patientName)} size={40} />
+                        <div className="ehr-appointment-main appointment-card-patient">
+                          {/* The name still opens the chart — `PatientName`
+                              renders its own link when given an id; the rest
+                              of the row opens the actions. */}
+                          <PatientName patientId={a.patientId} name={a.patientName} nameClassName="" />
+                          <p>{a.hospitalNumber || t('ward.noHospitalNumber')}</p>
+                        </div>
+                      </div>
+
+                      <div className="ehr-appointment-time">
+                        <strong>{a.admissionDate.slice(0, 10)}</strong>
+                        <span>{t('ward.dayCount', { day: days })}</span>
+                      </div>
+
+                      <div className="appointment-card-provider">
+                        <strong>{a.wardName}</strong>
+                        <span>{a.bedNumber ? t('ward.bedShort', { bed: a.bedNumber }) : t('ward.noBed')}</span>
+                      </div>
+
+                      <div className="appointment-card-provider">
+                        <strong>{a.admittingDiagnosis}</strong>
+                        <span>{a.attendingPhysicianName || t('ward.attendingUnassigned')}</span>
+                      </div>
+
+                      <div className="appointment-card-status">
+                        <span className={`appointment-status-pill ${SEVERITY_PILL[a.severity]}`}>
+                          {t(SEVERITY_LABEL[a.severity])}
+                        </span>
+                        <small>{a.isolationRequired ? t('ward.isolation') : ''}</small>
                       </div>
                     </div>
-                    {/* Ward */}
-                    <div className="text-[12px] truncate" style={{ color: 'var(--text-secondary)' }}>{a.wardName}</div>
-                    {/* Diagnosis + day */}
-                    <div className="flex items-center gap-2 min-w-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-                      <span className="truncate">{a.admittingDiagnosis}</span>
-                      <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>· {t('ward.dayCount', { day: days })}</span>
-                      {a.isolationRequired && <Badge tone="danger" uppercase className="justify-self-start">{t('ward.isolation')}</Badge>}
-                    </div>
-                    {/* Severity */}
-                    <span className="justify-self-start">
-                      <Badge tone={sevTone} uppercase>{a.severity}</Badge>
-                    </span>
-                    {/* Action */}
-                    <button onClick={() => setDischargeFor(a)} className="btn btn-secondary btn-sm justify-self-end">{t('ward.discharge')} <ChevronRight className="w-3 h-3" /></button>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          )}
           </div>
         </div>
 
@@ -371,23 +404,72 @@ export default function WardsPage() {
           </Modal>
         )}
 
-        {/* Discharge modal */}
+        {/* ═══ The patient's dialog — opened by the row, not by a button ═══
+             It states who is admitted and where before it offers anything, so
+             the discharge form reads as an action ON a patient rather than a
+             form that happens to name one.
+
+             Everything is scoped `wdis-`: this stylesheet's bare `label` rule
+             force-uppercases every <label> (block, bold, tracked, 6px bottom
+             margin), which is what left the follow-up checkbox shouting in
+             caps on a line of its own, half a row out of alignment with its
+             box. Labels stay real labels — the scope just takes the cascade
+             back off them. */}
         {dischargeFor && (
-          <Modal onClose={() => setDischargeFor(null)}>
-            <div className="modal-content card-elevated p-6 max-w-lg w-full" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-base font-semibold">{t('ward.dischargePatient')}</h3>
-                  <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>{dischargeFor.patientName} · {dischargeFor.wardName}</p>
+          <Modal onClose={() => setDischargeFor(null)} width={460} labelledBy="ward-discharge-title">
+            <div className="modal-content card-elevated wdis">
+              <header className="wdis-head">
+                <div className="wdis-id">
+                  <PatientAvatar
+                    patient={patients.find(p => p._id === dischargeFor.patientId) ?? avatarNameOf(dischargeFor.patientName)}
+                    size={38}
+                  />
+                  <div className="min-w-0">
+                    <h3 id="ward-discharge-title">{dischargeFor.patientName}</h3>
+                    <p>
+                      {dischargeFor.wardName}
+                      {dischargeFor.bedNumber ? ` · ${t('ward.bedShort', { bed: dischargeFor.bedNumber })}` : ''}
+                    </p>
+                  </div>
                 </div>
-                <button onClick={() => setDischargeFor(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
+                <button
+                  type="button"
+                  className="wdis-close"
+                  onClick={() => setDischargeFor(null)}
+                  aria-label={t('action.close')}
+                >
                   <X className="w-4 h-4" />
                 </button>
-              </div>
-              <div className="space-y-3">
+              </header>
+
+              {/* The admission, before the form that ends it. */}
+              <dl className="wdis-facts">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.dischargeType')}</label>
-                  <Select value={dischargeForm.dischargeType} onChange={e => setDischargeForm({ ...dischargeForm, dischargeType: e.target.value as NonNullable<AdmissionDoc['dischargeType']> })}>
+                  <dt>{t('ward.colAdmitted')}</dt>
+                  <dd>{dischargeFor.admissionDate.slice(0, 10)}</dd>
+                </div>
+                <div>
+                  <dt>{t('ward.colDiagnosis')}</dt>
+                  <dd>{dischargeFor.admittingDiagnosis}</dd>
+                </div>
+                <div>
+                  <dt>{t('ward.severity')}</dt>
+                  <dd>
+                    <span className={`appointment-status-pill ${SEVERITY_PILL[dischargeFor.severity]}`}>
+                      {t(SEVERITY_LABEL[dischargeFor.severity])}
+                    </span>
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="wdis-body">
+                <div className="wdis-field">
+                  <label htmlFor="ward-discharge-type">{t('ward.dischargeType')}</label>
+                  <Select
+                    id="ward-discharge-type"
+                    value={dischargeForm.dischargeType}
+                    onChange={e => setDischargeForm({ ...dischargeForm, dischargeType: e.target.value as NonNullable<AdmissionDoc['dischargeType']> })}
+                  >
                     <option value="normal">{t('ward.dischargeTypeNormal')}</option>
                     <option value="against_medical_advice">{t('ward.dischargeTypeAma')}</option>
                     <option value="transfer">{t('ward.dischargeTypeTransfer')}</option>
@@ -395,29 +477,48 @@ export default function WardsPage() {
                     <option value="absconded">{t('ward.dischargeTypeAbsconded')}</option>
                   </Select>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.dischargeSummary')}</label>
-                  <textarea rows={3} value={dischargeForm.dischargeSummary} onChange={e => setDischargeForm({ ...dischargeForm, dischargeSummary: e.target.value })} placeholder={t('ward.dischargeSummaryPlaceholder')} />
+
+                <div className="wdis-field">
+                  <label htmlFor="ward-discharge-summary">{t('ward.dischargeSummary')}</label>
+                  <textarea
+                    id="ward-discharge-summary"
+                    rows={3}
+                    value={dischargeForm.dischargeSummary}
+                    onChange={e => setDischargeForm({ ...dischargeForm, dischargeSummary: e.target.value })}
+                    placeholder={t('ward.dischargeSummaryPlaceholder')}
+                  />
                 </div>
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-primary)' }}>
-                  <input type="checkbox" checked={dischargeForm.followUpRequired} onChange={e => setDischargeForm({ ...dischargeForm, followUpRequired: e.target.checked })} />
-                  {t('ward.followUpRequired')}
+
+                <label className="wdis-check" htmlFor="ward-discharge-followup">
+                  <input
+                    id="ward-discharge-followup"
+                    type="checkbox"
+                    checked={dischargeForm.followUpRequired}
+                    onChange={e => setDischargeForm({ ...dischargeForm, followUpRequired: e.target.checked })}
+                  />
+                  <span>{t('ward.followUpRequired')}</span>
                 </label>
+
                 {dischargeForm.dischargeType === 'death' ? (
-                  <div className="text-[12px] flex items-center gap-2" style={{ color: 'var(--color-danger-text)' }}>
+                  <p className="wdis-note is-danger">
                     <AlertTriangle className="w-3.5 h-3.5" /> {t('ward.deathRecordNotice')}
-                  </div>
+                  </p>
                 ) : (
-                  <div className="text-[12px] flex items-center gap-2" style={{ color: 'var(--color-success-text)' }}>
+                  <p className="wdis-note is-ok">
                     <CheckCircle2 className="w-3.5 h-3.5" /> {t('ward.bedReleasedNotice')}
-                  </div>
+                  </p>
                 )}
               </div>
-              <hr className="section-divider" />
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setDischargeFor(null)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-                <button onClick={handleDischarge} className="btn btn-primary flex-1">{t('ward.discharge')}</button>
-              </div>
+
+              <footer className="wdis-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => router.push(`/patients/${dischargeFor.patientId}?tab=overview`)}>
+                  {t('ward.openChart')}
+                </button>
+                <span className="wdis-actions-end">
+                  <button type="button" className="btn btn-secondary" onClick={() => setDischargeFor(null)}>{t('action.cancel')}</button>
+                  <button type="button" className="btn btn-primary" onClick={handleDischarge}>{t('ward.discharge')}</button>
+                </span>
+              </footer>
             </div>
           </Modal>
         )}

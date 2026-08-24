@@ -1,6 +1,6 @@
 'use client';
 
-import EhrPageGreeting from '@/components/ehr/EhrPageGreeting';
+import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 
 import { useState } from 'react';
 import { useVitalStatistics } from '@/lib/hooks/useVitalStatistics';
@@ -28,7 +28,7 @@ export default function VitalStatisticsPage() {
     <>
       <main className="page-container page-enter">
         <div className="dash-card mb-4" style={{ padding: '16px 20px' }}>
-          <EhrPageGreeting module={t('vitalStats.topBarTitle')} />
+          <EhrPageTitle>{t('vitalStats.topBarTitle')}</EhrPageTitle>
         </div>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>

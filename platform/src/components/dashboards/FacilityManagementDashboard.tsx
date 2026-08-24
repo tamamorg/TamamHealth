@@ -61,7 +61,7 @@ import {
 } from '@/components/admin/sadb-ui';
 import { addDaysIso } from '@/lib/date-utils';
 import { formatMoney, titleCase } from '@/lib/format-utils';
-import { jubaDate, jubaTime, jubaWeekStart } from '@/lib/time-juba';
+import { jubaDate, jubaDateRangeUtc, jubaTime, jubaWeekStart } from '@/lib/time-juba';
 import { usersHrefForRole } from '@/lib/people-nav';
 import { summariseEnquiries, getPatientEnquiries } from '@/lib/services/enquiry-service';
 import {
@@ -348,12 +348,16 @@ export default function FacilityManagementDashboard() {
 
   const today = jubaDate();
   const facilityId = currentUser?.hospitalId;
+  const weekStart = useMemo(() => jubaWeekStart(), []);
+  const weekEnd = useMemo(() => addDaysIso(weekStart, 7), [weekStart]);
+  const weekRange = useMemo(() => jubaDateRangeUtc(weekStart, weekEnd), [weekEnd, weekStart]);
 
   // Billing, patient flow, enquiries, provider availability, leave, and
   // today's schedule/staffing-gaps are all fetched together; each is tracked
   // independently in `loadErrors` so a single failure degrades only its own
   // card instead of the whole dashboard, and Retry re-runs all seven.
   useEffect(() => {
+    if (!scope) return;
     let cancelled = false;
     if (!hasLoadedExtraRef.current) setExtraLoading(true);
 
@@ -381,32 +385,19 @@ export default function FacilityManagementDashboard() {
        themselves rather than any stored total, and reduced to a row per day
        here so the page holds a week of counts instead of every encounter. */
     const loadFlow = async (): Promise<DailyFlow[]> => {
-      const [{ getAllEncounters }, { getAllAdmissions }] = await Promise.all([
-        import('@/lib/services/encounter-service'),
-        import('@/lib/services/ward-service'),
-      ]);
-      const [encounters, admissions] = await Promise.all([
-        getAllEncounters(scope),
-        getAllAdmissions(scope),
-      ]);
+      const { getEncountersInRange } = await import('@/lib/services/encounter-service');
+      const encounters = await getEncountersInRange(weekRange, scope);
       const byDate = new Map<string, DailyFlow>();
       const row = (date: string): DailyFlow => {
         let r = byDate.get(date);
         if (!r) { r = { date, inpatient: 0, outpatient: 0 }; byDate.set(date, r); }
         return r;
       };
-      // An admission grows out of an OPD encounter (`AdmissionDoc.encounterId`),
-      // so that encounter is counted ONCE — as the admission it became.
-      // Counting it on both bars would report one arrival twice and make a
-      // busy ward look like a busy clinic as well.
-      const admitted = new Set(admissions.map(a => a.encounterId).filter(Boolean));
-      for (const a of admissions) {
-        if (a.admissionDate) row(jubaDate(a.admissionDate)).inpatient++;
-      }
       for (const e of encounters) {
-        if (admitted.has(e._id)) continue;
         const at = e.startedAt || e.createdAt;
-        if (at) row(jubaDate(at)).outpatient++;
+        if (!at) continue;
+        if (e.status === 'admitted') row(jubaDate(at)).inpatient++;
+        else row(jubaDate(at)).outpatient++;
       }
       return Array.from(byDate.values());
     };
@@ -491,7 +482,7 @@ export default function FacilityManagementDashboard() {
     })();
 
     return () => { cancelled = true; };
-  }, [scope, today, facilityId, reloadToken]);
+  }, [scope, today, facilityId, reloadToken, weekRange]);
 
   const retryExtra = useCallback(() => setReloadToken(t => t + 1), []);
   const retryAll = useCallback(() => { reloadUsers(); retryExtra(); }, [reloadUsers, retryExtra]);
@@ -547,11 +538,10 @@ export default function FacilityManagementDashboard() {
      `new Date('2026-08-12')` is UTC midnight, which lands on the previous day
      for anyone west of Greenwich. */
   const weekDays = useMemo(() => {
-    const start = jubaWeekStart();
-    return Array.from({ length: 7 }, (_, i) => addDaysIso(start, i));
-  }, []);
+    return Array.from({ length: 7 }, (_, i) => addDaysIso(weekStart, i));
+  }, [weekStart]);
 
-  /* Arrivals per day, admitted vs seen-and-sent-home. Inpatient is the first
+  /* Arrivals per day, admitted vs other outpatient encounters. Inpatient is the first
      series so it draws on the baseline: it is the smaller figure and the one
      a manager tracks day to day, and a stacked segment is only comparable
      across days when it sits on the axis. */
@@ -681,7 +671,7 @@ export default function FacilityManagementDashboard() {
            read together, so they end on the same line. The chart sets the
            height — it has a fixed one — and the ring and the operations list
            spread to fill rather than stopping halfway down beside it. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-3.5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr_1fr] gap-3.5">
         {/* The week's arrivals: how many came, and how many stayed. Admissions
             and outpatient encounters are the two ends of the same day's work,
             and nothing on this page said either until now. */}
@@ -692,22 +682,21 @@ export default function FacilityManagementDashboard() {
         </SadbCard>
 
         {/* Cash as a ring with its total in the middle and the two amounts
-            beside it — the same anatomy as the super-admin console's readiness
-            card, reusing its layout classes. */}
+            beside it — the super-admin console's readiness anatomy, on its
+            layout classes. `fmcash-*` only sizes it: on /admin that body IS
+            the card, here it shares a row with a 208px chart, so it has
+            height to spend and centres itself in it rather than sitting in
+            the card's top corner. */}
         <SadbCard title="Cash Flow" meta={`${cash.currency} · this week`}>
-          <div className="sadb-readiness-body">
-            <div className="relative flex-shrink-0" style={{ width: 124, height: 124 }}>
+          <div className="sadb-readiness-body fmcash-body">
+            <div className="fmcash-ring">
               <CashFlowDonut data={cashSlices} />
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2">
-                <span className="text-[13px] font-bold leading-tight text-center" style={{ color: 'var(--text-primary)' }}>
-                  {formatMoney(cashWeek.total, { currency: cash.currency })}
-                </span>
-                <span className="text-[9px] uppercase tracking-wide leading-tight mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Billed
-                </span>
+              <div className="fmcash-center">
+                <b>{formatMoney(cashWeek.total, { currency: cash.currency })}</b>
+                <span>Billed</span>
               </div>
             </div>
-            <div className="sadb-readiness-signals">
+            <div className="sadb-readiness-signals fmcash-signals">
               <div className="sadb-signal sadb-signal--green">
                 <b>{formatMoney(cashWeek.received, { currency: cash.currency })}</b>
                 <span>Received</span>

@@ -30,6 +30,7 @@ import {
   Search,
 } from '@/components/icons/lucide';
 import EhrMiniCalendar, { parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 import { calendarPeriodLabel, calendarPeriodRange, countInPeriod } from './_calendar-period';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -543,22 +544,10 @@ export default function AppointmentsPage() {
           <div className="ehr-schedule-primary-controls ehr-clinical-dashboard-header-main">
             <div className="ehr-greeting-row">
               <div className="ehr-care-header-copy">
-                {/* Who is looking, then what they are looking at as the role
-                    they hold. The facility used to be printed here ("JUBA
-                    TEACHING HOSPITAL · SCHEDULE") while the top rail said the
-                    same thing three centimetres above it; the rail now carries
-                    organization over facility, so this line names the
-                    signed-in user instead. Same shape on every page header,
-                    for every role — see EhrListHeader. */}
-                <p className="ehr-care-greeting">
-                  {currentUser?.name
-                    ? t('header.welcome', { name: abbreviateProviderName(currentUser.name) })
-                    : t('header.welcomeAnon')}
-                </p>
-                <p className="ehr-care-greeting-sub">
-                  {[currentUser ? getRoleConfig(currentUser.role).label : '', t('nav.appointments')]
-                    .filter(Boolean).join(' · ')}
-                </p>
+                {/* The page names itself, the same as every other list header
+                    — see EhrPageTitle. This used to greet the reader by name
+                    over a "ROLE · APPOINTMENTS" eyebrow. */}
+                <EhrPageTitle>{t('nav.appointments')}</EhrPageTitle>
               </div>
             </div>
           </div>

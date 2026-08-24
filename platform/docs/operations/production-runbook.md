@@ -49,7 +49,7 @@ mode switch, not itself a pass/fail check.)
 - [ ] Shared rate-limit/revocation backend or explicit ack — set `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (or the `KV_REST_API_URL`/`KV_REST_API_TOKEN` aliases), **or** set `SINGLE_REPLICA_ACK=true` if you're deliberately running one replica. **Enforced at boot.** Without this, login rate limits and JWT revocation aren't shared across replicas — see `docs/security/rate-limiting.md` and `docs/security/token-revocation.md`.
 - [ ] `NEXT_PUBLIC_SYNC_ENABLED=true` (outside demo/single-org mode) + `COUCHDB_URL` (server-side) + `NEXT_PUBLIC_COUCHDB_URL` (browser-facing) + `COUCHDB_WEBHOOK_SECRET` (≥32 chars). **Enforced at boot.** Sync isn't an optional toggle in production — shared CouchDB replication is required for multi-user patient data unless you're deliberately single-org/demo.
 - [ ] Tenant-database mode — set `NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=true` (plus `COUCHDB_ADMIN_USER`/`COUCHDB_ADMIN_PASSWORD`, ≥20 chars) **or** `SINGLE_ORG_MODE=true`. **Enforced at boot.**
-- [ ] `AIRTEL_WEBHOOK_SECRET` and `MPESA_WEBHOOK_SECRET` — required unconditionally (not gated on a payments feature flag), ≥32 chars, no placeholder. **Enforced at boot.**
+- [ ] Payment callback verification — `AIRTEL_WEBHOOK_SECRET` and `MPESA_WEBHOOK_SECRET` are required unconditionally (≥32 chars, no placeholder), and their upstream gateways must verify provider state before signing the normalized callback (`AIRTEL_WEBHOOK_GATEWAY_VERIFIED=true`, `MPESA_WEBHOOK_GATEWAY_VERIFIED=true`). If Flutterwave is configured, set both `FLUTTERWAVE_SECRET_HASH` and the server-only `FLUTTERWAVE_SECRET_KEY`; successful callbacks are re-verified with Flutterwave before posting. **Enforced at boot.**
 - [ ] `DATABASE_URL` — Postgres for national analytics. **Not enforced at boot** — if unset, `instrumentation.ts` logs and skips analytics migrations rather than refusing to start; that's a valid "not using analytics yet" configuration. Set it once you want the analytics writeback + migrations running.
 - [ ] HTTPS terminated in front of the app (required for `Secure` cookies + HSTS/CSP; not a `config-validation.ts` check — it's an infra prerequisite).
 - [ ] `SENTRY_DSN` (recommended, not enforced) for 5xx triage — PHI is scrubbed before transport.
@@ -254,6 +254,11 @@ COUCHDB_WEBHOOK_SECRET=…              # ≥32 chars
 # Payments (required unconditionally):
 AIRTEL_WEBHOOK_SECRET=…               # ≥32 chars
 MPESA_WEBHOOK_SECRET=…                # ≥32 chars
+AIRTEL_WEBHOOK_GATEWAY_VERIFIED=true  # gateway verifies provider state
+MPESA_WEBHOOK_GATEWAY_VERIFIED=true   # gateway verifies provider state
+# Optional Flutterwave integration (both values required together):
+FLUTTERWAVE_SECRET_HASH=…             # ≥32 chars; callback signature secret
+FLUTTERWAVE_SECRET_KEY=…              # server-only transaction verification key
 
 # Not enforced at boot, but needed for analytics writeback + migrations:
 DATABASE_URL=postgresql://…

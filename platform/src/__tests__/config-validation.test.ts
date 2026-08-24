@@ -21,6 +21,7 @@ function validEnvironment(): ConfigEnv {
     COUCHDB_GATEWAY_SECRET: 'gateway-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
     COUCHDB_WEBHOOK_SECRET: 'webhook-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
     AIRTEL_WEBHOOK_SECRET: 'airtel-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
+    AIRTEL_WEBHOOK_GATEWAY_VERIFIED: 'true',
     // A correct production deployment sends mail. Left unset, the provider
     // falls back to "log" and every invitation and password-reset link is
     // written to the container log instead of being delivered — so this
@@ -28,6 +29,7 @@ function validEnvironment(): ConfigEnv {
     EMAIL_PROVIDER: 'sendgrid',
     SENDGRID_API_KEY: 'SG.test-key-0123456789',
     MPESA_WEBHOOK_SECRET: 'mpesa-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
+    MPESA_WEBHOOK_GATEWAY_VERIFIED: 'true',
   };
 }
 
@@ -93,6 +95,23 @@ describe('production configuration validation', () => {
     expect(errors).toMatch(/COUCHDB_ADMIN_PASSWORD/);
     expect(errors).toMatch(/COUCHDB_GATEWAY_SECRET/);
     expect(errors).toMatch(/AIRTEL_WEBHOOK_SECRET/);
+  });
+
+  it('requires provider verification for every enabled payment callback', () => {
+    const gatewayEnv = validEnvironment();
+    delete gatewayEnv.AIRTEL_WEBHOOK_GATEWAY_VERIFIED;
+    gatewayEnv.MPESA_WEBHOOK_GATEWAY_VERIFIED = 'false';
+    const gatewayErrors = validateProductionConfig(gatewayEnv).join('\n');
+    expect(gatewayErrors).toMatch(/AIRTEL_WEBHOOK_GATEWAY_VERIFIED/);
+    expect(gatewayErrors).toMatch(/MPESA_WEBHOOK_GATEWAY_VERIFIED/);
+
+    const flutterwaveEnv = validEnvironment();
+    flutterwaveEnv.FLUTTERWAVE_SECRET_HASH = 'flutterwave-hash-0123456789-abcdefghijklmnopqrstuvwxyz';
+    const flutterwaveErrors = validateProductionConfig(flutterwaveEnv).join('\n');
+    expect(flutterwaveErrors).toMatch(/FLUTTERWAVE_SECRET_KEY/);
+
+    flutterwaveEnv.FLUTTERWAVE_SECRET_KEY = 'FLWSECK_TEST-0123456789-abcdefghijklmnopqrstuvwxyz';
+    expect(validateProductionConfig(flutterwaveEnv)).toEqual([]);
   });
 });
 

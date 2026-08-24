@@ -647,6 +647,8 @@ Run `npm run setup` to configure automatically, or copy `.env.example` to `.env.
 | `PHI_AT_REST_STRATEGY` *or* `PHI_ENCRYPTION_ENABLED` + `PHI_ENCRYPTION_KEY` | Declare how PHI is protected at rest | `openssl rand -base64 32` |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` *or* `SINGLE_REPLICA_ACK` | Shared rate-limit + revocation state across replicas | |
 | `NEXT_PUBLIC_SYNC_ENABLED`, `COUCHDB_URL`, `NEXT_PUBLIC_COUCHDB_URL`, `COUCHDB_WEBHOOK_SECRET` | Shared CouchDB replication | `openssl rand -hex 32` |
+| `MPESA_WEBHOOK_SECRET`, `AIRTEL_WEBHOOK_SECRET` | HMAC secrets for the verified payment gateways | `openssl rand -hex 32` |
+| `MPESA_WEBHOOK_GATEWAY_VERIFIED`, `AIRTEL_WEBHOOK_GATEWAY_VERIFIED` | Set both to `true` only after the upstream gateways verify provider state | |
 
 **Optional:**
 
@@ -663,7 +665,7 @@ Run `npm run setup` to configure automatically, or copy `.env.example` to `.env.
 | `NEXT_PUBLIC_AUTO_LOCK_DISABLED` | Turn off the inactivity screen lock (dev only) | `false` |
 | `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Telehealth video (all three or none) | _(video reports itself unavailable)_ |
 | `EMAIL_PROVIDER` + `RESEND_API_KEY` / `SENDGRID_API_KEY` / `SMTP_URL` | Outbound email | _(disabled)_ |
-| `FLUTTERWAVE_SECRET_HASH`, `MPESA_WEBHOOK_SECRET`, `AIRTEL_WEBHOOK_SECRET` | Payment webhook HMAC secrets | |
+| `FLUTTERWAVE_SECRET_HASH` + `FLUTTERWAVE_SECRET_KEY` | Optional Flutterwave signature and transaction-verification credentials | |
 | `NEXT_PUBLIC_APP_URL` | Base URL for payment and join links | |
 | `NEXT_PUBLIC_DEFAULT_CURRENCY` | Default ledger currency | `SSP` |
 | `NEXT_PUBLIC_FHIR_NAMESPACE_BASE` | FHIR `identifier.system` / CodeSystem URL base | `https://tamamhealth.org` |

@@ -22,33 +22,49 @@ function apiPath(file: string): string {
   return `/api/${path.relative(API_ROOT, path.dirname(file)).split(path.sep).join('/')}`;
 }
 
-function isIntentionalPublicRoute(route: string): boolean {
-  return route === '/api/auth/login'
-    || route === '/api/auth/logout'
-    || route === '/api/auth/accept-invite'
-    || route === '/api/auth/forgot-password'
-    || route === '/api/auth/password-policy'
-    || route === '/api/health'
-    || route === '/api/health/live'
-    || route === '/api/country/metadata'
-    || route === '/api/fhir/metadata'
-    || route === '/api/demo-credentials'
-    || route === '/api/checkout'
-    || route.startsWith('/api/booking/')
-    || route.startsWith('/api/patient-portal/')
-    || route.startsWith('/api/terminology/')
-    || route.startsWith('/api/webhooks/');
-}
+const STATIC_PUBLIC = new Set([
+  '/api/auth/login', '/api/auth/logout', '/api/auth/accept-invite',
+  '/api/auth/forgot-password', '/api/auth/password-policy',
+  '/api/health', '/api/health/live', '/api/country/metadata',
+  '/api/fhir/metadata', '/api/demo-credentials', '/api/checkout',
+  '/api/booking/hold', '/api/booking/practice/[slug]', '/api/booking/provider/[slug]',
+  '/api/booking/reference/[ref]', '/api/booking/request', '/api/booking/slots',
+  '/api/patient-portal/activate', '/api/patient-portal/appointments',
+  '/api/patient-portal/billing', '/api/patient-portal/immunizations',
+  '/api/patient-portal/labs', '/api/patient-portal/login', '/api/patient-portal/messages',
+  '/api/patient-portal/payments', '/api/patient-portal/prescriptions',
+  '/api/patient-portal/profile', '/api/patient-portal/records', '/api/patient-portal/refresh',
+  '/api/patient-portal/verify-otp', '/api/terminology/[resource]',
+  '/api/webhooks/airtel', '/api/webhooks/flutterwave', '/api/webhooks/mpesa',
+]);
 
 describe('API route authentication contract', () => {
   it('requires every non-public route to authenticate staff or a signed machine caller', () => {
     const unguarded = routeFiles(API_ROOT).flatMap(file => {
       const route = apiPath(file);
-      if (isIntentionalPublicRoute(route)) return [];
+      if (STATIC_PUBLIC.has(route)) return [];
       const source = fs.readFileSync(file, 'utf8');
-      return /getAuthPayload|verifySyncMachineRequest/.test(source) ? [] : [route];
+      return /(?:await\s+)?getAuthPayload\s*\(|verifySyncMachineRequest\s*\(/.test(source) ? [] : [route];
     });
 
     expect(unguarded).toEqual([]);
+  });
+
+  it('does not silently make a new route public through a broad path prefix', () => {
+    const publicRoutes = routeFiles(API_ROOT).map(apiPath).filter(route => STATIC_PUBLIC.has(route));
+    expect(publicRoutes.sort()).toEqual([...STATIC_PUBLIC].sort());
+  });
+
+  it('keeps alternate authentication in every public account/payment route', () => {
+    const missingGuard = routeFiles(API_ROOT).flatMap(file => {
+      const route = apiPath(file);
+      if (!route.startsWith('/api/patient-portal/') && !route.startsWith('/api/webhooks/')) return [];
+      const source = fs.readFileSync(file, 'utf8');
+      const guarded = route.startsWith('/api/webhooks/')
+        ? /verify\w*Signature\s*\(/.test(source)
+        : /verifyPatientToken\s*\(|createPatientToken\s*\(|verifyOtp\s*\(|activatePortalAccount\s*\(/.test(source);
+      return guarded ? [] : [route];
+    });
+    expect(missingGuard).toEqual([]);
   });
 });

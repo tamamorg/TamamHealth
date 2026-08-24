@@ -3,13 +3,13 @@
  * GET  — List organizations, get by ID or slug, get stats
  * POST — Create organization, update organization, or deactivate organization
  */
-import { ADMIN } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole, OrganizationDoc } from '@/lib/db-types';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
-const READ_ROLES = ADMIN;
+import { TENANCY_WORKSPACE_ROLES } from '@/modules/tenancy';
+const READ_ROLES = TENANCY_WORKSPACE_ROLES;
 const WRITE_ROLES: UserRole[] = [
   'super_admin',
 ];
@@ -28,8 +28,9 @@ export async function GET(request: NextRequest) {
     const slug = request.nextUrl.searchParams.get('slug');
     const orgId = request.nextUrl.searchParams.get('orgId');
     const withStats = request.nextUrl.searchParams.get('stats') === 'true';
-    const ownOrgId = auth.role === 'org_admin' ? auth.orgId : undefined;
-    if (auth.role === 'org_admin' && !ownOrgId) {
+    const seesEveryOrganization = auth.role === 'super_admin' || auth.role === 'government';
+    const ownOrgId = seesEveryOrganization ? undefined : auth.orgId;
+    if (!seesEveryOrganization && !ownOrgId) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
     if (id) {
