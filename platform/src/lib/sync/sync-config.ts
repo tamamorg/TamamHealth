@@ -28,6 +28,7 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_referrals',             direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_lab_results',           direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_prescriptions',         direction: 'both', orgScoped: true },
+  { localName: 'tamamhealth_medication_administrations', direction: 'both', orgScoped: true },
   // Surveillance alerts carry tenant data; public-health roles can still
   // receive cross-facility records through their explicit entitlement, but a
   // facility user must never replicate another organisation's alerts.
@@ -173,6 +174,7 @@ export const DATABASE_DOCUMENT_TYPES: Readonly<Record<string, readonly string[]>
   tamamhealth_referrals: ['referral'],
   tamamhealth_lab_results: ['lab_result'],
   tamamhealth_prescriptions: ['prescription'],
+  tamamhealth_medication_administrations: ['medication_administration'],
   tamamhealth_disease_alerts: ['disease_alert'],
   tamamhealth_messages: ['message'],
   tamamhealth_births: ['birth'],
@@ -197,7 +199,7 @@ export const DATABASE_DOCUMENT_TYPES: Readonly<Record<string, readonly string[]>
   tamamhealth_conversations: ['conversation'],
   tamamhealth_patient_notes: ['patient_note'],
   tamamhealth_clinical_notes: ['clinical_note'],
-  tamamhealth_encounters: ['clinical_encounter', 'encounter'],
+  tamamhealth_encounters: ['clinical_encounter', 'encounter', 'workflow_repair'],
   tamamhealth_consultation_progress: ['consultation_progress'],
   tamamhealth_handoffs: ['shift_handoff'],
   tamamhealth_patient_transfers: ['patient_transfer'],

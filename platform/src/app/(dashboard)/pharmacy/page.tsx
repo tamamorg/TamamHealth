@@ -84,9 +84,11 @@ export default function PharmacyPage() {
   const patientById = useMemo(() => new Map(patients.map(patient => [patient._id, patient])), [patients]);
   const { users } = useUsers();
   const [workflowRxId, setWorkflowRxId] = useState<string | null>(null);
-  // Controlled-substance dispense awaiting a witness sign-off.
+  // One handover confirmation combines counselling with dispensing; controlled
+  // medicines add a verified witness to the same dialog.
   const [dispenseTarget, setDispenseTarget] = useState<{ rx: typeof rxQueue[number]; inv: typeof rawInventory[number]; qty: number } | null>(null);
   const [witnessId, setWitnessId] = useState('');
+  const [counsellingConfirmed, setCounsellingConfirmed] = useState(false);
 
   // ── Shared list-page toolbar state ──
   // Table search (the listpage-table-search input) takes priority over the
@@ -174,12 +176,6 @@ export default function PharmacyPage() {
     }
   };
 
-  const handleStartReview = (rx: typeof rxQueue[number]) => {
-    const stage = pharmacyStage(rx);
-    const next: PrescriptionStatus = stage === 'prescribed' ? 'received_in_pharmacy_queue' : 'under_review';
-    advanceRx(rx, next, `${rx.medication} moved to pharmacist review.`);
-  };
-
   const handleClearForDispense = (rx: typeof rxQueue[number]) => {
     const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
@@ -200,12 +196,6 @@ export default function PharmacyPage() {
       : `Could not confirm ${rx.patientName}'s balance. Send the patient to cashier to verify before dispensing.`;
     showToast(message, 'error');
   };
-
-  const handleCounsel = (rx: typeof rxQueue[number]) =>
-    advanceRx(rx, 'counseled', `Counseling recorded for ${rx.patientName}.`);
-
-  const handleComplete = (rx: typeof rxQueue[number]) =>
-    advanceRx(rx, 'complete', `${rx.medication} workflow completed.`);
 
   // One call, one transaction. The stock gate, FEFO batch decrement, the
   // controlled-substance register entry and the prescription update all run
@@ -246,6 +236,7 @@ export default function PharmacyPage() {
         orgId: currentUser?.orgId,
         witnessId: witness?.id,
         witnessName: witness?.name,
+        counsellingConfirmed: true,
       });
       const batches = result.allocations.map(a => a.batchNumber).join(', ');
       showToast(
@@ -310,20 +301,33 @@ export default function PharmacyPage() {
     // witness signature first, so the modal isn't shown for nothing.
     if (inv?.controlledSchedule || inv?.requiresWitness) {
       setWitnessId('');
-      setDispenseTarget({ rx, inv, qty });
+    }
+    if (!inv) {
+      showToast('No dispensable stock is available. Record a stockout instead.', 'error');
       return;
     }
-    await doDispense(rx, inv, qty, null);
+    setCounsellingConfirmed(false);
+    setDispenseTarget({ rx, inv, qty });
   };
 
   const confirmControlledDispense = async () => {
     if (!dispenseTarget) return;
-    const witness = users.find(u => u._id === witnessId);
-    if (!witness) {
+    if (!counsellingConfirmed) {
+      showToast('Confirm counselling before handing over the medication.', 'error');
+      return;
+    }
+    const requiresWitness = Boolean(dispenseTarget.inv.controlledSchedule || dispenseTarget.inv.requiresWitness);
+    const witness = requiresWitness ? users.find(u => u._id === witnessId) : undefined;
+    if (requiresWitness && !witness) {
       showToast('Select a witnessing staff member.', 'error');
       return;
     }
-    const ok = await doDispense(dispenseTarget.rx, dispenseTarget.inv, dispenseTarget.qty, { id: witness._id, name: witness.name });
+    const ok = await doDispense(
+      dispenseTarget.rx,
+      dispenseTarget.inv,
+      dispenseTarget.qty,
+      witness ? { id: witness._id, name: witness.name } : null,
+    );
     if (ok) setDispenseTarget(null);
   };
 
@@ -370,14 +374,8 @@ export default function PharmacyPage() {
   const workflowActionFor = (rx: typeof rxQueue[number]): { label?: string; onClick?: () => void; disabled?: boolean; disabledReason?: string } => {
     if (!canDispense) return {};
     const stage = pharmacyStage(rx);
-    if (stage === 'prescribed') {
-      return { label: 'Receive order', onClick: () => handleStartReview(rx) };
-    }
-    if (stage === 'received_in_pharmacy_queue') {
-      return { label: 'Check order', onClick: () => handleStartReview(rx) };
-    }
-    if (stage === 'under_review' || stage === 'held_awaiting_clarification' || stage === 'stockout_partial_referred' || stage === 'clinician_consultation_in_progress') {
-      return { label: 'Clear', onClick: () => handleClearForDispense(rx) };
+    if (stage === 'received_in_pharmacy_queue' || stage === 'under_review' || stage === 'held_awaiting_clarification' || stage === 'stockout_partial_referred' || stage === 'clinician_consultation_in_progress') {
+      return { label: 'Review & clear', onClick: () => handleClearForDispense(rx) };
     }
     if (stage === 'cleared_for_dispensing' && !isClearedFor(rx.patientId)) {
       return { label: canAccess('/payments') ? 'Collect payment' : 'Send to cashier', onClick: () => handlePaymentStep(rx) };
@@ -405,12 +403,7 @@ export default function PharmacyPage() {
       }
       return { label: t('pharmacy.dispense'), onClick: () => handleDispense(rx._id) };
     }
-    if (stage === 'dispensed') {
-      return { label: 'Counsel', onClick: () => handleCounsel(rx) };
-    }
-    if (stage === 'counseled') {
-      return { label: 'Complete', onClick: () => handleComplete(rx) };
-    }
+    if (stage === 'dispensed' || stage === 'counseled') return { label: 'Finish record', onClick: () => advanceRx(rx, 'complete', `${rx.medication} workflow completed.`) };
     return {};
   };
 
@@ -425,31 +418,20 @@ export default function PharmacyPage() {
     const paymentClear = isClearedFor(rx.patientId);
     const action = workflowActionFor(rx);
     const completed = {
-      received: stage !== 'prescribed',
-      review: !['prescribed', 'received_in_pharmacy_queue'].includes(stage),
       checked: ['cleared_for_dispensing', 'dispensed', 'counseled', 'complete'].includes(stage),
       payment: ['dispensed', 'counseled', 'complete'].includes(stage) || (stage === 'cleared_for_dispensing' && paymentClear),
       dispensed: ['dispensed', 'counseled', 'complete'].includes(stage),
-      counseled: ['counseled', 'complete'].includes(stage),
-      cleared: stage === 'complete',
+      handedOver: stage === 'complete' || stage === 'counseled',
     };
     const currentKey =
-      !completed.received ? 'received' :
-      !completed.review ? 'review' :
       !completed.checked ? 'checked' :
       !completed.payment ? 'payment' :
-      !completed.dispensed ? 'dispensed' :
-      !completed.counseled ? 'counseled' :
-      !completed.cleared ? 'cleared' :
+      !completed.handedOver ? 'handedOver' :
       '';
     const steps = [
-      { key: 'received', label: 'Medication order received', note: rx.prescribedBy ? `Ordered by ${rx.prescribedBy}` : 'Waiting in pharmacy queue', done: completed.received },
-      { key: 'review', label: 'Check medication order', note: 'Confirm dose, frequency, patient and allergies.', done: completed.review },
-      { key: 'checked', label: 'Stock and safety clearance', note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || 'unit(s)'} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, done: completed.checked },
+      { key: 'checked', label: 'Review order and stock', note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || 'unit(s)'} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, done: completed.checked },
       { key: 'payment', label: 'Receive / confirm payment', note: !balanceKnown ? 'Balance unavailable — verify before dispensing' : paymentClear ? 'Payment clear or no charge' : `${formatMoney(balance)} outstanding`, done: completed.payment },
-      { key: 'dispensed', label: 'Dispense medication', note: 'Issue the full course and update inventory.', done: completed.dispensed },
-      { key: 'counseled', label: 'Counsel patient', note: 'Explain dose, timing, side effects and return precautions.', done: completed.counseled },
-      { key: 'cleared', label: 'Clear patient from pharmacy', note: 'Medication workflow complete.', done: completed.cleared },
+      { key: 'handedOver', label: 'Counsel and dispense', note: 'Explain use, hand over medicine, and update stock in one action.', done: completed.handedOver },
     ];
 
     return (
@@ -612,7 +594,7 @@ export default function PharmacyPage() {
   });
 
   const filteredQueue = rxQueue.filter(rx => {
-    if (!isActivePharmacyStage(pharmacyStage(rx)) || rx.status === 'discontinued') return false;
+    if (!isActivePharmacyStage(pharmacyStage(rx)) || pharmacyStage(rx) === 'prescribed' || rx.status === 'discontinued') return false;
     if (q && !(rx.patientName.toLowerCase().includes(q.toLowerCase()) || rx.medication.toLowerCase().includes(q.toLowerCase()) || rx.prescribedBy.toLowerCase().includes(q.toLowerCase()))) return false;
     if (colFilters.qPatient && !rx.patientName.toLowerCase().includes(colFilters.qPatient.toLowerCase())) return false;
     if (colFilters.qMedication && !rx.medication.toLowerCase().includes(colFilters.qMedication.toLowerCase())) return false;
@@ -1458,27 +1440,33 @@ export default function PharmacyPage() {
         </Modal>
       )}
 
-      {/* Controlled-substance witness sign-off before dispensing */}
+      {/* Single medication handover; controlled medicines add witness sign-off. */}
       {dispenseTarget && (
         <Modal onClose={() => setDispenseTarget(null)}>
           <div className="modal-panel modal-panel--sm">
             <div className="flex items-center gap-2 mb-1">
               <AlertOctagon className="w-5 h-5" style={{ color: 'var(--color-warning)' }} />
-              <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Controlled substance — witness required</h3>
+              <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Counsel and dispense</h3>
             </div>
             <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Dispensing <strong>{dispenseTarget.qty} {dispenseTarget.inv.unit}</strong> of <strong>{dispenseTarget.inv.medicationName}</strong> (Schedule {dispenseTarget.inv.controlledSchedule}) to {dispenseTarget.rx.patientName}. A second staff member must witness this movement.
+              Hand over <strong>{dispenseTarget.qty} {dispenseTarget.inv.unit}</strong> of <strong>{dispenseTarget.inv.medicationName}</strong> to {dispenseTarget.rx.patientName}.
             </p>
-            <label>Witnessing staff</label>
-            <Select value={witnessId} onChange={e => setWitnessId(e.target.value)}>
-              <option value="">Select witness…</option>
-              {users.filter(u => u._id !== currentUser?._id).map(u => (
-                <option key={u._id} value={u._id}>{u.name} — {u.role}</option>
-              ))}
-            </Select>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" checked={counsellingConfirmed} onChange={event => setCounsellingConfirmed(event.target.checked)} />
+              <span>I explained the dose, timing, important side effects, storage, and when to return.</span>
+            </label>
+            {(dispenseTarget.inv.controlledSchedule || dispenseTarget.inv.requiresWitness) && <>
+              <label>Witnessing staff</label>
+              <Select value={witnessId} onChange={e => setWitnessId(e.target.value)}>
+                <option value="">Select witness…</option>
+                {users.filter(u => u._id !== currentUser?._id && u.isActive !== false).map(u => (
+                  <option key={u._id} value={u._id}>{u.name} — {u.role}</option>
+                ))}
+              </Select>
+            </>}
             <div className="flex gap-2 mt-5">
               <button className="btn btn-secondary flex-1" onClick={() => setDispenseTarget(null)}>Cancel</button>
-              <button className="btn btn-primary flex-1" onClick={confirmControlledDispense} disabled={!witnessId}>Confirm &amp; dispense</button>
+              <button className="btn btn-primary flex-1" onClick={confirmControlledDispense} disabled={!counsellingConfirmed || (Boolean(dispenseTarget.inv.controlledSchedule || dispenseTarget.inv.requiresWitness) && !witnessId)}>Counsel &amp; dispense</button>
             </div>
           </div>
         </Modal>

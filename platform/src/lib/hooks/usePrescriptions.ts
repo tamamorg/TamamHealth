@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { PrescriptionDoc } from '../db-types';
-import { prescriptionsDB } from '../db';
+import { medicationAdministrationsDB, prescriptionsDB } from '../db';
 import { makeCoalescer } from './live-reload';
 import { useDataScope } from './useDataScope';
 import { useAuth } from '../context';
@@ -40,13 +40,14 @@ export function usePrescriptions(patientId?: string) {
   useEffect(() => {
     let cancelled = false;
     const reload = makeCoalescer(() => { if (!cancelled) loadPrescriptions(); });
-    const changes = prescriptionsDB().changes({ since: 'now', live: true, include_docs: false })
+    const changes = [prescriptionsDB(), medicationAdministrationsDB()].map(database => database
+      .changes({ since: 'now', live: true, include_docs: false })
       .on('change', () => reload.trigger())
-      .on('error', (err) => { console.warn('Prescriptions subscription error:', err); });
+      .on('error', (err) => { console.warn('Prescriptions subscription error:', err); }));
     return () => {
       cancelled = true;
       reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
+      for (const feed of changes) try { feed.cancel(); } catch { /* noop */ }
     };
   }, [loadPrescriptions]);
 
@@ -87,6 +88,7 @@ export function usePrescriptions(patientId?: string) {
             witnessName: input.witnessName,
             allowPartial: input.allowPartial === true,
             note: input.note,
+            counsellingConfirmed: input.counsellingConfirmed === true,
           }),
         });
       } catch {

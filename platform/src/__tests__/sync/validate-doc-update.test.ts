@@ -225,9 +225,8 @@ describe('org-scoped validate_doc_update', () => {
   });
 
   describe('amend-only roles', () => {
-    // The pharmacy and the ward MAR both write the prescription document
-    // without authoring the order. They may change one that exists; they may
-    // not create one, and they may not delete one.
+    // Pharmacy changes a constrained lifecycle subset of the order. Bedside
+    // medication events are independent append-only documents instead.
     const pharmacist: UserCtx = { name: 'rx-1', roles: ['org:org-a', 'role:pharmacist'] };
     const order = { _id: 'rx-1', type: 'prescription', orgId: 'org-a', orderStatus: 'verified' };
 
@@ -235,9 +234,15 @@ describe('org-scoped validate_doc_update', () => {
       expect(reasonFor({ ...order, orderStatus: 'dispensed' }, order, pharmacist)).toBeNull();
     });
 
-    it('lets a nurse append an administration to an existing order', () => {
+    it('refuses to let a nurse rewrite the order and accepts a new dose event', () => {
       expect(reasonFor({ ...order, administrations: [{ id: 'madm-1' }] }, order, nurseUser))
-        .toBeNull();
+        .toMatch(/role nurse may not write documents of type prescription/);
+      const event = {
+        _id: 'madm-1', type: 'medication_administration', orgId: 'org-a',
+        prescriptionId: 'rx-1', patientId: 'p-1', eventKind: 'administration',
+      };
+      expect(reasonFor(event, null, nurseUser)).toBeNull();
+      expect(reasonFor({ ...event, status: 'held' }, event, nurseUser)).toMatch(/append-only/);
     });
 
     it('refuses to let either of them author an order', () => {

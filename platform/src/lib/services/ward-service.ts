@@ -26,10 +26,11 @@ export async function getAllWards(scope?: DataScope): Promise<WardDoc[]> {
   return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getWardById(id: string): Promise<WardDoc | null> {
+export async function getWardById(id: string, scope?: DataScope): Promise<WardDoc | null> {
   try {
     const db = wardDB();
-    return await db.get(id) as WardDoc;
+    const ward = await db.get(id) as WardDoc;
+    return !scope || filterByScope([ward], scope).length > 0 ? ward : null;
   } catch {
     return null;
   }
@@ -63,11 +64,34 @@ export async function createWard(data: Omit<WardDoc, '_id' | '_rev' | 'type' | '
 
 // ===== Bed Operations =====
 
-export async function getBedsByWard(wardId: string): Promise<BedDoc[]> {
+export async function getBedsByWard(wardId: string, scope?: DataScope): Promise<BedDoc[]> {
   const db = wardDB();
   const rows = await findByType<BedDoc>(db, 'bed', { wardId }, { indexFields: ['type', 'wardId'] });
-  return rows
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return visible
     .sort((a, b) => a.bedNumber.localeCompare(b.bedNumber));
+}
+
+export async function getBedById(id: string, scope?: DataScope): Promise<BedDoc | null> {
+  try {
+    const bed = await wardDB().get(id) as BedDoc;
+    return !scope || filterByScope([bed], scope).length > 0 ? bed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Beds visible through the same ward scope as admissions. */
+export async function getAllBeds(scope?: DataScope): Promise<BedDoc[]> {
+  const db = wardDB();
+  const [beds, wards] = await Promise.all([
+    findByType<BedDoc>(db, 'bed'),
+    getAllWards(scope),
+  ]);
+  const wardIds = new Set(wards.map(ward => ward._id));
+  return beds
+    .filter(bed => wardIds.has(bed.wardId))
+    .sort((a, b) => `${a.wardName}:${a.bedNumber}`.localeCompare(`${b.wardName}:${b.bedNumber}`));
 }
 
 export async function getAvailableBeds(wardId: string): Promise<BedDoc[]> {
@@ -75,10 +99,42 @@ export async function getAvailableBeds(wardId: string): Promise<BedDoc[]> {
   return beds.filter(b => b.status === 'available');
 }
 
-export async function updateBedStatus(bedId: string, status: BedStatus, patientId?: string, patientName?: string, admissionId?: string): Promise<BedDoc | null> {
+export class WardWorkflowError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | 'BED_NOT_AVAILABLE'
+      | 'BED_ASSIGNMENT_FAILED'
+      | 'ADMISSION_NOT_FOUND'
+      | 'ADMISSION_NOT_ACTIVE'
+      | 'DUPLICATE_ADMISSION'
+      | 'DISCHARGE_INCOMPLETE'
+      | 'WORKFLOW_CONFLICT',
+  ) {
+    super(message);
+    this.name = 'WardWorkflowError';
+  }
+}
+
+function isConflict(error: unknown): boolean {
+  const candidate = error as { name?: string; status?: number } | undefined;
+  return candidate?.name === 'conflict' || candidate?.status === 409;
+}
+
+export async function updateBedStatus(bedId: string, status: BedStatus, patientId?: string, patientName?: string, admissionId?: string): Promise<BedDoc> {
   const db = wardDB();
-  try {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const bed = await db.get(bedId) as BedDoc;
+    if (
+      (status === 'occupied' || status === 'reserved')
+      && bed.status !== 'available'
+      && bed.currentAdmissionId !== admissionId
+    ) {
+      throw new WardWorkflowError(
+        `${bed.wardName} bed ${bed.bedNumber} is no longer available. Refresh the ward board and choose another bed.`,
+        'BED_NOT_AVAILABLE',
+      );
+    }
     bed.status = status;
     bed.currentPatientId = patientId;
     bed.currentPatientName = patientName;
@@ -91,7 +147,13 @@ export async function updateBedStatus(bedId: string, status: BedStatus, patientI
     }
     bed.updatedAt = new Date().toISOString();
     const pendingBed = withPendingOfflineSync(bed);
-    const resp = await db.put(pendingBed);
+    let resp: Awaited<ReturnType<typeof db.put>>;
+    try {
+      resp = await db.put(pendingBed);
+    } catch (error) {
+      if (isConflict(error) && attempt < 2) continue;
+      throw error;
+    }
     bed._rev = resp.rev;
     bed.offlineSync = pendingBed.offlineSync;
     emitSyncEvent({
@@ -103,8 +165,62 @@ export async function updateBedStatus(bedId: string, status: BedStatus, patientI
       hospitalId: bed.facilityId,
     });
     return bed;
-  } catch {
-    return null;
+  }
+  throw new WardWorkflowError('The bed changed on another workstation. Refresh and try again.', 'WORKFLOW_CONFLICT');
+}
+
+export async function completeBedTurnover(
+  bedId: string,
+  actor?: { id?: string; name?: string },
+): Promise<BedDoc> {
+  const bed = await wardDB().get(bedId) as BedDoc;
+  if (bed.status !== 'cleaning') {
+    throw new WardWorkflowError('Only a bed awaiting cleaning can be marked ready.', 'BED_NOT_AVAILABLE');
+  }
+  const ready = await updateBedStatus(bedId, 'available');
+  await logAuditSafe('BED_TURNOVER_COMPLETED', actor?.id, actor?.name, `Marked ${bed.wardName} bed ${bed.bedNumber} clean and ready`);
+  return ready;
+}
+
+async function releaseBedIfOwned(bedId: string, admissionId: string): Promise<void> {
+  const db = wardDB();
+  const bed = await db.get(bedId) as BedDoc;
+  if (bed.currentAdmissionId !== admissionId) return;
+  await updateBedStatus(bedId, 'available');
+}
+
+/** Restore our patient's claim after a discharge write failed. */
+async function restoreBedClaimIfUnassigned(bedId: string, admission: AdmissionDoc): Promise<void> {
+  const db = wardDB();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const bed = await db.get(bedId) as BedDoc;
+    // A later workflow now owns or changed this bed; never overwrite it while
+    // compensating for our failed discharge.
+    if (bed.currentAdmissionId || bed.status !== 'cleaning') return;
+    const now = new Date().toISOString();
+    const restored = withPendingOfflineSync({
+      ...bed,
+      status: 'occupied' as const,
+      currentPatientId: admission.patientId,
+      currentPatientName: admission.patientName,
+      currentAdmissionId: admission._id,
+      updatedAt: now,
+    }, now);
+    try {
+      const response = await db.put(restored);
+      emitSyncEvent({
+        resourceType: 'bed',
+        resourceId: restored._id,
+        operation: 'update',
+        resourceVersion: response.rev,
+        orgId: restored.orgId,
+        hospitalId: restored.facilityId,
+      });
+      return;
+    } catch (error) {
+      if (isConflict(error) && attempt < 2) continue;
+      throw error;
+    }
   }
 }
 
@@ -121,6 +237,15 @@ export async function getAllAdmissions(scope?: DataScope): Promise<AdmissionDoc[
 export async function getActiveAdmissions(scope?: DataScope): Promise<AdmissionDoc[]> {
   const all = await getAllAdmissions(scope);
   return all.filter(a => a.status === 'admitted');
+}
+
+export async function getAdmissionById(id: string, scope?: DataScope): Promise<AdmissionDoc | null> {
+  try {
+    const admission = await wardDB().get(id) as AdmissionDoc;
+    return !scope || filterByScope([admission], scope).length > 0 ? admission : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getAdmissionsByPatient(patientId: string): Promise<AdmissionDoc[]> {
@@ -171,6 +296,18 @@ export async function admitPatient(
   const db = wardDB();
   const now = new Date().toISOString();
 
+  const active = (await getAllAdmissions()).find(admission =>
+    admission.patientId === data.patientId
+    && admission.facilityId === data.facilityId
+    && admission.status === 'admitted'
+  );
+  if (active) {
+    throw new WardWorkflowError(
+      `${data.patientName} already has an active admission in ${active.wardName}${active.bedNumber ? `, bed ${active.bedNumber}` : ''}.`,
+      'DUPLICATE_ADMISSION',
+    );
+  }
+
   // Verify the visit link BEFORE anything is written: `encounterId` arrives
   // from a URL param via the admit form, and a stale one surviving a patient
   // swap must neither be stamped as this admission's lineage nor close a
@@ -188,8 +325,9 @@ export async function admitPatient(
     }
   }
 
+  const admissionId = `adm-${uuidv4()}`;
   const doc: AdmissionDoc = withPendingOfflineSync({
-    _id: `adm-${uuidv4()}`,
+    _id: admissionId,
     type: 'admission',
     ...data,
     encounterId,
@@ -201,12 +339,22 @@ export async function admitPatient(
     updatedAt: now,
   }, now);
 
-  const resp = await db.put(doc);
-  doc._rev = resp.rev;
-
-  // Update bed status if a bed was assigned
+  // Claim the bed before publishing the admission. PouchDB's document revision
+  // check makes this a compare-and-swap on one device: two tabs cannot both
+  // observe the same available bed and silently occupy it. If the admission
+  // write then fails, the compensating release below returns only OUR claim.
   if (data.bedId) {
-    await updateBedStatus(data.bedId, 'occupied', data.patientId, data.patientName, doc._id);
+    await updateBedStatus(data.bedId, 'occupied', data.patientId, data.patientName, admissionId);
+  }
+
+  try {
+    const resp = await db.put(doc);
+    doc._rev = resp.rev;
+  } catch (error) {
+    if (data.bedId) {
+      try { await releaseBedIfOwned(data.bedId, admissionId); } catch { /* reconciliation will surface the stale claim */ }
+    }
+    throw error;
   }
 
   // Update ward occupancy
@@ -263,8 +411,14 @@ export async function reassignAdmissionBed(
   }
   if (admission.bedId === destination.bedId && admission.wardId === destination.wardId) return admission;
 
+  if (admission.status !== 'admitted') {
+    throw new WardWorkflowError('Only an active admission can be moved to another bed.', 'ADMISSION_NOT_ACTIVE');
+  }
+
   const now = new Date().toISOString();
-  if (admission.bedId) await updateBedStatus(admission.bedId, 'cleaning');
+  // Claim the destination first. Releasing the old bed first creates a window
+  // where a failed destination write leaves the patient with no bed at all.
+  await updateBedStatus(destination.bedId, 'occupied', admission.patientId, admission.patientName, admission._id);
   const updated = withPendingOfflineSync({
     ...admission,
     wardId: destination.wardId,
@@ -273,9 +427,15 @@ export async function reassignAdmissionBed(
     bedNumber: destination.bedNumber,
     updatedAt: now,
   }, now);
-  const response = await db.put(updated);
+  let response: Awaited<ReturnType<typeof db.put>>;
+  try {
+    response = await db.put(updated);
+  } catch (error) {
+    try { await releaseBedIfOwned(destination.bedId, admission._id); } catch { /* surface original conflict */ }
+    throw error;
+  }
   updated._rev = response.rev;
-  await updateBedStatus(destination.bedId, 'occupied', admission.patientId, admission.patientName, admission._id);
+  if (admission.bedId) await updateBedStatus(admission.bedId, 'cleaning');
   if (admission.wardId !== destination.wardId) {
     await updateWardOccupancy(admission.wardId);
     await updateWardOccupancy(destination.wardId);
@@ -299,14 +459,114 @@ export async function dischargePatient(
     followUpRequired?: boolean;
     followUpDate?: string;
     followUpInstructions?: string;
+    medicationReconciled?: boolean;
   }
-): Promise<AdmissionDoc | null> {
+): Promise<AdmissionDoc> {
   const db = wardDB();
+  const admission = await db.get(admissionId).catch(() => null) as AdmissionDoc | null;
+  if (!admission) {
+    throw new WardWorkflowError('Admission not found. Refresh the ward board before trying again.', 'ADMISSION_NOT_FOUND');
+  }
+  if (admission.status !== 'admitted') {
+    throw new WardWorkflowError(`This admission is already ${admission.status}.`, 'ADMISSION_NOT_ACTIVE');
+  }
+  if (dischargeData.dischargeType === 'transfer') {
+    throw new WardWorkflowError(
+      'Use the patient transfer workflow so the receiving facility can accept the handover before this admission closes.',
+      'DISCHARGE_INCOMPLETE',
+    );
+  }
+  if (dischargeData.dischargeType === 'death') {
+    throw new WardWorkflowError(
+      'Record the death first. The death register will close the admission with the required cause and certification details.',
+      'DISCHARGE_INCOMPLETE',
+    );
+  }
+  if (!dischargeData.dischargeDiagnosis?.trim() || !dischargeData.dischargeSummary?.trim()) {
+    throw new WardWorkflowError(
+      'Record the final diagnosis and discharge summary before ending the admission.',
+      'DISCHARGE_INCOMPLETE',
+    );
+  }
+  if (dischargeData.followUpRequired && (!dischargeData.followUpDate || !dischargeData.followUpInstructions?.trim())) {
+    throw new WardWorkflowError(
+      'Follow-up needs a date and patient instructions before discharge.',
+      'DISCHARGE_INCOMPLETE',
+    );
+  }
+  if (!dischargeData.medicationReconciled) {
+    throw new WardWorkflowError(
+      'Complete medication reconciliation before ending the admission.',
+      'DISCHARGE_INCOMPLETE',
+    );
+  }
+
+  // Reconcile medication before releasing the bed. Every inpatient order is
+  // explicitly closed; discharge prescriptions for home are separate orders.
+  // Retry is safe because already-discontinued rows are skipped.
+  const { getPrescriptionsByPatient, updatePrescription } = await import('./prescription-service');
+  const inpatientOrders = (await getPrescriptionsByPatient(admission.patientId))
+    .filter(order => order.admissionId === admissionId && order.status !== 'discontinued');
+  for (const order of inpatientOrders) {
+    const stopped = await updatePrescription(order._id, {
+      status: 'discontinued',
+      stoppedAt: new Date().toISOString(),
+      stoppedReason: 'Inpatient course reconciled at discharge',
+      stoppedBy: dischargeData.dischargedBy,
+      stoppedByName: dischargeData.dischargedByName,
+      stoppedSource: 'clinician',
+    });
+    if (!stopped) {
+      throw new WardWorkflowError(
+        `Medication reconciliation could not close ${order.medication}. Retry before discharge.`,
+        'WORKFLOW_CONFLICT',
+      );
+    }
+  }
+
+  // Write the follow-up before ending the admission. If the admission write
+  // later conflicts, retry finds this sourceVisitId and does not duplicate it.
+  if (dischargeData.followUpRequired) {
+    const { createFollowUp, getFollowUpsByPatient } = await import('./follow-up-service');
+    const existing = (await getFollowUpsByPatient(admission.patientId))
+      .find(followUp => followUp.sourceVisitId === admissionId && followUp.status === 'active');
+    if (!existing) {
+      await createFollowUp({
+        patientId: admission.patientId,
+        patientName: admission.patientName,
+        encounterId: admission.encounterId,
+        hospitalId: admission.facilityId,
+        assignedWorker: dischargeData.dischargedBy,
+        assignedWorkerName: dischargeData.dischargedByName,
+        status: 'active',
+        condition: dischargeData.dischargeDiagnosis!.trim(),
+        facilityLevel: admission.facilityLevel,
+        scheduledDate: `${dischargeData.followUpDate}T00:00:00+02:00`,
+        notes: dischargeData.followUpInstructions?.trim(),
+        state: admission.state,
+        county: admission.county || '',
+        sourceVisitId: admissionId,
+        orgId: admission.orgId,
+      });
+    }
+  }
+
+  const originalBedId = admission.bedId;
+  if (originalBedId) {
+    const bed = await db.get(originalBedId) as BedDoc;
+    if (bed.currentAdmissionId && bed.currentAdmissionId !== admissionId) {
+      throw new WardWorkflowError(
+        `Bed ${bed.bedNumber} is assigned to a different admission. Resolve the bed conflict before discharge.`,
+        'BED_ASSIGNMENT_FAILED',
+      );
+    }
+    await updateBedStatus(originalBedId, 'cleaning');
+  }
+
   try {
-    const admission = await db.get(admissionId) as AdmissionDoc;
     const now = new Date().toISOString();
 
-    admission.status = dischargeData.dischargeType === 'death' ? 'deceased' : 'discharged';
+    admission.status = dischargeData.dischargeType === 'absconded' ? 'absconded' : 'discharged';
     admission.dischargeDate = now;
     admission.dischargeType = dischargeData.dischargeType;
     admission.dischargeDiagnosis = dischargeData.dischargeDiagnosis;
@@ -317,6 +577,8 @@ export async function dischargePatient(
     admission.followUpRequired = dischargeData.followUpRequired || false;
     admission.followUpDate = dischargeData.followUpDate;
     admission.followUpInstructions = dischargeData.followUpInstructions;
+    admission.medicationReconciled = true;
+    admission.medicationReconciledAt = now;
 
     // Calculate length of stay
     const admDate = new Date(admission.admissionDate);
@@ -328,11 +590,6 @@ export async function dischargePatient(
     const resp = await db.put(pendingAdmission);
     admission._rev = resp.rev;
     admission.offlineSync = pendingAdmission.offlineSync;
-
-    // Free the bed
-    if (admission.bedId) {
-      await updateBedStatus(admission.bedId, 'cleaning');
-    }
 
     // Update ward occupancy
     await updateWardOccupancy(admission.wardId);
@@ -352,8 +609,99 @@ export async function dischargePatient(
     });
 
     return admission;
-  } catch {
-    return null;
+  } catch (error) {
+    // The admission did not close, so restore the bed to this patient when our
+    // own release is still the latest state. Never overwrite another user's
+    // subsequent assignment.
+    if (originalBedId) {
+      try {
+        await restoreBedClaimIfUnassigned(originalBedId, admission);
+      } catch { /* the original error is the actionable one */ }
+    }
+    throw error;
+  }
+}
+
+/** Close the active bed episode after the death register is the source of truth. */
+export async function closeAdmissionForDeath(
+  admissionId: string,
+  death: { id: string; cause: string; certifiedBy: string },
+): Promise<AdmissionDoc> {
+  const db = wardDB();
+  const admission = await db.get(admissionId) as AdmissionDoc;
+  if (admission.status === 'deceased') return admission;
+  if (admission.status !== 'admitted') {
+    throw new WardWorkflowError('Only an active admission can be closed from a death record.', 'ADMISSION_NOT_ACTIVE');
+  }
+  const originalBedId = admission.bedId;
+  if (originalBedId) await updateBedStatus(originalBedId, 'cleaning');
+  const now = new Date().toISOString();
+  const updated = withPendingOfflineSync({
+    ...admission,
+    status: 'deceased' as const,
+    dischargeDate: now,
+    dischargeType: 'death' as const,
+    dischargeDiagnosis: death.cause,
+    dischargeSummary: `Death registered as ${death.id}.`,
+    dischargedBy: death.certifiedBy,
+    dischargedByName: death.certifiedBy,
+    followUpRequired: false,
+    medicationReconciled: true,
+    medicationReconciledAt: now,
+    lengthOfStay: Math.max(1, Math.ceil((Date.now() - new Date(admission.admissionDate).getTime()) / 86_400_000)),
+    updatedAt: now,
+  }, now);
+  try {
+    const response = await db.put(updated);
+    updated._rev = response.rev;
+    await updateWardOccupancy(updated.wardId);
+    await logAuditSafe('ADMISSION_CLOSED_AFTER_DEATH', death.certifiedBy, death.certifiedBy, `Closed ${updated.patientName}'s admission from death record ${death.id}`);
+    emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
+    return updated;
+  } catch (error) {
+    if (originalBedId) await restoreBedClaimIfUnassigned(originalBedId, admission).catch(() => undefined);
+    throw error;
+  }
+}
+
+export async function closeAdmissionForTransfer(
+  admissionId: string,
+  transfer: { id: string; destinationName: string; reason: string; actorId?: string; actorName?: string },
+): Promise<AdmissionDoc> {
+  const db = wardDB();
+  const admission = await db.get(admissionId) as AdmissionDoc;
+  if (admission.status === 'transferred') return admission;
+  if (admission.status !== 'admitted') throw new WardWorkflowError('Only an active admission can be transferred.', 'ADMISSION_NOT_ACTIVE');
+  const originalBedId = admission.bedId;
+  if (originalBedId) await updateBedStatus(originalBedId, 'cleaning');
+  const now = new Date().toISOString();
+  const updated = withPendingOfflineSync({
+    ...admission,
+    status: 'transferred' as const,
+    dischargeDate: now,
+    dischargeType: 'transfer' as const,
+    dischargeDiagnosis: admission.admittingDiagnosis,
+    dischargeSummary: `Transferred through ${transfer.id}. ${transfer.reason}`.trim(),
+    dischargedBy: transfer.actorId,
+    dischargedByName: transfer.actorName,
+    transferredTo: transfer.destinationName,
+    transferReason: transfer.reason,
+    followUpRequired: false,
+    medicationReconciled: true,
+    medicationReconciledAt: now,
+    lengthOfStay: Math.max(1, Math.ceil((Date.now() - new Date(admission.admissionDate).getTime()) / 86_400_000)),
+    updatedAt: now,
+  }, now);
+  try {
+    const response = await db.put(updated);
+    updated._rev = response.rev;
+    await updateWardOccupancy(updated.wardId);
+    await logAuditSafe('ADMISSION_TRANSFERRED', transfer.actorId, transfer.actorName, `Closed ${updated.patientName}'s admission for transfer ${transfer.id}`);
+    emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
+    return updated;
+  } catch (error) {
+    if (originalBedId) await restoreBedClaimIfUnassigned(originalBedId, admission).catch(() => undefined);
+    throw error;
   }
 }
 
@@ -388,31 +736,34 @@ async function updateWardOccupancy(wardId: string): Promise<void> {
 /**
  * Get occupancy statistics across all wards for a facility.
  */
-export async function getOccupancyStats(facilityId: string): Promise<{
+export async function getOccupancyStats(facilityId: string, scope?: DataScope): Promise<{
   totalBeds: number;
   occupiedBeds: number;
   availableBeds: number;
   occupancyRate: number;
   wardBreakdown: { wardName: string; wardType: string; totalBeds: number; occupiedBeds: number; availableBeds: number }[];
 }> {
-  const wards = await getAllWards();
+  const wards = await getAllWards(scope);
   const facilityWards = wards.filter(w => w.facilityId === facilityId && w.isActive);
-
-  const totalBeds = facilityWards.reduce((s, w) => s + w.totalBeds, 0);
-  const occupiedBeds = facilityWards.reduce((s, w) => s + w.occupiedBeds, 0);
-  const availableBeds = totalBeds - occupiedBeds;
+  const bedRows = await Promise.all(facilityWards.map(async ward => ({
+    ward,
+    beds: await getBedsByWard(ward._id, scope),
+  })));
+  const totalBeds = bedRows.reduce((sum, row) => sum + (row.beds.length || row.ward.totalBeds), 0);
+  const occupiedBeds = bedRows.reduce((sum, row) => sum + row.beds.filter(bed => bed.status === 'occupied').length, 0);
+  const availableBeds = bedRows.reduce((sum, row) => sum + row.beds.filter(bed => bed.status === 'available').length, 0);
 
   return {
     totalBeds,
     occupiedBeds,
     availableBeds,
     occupancyRate: totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0,
-    wardBreakdown: facilityWards.map(w => ({
-      wardName: w.name,
-      wardType: w.wardType,
-      totalBeds: w.totalBeds,
-      occupiedBeds: w.occupiedBeds,
-      availableBeds: w.availableBeds,
+    wardBreakdown: bedRows.map(({ ward, beds }) => ({
+      wardName: ward.name,
+      wardType: ward.wardType,
+      totalBeds: beds.length || ward.totalBeds,
+      occupiedBeds: beds.filter(bed => bed.status === 'occupied').length,
+      availableBeds: beds.filter(bed => bed.status === 'available').length,
     })),
   };
 }

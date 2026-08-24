@@ -69,6 +69,7 @@ async function patchHandler(
           // A short fill has to be asked for explicitly — see PARTIAL_NOT_ALLOWED.
           allowPartial: body.allowPartial === true,
           note: typeof body.note === 'string' ? body.note : undefined,
+          counsellingConfirmed: body.counsellingConfirmed === true,
         });
         return NextResponse.json({
           prescription: result.prescription,

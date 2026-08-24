@@ -8,12 +8,13 @@
  * triage station; the front desk captures arrival context + an acuity flag.
  */
 import type { AppointmentDoc, TriageDoc, TriagePriority, EncounterDoc } from '../db-types';
-import { createTriage } from './triage-service';
+import { createTriage, getTriageByEncounter } from './triage-service';
 import { createAppointment, getAppointmentsByPatient, updateAppointmentStatus } from './appointment-service';
 import { jubaDate, jubaTime } from '../time-juba';
 import { APPOINTMENT_PENDING_STATUSES } from '../appointment-status';
 import { createArrivalEncounter, findOpenEncounterForPatient, hasClosedEncounterForPatient, PRE_CLINICIAN_STATUSES } from './encounter-service';
 import { getRecordsByPatient } from './medical-record-service';
+import { resolveWorkflowRepair, upsertWorkflowRepair } from './workflow-repair-service';
 
 export type AttendanceType = 'new' | 'repeat';
 
@@ -48,9 +49,12 @@ export async function deriveAttendanceType(patientId: string): Promise<Attendanc
  * page used to write the status and nothing else, so a patient checked in from
  * there had no visit; this is why the two callers share one function.
  *
- * The encounter is best-effort — an appointment marked checked-in with no
- * encounter is recoverable, but refusing the check-in leaves the patient
- * standing at the desk.
+ * The appointment is written first so the patient is never hidden from the
+ * arrivals board. Encounter creation is nevertheless REQUIRED for the command
+ * to report success: downstream triage, rooming, notes and checkout all join
+ * that visit thread. A partial failure stays visible as checked in and returns
+ * an actionable error; retry is idempotent because an existing encounter is
+ * reused.
  */
 export async function checkInAppointment(input: {
   appointmentId: string;
@@ -66,32 +70,51 @@ export async function checkInAppointment(input: {
   actorName?: string;
   actorRole?: string;
 }): Promise<void> {
-  const { updateAppointmentStatus } = await import('./appointment-service');
-  await updateAppointmentStatus(input.appointmentId, 'checked_in', {
-    actorId: input.actorId,
-    actorName: input.actorName,
-    actorRole: input.actorRole as never,
-  });
-
+  const repairId = `repair:appointment-check-in:${input.appointmentId}`;
+  const repairBase = {
+    workflow: 'appointment_check_in' as const,
+    patientId: input.patientId,
+    appointmentId: input.appointmentId,
+    hospitalId: input.facilityId,
+    orgId: input.orgId,
+  };
   try {
-    const existing = await findOpenEncounterForPatient(input.patientId, input.facilityId || '');
-    if (existing) return; // already threaded onto a live visit
-    const attendanceType = input.attendanceType ?? await deriveAttendanceType(input.patientId);
-    await createArrivalEncounter({
-      patientId: input.patientId,
-      patientName: input.patientName,
-      hospitalNumber: input.hospitalNumber,
-      hospitalId: input.facilityId || '',
-      hospitalName: input.facilityName,
-      orgId: input.orgId,
-      arrivalChannel: 'appointment',
-      appointmentId: input.appointmentId,
-      attendanceType,
+    await upsertWorkflowRepair(repairId, { ...repairBase, status: 'open', currentStep: 'appointment' });
+    const appointment = await updateAppointmentStatus(input.appointmentId, 'checked_in', {
       actorId: input.actorId,
+      actorName: input.actorName,
+      actorRole: input.actorRole as never,
     });
-  } catch {
-    // The appointment is checked in either way; the visit thread can be
-    // repaired, a patient left un-checked-in at the desk cannot.
+    if (!appointment) throw new Error('The appointment could not be marked checked in.');
+    await upsertWorkflowRepair(repairId, { ...repairBase, status: 'open', currentStep: 'encounter' });
+    const existing = await findOpenEncounterForPatient(input.patientId, input.facilityId || '');
+    if (!existing) {
+      const attendanceType = input.attendanceType ?? await deriveAttendanceType(input.patientId);
+      await createArrivalEncounter({
+        patientId: input.patientId,
+        patientName: input.patientName,
+        hospitalNumber: input.hospitalNumber,
+        hospitalId: input.facilityId || '',
+        hospitalName: input.facilityName,
+        orgId: input.orgId,
+        arrivalChannel: 'appointment',
+        appointmentId: input.appointmentId,
+        attendanceType,
+        actorId: input.actorId,
+      });
+    }
+    await resolveWorkflowRepair(repairId);
+  } catch (error) {
+    await upsertWorkflowRepair(repairId, {
+      ...repairBase,
+      status: 'open',
+      currentStep: 'needs_repair',
+      lastError: error instanceof Error ? error.message : 'Unknown check-in failure',
+    }).catch(() => undefined);
+    throw new Error(
+      'The patient is marked checked in, but the clinical visit could not be opened. Keep them at the desk and retry check-in before triage.',
+      { cause: error },
+    );
   }
 }
 
@@ -163,6 +186,14 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
   }
   const acuity = input.acuity ?? 'routine';
   const v = input.vitals ?? {};
+  const repairId = `repair:walk-in-check-in:${input.orgId || 'none'}:${input.facilityId || 'none'}:${input.patientId}:${jubaDate()}`;
+  const repairBase = {
+    workflow: 'walk_in_check_in' as const,
+    patientId: input.patientId,
+    hospitalId: input.facilityId,
+    orgId: input.orgId,
+  };
+  await upsertWorkflowRepair(repairId, { ...repairBase, status: 'open', currentStep: 'appointment_lookup' });
 
   // Resolve a same-day scheduled/confirmed appointment up front so the match
   // is threaded onto the encounter instead of being computed and discarded
@@ -182,7 +213,7 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
     const match = appts.find(
       (a) =>
         a.appointmentDate === today &&
-        APPOINTMENT_PENDING_STATUSES.includes(a.status) &&
+        (APPOINTMENT_PENDING_STATUSES.includes(a.status) || a.status === 'checked_in') &&
         a.orgId === input.orgId &&
         a.facilityId === input.facilityId,
     );
@@ -249,9 +280,12 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
         createdBy: input.checkedInById,
       } as Omit<AppointmentDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>);
       walkInAppointmentId = created._id;
-    } catch {
-      // Non-fatal: a walk-in must still be able to check in if the booking
-      // cannot be written. Their row falls back to the queue's own stage.
+    } catch (error) {
+      await upsertWorkflowRepair(repairId, {
+        ...repairBase, status: 'open', currentStep: 'appointment',
+        lastError: error instanceof Error ? error.message : 'Walk-in appointment could not be saved',
+      }).catch(() => undefined);
+      throw new Error('The walk-in visit could not be added to today’s schedule. Retry check-in; no duplicate visit will be created.', { cause: error });
     }
   }
 
@@ -277,7 +311,16 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
     });
   }
 
-  const triage = await createTriage({
+  await upsertWorkflowRepair(repairId, {
+    ...repairBase,
+    appointmentId: linkedAppointmentId,
+    encounterId: encounter._id,
+    status: 'open',
+    currentStep: 'triage',
+  });
+
+  const existingTriage = await getTriageByEncounter(encounter._id);
+  const triage = existingTriage ?? await createTriage({
     patientId: input.patientId,
     patientName: input.patientName,
     hospitalNumber: input.hospitalNumber,
@@ -324,10 +367,17 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
     try {
       await updateAppointmentStatus(appointmentId, 'checked_in');
       appointmentCheckedIn = true;
-    } catch {
-      // appointment linkage is best-effort; the check-in itself still succeeded
+    } catch (error) {
+      await upsertWorkflowRepair(repairId, {
+        ...repairBase, appointmentId, encounterId: encounter._id, triageId: triage._id,
+        status: 'open', currentStep: 'appointment_status',
+        lastError: error instanceof Error ? error.message : 'Appointment status could not be saved',
+      }).catch(() => undefined);
+      throw new Error('The clinical visit is open, but the appointment status could not be updated. Retry check-in to finish safely.', { cause: error });
     }
   }
+
+  await resolveWorkflowRepair(repairId);
 
   return {
     triage,

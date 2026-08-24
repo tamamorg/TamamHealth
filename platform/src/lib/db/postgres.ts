@@ -84,6 +84,7 @@ const ALLOWED_TABLES = new Set<string>([
   // Phase 3 analytics writeback (see migrations/0004_analytics_writeback_phase3.sql)
   'messages',
   'controlled_substance_log',
+  'medication_administrations',
   'pharmacy_inventory',
   'wards',
   // Ward inpatient writeback (see migrations/0006_ward_inpatient_writeback.sql).
@@ -159,6 +160,8 @@ const ALLOWED_COLUMNS = new Set<string>([
   'inventory_id', 'schedule', 'movement', 'quantity', 'unit',        // controlled_substance_log
   'before_balance', 'after_balance', 'prescription_id',
   'operator_id', 'operator_name', 'witness_id', 'witness_name',
+  'event_kind', 'admission_id', 'scheduled_for', 'occurred_at', 'recorded_at',
+  'dose_given', 'administered_by', 'administered_by_name', 'voids_administration_id',
   'hospital_name', 'medication_name', 'category', 'stock_level',     // pharmacy_inventory
   'reorder_level', 'batch_number', 'expiry_date', 'last_received',
   'last_dispensed', 'dispensed_today', 'controlled_schedule',
@@ -344,6 +347,7 @@ export const TABLE_CONFLICT_POLICY: Record<string, ConflictPolicy> = {
   // Controlled substance log: regulatory chain of custody. Once a movement
   // is logged it must never be overwritten. Identical to audit_log.
   controlled_substance_log: ConflictPolicy.APPEND_ONLY,
+  medication_administrations: ConflictPolicy.APPEND_ONLY,
 
   // Pharmacy inventory: a stock-level snapshot per SKU; the latest push wins.
   pharmacy_inventory: ConflictPolicy.LAST_WRITE_WINS,

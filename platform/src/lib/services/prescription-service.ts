@@ -1,6 +1,6 @@
 import { prescriptionsDB, hospitalsDB } from '../db';
 import { findByType } from './db-query';
-import type { PrescriptionDoc, MedicationAdministration, UserRole, HospitalDoc } from '../db-types';
+import type { PrescriptionDoc, UserRole, HospitalDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
@@ -17,6 +17,14 @@ import {
 import { prescription as rxLifecycle, type PrescriptionStatus } from '../clinical-flow/order-lifecycles';
 import { resolvePrescriptionTier } from '../clinical-flow/medication-tiers';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
+import {
+  getAdministrationEvents,
+  mergeAdministrationEvents,
+  recordAdministration as recordAdministrationEvent,
+  voidAdministration as voidAdministrationEvent,
+  MedicationAdministrationError,
+  type AdministrationInput,
+} from './medication-administration-service';
 
 import { getSettings } from '../settings/settings-store';
 import { getRoleFlag } from '../settings/role-settings-store';
@@ -89,14 +97,25 @@ export async function advancePrescription(
 export async function getAllPrescriptions(scope?: DataScope): Promise<PrescriptionDoc[]> {
   const db = prescriptionsDB();
   const all = await findByType<PrescriptionDoc>(db, 'prescription');
+  const events = await getAdministrationEvents(scope);
+  const eventsByPrescription = new Map<string, typeof events>();
+  for (const event of events) {
+    const rows = eventsByPrescription.get(event.prescriptionId) || [];
+    rows.push(event);
+    eventsByPrescription.set(event.prescriptionId, rows);
+  }
+  for (const prescription of all) {
+    const prescriptionEvents = eventsByPrescription.get(prescription._id) || [];
+    if (prescriptionEvents.length > 0) prescription.administrations = mergeAdministrationEvents(prescription.administrations, prescriptionEvents);
+  }
   /* istanbul ignore next -- defensive null-safety in sort */
   all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   return scope ? filterByScope(all, scope) : all;
 }
 
 export async function getPrescriptionsByPatient(patientId: string, scope?: DataScope): Promise<PrescriptionDoc[]> {
-  const rows = await findByType<PrescriptionDoc>(prescriptionsDB(), 'prescription', { patientId }, { indexFields: ['type', 'patientId'] });
-  return scope ? filterByScope(rows, scope) : rows;
+  const rows = await getAllPrescriptions(scope);
+  return rows.filter(row => row.patientId === patientId);
 }
 
 /**
@@ -388,6 +407,21 @@ export async function createPrescription(
   const db = prescriptionsDB();
   const now = new Date().toISOString();
   const orgId = data.orgId || await inferOrgIdFromHospital(data.hospitalId);
+  let admissionId = data.admissionId;
+  if (!admissionId && data.hospitalId) {
+    // A medication ordered from the chart while the patient is admitted is an
+    // inpatient order even when the generic prescribing modal did not know the
+    // admission id. Resolve it once at write time so it appears on exactly one
+    // MAR; never make the MAR guess from every pending outpatient prescription.
+    try {
+      const { getActiveAdmissions } = await import('./ward-service');
+      admissionId = (await getActiveAdmissions()).find(admission =>
+        admission.patientId === data.patientId
+        && admission.facilityId === data.hospitalId
+        && (!orgId || admission.orgId === orgId)
+      )?._id;
+    } catch { /* an outpatient order remains outpatient when the ward store is unavailable */ }
+  }
   const doc: PrescriptionDoc = withPendingOfflineSync({
     _id: `rx-${uuidv4()}`,
     type: 'prescription',
@@ -397,6 +431,7 @@ export async function createPrescription(
     // with what the prescriber saw. A later formulary edit reclassifying a
     // drug must not silently retier orders already sitting in the queue.
     criticalityTier: resolvePrescriptionTier(data.medication, data.criticalityTier),
+    admissionId,
     orgId,
     createdAt: now,
     updatedAt: now,
@@ -499,125 +534,38 @@ export async function dispensePrescription(id: string, dispensedBy?: string): Pr
 }
 
 // ===== Medication Administration Record (MAR) =====
-//
-// recordAdministration appends a new row to the prescription's
-// administrations[] array. This is the legal bedside record of a nurse
-// giving (or refusing/missing) one scheduled dose. Append-only — to
-// correct an entry, append a new row with status='corrected'.
+// Each administration/correction is persisted as an independent append-only
+// document. These wrappers keep the existing service API while returning the
+// refreshed prescription projection expected by older callers.
+export type { AdministrationInput } from './medication-administration-service';
+export { MedicationAdministrationError } from './medication-administration-service';
 
-export interface AdministrationInput {
-  prescriptionId: string;
-  scheduledFor: string;          // ISO datetime of the scheduled dose
-  status: MedicationAdministration['status'];
-  doseGiven?: string;
-  route?: string;
-  administeredBy: string;
-  administeredByName: string;
-  witnessId?: string;
-  witnessName?: string;
-  reason?: string;
-  notes?: string;
+export async function recordAdministration(input: AdministrationInput): Promise<PrescriptionDoc> {
+  await recordAdministrationEvent(input);
+  const refreshed = await prescriptionsDB().get(input.prescriptionId) as PrescriptionDoc;
+  const events = await getAdministrationEvents();
+  refreshed.administrations = mergeAdministrationEvents(
+    refreshed.administrations,
+    events.filter(event => event.prescriptionId === refreshed._id),
+  );
+  return refreshed;
 }
 
-export async function recordAdministration(
-  input: AdministrationInput,
-): Promise<PrescriptionDoc | null> {
-  const db = prescriptionsDB();
-  try {
-    const existing = await db.get(input.prescriptionId) as PrescriptionDoc;
-    const now = new Date().toISOString();
-    const entry: MedicationAdministration = {
-      id: `madm-${uuidv4()}`,
-      scheduledFor: input.scheduledFor,
-      recordedAt: now,
-      status: input.status,
-      doseGiven: input.doseGiven || existing.dose,
-      route: input.route || existing.route,
-      administeredBy: input.administeredBy,
-      administeredByName: input.administeredByName,
-      witnessId: input.witnessId,
-      witnessName: input.witnessName,
-      reason: input.reason,
-      notes: input.notes,
-    };
-    const next: PrescriptionDoc = withPendingOfflineSync({
-      ...existing,
-      administrations: [...(existing.administrations || []), entry],
-      updatedAt: now,
-    }, now);
-    const resp = await db.put(next);
-    next._rev = resp.rev;
-    await logAuditSafe(
-      'MEDICATION_ADMINISTERED',
-      undefined,
-      input.administeredByName,
-      `${entry.status.toUpperCase()} ${existing.medication} ${entry.doseGiven} ` +
-      `to ${existing.patientName} (Rx: ${existing._id})` +
-      (entry.witnessName ? ` witnessed by ${entry.witnessName}` : ''),
-    );
-    emitSyncEvent({
-      resourceType: 'prescription',
-      resourceId: next._id,
-      operation: 'update',
-      resourceVersion: next._rev,
-      hospitalId: next.hospitalId,
-      orgId: next.orgId,
-    });
-    return next;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Void a mis-recorded administration WITHOUT deleting it. The targeted
- * administrations[] entry is marked voided (append-only — history is
- * preserved), so the scheduled dose returns to due/overdue. Mirrors
- * recordAdministration's persistence + audit + sync pattern.
- */
 export async function voidAdministration(
   prescriptionId: string,
   administrationId: string,
   voidedBy: string,
   voidedByName: string,
   reason: string,
-): Promise<PrescriptionDoc | null> {
-  const db = prescriptionsDB();
-  try {
-    const existing = await db.get(prescriptionId) as PrescriptionDoc;
-    const now = new Date().toISOString();
-    const target = (existing.administrations || []).find(a => a.id === administrationId);
-    if (!target) return null;
-    const next: PrescriptionDoc = withPendingOfflineSync({
-      ...existing,
-      administrations: (existing.administrations || []).map(a =>
-        a.id === administrationId
-          ? { ...a, voided: true, voidedAt: now, voidedBy, voidedReason: reason }
-          : a,
-      ),
-      updatedAt: now,
-    }, now);
-    const resp = await db.put(next);
-    next._rev = resp.rev;
-    await logAuditSafe(
-      'MEDICATION_ADMIN_VOIDED',
-      undefined,
-      voidedByName,
-      `Voided ${target.status.toUpperCase()} ${existing.medication} ${target.doseGiven || existing.dose} ` +
-      `for ${existing.patientName} (Rx: ${existing._id})${reason ? ` — ${reason}` : ''}`,
-    );
-    emitSyncEvent({
-      resourceType: 'prescription',
-      resourceId: next._id,
-      operation: 'update',
-      resourceVersion: next._rev,
-      hospitalId: next.hospitalId,
-      orgId: next.orgId,
-    });
-    return next;
-  } catch {
-    return null;
-  }
+): Promise<PrescriptionDoc> {
+  await voidAdministrationEvent(prescriptionId, administrationId, voidedBy, voidedByName, reason);
+  const refreshed = await prescriptionsDB().get(prescriptionId) as PrescriptionDoc;
+  const events = await getAdministrationEvents();
+  refreshed.administrations = mergeAdministrationEvents(
+    refreshed.administrations,
+    events.filter(event => event.prescriptionId === prescriptionId),
+  );
+  return refreshed;
 }
 
 /**

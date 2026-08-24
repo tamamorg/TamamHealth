@@ -464,9 +464,61 @@ export const TEAM: TeamMember[] = [
   // 1080×1920 — the tallest source in the set; "center top" would crop 840px
   // of empty wall. 50% puts the head about an eighth down the square.
   { accent: "#015697", name: "Toye Adebayo", role: "Project Manager", image: "/assets/founder-toye.jpg", focus: "center 50%" },
-  { accent: "#015697", name: "Mark Dosu", role: "Software Developer", image: "/assets/Mark-Dosu.jpeg" },
+  { accent: "#015697", name: "Mark Dosu", role: "Developer", image: "/assets/Mark-Dosu.jpeg" },
   { accent: "#015697", name: "Chinonye Hycent", role: "Research Lead", image: "/assets/chinonye-hycent.jpg" },
   { accent: "#015697", name: "Isaac Kyalo", role: "Technical Lead", image: "/assets/isaac-kyalo.jpg" },
+];
+
+/**
+ * The advisors listed under Leadership on /about.
+ *
+ * Deliberately three facts and no paragraph: what they do, where they do it,
+ * and the field it comes out of. An advisor who has not sent a portrait is
+ * shown as a monogram in the same square frame, so the row keeps its rhythm
+ * instead of leaving a hole where a face should be.
+ */
+export interface Advisor {
+  accent: string;
+  name: string;
+  /** What they do — a title, not a description of it. */
+  role: string;
+  /** Where they do it. Joined with "·" when there is more than one. */
+  institutions: string[];
+  /** The field the advice comes out of. */
+  industry: string;
+  image?: string;
+  focus?: string;
+}
+
+export const ADVISORS: Advisor[] = [
+  {
+    accent: "#015697",
+    name: "Krista Galleberg",
+    role: "Researcher and educator",
+    institutions: ["Harvard University"],
+    industry: "Education research",
+    image: "/assets/krista-galleberg.jpg",
+  },
+  {
+    accent: "#015697",
+    name: "David Blair",
+    role: "VP of Data & Automation",
+    institutions: ["Phoenix Tailings", "Machinery Partner (board)"],
+    industry: "Industrial technology",
+  },
+  {
+    accent: "#015697",
+    name: "Tim Raphael",
+    role: "Professor of Theater · Director, Center for Migration and the Global City",
+    institutions: ["Rutgers University–Newark"],
+    industry: "Theater and migration studies",
+    // 684×1024 — the tallest source in the set, and the only one whose face
+    // nearly fills the square plate: 203px of a 220px window on tablet, the
+    // same ratio on desktop. 42% is where that window centres on the face —
+    // "center top" spends the slack above the hair and clips the beard.
+    image: "/assets/tim-raphael.jpg",
+    focus: "center 42%",
+  },
 ];
 
 export const GOALS = [
@@ -531,8 +583,8 @@ export const HEROES: Hero[] = [
     kicker: "Ground Truth",
     title: "The daily reality inside South Sudan's facilities",
     body: "Documented across South Sudanese facilities, from the wards to the waiting line — the same failures repeat on both sides of the consultation desk: **lost histories, duplicate treatment, and very slow clinical flow**.",
-    image: "/assets/images/pediatric-ward-interior.jpeg",
-    alt: "A crowded pediatric ward",
+    image: "/assets/medical-unit-male-ward.jpg",
+    alt: "Patients and clinical staff inside a crowded male medical ward in South Sudan",
     accent: "#015697",
     stripKicker: "Ground Truth",
     /* Not /about#crisis — that is the origin story. The failures this card
@@ -865,6 +917,19 @@ export interface Photo {
   src: string;
   alt: string;
   caption: string;
+  /**
+   * Intrinsic pixel size, rendered as the <img> width/height attributes.
+   *
+   * Load-bearing in the scrolling strip, not decorative metadata. The frames
+   * are sized `height: clamp(...); width: auto`, so a photo that has not
+   * downloaded yet has no width to give — the figure collapsed to 2px, its
+   * caption (`min-width: 100%`) wrapped to fourteen lines, and every frame in
+   * the flex row inherited that height. The result was a 260px photograph
+   * sitting in a 533px row. With the attributes present the browser knows the
+   * ratio before the bytes arrive and reserves the right width.
+   */
+  w: number;
+  h: number;
 }
 
 /** Photos from the Tufts New Ventures Competition, April 10, 2026 — in story
@@ -874,66 +939,92 @@ export const DERBY_PHOTOS: Photo[] = [
     src: "/assets/derby/derby-09.jpg",
     alt: "Toye Adebayo, Teny Makuach and Ekow Williams standing together with competition badges",
     caption: "Toye Adebayo, Teny Makuach and Ekow Williams before the results were announced.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-13.jpg",
     alt: "Teny Makuach pitching with a microphone, the live record system on the projector behind him",
     caption: "Teny pitching from the product itself — the live record system on screen, not a slide deck.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-07.jpg",
     alt: "Ekow Williams presenting with a microphone beside the lectern",
     caption: "Ekow making the case in the Healthcare & Life Science track.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-12.jpg",
     alt: "A team member answering questions with a microphone during the pitch",
     caption: "Taking the judges' questions — five minutes of them, after a five-minute pitch.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-08.jpg",
     alt: "The team demoing the platform on a laptop at a standing table during the reception",
     caption: "Demoing the record system between sessions.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-10.jpg",
     alt: "Ekow Williams in conversation at the reception",
     caption: "Ekow talking through the pilot.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-01.jpg",
     alt: "The team called up through an applauding audience as the results are announced",
     caption: "The moment the results were read out.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-02.jpg",
     alt: "The team receiving the oversized $10,000 check on stage",
     caption: "Receiving the award on stage.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-11.jpg",
     alt: "The team holding the $10,000 check together with the competition judges",
     caption: "The team with the judges and the $10,000 check.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-04.jpg",
     alt: "Founders laughing together while holding the check",
     caption: "Letting it sink in.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-03.jpg",
     alt: "The team posing with the check while a guest takes a photo",
     caption: "Photos with the check.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-05.jpg",
     alt: "Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check in front of the Derby Entrepreneurship Center banner",
     caption: "The founding team with the award.",
+    w: 1400,
+    h: 933,
   },
   {
     src: "/assets/derby/derby-06.jpg",
     alt: "The three founders standing full-length with the check in front of the Derby Entrepreneurship Center banner",
     caption: "At the Derby Entrepreneurship Center at Tufts.",
+    w: 933,
+    h: 1400,
   },
 ];
 
@@ -1100,7 +1191,8 @@ export const FOOTER_COLS: { accent: string; title: string; links: FooterLink[] }
     title: "About",
     links: [
       { label: "The Problem", href: "/about#crisis" },
-      { label: "The Goal", href: "/about#goal" },
+      { label: "The Goal", href: "/donate" },
+      { label: "Our Leadership", href: "/about#leadership" },
       { label: "The Team", href: "/about#team" },
       { label: "News & updates", href: "/news" },
     ],
@@ -1148,7 +1240,10 @@ export const NAV_ITEMS: { label: string; href: string; menu: MenuKey | null }[] 
   { label: "The health system", href: "/health-system", menu: "system" },
   { label: "About", href: "/about", menu: "about" },
   { label: "News & updates", href: "/news", menu: null },
-  { label: "Donate", href: "/donate", menu: null },
+  // "Goal" rather than "Donate": the page opens on what the money is for —
+  // $100,000, ten clinics, twelve months — and the ask follows from it. The
+  // route stays /donate so existing links and the widget's return URLs hold.
+  { label: "Goal", href: "/donate", menu: null },
 ];
 
 export const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: string; allHref: string; links: MenuLink[] }> = {
@@ -1196,7 +1291,8 @@ export const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel
     allHref: "/about",
     links: [
       { label: "The Problem", note: "Care delivered under impossible conditions", href: "/about#crisis" },
-      { label: "The Goal", note: "$100K pilot across 10 clinics", href: "/about#goal" },
+      { label: "The Goal", note: "$100K pilot across 10 clinics", href: "/donate" },
+      { label: "Our Leadership", note: "The advisors behind the work", href: "/about#leadership" },
       { label: "The Team", note: "Built by people who've lived this", href: "/about#team" },
       { label: "Contact", note: "Get involved", href: "/contact" },
     ],
@@ -1219,7 +1315,7 @@ export const SEARCH_SUGGESTIONS = [
   { label: "DHIS2 reporting", href: "/platform#how-it-works" },
   { label: "Pilot clinics", href: "/#footprint" },
   { label: "News & updates", href: "/news" },
-  { label: "Donate", href: "/donate" },
+  { label: "Goal", href: "/donate" },
   { label: "Get in touch", href: "/contact" },
 ];
 
@@ -1278,4 +1374,3 @@ export const CONTACT_POINTS = [
   "Understand what it takes to run without reliable power or connectivity",
   "Find out what a pilot costs, and what the first month involves",
 ];
-

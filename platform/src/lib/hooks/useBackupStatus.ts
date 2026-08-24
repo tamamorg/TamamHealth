@@ -10,7 +10,7 @@ import type { BackupStatus } from '../services/backup-status-service';
  * Whether a backup ran is a fact about the server, and it is recorded there by
  * the backup job (POST /api/admin/backup). Reading it from the local replica
  * alone made the answer depend on one global config document completing a
- * round trip through 76-database replication — so a fresh device, a stalled
+ * round trip through 77-database replication — so a fresh device, a stalled
  * gateway or a wiped browser reported "No backup on record" for a backup the
  * server knew about, which is the exact false alarm the reporting endpoint
  * exists to end.

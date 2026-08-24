@@ -32,6 +32,24 @@ export interface BaseDoc {
   countryId?: string;
 }
 
+/** Durable marker for a multi-document workflow that may need repair offline. */
+export interface WorkflowRepairDoc extends BaseDoc {
+  type: 'workflow_repair';
+  workflow: 'appointment_check_in' | 'walk_in_check_in' | 'discharge';
+  status: 'open' | 'resolved';
+  patientId: string;
+  patientName?: string;
+  appointmentId?: string;
+  encounterId?: string;
+  triageId?: string;
+  admissionId?: string;
+  hospitalId?: string;
+  orgId?: string;
+  currentStep: string;
+  lastError?: string;
+  resolvedAt?: string;
+}
+
 export type UserRole = 'super_admin' | 'org_admin' | 'doctor' | 'clinical_officer' | 'nurse' | 'midwife' | 'lab_tech' | 'pharmacist' | 'front_desk' | 'cashier' | 'government' | 'county_health_director' | 'data_entry_clerk' | 'medical_superintendent' | 'hrio' | 'nutritionist' | 'radiologist' | 'hospital_manager' | 'medical_biller'
   // Clinical-flow workflow roles (EHR Clinical Flow doc §4) — capability-gated stations.
   | 'central_registration_clerk' | 'clinic_clerk' | 'triage_nurse' | 'rooming_nurse' | 'clinician' | 'records_hmis_officer';
@@ -766,6 +784,42 @@ export interface MedicationAdministration {
   voidedAt?: string;
   voidedBy?: string;
   voidedReason?: string;
+}
+
+/**
+ * Append-only bedside medication event stored as its own PouchDB document.
+ *
+ * Keeping each dose independent means two offline devices recording different
+ * doses never compete for the revision of the prescription order. Corrections
+ * are separate `void` events referencing the original event; neither the
+ * order nor the clinical event is rewritten.
+ */
+export interface MedicationAdministrationDoc extends BaseDoc {
+  type: 'medication_administration';
+  eventKind: 'administration' | 'void';
+  prescriptionId: string;
+  patientId: string;
+  patientName: string;
+  admissionId?: string;
+  hospitalId?: string;
+  orgId?: string;
+  /** Stable scheduled slot. PRN administrations use their actual occurrence. */
+  scheduledFor: string;
+  /** When the medication was given or the non-administration occurred. */
+  occurredAt: string;
+  /** When the event was entered into the record. */
+  recordedAt: string;
+  status: MedicationAdministration['status'] | 'entered_in_error';
+  doseGiven?: string;
+  route?: string;
+  administeredBy: string;
+  administeredByName: string;
+  witnessId?: string;
+  witnessName?: string;
+  reason?: string;
+  notes?: string;
+  /** Present only on a void event. */
+  voidsAdministrationId?: string;
 }
 
 /**

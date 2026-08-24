@@ -159,6 +159,9 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   prescription: [
     'super_admin', 'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
   ],
+  // One append-only document per bedside dose. Nurses author the clinical
+  // event without receiving amendment rights over the medication order.
+  medication_administration: NURSING_AND_CLINICIANS,
   // `triage_nurse` — the role whose entire primary function is acuity
   // assessment — could not write a triage document. `midwife` is included for
   // the obstetric walk-in they triage themselves; both hold the `/triage`
@@ -198,6 +201,7 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   assessment: NURSING_AND_CLINICIANS,
   clinical_encounter: NURSING_AND_CLINICIANS,
   encounter: NURSING_AND_CLINICIANS,
+  workflow_repair: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
   consultation_progress: NURSING_AND_CLINICIANS,
   shift_handoff: NURSING_AND_CLINICIANS,
   follow_up: NURSING_AND_CLINICIANS,
@@ -219,7 +223,10 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   controlled_substance_log: [...CLINICIANS, 'pharmacist', 'nurse'],
   ward: [...ADMIN, ...NURSING_AND_CLINICIANS, 'hospital_manager'],
   bed: [...ADMIN, ...NURSING_AND_CLINICIANS, 'hospital_manager'],
-  admission: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
+  // Clinicians may complete the full admission lifecycle. Nursing roles can
+  // create an admission and maintain placement through the constrained rows
+  // below, but cannot rewrite diagnoses or discharge disposition directly.
+  admission: CLINICIANS,
   blood_bank: [...ADMIN, ...NURSING_AND_CLINICIANS, 'lab_tech'],
   biometric_template: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
   emergency_plan: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
@@ -322,8 +329,26 @@ export const DOC_UPDATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
   prescription: [
     // Dispensing lifecycle: verify → clear → dispense.
     'pharmacist',
-    // Ward MAR: append an administration entry against an existing order.
-    'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
+  ],
+  admission: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'],
+};
+
+/** Roles allowed to create a document but not receive unrestricted updates. */
+export const DOC_CREATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
+  admission: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'],
+};
+
+/** Fields an amend-only role may change on the existing document. */
+export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  prescription: [
+    'status', 'orderStatus', 'dispensedAt', 'dispensedBy', 'dispensedByName',
+    'quantityDispensed', 'dispenseAllocations', 'dispenseLock', 'dispenseOutcome',
+    'dispenseNote', 'controlledLogId', 'counselledAt', 'counselledBy',
+    'counselledPoints', 'counsellingNote', 'updatedAt', 'offlineSync',
+  ],
+  admission: [
+    'wardId', 'wardName', 'bedId', 'bedNumber', 'nurseAssigned',
+    'nurseAssignedName', 'updatedAt', 'offlineSync',
   ],
 };
 
@@ -407,6 +432,7 @@ export const FACILITY_EXEMPT_TYPES: readonly string[] = [
 export const APPEND_ONLY_TYPES: readonly string[] = [
   'audit_log',
   'controlled_substance_log',
+  'medication_administration',
   'ledger_entry',
 ];
 
@@ -462,11 +488,15 @@ export function isAppendOnlyDatabase(localName: string): boolean {
 export function buildValidateDocUpdateFn(
   matrix: Readonly<Record<string, readonly string[]>> = DOC_WRITE_ROLES,
   updateOnly: Readonly<Record<string, readonly string[]>> = DOC_UPDATE_ONLY_ROLES,
+  updateOnlyFields: Readonly<Record<string, readonly string[]>> = DOC_UPDATE_ONLY_FIELDS,
+  createOnly: Readonly<Record<string, readonly string[]>> = DOC_CREATE_ONLY_ROLES,
 ): string {
   const matrixJson = JSON.stringify(matrix);
   const immutableJson = JSON.stringify(IMMUTABLE_FIELDS);
   const appendOnlyJson = JSON.stringify(APPEND_ONLY_TYPES);
   const updateOnlyJson = JSON.stringify(updateOnly);
+  const updateOnlyFieldsJson = JSON.stringify(updateOnlyFields);
+  const createOnlyJson = JSON.stringify(createOnly);
   const facilityFieldsJson = JSON.stringify(FACILITY_OWNER_FIELDS);
   const facilityExemptJson = JSON.stringify(FACILITY_EXEMPT_TYPES);
   const multiFacilityJson = JSON.stringify(MULTI_FACILITY_ROLES);
@@ -601,6 +631,18 @@ export function buildValidateDocUpdateFn(
     throw({ forbidden: 'unknown document type: ' + docType });
   }
 
+  // Create-only roles can author the initial record but gain no blanket right
+  // to rewrite it later. Updates flow through the field-constrained block.
+  if (!oldDoc && !isDelete) {
+    var CREATE_ONLY_ROLES = ${createOnlyJson};
+    var creators = CREATE_ONLY_ROLES[docType];
+    if (creators) {
+      for (var c = 0; c < creators.length; c++) {
+        if (creators[c] === actingRole) return;
+      }
+    }
+  }
+
   for (var m = 0; m < allowed.length; m++) {
     if (allowed[m] === actingRole) return;
   }
@@ -611,10 +653,26 @@ export function buildValidateDocUpdateFn(
   // gaining the authority to write a medication order.
   if (oldDoc && !isDelete) {
     var UPDATE_ONLY_ROLES = ${updateOnlyJson};
+    var UPDATE_ONLY_FIELDS = ${updateOnlyFieldsJson};
     var amenders = UPDATE_ONLY_ROLES[docType];
     if (amenders) {
       for (var n = 0; n < amenders.length; n++) {
-        if (amenders[n] === actingRole) return;
+        if (amenders[n] === actingRole) {
+          var allowedFields = UPDATE_ONLY_FIELDS[docType] || [];
+          for (var changed in newDoc) {
+            if (!newDoc.hasOwnProperty(changed) || changed === '_rev') continue;
+            if (JSON.stringify(newDoc[changed]) !== JSON.stringify(oldDoc[changed]) && !contains(allowedFields, changed)) {
+              throw({ forbidden: 'role ' + actingRole + ' may not amend ' + changed + ' on ' + docType });
+            }
+          }
+          for (var removed in oldDoc) {
+            if (!oldDoc.hasOwnProperty(removed) || removed === '_rev') continue;
+            if (newDoc[removed] === undefined && oldDoc[removed] !== undefined && !contains(allowedFields, removed)) {
+              throw({ forbidden: 'role ' + actingRole + ' may not remove ' + removed + ' from ' + docType });
+            }
+          }
+          return;
+        }
       }
     }
   }

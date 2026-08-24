@@ -51,7 +51,13 @@ guard.
 | `immunizations`, `anc_visits` | Each row is its own visit; no terminal status semantic. |
 | `problems`, `follow_ups`, `program_enrollments` | Status can legitimately re-open (a problem un-resolves, a follow-up plan gets updated after "completed", an enrollment resumes after lapsing) — `CLINICAL_FINALIZED` would wrongly block that. |
 | `messages` | Canonical doc lives in CouchDB and is rarely edited after send; no rollback risk. |
-| `pharmacy_inventory`, `wards`, `beds`, `admissions`, `nutrition_screenings`, `blood_bank`, `assets`, `staff_schedules`, `leave_requests`, `payroll_entries`, `patient_feedback`, `emergency_plans`, `fee_schedule`, `insurance_policies`, `eligibility_checks`, `payment_plans` | Mutable lookup / state snapshots — latest push wins. |
+| `pharmacy_inventory`, `wards`, `nutrition_screenings`, `blood_bank`, `assets`, `staff_schedules`, `leave_requests`, `payroll_entries`, `patient_feedback`, `emergency_plans`, `fee_schedule`, `insurance_policies`, `eligibility_checks`, `payment_plans` | Mutable lookup / state snapshots — latest push wins. |
+
+`beds`, `admissions`, `prescriptions`, and `shift_handoff` documents are not
+safe state snapshots. A losing revision can double-book a bed, reopen/erase an
+admission disposition, lose a medication administration, or erase receipt of a
+handoff. Browser replication therefore places their CouchDB conflicts in the
+high-risk reconciliation queue; they must not be silently auto-resolved.
 | `payments`, `refunds`, `adjustments` | Financial transactions identified one-row-per-transaction; a correction is a new row, not a rewrite of an old one. |
 
 `boma_visits` used to carry this policy but the table itself was dropped —

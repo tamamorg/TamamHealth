@@ -32,7 +32,7 @@ export const dynamic = 'force-dynamic';
  *
  * The admin surfaces used to read this straight from the local replica, which
  * made a server-side fact depend on one global config document completing a
- * round trip through 76-database replication. When that pull had not run —
+ * round trip through 77-database replication. When that pull had not run —
  * a fresh device, a stalled gateway, a browser that had just been wiped — the
  * Risk Center reported "No backup on record" for a backup the server knew
  * about, which is the same false alarm this endpoint exists to end. Asking the

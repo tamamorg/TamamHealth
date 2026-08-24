@@ -1,7 +1,7 @@
 /**
  * Sync — pull-mode selection for the connection-starvation fix.
  *
- * A single client runs ~76 databases. If every pull holds a live longpoll open,
+ * A single client runs ~77 databases. If every pull holds a live longpoll open,
  * they saturate the browser's ~6-connections-per-host limit and starve push, so
  * new local writes never reach the server. The manager therefore defaults pull
  * to periodic polling (connections released between cycles) with push kept live.

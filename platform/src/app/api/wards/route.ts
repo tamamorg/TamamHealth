@@ -7,12 +7,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import {
+  WARD_ADMIT_ROLES,
+  WARD_BED_ROLES,
+  WARD_CONFIG_ROLES,
+  WARD_DISCHARGE_ROLES,
+} from '@/lib/clinical-flow/ward-permissions';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
-  'midwife', 'medical_superintendent',
-];
-const MANAGE_ROLES: UserRole[] = [
-  'super_admin', 'org_admin', 'nurse', 'midwife', 'medical_superintendent',
+  'midwife', 'medical_superintendent', 'clinician', 'triage_nurse',
+  'rooming_nurse', 'hospital_manager',
 ];
 export async function GET(request: NextRequest) {
   try {
@@ -24,18 +28,20 @@ export async function GET(request: NextRequest) {
       getActiveAdmissions,
     } = await import('@/lib/services/ward-service');
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     const url = new URL(request.url);
     const facilityId = url.searchParams.get('facilityId') || auth.hospitalId || '';
     const view = url.searchParams.get('view'); // 'beds', 'occupancy', 'admissions'
     if (view === 'occupancy') {
-      const stats = await getOccupancyStats(facilityId);
+      const stats = await getOccupancyStats(facilityId, scope);
       return NextResponse.json(stats);
     }
     // Census view: system-wide bed occupancy across all facilities
     if (view === 'census') {
-      const scope = buildScopeFromAuth(auth);
-      const allWards = await getAllWards(scope);
-      const admissions = await getActiveAdmissions(scope);
+      const { getAllBeds } = await import('@/lib/services/ward-service');
+      const [allWards, admissions, allBeds] = await Promise.all([
+        getAllWards(scope), getActiveAdmissions(scope), getAllBeds(scope),
+      ]);
       // Group by facility
       const facilityMap = new Map<string, {
         facilityId: string;
@@ -58,8 +64,9 @@ export async function GET(request: NextRequest) {
           });
         }
         const f = facilityMap.get(fid)!;
-        const total = ward.totalBeds || 0;
-        const occupied = ward.occupiedBeds || 0;
+        const wardBeds = allBeds.filter(bed => bed.wardId === ward._id);
+        const total = wardBeds.length || ward.totalBeds || 0;
+        const occupied = wardBeds.filter(bed => bed.status === 'occupied').length;
         f.totalBeds += total;
         f.occupiedBeds += occupied;
         f.wards.push({
@@ -93,7 +100,6 @@ export async function GET(request: NextRequest) {
       });
     }
     if (view === 'admissions') {
-      const scope = buildScopeFromAuth(auth);
       const admissions = await getActiveAdmissions(scope);
       return NextResponse.json({ admissions, total: admissions.length });
     }
@@ -102,11 +108,10 @@ export async function GET(request: NextRequest) {
       if (!wardId) {
         return NextResponse.json({ error: 'wardId required for beds view' }, { status: 400 });
       }
-      const beds = await getBedsByWard(wardId);
+      const beds = await getBedsByWard(wardId, scope);
       return NextResponse.json({ beds, total: beds.length });
     }
     // Default: list wards
-    const scope = buildScopeFromAuth(auth);
     const wards = await getAllWards(scope);
     return NextResponse.json({ wards, total: wards.length });
   } catch (err) {
@@ -118,7 +123,6 @@ async function postHandler(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
-    if (!hasRole(auth, MANAGE_ROLES)) return forbidden();
     let body: Record<string, unknown>;
     try {
       body = await request.json();
@@ -128,26 +132,40 @@ async function postHandler(request: NextRequest) {
     const { sanitizePayload } = await import('@/lib/validation');
     body = sanitizePayload(body);
     const action = body.action as string;
+    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     // Admit patient
     if (action === 'admit') {
+      if (!hasRole(auth, [...WARD_ADMIT_ROLES])) return forbidden();
       if (!body.patientId || !body.wardId || !body.admittingDiagnosis) {
         return NextResponse.json(
           { error: 'patientId, wardId, and admittingDiagnosis are required' },
           { status: 400 }
         );
       }
-      const { admitPatient } = await import('@/lib/services/ward-service');
+      const { admitPatient, getBedById, getWardById } = await import('@/lib/services/ward-service');
+      const { getPatientById } = await import('@/lib/services/patient-service');
+      const [ward, patient, bed] = await Promise.all([
+        getWardById(body.wardId as string, scope),
+        getPatientById(body.patientId as string),
+        body.bedId ? getBedById(body.bedId as string, scope) : Promise.resolve(null),
+      ]);
+      if (!ward) return forbidden('Ward is outside your assigned facilities');
+      if (!patient || filterByScope([patient], scope).length === 0) return forbidden('Patient is outside your assigned facilities');
+      if (body.bedId && (!bed || bed.wardId !== ward._id)) {
+        return NextResponse.json({ error: 'The selected bed does not belong to this ward' }, { status: 400 });
+      }
       const admission = await admitPatient({
-        patientId: body.patientId as string,
-        patientName: (body.patientName as string) || '',
-        hospitalNumber: body.hospitalNumber as string | undefined,
-        wardId: body.wardId as string,
-        wardName: (body.wardName as string) || '',
-        bedId: body.bedId as string | undefined,
-        bedNumber: body.bedNumber as string | undefined,
-        facilityId: auth.hospitalId || '',
-        facilityName: (body.facilityName as string) || '',
-        facilityLevel: (body.facilityLevel as Parameters<typeof admitPatient>[0]['facilityLevel']) || 'county',
+        patientId: patient._id,
+        patientName: `${patient.firstName} ${patient.surname}`.trim(),
+        hospitalNumber: patient.hospitalNumber,
+        wardId: ward._id,
+        wardName: ward.name,
+        bedId: bed?._id,
+        bedNumber: bed?.bedNumber,
+        facilityId: ward.facilityId,
+        facilityName: ward.facilityName,
+        facilityLevel: ward.facilityLevel,
         admittedBy: auth.sub,
         admittedByName: auth.name,
         attendingPhysician: (body.attendingPhysician as string) || auth.sub,
@@ -165,13 +183,16 @@ async function postHandler(request: NextRequest) {
     }
     // Discharge patient
     if (action === 'discharge') {
+      if (!hasRole(auth, [...WARD_DISCHARGE_ROLES])) return forbidden();
       if (!body.admissionId) {
         return NextResponse.json(
           { error: 'admissionId is required' },
           { status: 400 }
         );
       }
-      const { dischargePatient } = await import('@/lib/services/ward-service');
+      const { dischargePatient, getAdmissionById } = await import('@/lib/services/ward-service');
+      const admission = await getAdmissionById(body.admissionId as string, scope);
+      if (!admission) return forbidden('Admission is outside your assigned facilities');
       const result = await dischargePatient(
         body.admissionId as string,
         {
@@ -184,6 +205,7 @@ async function postHandler(request: NextRequest) {
           followUpRequired: body.followUpRequired as boolean | undefined,
           followUpDate: body.followUpDate as string | undefined,
           followUpInstructions: body.followUpInstructions as string | undefined,
+          medicationReconciled: body.medicationReconciled as boolean | undefined,
         },
       );
       if (!result) return NextResponse.json({ error: 'Admission not found' }, { status: 404 });
@@ -191,13 +213,19 @@ async function postHandler(request: NextRequest) {
     }
     // Update bed status
     if (action === 'update_bed') {
+      if (!hasRole(auth, [...WARD_BED_ROLES])) return forbidden();
       if (!body.bedId || !body.status) {
         return NextResponse.json(
           { error: 'bedId and status are required' },
           { status: 400 }
         );
       }
-      const { updateBedStatus } = await import('@/lib/services/ward-service');
+      const validStatuses = ['available', 'occupied', 'reserved', 'maintenance', 'cleaning'];
+      if (!validStatuses.includes(body.status as string)) {
+        return NextResponse.json({ error: 'Invalid bed status' }, { status: 400 });
+      }
+      const { getBedById, updateBedStatus } = await import('@/lib/services/ward-service');
+      if (!await getBedById(body.bedId as string, scope)) return forbidden('Bed is outside your assigned facilities');
       const bed = await updateBedStatus(
         body.bedId as string,
         body.status as Parameters<typeof updateBedStatus>[1],
@@ -206,6 +234,10 @@ async function postHandler(request: NextRequest) {
       return NextResponse.json({ bed });
     }
     // Create ward
+    if (action && action !== 'create_ward') {
+      return NextResponse.json({ error: 'Unknown ward action' }, { status: 400 });
+    }
+    if (!hasRole(auth, [...WARD_CONFIG_ROLES])) return forbidden();
     if (!body.name || !body.facilityId) {
       return NextResponse.json(
         { error: 'name and facilityId are required' },
@@ -226,7 +258,8 @@ async function postHandler(request: NextRequest) {
       const target = body.facilityId
         ? await getHospitalById(body.facilityId as string, { role: auth.role, orgId: auth.orgId })
         : null;
-      if (target && target.orgId && auth.orgId && target.orgId !== auth.orgId) {
+      if (!target) return forbidden('Facility is outside your organization');
+      if (target.orgId && auth.orgId && target.orgId !== auth.orgId) {
         return forbidden('Cannot create wards in another organization');
       }
     }
@@ -251,8 +284,17 @@ async function postHandler(request: NextRequest) {
     });
     return NextResponse.json({ ward }, { status: 201 });
   } catch (err) {
+    const workflow = err as { name?: string; code?: string; message?: string } | undefined;
+    if (workflow?.name === 'WardWorkflowError') {
+      const status = workflow.code === 'ADMISSION_NOT_FOUND'
+        ? 404
+        : workflow.code === 'DISCHARGE_INCOMPLETE'
+          ? 400
+          : 409;
+      return NextResponse.json({ error: workflow.message || 'Ward workflow could not be completed', code: workflow.code }, { status });
+    }
     logApiError('[API /wards POST]', err);
     return serverError();
   }
 }
-export const POST = withAuditLog(postHandler, { action: 'ward.create' });
+export const POST = withAuditLog(postHandler, { action: 'ward.workflow' });

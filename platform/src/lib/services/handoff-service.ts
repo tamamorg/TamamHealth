@@ -77,9 +77,9 @@ export async function acknowledgeHandoff(
   id: string,
   userId: string,
   userName: string,
-): Promise<ShiftHandoffDoc | null> {
+): Promise<ShiftHandoffDoc> {
   const db = handoffsDB();
-  try {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const existing = (await db.get(id)) as ShiftHandoffDoc;
     if (existing.status === 'acknowledged') return existing;
     const now = new Date().toISOString();
@@ -91,7 +91,14 @@ export async function acknowledgeHandoff(
       acknowledgedAt: now,
       updatedAt: now,
     };
-    const resp = await db.put(updated);
+    let resp: Awaited<ReturnType<typeof db.put>>;
+    try {
+      resp = await db.put(updated);
+    } catch (error) {
+      const candidate = error as { name?: string; status?: number } | undefined;
+      if ((candidate?.name === 'conflict' || candidate?.status === 409) && attempt < 2) continue;
+      throw error;
+    }
     updated._rev = resp.rev;
     await logAuditSafe(
       'SHIFT_HANDOFF_ACKNOWLEDGED',
@@ -108,9 +115,8 @@ export async function acknowledgeHandoff(
       hospitalId: updated.facilityId,
     });
     return updated;
-  } catch {
-    return null;
   }
+  throw new Error('The handoff changed on another workstation. Refresh and acknowledge it again.');
 }
 
 /**
@@ -123,11 +129,14 @@ export async function unacknowledgeHandoff(
   id: string,
   byUserId: string,
   byUserName: string,
-): Promise<ShiftHandoffDoc | null> {
+): Promise<ShiftHandoffDoc> {
   const db = handoffsDB();
-  try {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const existing = (await db.get(id)) as ShiftHandoffDoc;
     if (existing.status !== 'acknowledged') return existing;
+    if (!existing.acknowledgedBy || existing.acknowledgedBy !== byUserId) {
+      throw new Error('Only the staff member who acknowledged this handoff can reverse their acknowledgement.');
+    }
     const now = new Date().toISOString();
     const updated: ShiftHandoffDoc = {
       ...existing,
@@ -137,7 +146,14 @@ export async function unacknowledgeHandoff(
       acknowledgedAt: undefined,
       updatedAt: now,
     };
-    const resp = await db.put(updated);
+    let resp: Awaited<ReturnType<typeof db.put>>;
+    try {
+      resp = await db.put(updated);
+    } catch (error) {
+      const candidate = error as { name?: string; status?: number } | undefined;
+      if ((candidate?.name === 'conflict' || candidate?.status === 409) && attempt < 2) continue;
+      throw error;
+    }
     updated._rev = resp.rev;
     await logAuditSafe(
       'SHIFT_HANDOFF_UNACKNOWLEDGED',
@@ -154,7 +170,6 @@ export async function unacknowledgeHandoff(
       hospitalId: updated.facilityId,
     });
     return updated;
-  } catch {
-    return null;
   }
+  throw new Error('The handoff changed on another workstation. Refresh before reversing the acknowledgement.');
 }

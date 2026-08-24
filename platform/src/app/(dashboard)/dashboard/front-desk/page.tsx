@@ -719,29 +719,27 @@ export default function FrontDeskDashboardPage() {
   // status flip is what actually gets the patient into the live queue, so an
   // encounter-creation failure doesn't block check-in.
   const handleCheckIn = useCallback(async (appt: AppointmentDoc, attendanceType: 'new' | 'repeat') => {
-    await updateAppointmentStatus(appt._id, 'checked_in');
     try {
-      const { findOpenEncounterForPatient, createArrivalEncounter } = await import('@/lib/services/encounter-service');
-      const existing = await findOpenEncounterForPatient(appt.patientId, currentUser?.hospitalId || '');
-      if (!existing) {
-        await createArrivalEncounter({
-          patientId: appt.patientId,
-          patientName: appt.patientName,
-          hospitalId: currentUser?.hospitalId || '',
-          hospitalName: currentUser?.hospitalName || '',
-          orgId: currentUser?.orgId,
-          arrivalChannel: 'appointment',
-          appointmentId: appt._id,
-          attendanceType,
-          actorId: currentUser?._id,
-        });
-      }
-    } catch {
-      // encounter creation is best-effort; the appointment check-in itself still succeeded
+      const { checkInAppointment } = await import('@/lib/services/check-in-service');
+      await checkInAppointment({
+        appointmentId: appt._id,
+        patientId: appt.patientId,
+        patientName: appt.patientName,
+        facilityId: appt.facilityId || currentUser?.hospitalId || '',
+        facilityName: appt.facilityName || currentUser?.hospitalName || '',
+        orgId: appt.orgId || currentUser?.orgId,
+        attendanceType,
+        actorId: currentUser?._id,
+        actorName: currentUser?.name,
+        actorRole: currentUser?.role,
+      });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Check-in failed', 'error');
+      return;
     }
     showToast(`${appt.patientName} checked in — added to queue`, 'success');
     setCheckInTarget(null);
-  }, [updateAppointmentStatus, showToast, currentUser]);
+  }, [showToast, currentUser]);
 
   // ── Mark an appointment a no-show. Confirmed first: a mistaken no-show
   //    hides the patient from the arrivals list, so reception gets one beat to

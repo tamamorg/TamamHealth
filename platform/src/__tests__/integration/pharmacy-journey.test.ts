@@ -75,8 +75,6 @@ async function seedWorld() {
  * pharmacist-gated in the service, so the actor is part of the walk.
  */
 async function clearForDispensing(rxId: string) {
-  await advancePrescription(rxId, 'received_in_pharmacy_queue', undefined, PHARMACIST._id);
-  await advancePrescription(rxId, 'under_review', undefined, PHARMACIST._id);
   await advancePrescription(rxId, 'cleared_for_dispensing', undefined, PHARMACIST._id);
 }
 
@@ -149,9 +147,12 @@ it('carries a visit from arrival to a dispensed, billed, tier-aware medication',
     dispenserName: PHARMACIST.name,
     facilityId: HOSP,
     orgId: ORG,
+    counsellingConfirmed: true,
   });
   expect(result.outcome).toBe('full');
   expect(result.prescription.status).toBe('dispensed');
+  expect(result.prescription.orderStatus).toBe('complete');
+  expect(result.prescription.counselledBy).toBe(PHARMACIST._id);
 
   // Stock actually moved.
   const batch = await pharmacyInventoryDB().get('inv-insulin') as { stockLevel: number };

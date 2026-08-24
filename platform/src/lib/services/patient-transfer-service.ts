@@ -909,6 +909,25 @@ export async function closeTransfer(
   if (doc.physicalStatus && !['arrived', 'receiving_assessment', 'closed'].includes(doc.physicalStatus)) {
     throw new TransferValidationError('Confirm patient arrival before closing the transfer');
   }
+  const destinationFacilityId = doc.destination?.facilityId || doc.to.facilityId || doc.toHospitalId;
+  if (destinationFacilityId && doc.hospitalId && destinationFacilityId !== doc.hospitalId) {
+    if (doc.clinicalReadiness?.medicationsReconciled !== true) {
+      throw new TransferValidationError('Reconcile medications before closing an inter-facility inpatient transfer');
+    }
+    const { closeAdmissionForTransfer, getActiveAdmissions } = await import('./ward-service');
+    const admission = (await getActiveAdmissions()).find(row =>
+      row.patientId === doc.patientId && row.facilityId === doc.hospitalId
+    );
+    if (admission) {
+      await closeAdmissionForTransfer(admission._id, {
+        id: doc._id,
+        destinationName: doc.destination?.facilityName || doc.to.facilityName || destinationFacilityId,
+        reason: doc.reason,
+        actorId: actor?.id,
+        actorName: actor?.name,
+      });
+    }
+  }
   const now = new Date().toISOString();
   doc.physicalStatus = 'closed';
   doc.closedAt = now;

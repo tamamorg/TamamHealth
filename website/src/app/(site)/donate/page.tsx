@@ -5,7 +5,7 @@ import { DONATION_FAQ as DONATION_FAQ_EN, DONATION_STEPS as DONATION_STEPS_EN, G
 import { getTranslator } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
-  title: "Donate",
+  title: "Goal",
   description:
     "$100,000 puts ten clinics on one record. Every gift buys something physical: a tablet, a solar panel, a trained front desk.",
 };
