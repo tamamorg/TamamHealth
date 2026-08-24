@@ -62,8 +62,10 @@ check_not grep -q 'no host was deployed' .github/workflows/deploy-production.yml
 check grep -q 'STAGING_HEALTH_URL' .github/workflows/deploy-staging.yml
 check grep -q 'Healthy at expected release' .github/workflows/deploy-staging.yml
 check grep -q "\.release // empty" .github/workflows/deploy-production.yml
-check grep -q 'Require a successful staging deploy for this exact SHA' .github/workflows/deploy-production.yml
+check grep -q 'Require the selected commit to belong to main' .github/workflows/deploy-production.yml
+check grep -q 'Require successful CI for the selected commit' .github/workflows/deploy-production.yml
 check grep -q 'Refuse an unconfigured deploy target before changing image tags' .github/workflows/deploy-production.yml
+check grep -q 'NEXT_PUBLIC_DEMO_MODE=false' .github/workflows/deploy-production.yml
 check grep -q 'org.tamamhealth.build-id' platform/Dockerfile
 check grep -q 'AIRTEL_WEBHOOK_GATEWAY_VERIFIED' .github/workflows/ci.yml
 check grep -q 'MPESA_WEBHOOK_GATEWAY_VERIFIED' .github/workflows/ci.yml
@@ -82,7 +84,7 @@ check grep -q 'ARG NEXT_PUBLIC_DEMO_MODE' platform/Dockerfile
 check grep -q 'NEXT_PUBLIC_DEMO_MODE=\"\$NEXT_PUBLIC_DEMO_MODE\"' platform/Dockerfile
 check grep -q 'org.tamamhealth.demo-mode' platform/Dockerfile
 check grep -q 'NEXT_PUBLIC_DEMO_MODE=' .github/workflows/deploy-staging.yml
-check grep -q 'org.tamamhealth.demo-mode' .github/workflows/deploy-production.yml
+check grep -q 'Build + push production platform image' .github/workflows/deploy-production.yml
 
 echo ""
 echo "=== Compose config render (staging tag) ==="

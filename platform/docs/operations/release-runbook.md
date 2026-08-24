@@ -87,21 +87,15 @@ They run on the PR and again on `main` after merge. Roughly four minutes.
 
 ---
 
-## 3 · Staging (automatic)
+## 3 · Staging (temporarily paused)
 
-Nothing to run. On every push to `main`, CI runs; when it passes, `deploy-staging`
-fires automatically (`workflow_run` on CI completion).
-
-It builds the `platform`, `website` and `sync-worker` Docker images, tags them
-with the commit SHA, pushes them to GHCR, and deploys to the staging host.
-
-**Why this stage matters even if you never look at staging:** production doesn't
-build anything. It *re-tags the image staging already built and tested* for that
-SHA. If `deploy-staging` hasn't succeeded for a commit, that commit cannot be
-promoted to production at all.
+`deploy-staging` is manual-only while the project operates a single VPS. It
+must not be dispatched until a real staging host, TLS, and the staging GitHub
+Environment secrets have been provisioned. Re-enable its `workflow_run`
+trigger when staging returns.
 
 ```bash
-# confirm staging is green for what you're about to ship
+# confirm staging has not been accidentally enabled
 gh run list --workflow=deploy-staging --limit 3
 ```
 
@@ -115,7 +109,7 @@ Production is never automatic. You dispatch it, then a reviewer approves it.
 
 ```bash
 git rev-parse HEAD          # must equal origin/main
-gh run list --limit 5       # ci + deploy-staging green for it?
+gh run list --limit 5       # ci must be green for it
 ```
 
 **2. Dispatch**
@@ -132,10 +126,10 @@ The run sits in `pending` until a reviewer approves the protected `production`
 environment. Open the run on GitHub → **Review deployments** → **Approve and
 deploy**.
 
-Before any image tag changes, the workflow now resolves the requested commit
-to its full SHA and requires a successful `deploy-staging` run whose
-`Verify staging health` step passed for that exact build. An image that was
-only published—or a healthy stale staging container—cannot be promoted.
+Before any image tag changes, the workflow resolves the requested commit to
+its full SHA, proves that it belongs to `main`, and requires a successful CI
+run for that exact commit. It then builds all three images with production
+settings and publishes both immutable SHA tags and the `production` tags.
 
 > **Clear the queue first.** Dispatched-but-unapproved runs pile up and stay
 > valid. Approving an old one silently ships an *older* build. Before approving,
@@ -148,8 +142,8 @@ only published—or a healthy stale staging container—cannot be promoted.
 gh run watch <run-id>
 ```
 
-It re-tags the three GHCR images as `production`, SSHes to the droplet, and runs
-`docker compose pull && up -d`.
+It builds and tags the three GHCR images as `production`, SSHes to the droplet,
+and runs `docker compose pull && up -d`.
 
 > **Health verification is automatic; workflow verification is still manual.**
 > The `vps` path now waits for `/api/health` and verifies that its `release`

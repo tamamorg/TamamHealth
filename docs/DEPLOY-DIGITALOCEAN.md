@@ -70,7 +70,7 @@ changes nothing:
 
 | Droplet | Serves | Ships via | Registry |
 |---|---|---|---|
-| `tamamhealth-production` | `app.tamamhealth.org` — the platform | `deploy-production` (promotes a staging-tested image) | GHCR |
+| `tamamhealth-production` | `app.tamamhealth.org` — the platform | `deploy-production` (temporarily builds the selected CI-tested `main` commit directly while staging is paused) | GHCR |
 | `tamamhealth-data` | `couch.tamamhealth.org` | `docker-compose.data.yml` on the box | — |
 | `tamamhealth-website` | `tamamhealth.org` — the marketing site | **`deploy-website`** | GHCR for the record; the droplet gets the image over SSH |
 

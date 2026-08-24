@@ -1,15 +1,12 @@
 name: deploy-staging
 
-# Runs on every push to main. CI must pass first (workflow_run trigger), then
-# we build platform + website Docker images, publish them to GHCR, then pull +
-# restart the staging stack. Missing deployment credentials are a failed
-# release gate, never a successful-but-skipped staging deployment.
+# Temporarily manual-only while the project operates a single production VPS.
+# Re-enable the workflow_run trigger only after a real staging host, TLS, and
+# the staging environment secrets have been provisioned. A manual run still
+# fails closed when that infrastructure is absent.
 
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,20 +19,19 @@ concurrency:
 jobs:
   build-and-push:
     name: build + push images to GHCR
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.meta.outputs.sha }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: main
 
       - name: Resolve image metadata
         id: meta
         run: |
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"
-          SHA="${{ github.event.workflow_run.head_sha }}"
+          SHA="$(git rev-parse HEAD)"
           SHORT_SHA="${SHA:0:7}"
           {
             echo "owner=$OWNER"

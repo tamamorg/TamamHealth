@@ -2,15 +2,15 @@ name: deploy-production
 
 # Manual-only. Pin the `production` GitHub environment to a required-reviewer
 # list in the repo settings; GitHub will block the job until an approver
-# clicks "Approve and deploy". The workflow re-tags the staging image to
-# `production` so prod always ships a digest that has already been smoke-
-# tested on staging — no fresh build right before a prod cutover.
+# clicks "Approve and deploy". While staging is paused, this workflow builds
+# the exact selected main commit with production settings, publishes immutable
+# SHA tags plus the production tags, and then deploys those images.
 
 on:
   workflow_dispatch:
     inputs:
       sha:
-        description: 'Short git SHA to promote (must already be tagged on the staging image). Leave blank to use the current main HEAD.'
+        description: 'Main-branch commit to deploy. Leave blank to use the current main HEAD.'
         required: false
         type: string
       target:
@@ -31,8 +31,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  promote-image:
-    name: re-tag staging image as production
+  build-production-images:
+    name: build production images from selected main commit
     runs-on: ubuntu-latest
     environment: production
     outputs:
@@ -103,25 +103,34 @@ jobs:
             echo "sync_worker_image=ghcr.io/$OWNER/tamamhealth-sync-worker"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Require a successful staging deploy for this exact SHA
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.resolve.outputs.full_sha }}
+          fetch-depth: 0
+
+      - name: Require the selected commit to belong to main
+        env:
+          FULL_SHA: ${{ steps.resolve.outputs.full_sha }}
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$FULL_SHA" origin/main; then
+            echo "::error title=Commit is not on main::$FULL_SHA is not an ancestor of origin/main. Merge and pass CI before deploying it."
+            exit 1
+          fi
+
+      - name: Require successful CI for the selected commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FULL_SHA: ${{ steps.resolve.outputs.full_sha }}
         run: |
-          RUN_ID="$(gh run list --workflow deploy-staging.yml --commit "$FULL_SHA" --limit 10 \
-            --json databaseId,conclusion \
-            --jq '[.[] | select(.conclusion == "success")][0].databaseId // empty')"
-          if [ -z "$RUN_ID" ]; then
-            echo "::error title=Staging evidence missing::No successful deploy-staging run exists for $FULL_SHA. Deploy and verify this exact commit on staging first."
+          CI_RUN="$(gh run list --workflow ci.yml --commit "$FULL_SHA" --limit 10 \
+            --json databaseId,event,conclusion \
+            --jq '[.[] | select(.event == "push" and .conclusion == "success")][0].databaseId // empty')"
+          if [ -z "$CI_RUN" ]; then
+            echo "::error title=CI evidence missing::No successful main-push CI run exists for $FULL_SHA. Wait for CI or repair it before deploying."
             exit 1
           fi
-          VERIFIED="$(gh run view "$RUN_ID" --json jobs \
-            --jq '[.jobs[].steps[] | select(.name == "Verify staging health" and .conclusion == "success")] | length')"
-          if [ "$VERIFIED" != "1" ]; then
-            echo "::error title=Staging smoke test missing::deploy-staging run $RUN_ID did not pass the exact-release health check."
-            exit 1
-          fi
-          echo "Staging release evidence: run=$RUN_ID sha=$FULL_SHA"
+          echo "CI release evidence: run=$CI_RUN sha=$FULL_SHA"
 
       - uses: docker/setup-buildx-action@v4
 
@@ -132,56 +141,55 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Production promotes an image that was BUILT by deploy-staging, and
-      # NEXT_PUBLIC_DEMO_MODE is inlined into the client bundle at build time.
-      # So production inherits whatever demo setting staging was built with,
-      # and nothing downstream can override it. If the staging build was still
-      # in demo mode (the droplets currently serve the public demo), promoting
-      # it would seed fictional patients into a real facility's browsers.
-      #
-      # Refuse the promotion instead. To ship a real production image, unset
-      # the NEXT_PUBLIC_DEMO_MODE repo/environment variable (or set it to
-      # "false"), let deploy-staging rebuild, then re-run this workflow.
-      - name: Refuse to promote a demo-mode image
-        run: |
-          SRC="${{ steps.resolve.outputs.platform_image }}:${{ steps.resolve.outputs.sha }}"
-          # Recursive search rather than a fixed path: `imagetools inspect`
-          # nests the config differently for single- vs multi-platform images.
-          MODE="$(docker buildx imagetools inspect "$SRC" --format '{{ json . }}' \
-                  | jq -r '.. | objects | .Labels? // empty | ."org.tamamhealth.demo-mode" // empty' \
-                  | head -1)"
-          echo "Image demo-mode label: '${MODE:-<absent>}'"
-          if [ "$MODE" = "true" ]; then
-            echo "::error title=Demo image blocked::$SRC was built with NEXT_PUBLIC_DEMO_MODE=true and would seed fictional patient data. Refusing to promote it to production."
-            exit 1
-          fi
-          if [ -z "$MODE" ]; then
-            echo "::error title=Unlabelled image::$SRC carries no org.tamamhealth.demo-mode label, so its demo setting cannot be verified. Rebuild it with the current platform/Dockerfile before promoting."
-            exit 1
-          fi
+      - name: Build + push production platform image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./platform
+          file: ./platform/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.resolve.outputs.platform_image }}:${{ steps.resolve.outputs.sha }}
+            ${{ steps.resolve.outputs.platform_image }}:production
+          build-args: |
+            NEXT_PUBLIC_DEMO_MODE=false
+            NEXT_PUBLIC_SYNC_ENABLED=${{ vars.NEXT_PUBLIC_SYNC_ENABLED || 'true' }}
+            NEXT_PUBLIC_COUCHDB_URL=${{ vars.NEXT_PUBLIC_COUCHDB_URL || 'https://app.tamamhealth.org/api/couch' }}
+            NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED || 'true' }}
+            NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED || 'true' }}
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://app.tamamhealth.org' }}
+            NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=${{ vars.NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE || 'false' }}
+            NEXT_PUBLIC_BUILD_ID=${{ steps.resolve.outputs.sha }}
+          cache-from: type=gha,scope=platform
+          cache-to: type=gha,mode=max,scope=platform
 
-      - name: Re-tag platform ${{ steps.resolve.outputs.sha }} as production
-        run: |
-          SRC="${{ steps.resolve.outputs.platform_image }}:${{ steps.resolve.outputs.sha }}"
-          DST="${{ steps.resolve.outputs.platform_image }}:production"
-          docker buildx imagetools create -t "$DST" "$SRC"
+      - name: Build + push production website image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./website
+          file: ./website/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.resolve.outputs.website_image }}:${{ steps.resolve.outputs.sha }}
+            ${{ steps.resolve.outputs.website_image }}:production
+          cache-from: type=gha,scope=website
+          cache-to: type=gha,mode=max,scope=website
 
-      - name: Re-tag website ${{ steps.resolve.outputs.sha }} as production
-        run: |
-          SRC="${{ steps.resolve.outputs.website_image }}:${{ steps.resolve.outputs.sha }}"
-          DST="${{ steps.resolve.outputs.website_image }}:production"
-          docker buildx imagetools create -t "$DST" "$SRC"
-
-      - name: Re-tag sync-worker ${{ steps.resolve.outputs.sha }} as production
-        run: |
-          SRC="${{ steps.resolve.outputs.sync_worker_image }}:${{ steps.resolve.outputs.sha }}"
-          DST="${{ steps.resolve.outputs.sync_worker_image }}:production"
-          docker buildx imagetools create -t "$DST" "$SRC"
+      - name: Build + push production sync-worker image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./sync-worker
+          file: ./sync-worker/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.resolve.outputs.sync_worker_image }}:${{ steps.resolve.outputs.sha }}
+            ${{ steps.resolve.outputs.sync_worker_image }}:production
+          cache-from: type=gha,scope=sync-worker
+          cache-to: type=gha,mode=max,scope=sync-worker
 
   ssh-deploy:
     name: ssh deploy to production host (vps target)
     if: ${{ (github.event.inputs.target || 'vps') == 'vps' }}
-    needs: promote-image
+    needs: build-production-images
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -210,7 +218,7 @@ jobs:
           HOST: ${{ secrets.PROD_SSH_HOST }}
           USER: ${{ secrets.PROD_SSH_USER }}
           APP_DIR: ${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}
-          SHA: ${{ needs.promote-image.outputs.sha }}
+          SHA: ${{ needs.build-production-images.outputs.sha }}
           GH_OWNER: ${{ github.repository_owner }}
         run: |
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
@@ -233,11 +241,11 @@ jobs:
             STATUS="$(curl -sS -m 10 -o /tmp/health.json -w '%{http_code}' "$HEALTH_URL" || echo 000)"
             if [ "$STATUS" = "200" ]; then
               RELEASE="$(jq -r '.release // empty' /tmp/health.json)"
-              if [ "$RELEASE" = "${{ needs.promote-image.outputs.sha }}" ]; then
+              if [ "$RELEASE" = "${{ needs.build-production-images.outputs.sha }}" ]; then
                 echo "Healthy at expected release $RELEASE after ${i} checks:"; cat /tmp/health.json; echo
                 exit 0
               fi
-              echo "attempt ${i}: healthy response is stale release '${RELEASE:-unknown}', expected '${{ needs.promote-image.outputs.sha }}'"
+              echo "attempt ${i}: healthy response is stale release '${RELEASE:-unknown}', expected '${{ needs.build-production-images.outputs.sha }}'"
             else
               echo "attempt ${i}: $HEALTH_URL -> $STATUS"
             fi
@@ -250,7 +258,7 @@ jobs:
   aws-deploy:
     name: cloudformation deploy to af-south-1 (aws target)
     if: ${{ github.event.inputs.target == 'aws' }}
-    needs: promote-image
+    needs: build-production-images
     runs-on: ubuntu-latest
     environment: production
     steps:

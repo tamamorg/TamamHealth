@@ -119,17 +119,17 @@ Ensure [`docker-compose.ghcr.yml`](../../docker-compose.ghcr.yml) exists in the 
 
 ## Verify
 
-1. Merge any commit to `main` → wait for **ci** then **deploy-staging**
-2. **deploy-staging** → job **ssh deploy to staging host** must pass; missing SSH or health-check configuration fails the run
-3. Log should show both `Deployed sha=… tag=staging` and `Healthy at expected release …`
-4. On staging droplet: `docker compose -f docker-compose.yml -f docker-compose.ghcr.yml ps`
+Staging is temporarily manual-only. Do not dispatch `deploy-staging` until its
+host, TLS, secrets, and `STAGING_HEALTH_URL` exist. When staging is restored,
+re-enable the documented automatic verification sequence.
 
 Production:
 
 1. **Actions → deploy-production → Run workflow**
 2. `target`: **vps**
 3. Approve in **production** environment
-4. Log: `Deployed sha=… tag=production`
+4. Confirm the selected SHA has a successful `ci` push run
+5. Log: `Deployed sha=… tag=production` and `Healthy at expected release …`
 
 ---
 
