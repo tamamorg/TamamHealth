@@ -62,6 +62,10 @@ check_not grep -q 'no host was deployed' .github/workflows/deploy-production.yml
 check grep -q 'STAGING_HEALTH_URL' .github/workflows/deploy-staging.yml
 check grep -q 'Healthy at expected release' .github/workflows/deploy-staging.yml
 check grep -q "\.release // empty" .github/workflows/deploy-production.yml
+check grep -q 'Roll back unhealthy platform image' .github/workflows/deploy-production.yml
+check grep -q 'force-recreate platform' .github/workflows/deploy-production.yml
+check grep -q -- "--format '{{.Image}}'" .github/workflows/deploy-production.yml
+check grep -q 'Clean superseded images after a healthy deploy' .github/workflows/deploy-production.yml
 check grep -q 'Require the selected commit to belong to main' .github/workflows/deploy-production.yml
 check grep -q 'Require successful CI for the selected commit' .github/workflows/deploy-production.yml
 check grep -q 'Refuse an unconfigured deploy target before changing image tags' .github/workflows/deploy-production.yml
