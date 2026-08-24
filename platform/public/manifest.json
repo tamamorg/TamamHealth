@@ -1,5 +1,5 @@
 {
-  "name": "TamamHealth \u2014 Digital Health Records",
+  "name": "TamamHealth — Digital Health Records",
   "short_name": "TamamHealth",
   "description": "Offline-first health records system. Secure, scalable EMR for hospitals and community health workers across Africa.",
   "start_url": "/",
@@ -32,6 +32,12 @@
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     },
     {
       "src": "/assets/tamam-favicon.svg",

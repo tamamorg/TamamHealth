@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Corners from "@/components/Corners";
 import { emphasise } from "@/components/emphasise";
-import { DERBY_PHOTOS as DERBY_PHOTOS_EN, GOALS as GOALS_EN, TEAM as TEAM_EN } from "@/lib/site-data";
+import { ADVISORS as ADVISORS_EN, DERBY_PHOTOS as DERBY_PHOTOS_EN, TEAM as TEAM_EN } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 export default async function AboutPage() {
   const { t, content } = await getTranslator();
   const DERBY_PHOTOS = content(DERBY_PHOTOS_EN);
-  const GOALS = content(GOALS_EN);
   const TEAM = content(TEAM_EN);
+  const ADVISORS = content(ADVISORS_EN);
   return (
     <main>
       {/* Crisis / origin */}
@@ -22,7 +22,7 @@ export default async function AboutPage() {
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div className="tm-origin" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 52 }}>
             <div>
-              <h1 style={{ fontSize: "clamp(28px, 4.4vw, 46px)", margin: "0 0 20px", color: "#FFFFFF" }}>{t("How we came to this")}</h1>
+              <h1 style={{ fontSize: "clamp(28px, 4.4vw, 46px)", margin: "0 0 20px", color: "#FFFFFF" }}>{t("Our story & Purpose")}</h1>
               <p style={{ margin: "0 0 16px", fontSize: 16.5, lineHeight: 1.75, color: "rgba(255,255,255,0.84)" }}>
                 {t("We did not start from a market study. We started from waiting rooms we have sat in — as patients, as relatives, and alongside clinicians in South Sudan who are asked to practise medicine without a record to practise from. We watched a nurse rebuild a child’s history by asking the mother to remember it, and a lab result walk across a compound in a hand and never arrive.")}
               </p>
@@ -76,21 +76,43 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      {/* Goal */}
-      <section id="goal" style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)", padding: "78px 32px 84px" }}>
-        <div className="tm-split" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0 }}>{t("Our goal is to prove it works, then bring it to every clinic that needs it")}</h2>
-            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
-              {emphasise(t("We’re raising **$100,000** to launch TamamHealth in 10 clinics across Juba and greater South Sudan — proof that offline-first digital records can work in the hardest conditions, and a foundation built to scale across sub-Saharan Africa."))}
-            </p>
+      {/* Leadership — the advisors, above the team they advise.
+
+          The card is the team tile's anatomy at advisor scale: a big portrait
+          plate, then a footer that answers what they do, where, and in what
+          field. No paragraph — three facts read faster than a bio, and the
+          portrait is doing the introducing. */}
+      <section id="leadership" style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)", padding: "72px 32px 82px" }}>
+        <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 32 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0 }}>{t("Our Leadership")}</h2>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>{t("Advisors to TamamHealth.")}</p>
           </div>
-          <div>
-            {GOALS.map((g) => (
-              <div key={g.value} className="tm-goal-line" style={{ display: "flex", alignItems: "baseline", gap: 24, padding: "22px 0", borderTop: "1px solid var(--color-divider)" }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(32px, 4.2vw, 48px)", lineHeight: 1, color: g.accent, minWidth: 150 }}>{g.value}</span>
-                <span style={{ fontSize: 15, lineHeight: 1.45 }}>{g.label}</span>
-              </div>
+          <div className="tm-lead-grid">
+            {ADVISORS.map((a) => (
+              <article key={a.name} className="blueprint tm-lead-card" style={{ background: "var(--color-bg)", borderBottom: `4px solid ${a.accent}` }}>
+                <Corners />
+                <div className="tm-lead-plate">
+                  {a.image ? (
+                    /* eslint-disable-next-line @next/next/no-img-element -- portrait plate, sized by CSS */
+                    <img src={a.image} alt={a.name} style={{ objectPosition: a.focus ?? "center top" }} />
+                  ) : (
+                    /* No portrait sent yet — a monogram holds the plate rather
+                       than a broken image or a stock silhouette. */
+                    <span className="tm-lead-mono" aria-hidden="true">{initials(a.name)}</span>
+                  )}
+                </div>
+                <div className="tm-lead-body">
+                  <h3 className="tm-lead-name">{a.name}</h3>
+                  <p className="tm-lead-role">{a.role}</p>
+                  {/* Where they sit and the field they sit in — the two facts a
+                      reader scans before reading the title above them. */}
+                  <p className="tm-lead-where fs125">{a.institutions.join(" · ")}</p>
+                  <div className="tm-lead-tags">
+                    <span className="tag" style={{ color: a.accent, background: "rgba(1,86,151,0.11)" }}>{a.industry}</span>
+                  </div>
+                </div>
+              </article>
             ))}
           </div>
         </div>
@@ -119,6 +141,13 @@ export default async function AboutPage() {
           </div>
         </div>
       </section>
+
     </main>
   );
+}
+
+/** "David Blair" -> "DB". Two letters, so the monogram sits at one size. */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
 }

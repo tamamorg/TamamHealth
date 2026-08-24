@@ -17,6 +17,7 @@
  */
 
 import {
+  ADVISORS,
   CARE_LEVELS,
   CHALLENGES,
   FOOTER_COLS,
@@ -83,11 +84,11 @@ const PAGES: SearchEntry[] = [
     keywords: "press blog announcements stories",
   },
   {
-    title: "Donate",
+    title: "Goal",
     kind: "Page",
     href: "/donate",
     summary: "Fund the pilot: $100,000 to launch across 10 clinics in South Sudan.",
-    keywords: "give funding support contribute pilot money",
+    keywords: "donate give funding support contribute pilot money goal target",
   },
   {
     title: "Get in touch",
@@ -166,11 +167,11 @@ const SECTIONS: SearchEntry[] = [
     keywords: `founders people staff ${TEAM.map((m) => `${m.name} ${m.role}`).join(" ")}`,
   },
   {
-    title: "The goal",
+    title: "Our leadership",
     kind: "Section",
-    href: "/about#goal",
-    summary: "Prove it works in 10 clinics, then take it across sub-Saharan Africa.",
-    keywords: "plan roadmap ambition target pilot",
+    href: "/about#leadership",
+    summary: "The advisors to TamamHealth.",
+    keywords: `advisors board leadership ${ADVISORS.map((a) => `${a.name} ${a.role} ${a.institutions.join(" ")}`).join(" ")}`,
   },
   {
     title: "The crisis",

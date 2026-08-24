@@ -20,56 +20,24 @@ import { formatRxSig } from '@/lib/format-utils';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Pill, CheckCircle2, X, AlertTriangle, ShieldAlert, Printer, BedDouble,
+  Plus,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useWards } from '@/lib/hooks/useWards';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
+import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PrescriptionDoc, MedicationAdministration } from '@/lib/db-types';
 import { returnToFromSearch } from '@/lib/navigation/return-to';
 import { todayIso } from '@/lib/date-utils';
-
-/**
- * Parse a free-text frequency string into scheduled clock times for one
- * 24-hour day. Best-effort — falls back to standard q-times for the most
- * common patterns and a single "PRN" slot when nothing matches.
- */
-function scheduleForFrequency(freq: string): string[] {
-  const f = (freq || '').toLowerCase().trim();
-  if (!f) return [];
-
-  if (f.includes('prn') || f.includes('as needed') || f.includes('as required')) return ['PRN'];
-  if (f === 'od' || f === 'qd' || f.includes('once') || f.includes('daily')) return ['08:00'];
-  if (f === 'bd' || f === 'bid' || f.includes('twice')) return ['08:00', '20:00'];
-  if (f === 'tds' || f === 'tid' || f.includes('three times') || f.includes('thrice')) {
-    return ['08:00', '14:00', '22:00'];
-  }
-  if (f === 'qds' || f === 'qid' || f.includes('four times')) {
-    return ['06:00', '12:00', '18:00', '00:00'];
-  }
-  const qMatch = f.match(/q\s*(\d+)\s*h/);
-  if (qMatch) {
-    const interval = parseInt(qMatch[1], 10);
-    if (interval > 0 && interval <= 24) {
-      const times: string[] = [];
-      for (let h = 0; h < 24; h += interval) {
-        times.push(`${h.toString().padStart(2, '0')}:00`);
-      }
-      return times;
-    }
-  }
-  return ['PRN'];
-}
+import { isPathAllowed } from '@/lib/role-routes';
+import Select from '@/components/Select';
+import { isScheduledDoseAllowed, scheduleForFrequency, scheduledForIso } from '@/lib/clinical-flow/medication-schedule';
 
 function todayISO(): string {
   return todayIso();
-}
-
-function buildScheduledFor(day: string, time: string): string {
-  if (time === 'PRN') return new Date().toISOString();
-  return new Date(`${day}T${time}:00`).toISOString();
 }
 
 function findAdministration(
@@ -77,8 +45,8 @@ function findAdministration(
   day: string,
   time: string,
 ): MedicationAdministration | undefined {
-  const target = buildScheduledFor(day, time);
-  return (rx.administrations || []).find(a => a.scheduledFor === target);
+  const target = scheduledForIso(day, time);
+  return (rx.administrations || []).find(a => a.scheduledFor === target && !a.voided);
 }
 
 const STATUS_TINT: Record<MedicationAdministration['status'], { bg: string; color: string; ring: string; label: string }> = {
@@ -107,13 +75,14 @@ interface CellProps {
 function MARCell({ rx, day, time, onRecord }: CellProps) {
   const { t } = useTranslation();
   const adm = findAdministration(rx, day, time);
-  const scheduledFor = buildScheduledFor(day, time);
+  const scheduledFor = scheduledForIso(day, time);
 
   if (adm) {
     const tint = STATUS_TINT[adm.status];
     return (
       <button
-        onClick={() => onRecord(rx, scheduledFor)}
+        type="button"
+        disabled
         className="w-full h-full p-1.5 text-start rounded-md transition-all"
         style={{
           background: tint.bg,
@@ -131,6 +100,10 @@ function MARCell({ rx, day, time, onRecord }: CellProps) {
         </div>
       </button>
     );
+  }
+
+  if (time !== 'PRN' && !isScheduledDoseAllowed(rx, scheduledFor)) {
+    return <span aria-label={t('mar.outsideCourse')} style={{ color: 'var(--text-subtle)' }}>—</span>;
   }
 
   return (
@@ -161,6 +134,7 @@ export default function MARPage() {
   const { activeAdmissions } = useWards();
   const { patients } = usePatients();
   const { prescriptions, administer } = usePrescriptions();
+  const { users } = useUsers();
   const { showToast } = useToast();
 
   const [day, setDay] = useState<string>(todayISO());
@@ -169,7 +143,7 @@ export default function MARPage() {
   const [modalStatus, setModalStatus] = useState<MedicationAdministration['status']>('given');
   const [modalReason, setModalReason] = useState('');
   const [modalNotes, setModalNotes] = useState('');
-  const [modalWitness, setModalWitness] = useState('');
+  const [modalWitnessId, setModalWitnessId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const admission = useMemo(
@@ -190,7 +164,8 @@ export default function MARPage() {
   const patientRx = useMemo(
     () => prescriptions.filter(rx =>
       rx.patientId === admission?.patientId &&
-      (rx.admissionId === admissionId || (!rx.admissionId && rx.status === 'pending'))
+      rx.admissionId === admissionId &&
+      rx.status !== 'discontinued'
     ),
     [prescriptions, admission, admissionId],
   );
@@ -199,7 +174,7 @@ export default function MARPage() {
   const columns = useMemo(() => {
     const set = new Set<string>();
     for (const rx of patientRx) {
-      for (const t of scheduleForFrequency(rx.frequency)) set.add(t);
+      for (const t of scheduleForFrequency(rx.frequency, rx.createdAt)) set.add(t);
     }
     const times = Array.from(set);
     const clock = times.filter(t => t !== 'PRN').sort();
@@ -214,7 +189,7 @@ export default function MARPage() {
     setModalStatus(existing?.status || 'given');
     setModalReason(existing?.reason || '');
     setModalNotes(existing?.notes || '');
-    setModalWitness(existing?.witnessName || '');
+    setModalWitnessId(existing?.witnessId || '');
   };
 
   const closeModal = () => {
@@ -223,7 +198,7 @@ export default function MARPage() {
     setModalStatus('given');
     setModalReason('');
     setModalNotes('');
-    setModalWitness('');
+    setModalWitnessId('');
   };
 
   const handleSubmit = async () => {
@@ -236,7 +211,7 @@ export default function MARPage() {
         status: modalStatus,
         administeredBy: currentUser._id || currentUser.username,
         administeredByName: currentUser.name,
-        witnessName: modalWitness.trim() || undefined,
+        witnessId: modalWitnessId || undefined,
         reason: modalReason.trim() || undefined,
         notes: modalNotes.trim() || undefined,
       });
@@ -244,7 +219,7 @@ export default function MARPage() {
       closeModal();
     } catch (err) {
       console.error(err);
-      showToast(t('mar.administrationFailed'), 'error');
+      showToast(err instanceof Error ? err.message : t('mar.administrationFailed'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -378,6 +353,15 @@ export default function MARPage() {
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
               {t('mar.noPrescriptionsHint')}
             </p>
+            {isPathAllowed(currentUser?.role || '', '/consultation') && (
+              <button
+                type="button"
+                className="btn btn-primary mt-4 inline-flex items-center gap-1.5"
+                onClick={() => router.push(`/consultation?patientId=${encodeURIComponent(admission.patientId)}`)}
+              >
+                <Plus className="w-4 h-4" /> {t('mar.orderMedication')}
+              </button>
+            )}
           </div>
         ) : (
           <div className="card-elevated overflow-hidden" data-tour="mar-grid">
@@ -575,13 +559,12 @@ export default function MARPage() {
                       {t('mar.witnessHint')}
                     </span>
                   </label>
-                  <input
-                    type="text"
-                    value={modalWitness}
-                    onChange={(e) => setModalWitness(e.target.value)}
-                    className="w-full"
-                    placeholder={t('mar.witnessName')}
-                  />
+                  <Select value={modalWitnessId} onChange={(e) => setModalWitnessId(e.target.value)}>
+                    <option value="">{t('mar.witnessName')}</option>
+                    {users
+                      .filter(user => user.isActive !== false && user._id !== currentUser?._id)
+                      .map(user => <option key={user._id} value={user._id}>{user.name}</option>)}
+                  </Select>
                 </div>
 
                 <div>

@@ -134,9 +134,8 @@ const WORKFLOWS: WorkflowCapability[] = [
   },
   {
     flag: '(ward MAR → recordAdministration)',
-    docTypes: ['prescription'],
+    docTypes: ['medication_administration'],
     roles: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'],
-    amendsOnly: true,
   },
 ];
 
@@ -167,11 +166,15 @@ describe('amend-only grants do not become authorship', () => {
     }
   });
 
-  it('routes those roles through the amend-only list instead', () => {
+  it('routes pharmacy lifecycle changes through amend-only prescription access', () => {
     const amenders = DOC_UPDATE_ONLY_ROLES.prescription as readonly string[];
-    for (const role of ['pharmacist', 'nurse', 'midwife', 'triage_nurse', 'rooming_nurse']) {
-      expect(amenders).toContain(role);
-    }
+    expect(amenders).toContain('pharmacist');
+    for (const role of ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse']) expect(amenders).not.toContain(role);
+  });
+
+  it('records bedside doses as independent append-only documents', () => {
+    const authors = DOC_WRITE_ROLES.medication_administration as readonly string[];
+    for (const role of ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse']) expect(authors).toContain(role);
   });
 
   it('never grants a role amend rights it does not need over authorship', () => {

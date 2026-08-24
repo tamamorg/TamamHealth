@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { Plus, X, AlertTriangle, CheckCircle2 } from '@/components/icons/lucide';
+import { Plus, X, CheckCircle2, Pill, ArrowRightLeft } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
@@ -14,6 +14,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
+import TransferPatientModal from '@/components/patients/TransferPatientModal';
+import { roleCan, WARD_ADMIT_ROLES, WARD_BED_ROLES, WARD_DISCHARGE_ROLES } from '@/lib/clinical-flow/ward-permissions';
 
 /* The admissions list is the shared appointment/worklist card row — the same
    surface, grid, type scale and status pill the patient registry uses, so a
@@ -49,13 +51,14 @@ export default function WardsPage() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { patients } = usePatients();
-  const { wards, beds, activeAdmissions, totalBeds, occupiedBeds, availableBeds, occupancyRate, admit, discharge } = useWards();
+  const { wards, beds, activeAdmissions, totalBeds, occupiedBeds, availableBeds, occupancyRate, admit, discharge, reassignBed, markBedReady } = useWards();
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const admitFromQueryRef = useRef(false);
 
   const [admitOpen, setAdmitOpen] = useState(false);
   const [dischargeFor, setDischargeFor] = useState<AdmissionDoc | null>(null);
+  const [transferFor, setTransferFor] = useState<AdmissionDoc | null>(null);
   const [filterWard, setFilterWard] = useState<string>('');
   const [admissionSearch, setAdmissionSearch] = useState('');
   const activeFilterCount = filterWard ? 1 : 0;
@@ -73,9 +76,20 @@ export default function WardsPage() {
 
   const [dischargeForm, setDischargeForm] = useState({
     dischargeType: 'normal' as NonNullable<AdmissionDoc['dischargeType']>,
+    dischargeDiagnosis: '',
     dischargeSummary: '',
     followUpRequired: false,
+    followUpDate: '',
+    followUpInstructions: '',
+    medicationReconciled: false,
   });
+  const [placementWardId, setPlacementWardId] = useState('');
+  const [placementBedId, setPlacementBedId] = useState('');
+
+  useEffect(() => {
+    setPlacementWardId(dischargeFor?.wardId || '');
+    setPlacementBedId('');
+  }, [dischargeFor]);
 
   // Deep link from consultation (?admitPatientId=&diagnosis=&encounterId=): open
   // the admit modal pre-filled with the patient, diagnosis, and the open visit
@@ -94,6 +108,9 @@ export default function WardsPage() {
   }, [searchParams, patients]);
 
   const facilityId = currentUser?.hospitalId || currentUser?.hospital?._id;
+  const canAdmit = roleCan(currentUser?.role, WARD_ADMIT_ROLES);
+  const canManageBeds = roleCan(currentUser?.role, WARD_BED_ROLES);
+  const canDischarge = roleCan(currentUser?.role, WARD_DISCHARGE_ROLES);
   const facilityWards = useMemo(
     () => facilityId ? wards.filter(w => w.facilityId === facilityId) : wards,
     [wards, facilityId],
@@ -117,6 +134,16 @@ export default function WardsPage() {
   const availableBedsForWard = useMemo(
     () => admitForm.wardId ? beds.filter(b => b.wardId === admitForm.wardId && b.status === 'available') : [],
     [beds, admitForm.wardId],
+  );
+  const availablePlacementBeds = useMemo(
+    () => placementWardId
+      ? beds.filter(bed => bed.wardId === placementWardId && bed.status === 'available')
+      : [],
+    [beds, placementWardId],
+  );
+  const cleaningBeds = useMemo(
+    () => beds.filter(bed => bed.status === 'cleaning' && (!facilityId || bed.facilityId === facilityId)),
+    [beds, facilityId],
   );
 
   const handleAdmit = async () => {
@@ -168,7 +195,7 @@ export default function WardsPage() {
       setAdmitForm({ patientId: '', admittingDiagnosis: '', severity: 'moderate', wardId: '', bedId: '', isolationRequired: false, encounterId: '' });
     } catch (err) {
       console.error(err);
-      showToast(t('ward.admitFailedToast'), 'error');
+      showToast(err instanceof Error ? err.message : t('ward.admitFailedToast'), 'error');
     }
   };
 
@@ -177,17 +204,52 @@ export default function WardsPage() {
     try {
       await discharge(dischargeFor._id, {
         dischargeType: dischargeForm.dischargeType,
-        dischargeSummary: dischargeForm.dischargeSummary.trim() || undefined,
+        dischargeDiagnosis: dischargeForm.dischargeDiagnosis.trim(),
+        dischargeSummary: dischargeForm.dischargeSummary.trim(),
         dischargedBy: currentUser._id || currentUser.username || 'unknown',
         dischargedByName: currentUser.name,
         followUpRequired: dischargeForm.followUpRequired,
+        followUpDate: dischargeForm.followUpRequired ? dischargeForm.followUpDate : undefined,
+        followUpInstructions: dischargeForm.followUpRequired ? dischargeForm.followUpInstructions.trim() : undefined,
+        medicationReconciled: dischargeForm.medicationReconciled,
       });
       showToast(t('ward.dischargedToast', { name: dischargeFor.patientName }), 'success');
+      const deathPatientId = dischargeForm.dischargeType === 'death' ? dischargeFor.patientId : null;
+      const deathEncounterId = dischargeForm.dischargeType === 'death' ? dischargeFor.encounterId : null;
       setDischargeFor(null);
-      setDischargeForm({ dischargeType: 'normal', dischargeSummary: '', followUpRequired: false });
+      setDischargeForm({
+        dischargeType: 'normal', dischargeDiagnosis: '', dischargeSummary: '',
+        followUpRequired: false, followUpDate: '', followUpInstructions: '',
+        medicationReconciled: false,
+      });
+      if (deathPatientId) {
+        const query = new URLSearchParams({ patientId: deathPatientId });
+        if (deathEncounterId) query.set('encounterId', deathEncounterId);
+        router.push(`/deaths?${query.toString()}`);
+      }
     } catch (err) {
       console.error(err);
-      showToast(t('ward.dischargeFailedToast'), 'error');
+      showToast(err instanceof Error ? err.message : t('ward.dischargeFailedToast'), 'error');
+    }
+  };
+
+  const handleMoveBed = async () => {
+    if (!dischargeFor || !placementBedId) return;
+    const ward = facilityWards.find(candidate => candidate._id === placementWardId);
+    const bed = availablePlacementBeds.find(candidate => candidate._id === placementBedId);
+    if (!ward || !bed) return;
+    try {
+      const updated = await reassignBed(dischargeFor._id, {
+        wardId: ward._id,
+        wardName: ward.name,
+        bedId: bed._id,
+        bedNumber: bed.bedNumber,
+      });
+      setDischargeFor(updated);
+      setPlacementBedId('');
+      showToast(t('ward.patientMovedToast', { name: updated.patientName, ward: updated.wardName, bed: updated.bedNumber || '' }), 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('ward.moveFailedToast'), 'error');
     }
   };
 
@@ -232,15 +294,51 @@ export default function WardsPage() {
             }}
             actions={
               <>
-                <button
+                {canAdmit && <button
                   onClick={() => setAdmitOpen(true)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: 'var(--accent-primary)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
                   <Plus className="w-4 h-4" /> {t('ward.admitPatient')}
-                </button>
+                </button>}
               </>
             }
           />
+          <ol className="ward-journey" aria-label={t('ward.journeyLabel')}>
+            {[
+              ['1', t('ward.journeyAdmit')],
+              ['2', t('ward.journeyPlace')],
+              ['3', t('ward.journeyTreat')],
+              ['4', t('ward.journeyHandoff')],
+              ['5', t('ward.journeyDischarge')],
+            ].map(([step, label]) => (
+              <li key={step}><span>{step}</span>{label}</li>
+            ))}
+          </ol>
+          {canManageBeds && cleaningBeds.length > 0 && (
+            <section className="ward-turnover" aria-label={t('ward.turnoverTitle')}>
+              <div>
+                <strong>{t('ward.turnoverTitle')}</strong>
+                <span>{t('ward.turnoverHint', { count: cleaningBeds.length })}</span>
+              </div>
+              <div className="ward-turnover-list">
+                {cleaningBeds.map(bed => (
+                  <button
+                    key={bed._id}
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={async () => {
+                      try {
+                        await markBedReady(bed._id, { id: currentUser?._id, name: currentUser?.name });
+                        showToast(t('ward.bedReadyToast', { ward: bed.wardName, bed: bed.bedNumber }), 'success');
+                      } catch (error) {
+                        showToast(error instanceof Error ? error.message : t('ward.bedReadyFailed'), 'error');
+                      }
+                    }}
+                  >{bed.wardName} · {bed.bedNumber} — {t('ward.markReady')}</button>
+                ))}
+              </div>
+            </section>
+          )}
           <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
             <div className="appointment-card-surface wards-list-surface">
               <div className="appointment-card-flow">
@@ -408,7 +506,7 @@ export default function WardsPage() {
              box. Labels stay real labels — the scope just takes the cascade
              back off them. */}
         {dischargeFor && (
-          <Modal onClose={() => setDischargeFor(null)} width={460} labelledBy="ward-discharge-title">
+          <Modal onClose={() => setDischargeFor(null)} width={520} labelledBy="ward-discharge-title">
             <div className="modal-content card-elevated wdis">
               <header className="wdis-head">
                 <div className="wdis-id">
@@ -454,7 +552,49 @@ export default function WardsPage() {
                 </div>
               </dl>
 
-              <div className="wdis-body">
+              <nav className="wdis-care-actions" aria-label={t('ward.careActions')}>
+                <button type="button" onClick={() => router.push(`/wards/mar/${dischargeFor._id}`)}>
+                  <Pill className="w-4 h-4" />
+                  <span><b>{t('ward.openMar')}</b><small>{t('ward.openMarHint')}</small></span>
+                </button>
+                <button type="button" onClick={() => router.push('/wards/handoff')}>
+                  <ArrowRightLeft className="w-4 h-4" />
+                  <span><b>{t('ward.openHandoff')}</b><small>{t('ward.openHandoffHint')}</small></span>
+                </button>
+              </nav>
+
+              {canManageBeds && <section className="wdis-placement" aria-labelledby="ward-placement-title">
+                <div>
+                  <h4 id="ward-placement-title">{t('ward.placementTitle')}</h4>
+                  <p>{t('ward.placementHint')}</p>
+                </div>
+                <div className="wdis-placement-controls">
+                  <Select
+                    aria-label={t('ward.wardRequired')}
+                    value={placementWardId}
+                    onChange={event => { setPlacementWardId(event.target.value); setPlacementBedId(''); }}
+                  >
+                    {facilityWards.map(ward => <option key={ward._id} value={ward._id}>{ward.name}</option>)}
+                  </Select>
+                  <Select
+                    aria-label={t('ward.bedNumber')}
+                    value={placementBedId}
+                    onChange={event => setPlacementBedId(event.target.value)}
+                  >
+                    <option value="">{t('ward.selectAvailableBed')}</option>
+                    {availablePlacementBeds.map(bed => <option key={bed._id} value={bed._id}>{bed.bedNumber}</option>)}
+                  </Select>
+                  <button type="button" className="btn btn-secondary" disabled={!placementBedId} onClick={handleMoveBed}>
+                    {t('ward.movePatient')}
+                  </button>
+                </div>
+              </section>}
+
+              {canDischarge && <div className="wdis-body">
+                <div className="wdis-sectionhead">
+                  <h4>{t('ward.endAdmissionTitle')}</h4>
+                  <p>{t('ward.endAdmissionHint')}</p>
+                </div>
                 <div className="wdis-field">
                   <label htmlFor="ward-discharge-type">{t('ward.dischargeType')}</label>
                   <Select
@@ -464,10 +604,18 @@ export default function WardsPage() {
                   >
                     <option value="normal">{t('ward.dischargeTypeNormal')}</option>
                     <option value="against_medical_advice">{t('ward.dischargeTypeAma')}</option>
-                    <option value="transfer">{t('ward.dischargeTypeTransfer')}</option>
-                    <option value="death">{t('ward.dischargeTypeDeath')}</option>
                     <option value="absconded">{t('ward.dischargeTypeAbsconded')}</option>
                   </Select>
+                </div>
+
+                <div className="wdis-field">
+                  <label htmlFor="ward-discharge-diagnosis">{t('ward.dischargeDiagnosis')}</label>
+                  <input
+                    id="ward-discharge-diagnosis"
+                    value={dischargeForm.dischargeDiagnosis}
+                    onChange={e => setDischargeForm({ ...dischargeForm, dischargeDiagnosis: e.target.value })}
+                    placeholder={t('ward.dischargeDiagnosisPlaceholder')}
+                  />
                 </div>
 
                 <div className="wdis-field">
@@ -491,29 +639,73 @@ export default function WardsPage() {
                   <span>{t('ward.followUpRequired')}</span>
                 </label>
 
-                {dischargeForm.dischargeType === 'death' ? (
-                  <p className="wdis-note is-danger">
-                    <AlertTriangle className="w-3.5 h-3.5" /> {t('ward.deathRecordNotice')}
-                  </p>
-                ) : (
-                  <p className="wdis-note is-ok">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {t('ward.bedReleasedNotice')}
-                  </p>
+                <label className="wdis-check" htmlFor="ward-medication-reconciled">
+                  <input
+                    id="ward-medication-reconciled"
+                    type="checkbox"
+                    checked={dischargeForm.medicationReconciled}
+                    onChange={e => setDischargeForm({ ...dischargeForm, medicationReconciled: e.target.checked })}
+                  />
+                  <span>{t('ward.medicationReconciled')}</span>
+                </label>
+
+                <p className="wdis-note is-ok">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> {t('ward.bedReleasedNotice')}
+                </p>
+
+                {dischargeForm.followUpRequired && (
+                  <div className="wdis-followup">
+                    <div className="wdis-field">
+                      <label htmlFor="ward-follow-up-date">{t('ward.followUpDate')}</label>
+                      <input
+                        id="ward-follow-up-date"
+                        type="date"
+                        value={dischargeForm.followUpDate}
+                        onChange={e => setDischargeForm({ ...dischargeForm, followUpDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="wdis-field">
+                      <label htmlFor="ward-follow-up-instructions">{t('ward.followUpInstructions')}</label>
+                      <textarea
+                        id="ward-follow-up-instructions"
+                        rows={2}
+                        value={dischargeForm.followUpInstructions}
+                        onChange={e => setDischargeForm({ ...dischargeForm, followUpInstructions: e.target.value })}
+                        placeholder={t('ward.followUpInstructionsPlaceholder')}
+                      />
+                    </div>
+                  </div>
                 )}
-              </div>
+              </div>}
 
               <footer className="wdis-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => router.push(`/patients/${dischargeFor.patientId}?tab=overview`)}>
                   {t('ward.openChart')}
                 </button>
                 <span className="wdis-actions-end">
+                  {canDischarge && <button type="button" className="btn btn-secondary" onClick={() => setTransferFor(dischargeFor)}>{t('ward.startTransfer')}</button>}
+                  {canDischarge && <button type="button" className="btn btn-secondary" onClick={() => router.push(`/deaths?patientId=${encodeURIComponent(dischargeFor.patientId)}${dischargeFor.encounterId ? `&encounterId=${encodeURIComponent(dischargeFor.encounterId)}` : ''}`)}>{t('ward.recordDeath')}</button>}
                   <button type="button" className="btn btn-secondary" onClick={() => setDischargeFor(null)}>{t('action.cancel')}</button>
-                  <button type="button" className="btn btn-primary" onClick={handleDischarge}>{t('ward.discharge')}</button>
+                  {canDischarge && <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleDischarge}
+                    disabled={
+                      !dischargeForm.dischargeDiagnosis.trim()
+                      || !dischargeForm.dischargeSummary.trim()
+                      || !dischargeForm.medicationReconciled
+                      || (dischargeForm.followUpRequired && (!dischargeForm.followUpDate || !dischargeForm.followUpInstructions.trim()))
+                    }
+                  >{t('ward.discharge')}</button>}
                 </span>
               </footer>
             </div>
           </Modal>
         )}
+        {transferFor && (() => {
+          const patient = patients.find(candidate => candidate._id === transferFor.patientId);
+          return patient ? <TransferPatientModal patient={patient} onClose={() => setTransferFor(null)} /> : null;
+        })()}
       </main>
     </>
   );

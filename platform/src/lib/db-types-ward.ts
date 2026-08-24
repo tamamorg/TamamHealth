@@ -89,6 +89,9 @@ export interface AdmissionDoc extends BaseDoc {
   followUpRequired: boolean;
   followUpDate?: string;
   followUpInstructions?: string;
+  /** Clinician confirmed which inpatient medicines stop or continue at exit. */
+  medicationReconciled?: boolean;
+  medicationReconciledAt?: string;
   // Transfer
   transferredFrom?: string;
   transferredTo?: string;

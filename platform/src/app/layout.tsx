@@ -93,10 +93,16 @@ export default async function RootLayout({
             __html: `(function(){try{var l=localStorage.getItem('tamamhealth-locale')||'en';var d=l==='apd'?'rtl':'ltr';document.documentElement.lang=l;document.documentElement.dir=d;}catch(e){}})();`,
           }}
         />
-        {/* The same mark and blue the marketing site serves, from a file
-            named for its job rather than a style-guide export number. The tab
-            icon deliberately does NOT follow the platform accent — it has to
-            stay recognisable next to the site's. */}
+        {/* The brand mark knocked out of accent navy on a rounded tile, from a
+            file named for its job rather than a style-guide export number.
+
+            It used to be the bare mark in the marketing site's lighter blue,
+            matched so the two tabs read as one brand. That parity cost more
+            than it bought: with no ground of its own the mark washed out on a
+            light home screen and its smallest dots dissolved below about 32px,
+            which is most of the sizes an installed app is actually seen at.
+            The site's favicon is still the lighter blue — worth revisiting
+            together rather than leaving the two to drift. */}
         <link rel="icon" type="image/svg+xml" href="/assets/tamam-favicon.svg" />
         <link rel="apple-touch-icon" sizes="192x192" href="/assets/tamam-favicon.svg" />
         <meta name="mobile-web-app-capable" content="yes" />

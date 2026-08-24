@@ -105,7 +105,9 @@ export type PrescriptionStatus =
 
 export const PRESCRIPTION_TRANSITIONS: Readonly<Record<PrescriptionStatus, readonly PrescriptionStatus[]>> = {
   prescribed: ['received_in_pharmacy_queue'],
-  received_in_pharmacy_queue: ['under_review'],
+  // The pharmacist's review and clearance are one clinical action in the UI.
+  // `under_review` remains readable for older/in-flight records.
+  received_in_pharmacy_queue: ['under_review', 'cleared_for_dispensing', 'held_awaiting_clarification', 'stockout_partial_referred'],
   under_review: ['cleared_for_dispensing', 'clinician_consultation_in_progress', 'held_awaiting_clarification', 'stockout_partial_referred'],
   clinician_consultation_in_progress: ['cleared_for_dispensing', 'held_awaiting_clarification'],
   held_awaiting_clarification: ['under_review', 'cleared_for_dispensing'],
@@ -113,7 +115,7 @@ export const PRESCRIPTION_TRANSITIONS: Readonly<Record<PrescriptionStatus, reado
   dispensed: ['counseled', 'dispensing_error_recalled'],
   counseled: ['complete'],
   complete: [],
-  stockout_partial_referred: ['received_in_pharmacy_queue'], // unfilled prescription remains active
+  stockout_partial_referred: ['received_in_pharmacy_queue', 'cleared_for_dispensing'], // re-check after stock arrives
   dispensing_error_recalled: ['received_in_pharmacy_queue'],
 };
 

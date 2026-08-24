@@ -87,6 +87,7 @@ export function usePrescriptions(patientId?: string) {
             witnessName: input.witnessName,
             allowPartial: input.allowPartial === true,
             note: input.note,
+            counsellingConfirmed: input.counsellingConfirmed === true,
           }),
         });
       } catch {

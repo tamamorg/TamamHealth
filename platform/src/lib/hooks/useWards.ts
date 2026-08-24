@@ -17,20 +17,15 @@ export function useWards() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const { getAllWards, getAllAdmissions } = await import('../services/ward-service');
-      const [w, a] = await Promise.all([getAllWards(scope), getAllAdmissions(scope)]);
+      const { getAllWards, getAllAdmissions, getAllBeds } = await import('../services/ward-service');
+      const [w, a, bedDocs] = await Promise.all([
+        getAllWards(scope),
+        getAllAdmissions(scope),
+        getAllBeds(scope),
+      ]);
       setWards(w);
       setAdmissions(a);
-
-      // Beds aren't filtered by scope yet — fetch all and trim by ward.
-      const bedDocs: BedDoc[] = [];
-      const db = wardDB();
-      const all = await db.allDocs({ include_docs: true });
-      for (const row of all.rows) {
-        const doc = row.doc as { type?: string } | undefined;
-        if (doc && doc.type === 'bed') bedDocs.push(doc as unknown as BedDoc);
-      }
-      setBeds(bedDocs.filter(b => w.some(ward => ward._id === b.wardId)));
+      setBeds(bedDocs);
     } catch (err) {
       console.error('Failed to load wards', err);
       setError('Failed to load wards');
@@ -83,19 +78,33 @@ export function useWards() {
     return doc;
   }, [load]);
 
+  const markBedReady = useCallback(async (
+    bedId: string,
+    actor?: { id?: string; name?: string },
+  ) => {
+    const { completeBedTurnover } = await import('../services/ward-service');
+    const doc = await completeBedTurnover(bedId, actor);
+    await load();
+    return doc;
+  }, [load]);
+
   // Derived: active admissions (still in ward)
   const activeAdmissions = admissions.filter(a => a.status === 'admitted');
 
   // Derived: census KPIs
-  const totalBeds = wards.reduce((s, w) => s + (w.totalBeds || 0), 0);
-  const occupiedBeds = wards.reduce((s, w) => s + (w.occupiedBeds || 0), 0);
-  const availableBeds = Math.max(0, totalBeds - occupiedBeds);
+  // The bed documents are the live operational truth. Ward counters are a
+  // reporting cache and can lag after an offline conflict or interrupted
+  // update, so they must not drive the board a nurse uses to place a patient.
+  const configuredCapacity = wards.reduce((s, w) => s + (w.totalBeds || 0), 0);
+  const totalBeds = beds.length > 0 ? beds.length : configuredCapacity;
+  const occupiedBeds = beds.filter(bed => bed.status === 'occupied').length;
+  const availableBeds = beds.filter(bed => bed.status === 'available').length;
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
   return {
     wards, beds, admissions, activeAdmissions,
     totalBeds, occupiedBeds, availableBeds, occupancyRate,
     loading, error,
-    admit, discharge, reassignBed, reload: load,
+    admit, discharge, reassignBed, markBedReady, reload: load,
   };
 }

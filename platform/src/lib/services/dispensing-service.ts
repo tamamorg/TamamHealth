@@ -88,6 +88,8 @@ export interface DispenseInput {
   /** Set when the pharmacist knowingly fills short of the full course. */
   allowPartial?: boolean;
   note?: string;
+  /** Counselling is captured in the same handover action, not a later queue step. */
+  counsellingConfirmed?: boolean;
 }
 
 export interface DispenseResult {
@@ -839,12 +841,19 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
       // A partial fill leaves the order live so the balance can still be
       // collected; only a full fill closes it.
       status: claimedOutcome === 'full' ? 'dispensed' : 'pending',
-      orderStatus: claimedOutcome === 'full' ? 'dispensed' : 'stockout_partial_referred',
+      orderStatus: claimedOutcome === 'full'
+        ? (input.counsellingConfirmed ? 'complete' : 'dispensed')
+        : 'stockout_partial_referred',
       dispensedAt: now,
       quantityDispensed: claimedTotalDispensed,
       dispenseAllocations: [...(rx.dispenseAllocations || []), ...applied],
       dispensedBy: input.dispenserId,
       dispensedByName: input.dispenserName,
+      ...(input.counsellingConfirmed ? {
+        counselledAt: now,
+        counselledBy: input.dispenserId,
+        counselledPoints: ['dose', 'timing', 'side_effects', 'return_precautions'],
+      } : {}),
       dispenseOutcome: claimedOutcome,
       ...(input.note ? { dispenseNote: input.note } : {}),
       ...(controlledLogId ? { controlledLogId } : {}),

@@ -344,7 +344,7 @@ export function useMarEntries() {
       route?: string;
       reason?: string;
       notes?: string;
-      witnessName?: string;
+      witnessId?: string;
     },
   ) => {
     if (!currentUser) {
@@ -370,7 +370,7 @@ export function useMarEntries() {
         route: opts?.route?.trim() || undefined,
         administeredBy: currentUser._id || currentUser.username,
         administeredByName: currentUser.name,
-        witnessName: opts?.witnessName?.trim() || undefined,
+        witnessId: opts?.witnessId || undefined,
         reason: opts?.reason?.trim() || undefined,
         notes: opts?.notes?.trim() || undefined,
       });

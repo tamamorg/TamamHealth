@@ -98,6 +98,11 @@ export async function getTriageByPatient(patientId: string, scope?: DataScope): 
   return all.filter(t => t.patientId === patientId);
 }
 
+export async function getTriageByEncounter(encounterId: string): Promise<TriageDoc | null> {
+  const rows = await findByType<TriageDoc>(triageDB(), 'triage', { encounterId }, { indexFields: ['type', 'encounterId'] });
+  return rows.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0] || null;
+}
+
 /** Active (pending) triages for the current facility — feeds the nurse queue. */
 export async function getActiveTriage(scope?: DataScope): Promise<TriageDoc[]> {
   const all = await getAllTriage(scope);
@@ -141,9 +146,9 @@ export async function createTriage(
 export async function updateTriage(
   id: string,
   updates: Partial<TriageDoc>
-): Promise<TriageDoc | null> {
+): Promise<TriageDoc> {
   const db = triageDB();
-  try {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const existing = await db.get(id) as TriageDoc;
 
     // Enforce valid status transitions
@@ -157,7 +162,14 @@ export async function updateTriage(
 
     const updated: TriageDoc = withPendingOfflineSync({ ...existing, ...updates, updatedAt: new Date().toISOString() });
     assertTriageVitalSafety(updated);
-    const resp = await db.put(updated);
+    let resp: Awaited<ReturnType<typeof db.put>>;
+    try {
+      resp = await db.put(updated);
+    } catch (error) {
+      const conflict = (error as { name?: string; status?: number } | undefined);
+      if ((conflict?.name === 'conflict' || conflict?.status === 409) && attempt < 2) continue;
+      throw error;
+    }
     updated._rev = resp.rev;
     if (updates.status) {
       await logAuditSafe('TRIAGE_STATUS_CHANGE', updates.handoffTo, updates.handoffToName,
@@ -183,9 +195,8 @@ export async function updateTriage(
       hospitalId: updated.facilityId,
     });
     return updated;
-  } catch {
-    return null;
   }
+  throw new Error('Triage changed on another workstation. Refresh and try again.');
 }
 
 /** Stats for the nurse dashboard header (active reds, today's totals). */

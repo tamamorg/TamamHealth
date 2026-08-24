@@ -26,10 +26,17 @@ export const HIGH_RISK_RESOURCES: ReadonlySet<string> = new Set([
   'discharge',
   'medication_allergy',
   'adverse_event',
+  // Inpatient operational state is clinical state: silently choosing one bed
+  // claim can double-book a bed, and choosing one prescription revision can
+  // erase a bedside administration recorded by another nurse.
+  'bed',
+  'admission',
+  'prescription',
+  'medication_administration',
+  'shift_handoff',
 ]);
 
 export const MEDIUM_RISK_RESOURCES: ReadonlySet<string> = new Set([
-  'prescription',
   'medication',
   'problem_list',
   'diagnosis',

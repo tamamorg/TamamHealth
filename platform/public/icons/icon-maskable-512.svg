@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="TamamHealth">
+  <!-- PWA maskable icon. Full bleed square with no corners of its own, so
+       the launcher supplies the shape. Padding is 24%, which keeps the mark
+       inside the 80% safe circle whatever mask Android applies.
+       The mark is knocked out of the brand navy rather than drawn in it. The
+       bare mark had no ground of its own, so on a light home screen it washed
+       out and its smallest dots dissolved below about 32px. The navy is the
+       accent-primary token (#015697), the same one the app header and the
+       manifest theme_color use. -->
+  <rect width="512" height="512" fill="#015697"/>
+  <g fill="#FFFFFF">
+    <circle cx="154.74" cy="309.45" r="7.51"/>
+    <circle cx="154.74" cy="279.74" r="12.17"/>
+    <circle cx="154.74" cy="232.05" r="19.69"/>
+    <circle cx="154.74" cy="154.74" r="31.86"/>
+    <circle cx="232.26" cy="170.10" r="31.86"/>
+    <circle cx="297.91" cy="214.05" r="31.86"/>
+    <circle cx="341.86" cy="279.86" r="31.86"/>
+    <circle cx="357.26" cy="357.18" r="31.86"/>
+    <circle cx="202.67" cy="241.58" r="19.69"/>
+    <circle cx="243.26" cy="268.74" r="19.69"/>
+    <circle cx="270.42" cy="309.37" r="19.69"/>
+    <circle cx="279.95" cy="357.18" r="19.69"/>
+    <circle cx="184.37" cy="285.78" r="12.17"/>
+    <circle cx="209.43" cy="302.57" r="12.17"/>
+    <circle cx="226.22" cy="327.67" r="12.17"/>
+    <circle cx="232.26" cy="357.22" r="12.17"/>
+    <circle cx="173.04" cy="313.11" r="7.51"/>
+    <circle cx="188.49" cy="323.47" r="7.51"/>
+    <circle cx="198.89" cy="338.96" r="7.51"/>
+    <circle cx="202.50" cy="357.30" r="7.51"/>
+  </g>
+</svg>
