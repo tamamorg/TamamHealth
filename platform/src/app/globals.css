@@ -32119,8 +32119,12 @@ button.sadb-signal { cursor: pointer; }
   color: var(--text-muted);
 }
 .wdis-field textarea { width: 100%; resize: vertical; }
-/* The checkbox and its caption sit on ONE line, centred on each other. */
-.wdis-check {
+/* The checkbox and its caption sit on ONE line, centred on each other.
+   Scoped `.wdis .wdis-check` (0,2,0) rather than `.wdis-check` (0,1,0): the
+   label reset above is `.wdis label` (0,1,1), and since this row IS a
+   <label>, the plain class lost to it and the row stayed `display: block` —
+   the flex centring and the gap silently did nothing. */
+.wdis .wdis-check {
   display: flex;
   align-items: center;
   gap: 9px;
