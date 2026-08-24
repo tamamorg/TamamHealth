@@ -34,6 +34,37 @@ describe('machine-caller exemption', () => {
     expect(res.status).toBe(200);
   });
 
+  /* The sweep cron moved from the shared secret to a GitHub Actions OIDC
+     token, and the exemption was not moved with it. The workflow sends only
+     `Authorization: Bearer <oidc>`, so the proxy saw no `x-transfer-sweep-secret`,
+     refused the request with a 403 "Missing Origin header", and the route's
+     OIDC verification never ran. It failed every hour for as long as that
+     mismatch stood. */
+  it('lets the sweep cron in with an OIDC bearer token and no secret header', async () => {
+    const res = await proxy(post(SWEEP, { authorization: 'Bearer eyJhbGciOiJSUzI1NiJ9.fake.sig' }));
+    expect(res.status).toBe(200);
+  });
+
+  it('does not treat a non-bearer authorization header as a machine caller', async () => {
+    // Basic auth is not the OIDC hand-off; it must not buy a CSRF exemption.
+    const res = await proxy(post(SWEEP, { authorization: 'Basic YWRtaW46aHVudGVyMg==' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('does not let a bearer token unlock the OTHER job path', async () => {
+    // The bearer exemption is scoped to the sweep, which is the only route
+    // that verifies an OIDC token. Reminders still require their own secret.
+    const res = await proxy(post(DISPATCH, { authorization: 'Bearer eyJhbGciOiJSUzI1NiJ9.fake.sig' }));
+    expect([401, 403]).toContain(res.status);
+  });
+
+  it('does not let a bearer token unlock an ordinary API route', async () => {
+    const res = await proxy(post('https://app.example.org/api/patients', {
+      authorization: 'Bearer eyJhbGciOiJSUzI1NiJ9.fake.sig',
+    }));
+    expect([401, 403]).toContain(res.status);
+  });
+
   it('lets a cron reach the reminder dispatch the same way', async () => {
     const res = await proxy(post(DISPATCH, { 'x-reminder-dispatch-secret': 'whatever' }));
     expect(res.status).toBe(200);

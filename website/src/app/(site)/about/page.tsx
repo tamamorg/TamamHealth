@@ -67,7 +67,7 @@ export default async function AboutPage() {
               {DERBY_PHOTOS.map((p, i) => (
                 <figure key={p.src}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- gallery frame, sized by CSS */}
-                  <img src={p.src} alt={p.alt} loading={i < 2 ? undefined : "lazy"} />
+                  <img src={p.src} alt={p.alt} width={p.w} height={p.h} loading={i < 2 ? undefined : "lazy"} />
                   <figcaption>{p.caption}</figcaption>
                 </figure>
               ))}

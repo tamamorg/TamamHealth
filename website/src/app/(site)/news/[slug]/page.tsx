@@ -143,7 +143,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
               {strip.map((p) => (
                 <figure key={p.src}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- gallery frame, sized by CSS */}
-                  <img src={p.src} alt={p.alt} loading="lazy" />
+                  <img src={p.src} alt={p.alt} width={p.w} height={p.h} loading="lazy" />
                   <figcaption>{p.caption}</figcaption>
                 </figure>
               ))}
