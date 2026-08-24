@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, logApiError, unauthorized } from '@/modules/identity';
-import { ensureCouchGatewayUser } from '@/lib/sync/couch-auth';
+import { ensureCouchGatewayUser, ensureOrganizationProvisioned } from '@/lib/sync/couch-auth';
 import {
   gatewayRequestAllowed,
   isCouchDocumentWrite,
@@ -52,6 +52,12 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
 
     const base = (process.env.COUCHDB_URL || '').replace(/\/+$/, '');
     if (!base) throw new Error('COUCHDB_URL is not configured');
+    // Heals organizations created while tenant provisioning was disabled:
+    // their databases (with validators + _security) must exist before any
+    // replication traffic is proxied, because clients are never allowed to
+    // create databases through this gateway. Memoized — after the first
+    // request per org per process this is a resolved promise.
+    await ensureOrganizationProvisioned(auth.orgId);
     const credentials = await ensureCouchGatewayUser(auth);
     const upstream = new URL(`${base}/${path.map(encodeURIComponent).join('/')}`);
     request.nextUrl.searchParams.forEach((value, key) => upstream.searchParams.append(key, value));

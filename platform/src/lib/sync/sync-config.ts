@@ -295,5 +295,17 @@ export function isSyncEnabled(): boolean {
 
 /** Get the configured CouchDB base URL */
 export function getCouchDBUrl(): string {
+  // Gateway mode is same-origin BY CONTRACT (config-validation refuses any
+  // other shape), so in the browser derive the URL from the page's actual
+  // origin instead of the build-time value. The build-time URL names one
+  // specific host, but one image serves several (staging and production
+  // promote the same digest) — baking a host into the bundle pointed every
+  // other deployment's clients at the wrong environment's gateway.
+  if (
+    typeof window !== 'undefined' &&
+    process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED === 'true'
+  ) {
+    return `${window.location.origin}/api/couch`;
+  }
   return process.env.NEXT_PUBLIC_COUCHDB_URL || 'http://localhost:5984';
 }

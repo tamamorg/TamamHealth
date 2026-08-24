@@ -172,6 +172,26 @@ jobs:
              docker image prune -f && \
              echo 'Deployed sha=$SHA tag=production'"
 
+      # The stack can come up and still be broken (bad env refuses boot with a
+      # 500, a dead CouchDB degrades /api/health to 503). Fail the deploy run
+      # loudly instead of leaving that for a clinician to discover.
+      - name: Verify production health
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HEALTH_URL: ${{ secrets.PROD_HEALTH_URL || 'https://app.tamamhealth.org/api/health' }}
+        run: |
+          for i in $(seq 1 30); do
+            STATUS="$(curl -sS -m 10 -o /tmp/health.json -w '%{http_code}' "$HEALTH_URL" || echo 000)"
+            if [ "$STATUS" = "200" ]; then
+              echo "Healthy after ${i} checks:"; cat /tmp/health.json; echo
+              exit 0
+            fi
+            echo "attempt ${i}: $HEALTH_URL -> $STATUS"; sleep 10
+          done
+          echo "::error title=Production unhealthy::$HEALTH_URL never returned 200 after the deploy. Last body:"
+          cat /tmp/health.json 2>/dev/null || true
+          exit 1
+
   aws-deploy:
     name: cloudformation deploy to af-south-1 (aws target)
     if: ${{ github.event.inputs.target == 'aws' }}

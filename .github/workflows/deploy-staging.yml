@@ -81,12 +81,19 @@ jobs:
           # whose client bundle had `isSyncEnabled()` permanently false — every
           # record stayed in the browser tab that typed it and never reached
           # CouchDB, while the runtime env said sync was on.
+          # The sync trio defaults to the PRODUCTION-correct values (gateway on,
+          # tenant databases on, same-origin /api/couch URL) because these repo
+          # variables were unset for weeks and the 'false' defaults shipped a
+          # production bundle that pushed straight at couch.tamamhealth.org,
+          # collected 401s, and never synced a single record. The client also
+          # derives the gateway URL from the page origin at runtime, so the URL
+          # baked here only feeds the sync-enabled check and non-gateway builds.
           build-args: |
             NEXT_PUBLIC_DEMO_MODE=${{ vars.NEXT_PUBLIC_DEMO_MODE || 'false' }}
             NEXT_PUBLIC_SYNC_ENABLED=${{ vars.NEXT_PUBLIC_SYNC_ENABLED || 'true' }}
-            NEXT_PUBLIC_COUCHDB_URL=${{ vars.NEXT_PUBLIC_COUCHDB_URL || 'https://couch.tamamhealth.org' }}
-            NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED || 'false' }}
-            NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED || 'false' }}
+            NEXT_PUBLIC_COUCHDB_URL=${{ vars.NEXT_PUBLIC_COUCHDB_URL || 'https://app.tamamhealth.org/api/couch' }}
+            NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED || 'true' }}
+            NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED || 'true' }}
             NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://app.tamamhealth.org' }}
             NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=${{ vars.NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE || 'false' }}
             NEXT_PUBLIC_BUILD_ID=${{ steps.meta.outputs.sha }}

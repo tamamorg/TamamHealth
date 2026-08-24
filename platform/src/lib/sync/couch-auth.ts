@@ -382,6 +382,73 @@ export async function applyOrgScopedSecurity(roles: string[]): Promise<void> {
 }
 
 /**
+ * Guarantee one organization's tenant databases exist — with validators and
+ * `_security` — before proxying its replication traffic.
+ *
+ * Organization creation provisions eagerly and fails closed, but only when
+ * the server ran with tenant databases enabled AT THAT MOMENT. Production
+ * shipped a window where the flag was off: those organizations exist, their
+ * devices hold real records, and their tenant databases were never created —
+ * so every push 404s forever, and the gateway (correctly) refuses to let a
+ * client create databases. This closes that window from the serving path:
+ * cheap persisted check first, full idempotent provisioning only on a miss.
+ *
+ * The sentinel is a `_local` doc (never replicates) in the org's first
+ * org-scoped database, versioned by the database count so growing the sync
+ * map re-provisions existing organizations on their next request.
+ */
+const provisioningMemo = new Map<string, Promise<void>>();
+const PROVISIONING_SENTINEL = '_local/tamamhealth-provisioning';
+
+export async function ensureOrganizationProvisioned(orgIdInput: string | undefined): Promise<void> {
+  if (!orgIdInput) return;
+  if (process.env.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED !== 'true') return;
+  // A malformed org id means this session could never reach a tenant database
+  // anyway (resolveGatewayDatabase scopes by the same id) — skip rather than
+  // turn one bad token into a 502 for traffic that used to pass through.
+  let orgId: string;
+  try {
+    orgId = assertOrganizationId(orgIdInput);
+  } catch {
+    return;
+  }
+  const pending = provisioningMemo.get(orgId);
+  if (pending) return pending;
+  const task = (async () => {
+    const orgScopedCount = DATABASE_SYNC_CONFIGS.filter(config => config.orgScoped).length;
+    const firstDb = tenantDatabaseName(
+      DATABASE_SYNC_CONFIGS.find(config => config.orgScoped)!.localName,
+      orgId,
+    );
+    const sentinelPath = `/${encodeURIComponent(firstDb)}/${PROVISIONING_SENTINEL}`;
+    const sentinel = await couchFetch({ method: 'GET', path: sentinelPath, allow404: true }) as
+      { _rev?: string; databaseCount?: number } | null;
+    if (sentinel?.databaseCount === orgScopedCount) return;
+
+    await provisionOrganizationDatabases(orgId);
+    try {
+      await couchFetch({
+        method: 'PUT',
+        path: sentinelPath,
+        body: {
+          _id: PROVISIONING_SENTINEL,
+          ...(sentinel?._rev ? { _rev: sentinel._rev } : {}),
+          databaseCount: orgScopedCount,
+          provisionedAt: new Date().toISOString(),
+        },
+      });
+    } catch {
+      // A concurrent provisioner won the sentinel write; the databases are the
+      // part that matters, and provisioning is idempotent either way.
+    }
+  })();
+  // A failure must not poison the memo — the next request retries.
+  provisioningMemo.set(orgId, task);
+  task.catch(() => provisioningMemo.delete(orgId));
+  return task;
+}
+
+/**
  * Create and secure every browser-synced database for one organization.
  * Safe to retry: database creation, validator installation, and `_security`
  * replacement are all idempotent. No shared/source database is deleted.
