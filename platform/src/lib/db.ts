@@ -194,7 +194,6 @@ export const platformConfigDB = () => getDB('tamamhealth_platform_config');
 export const appointmentsDB = () => getDB('tamamhealth_appointments');
 export const availabilityDB = () => getDB('tamamhealth_availability');
 export const announcementsDB = () => getDB('tamamhealth_announcements');
-export const accountRequestsDB = () => getDB('tamamhealth_account_requests');
 export const pharmacyInventoryDB = () => getDB('tamamhealth_pharmacy_inventory');
 export const triageDB = () => getDB('tamamhealth_triage');
 export const billingDB = () => getDB('tamamhealth_billing');
@@ -532,6 +531,10 @@ export async function markSeeded(): Promise<void> {
 const NON_REPLICATING_LOCAL_DATABASES: readonly string[] = [
   'tamamhealth_users',
   'tamamhealth_meta',
+  // Retired with the account-request feature (Aug 2026). Kept for the same
+  // reason as the intake forms below: a browser seeded while the feature
+  // existed still holds this database, and dropping the name would leave it
+  // orphaned on the device forever instead of wiped.
   'tamamhealth_account_requests',
   'tamamhealth_usage_events',
   'tamamhealth_slot_holds',

@@ -314,8 +314,8 @@ export function productionConfigWarnings(env: ConfigEnv): string[] {
   const provider = (env.EMAIL_PROVIDER || 'log').toLowerCase();
   if (provider === 'log') {
     warnings.push(
-      'EMAIL_PROVIDER is unset (defaulting to "log") — invitations, password-reset links '
-      + 'and account-request confirmations are written to the server log and NEVER SENT. '
+      'EMAIL_PROVIDER is unset (defaulting to "log") — invitations and password-reset '
+      + 'links are written to the server log and NEVER SENT. '
       + 'Every new user must be onboarded by hand. Set EMAIL_PROVIDER=sendgrid|resend|smtp '
       + 'and its API key.',
     );

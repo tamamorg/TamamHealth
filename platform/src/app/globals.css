@@ -29135,9 +29135,9 @@ table.patient-data-table.patient-data-table {
 }
 .sadb-head-link:hover { color: var(--accent-hover); }
 
-/* Card-head tabs — one card, two lists (roster / account requests). Pill
-   shapes rather than underlines: the head is a 12px condensed strip, and an
-   underline there would read as a second border under the card head. */
+/* Card-head tabs. Pill shapes rather than underlines: the head is a 12px
+   condensed strip, and an underline there would read as a second border
+   under the card head. */
 .sadb-tabs {
   display: flex;
   align-items: center;
@@ -31846,8 +31846,6 @@ button.sadb-signal { cursor: pointer; }
 .mgmt-tabs button.active { border-bottom-color: var(--accent-primary); color: var(--accent-text); }
 /* Which people list — sized to its label, so the search keeps the rest of
    the line (`.sadb-search-row > select` already sets the shared height). */
-.mgmt-mode-select { flex: 0 0 auto; width: auto; min-width: 172px; padding: 0 30px 0 12px; border: 1px solid var(--border-light); border-radius: 8px; background-color: var(--ehr-head); color: var(--text-primary); font-size: 12.5px; font-weight: 700; }
-.mgmt-mode-select:focus { border-color: var(--brand-400); outline: none; }
 .mgmt-form-modal { max-height: min(82vh, 850px); overflow-y: auto; }
 .mgmt-user-modal .uf-form { padding-top: 4px; }
 .uf-facility-grants { border: 0; padding: 0; }

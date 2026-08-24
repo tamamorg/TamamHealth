@@ -738,7 +738,7 @@ async function postHandler(request: NextRequest) {
     // Entirely best-effort. The account exists either way, and the response
     // reports what happened so the administrator knows whether to hand the
     // temporary password over another way instead of assuming mail arrived.
-    // The same call now serves account-request approval, which used to skip
+    // See lib/services/invite-delivery.ts.
     // this step entirely — see lib/services/invite-delivery.ts.
     const { deliverAccountInvite } = await import('@/modules/identity/services/invite-delivery');
     const invitation = await deliverAccountInvite(user);

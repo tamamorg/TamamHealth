@@ -68,17 +68,10 @@ const CSRF_EXEMPT_API_PATHS = new Set<string>([
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/me',
-  // Public account request. Exempt for the same reason as login: the caller
-  // has no session, so there is none to ride. The route grants nothing and
-  // is rate-limited by IP.
-  '/api/account-requests',
   // Invitation redemption. Same reasoning: the caller has no session yet —
   // that is what they are here to earn. Authorisation is the single-use token
   // in the body, and the route is rate-limited by IP.
   '/api/auth/accept-invite',
-  // Account-request email confirmation — no session, single-use token in the
-  // body, rate-limited by IP. Same shape as invitation redemption.
-  '/api/account-requests/verify',
   // Forgot-password: no session to ride, and the response is identical for
   // every input, so a forged submission achieves nothing an attacker could
   // observe.
@@ -267,29 +260,6 @@ export async function proxy(request: NextRequest) {
     return nextWithCsp(request);
   }
 
-  // Public account request — POST only. Someone who needs an account has no
-  // session yet, so the submission must reach the route; GET is the approver's
-  // queue and stays behind the session gate below. Scoping this by method
-  // rather than by path is the difference between a public form and a public
-  // list of everyone who has asked for access.
-  if (pathname === '/api/account-requests' && request.method.toUpperCase() === 'POST') {
-    return nextWithCsp(request);
-  }
-
-  // Email confirmation for an account request. The person following the link
-  // from their inbox has no session — that is the point of the check — and the
-  // route grants nothing beyond making their own request visible to an
-  // approver.
-  if (pathname === '/api/account-requests/verify') {
-    return nextWithCsp(request);
-  }
-
-  // The organisation list the request form chooses from. Names only — see the
-  // route for what it withholds and why.
-  if (pathname === '/api/account-requests/options') {
-    return nextWithCsp(request);
-  }
-
   // CSRF defence layer 1: Origin/Host check on state-changing API requests.
   // Runs BEFORE the patient-portal early-return so the patient portal still
   // gets cross-site protection — only the cookie+header CSRF gate is skipped
@@ -389,7 +359,6 @@ export async function proxy(request: NextRequest) {
     pathname === '/patient-portal/activate' ||
     pathname === '/terms' ||
     pathname === '/privacy' ||
-    pathname === '/request-account' ||
     // Asking for a password reset requires no session by definition, and the
     // page reveals nothing — see /api/auth/forgot-password.
     pathname === '/forgot-password'

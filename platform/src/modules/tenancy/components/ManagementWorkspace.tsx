@@ -13,7 +13,7 @@ import { canCreateFacilities, canCreateUsers } from '@/lib/people-nav';
 import { activeFacilities } from '@/lib/services/hospital-service';
 import { OrganizationForm } from '@/components/admin/OrganizationForm';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
-import { AccountRequestQueue, CredentialHandoffModal, CreateUserModal } from '@/modules/identity/client';
+import { CredentialHandoffModal, CreateUserModal } from '@/modules/identity/client';
 import {
   SadbCard, SadbChip, SadbGridList, SadbGridRow, SadbSearch,
   effectiveOrgStatus, statusChip,
@@ -35,11 +35,6 @@ function initialView(): ManagementView {
   return VIEWS.includes(value as ManagementView) ? value as ManagementView : 'organizations';
 }
 
-function initialPeopleMode(): 'staff' | 'requests' {
-  if (typeof window === 'undefined') return 'staff';
-  return new URLSearchParams(window.location.search).get('tab') === 'requests' ? 'requests' : 'staff';
-}
-
 export default function ManagementWorkspace() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -48,7 +43,6 @@ export default function ManagementWorkspace() {
   const hospitalStore = useHospitals();
   const userStore = useUsers();
   const [view, setView] = useState<ManagementView>(initialView);
-  const [peopleMode, setPeopleMode] = useState<'staff' | 'requests'>(initialPeopleMode);
   const [orgId, setOrgId] = useState('');
   const [facilityId, setFacilityId] = useState('');
   const [search, setSearch] = useState('');
@@ -145,19 +139,8 @@ export default function ManagementWorkspace() {
     router.replace(`/manage?${params.toString()}`, { scroll: false });
   };
 
-  const changePeopleMode = (next: 'staff' | 'requests') => {
-    setPeopleMode(next);
-    const params = new URLSearchParams({ view: 'people' });
-    if (next === 'requests') params.set('tab', 'requests');
-    if (orgId) params.set('org', orgId);
-    if (facilityId) params.set('facility', facilityId);
-    router.replace(`/manage?${params.toString()}`, { scroll: false });
-  };
-
   if (!currentUser || !TENANCY_WORKSPACE_ROLES.includes(currentUser.role)) return null;
 
-  const peopleRequestsAvailable = canCreateUsers(currentUser.role);
-  const activePeopleMode = peopleRequestsAvailable ? peopleMode : 'staff';
   const canAddOrganization = currentUser.role === 'super_admin' && activeView === 'organizations';
   const canAddFacility = canCreateFacilities(currentUser.role) && activeView === 'facilities' && !!orgId;
   const canAddPerson = canCreateUsers(currentUser.role) && activeView === 'people' && !!orgId;
@@ -168,7 +151,6 @@ export default function ManagementWorkspace() {
   };
   const showPrimaryAction = canAddOrganization || canAddFacility || canAddPerson;
 
-  const showRoster = activeView !== 'people' || activePeopleMode === 'staff';
 
   return (
     <main className="page-container page-enter sadb-scope mgmt-shell">
@@ -231,29 +213,11 @@ export default function ManagementWorkspace() {
           </div>
 
           <SadbCard>
-            {/* One toolbar line: which people list, then the search over it.
-                The roster / requests switch is a select rather than a second
-                pill strip — one tab strip per screen, and the strip above
-                already owns that shape. */}
             <div className="sadb-search-row">
-              {activeView === 'people' && peopleRequestsAvailable && (
-                <select
-                  className="mgmt-mode-select"
-                  aria-label={t('management.peopleViewsLabel')}
-                  value={activePeopleMode}
-                  onChange={event => changePeopleMode(event.target.value as 'staff' | 'requests')}
-                >
-                  <option value="staff">{t('management.staffAccounts')}</option>
-                  <option value="requests">{t('management.accountRequests')}</option>
-                </select>
-              )}
-              {showRoster && (
-                <SadbSearch value={search} onChange={setSearch} placeholder={t('management.searchPlaceholder')} ariaLabel={t('management.search')} />
-              )}
+              <SadbSearch value={search} onChange={setSearch} placeholder={t('management.searchPlaceholder')} ariaLabel={t('management.search')} />
             </div>
 
-            {showRoster && (
-              <div data-tour={activeView === 'facilities' ? 'org-hospitals-table' : activeView === 'people' ? 'org-users-list' : undefined}>
+            <div data-tour={activeView === 'facilities' ? 'org-hospitals-table' : activeView === 'people' ? 'org-users-list' : undefined}>
                 <SadbGridList
                   template={MGMT_GRID}
                   minWidth={620}
@@ -309,12 +273,7 @@ export default function ManagementWorkspace() {
                     );
                   })}
                 </SadbGridList>
-              </div>
-            )}
-
-            {activeView === 'people' && activePeopleMode === 'requests' && (
-              <AccountRequestQueue viewerRole={currentUser.role} embedded />
-            )}
+            </div>
           </SadbCard>
         </div>
       </div>
