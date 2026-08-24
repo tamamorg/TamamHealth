@@ -68,6 +68,18 @@ describe('unattended workflows raise the alarm', () => {
     expect(w.text).toMatch(/^\s*issues:\s*write/m);
   });
 
+  it.each(unattended.map(w => w.file))('%s checks out the repo before calling it', file => {
+    const w = workflows.find(x => x.file === file)!;
+    // `uses: ./…` resolves against the workspace, so a job with no checkout
+    // fails ON the alarm step — the alarm itself becoming the silent failure.
+    // Four jobs were in exactly that state when the alarm was first wired.
+    for (const jobBlock of w.text.split(/\n  (?=[a-z][a-z0-9-]*:\n)/)) {
+      if (!jobBlock.includes(ALARM)) continue;
+      expect(jobBlock.indexOf('actions/checkout')).toBeGreaterThanOrEqual(0);
+      expect(jobBlock.indexOf('actions/checkout')).toBeLessThan(jobBlock.indexOf(ALARM));
+    }
+  });
+
   it.each(unattended.map(w => w.file))('%s calls it with always(), not just on failure', file => {
     const w = workflows.find(x => x.file === file)!;
     // `if: failure()` would raise alarms and never clear them.
