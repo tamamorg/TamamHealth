@@ -213,26 +213,6 @@ interface AppState {
 /** localStorage key for persisting the user's sync on/off preference */
 const SYNC_PREFERENCE_KEY = 'tamamhealth.sync.preference';
 
-function readSyncPreference(): boolean {
-  if (typeof window === 'undefined') return true;
-  try {
-    const v = window.localStorage.getItem(SYNC_PREFERENCE_KEY);
-    if (v === 'paused') return false;
-    return true;
-  } catch {
-    return true;
-  }
-}
-
-function writeSyncPreference(wantsOnline: boolean): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(SYNC_PREFERENCE_KEY, wantsOnline ? 'online' : 'paused');
-  } catch {
-    // best-effort
-  }
-}
-
 const AppContext = createContext<AppState | undefined>(undefined);
 
 /**
@@ -472,9 +452,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Hydrate user-preference from localStorage so the sync-paused choice
-    // survives reloads.
-    setWantsOnline(readSyncPreference());
+    // Sync is ON at every boot. The pause used to be hydrated from
+    // localStorage here, which meant one tap of "pause sync" on a shared
+    // clinic tablet stayed in force for every later session until somebody
+    // noticed — a device quietly hoarding unsynced clinical work for weeks.
+    // The rule is: always syncing unless someone turns it off, and turning it
+    // off lasts for THIS session only. (The stale localStorage value is
+    // cleared so old devices do not carry it around.)
+    try { window.localStorage.removeItem(SYNC_PREFERENCE_KEY); } catch { /* best-effort */ }
 
     // Online/offline detection — the OS-level signal. We never auto-resume
     // sync if the user has explicitly paused it; that's checked in the
@@ -497,6 +482,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // `navigator.onLine` misses real transitions: on flaky links and captive
+  // portals the 'online' event never fires, so a clinic device that regained
+  // its connection an hour ago can still sit "offline" with a day's work
+  // unpushed. While the OS says down, ask the server directly every 30s —
+  // and immediately when the tab is brought back to the front, which is the
+  // moment someone is looking. One cheap GET; the liveness route exists for
+  // exactly this kind of probe.
+  useEffect(() => {
+    if (isNetworkUp) return;
+    let cancelled = false;
+    const probe = async () => {
+      try {
+        const res = await fetch('/api/health/live', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+        if (!cancelled && res.ok) setIsNetworkUp(true);
+      } catch { /* still down — the interval tries again */ }
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') void probe(); };
+    const timer = setInterval(probe, 30_000);
+    document.addEventListener('visibilitychange', onVisible);
+    void probe();
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [isNetworkUp]);
 
   // Effective online: user wants to be online AND network is up.
   const isOnline = wantsOnline && isNetworkUp;
@@ -1162,14 +1174,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /**
    * Toggle the user's "I want to be online and syncing" preference. This
    * actually pauses/resumes the SyncManager (the gating effect above reacts
-   * to wantsOnline) and persists the choice across reloads. The browser's
+   * to wantsOnline) — for THIS session only; every boot starts back online,
+   * so a forgotten pause cannot strand a device's writes. The browser's
    * online/offline events still override the preference: if the network is
    * genuinely down, sync stays stopped regardless of preference.
    */
   const toggleOnline = useCallback(() => {
     setWantsOnline(prev => {
       const next = !prev;
-      writeSyncPreference(next);
       if (next) setLastSync(new Date().toISOString());
       return next;
     });

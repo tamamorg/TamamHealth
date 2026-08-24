@@ -166,7 +166,7 @@ type NavGroup = { title: string; items: NavItem[] };
 
 export default function RoleSettingsView() {
   const router = useRouter();
-  const { currentUser, isOnline, syncPaused, lastSync, refreshCurrentUser } = useApp();
+  const { currentUser, isOnline, syncPaused, lastSync, refreshCurrentUser, toggleOnline } = useApp();
   const { showToast } = useToast();
   const { canManageUsers, canAccess } = usePermissions();
   const { users, update: updateUser } = useUsers();
@@ -747,6 +747,33 @@ export default function RoleSettingsView() {
                 As a card it repeated the heading, the DHIS2 status and the
                 last-push message that are all already on this screen. */}
             <FacilitySyncButton sync={sync} />
+          </div>
+          {/* The sync switch, where someone goes looking for it. Sync is ON
+              at every boot and cannot be paused persistently — this pauses
+              THIS session only, for the moments that genuinely call for it
+              (metered hotspot, clinic bandwidth saturated during an upload).
+              The row states the consequence rather than describing the
+              mechanism. */}
+          <div className="ehr-set-row">
+            <div className="ehr-set-row-label">
+              <b>Keep this device syncing</b>
+              <span>
+                {syncPaused
+                  ? 'Paused for this session — records save locally and reach the server after sync resumes. Sync turns back on at the next sign-in regardless.'
+                  : 'Records replicate to the server whenever the device is online. Pausing lasts for this session only.'}
+              </span>
+            </div>
+            <button
+              type="button"
+              className={`ehr-set-toggle ${syncPaused ? '' : 'is-on'}`.trim()}
+              role="switch"
+              aria-checked={!syncPaused}
+              aria-label="Keep this device syncing"
+              onClick={toggleOnline}
+            >
+              <b>{syncPaused ? 'Off' : 'On'}</b>
+              <span><i /></span>
+            </button>
           </div>
           <div className="ehr-set-integrations">
             {cells.map(cell => (
