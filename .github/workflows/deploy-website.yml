@@ -39,6 +39,8 @@ on:
 permissions:
   contents: read
   packages: write
+  # Raise/close the failure alarm — see .github/actions/alert-failure.
+  issues: write
 
 concurrency:
   group: deploy-website
@@ -363,3 +365,12 @@ jobs:
         if: ${{ steps.gate.outputs.ready == 'true' }}
         continue-on-error: true
         run: node website/scripts/indexnow.mjs
+
+      # An unread red run is not an alarm. Opens one issue while this
+      # workflow is broken and closes it on the next success.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: tamamhealth.org is not up to date — the public site is serving its previous build.

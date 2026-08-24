@@ -175,3 +175,86 @@ describe('production configuration warnings', () => {
     expect(productionConfigWarnings(noRedis).join(' ')).not.toMatch(/redis/i);
   });
 });
+
+// ── Demo mode may not run on top of a real datastore ────────────────────────
+describe('demo mode is a carve-out, not a production mode', () => {
+  /**
+   * `NEXT_PUBLIC_DEMO_MODE=true` waives the PHI-at-rest requirement, skips
+   * every production warning, and switches on the patient portal's demo
+   * fallback — nine routes that answer with fabricated clinical data when
+   * CouchDB is briefly unreachable.
+   *
+   * The Aug 2026 audit found nothing asserted it was off in production: the
+   * only thing keeping the combination out was a hardcoded build-arg in one
+   * workflow. These pin the rule that replaced it — demo mode is legal only
+   * where there is no datastore to misrepresent, which is the same pair
+   * `isStandaloneDemo()` already tests before authenticating a seeded account.
+   */
+  const realDeployment = validEnvironment;  // already carries CouchDB credentials
+
+  it('refuses to boot when demo mode is on and CouchDB is configured', () => {
+    const errors = validateProductionConfig({ ...realDeployment(), NEXT_PUBLIC_DEMO_MODE: 'true' });
+    expect(errors.join(' ')).toMatch(/NEXT_PUBLIC_DEMO_MODE=true with CouchDB credentials/);
+  });
+
+  it('still allows the standalone demo, which has no datastore', () => {
+    const env = { ...validEnvironment(), NEXT_PUBLIC_DEMO_MODE: 'true' };
+    delete (env as Record<string, unknown>).COUCHDB_ADMIN_USER;
+    delete (env as Record<string, unknown>).COUCHDB_ADMIN_PASSWORD;
+    delete (env as Record<string, unknown>).COUCHDB_USER;
+    delete (env as Record<string, unknown>).COUCHDB_PASSWORD;
+    const errors = validateProductionConfig(env);
+    expect(errors.join(' ')).not.toMatch(/NEXT_PUBLIC_DEMO_MODE=true with CouchDB credentials/);
+  });
+
+  it('leaves a normal production deployment alone', () => {
+    const errors = validateProductionConfig(realDeployment());
+    expect(errors.join(' ')).not.toMatch(/NEXT_PUBLIC_DEMO_MODE/);
+  });
+});
+
+// ── An optional integration must never be able to take down the EHR ─────────
+describe('optional integrations are not boot-critical unless enabled', () => {
+  /**
+   * This is the rule, not the instance. Production refused to boot for a day
+   * because `AIRTEL_/MPESA_WEBHOOK_GATEWAY_VERIFIED=true` was required
+   * unconditionally — a clinic that takes no mobile money lost its entire
+   * record system over a payment integration nobody had configured, and the
+   * deploy that would have fixed it could not verify itself either.
+   *
+   * Every optional third-party integration gets a line here. Adding one that
+   * fails this test means it can do the same thing again.
+   */
+  const OPTIONAL_INTEGRATIONS = ['AIRTEL_WEBHOOK', 'MPESA_WEBHOOK', 'FLUTTERWAVE'];
+
+  it.each(OPTIONAL_INTEGRATIONS)('%s is silent when unconfigured', prefix => {
+    const env = validEnvironment();
+    for (const key of Object.keys(env)) {
+      if (key.startsWith(prefix)) delete (env as Record<string, unknown>)[key];
+    }
+    const errors = validateProductionConfig(env).join(' ');
+    expect(errors).not.toMatch(new RegExp(prefix));
+  });
+
+  /**
+   * The distinction that makes the rule above safe to state.
+   *
+   * Shared Redis is NOT an optional integration — without it the JWT
+   * revocation list is per-instance, so a logged-out token stays valid on
+   * other replicas. That genuinely is boot-critical. What keeps it from being
+   * the Airtel bug is the escape hatch: an operator running exactly one
+   * replica can say so, explicitly, and boot.
+   *
+   * That is the shape any new hard requirement should take — a demand plus a
+   * documented way to satisfy it, never a demand a correct deployment cannot
+   * meet.
+   */
+  it('shared Redis is required, but offers an explicit acknowledgement path', () => {
+    const env = validEnvironment();
+    delete env.UPSTASH_REDIS_REST_URL;
+    delete env.UPSTASH_REDIS_REST_TOKEN;
+    expect(validateProductionConfig(env).join(' ')).toMatch(/UPSTASH/);
+
+    expect(validateProductionConfig({ ...env, SINGLE_REPLICA_ACK: 'true' })).toEqual([]);
+  });
+});

@@ -25,6 +25,8 @@ on:
 permissions:
   contents: read
   packages: write
+  # Raise/close the failure alarm — see .github/actions/alert-failure.
+  issues: write
 
 concurrency:
   group: deploy-production
@@ -186,6 +188,15 @@ jobs:
           cache-from: type=gha,scope=sync-worker
           cache-to: type=gha,mode=max,scope=sync-worker
 
+      # Without this a build failure is silent: the deploy jobs below only
+      # `needs:` this one, so they report "skipped" rather than failed.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: Production images could not be built, so no deploy can proceed.
+
   ssh-deploy:
     name: ssh deploy to production host (vps target)
     if: ${{ (github.event.inputs.target || 'vps') == 'vps' }}
@@ -309,6 +320,15 @@ jobs:
              rm -f '.tamamhealth-rollback-platform-$SHA' && \
              docker image prune -f"
 
+      # An unread red run is not an alarm. Opens one issue while this
+      # workflow is broken and closes it on the next success.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: Production is running whatever build it had before this run. New fixes are not live.
+
   aws-deploy:
     name: cloudformation deploy to af-south-1 (aws target)
     if: ${{ github.event.inputs.target == 'aws' }}
@@ -362,3 +382,12 @@ jobs:
               --image-tag production \
               --keypair "${{ secrets.PROD_EC2_KEYPAIR }}" \
               --region "${{ secrets.AWS_REGION || 'af-south-1' }}"
+
+      # An unread red run is not an alarm. Opens one issue while this
+      # workflow is broken and closes it on the next success.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: Production is running whatever build it had before this run. New fixes are not live.

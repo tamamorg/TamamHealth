@@ -34,6 +34,8 @@ on:
 permissions:
   contents: read
   id-token: write
+  # Raise/close the failure alarm — see .github/actions/alert-failure.
+  issues: write
 
 concurrency:
   # Two overlapping sweeps could both read the same accepted transfer before
@@ -119,3 +121,12 @@ jobs:
             echo "$RESPONSE" | jq -r '.failed[] | "::error title=Transfer sweep failed::\(.id): \(.error)"'
             exit 1
           fi
+
+      # An unread red run is not an alarm. Opens one issue while this
+      # workflow is broken and closes it on the next success.
+      - name: Raise or clear the failure alarm
+        if: always()
+        uses: ./.github/actions/alert-failure
+        with:
+          status: ${{ job.status }}
+          severity: Scheduled patient transfers are not being applied on time. These are datetime-precision promises about a patient handover.
