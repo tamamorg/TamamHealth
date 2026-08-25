@@ -28,7 +28,7 @@ export default function PopupHeader({
   closeLabel?: string;
 }) {
   return (
-    <header className="popup-resource-header">
+    <header className="popup-resource-header modal-no-headband">
       <div className="popup-resource-header__copy">
         <h2 id={titleId} className="popup-resource-header__title">{title}</h2>
         {subtitle && <p className="popup-resource-header__subtitle">{subtitle}</p>}
