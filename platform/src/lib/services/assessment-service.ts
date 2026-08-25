@@ -50,13 +50,14 @@ function scored(instrumentId: string, answers: Record<string, number>) {
   };
 }
 
-export async function getAssessmentsByPatient(patientId: string): Promise<AssessmentDoc[]> {
-  const rows = await findByType<AssessmentDoc>(
+export async function getAssessmentsByPatient(patientId: string, scope?: DataScope): Promise<AssessmentDoc[]> {
+  let rows = await findByType<AssessmentDoc>(
     assessmentsDB(),
     'assessment',
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
+  if (scope) rows = filterByScope(rows, scope);
   return rows.sort(byNewest);
 }
 

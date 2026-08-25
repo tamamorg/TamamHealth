@@ -93,9 +93,19 @@ describe('org-scoped validate_doc_update', () => {
         .toBeNull();
     });
 
-    it('stops a role that is absent from the type’s row', () => {
+    it('lets nursing roles create only the dedicated vitals observation subtype', () => {
+      expect(reasonFor({
+        _id: 'r-vitals', type: 'medical_record', orgId: 'org-a',
+        recordKind: 'nursing_vitals',
+      }, null, nurseUser)).toBeNull();
+
       expect(reasonFor({ _id: 'r-1', type: 'medical_record', orgId: 'org-a' }, null, nurseUser))
-        .toMatch(/role nurse may not write documents of type medical_record/);
+        .toMatch(/may create medical_record only when recordKind/);
+
+      expect(reasonFor({
+        _id: 'r-consult', type: 'medical_record', orgId: 'org-a',
+        recordKind: 'consultation',
+      }, null, nurseUser)).toMatch(/may create medical_record only when recordKind/);
     });
 
     it('rejects a user provisioned without a role claim', () => {
@@ -106,7 +116,7 @@ describe('org-scoped validate_doc_update', () => {
 
     it('never reads the acting role from the document body', () => {
       const spoofed = { _id: 'r-1', type: 'medical_record', orgId: 'org-a', role: 'doctor' };
-      expect(reasonFor(spoofed, null, nurseUser)).toMatch(/role nurse may not write/);
+      expect(reasonFor(spoofed, null, nurseUser)).toMatch(/role nurse may create medical_record only when recordKind/);
     });
 
     it('fails closed on a document type with no permission row', () => {

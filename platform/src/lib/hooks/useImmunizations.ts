@@ -19,7 +19,7 @@ export function useImmunizations(patientId?: string) {
       setError(null);
       const { getAllImmunizations, getImmunizationStats, getVaccineCoverage, getByPatient } = await import('../services/immunization-service');
       const [data, s, c] = patientId
-        ? [await getByPatient(patientId), null, null]
+        ? [await getByPatient(patientId, scope), null, null]
         : await Promise.all([getAllImmunizations(scope), getImmunizationStats(scope), getVaccineCoverage(scope)]);
       setImmunizations(data);
       setStats(s);
@@ -62,5 +62,12 @@ export function useImmunizations(patientId?: string) {
     return doc;
   }, [load]);
 
-  return { immunizations, stats, coverage, loading, error, register, update, reload: load };
+  const enterInError = useCallback(async (id: string, reason: string, actor?: { id?: string; name?: string }) => {
+    const { enterImmunizationInError } = await import('../services/immunization-service');
+    const doc = await enterImmunizationInError(id, reason, actor);
+    await load();
+    return doc;
+  }, [load]);
+
+  return { immunizations, stats, coverage, loading, error, register, update, enterInError, reload: load };
 }

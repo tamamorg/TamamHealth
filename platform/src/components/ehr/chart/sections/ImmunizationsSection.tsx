@@ -25,6 +25,7 @@ import { VACCINE_NAMES } from '@/lib/services/immunization-service';
 import { formatDate, humanizeStatus } from '@/lib/format-utils';
 import { toIsoDate } from '@/lib/date-utils';
 import type { ImmunizationDoc, PatientDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const SITES: ImmunizationDoc['site'][] = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
 
@@ -47,9 +48,13 @@ interface ImmunizationsSectionProps {
 export default function ImmunizationsSection({ patient, patientName, canRecord, facilityName }: ImmunizationsSectionProps) {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const { immunizations, register } = useImmunizations(patient._id);
+  const { t } = useTranslation();
+  const { immunizations, register, update, enterInError } = useImmunizations(patient._id);
 
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<ImmunizationDoc | null>(null);
+  const [errorTarget, setErrorTarget] = useState<ImmunizationDoc | null>(null);
+  const [errorReason, setErrorReason] = useState('');
   const [vaccine, setVaccine] = useState<string>(VACCINE_NAMES[0]);
   const [doseNumber, setDoseNumber] = useState('1');
   const [dateGiven, setDateGiven] = useState(() => toIsoDate(new Date()));
@@ -76,7 +81,21 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
     setBatchNumber('');
     setAdverseReaction(false);
     setAdverseDetails('');
+    setEditing(null);
     setAdding(false);
+  };
+
+  const startEdit = (record: ImmunizationDoc) => {
+    setEditing(record);
+    setVaccine(record.vaccine);
+    setDoseNumber(String(record.doseNumber));
+    setDateGiven(record.dateGiven);
+    setNextDueDate(record.nextDueDate || '');
+    setSite(record.site);
+    setBatchNumber(record.batchNumber || '');
+    setAdverseReaction(record.adverseReaction);
+    setAdverseDetails(record.adverseReactionDetails || '');
+    setAdding(true);
   };
 
   const handleSubmit = async () => {
@@ -88,31 +107,55 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
     if (!batchNumber.trim()) { showToast('Record the vaccine batch number', 'error'); return; }
     try {
       setSubmitting(true);
-      await register({
-        patientId: patient._id,
-        patientName,
-        gender: (patient.gender as 'Male' | 'Female') || 'Female',
-        dateOfBirth: patient.dateOfBirth || '',
+      const doseData = {
         vaccine,
         doseNumber: dose,
         dateGiven,
         nextDueDate: nextDueDate || '',
-        facilityId: currentUser?.hospitalId || patient.registrationHospital || '',
-        facilityName: facilityName || currentUser?.hospitalName || '',
-        state: patient.state || '',
-        administeredBy: currentUser?.name || currentUser?.username || 'Care team',
         batchNumber: batchNumber.trim(),
         site,
         adverseReaction,
         adverseReactionDetails: adverseReaction ? adverseDetails.trim() || undefined : undefined,
+      };
+      if (editing) {
+        const saved = await update(editing._id, doseData);
+        if (!saved) throw new Error('Update failed');
+      } else await register({
+        patientId: patient._id,
+        patientName,
+        gender: (patient.gender as 'Male' | 'Female') || 'Female',
+        dateOfBirth: patient.dateOfBirth || '',
+        ...doseData,
+        facilityId: currentUser?.hospitalId || patient.registrationHospital || '',
+        facilityName: facilityName || currentUser?.hospitalName || '',
+        state: patient.state || '',
+        administeredBy: currentUser?.name || currentUser?.username || 'Care team',
         status: 'completed',
         orgId: currentUser?.orgId,
       });
-      showToast('Immunization recorded', 'success');
+      showToast(editing ? t('chart.immunizationCorrected') : 'Immunization recorded', 'success');
       resetForm();
     } catch (err) {
       console.error(err);
       showToast('Could not record this immunization. Please try again.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const markEnteredInError = async () => {
+    if (!errorTarget || errorReason.trim().length < 3) {
+      showToast(t('chart.correctionReasonRequired'), 'error');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await enterInError(errorTarget._id, errorReason, { id: currentUser?._id, name: currentUser?.name });
+      showToast(t('chart.immunizationMarkedError'), 'success');
+      setErrorTarget(null);
+      setErrorReason('');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t('chart.immunizationUpdateFailed'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -136,13 +179,14 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                   {['Vaccine', 'Dose', 'Date given', 'Next due', 'Site', 'Batch', 'Status'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
+                  <th>{t('chart.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map(im => {
                   const s = STATUS_STYLE[im.status] || STATUS_STYLE.scheduled;
                   return (
-                    <tr key={im._id}>
+                    <tr key={im._id} style={im.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : undefined}>
                       <td style={{ fontWeight: 600 }}>
                         {im.vaccine}
                         {im.adverseReaction && (
@@ -161,6 +205,16 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                           {humanizeStatus(im.status)}
                         </span>
                       </td>
+                      <td>
+                        {im.recordStatus === 'entered_in_error' ? (
+                          <span title={im.statusReason}>{t('chart.enteredInError')}</span>
+                        ) : canRecord ? (
+                          <div className="flex gap-1">
+                            <button type="button" className="btn btn-xs btn-secondary" onClick={() => startEdit(im)}>{t('chart.correct')}</button>
+                            <button type="button" className="btn btn-xs btn-secondary" onClick={() => setErrorTarget(im)}>{t('chart.markError')}</button>
+                          </div>
+                        ) : '—'}
+                      </td>
                     </tr>
                   );
                 })}
@@ -174,7 +228,9 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
         <Modal onClose={() => !submitting && resetForm()} width={520} labelledBy="add-immunization-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
-              <h2 id="add-immunization-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Record immunization</h2>
+              <h2 id="add-immunization-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {editing ? t('chart.correctImmunization') : 'Record immunization'}
+              </h2>
               <button className="p-1 rounded" onClick={() => !submitting && resetForm()} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
 
@@ -267,8 +323,25 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
             <div className="flex items-center justify-end gap-2 pt-1">
               <button className="btn btn-sm btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
               <button className="btn btn-sm btn-primary" disabled={submitting || !batchNumber.trim()} onClick={handleSubmit}>
-                {submitting ? 'Saving…' : 'Save immunization'}
+                {submitting ? 'Saving…' : editing ? t('chart.saveCorrection') : 'Save immunization'}
               </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {errorTarget && (
+        <Modal onClose={() => !submitting && setErrorTarget(null)} width={440} labelledBy="immunization-error-title">
+          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+            <h2 id="immunization-error-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('chart.markImmunizationError')}</h2>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('chart.markImmunizationErrorHelp')}</p>
+            <label className="flex flex-col gap-1.5 text-xs font-semibold">
+              {t('chart.correctionReason')}
+              <textarea rows={3} value={errorReason} onChange={e => setErrorReason(e.target.value)} className="w-full p-2.5 rounded-md text-[13px]" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button className="btn btn-sm btn-secondary" disabled={submitting} onClick={() => setErrorTarget(null)}>{t('common.cancel')}</button>
+              <button className="btn btn-sm btn-primary" disabled={submitting || errorReason.trim().length < 3} onClick={markEnteredInError}>{t('chart.markError')}</button>
             </div>
           </div>
         </Modal>

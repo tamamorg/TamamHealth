@@ -62,9 +62,9 @@ export function usePrograms(patientId?: string) {
     return doc;
   }, [load]);
 
-  const remove = useCallback(async (id: string) => {
+  const remove = useCallback(async (id: string, reason: string) => {
     const { deleteProgramEnrollment } = await import('../services/program-service');
-    const ok = await deleteProgramEnrollment(id);
+    const ok = await deleteProgramEnrollment(id, reason);
     await load();
     return ok;
   }, [load]);

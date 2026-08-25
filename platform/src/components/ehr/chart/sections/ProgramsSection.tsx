@@ -152,7 +152,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
                   </td>
                   <td><span className={STATUS_BADGE[e.status]}>{STATUS_LABELS[e.status]}</span></td>
                   <td>
-                    {canConsult && e.status === 'active' ? (
+                    {canConsult ? (
                       <Select
                         className="omrs-section-filter"
                         disabled={statusBusy === e._id}
@@ -161,10 +161,9 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
                         aria-label={`Update ${e.programName} enrollment status`}
                       >
                         <option value="">{statusBusy === e._id ? 'Saving…' : 'Mark as…'}</option>
-                        <option value="completed">Completed</option>
-                        <option value="transferred_out">Transferred out</option>
-                        <option value="lost_to_follow_up">Lost to follow-up</option>
-                        <option value="discontinued">Discontinued</option>
+                        {(Object.keys(STATUS_LABELS) as ProgramEnrollmentStatus[])
+                          .filter(status => status !== e.status)
+                          .map(status => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
                       </Select>
                     ) : '—'}
                   </td>

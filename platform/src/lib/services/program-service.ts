@@ -101,24 +101,18 @@ export async function updateProgramEnrollment(id: string, data: Partial<ProgramE
   }
 }
 
-export async function deleteProgramEnrollment(id: string): Promise<boolean> {
-  const db = programEnrollmentsDB();
-  try {
-    const doc = await db.get(id);
-    const typed = doc as unknown as ProgramEnrollmentDoc;
-    await db.remove(doc);
-    await logAuditSafe('DELETE_PROGRAM_ENROLLMENT', undefined, undefined, `Program enrollment ${id}: ${typed.programName} for ${typed.patientName || typed.patientId}`);
-    emitSyncEvent({
-      resourceType: 'program_enrollment',
-      resourceId: id,
-      operation: 'delete',
-      orgId: typed.orgId,
-      hospitalId: typed.hospitalId,
-    });
-    return true;
-  } catch {
-    return false;
-  }
+/** Discontinue an enrollment with a reason instead of erasing its history. */
+export async function deleteProgramEnrollment(id: string, reason: string): Promise<boolean> {
+  const cleanReason = reason.trim();
+  if (cleanReason.length < 3) throw new Error('A reason is required to discontinue a program enrollment.');
+  const updated = await updateProgramEnrollment(id, {
+    status: 'discontinued',
+    outcomeDate: todayIso(),
+    outcomeReason: cleanReason,
+  });
+  if (!updated) return false;
+  await logAuditSafe('PROGRAM_ENROLLMENT_DISCONTINUED', undefined, undefined, `Program enrollment ${id}: ${cleanReason}`);
+  return true;
 }
 
 /**
@@ -129,5 +123,6 @@ export async function deleteProgramEnrollment(id: string): Promise<boolean> {
 export async function setProgramEnrollmentStatus(id: string, status: ProgramEnrollmentStatus): Promise<ProgramEnrollmentDoc | null> {
   const patch: Partial<ProgramEnrollmentDoc> = { status };
   patch.outcomeDate = status === 'active' ? undefined : todayIso();
+  if (status === 'active') patch.outcomeReason = undefined;
   return updateProgramEnrollment(id, patch);
 }

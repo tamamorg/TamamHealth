@@ -5,23 +5,25 @@ import { makeCoalescer } from './live-reload';
 import type { PatientDocumentDoc } from '../db-types';
 import { patientDocumentsDB } from '../db';
 import type { AddPatientDocumentInput } from '../services/patient-document-service';
+import { useDataScope } from './useDataScope';
 
 /** Scanned/uploaded documents filed on a patient's chart, live-reloaded. */
 export function usePatientDocuments(patientId?: string) {
   const [documents, setDocuments] = useState<PatientDocumentDoc[]>([]);
   const [loading, setLoading] = useState(true);
+  const scope = useDataScope();
 
   const load = useCallback(async () => {
     if (!patientId) { setDocuments([]); setLoading(false); return; }
     try {
       const { getPatientDocuments } = await import('../services/patient-document-service');
-      setDocuments(await getPatientDocuments(patientId));
+      setDocuments(await getPatientDocuments(patientId, scope));
     } catch {
       setDocuments([]);
     } finally {
       setLoading(false);
     }
-  }, [patientId]);
+  }, [patientId, scope]);
 
   useEffect(() => { load(); }, [load]);
 

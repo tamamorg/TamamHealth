@@ -17,6 +17,8 @@ import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { todayIso } from '@/lib/date-utils';
+import type { DataScope } from './data-scope';
+import { filterByScope } from './data-scope';
 
 function todayISO(): string {
   return todayIso();
@@ -33,13 +35,14 @@ function reminderOrder(a: PatientReminderDoc, b: PatientReminderDoc): number {
 }
 
 /** All reminders for a patient. */
-export async function getRemindersByPatient(patientId: string): Promise<PatientReminderDoc[]> {
-  const rows = await findByType<PatientReminderDoc>(
+export async function getRemindersByPatient(patientId: string, scope?: DataScope): Promise<PatientReminderDoc[]> {
+  let rows = await findByType<PatientReminderDoc>(
     patientRemindersDB(),
     'patient_reminder',
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
+  if (scope) rows = filterByScope(rows, scope);
   return rows.sort(reminderOrder);
 }
 

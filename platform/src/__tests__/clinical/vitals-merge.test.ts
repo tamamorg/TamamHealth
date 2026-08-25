@@ -75,6 +75,25 @@ describe('mergeVitalsTimeline', () => {
     expect(rows[0].source).toBe('Nursing');
   });
 
+  test('an appended correction replaces the original row without erasing provenance', () => {
+    const original = record({
+      _id: 'mr-wrong', recordKind: 'nursing_vitals', consultedAt: '2026-02-01T10:00:00.000Z',
+      vitalSigns: { temperature: 39.1 } as MedicalRecordDoc['vitalSigns'],
+    });
+    const correction = record({
+      _id: 'mr-corrected', recordKind: 'nursing_vitals', consultedAt: '2026-02-01T10:05:00.000Z',
+      correctsRecordId: original._id, correctionReason: 'Decimal entered incorrectly',
+      vitalSigns: { temperature: 36.9 } as MedicalRecordDoc['vitalSigns'],
+    });
+
+    const rows = mergeVitalsTimeline([original, correction], []);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: 'mr-corrected', temperature: 36.9, corrected: true,
+      correctionReason: 'Decimal entered incorrectly',
+    });
+  });
+
   test('triage-only: returns one Triage-sourced entry with strings parsed to numbers', () => {
     const rows = mergeVitalsTimeline([], [
       triage({

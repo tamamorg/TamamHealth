@@ -36,8 +36,8 @@ export async function getAllMessages(scope?: DataScope): Promise<MessageDoc[]> {
   return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getMessagesByPatient(patientId: string): Promise<MessageDoc[]> {
-  const all = await getAllMessages();
+export async function getMessagesByPatient(patientId: string, scope?: DataScope): Promise<MessageDoc[]> {
+  const all = await getAllMessages(scope);
   // Exclude internal staff chat only. A patient→staff message legitimately has
   // recipientType 'staff' (the recipient is staff), so we must NOT filter on
   // recipientType here — that would drop real inbound patient messages.

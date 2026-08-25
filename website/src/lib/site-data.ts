@@ -746,7 +746,12 @@ export const ROLES: LoginRole[] = [
  */
 export function platformHref(role: LoginRole["key"] = "staff"): string {
   const path = ROLES.find(r => r.key === role)?.path ?? "/login";
-  return `${PLATFORM_URL}${path}`;
+  /* Three of the four doors land on the same `/login`, so the door travels
+     with the link: the platform reads `?portal=` and shows the picture for
+     the product being entered rather than a doctor at a workstation to
+     everyone. Staff is the default there, so its link stays clean. */
+  const door = path === "/login" && role !== "staff" ? `?portal=${role}` : "";
+  return `${PLATFORM_URL}${path}${door}`;
 }
 
 export const LEGAL = [

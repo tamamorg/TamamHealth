@@ -57,6 +57,18 @@ export function useProcedures(patientId?: string) {
     return doc;
   }, [load]);
 
+  const amend = useCallback(async (
+    id: string,
+    data: Pick<Partial<ProcedureDoc>, 'name' | 'code' | 'date' | 'bodySite' | 'outcome' | 'notes'>,
+    reason: string,
+    actor?: { id?: string; name?: string },
+  ) => {
+    const { amendProcedure } = await import('../services/procedure-service');
+    const doc = await amendProcedure(id, data, reason, actor);
+    await load();
+    return doc;
+  }, [load]);
+
   /**
    * Move a procedure along its Stage 7 lifecycle. Distinct from `update`
    * because the service validates the move against `PROCEDURE_TRANSITIONS` and
@@ -73,9 +85,9 @@ export function useProcedures(patientId?: string) {
     return doc;
   }, [load]);
 
-  const remove = useCallback(async (id: string) => {
+  const remove = useCallback(async (id: string, reason: string, actor?: { id?: string; name?: string }) => {
     const { deleteProcedure } = await import('../services/procedure-service');
-    const ok = await deleteProcedure(id);
+    const ok = await deleteProcedure(id, reason, actor);
     await load();
     return ok;
   }, [load]);
@@ -86,5 +98,5 @@ export function useProcedures(patientId?: string) {
     return [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [allProcedures, patientId]);
 
-  return { procedures, allProcedures, loading, error, create, update, advance, remove, reload: load };
+  return { procedures, allProcedures, loading, error, create, update, amend, advance, remove, reload: load };
 }

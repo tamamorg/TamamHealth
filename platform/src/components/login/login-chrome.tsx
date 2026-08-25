@@ -189,6 +189,13 @@ export const loginStyles = (
        panel — the sign-in form must never be pushed off screen by a list of
        demo logins. */
     .lg-demo-scroll { max-height: min(64vh, 640px); overflow-y: auto; padding-right: 4px; }
+    /* The role photograph over the roster. Shorter than the product panel's
+       band — the list is what the column is for, and the picture is a caption
+       to whichever row the pointer is on. It never moves, so running down the
+       roster swaps the image in place rather than reflowing the panel. */
+    .lg-demo-shot { height: 132px; margin: 0 0 10px; background: #FFFFFF; overflow: hidden; }
+    .lg-demo-shot img { width: 100%; height: 100%; object-fit: cover; object-position: center 38%; display: block; transition: opacity 120ms ease; }
+    @media (prefers-reduced-motion: reduce) { .lg-demo-shot img { transition: none; } }
 
     .lg-aside { background: var(--lg-surface); padding: 30px 32px 32px; display: flex; flex-direction: column; gap: 14px; }
     .lg-eyebrow { font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lg-accent-700); }
@@ -203,6 +210,17 @@ export const loginStyles = (
     /* A portrait source in the same landscape band needs a higher anchor, or
        the crop keeps the desk and loses the person. */
     .lg-shot--portrait img { object-position: center 12%; }
+
+    /* Signed in already: who, and the way out. This screen used to be a
+       spinner and a promise — the only path was back into the session you were
+       trying to leave. */
+    .lg-redirect-who { margin: 2px 0 0; font-size: 13px; color: var(--lg-neutral-600); }
+    .lg-redirect-switch {
+      margin-top: 14px; padding: 8px 16px; border: 1px solid var(--lg-accent);
+      background: #FFFFFF; color: var(--lg-accent-700); font: inherit; font-size: 14px;
+      font-weight: 600; cursor: pointer;
+    }
+    .lg-redirect-switch:hover { background: var(--lg-accent-100); }
 
     .lg-footer {
       border-top: 1px solid var(--lg-divider); padding: 22px 32px; display: flex;

@@ -93,12 +93,12 @@ export default function PrescribeModal({
     (async () => {
       try {
         const { getPatientById } = await import('@/lib/services/patient-service');
-        const pt = await getPatientById(patientId);
+        const pt = await getPatientById(patientId, scope);
         if (!cancelled) setPatient(pt);
       } catch { /* cost panel falls back to out-of-pocket */ }
       try {
         const { getProblemsByPatient } = await import('@/lib/services/problem-service');
-        const rows = await getProblemsByPatient(patientId);
+        const rows = await getProblemsByPatient(patientId, scope);
         if (!cancelled) setProblems(rows.filter(p => p.status === 'active' || p.status === 'chronic'));
       } catch { /* Reason For Rx offers nothing to cite */ }
       try {
@@ -108,7 +108,7 @@ export default function PrescribeModal({
       } catch { /* the save-time interaction check still runs */ }
       try {
         const { getAllInventory } = await import('@/lib/services/pharmacy-inventory-service');
-        const items = await getAllInventory();
+        const items = await getAllInventory(scope);
         if (!cancelled) setInventory(items);
       } catch { /* Cautions says "not stocked" */ }
       try {
