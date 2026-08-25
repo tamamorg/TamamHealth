@@ -14,19 +14,22 @@ import { findByType } from './db-query';
 import { validateAttachmentPayload } from '../validation';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
+import type { DataScope } from './data-scope';
+import { filterByScope } from './data-scope';
 
 function byNewest(a: PatientDocumentDoc, b: PatientDocumentDoc): number {
   return new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime();
 }
 
 /** All documents filed on a patient's chart, newest first. */
-export async function getPatientDocuments(patientId: string): Promise<PatientDocumentDoc[]> {
-  const rows = await findByType<PatientDocumentDoc>(
+export async function getPatientDocuments(patientId: string, scope?: DataScope): Promise<PatientDocumentDoc[]> {
+  let rows = await findByType<PatientDocumentDoc>(
     patientDocumentsDB(),
     'patient_document',
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
+  if (scope) rows = filterByScope(rows, scope);
   return rows.sort(byNewest);
 }
 

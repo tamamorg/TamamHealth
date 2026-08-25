@@ -339,6 +339,13 @@ export interface MedicalRecordDoc extends BaseDoc, Omit<MedicalRecord, 'id'> {
    * rather than by matching the chief-complaint string.
    */
   recordKind?: 'consultation' | 'nursing_vitals';
+  /**
+   * A nursing observation is corrected by appending a replacement rather than
+   * rewriting or deleting the original measurement. Readers suppress the
+   * superseded row while both documents remain available for provenance.
+   */
+  correctsRecordId?: string;
+  correctionReason?: string;
 
   // --- Document signing & locking (P0.1) ------------------------------------
   /**
@@ -892,6 +899,7 @@ export interface ProgramEnrollmentDoc extends BaseDoc {
   enrollmentDate: string;
   /** Date the enrollment ended (completed/transferred/discontinued/LTFU), if any (YYYY-MM-DD) */
   outcomeDate?: string;
+  outcomeReason?: string;
   notes?: string;
   recordedBy?: string;
   recordedByName?: string;
@@ -940,6 +948,14 @@ export interface ProcedureDoc extends BaseDoc {
   bodySite?: string;
   outcome?: string;
   notes?: string;
+  amended?: boolean;
+  amendedAt?: string;
+  amendedBy?: string;
+  amendmentReason?: string;
+  recordStatus?: 'active' | 'entered_in_error';
+  statusReason?: string;
+  statusChangedAt?: string;
+  statusChangedBy?: string;
   hospitalId?: string;
   hospitalName?: string;
   orgId?: string;
@@ -1790,6 +1806,11 @@ export interface ImmunizationDoc extends BaseDoc {
   adverseReaction: boolean;
   adverseReactionDetails?: string;
   status: 'completed' | 'scheduled' | 'overdue' | 'missed';
+  /** Clinical records are retired with a reason, never hard-deleted. */
+  recordStatus?: 'active' | 'entered_in_error';
+  statusReason?: string;
+  statusChangedAt?: string;
+  statusChangedBy?: string;
   orgId?: string;
 }
 
