@@ -3989,6 +3989,7 @@ const en: TranslationMap = {
   'orgSettings.title': 'Organization Settings',
   'orgSettings.toastTimeoutFailed': 'Failed to update timeout',
   'orgSettings.toastTimeoutUpdated': 'Lock timeout updated',
+  'orgUsers.addUser': 'Add user',
   'orgUsers.allRoles': 'All Roles',
   'orgUsers.allStatus': 'All Status',
   'orgUsers.colActions': 'Actions',

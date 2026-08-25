@@ -3981,6 +3981,7 @@ const apd: TranslationMap = {
   'orgSettings.title': 'إعدادات المنظمة',
   'orgSettings.toastTimeoutFailed': 'فشل تحديث المهلة',
   'orgSettings.toastTimeoutUpdated': 'مهلة القفل اتحدّثت',
+  'orgUsers.addUser': 'ضيف مستخدم',
   'orgUsers.allRoles': 'كل الأدوار',
   'orgUsers.allStatus': 'كل الحالات',
   'orgUsers.colActions': 'الإجراءات',

@@ -29128,6 +29128,25 @@ table.patient-data-table.patient-data-table {
 }
 .sadb-head-link:hover { color: var(--accent-hover); }
 
+/* Icon-only head action. Sized to the 32px touch floor rather than to the
+   glyph, so it is hittable on a tablet — the head strip's text links are not,
+   and this sits beside them. */
+.sadb-head-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: var(--bg-card-solid);
+  color: var(--accent-primary);
+  cursor: pointer;
+}
+.sadb-head-iconbtn:hover { border-color: var(--brand-300); background: var(--tb-blue-50); }
+.sadb-head-iconbtn svg { width: 16px; height: 16px; }
+
 /* Card-head tabs. Pill shapes rather than underlines: the head is a 12px
    condensed strip, and an underline there would read as a second border
    under the card head. */

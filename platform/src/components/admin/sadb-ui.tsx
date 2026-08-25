@@ -230,6 +230,32 @@ export function SadbHeadLink({ children, onClick, dataAction }: {
   return <button type="button" className="sadb-head-link" onClick={onClick} data-action={dataAction}>{children} ›</button>;
 }
 
+/**
+ * An icon-only action for a card head — for the one action whose meaning the
+ * icon carries better than three uppercase words would ("open this in its own
+ * page").
+ *
+ * `label` is required and is never drawn: it is the accessible name, and a
+ * `title` so a pointer user gets the same word. An icon button with neither is
+ * a mystery box to a screen reader and a guess to everyone else.
+ */
+export function SadbHeadIconButton({ icon, label, onClick, dataAction }: {
+  icon: ReactNode; label: string; onClick: () => void; dataAction?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="sadb-head-iconbtn"
+      onClick={onClick}
+      data-action={dataAction}
+      aria-label={label}
+      title={label}
+    >
+      {icon}
+    </button>
+  );
+}
+
 /* ── Chips, KV rows, queue rows ────────────────────────────────────── */
 
 export function SadbChip({ tone, children }: { tone: ChipTone; children: ReactNode }) {
