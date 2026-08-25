@@ -60,6 +60,36 @@ export async function logDataAccess(
   );
 }
 
+/**
+ * One person's activity, newest first.
+ *
+ * The account page could show who someone IS and never what they had DONE:
+ * the only reader on this store was `getRecentAuditLogs`, which answers "what
+ * happened lately" across everyone. An access review asks the opposite —
+ * "what did this account do" — and there was no way to ask it.
+ *
+ * Matches on `userId`, falling back to `username` for older rows written
+ * before the id was carried. Both are compared exactly; a partial match here
+ * would fold two accounts with similar names into one person's history, which
+ * is the one mistake an access review must not make.
+ */
+export async function getAuditLogsForUser(
+  user: { id?: string; username?: string },
+  limit: number = 50,
+): Promise<AuditLogDoc[]> {
+  const { id, username } = user;
+  // No identifier means no history — returning "everyone" here would report
+  // the whole platform's activity as one account's.
+  if (!id && !username) return [];
+  const db = auditLogDB();
+  const docs = await findByType<AuditLogDoc>(db, 'audit_log');
+  const mine = docs.filter(d =>
+    (id !== undefined && d.userId === id)
+    || (username !== undefined && d.userId === undefined && d.username === username));
+  mine.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  return mine.slice(0, limit);
+}
+
 export async function getRecentAuditLogs(limit: number = 50): Promise<AuditLogDoc[]> {
   const db = auditLogDB();
   const docs = await findByType<AuditLogDoc>(db, 'audit_log');

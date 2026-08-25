@@ -40,6 +40,12 @@
  * order, folded so it is never cycled.
  */
 
+/* Marks ease in over ~420ms rather than appearing fully drawn. Every form on
+   this page had `isAnimationActive={false}`, which is why the page read as
+   static: switching report swapped one finished picture for another with no
+   sense that the bars were measuring anything. The duration is deliberately
+   short and the easing decelerating — a report is read, not watched, and a
+   long entrance delays the number someone came for. */
 import {
   BarChart, Bar, Cell, LabelList, PieChart, Pie, Legend, Treemap,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -215,7 +221,7 @@ export function ReportChart({ kind, points, valueLabel, accent = DEFAULT_ACCENT 
             paddingAngle={2}
             stroke="var(--bg-card-solid)"
             strokeWidth={2}
-            isAnimationActive={false}
+            isAnimationActive animationDuration={420} animationEasing="ease-out"
             /* Share, not raw count: the reason to draw a ring at all. Text
                wears a text token, never the slice colour, and slivers under
                4% go unlabelled — the legend and tooltip still carry them. */
@@ -258,7 +264,7 @@ export function ReportChart({ kind, points, valueLabel, accent = DEFAULT_ACCENT 
         <Treemap
           data={folded.map(p => ({ name: p.label, value: p.value }))}
           dataKey="value"
-          isAnimationActive={false}
+          isAnimationActive animationDuration={420} animationEasing="ease-out"
           content={<TreemapTile fills={fills} />}
         >
           <Tooltip {...tooltipStyle} formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), valueLabel]} />
@@ -290,7 +296,7 @@ export function ReportChart({ kind, points, valueLabel, accent = DEFAULT_ACCENT 
           <Tooltip {...tooltipStyle} cursor={{ fill: 'var(--overlay-subtle)' }} formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), valueLabel]} />
           {/* ≤24px thick with a 4px rounded cap, square at the baseline: the
               band's leftover is air, which is what keeps the panel quiet. */}
-          <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
+          <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive animationDuration={420} animationEasing="ease-out">
             {points.map(p => <Cell key={p.label} fill={rankedFill(p, accent)} />)}
             <LabelList dataKey="value" position="top" offset={8} style={VALUE_LABEL} formatter={formatValue} />
           </Bar>
@@ -327,7 +333,7 @@ export function ReportChart({ kind, points, valueLabel, accent = DEFAULT_ACCENT 
           dataKey="value"
           radius={[0, 4, 4, 0]}
           maxBarSize={isLollipop ? 12 : 20}
-          isAnimationActive={false}
+          isAnimationActive animationDuration={420} animationEasing="ease-out"
           shape={isLollipop ? <LollipopShape /> : undefined}
         >
           {points.map(p => <Cell key={p.label} fill={rankedFill(p, accent)} />)}

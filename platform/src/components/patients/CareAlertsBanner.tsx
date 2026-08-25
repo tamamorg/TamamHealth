@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Modal from '@/components/Modal';
 import { useAuth } from '@/lib/context';
 import type { PatientDoc } from '@/lib/db-types';
 import type { CareAlertCategory } from '@/data/mock';
@@ -10,8 +11,10 @@ import CareAlertFields, { CARE_ALERT_CATEGORY_LABELS } from '@/components/patien
 /**
  * Chart-permanent care alerts (P1.2). Active alerts render as a prominent
  * banner so patient-safety information (fall risk, difficult IV access, etc.)
- * is seen on every visit. Add and resolve inline; resolving requires a reason
- * (alerts are retained, never hard-deleted).
+ * is seen on every visit. Resolving opens a confirmation popup and requires a
+ * reason (alerts are retained, never hard-deleted) — it used to unfold a bare
+ * text field inside the banner, which put a one-click dismissal of a safety
+ * alert next to the alert it dismissed.
  */
 export default function CareAlertsBanner({ patient, hideAddButton = false }: { patient: PatientDoc; hideAddButton?: boolean }) {
   const { currentUser } = useAuth();
@@ -25,6 +28,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
   );
 
   const active = (patient.careAlerts ?? []).filter((a) => a.status === 'active');
+  const resolvingAlert = active.find((a) => a.id === resolvingId) ?? null;
   const author = { recordedBy: currentUser?._id, recordedByName: currentUser?.name || currentUser?.username };
 
   async function run(fn: () => Promise<unknown>) {
@@ -80,23 +84,13 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
               </div>
               {a.recordedByName && <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Added by {a.recordedByName}</span>}
             </div>
-            {resolvingId !== a.id ? (
-              <button className="btn btn-xs btn-secondary flex-shrink-0" disabled={busy} onClick={() => setResolvingId(a.id)}>
-                <X className="w-3 h-3" /> Resolve
-              </button>
-            ) : (
-              <span className="inline-flex items-center gap-2">
-                <input
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Resolution reason"
-                  className="p-1.5 rounded-md text-[12px]"
-                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                />
-                <button className="btn btn-xs btn-primary" disabled={busy || reason.trim().length === 0} onClick={() => run(() => doResolve(a.id))}>Confirm</button>
-                <button className="btn btn-xs btn-secondary" disabled={busy} onClick={() => { setResolvingId(null); setReason(''); }}>Cancel</button>
-              </span>
-            )}
+            <button
+              className="btn btn-xs btn-secondary flex-shrink-0"
+              disabled={busy}
+              onClick={() => { setReason(''); setResolvingId(a.id); }}
+            >
+              <X className="w-3 h-3" /> Resolve
+            </button>
           </div>
         );
       })}
@@ -127,6 +121,68 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
       )}
 
       {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+
+      {resolvingAlert && (
+        <Modal
+          onClose={() => { if (!busy) { setResolvingId(null); setReason(''); } }}
+          width={440}
+          labelledBy="care-alert-resolve-title"
+        >
+          <div className="modal-panel p-4">
+            <h2 id="care-alert-resolve-title" className="text-[16px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Resolve this care alert?
+            </h2>
+            <p className="text-[12.5px] mt-1.5" style={{ color: 'var(--text-secondary)' }}>
+              It stops showing on the chart banner. The alert is kept with the reason you
+              give here — it is never deleted.
+            </p>
+
+            <div className="rounded-lg p-3 mt-3" style={{ background: 'var(--overlay-subtle)' }}>
+              <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                {CARE_ALERT_CATEGORY_LABELS[resolvingAlert.category]}
+              </span>
+              <p className="text-[13px] font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                {resolvingAlert.message}
+              </p>
+              {resolvingAlert.recordedByName && (
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Added by {resolvingAlert.recordedByName}
+                </p>
+              )}
+            </div>
+
+            <label htmlFor="care-alert-resolve-reason" className="block text-[11px] mt-3 mb-1.5" style={{ color: 'var(--text-muted)' }}>
+              Reason (required)
+            </label>
+            <input
+              id="care-alert-resolve-reason"
+              autoFocus
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Reassessed — no longer a fall risk"
+              className="w-full p-2 rounded-md text-[13px]"
+              style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
+            />
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                className="btn btn-sm btn-secondary"
+                disabled={busy}
+                onClick={() => { setResolvingId(null); setReason(''); }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-sm btn-primary"
+                disabled={busy || reason.trim().length === 0}
+                onClick={() => run(() => doResolve(resolvingAlert.id))}
+              >
+                {busy ? 'Saving…' : 'Resolve alert'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

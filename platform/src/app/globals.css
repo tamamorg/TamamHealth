@@ -30973,6 +30973,129 @@ button.sadb-signal { cursor: pointer; }
 }
 .rpt-rail-empty { text-align: center; }
 
+/* ── Control panel: legends, form picker, Apply ─────────────────────
+   The panel assembles a view and commits it, so Apply is pinned outside the
+   scroller — a commit button below the fold is one nobody presses. */
+.rpt-rail-dirty {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--tb-blue-50, rgba(33,145,208,0.12));
+  color: var(--accent-primary);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.rpt-ctl-legend {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 8px 6px;
+  font-family: var(--font-condensed);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.rpt-ctl-legend > span { font-size: 10px; letter-spacing: 0; color: var(--text-muted); }
+.rpt-ctl-kinds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  padding: 0 8px;
+}
+.rpt-ctl-kinds button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: var(--bg-card-solid);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: start;
+}
+.rpt-ctl-kinds button svg { width: 14px; height: 14px; flex: none; color: var(--text-muted); }
+.rpt-ctl-kinds button:hover:not(:disabled) { border-color: var(--accent-primary); }
+.rpt-ctl-kinds button.is-on {
+  border-color: var(--accent-primary);
+  background: var(--tb-blue-50, rgba(33,145,208,0.10));
+  color: var(--accent-primary);
+}
+.rpt-ctl-kinds button.is-on svg { color: var(--accent-primary); }
+.rpt-ctl-kinds button:disabled { opacity: 0.42; cursor: not-allowed; }
+.rpt-ctl-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 8px 10px;
+  padding: 7px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  /* globals.css force-uppercases every <label>; this one is sentence case. */
+  text-transform: none;
+  letter-spacing: 0;
+}
+.rpt-ctl-check input { accent-color: var(--accent-primary); cursor: pointer; }
+/* Catalogue stepper and export, both moved down from the command bar. */
+.rpt-ctl-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 8px 4px;
+}
+.rpt-ctl-step .rpt-nav-pos { font-size: 11px; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rpt-ctl-csv {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: calc(100% - 16px);
+  margin: 0 8px 12px;
+  padding: 7px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: var(--bg-card-solid);
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+.rpt-ctl-csv svg { width: 14px; height: 14px; }
+.rpt-ctl-csv:hover:not(:disabled) { background: var(--tb-blue-50, rgba(33,145,208,0.10)); }
+.rpt-ctl-csv:disabled { opacity: 0.5; cursor: not-allowed; }
+/* The plot names itself now that no bar does. */
+.rpt-plot-caption {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rpt-plot-caption b { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.rpt-plot-caption i { font-style: normal; font-size: 11.5px; color: var(--text-muted); }
+
+.rpt-ctl-apply {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 9px 10px;
+  border-top: 1px solid var(--border-light);
+  background: var(--overlay-subtle);
+}
+.rpt-ctl-apply .btn { flex: 1 1 auto; justify-content: center; }
+
 .rpt-rail-scroll,
 .rpt-side-scroll {
   flex: 1 1 auto;
