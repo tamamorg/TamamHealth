@@ -10,7 +10,7 @@ import {
   verifyFlutterWaveSignature,
   verifyFlutterWaveTransaction,
   verifyLegacyFlutterWaveHash,
-} from '@/app/api/webhooks/flutterwave/route';
+} from '@/lib/payments/flutterwave-verify';
 
 const originalEnv = process.env;
 
