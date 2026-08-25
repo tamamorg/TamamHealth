@@ -72,19 +72,28 @@ describe('scheduled workflows are not gated on human approval', () => {
     }
   });
 
-  it('fails loudly when a sweep is unconfigured rather than passing empty', () => {
-    // Reminders still uses a shared secret and must reject an unset one.
-    const reminders = readFileSync(join(WORKFLOWS, 'reminders-cron.yml'), 'utf8');
-    expect(reminders).toMatch(/::error title=[^:]*not configured/);
-    expect(reminders).not.toMatch(/::notice title=[^:]*not configured/);
+  it('fails loudly when a cron cannot authenticate, rather than passing empty', () => {
+    /* Neither cron has a long-lived secret left to misconfigure — both mint a
+       short-lived GitHub identity per run. What must stay true is that a job
+       which cannot get that identity FAILS: reminders spent weeks reporting a
+       red run nobody could fix (its secret was never set) and, before that, a
+       green run that dispatched nothing at all. A silent success is the worse
+       of the two. */
+    for (const [file, audience] of [
+      ['transfers-sweep-cron.yml', 'tamamhealth-transfer-sweep'],
+      ['reminders-cron.yml', 'tamamhealth-reminder-dispatch'],
+    ] as const) {
+      const text = readFileSync(join(WORKFLOWS, file), 'utf8');
+      expect(text).toMatch(/id-token: write/);
+      expect(text).toContain(`audience=${audience}`);
+      expect(text).toMatch(/::error title=OIDC token missing/);
+      expect(text).not.toMatch(/::notice title=[^:]*not configured/);
+    }
 
-    // Transfers no longer has a long-lived secret to misconfigure. Its OIDC
-    // request must itself fail loudly if GitHub cannot issue the short-lived
-    // workflow identity.
-    const transfers = readFileSync(join(WORKFLOWS, 'transfers-sweep-cron.yml'), 'utf8');
-    expect(transfers).toMatch(/id-token: write/);
-    expect(transfers).toMatch(/audience=tamamhealth-transfer-sweep/);
-    expect(transfers).toMatch(/::error title=OIDC token missing/);
-    expect(transfers).not.toMatch(/secrets\.TRANSFER_SWEEP_SECRET/);
+    // The secrets those two jobs used to hang on are gone from both.
+    expect(readFileSync(join(WORKFLOWS, 'transfers-sweep-cron.yml'), 'utf8'))
+      .not.toMatch(/secrets\.TRANSFER_SWEEP_SECRET/);
+    expect(readFileSync(join(WORKFLOWS, 'reminders-cron.yml'), 'utf8'))
+      .not.toMatch(/secrets\.REMINDER_DISPATCH_SECRET/);
   });
 });

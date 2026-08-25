@@ -11,9 +11,16 @@ name: patient-reminders-dispatch
 # a recall SMS that lands at 3am is worse than useless, and GitHub cron is
 # UTC-only so the offset is applied here rather than in the app.
 #
-# Required secrets (production environment):
-#   PLATFORM_BASE_URL          e.g. https://app.tamamhealth.org
-#   REMINDER_DISPATCH_SECRET   must match the platform's env var of the same name
+# Authentication uses GitHub's short-lived OIDC token, bound by the platform to
+# this repository, this workflow on main, and schedule/workflow_dispatch — the
+# same scheme the transfer sweep uses. No long-lived secret is required.
+#
+# This replaced a shared secret that was never set: the gate below failed every
+# morning for weeks, and no patient received a reminder in that time. A job whose
+# only prerequisite is a secret someone has to remember is a job that does not
+# run.
+#
+# `vars.PLATFORM_BASE_URL` overrides the host for a non-standard deployment.
 #
 # The platform ALSO requires PATIENT_REMINDER_SMS_ENABLED=true and a configured
 # SMS_PROVIDER before anything is actually sent — without them this run reports
@@ -27,6 +34,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
   # Raise/close the failure alarm — see .github/actions/alert-failure.
   issues: write
 
@@ -63,41 +71,28 @@ jobs:
           sparse-checkout: .github/actions/alert-failure
           sparse-checkout-cone-mode: false
 
-      - name: Check configuration
-        id: gate
-        env:
-          BASE_URL: ${{ secrets.PLATFORM_BASE_URL }}
-          DISPATCH_SECRET: ${{ secrets.REMINDER_DISPATCH_SECRET }}
-        run: |
-          # Name only what is actually missing. The previous message listed
-          # both secrets whichever was unset, so an operator holding a correctly
-          # set PLATFORM_BASE_URL was sent to re-check it — five days of failures
-          # pointed at the wrong half of the problem.
-          missing=""
-          [ -n "$BASE_URL" ]        || missing="$missing PLATFORM_BASE_URL"
-          [ -n "$DISPATCH_SECRET" ] || missing="$missing REMINDER_DISPATCH_SECRET"
-          if [ -z "$missing" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::error title=Reminder dispatch not configured::Missing repository secret(s):$missing. Reminder dispatch did nothing — patients do NOT receive appointment reminders. This step FAILS rather than passing quietly: it reported success for weeks while doing nothing, and a green tick on a job that no-ops is how that went unnoticed."
-            exit 1
-          fi
-
       - name: Dispatch
-        if: steps.gate.outputs.ready == 'true'
         env:
-          BASE_URL: ${{ secrets.PLATFORM_BASE_URL }}
-          DISPATCH_SECRET: ${{ secrets.REMINDER_DISPATCH_SECRET }}
+          BASE_URL: ${{ vars.PLATFORM_BASE_URL || 'https://app.tamamhealth.org' }}
         run: |
           set -euo pipefail
+          OIDC_RESPONSE="$(curl -sS --fail-with-body \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=tamamhealth-reminder-dispatch")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_RESPONSE" | jq -r '.value // empty')"
+          if [ -z "$OIDC_TOKEN" ]; then
+            echo "::error title=OIDC token missing::GitHub did not issue a reminder-dispatch identity token."
+            exit 1
+          fi
+          echo "::add-mask::$OIDC_TOKEN"
+
           # --fail-with-body so a non-2xx exits non-zero AND still shows the
           # response, which is what makes a broken gateway visible here rather
           # than silently succeeding.
           RESPONSE=$(curl -sS --fail-with-body \
             --max-time 300 \
             -X POST \
-            -H "x-reminder-dispatch-secret: $DISPATCH_SECRET" \
+            -H "authorization: Bearer $OIDC_TOKEN" \
             -H 'content-type: application/json' \
             "$BASE_URL/api/patient-reminders/dispatch")
           echo "$RESPONSE"

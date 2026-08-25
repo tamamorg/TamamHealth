@@ -27,7 +27,7 @@ const DISPATCH_ROLES: UserRole[] = [
  *
  * Unset secret = no machine access at all, rather than open access.
  */
-function isAuthorizedScheduler(request: NextRequest): boolean {
+function hasSharedDispatchSecret(request: NextRequest): boolean {
   const expected = process.env.REMINDER_DISPATCH_SECRET;
   if (!expected) return false;
   const provided = request.headers.get('x-reminder-dispatch-secret');
@@ -38,11 +38,31 @@ function isAuthorizedScheduler(request: NextRequest): boolean {
   return timingSafeEqual(a, b);
 }
 
+/**
+ * The daily cron, or an operator's own scheduler.
+ *
+ * The first-party job now presents a short-lived GitHub OIDC token bound to
+ * this repository, this workflow and main — the same scheme the transfer sweep
+ * uses. That matters beyond tidiness: `REMINDER_DISPATCH_SECRET` was never set,
+ * so this route refused every run and no patient was reminded for weeks. A
+ * token GitHub mints per run needs nothing configured by hand.
+ *
+ * The shared secret stays for operators running their own scheduler; unset, it
+ * grants nothing.
+ */
+async function isAuthorizedScheduler(request: NextRequest): Promise<boolean> {
+  if (hasSharedDispatchSecret(request)) return true;
+  const authorization = request.headers.get('authorization');
+  if (!authorization?.startsWith('Bearer ')) return false;
+  const { verifyReminderDispatchOidcToken } = await import('@/lib/github-actions-oidc');
+  return verifyReminderDispatchOidcToken(authorization.slice('Bearer '.length).trim());
+}
+
 async function postHandler(request: NextRequest) {
   try {
     // Either a scheduled job holding the shared secret, or a staff user with
     // an appropriate role triggering a manual dispatch.
-    if (!isAuthorizedScheduler(request)) {
+    if (!await isAuthorizedScheduler(request)) {
       const auth = await getAuthPayload(request);
       if (!auth) return unauthorized();
       if (!hasRole(auth, DISPATCH_ROLES)) return forbidden();

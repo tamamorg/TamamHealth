@@ -9,13 +9,16 @@ import {
   generateKeyPair,
 } from 'jose';
 import {
+  REMINDER_DISPATCH_OIDC_AUDIENCE,
+  REMINDER_DISPATCH_WORKFLOW_REF,
   TRANSFER_SWEEP_OIDC_AUDIENCE,
   TRANSFER_SWEEP_REPOSITORY,
   TRANSFER_SWEEP_WORKFLOW_REF,
+  verifyReminderDispatchOidcToken,
   verifyTransferSweepOidcToken,
 } from '@/lib/github-actions-oidc';
 
-async function signedToken(overrides: Record<string, unknown> = {}) {
+async function signedToken(overrides: Record<string, unknown> = {}, audience = TRANSFER_SWEEP_OIDC_AUDIENCE) {
   const { publicKey, privateKey } = await generateKeyPair('RS256');
   const jwk = await exportJWK(publicKey);
   jwk.kid = 'test-key';
@@ -33,7 +36,7 @@ async function signedToken(overrides: Record<string, unknown> = {}) {
   const token = await new SignJWT(rest)
     .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
     .setIssuer('https://token.actions.githubusercontent.com')
-    .setAudience(TRANSFER_SWEEP_OIDC_AUDIENCE)
+    .setAudience(audience)
     .setSubject(sub ?? `repo:${TRANSFER_SWEEP_REPOSITORY}:ref:refs/heads/main`)
     .setIssuedAt()
     .setExpirationTime('5m')
@@ -80,4 +83,38 @@ test.each([
 ])('rejects a subject that does not name this repo on main: %o', async override => {
   const { token, getKey } = await signedToken(override);
   await expect(verifyTransferSweepOidcToken(token, getKey)).resolves.toBe(false);
+});
+
+/* ── The daily reminder dispatch ──────────────────────────────────────
+   Same identity scheme, its own audience and workflow file. It ran on a shared
+   secret that was never set, so every morning's run was refused and no patient
+   was reminded. */
+async function reminderToken(overrides: Record<string, unknown> = {}) {
+  return signedToken(
+    { workflow_ref: REMINDER_DISPATCH_WORKFLOW_REF, ...overrides },
+    REMINDER_DISPATCH_OIDC_AUDIENCE,
+  );
+}
+
+test('accepts the scheduled reminder dispatch on main', async () => {
+  const { token, getKey } = await reminderToken();
+  await expect(verifyReminderDispatchOidcToken(token, getKey)).resolves.toBe(true);
+});
+
+test('a reminder token cannot run the transfer sweep, or the reverse', async () => {
+  const reminder = await reminderToken();
+  await expect(verifyTransferSweepOidcToken(reminder.token, reminder.getKey)).resolves.toBe(false);
+
+  const sweep = await signedToken();
+  await expect(verifyReminderDispatchOidcToken(sweep.token, sweep.getKey)).resolves.toBe(false);
+});
+
+test.each([
+  { workflow_ref: `${TRANSFER_SWEEP_REPOSITORY}/.github/workflows/other.yml@refs/heads/main` },
+  { ref: 'refs/heads/feature' },
+  { event_name: 'pull_request' },
+  { runner_environment: 'self-hosted' },
+])('rejects a reminder token outside the exact cron identity: %o', async override => {
+  const { token, getKey } = await reminderToken(override);
+  await expect(verifyReminderDispatchOidcToken(token, getKey)).resolves.toBe(false);
 });
