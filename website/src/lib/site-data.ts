@@ -512,7 +512,7 @@ export const ADVISORS: Advisor[] = [
     name: "Tim Raphael",
     role: "Professor, Arts, Culture & Media · Director, Newest Americans",
     institutions: ["Rutgers University–Newark"],
-    industry: "Theater and migration studies",
+    industry: "Arts, culture and media",
     // 684×1024 — the tallest source in the set, and the only one whose face
     // nearly fills the square plate: 203px of a 220px window on tablet, the
     // same ratio on desktop. 42% is where that window centres on the face —
