@@ -43,7 +43,7 @@ export default function MobileHeader({ onOpenModules }: { onOpenModules: () => v
       >
         <Badge tone={chip.tone} size="sm">{chip.label}</Badge>
       </button>
-      <button type="button" className="mobile-shell-header-modules" onClick={onOpenModules} title="All modules">
+      <button type="button" className="mobile-shell-header-modules" onClick={onOpenModules} title="All modules" aria-label="Open all modules">
         <Menu className="w-5 h-5" />
       </button>
     </header>

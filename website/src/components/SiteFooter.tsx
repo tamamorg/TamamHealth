@@ -9,6 +9,7 @@
    because the initial state of <details> cannot be set per breakpoint. */
 
 import Link from "next/link";
+import Image from "next/image";
 import { FOOTER_COLS as FOOTER_COLS_EN, platformHref } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 // The columns carry section links (/platform#how-it-works, /health-system#levels);
@@ -49,8 +50,7 @@ export default async function SiteFooter() {
       </div>
       <div className="tm-footer-legal" style={{ maxWidth: 1320, margin: "40px auto 0", paddingTop: 22, borderTop: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- small inline SVG mark */}
-          <img src="/assets/tamam-logo-mark.svg" alt="" style={{ height: 26, width: "auto" }} />
+          <Image src="/assets/tamam-logo-mark.svg" alt="" width={64} height={64} style={{ height: 26, width: "auto" }} />
           <span className="fs125" style={{ color: "var(--color-neutral-700)" }}>{t("© 2026 TamamHealth")}</span>
         </div>
         <div className="fs125" style={{ display: "flex", gap: 26, flexWrap: "wrap" }}>

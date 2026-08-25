@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import Corners from "@/components/Corners";
 import { getTranslator } from "@/lib/i18n/server";
 import HeroShowcase from "@/components/home/HeroShowcase";
@@ -30,8 +31,13 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="tm-about-fig" style={{ position: "relative", minHeight: 420 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}
-            <img src="/assets/african-nurse.jpg" alt={t("Health worker helping a patient access their records on a phone")} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+            <Image
+              src="/assets/african-nurse.jpg"
+              alt={t("Health worker helping a patient access their records on a phone")}
+              fill
+              sizes="(max-width: 760px) 100vw, 50vw"
+              style={{ objectFit: "cover" }}
+            />
           </div>
         </div>
       </section>

@@ -5,6 +5,7 @@
    directly under the hero. */
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import Corners from "@/components/Corners";
 import HeroNav from "@/components/HeroNav";
@@ -37,8 +38,14 @@ export default function HeroShowcase() {
           the bottom of the band on a short laptop screen and was clipped. */}
       <section className="tm-hero" style={{ position: "relative", height: "clamp(500px, calc(100vh - 340px), 740px)", overflow: "hidden", background: "var(--color-accent-900)" }}>
         <div className="tm-hero-img tm-figure" style={{ position: "absolute", inset: 0 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- full-bleed hero, sized by CSS */}
-          <img src={h.image} alt={h.alt} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: h.focus ?? "center 35%" }} />
+          <Image
+            src={h.image}
+            alt={h.alt}
+            fill
+            sizes="100vw"
+            preload={hero === 0}
+            style={{ objectFit: "cover", objectPosition: h.focus ?? "center 35%" }}
+          />
         </div>
         <div className="tm-hero-scrim" style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(1,86,151,0.42) 0%, rgba(1,86,151,0.06) 62%, rgba(1,86,151,0.22) 100%)" }} />
         <div className="tm-hero-wrap" style={{ position: "relative", maxWidth: 1320, margin: "0 auto", padding: "0 32px", height: "100%", display: "flex", alignItems: "center" }}>

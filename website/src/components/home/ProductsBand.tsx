@@ -5,6 +5,7 @@
    negative top margin (desktop only; ≤1100px it stacks). */
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import Corners from "@/components/Corners";
 import HeroNav from "@/components/HeroNav";
@@ -57,8 +58,13 @@ export default function ProductsBand() {
         <div className="tm-prod-card blueprint" style={{ position: "relative", marginTop: -326, marginInlineStart: 425, background: "#FFFFFF", display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch" }}>
           <Corners />
           <div className="tm-prod-photo" style={{ position: "relative", minHeight: 420 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}
-            <img src={p.image} alt={p.imageAlt} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%" }} />
+            <Image
+              src={p.image}
+              alt={p.imageAlt}
+              fill
+              sizes="(max-width: 1100px) 100vw, 50vw"
+              style={{ objectFit: "cover", objectPosition: "center 25%" }}
+            />
           </div>
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 46px" }}>
             <h3 style={{ fontSize: "clamp(24px, 2.6vw, 32px)", margin: "0 0 18px" }}>{p.title}</h3>

@@ -4,6 +4,7 @@
    eight failure cards, each opening its challenge page. */
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRef } from "react";
 import Corners from "@/components/Corners";
 import { CHALLENGES as CHALLENGES_EN } from "@/lib/site-data";
@@ -32,8 +33,7 @@ export default function ChallengesBand() {
           <Link key={c.slug} href={`/challenges/${c.slug}`} className="blueprint tm-chalcard" style={{ flex: "0 0 316px", display: "flex", flexDirection: "column", textDecoration: "none", color: "#FFFFFF", borderColor: "rgba(255,255,255,0.28)" }}>
             <Corners light />
             <div className="tm-figure" style={{ position: "relative", height: 132, borderBottom: "3px solid #7CC7FF" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}
-              <img src={c.image} alt={c.imageAlt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <Image src={c.image} alt={c.imageAlt} fill sizes="316px" style={{ objectFit: "cover" }} />
               <span style={{ position: "absolute", bottom: 0, left: 0, zIndex: 3, background: "#7CC7FF", padding: "8px 10px 6px", display: "flex" }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#113055" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={c.d}></path>{c.d2 ? <path d={c.d2}></path> : null}</svg>
               </span>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { emphasise } from "@/components/emphasise";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -45,8 +46,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
             </div>
             <div className="blueprint tm-figure" style={{ position: "relative", height: 320, borderColor: "rgba(255,255,255,0.28)" }}>
               <Corners light />
-              {/* eslint-disable-next-line @next/next/no-img-element -- hero figure, sized by CSS */}
-              <img src={c.image} alt={c.imageAlt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <Image src={c.image} alt={c.imageAlt} fill sizes="(max-width: 760px) 100vw, 44vw" preload style={{ objectFit: "cover" }} />
             </div>
           </div>
         </div>

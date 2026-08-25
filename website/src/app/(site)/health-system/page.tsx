@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import LevelsExplorer from "@/components/LevelsExplorer";
 import { emphasise } from "@/components/emphasise";
 import ChallengesBand from "@/components/ChallengesBand";
@@ -66,8 +67,13 @@ export default async function HealthSystemPage() {
                 {/* The place the break happens labels the photograph, so the
                     panel opens on the scene, then the figure, then the claim. */}
                 <div className="tm-figure tm-break-fig" style={{ position: "relative", height: 172, borderBottom: "3px solid var(--color-accent)" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- panel figure, sized by CSS */}
-                  <img src={b.image} alt={b.imageAlt} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: b.focus }} />
+                  <Image
+                    src={b.image}
+                    alt={b.imageAlt}
+                    fill
+                    sizes="(max-width: 760px) 100vw, 33vw"
+                    style={{ objectFit: "cover", objectPosition: b.focus }}
+                  />
                   <span className="fs115" style={{ position: "absolute", left: 0, bottom: 0, background: "var(--color-accent-300)", color: "#113055", padding: "7px 12px 6px", letterSpacing: "0.13em", textTransform: "uppercase", fontWeight: 700 }}>{b.where}</span>
                 </div>
                 {/* Recessed data plate. The fixed minimum keeps the three

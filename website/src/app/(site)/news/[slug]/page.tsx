@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Corners from "@/components/Corners";
@@ -19,8 +20,13 @@ function BodyFigure({ photos }: { photos: Photo[] }) {
       {photos.map((p) => (
         <figure key={p.src} style={{ margin: 0 }}>
           <div style={{ position: "relative", width: "100%", aspectRatio: pair ? "4 / 3" : "3 / 2", overflow: "hidden", border: "1px solid var(--color-divider)" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- story figure, sized by CSS */}
-            <img src={p.src} alt={p.alt} loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+            <Image
+              src={p.src}
+              alt={p.alt}
+              fill
+              sizes={pair ? "(max-width: 760px) 100vw, 410px" : "(max-width: 760px) 100vw, 820px"}
+              style={{ objectFit: "cover" }}
+            />
           </div>
           <figcaption className="fs125" style={{ marginTop: 10, lineHeight: 1.5, color: "var(--color-neutral-600)" }}>{p.caption}</figcaption>
         </figure>
@@ -76,8 +82,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
             </div>
             <div className="blueprint tm-figure" style={{ position: "relative", height: 320, borderColor: "rgba(255,255,255,0.28)" }}>
               <Corners light />
-              {/* eslint-disable-next-line @next/next/no-img-element -- hero figure, sized by CSS */}
-              <img src={n.image} alt={n.imageAlt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <Image src={n.image} alt={n.imageAlt} fill sizes="(max-width: 760px) 100vw, 44vw" preload style={{ objectFit: "cover" }} />
             </div>
           </div>
         </div>
@@ -142,8 +147,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
             <div className="tm-gallery tm-gallery-light" tabIndex={0} role="group" aria-label={`More photos: ${n.title}`}>
               {strip.map((p) => (
                 <figure key={p.src}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- gallery frame, sized by CSS */}
-                  <img src={p.src} alt={p.alt} width={p.w} height={p.h} loading="lazy" />
+                  <Image src={p.src} alt={p.alt} width={p.w} height={p.h} sizes="(max-width: 760px) 82vw, 520px" />
                   <figcaption>{p.caption}</figcaption>
                 </figure>
               ))}

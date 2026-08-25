@@ -4,6 +4,7 @@
    layout fault, so the lead story runs as a full-width feature instead. */
 
 import Link from "next/link";
+import Image from "next/image";
 import Corners from "@/components/Corners";
 import NewsCard from "@/components/NewsCard";
 import { getTranslator } from "@/lib/i18n/server";
@@ -20,8 +21,13 @@ async function LeadStory() {
     >
       <Corners />
       <div className="tm-figure tm-minh280" style={{ position: "relative", minHeight: 340 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}
-        <img src={n.image} alt={n.imageAlt} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        <Image
+          src={n.image}
+          alt={n.imageAlt}
+          fill
+          sizes="(max-width: 760px) 100vw, 50vw"
+          style={{ objectFit: "cover" }}
+        />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "44px 46px 46px", borderInlineStart: "1px solid var(--color-divider)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
