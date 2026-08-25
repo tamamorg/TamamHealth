@@ -22,6 +22,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import PortalModal from '@/components/Modal';
 import AppointmentStatusSelect from '@/components/appointments/AppointmentStatusSelect';
 import WeekSlotGrid, { type GridProvider } from '@/components/booking/WeekSlotGrid';
@@ -38,7 +39,8 @@ import { getRoleChoice } from '@/lib/settings/role-settings-store';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { jubaDate } from '@/lib/time-juba';
-import { ArrowLeft, ArrowRight, X } from '@/components/icons/lucide';
+import { ArrowLeft, ArrowRight, Maximize2, X } from '@/components/icons/lucide';
+import { expandHref } from '@/lib/navigation/expand-to-page';
 import type { Slot } from '@/lib/booking/slot-engine';
 import type {
   AppointmentType, AppointmentPriority, AppointmentStatus, FacilityLevel,
@@ -99,6 +101,7 @@ export default function BookAppointmentModal({
   onBooked,
   defaultDate,
   defaultPatientId,
+  presentation = 'modal',
 }: {
   onClose: () => void;
   /** Fires after a successful booking, before the dialog closes. */
@@ -106,8 +109,18 @@ export default function BookAppointmentModal({
   /** Pre-selected day — the dashboard passes whichever day is being viewed. */
   defaultDate?: string;
   defaultPatientId?: string;
+  /**
+   * 'page' drops the dialog frame so `/appointments/new` can host the same
+   * four steps — this popup's Expand control routes there.
+   *
+   * The step bar stays in both. It is not dialog chrome: it carries Back and
+   * says which of the four steps you are on, and a wizard without that is
+   * lost on any surface.
+   */
+  presentation?: 'modal' | 'page';
 }) {
   const { t } = useTranslation();
+  const router = useRouter();
   const { create, appointments } = useAppointments();
   const { patients } = usePatients();
   const { users } = useUsers();
@@ -352,15 +365,14 @@ export default function BookAppointmentModal({
     }
   };
 
-  return (
-    <PortalModal onClose={onClose} width={stepped && step === 1 ? 1080 : 720}>
+  const panel = (
       <div
-        className="modal-panel modal-panel--lg"
+        className={presentation === 'page' ? undefined : 'modal-panel modal-panel--lg'}
         // Guided-tour anchor (front-desk journey's "book" step) — the booking
         // dialog itself, so the tour can spotlight the real 4-step flow
         // instead of the trigger button that opened it.
         data-tour="book-appointment-modal"
-        style={{
+        style={presentation === 'page' ? { width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 } : {
           width: '100%',
           // Grows with its content, then stops at the dialog's height and
           // scrolls inside. The grid is as tall as the clinic is busy — three
@@ -408,18 +420,41 @@ export default function BookAppointmentModal({
               )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
-              width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0,
-            }}
-          >
-            <X size={16} />
-          </button>
+          {presentation === 'modal' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              {/* Same pair every create popup carries — promote to the full
+                  page, or close. The band this sits in is the wizard's own
+                  rather than PopupHeader's, because the step counter and its
+                  Back control live here too. */}
+              <button
+                type="button"
+                onClick={() => { onClose(); router.push(expandHref('/appointments/new')); }}
+                aria-label="Open full page"
+                title="Open full page"
+                data-action="popup-expand"
+                style={{
+                  background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
+                  width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0,
+                }}
+              >
+                <Maximize2 size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                data-action="popup-close"
+                style={{
+                  background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
+                  width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0,
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         <div
@@ -742,6 +777,13 @@ export default function BookAppointmentModal({
           )}
         </div>
       </div>
+  );
+
+  if (presentation === 'page') return panel;
+
+  return (
+    <PortalModal onClose={onClose} width={stepped && step === 1 ? 1080 : 720}>
+      {panel}
     </PortalModal>
   );
 }

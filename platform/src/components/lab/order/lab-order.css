@@ -147,6 +147,14 @@
   color: var(--color-danger, #D92B20);
 }
 
+/* The header's window controls — expand to the full page, then close. */
+.labord-window-actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .labord-close {
   display: inline-flex;
   align-items: center;

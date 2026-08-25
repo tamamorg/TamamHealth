@@ -45,7 +45,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  AlertTriangle, RefreshCw, Loader2, X, Maximize2,} from '@/components/icons/lucide';
+  Loader2, X, Maximize2,} from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -288,11 +288,6 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
 }
 
 type ExtraKey = 'billing' | 'flow' | 'enquiries' | 'availability' | 'leave' | 'schedule' | 'gaps';
-const EXTRA_LABELS: Record<ExtraKey, string> = {
-  billing: 'billing', flow: 'patient flow', enquiries: 'inquiries',
-  availability: 'staff availability', leave: 'leave requests',
-  schedule: 'shift schedule', gaps: 'staffing gaps',
-};
 
 /* Facility matrix columns: Facility · Type · Patients · Today's visits.
    Four equal shares, not a weighted name column: the row reads as a table,
@@ -322,7 +317,7 @@ export default function FacilityManagementDashboard() {
   const previewOpenedHere = useRef(false);
   const scope = useDataScope();
 
-  const { users, loading: usersLoading, error: usersError, reload: reloadUsers } = useUsers();
+  const { users, loading: usersLoading, error: usersError } = useUsers();
   const { patients, loading: patientsLoading } = usePatients();
   const { availableBeds, loading: wardsLoading } = useWards();
   const { hospitals } = useHospitals();
@@ -337,14 +332,7 @@ export default function FacilityManagementDashboard() {
   const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
   const [schedules, setSchedules] = useState<StaffScheduleDoc[]>([]);
   const [staffingGaps, setStaffingGaps] = useState<StaffingGap[]>([]);
-  const [loadErrors, setLoadErrors] = useState<Set<ExtraKey>>(new Set());
   const [extraLoading, setExtraLoading] = useState(true);
-  // Distinct from `extraLoading`, which only covers the FIRST load (it gates
-  // the whole-page spinner). A retry re-runs the same seven fetches with the
-  // page already painted, and without its own flag the Retry button sat there
-  // looking inert for the whole round trip.
-  const [retrying, setRetrying] = useState(false);
-  const [reloadToken, setReloadToken] = useState(0);
   const hasLoadedExtraRef = useRef(false);
 
   const today = jubaDate();
@@ -354,9 +342,9 @@ export default function FacilityManagementDashboard() {
   const weekRange = useMemo(() => jubaDateRangeUtc(weekStart, weekEnd), [weekEnd, weekStart]);
 
   // Billing, patient flow, enquiries, provider availability, leave, and
-  // today's schedule/staffing-gaps are all fetched together; each is tracked
-  // independently in `loadErrors` so a single failure degrades only its own
-  // card instead of the whole dashboard, and Retry re-runs all seven.
+  // today's schedule/staffing-gaps are all fetched together, each settled
+  // independently so a single failure degrades only its own card instead of
+  // the whole dashboard.
   useEffect(() => {
     if (!scope) return;
     let cancelled = false;
@@ -437,20 +425,17 @@ export default function FacilityManagementDashboard() {
     ]);
 
     (async () => {
-      const failed = new Set<ExtraKey>();
-      if (hasLoadedExtraRef.current) setRetrying(true);
       let results = await runAll();
       if (cancelled) return;
 
-      // One automatic second attempt before showing anyone a red banner.
+      // One automatic second attempt before any card falls back to its
+      // empty state.
       //
       // Each of the seven loaders begins with a dynamic `import()`, so a
-      // single chunk that fails to arrive rejects all seven at once — which is why the
-      // banner reads "Couldn't load billing, inquiries, staff availability,
-      // leave requests, shift schedule, staffing gaps" rather than naming one
-      // thing. That is one transient network fault, not six broken subsystems,
-      // and on the connections this app is built for it is routine. Retrying
-      // turns it into a slightly slower load instead of an alarm.
+      // single chunk that fails to arrive rejects all seven at once. That is
+      // one transient network fault, not six broken subsystems, and on the
+      // connections this app is built for it is routine. Retrying turns it
+      // into a slightly slower load instead of six empty cards.
       if (results.some(r => r.status === 'rejected')) {
         await new Promise(resolve => setTimeout(resolve, 700));
         if (cancelled) return;
@@ -458,17 +443,17 @@ export default function FacilityManagementDashboard() {
         if (cancelled) return;
       }
       const [billingRes, flowRes, enquiriesRes, availRes, leaveRes, schedRes, gapsRes] = results;
-      if (billingRes.status === 'fulfilled') setCash(billingRes.value); else failed.add('billing');
-      if (flowRes.status === 'fulfilled') setFlow(flowRes.value); else failed.add('flow');
-      if (enquiriesRes.status === 'fulfilled') setEnquiries(enquiriesRes.value); else failed.add('enquiries');
-      if (availRes.status === 'fulfilled') setAvailableProviderIds(availRes.value); else failed.add('availability');
-      if (leaveRes.status === 'fulfilled') setLeave(leaveRes.value); else failed.add('leave');
-      if (schedRes.status === 'fulfilled') setSchedules(schedRes.value); else failed.add('schedule');
-      if (gapsRes.status === 'fulfilled') setStaffingGaps(gapsRes.value); else failed.add('gaps');
+      if (billingRes.status === 'fulfilled') setCash(billingRes.value);
+      if (flowRes.status === 'fulfilled') setFlow(flowRes.value);
+      if (enquiriesRes.status === 'fulfilled') setEnquiries(enquiriesRes.value);
+      if (availRes.status === 'fulfilled') setAvailableProviderIds(availRes.value);
+      if (leaveRes.status === 'fulfilled') setLeave(leaveRes.value);
+      if (schedRes.status === 'fulfilled') setSchedules(schedRes.value);
+      if (gapsRes.status === 'fulfilled') setStaffingGaps(gapsRes.value);
 
-      // `allSettled` swallows the reason, and this banner names six subsystems
-      // at once whenever anything shared underneath them breaks — six identical
-      // symptoms and no cause. Log what actually rejected.
+      // `allSettled` swallows the reason, and anything shared underneath
+      // these seven takes them all down together — six identical symptoms and
+      // no cause. Log what actually rejected.
       for (const [key, res] of [
         ['billing', billingRes], ['flow', flowRes], ['enquiries', enquiriesRes],
         ['availability', availRes], ['leave', leaveRes], ['schedule', schedRes],
@@ -476,17 +461,12 @@ export default function FacilityManagementDashboard() {
       ] as [ExtraKey, PromiseSettledResult<unknown>][]) {
         if (res.status === 'rejected') console.error(`[facility-dashboard] ${key} failed to load:`, res.reason);
       }
-      setLoadErrors(failed);
       hasLoadedExtraRef.current = true;
       setExtraLoading(false);
-      setRetrying(false);
     })();
 
     return () => { cancelled = true; };
-  }, [scope, today, facilityId, reloadToken, weekRange]);
-
-  const retryExtra = useCallback(() => setReloadToken(t => t + 1), []);
-  const retryAll = useCallback(() => { reloadUsers(); retryExtra(); }, [reloadUsers, retryExtra]);
+  }, [scope, today, facilityId, weekRange]);
 
   const usersUnavailable = !!usersError && users.length === 0;
 
@@ -581,10 +561,6 @@ export default function FacilityManagementDashboard() {
     { name: 'Pending', value: cashWeek.pending, color: CASH_PENDING },
   ].filter(slice => slice.value > 0), [cashWeek]);
 
-  const failedLabels = Array.from(loadErrors).map(k => EXTRA_LABELS[k]);
-  if (usersError) failedLabels.push('staff accounts');
-  const hasErrors = failedLabels.length > 0;
-
   const initialLoading = usersLoading || patientsLoading || wardsLoading || extraLoading;
 
   const metricByKey = (key: string) => overview.metrics.find(m => m.key === key);
@@ -625,32 +601,6 @@ export default function FacilityManagementDashboard() {
       greeting="Facility management"
       actions={<DashboardCreateActions />}
     >
-
-      {/* While a retry is in flight the strip reports THAT, not the stale
-          failure: pressing Retry and seeing the same red banner sit there is
-          indistinguishable from the button being broken. */}
-      {(hasErrors || retrying) && (
-        <div
-          className="sadb-card"
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 11, padding: '10px 14px', borderColor: retrying ? undefined : 'rgba(158, 27, 20, 0.35)' }}
-          aria-live="polite"
-        >
-          {retrying ? (
-            <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" style={{ color: 'var(--accent-primary)' }} />
-          ) : (
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--color-danger-800)' }} />
-          )}
-          <span className="text-[12.5px] flex-1" style={{ color: 'var(--text-primary)' }}>
-            {retrying
-              ? `Reloading ${failedLabels.length > 0 ? failedLabels.join(', ') : 'this page'}…`
-              : <>Couldn&apos;t load {failedLabels.join(', ')}. Some numbers on this page may be incomplete.</>}
-          </span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={retryAll} disabled={retrying}>
-            <RefreshCw className={`w-3.5 h-3.5${retrying ? ' animate-spin' : ''}`} />
-            {retrying ? 'Retrying…' : 'Retry'}
-          </button>
-        </div>
-      )}
 
       {/* ═══ KPI tiles — census & staffing totals, each opening its preview ═══ */}
       <div className="sadb-kpi-row">

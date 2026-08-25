@@ -7,8 +7,9 @@
  */
 
 import { useState } from 'react';
-import { X } from '@/components/icons/lucide';
+import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
+import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -17,19 +18,25 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { LEAVE_TYPES } from '@/app/(dashboard)/hr/hr-shared';
 import type { LeaveType } from '@/lib/db-types-hr';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
-import { stopsClickPropagation } from '@/lib/a11y';
+import { expandHref } from '@/lib/navigation/expand-to-page';
 
 const today = () => todayIso();
 const tomorrow = () => toIsoDate(new Date(Date.now() + 86400000));
 
 export interface RequestLeaveDialogProps {
   onClose: () => void;
+  /**
+   * 'page' renders the fields alone, for the matching `/new` route to host
+   * inside `CreateRecordPage` — this popup's Expand control routes there.
+   */
+  presentation?: 'modal' | 'page';
   /** Runs once the request is written. */
   onCreated: () => void;
 }
 
-export default function RequestLeaveDialog({ onClose, onCreated }: RequestLeaveDialogProps) {
+export default function RequestLeaveDialog({ onClose, onCreated, presentation = 'modal' }: RequestLeaveDialogProps) {
   const { t } = useTranslation();
+  const router = useRouter();
   const { currentUser } = useAuth();
   const { users } = useUsers();
   const { showToast } = useToast();
@@ -72,51 +79,60 @@ export default function RequestLeaveDialog({ onClose, onCreated }: RequestLeaveD
     }
   };
 
-  return (
-    <Modal onClose={onClose} width={448}>
-      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold">{t('hr.requestLeave')}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">
-            <X className="w-4 h-4" />
-          </button>
+  const body = (
+    <>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
+          <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
+            <option value="">{t('hr.selectStaffOption')}</option>
+            {selectable.map(u => (
+              <option key={u._id} value={u._id}>{u.name} ({u.role.replace(/_/g, ' ')})</option>
+            ))}
+          </Select>
         </div>
-        <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
-            <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
-              <option value="">{t('hr.selectStaffOption')}</option>
-              {selectable.map(u => (
-                <option key={u._id} value={u._id}>{u.name} ({u.role.replace(/_/g, ' ')})</option>
-              ))}
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelType')}</label>
+            <Select value={form.leaveType} onChange={e => setForm({ ...form, leaveType: e.target.value as LeaveType })}>
+              {LEAVE_TYPES.map(lt => <option key={lt.id} value={lt.id}>{t(`hr.leaveType_${lt.id}`)}</option>)}
             </Select>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelType')}</label>
-              <Select value={form.leaveType} onChange={e => setForm({ ...form, leaveType: e.target.value as LeaveType })}>
-                {LEAVE_TYPES.map(lt => <option key={lt.id} value={lt.id}>{t(`hr.leaveType_${lt.id}`)}</option>)}
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStart')}</label>
-              <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelEnd')}</label>
-              <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
-            </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStart')}</label>
+            <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelReason')}</label>
-            <textarea rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder={t('hr.optional')} />
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelEnd')}</label>
+            <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
           </div>
         </div>
-        <hr className="section-divider" />
-        <div className="flex gap-2 mt-2">
-          <button onClick={onClose} className="btn btn-secondary flex-1" disabled={saving}>{t('hr.cancel')}</button>
-          <button onClick={submit} className="btn btn-primary flex-1" disabled={saving}>{t('hr.submit')}</button>
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelReason')}</label>
+          <textarea rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder={t('hr.optional')} />
         </div>
+      </div>
+      <hr className="section-divider" />
+      <div className="flex gap-2 mt-2">
+        <button onClick={onClose} className="btn btn-secondary flex-1" disabled={saving}>{t('hr.cancel')}</button>
+        <button onClick={submit} className="btn btn-primary flex-1" disabled={saving}>{t('hr.submit')}</button>
+      </div>
+    </>
+  );
+
+  if (presentation === 'page') return body;
+
+  return (
+    <Modal onClose={onClose} width={448} labelledBy="request-leave-title">
+      <div className="sadb-modal">
+        <PopupHeader
+          titleId="request-leave-title"
+          title={t('hr.requestLeave')}
+          subtitle={t('createPage.leaveNote')}
+          onExpand={() => { onClose(); router.push(expandHref('/hr/leave/new')); }}
+          onClose={onClose}
+        />
+        {body}
       </div>
     </Modal>
   );

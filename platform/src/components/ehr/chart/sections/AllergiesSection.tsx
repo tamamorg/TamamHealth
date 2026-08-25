@@ -295,6 +295,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
 
       {adding && (
         <AddAllergyModal
+          patientId={patient._id}
           onClose={() => setAdding(false)}
           onSave={async input => {
             const svc = await import('@/lib/services/allergy-service');

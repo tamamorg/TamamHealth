@@ -14,7 +14,9 @@
  */
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
+import { expandHref } from '@/lib/navigation/expand-to-page';
 import LabOrderCreateDialog from './LabOrderCreateDialog';
 import LabOrderWizard from './LabOrderWizard';
 import { useLabOrderDraft } from './useLabOrderDraft';
@@ -24,13 +26,20 @@ export default function LabOrderModal({
   onClose,
   onPlaced,
   presetPatientId,
+  presentation = 'modal',
 }: {
   onClose: () => void;
   /** Called once the orders exist — refresh the queue here. */
   onPlaced: () => void;
   /** Skip patient lookup when the flow is opened from a chart. */
   presetPatientId?: string;
+  /**
+   * 'page' drops the dialog frame so `/lab/orders/new` can host both phases —
+   * this popup's Expand control routes there.
+   */
+  presentation?: 'modal' | 'page';
 }) {
+  const router = useRouter();
   const controller = useLabOrderDraft({ presetPatientId });
   const [phase, setPhase] = useState<'dialog' | 'wizard'>('dialog');
   // Opened from a chart, the patient is context rather than a choice, so the
@@ -40,6 +49,33 @@ export default function LabOrderModal({
   // While submitting, a stray backdrop click must not orphan the draft
   // mid-write; Esc/backdrop are re-enabled as soon as the write settles.
   const requestClose = () => { if (!controller.submitting) onClose(); };
+
+  const flow = phase === 'dialog' ? (
+    <LabOrderCreateDialog
+      controller={controller}
+      onCancel={requestClose}
+      onContinue={() => setPhase('wizard')}
+      onExpand={presentation === 'modal' ? () => {
+        onClose();
+        const query = presetPatientId ? `?patient=${encodeURIComponent(presetPatientId)}` : '';
+        router.push(expandHref(`/lab/orders/new${query}`));
+      } : undefined}
+      lockPatient={lockPatient}
+    />
+  ) : (
+    <LabOrderWizard
+      controller={controller}
+      onClose={requestClose}
+      onPlaced={onPlaced}
+      lockPatient={lockPatient}
+    />
+  );
+
+  /* Expanding mid-draft is safe because nothing is written until the wizard's
+     Review step, but the draft itself does NOT survive the navigation — the
+     controller is per-mount. Expand from the first phase, before there is much
+     to lose, which is where the control is offered. */
+  if (presentation === 'page') return flow;
 
   return (
     <Modal
@@ -56,21 +92,7 @@ export default function LabOrderModal({
       topOffset="var(--app-overlay-top-inset, 0px)"
       disableBackdropClose={controller.submitting}
     >
-      {phase === 'dialog' ? (
-        <LabOrderCreateDialog
-          controller={controller}
-          onCancel={requestClose}
-          onContinue={() => setPhase('wizard')}
-          lockPatient={lockPatient}
-        />
-      ) : (
-        <LabOrderWizard
-          controller={controller}
-          onClose={requestClose}
-          onPlaced={onPlaced}
-          lockPatient={lockPatient}
-        />
-      )}
+      {flow}
     </Modal>
   );
 }

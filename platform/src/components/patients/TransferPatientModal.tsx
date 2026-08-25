@@ -12,6 +12,8 @@
  */
 import { useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
+import { useRouter } from 'next/navigation';
+import { expandHref } from '@/lib/navigation/expand-to-page';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -23,7 +25,7 @@ import type {
 } from '@/lib/db-types';
 import { patientFullName } from '@/lib/patient-utils';
 import {
-  ArrowRightLeft, ArrowRight, Check, AlertTriangle, X, Building2, Hospital,
+  ArrowRightLeft, ArrowRight, Check, AlertTriangle, Maximize2, X, Building2, Hospital,
   Timer, Users, Clock, Siren,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
@@ -118,11 +120,19 @@ export default function TransferPatientModal({
   patient,
   onClose,
   onTransferred,
+  presentation = 'modal',
 }: {
   patient: PatientDoc;
   onClose: () => void;
   onTransferred?: () => void;
+  /**
+   * 'page' drops the dialog frame so `/transfers/new` can host the same form —
+   * this popup's Expand control routes there. The header stays: it names the
+   * patient and who currently holds the chart, which the request is about.
+   */
+  presentation?: 'modal' | 'page';
 }) {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const { users } = useUsers();
   const { hospitals } = useHospitals();
@@ -270,13 +280,8 @@ export default function TransferPatientModal({
   const scopeBlurb = TRANSFER_SCOPES.find(s => s.v === scope)?.blurb;
   const activeUrgency = URGENCIES.find(u => u.v === urgency);
 
-  return (
-    <Modal onClose={onClose} width={720} align="top" labelledBy="transfer-modal-title">
-      {/* `card-elevated` supplies the opaque surface. Without it the dialog is
-          transparent — the shared Modal only styles the backdrop, leaving the
-          panel background to the caller — and the dimmed page showed straight
-          through this form, making it unreadable. */}
-      <div className="card-elevated xfer">
+  const panel = (
+      <div className={presentation === 'page' ? 'xfer xfer--page' : 'card-elevated xfer'}>
         <header className="xfer-head">
           <span className="xfer-head-icon"><ArrowRightLeft /></span>
           <div className="min-w-0">
@@ -285,9 +290,25 @@ export default function TransferPatientModal({
               {patientFullName(patient)} · with <strong>{currentOwner}</strong>
             </p>
           </div>
-          <button onClick={onClose} className="xfer-close" aria-label="Close">
-            <X />
-          </button>
+          {presentation === 'modal' && (
+            <>
+              {/* The same pair every create popup carries. They sit in this
+                  header rather than PopupHeader's band because `xfer-head`
+                  already carries the patient line the request is about. */}
+              <button
+                onClick={() => { onClose(); router.push(expandHref(`/transfers/new?patient=${encodeURIComponent(patient._id)}`)); }}
+                className="xfer-close"
+                aria-label="Open full page"
+                title="Open full page"
+                data-action="popup-expand"
+              >
+                <Maximize2 />
+              </button>
+              <button onClick={onClose} className="xfer-close" aria-label="Close" data-action="popup-close">
+                <X />
+              </button>
+            </>
+          )}
         </header>
 
         <div className="xfer-body">
@@ -569,6 +590,17 @@ export default function TransferPatientModal({
           </button>
         </div>
       </div>
+  );
+
+  if (presentation === 'page') return panel;
+
+  return (
+    <Modal onClose={onClose} width={720} align="top" labelledBy="transfer-modal-title">
+      {/* `card-elevated` supplies the opaque surface. Without it the dialog is
+          transparent — the shared Modal only styles the backdrop, leaving the
+          panel background to the caller — and the dimmed page showed straight
+          through this form, making it unreadable. */}
+      {panel}
     </Modal>
   );
 }

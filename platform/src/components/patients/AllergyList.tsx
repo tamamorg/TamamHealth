@@ -119,6 +119,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
       {/* Add modal */}
       {adding && (
         <AddAllergyModal
+          patientId={patient._id}
           onClose={() => setAdding(false)}
           onSave={async input => {
             const svc = await import('@/lib/services/allergy-service');

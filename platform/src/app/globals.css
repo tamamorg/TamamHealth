@@ -23479,6 +23479,17 @@ table.patient-data-table.patient-data-table {
   max-height: min(86vh, 940px);
   overflow: hidden;
 }
+
+/* The same form on its own page (/transfers/new). Nothing constrains it to a
+   dialog's height there, so the cap and the inner scroller come off and the
+   page scrolls instead — two nested scrollbars on one form is the worse of
+   the two readings. */
+.xfer--page {
+  max-height: none;
+  overflow: visible;
+}
+.xfer--page .xfer-body { overflow-y: visible; }
+
 /* Typography reset only — deliberately does NOT set `display`, so the layout
    classes below (.xfer-field, .xfer-inline-check) still win over the global
    `label { display: block }` rule they'd otherwise be outranked by. */
@@ -30105,6 +30116,15 @@ button.sadb-signal { cursor: pointer; }
   color: #FFFFFF;
 }
 .popup-resource-header__copy { min-width: 0; padding-top: 1px; }
+
+/* Same band on a `.modal-panel` host, whose surface pads 24px instead of the
+   console dialog's 15/18/16. Only the margin that cancels that padding — and
+   the inline padding that keeps the title on the same optical line — differ. */
+.popup-resource-header--panel {
+  margin: -24px -24px 18px;
+  padding: 15px 20px 14px 24px;
+}
+
 .popup-resource-header__title {
   margin: 0;
   color: #FFFFFF;

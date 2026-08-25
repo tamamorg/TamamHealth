@@ -15,7 +15,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { X } from '@/components/icons/lucide';
+import { Maximize2, X } from '@/components/icons/lucide';
+import { useRouter } from 'next/navigation';
+import { expandHref } from '@/lib/navigation/expand-to-page';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -46,11 +48,17 @@ interface PrescribeModalProps {
   onClose: () => void;
   /** Fired after each write so the host list can refresh. */
   onPrescribed?: () => void;
+  /**
+   * 'page' drops the dialog frame so `/patients/[id]/prescriptions/new` can
+   * host the same two columns — this popup's Expand control routes there.
+   */
+  presentation?: 'modal' | 'page';
 }
 
 export default function PrescribeModal({
-  patientId, patientName, currentUser, encounterId, onClose, onPrescribed,
+  patientId, patientName, currentUser, encounterId, onClose, onPrescribed, presentation = 'modal',
 }: PrescribeModalProps) {
+  const router = useRouter();
   const { showToast } = useToast();
   const scope = useDataScope();
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
@@ -288,12 +296,27 @@ export default function PrescribeModal({
     onClose();
   };
 
-  return (
-    <Modal onClose={onClose} width={1140} align="top" labelledBy="cn-rx-title">
+  const panel = (
       <div className="cn-meds">
         <div className="cn-meds-header">
           <h2 className="cn-meds-title" id="cn-rx-title">Prescribe Medications</h2>
-          <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close prescribe medications">
+          {presentation === 'modal' && (
+            <button
+              type="button"
+              className="cn-meds-close"
+              onClick={() => {
+                onClose();
+                const query = encounterId ? `?encounter=${encodeURIComponent(encounterId)}` : '';
+                router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/prescriptions/new${query}`));
+              }}
+              aria-label="Open full page"
+              title="Open full page"
+              data-action="popup-expand"
+            >
+              <Maximize2 size={18} />
+            </button>
+          )}
+          <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close prescribe medications" data-action="popup-close">
             <X size={18} />
           </button>
         </div>
@@ -355,6 +378,13 @@ export default function PrescribeModal({
           </div>
         </div>
       </div>
+  );
+
+  if (presentation === 'page') return panel;
+
+  return (
+    <Modal onClose={onClose} width={1140} align="top" labelledBy="cn-rx-title">
+      {panel}
     </Modal>
   );
 }

@@ -1,6 +1,19 @@
 /** @type {import('next').NextConfig} */
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const nextConfig = {
   devIndicators: false,
+  // Pin the workspace root to this package. Without it Turbopack walks up,
+  // finds the repo-root lockfile (and would find a stray ~/package-lock.json
+  // the same way), and warns that it inferred a root that is not this app —
+  // the same pin platform/next.config.mjs carries, and for the same reason:
+  // a root guessed above the package breaks module resolution in dev.
+  turbopack: {
+    root: __dirname,
+  },
   // Emit a self-contained server with only the modules the app actually
   // imports. The image used to copy the whole node_modules tree and came to
   // 885 MB — one copy of which nearly filled the container registry's 500 MB

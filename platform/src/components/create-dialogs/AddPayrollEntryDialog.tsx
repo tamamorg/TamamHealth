@@ -7,26 +7,33 @@
  */
 
 import { useMemo, useState } from 'react';
-import { X } from '@/components/icons/lucide';
+import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
+import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
-import { stopsClickPropagation } from '@/lib/a11y';
+import { expandHref } from '@/lib/navigation/expand-to-page';
 
 export interface AddPayrollEntryDialogProps {
   onClose: () => void;
+  /**
+   * 'page' renders the fields alone, for the matching `/new` route to host
+   * inside `CreateRecordPage` — this popup's Expand control routes there.
+   */
+  presentation?: 'modal' | 'page';
   /** Period (YYYY-MM) the entry belongs to. Defaults to the current month. */
   period?: string;
   /** Runs with the entry's period once it is written. */
   onCreated: (period: string) => void;
 }
 
-export default function AddPayrollEntryDialog({ onClose, period, onCreated }: AddPayrollEntryDialogProps) {
+export default function AddPayrollEntryDialog({ onClose, period, onCreated, presentation = 'modal' }: AddPayrollEntryDialogProps) {
   const { t } = useTranslation();
+  const router = useRouter();
   const { currentUser } = useAuth();
   const { users } = useUsers();
   const { showToast } = useToast();
@@ -71,63 +78,72 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated }: Ad
     }
   };
 
-  return (
-    <Modal onClose={onClose} width={448}>
-      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold">{t('hr.addPayrollEntryPeriod', { period: entryPeriod })}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">
-            <X className="w-4 h-4" />
-          </button>
+  const body = (
+    <>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
+          <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
+            <option value="">{t('hr.selectStaffOption')}</option>
+            {facilityUsers.map(u => (
+              <option key={u._id} value={u._id}>{u.name} ({u.role.replace(/_/g, ' ')})</option>
+            ))}
+          </Select>
         </div>
-        <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
-            <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
-              <option value="">{t('hr.selectStaffOption')}</option>
-              {facilityUsers.map(u => (
-                <option key={u._id} value={u._id}>{u.name} ({u.role.replace(/_/g, ' ')})</option>
-              ))}
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelCurrency')}</label>
+            <Select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}>
+              <option value="SSP">SSP</option><option value="USD">USD</option><option value="KES">KES</option>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelCurrency')}</label>
-              <Select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}>
-                <option value="SSP">SSP</option><option value="USD">USD</option><option value="KES">KES</option>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelBaseSalary')}</label>
-              <input type="number" min={0} value={form.baseSalary || ''} onChange={e => setForm({ ...form, baseSalary: parseFloat(e.target.value) || 0 })} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelAllowances')}</label>
-              <input type="number" min={0} value={form.allowances || ''} onChange={e => setForm({ ...form, allowances: parseFloat(e.target.value) || 0 })} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelDeductions')}</label>
-              <input type="number" min={0} value={form.deductions || ''} onChange={e => setForm({ ...form, deductions: parseFloat(e.target.value) || 0 })} />
-            </div>
-          </div>
-          <div className="px-3 py-2 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-            <div className="flex justify-between text-[12px]">
-              <span style={{ color: 'var(--text-muted)' }}>{t('hr.netPay')}</span>
-              <span className="font-bold font-mono" style={{ color: 'var(--color-success-text)' }}>
-                {formatMoney(form.baseSalary + form.allowances - form.deductions, { currency: form.currency })}
-              </span>
-            </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelBaseSalary')}</label>
+            <input type="number" min={0} value={form.baseSalary || ''} onChange={e => setForm({ ...form, baseSalary: parseFloat(e.target.value) || 0 })} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelNotes')}</label>
-            <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelAllowances')}</label>
+            <input type="number" min={0} value={form.allowances || ''} onChange={e => setForm({ ...form, allowances: parseFloat(e.target.value) || 0 })} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelDeductions')}</label>
+            <input type="number" min={0} value={form.deductions || ''} onChange={e => setForm({ ...form, deductions: parseFloat(e.target.value) || 0 })} />
           </div>
         </div>
-        <hr className="section-divider" />
-        <div className="flex gap-2 mt-2">
-          <button onClick={onClose} className="btn btn-secondary flex-1" disabled={saving}>{t('hr.cancel')}</button>
-          <button onClick={submit} className="btn btn-primary flex-1" disabled={saving}>{t('hr.addEntry')}</button>
+        <div className="px-3 py-2 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
+          <div className="flex justify-between text-[12px]">
+            <span style={{ color: 'var(--text-muted)' }}>{t('hr.netPay')}</span>
+            <span className="font-bold font-mono" style={{ color: 'var(--color-success-text)' }}>
+              {formatMoney(form.baseSalary + form.allowances - form.deductions, { currency: form.currency })}
+            </span>
+          </div>
         </div>
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelNotes')}</label>
+          <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+        </div>
+      </div>
+      <hr className="section-divider" />
+      <div className="flex gap-2 mt-2">
+        <button onClick={onClose} className="btn btn-secondary flex-1" disabled={saving}>{t('hr.cancel')}</button>
+        <button onClick={submit} className="btn btn-primary flex-1" disabled={saving}>{t('hr.addEntry')}</button>
+      </div>
+    </>
+  );
+
+  if (presentation === 'page') return body;
+
+  return (
+    <Modal onClose={onClose} width={448} labelledBy="add-payroll-title">
+      <div className="sadb-modal">
+        <PopupHeader
+          titleId="add-payroll-title"
+          title={t('hr.addPayrollEntryPeriod', { period: entryPeriod })}
+          subtitle={t('createPage.payrollNote')}
+          onExpand={() => { onClose(); router.push(expandHref(`/hr/payroll/new?period=${encodeURIComponent(entryPeriod)}`)); }}
+          onClose={onClose}
+        />
+        {body}
       </div>
     </Modal>
   );
