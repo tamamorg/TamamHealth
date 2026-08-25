@@ -10,7 +10,7 @@ import {
   Syringe, Baby, Pill, ShieldCheck, Microscope, ChevronDown,
 } from '@/components/icons/lucide';
 import {
-  ResponsiveContainer, LineChart, Line,
+  ResponsiveContainer, LineChart, Line, YAxis,
 } from 'recharts';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useWards } from '@/lib/hooks/useWards';
@@ -815,8 +815,16 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
             ) : (
             <ResponsiveContainer width="100%" height={50}>
               <LineChart data={hospital.monthlyTrends} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-                <Line type="monotone" dataKey="opdVisits" stroke="var(--accent-primary)" strokeWidth={1.5} dot={false} />
-                <Line type="monotone" dataKey="reportingTimeliness" stroke="var(--color-success)" strokeWidth={1.5} dot={false} />
+                {/* One axis each. These are different units — OPD visits run to
+                    hundreds, timeliness is a percentage — and on a shared
+                    domain recharts scaled both to the visit counts, pressing
+                    the timeliness line flat along the bottom whatever it
+                    actually was. The axes are hidden (this is a 50px
+                    sparkline); what they do is give each line its own range. */}
+                <YAxis yAxisId="visits" hide domain={[0, 'dataMax']} />
+                <YAxis yAxisId="timeliness" hide domain={[0, 100]} />
+                <Line yAxisId="visits" type="monotone" dataKey="opdVisits" stroke="var(--accent-primary)" strokeWidth={1.5} dot={false} />
+                <Line yAxisId="timeliness" type="monotone" dataKey="reportingTimeliness" stroke="var(--color-success)" strokeWidth={1.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
             )}
