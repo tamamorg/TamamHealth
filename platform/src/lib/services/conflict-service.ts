@@ -34,6 +34,32 @@ export const HIGH_RISK_RESOURCES: ReadonlySet<string> = new Set([
   'prescription',
   'medication_administration',
   'shift_handoff',
+
+  // ── Added Aug 2026, after an audit found these settling their own ────────
+  //
+  // Everything absent from this list takes PouchDB's most-recent-revision-wins
+  // default, silently. That is fine for a preference and wrong for a record
+  // two devices can write at once — which, in a system built to work through
+  // outages, is every clinical document.
+  //
+  // The controlled-substance register is the one that made the case: a
+  // narcotics count that quietly discards a revision is a controlled-drugs
+  // accountability failure, and it is precisely the register an inspector
+  // asks to see. Births and deaths are legally reportable vital events, and a
+  // lost revision there is a lost notification. The rest are clinical
+  // decisions or identity: a lab result, a triage acuity, an encounter, a
+  // procedure, an immunisation, a patient's own demographics, and the
+  // transfer that moves their care to someone else.
+  'controlled_substance_log',
+  'lab_result',
+  'birth',
+  'death',
+  'clinical_encounter',
+  'triage',
+  'procedure',
+  'immunization',
+  'patient',
+  'patient_transfer',
 ]);
 
 export const MEDIUM_RISK_RESOURCES: ReadonlySet<string> = new Set([
