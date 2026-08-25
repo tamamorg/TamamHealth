@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { makeCoalescer } from './live-reload';
 import type { PatientDocumentDoc } from '../db-types';
 import { patientDocumentsDB } from '../db';
-import type { AddPatientDocumentInput } from '../services/patient-document-service';
+import type { AddImageAnnotationInput, AddPatientDocumentInput, ImageAnnotationActor } from '../services/patient-document-service';
 import { useDataScope } from './useDataScope';
 
 /** Scanned/uploaded documents filed on a patient's chart, live-reloaded. */
@@ -54,5 +54,29 @@ export function usePatientDocuments(patientId?: string) {
     return ok;
   }, [load]);
 
-  return { documents, loading, add, remove, reload: load };
+  const addAnnotation = useCallback(async (documentId: string, input: AddImageAnnotationInput, actor?: ImageAnnotationActor) => {
+    if (!scope) throw new Error('Your clinical data scope is unavailable');
+    const { addImageAnnotation } = await import('../services/patient-document-service');
+    const doc = await addImageAnnotation(documentId, input, scope, actor);
+    await load();
+    return doc;
+  }, [load, scope]);
+
+  const updateAnnotation = useCallback(async (documentId: string, annotationId: string, label: string, actor?: ImageAnnotationActor) => {
+    if (!scope) throw new Error('Your clinical data scope is unavailable');
+    const { updateImageAnnotation } = await import('../services/patient-document-service');
+    const doc = await updateImageAnnotation(documentId, annotationId, label, scope, actor);
+    await load();
+    return doc;
+  }, [load, scope]);
+
+  const deleteAnnotation = useCallback(async (documentId: string, annotationId: string, actor?: ImageAnnotationActor) => {
+    if (!scope) throw new Error('Your clinical data scope is unavailable');
+    const { deleteImageAnnotation } = await import('../services/patient-document-service');
+    const doc = await deleteImageAnnotation(documentId, annotationId, scope, actor);
+    await load();
+    return doc;
+  }, [load, scope]);
+
+  return { documents, loading, add, remove, addAnnotation, updateAnnotation, deleteAnnotation, reload: load };
 }

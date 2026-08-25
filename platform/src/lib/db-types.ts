@@ -1342,6 +1342,29 @@ export type PatientDocumentCategory =
   | 'external_medical_record' | 'patient_education' | 'other';
 
 /**
+ * A point annotation positioned over a clinical image. Coordinates are stored
+ * as fractions of the source image so labels stay attached when the viewer is
+ * zoomed, rotated, resized, or opened on another device. Deleted labels are
+ * tombstoned: clinical mark-up remains reconstructable from the audit trail.
+ */
+export interface ClinicalImageAnnotation {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  status: 'active' | 'deleted';
+  createdAt: string;
+  createdById?: string;
+  createdByName?: string;
+  updatedAt?: string;
+  updatedById?: string;
+  updatedByName?: string;
+  deletedAt?: string;
+  deletedById?: string;
+  deletedByName?: string;
+}
+
+/**
  * A scanned or uploaded document filed on the patient chart — radiology films,
  * a referral letter, an ID, a previous paper record, etc. The HealthBridge
  * "drop a PDF/photo, categorise it, filter on the timeline" capability. Stored
@@ -1360,6 +1383,8 @@ export interface PatientDocumentDoc extends BaseDoc {
   base64Data: string;
   sizeBytes: number;
   note?: string;
+  /** Review mark-up for image documents; ignored for non-image files. */
+  imageAnnotations?: ClinicalImageAnnotation[];
   uploadedById?: string;
   uploadedByName?: string;
   hospitalId?: string;
