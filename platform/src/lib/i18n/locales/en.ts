@@ -1115,8 +1115,6 @@ const en: TranslationMap = {
   'createPage.transferNote': 'Hand a chart to another clinician or facility, with the reason and the urgency.',
   'createPage.transferNoPatient': 'Open this from a patient chart — a transfer is always about one.',
   'createPage.backToTransfers': 'Back to transfers',
-  'createPage.backToLab': 'Back to the lab worklist',
-  'createPage.openFullPage': 'Open full page',
   'createPage.prescribeTitle': 'Prescribe medications',
   'createPage.prescribeNote': 'Interactions, allergies and what the pharmacy actually holds are checked as you write.',
 

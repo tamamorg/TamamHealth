@@ -1118,8 +1118,6 @@ const apd: TranslationMap = {
   'createPage.transferNote': 'سلّم الملف لطبيب تاني أو مرفق تاني، مع السبب ودرجة الاستعجال.',
   'createPage.transferNoPatient': 'افتح دا من ملف عيان — التحويل دايماً بخص عيان واحد.',
   'createPage.backToTransfers': 'رجوع للتحويلات الداخلية',
-  'createPage.backToLab': 'رجوع لقائمة المعمل',
-  'createPage.openFullPage': 'افتح الصفحة الكاملة',
   'createPage.prescribeTitle': 'اكتب الأدوية',
   'createPage.prescribeNote': 'التعارضات والحساسية والموجود فعلاً في الصيدلية بتتشيّك وانت بتكتب.',
 

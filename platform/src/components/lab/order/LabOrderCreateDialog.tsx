@@ -15,7 +15,7 @@
 
 import { useMemo, useState } from 'react';
 import CodedSearchField from '@/components/CodedSearchField';
-import { Check, FlaskConical, Image as ImageIcon, Maximize2, Search, X } from '@/components/icons/lucide';
+import { Check, FlaskConical, Image as ImageIcon, Search, X } from '@/components/icons/lucide';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -29,17 +29,11 @@ export default function LabOrderCreateDialog({
   controller,
   onCancel,
   onContinue,
-  onExpand,
   lockPatient = false,
 }: {
   controller: LabOrderController;
   onCancel: () => void;
   onContinue: () => void;
-  /**
-   * Promote the flow to `/lab/orders/new`. Absent on that page itself, where
-   * there is nothing left to expand into.
-   */
-  onExpand?: () => void;
   /** Opened from a chart: the patient is fixed and shown read-only. */
   lockPatient?: boolean;
 }) {
@@ -80,23 +74,9 @@ export default function LabOrderCreateDialog({
           <h3 className="labord-title">{t('labOrder.createOrder')}</h3>
           <p className="labord-subtitle">{t('labOrder.createOrderSubtitle')}</p>
         </div>
-        <div className="labord-window-actions">
-          {onExpand && (
-            <button
-              type="button"
-              className="labord-close"
-              onClick={onExpand}
-              aria-label={t('createPage.openFullPage')}
-              title={t('createPage.openFullPage')}
-              data-action="popup-expand"
-            >
-              <Maximize2 className="w-4 h-4" aria-hidden />
-            </button>
-          )}
-          <button type="button" className="labord-close" onClick={onCancel} aria-label={t('action.cancel')} data-action="popup-close">
-            <X className="w-4 h-4" aria-hidden />
-          </button>
-        </div>
+        <button type="button" className="labord-close" onClick={onCancel} aria-label={t('action.cancel')}>
+          <X className="w-4 h-4" aria-hidden />
+        </button>
       </div>
 
       <div className="labord-scroll">
