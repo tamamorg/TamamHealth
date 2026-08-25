@@ -18,6 +18,23 @@ export const TRANSFER_SWEEP_WORKFLOW_REF =
 const MAIN_REF = 'refs/heads/main';
 
 /**
+ * The daily reminder dispatch, on the same footing as the sweep.
+ *
+ * It authenticated with a shared secret that was never set, so the job failed
+ * every morning and no patient received a reminder. A short-lived token bound
+ * to this repository, this workflow and this branch needs nothing configured by
+ * hand — which is the difference between a job that works and a job waiting for
+ * someone to remember a secret.
+ *
+ * A DIFFERENT audience from the sweep, deliberately: a token minted for one
+ * cron must not authorise the other. The workflow asks for this audience and
+ * the verifier insists on it.
+ */
+export const REMINDER_DISPATCH_OIDC_AUDIENCE = 'tamamhealth-reminder-dispatch';
+export const REMINDER_DISPATCH_WORKFLOW_REF =
+  `${TRANSFER_SWEEP_REPOSITORY}/.github/workflows/reminders-cron.yml@refs/heads/main`;
+
+/**
  * The subject GitHub actually stamps on this repository's tokens.
  *
  * Two forms exist. The classic one names the repository as text:
@@ -40,7 +57,7 @@ const MAIN_REF = 'refs/heads/main';
    `tsc` refuses `(?<name>…)` outright. */
 const IMMUTABLE_SUBJECT = /^repo:([^@/:]+)@\d+\/([^@/:]+)@\d+:ref:(.+)$/;
 
-function subjectNamesTheSweepWorkflow(subject: unknown): boolean {
+function subjectNamesThisRepositoryOnMain(subject: unknown): boolean {
   if (typeof subject !== 'string') return false;
   if (subject === `repo:${TRANSFER_SWEEP_REPOSITORY}:ref:${MAIN_REF}`) return true;
   const parts = IMMUTABLE_SUBJECT.exec(subject);
@@ -49,25 +66,47 @@ function subjectNamesTheSweepWorkflow(subject: unknown): boolean {
   return `${owner}/${repo}` === TRANSFER_SWEEP_REPOSITORY && ref === MAIN_REF;
 }
 
-/** Verify a short-lived GitHub Actions token is from the one production cron. */
-export async function verifyTransferSweepOidcToken(
+/**
+ * Verify a short-lived GitHub Actions token is from one specific production
+ * cron: this repository, that workflow file, on main, minted by GitHub's own
+ * runners for a schedule or a deliberate dispatch.
+ */
+async function verifyCronOidcToken(
   token: string,
-  getKey: JWTVerifyGetKey = GITHUB_JWKS,
+  audience: string,
+  workflowRef: string,
+  getKey: JWTVerifyGetKey,
 ): Promise<boolean> {
   try {
     const { payload } = await jwtVerify(token, getKey, {
       issuer: GITHUB_ISSUER,
-      audience: TRANSFER_SWEEP_OIDC_AUDIENCE,
+      audience,
       algorithms: ['RS256'],
     });
     return payload.repository === TRANSFER_SWEEP_REPOSITORY
-      && payload.workflow_ref === TRANSFER_SWEEP_WORKFLOW_REF
+      && payload.workflow_ref === workflowRef
       && payload.ref === MAIN_REF
       && payload.ref_type === 'branch'
       && payload.runner_environment === 'github-hosted'
       && (payload.event_name === 'schedule' || payload.event_name === 'workflow_dispatch')
-      && subjectNamesTheSweepWorkflow(payload.sub);
+      && subjectNamesThisRepositoryOnMain(payload.sub);
   } catch {
     return false;
   }
+}
+
+/** The hourly patient-transfer sweep. */
+export async function verifyTransferSweepOidcToken(
+  token: string,
+  getKey: JWTVerifyGetKey = GITHUB_JWKS,
+): Promise<boolean> {
+  return verifyCronOidcToken(token, TRANSFER_SWEEP_OIDC_AUDIENCE, TRANSFER_SWEEP_WORKFLOW_REF, getKey);
+}
+
+/** The daily patient-reminder dispatch. */
+export async function verifyReminderDispatchOidcToken(
+  token: string,
+  getKey: JWTVerifyGetKey = GITHUB_JWKS,
+): Promise<boolean> {
+  return verifyCronOidcToken(token, REMINDER_DISPATCH_OIDC_AUDIENCE, REMINDER_DISPATCH_WORKFLOW_REF, getKey);
 }

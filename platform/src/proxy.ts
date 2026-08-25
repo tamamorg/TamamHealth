@@ -126,7 +126,11 @@ const MACHINE_CALLER_ROUTES: Record<string, readonly string[]> = {
   // is indistinguishable from a bad signature and leaves the Risk Center
   // reporting no backup on record forever.
   '/api/admin/backup': ['x-tamamhealth-signature'],
-  '/api/patient-reminders/dispatch': ['x-reminder-dispatch-secret'],
+  // Two headers, for the same reason as the sweep below: the cron presents a
+  // GitHub OIDC bearer, an operator's own scheduler presents the shared secret.
+  // Listing only the secret would refuse every cron run at the gate with a 403
+  // the route never sees.
+  '/api/patient-reminders/dispatch': ['x-reminder-dispatch-secret', 'authorization'],
   // Two headers, because the sweep has two callers. The shared secret is the
   // original; `authorization` is the GitHub Actions OIDC token the cron moved
   // to. Listing only the secret is what broke it: the workflow stopped sending

@@ -51,11 +51,20 @@ describe('machine-caller exemption', () => {
     expect(res.status).toBe(401);
   });
 
-  it('does not let a bearer token unlock the OTHER job path', async () => {
-    // The bearer exemption is scoped to the sweep, which is the only route
-    // that verifies an OIDC token. Reminders still require their own secret.
+  it('lets the reminder cron in with an OIDC bearer token too', async () => {
+    /* Reminders moved to the same short-lived identity as the sweep, for the
+       same reason: its shared secret was never set, so the job failed every
+       morning and no patient was reminded. Passing this gate is NOT
+       authorisation — the route verifies the token's audience, workflow and
+       branch, and this fake signature gets nowhere. What the gate decides is
+       only whether the route is allowed to make that judgement. */
     const res = await proxy(post(DISPATCH, { authorization: 'Bearer eyJhbGciOiJSUzI1NiJ9.fake.sig' }));
-    expect([401, 403]).toContain(res.status);
+    expect(res.status).toBe(200);
+  });
+
+  it('does not treat a non-bearer authorization header on reminders as a machine caller', async () => {
+    const res = await proxy(post(DISPATCH, { authorization: 'Basic YWRtaW46aHVudGVyMg==' }));
+    expect(res.status).toBe(401);
   });
 
   it('does not let a bearer token unlock an ordinary API route', async () => {
