@@ -19,6 +19,18 @@ import type { AuditLogDoc, ConflictQueueDoc, OrganizationDoc, SyncEventDoc } fro
 
 export type RiskSource = 'Audit' | 'Sync' | 'Data' | 'Tenants' | 'Continuity' | 'Platform';
 
+/**
+ * Which RULE produced a row, as opposed to which subsystem it came from.
+ *
+ * `source` is the six-way grouping an operator filters by; two different rules
+ * can share one ("no backup on record" and "backup overdue" are both
+ * Continuity, and they mean opposite things). The explanation a reader needs is
+ * per rule, so it is keyed by this.
+ */
+export type RiskKind =
+  | 'audit' | 'sync' | 'conflict' | 'org-status' | 'org-trial'
+  | 'backup-missing' | 'backup-overdue' | 'maintenance';
+
 export interface RiskRow {
   /** Stable across reloads — the key a resolution is filed under. */
   id: string;
@@ -32,6 +44,8 @@ export interface RiskRow {
    * when the condition returns in a different form. See RiskResolutionDoc.
    */
   signature: string;
+  /** The rule behind the row — the key its explanation is filed under. */
+  kind: RiskKind;
   severity: SaSeverity;
   signal: string;
   source: RiskSource;
@@ -72,6 +86,55 @@ const READINESS_CURVE_SCALE = 26;
 /** Failed audit entries older than this are no longer treated as open risk. */
 const AUDIT_WINDOW_MS = 7 * 24 * 3600 * 1000;
 
+/**
+ * What a row MEANS, in the words an operator needs at the moment they are
+ * deciding what to do about it.
+ *
+ * A derived queue states a condition — "No backup on record", "3 competing
+ * revisions" — and says nothing about what asserts it, what usually causes it,
+ * or what makes it go away. That gap is what turns a HIGH row into a button
+ * somebody presses to make the red thing stop: resolving records that a risk
+ * was dealt with, so an operator who resolves one they do not understand has
+ * quietly told every other operator it was handled.
+ *
+ * The copy itself lives in the locales (`riskGuide.*`), because this is the
+ * only part of the Risk Center a reader is meant to READ rather than scan, and
+ * a half-translated explanation is worse than an untranslated one. What stays
+ * here, beside the rules in `buildRiskRows`, is the mapping from rule to
+ * explanation — a rule and its explanation drifting apart is worse than either
+ * being missing. Tests assert every kind is covered and every key exists.
+ */
+export interface RiskGuidance {
+  /** One or two sentences: what the platform is actually asserting. */
+  meansKey: string;
+  /** The usual causes, most likely first. Kept to three — this is a dialog. */
+  causeKeys: readonly string[];
+  /** What makes the row go away for real, as opposed to resolving it. */
+  clearsKey: string;
+}
+
+const guide = (kind: RiskKind, causes: number): RiskGuidance => ({
+  meansKey: `riskGuide.${kind}.means`,
+  causeKeys: Array.from({ length: causes }, (_, i) => `riskGuide.${kind}.cause${i + 1}`),
+  clearsKey: `riskGuide.${kind}.clears`,
+});
+
+export const RISK_GUIDANCE: Record<RiskKind, RiskGuidance> = {
+  audit: guide('audit', 2),
+  sync: guide('sync', 2),
+  conflict: guide('conflict', 1),
+  'org-status': guide('org-status', 2),
+  'org-trial': guide('org-trial', 1),
+  'backup-missing': guide('backup-missing', 3),
+  'backup-overdue': guide('backup-overdue', 2),
+  maintenance: guide('maintenance', 1),
+};
+
+/** The explanation for a row, by the rule that produced it. */
+export function riskGuidance(row: Pick<RiskRow, 'kind'>): RiskGuidance | undefined {
+  return RISK_GUIDANCE[row.kind];
+}
+
 export function buildRiskRows(input: RiskInputs): RiskRow[] {
   const out: RiskRow[] = [];
   const cutoff = Date.now() - AUDIT_WINDOW_MS;
@@ -84,6 +147,7 @@ export function buildRiskRows(input: RiskInputs): RiskRow[] {
     out.push({
       id: `audit-${log._id}`,
       signature: log._id,
+      kind: 'audit',
       severity: classifyAuditRisk(log.action, log.success),
       signal: log.action,
       source: 'Audit',
@@ -102,6 +166,7 @@ export function buildRiskRows(input: RiskInputs): RiskRow[] {
         // A queued event that later fails is a new problem, not the one that
         // was resolved, so the state rides in the signature.
         signature: `${ev._id}:${ev.syncStatus}`,
+        kind: 'sync',
         severity: 'medium',
         signal: `${ev.operation} ${ev.resourceType}`,
         source: 'Sync',
@@ -118,6 +183,7 @@ export function buildRiskRows(input: RiskInputs): RiskRow[] {
     out.push({
       id: `conflict-${c._id}`,
       signature: c._id,
+      kind: 'conflict',
       severity: c.risk === 'high' ? 'high' : c.risk === 'medium' ? 'medium' : 'low',
       signal: `${c.resourceType} conflict`,
       source: 'Data',
@@ -133,6 +199,7 @@ export function buildRiskRows(input: RiskInputs): RiskRow[] {
       out.push({
         id: `org-status-${org._id}`,
         signature: `${org.subscriptionStatus}:${org.isActive !== false}`,
+        kind: 'org-status',
         severity: 'medium',
         signal: `${org.name} — ${org.subscriptionStatus}`,
         source: 'Tenants',
@@ -144,6 +211,7 @@ export function buildRiskRows(input: RiskInputs): RiskRow[] {
       out.push({
         id: `org-trial-${org._id}`,
         signature: `trial:${org.subscriptionPlan}`,
+        kind: 'org-trial',
         severity: 'low',
         signal: `${org.name} — trial`,
         source: 'Tenants',
@@ -161,6 +229,7 @@ export function buildRiskRows(input: RiskInputs): RiskRow[] {
       out.push({
         id: 'continuity-backup-missing',
         signature: `missing:${rpo}`,
+        kind: 'backup-missing',
         severity: 'high',
         signal: 'No backup on record',
         source: 'Continuity',
@@ -173,6 +242,7 @@ export function buildRiskRows(input: RiskInputs): RiskRow[] {
         // Keyed to the backup it is overdue *since*. A newer backup that later
         // goes overdue is a fresh lapse and reopens on its own.
         signature: `${input.backupLastAt || 'none'}:${rpo}`,
+        kind: 'backup-overdue',
         severity: input.backupAgeHours > rpo * 2 ? 'high' : 'medium',
         signal: 'Backup overdue',
         source: 'Continuity',
@@ -187,6 +257,7 @@ export function buildRiskRows(input: RiskInputs): RiskRow[] {
     out.push({
       id: 'platform-maintenance',
       signature: `on:${input.configUpdatedAt || 'unknown'}`,
+      kind: 'maintenance',
       severity: 'low',
       signal: 'Maintenance mode is on',
       source: 'Platform',

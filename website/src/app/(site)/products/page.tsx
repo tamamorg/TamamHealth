@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import Corners from "@/components/Corners";
 import { PRODUCTS as PRODUCTS_EN } from "@/lib/site-data";
@@ -50,8 +51,15 @@ export default async function ProductsPage() {
           </div>
           <figure className="blueprint tm-figure" style={{ margin: 0, position: "relative", background: "#FFFFFF", padding: 8, borderColor: "rgba(255,255,255,0.28)" }}>
             <Corners light />
-            {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-            <img src="/assets/platform-front-desk.png" alt={t("The TamamHealth front desk: the day's arrivals with times, care team and triage status, beside the reception queue and patient flow")} style={{ width: "100%", display: "block" }} />
+            <Image
+              src="/assets/platform-front-desk.png"
+              alt={t("The TamamHealth front desk: the day's arrivals with times, care team and triage status, beside the reception queue and patient flow")}
+              width={3200}
+              height={1824}
+              sizes="(max-width: 760px) 100vw, 50vw"
+              preload
+              style={{ width: "100%", height: "auto" }}
+            />
             {/* Same line as the figure on /platform, naming the other room. */}
             <figcaption className="fs125" style={{ padding: "9px 5px 2px", lineHeight: 1.5, color: "var(--color-neutral-600)" }}>
               {t("The front desk — the day's arrivals with their times, care team and triage status.")}
@@ -71,8 +79,13 @@ export default async function ProductsPage() {
               <Link key={p.slug} href={`/products/${p.slug}`} className="blueprint tm-prodcard" style={{ display: "flex", flexDirection: "column", background: "#FFFFFF", textDecoration: "none", color: "inherit" }}>
                 <Corners />
                 <div className="tm-figure" style={{ position: "relative", height: 190, borderBottom: `3px solid ${p.accent}` }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}
-                  <img src={p.image} alt={p.imageAlt} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%" }} />
+                  <Image
+                    src={p.image}
+                    alt={p.imageAlt}
+                    fill
+                    sizes="(max-width: 760px) 1px, (max-width: 1100px) 50vw, 33vw"
+                    style={{ objectFit: "cover", objectPosition: "center 25%" }}
+                  />
                 </div>
                 <div style={{ padding: "22px 24px 24px", display: "flex", flexDirection: "column", gap: 11, flex: 1 }}>
                   {/* The acronym chip, not the photograph, is what identifies a

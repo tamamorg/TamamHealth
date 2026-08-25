@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Corners from "@/components/Corners";
 import DonateWidget from "@/components/DonateWidget";
 import { DONATION_FAQ as DONATION_FAQ_EN, DONATION_STEPS as DONATION_STEPS_EN, GOALS as GOALS_EN, SUPPORT_EMAIL } from "@/lib/site-data";
@@ -35,8 +36,14 @@ export default async function DonatePage() {
           </div>
           <div className="tm-figure blueprint tm-h420" style={{ position: "relative", height: 420, borderColor: "rgba(255,255,255,0.28)" }}>
             <Corners light />
-            {/* eslint-disable-next-line @next/next/no-img-element -- hero figure, sized by CSS */}
-            <img src="/assets/images/community-medication-distribution.jpeg" alt={t("A health worker recording medication in a paper register")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <Image
+              src="/assets/images/community-medication-distribution.jpeg"
+              alt={t("A health worker recording medication in a paper register")}
+              fill
+              sizes="(max-width: 760px) 100vw, 50vw"
+              preload
+              style={{ objectFit: "cover" }}
+            />
           </div>
         </div>
       </section>

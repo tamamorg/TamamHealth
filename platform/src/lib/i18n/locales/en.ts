@@ -6377,6 +6377,52 @@ const en: TranslationMap = {
   'management.addFacility': 'Add facility',
   'management.addOrganization': 'Add organization',
   'management.addPerson': 'Add person',
+  /* ── Risk Center: what a signal means ─────────────────────────────────────
+     The explanation shown when an operator opens a row in the risk queue.
+     Copy, not labels — the one part of that console meant to be read. */
+  'riskGuide.meansHead': 'What this means',
+  'riskGuide.causeHead': 'Usual cause',
+  'riskGuide.causesHead': 'Usual causes',
+  'riskGuide.clearsHead': 'What clears it',
+
+  'riskGuide.audit.means': 'An audited action failed. The queue carries failed audit entries from the last seven days.',
+  'riskGuide.audit.cause1': 'A refused sign-in, a request the role was not allowed to make, or a write the server rejected.',
+  'riskGuide.audit.cause2': 'A subsystem erroring while it carried out the action.',
+  'riskGuide.audit.clears': 'It leaves the queue seven days after the event on its own. Resolving records that someone reviewed it — it does not undo the failure.',
+
+  'riskGuide.sync.means': 'Replication has reported failures, and these events are still in the outbox waiting to reach the server.',
+  'riskGuide.sync.cause1': 'The device has been offline, or the sync gateway is unreachable.',
+  'riskGuide.sync.cause2': 'The server refused the write — a validator, a permission, or a tenant database that was never provisioned.',
+  'riskGuide.sync.clears': 'When the queued event replicates. A stuck event usually needs its server-side cause fixed first; resolving hides the row, not the backlog.',
+
+  'riskGuide.conflict.means': 'Two devices edited the same record while apart and CouchDB kept both revisions. One is being shown to everybody and the other is parked.',
+  'riskGuide.conflict.cause1': 'Normal offline editing of one record on two devices.',
+  'riskGuide.conflict.clears': 'Choosing the winning revision in the conflict queue. Until then every reader sees one arbitrary side of the edit.',
+
+  'riskGuide.org-status.means': 'A tenant is not in a normal operating state — its subscription is suspended or cancelled, or the organization itself was deactivated.',
+  'riskGuide.org-status.cause1': 'Billing lapsed.',
+  'riskGuide.org-status.cause2': 'An operator deactivated the tenant.',
+  'riskGuide.org-status.clears': 'Returning the subscription to active, or reactivating the organization.',
+
+  'riskGuide.org-trial.means': 'A tenant is running on a trial subscription rather than a paid plan.',
+  'riskGuide.org-trial.cause1': 'The organization was created on a trial and has not been converted.',
+  'riskGuide.org-trial.clears': 'Moving the organization onto a paid plan.',
+
+  'riskGuide.backup-missing.means': 'Nothing has ever reported a completed backup to this platform, so it can show no recovery point at all. This is about the RECORD of a backup — it is not evidence that backing up failed.',
+  'riskGuide.backup-missing.cause1': 'The host-side backup timers were never installed on the server.',
+  'riskGuide.backup-missing.cause2': 'Backups run and upload, but the job cannot report them — its platform URL or shared secret is unset, so success is recorded nowhere.',
+  'riskGuide.backup-missing.cause3': 'You are reading this on a device that has never synced the platform config — a fresh browser, or an offline read.',
+  'riskGuide.backup-missing.clears': 'The next verified backup reports itself and the row disappears on its own. Resolving only hides it until the recovery point objective changes.',
+
+  'riskGuide.backup-overdue.means': 'A backup is on record, but it is older than the recovery point objective — more data than the policy allows could be lost if the server were restored right now.',
+  'riskGuide.backup-overdue.cause1': 'The backup timer stopped, or the last runs failed.',
+  'riskGuide.backup-overdue.cause2': 'The off-site upload failed, so nothing newer was ever reported.',
+  'riskGuide.backup-overdue.clears': 'The next successful backup that reports in. The row reopens by itself if a newer backup later goes stale.',
+
+  'riskGuide.maintenance.means': 'Maintenance mode is on, so everyone except platform admins is locked out of the app.',
+  'riskGuide.maintenance.cause1': 'It was switched on for a release or an investigation and left on.',
+  'riskGuide.maintenance.clears': 'Turning maintenance mode off in platform settings.',
+
   'management.allFacilities': 'All facilities',
   'management.allOrganizations': 'All organizations',
   'management.assignmentOptionsUnavailable': 'Account assignments need a connection to the central server. Check the connection and try again.',

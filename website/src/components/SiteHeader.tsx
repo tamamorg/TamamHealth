@@ -12,6 +12,7 @@
    - burger drawer ≤1100px; utility row overlays into the bar ≤760px */
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Corners from "@/components/Corners";
@@ -253,10 +254,12 @@ export default function SiteHeader() {
                 for the bare dot mark once the header condenses, which reads as
                 the brand vanishing mid-scroll — the row still has room for the
                 wordmark at 28px, so it keeps its name. */}
-            {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo, no optimisation needed */}
-            <img
+            <Image
               src="/assets/tamam-logo-full.svg"
               alt={t("Tamam Healthcare System")}
+              width={123}
+              height={28}
+              preload
               style={{ height: logoH, width: "auto", transition: "height .18s ease" }}
             />
           </Link>

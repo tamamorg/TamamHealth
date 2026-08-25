@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FilterSelect } from '@/components/filters';
 import { useAuth } from '@/lib/context';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
@@ -31,7 +32,7 @@ import {
   SaTable, formatWhen,
   type SaSeverity,
 } from '@/components/admin/sa-ui';
-import { buildRiskRows, type RiskRow, type RiskSource } from '@/components/admin/risk-signals';
+import { buildRiskRows, riskGuidance, type RiskRow, type RiskSource } from '@/components/admin/risk-signals';
 import {
   getRiskResolutions, indexResolutions, isRiskResolved, reopenRisk, resolveRisks,
   type ResolveRiskInput,
@@ -60,6 +61,10 @@ const SOURCES: RiskSource[] = ['Audit', 'Sync', 'Data', 'Tenants', 'Continuity',
 export default function RiskCenterPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
+  /* The console is otherwise English throughout, but the explanation block is
+     the one part of it meant to be READ rather than scanned — so it is carried
+     in both locales rather than half-translated. */
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const { organizations } = useOrganizations();
   const { config } = usePlatformConfig();
@@ -244,6 +249,11 @@ export default function RiskCenterPage() {
 
   /** The one row a popup opened from the table is about; null for the bulk. */
   const single = resolving && resolving.length === 1 ? resolving[0] : null;
+  /* What that row means. A queue row is a condition and a severity; the
+     operator deciding whether to resolve it needs to know what asserts it and
+     what would actually clear it, or "Resolve" becomes the button you press to
+     make the red thing stop. */
+  const guidance = single ? riskGuidance(single) : undefined;
 
   return (
     <SadbPage>
@@ -386,6 +396,28 @@ export default function RiskCenterPage() {
                   <div className="sadb-kv"><span>Status</span><span className="sadb-kv-value">{single.status}</span></div>
                   <div className="sadb-kv"><span>Age</span><span className="sadb-kv-value">{formatWhen(single.when)}</span></div>
                 </div>
+                {/* The row's own detail line above is the NUMBERS; this is the
+                    sentence. Always open, never behind a disclosure: a reader
+                    who knew what the signal meant would not have opened the
+                    popup. */}
+                {guidance && (
+                  <section className="sadb-risk-explain" aria-label={t('riskGuide.meansHead')}>
+                    <p className="sadb-risk-explain-head">{t('riskGuide.meansHead')}</p>
+                    <p className="sadb-risk-explain-body">{t(guidance.meansKey)}</p>
+                    {guidance.causeKeys.length > 0 && (
+                      <>
+                        <p className="sadb-risk-explain-head">
+                          {t(guidance.causeKeys.length === 1 ? 'riskGuide.causeHead' : 'riskGuide.causesHead')}
+                        </p>
+                        <ul className="sadb-risk-explain-list">
+                          {guidance.causeKeys.map(key => <li key={key}>{t(key)}</li>)}
+                        </ul>
+                      </>
+                    )}
+                    <p className="sadb-risk-explain-head">{t('riskGuide.clearsHead')}</p>
+                    <p className="sadb-risk-explain-body">{t(guidance.clearsKey)}</p>
+                  </section>
+                )}
               </>
             )}
 

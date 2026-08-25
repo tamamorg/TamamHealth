@@ -4,6 +4,7 @@
    with an overlay card; ‹ dashes › bar replaces the steppers on phones. */
 
 import { useState } from "react";
+import Image from "next/image";
 import Corners from "@/components/Corners";
 import HeroNav from "@/components/HeroNav";
 import { CARE_LEVELS as CARE_LEVELS_EN, careLevelLabel } from "@/lib/site-data";
@@ -62,8 +63,13 @@ export default function LevelsExplorer() {
         </div>
         <div className="blueprint" style={{ position: "relative", height: 500 }}>
           <Corners />
-          {/* eslint-disable-next-line @next/next/no-img-element -- explorer figure, sized by CSS */}
-          <img src={lv.image} alt={lv.alt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <Image
+            src={lv.image}
+            alt={lv.alt}
+            fill
+            sizes="(max-width: 1100px) 100vw, calc(100vw - 340px)"
+            style={{ objectFit: "cover" }}
+          />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(1,86,151,0.72) 0%, rgba(1,86,151,0.06) 74%)" }} />
           <div style={{ position: "absolute", left: 40, top: "50%", transform: "translateY(-50%)", width: "min(440px, 72%)", background: "rgba(1,86,151,0.92)", padding: "32px 32px 34px", color: "#FFFFFF" }}>
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-300)" }}>{t("Level {{n}}", { n: String(level + 1).padStart(2, "0") })}</span>

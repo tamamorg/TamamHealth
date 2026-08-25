@@ -1,9 +1,24 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import { getLocale } from "@/lib/i18n/server";
 import { localeConfig } from "@/lib/i18n";
 import StructuredData from "./structured-data";
+
+const bodyFont = Barlow({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+  variable: "--font-body-face",
+});
+
+const headingFont = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  display: "swap",
+  variable: "--font-heading-face",
+});
 
 /** What the browser tab says. Short on purpose: a tab is ~25 characters
  *  before it truncates, so the tagline was being cut mid-word and every tab
@@ -68,6 +83,15 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+  themeColor: "#113055",
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -77,14 +101,8 @@ export default async function RootLayout({
   const { dir } = localeConfig(locale);
 
   return (
-    <html lang={locale} dir={dir}>
+    <html lang={locale} dir={dir} className={`${bodyFont.variable} ${headingFont.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font -- root layout, applies site-wide */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600;700&display=swap"
-          rel="stylesheet"
-        />
         <StructuredData />
       </head>
       <body>

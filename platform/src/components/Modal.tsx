@@ -167,7 +167,9 @@ export default function Modal({
         display: 'flex',
         alignItems: isDrawer ? 'stretch' : align === 'top' ? 'flex-start' : 'center',
         justifyContent: isDrawer ? 'flex-end' : 'center',
-        padding: isDrawer ? 0 : `calc(16px + ${offset}) 16px 16px`,
+        padding: isDrawer
+          ? 0
+          : `calc(16px + env(safe-area-inset-top, 0px) + ${offset}) calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px))`,
         background: 'rgba(15, 31, 29, 0.70)',
         animation: 'modalFadeIn 0.2s ease-out',
         overflowY: isDrawer ? 'hidden' : 'auto',
@@ -186,8 +188,10 @@ export default function Modal({
         style={{
           width: '100%',
           maxWidth: width,
-          maxHeight: isDrawer ? '100vh' : `calc(100vh - 32px - ${offset})`,
-          height: isDrawer ? '100vh' : undefined,
+          maxHeight: isDrawer
+            ? '100dvh'
+            : `calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - ${offset})`,
+          height: isDrawer ? '100dvh' : undefined,
           display: 'flex',
           flexDirection: 'column',
           outline: 'none',
