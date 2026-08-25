@@ -44,13 +44,14 @@
    long entrance delays the number someone came for. */
 import {
   BarChart, Bar, Cell, LabelList, PieChart, Pie, Legend, Treemap,
+  LineChart, Line, CartesianGrid,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { tooltipStyle, axisTick } from '@/components/ChartCard';
 import { CHART_SERIES } from '@/lib/chart-colors';
 import type { ReportChartPoint } from '@/lib/reports/report-chart-data';
 
-export type ReportChartKind = 'bar' | 'column' | 'donut' | 'treemap';
+export type ReportChartKind = 'bar' | 'column' | 'line' | 'donut' | 'treemap';
 
 /** Single-series hue when the page does not name one: the brand blue. */
 const DEFAULT_ACCENT = 'var(--chart-2)';
@@ -285,6 +286,48 @@ export function ReportChart({ kind, points, valueLabel, accent = DEFAULT_ACCENT 
             <LabelList dataKey="value" position="top" offset={8} style={VALUE_LABEL} formatter={formatValue} />
           </Bar>
         </BarChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (kind === 'line') {
+    /* One series over named categories, read left to right.
+       Horizontal rules only: the x positions are category SLOTS, not measured
+       places, so a vertical grid would invite reading distance along an axis
+       that has none. Caveat worth keeping in view — every report here groups
+       by a nominal category, so the slope between two points is an artefact of
+       the sort order, not a trend in the data. */
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={points} margin={{ top: 26, right: 22, left: 2, bottom: 64 }}>
+          <CartesianGrid stroke="var(--border-light)" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={axisTick}
+            tickLine={false}
+            axisLine={false}
+            interval={0}
+            angle={-35}
+            textAnchor="end"
+            height={64}
+            tickFormatter={(v: string) => truncate(String(v), 18)}
+          />
+          <YAxis hide domain={[0, 'dataMax']} />
+          <Tooltip {...tooltipStyle} formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), valueLabel]} />
+          <Line
+            type="linear"
+            dataKey="value"
+            stroke={accent}
+            strokeWidth={2}
+            dot={{ r: 4, fill: accent, stroke: 'var(--bg-card-solid)', strokeWidth: 2 }}
+            activeDot={{ r: 6 }}
+            isAnimationActive
+            animationDuration={420}
+            animationEasing="ease-out"
+          >
+            <LabelList dataKey="value" position="top" offset={10} style={VALUE_LABEL} formatter={formatValue} />
+          </Line>
+        </LineChart>
       </ResponsiveContainer>
     );
   }

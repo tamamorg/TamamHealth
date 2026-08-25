@@ -66,7 +66,7 @@ jobs:
       # and a local `uses:` cannot resolve without a checkout. Sparse so it
       # stays a few kilobytes rather than a full clone.
       - name: Fetch the failure-alarm action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           sparse-checkout: .github/actions/alert-failure
           sparse-checkout-cone-mode: false

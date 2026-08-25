@@ -5679,6 +5679,7 @@ const en: TranslationMap = {
   'reports.chartForm': 'Chart form',
   'reports.chartFormUnavailable': 'This form needs values that add up to a total — not rates or percentages.',
   'reports.chartBar': 'Bars',
+  'reports.chartLine': 'Line',
   'reports.chartColumn': 'Columns',
   'reports.chartDonut': 'Donut',
   'reports.chartTreemap': 'Treemap',

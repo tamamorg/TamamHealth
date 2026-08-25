@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
   ChevronUp, FileText, Download,
-  Loader2, BarChart3, PieChart, Layers, List,
+  Loader2, BarChart3, PieChart, Layers, List, Activity,
   AlertTriangle, type LucideIcon
 } from '@/components/icons/lucide';
 import { buildReportChart, type ReportChart as ReportChartData } from '@/lib/reports/report-chart-data';
@@ -45,6 +45,7 @@ const ReportChart = dynamic(
 const CHART_KINDS: { id: ReportChartKind; labelKey: string; icon: LucideIcon; partToWhole?: true }[] = [
   { id: 'column', labelKey: 'reports.chartColumn', icon: BarChart3 },
   { id: 'bar', labelKey: 'reports.chartBar', icon: List },
+  { id: 'line', labelKey: 'reports.chartLine', icon: Activity },
   { id: 'donut', labelKey: 'reports.chartDonut', icon: PieChart, partToWhole: true },
   { id: 'treemap', labelKey: 'reports.chartTreemap', icon: Layers, partToWhole: true },
 ];

@@ -5671,6 +5671,7 @@ const apd: TranslationMap = {
   'reports.chartForm': 'شكل الرسم',
   'reports.chartFormUnavailable': 'الشكل دا محتاج قيم بتتجمع في مجموع — مش نسب أو معدلات.',
   'reports.chartBar': 'أعمدة أفقية',
+  'reports.chartLine': 'خط',
   'reports.chartColumn': 'أعمدة رأسية',
   'reports.chartDonut': 'حلقة',
   'reports.chartTreemap': 'خريطة مساحات',
