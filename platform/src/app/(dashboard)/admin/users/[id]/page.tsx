@@ -24,7 +24,12 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import {
   ArrowLeft, Shield, KeyRound, Mail, UserX, UserCheck, Trash2, Building2,
 } from '@/components/icons/lucide';
-import { SadbPage, SadbCard, SadbKvRow, SadbConfirmModal } from '@/components/admin/sadb-ui';
+import {
+  SadbPage, SadbCard, SadbKvRow, SadbConfirmModal, SadbGridList, SadbGridRow, SadbChip,
+} from '@/components/admin/sadb-ui';
+
+/* When · Action · Detail — the three columns an access review reads. */
+const ACTIVITY_GRID = 'minmax(150px, 0.9fr) minmax(140px, 0.8fr) minmax(200px, 1.6fr)';
 import Select from '@/components/Select';
 import {
   CredentialHandoffModal, canResendInvite, describeAccountState,
@@ -34,7 +39,7 @@ import type { InvitationOutcome } from '@/modules/identity/client';
 import { avatarTint } from '@/lib/patient-utils';
 import { getRoleConfig } from '@/lib/permissions';
 import { formatDate } from '@/lib/format-utils';
-import type { UserDoc, UserRole } from '@/lib/db-types';
+import type { AuditLogDoc, UserDoc, UserRole } from '@/lib/db-types';
 
 const ROLE_OPTIONS: UserRole[] = [
   'doctor', 'clinical_officer', 'nurse', 'midwife', 'lab_tech', 'pharmacist',
@@ -56,6 +61,28 @@ export default function AdminUserDetailPage() {
   const { tempLength } = usePasswordPolicy();
 
   const [user, setUser] = useState<UserDoc | null>(null);
+  /* This account's own audit trail. The page could say who someone IS and
+     never what they had DONE, which is the half an access review needs. */
+  const [activity, setActivity] = useState<AuditLogDoc[] | null>(null);
+
+  /* Loaded after the user, and keyed on BOTH id and username: rows written
+     before the id was carried only have the name on them, so an id-only
+     lookup silently reports "no activity" for long-lived accounts. */
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getAuditLogsForUser } = await import('@/lib/services/audit-service');
+        const rows = await getAuditLogsForUser({ id: user._id, username: user.username }, 50);
+        if (!cancelled) setActivity(rows);
+      } catch (err) {
+        console.error('Failed to load user activity:', err);
+        if (!cancelled) setActivity([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -246,6 +273,33 @@ export default function AdminUserDetailPage() {
           />
         )}
         <SadbKvRow label={t('adminUsers.userId')} value={<code>{user._id}</code>} />
+      </SadbCard>
+
+      {/* ── What this account has done ────────────────────────────────────
+          Newest first, capped at 50. The empty state says "nothing recorded"
+          rather than "no activity": reads served from an offline replica are
+          not audited (see audit-service), so silence here is not proof that
+          nothing happened, and the copy must not imply it is. */}
+      <SadbCard
+        title={t('adminUsers.activityTitle')}
+        meta={activity === null ? undefined : t('adminUsers.activityCount', { count: activity.length })}
+      >
+        <SadbGridList
+          template={ACTIVITY_GRID}
+          minWidth={520}
+          head={[t('adminUsers.activityWhen'), t('adminUsers.activityAction'), t('adminUsers.activityDetail')]}
+          empty={activity === null ? t('orgAdmin.loading') : t('adminUsers.activityNone')}
+        >
+          {activity?.map(row => (
+            <SadbGridRow key={row._id} template={ACTIVITY_GRID}>
+              <span className="truncate">{row.createdAt ? new Date(row.createdAt).toLocaleString() : '—'}</span>
+              <span className="truncate">
+                <SadbChip tone={row.success === false ? 'red' : 'neutral'}>{row.action}</SadbChip>
+              </span>
+              <span className="truncate">{row.details || '—'}</span>
+            </SadbGridRow>
+          ))}
+        </SadbGridList>
       </SadbCard>
 
       {roleOpen && (
