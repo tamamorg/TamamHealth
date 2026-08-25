@@ -22,6 +22,7 @@ import { ProfileTab } from '@/components/patient-portal/ProfileTab';
 import { BillingTab } from '@/components/patient-portal/BillingTab';
 import { Empty, dateParts, shortDate, type ChipTone } from '@/components/patient-portal/shared';
 import { todayIso } from '@/lib/date-utils';
+import { dismissBackdrop } from '@/lib/a11y';
 
 type Tab = 'overview' | 'appointments' | 'records' | 'lab' | 'prescriptions' | 'radiology' | 'immunizations' | 'messages' | 'chat' | 'billing' | 'profile';
 
@@ -417,7 +418,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           </button>
           {userMenuOpen && (
             <>
-              <div className="pp-scrim" onClick={() => setUserMenuOpen(false)} />
+              <div className="pp-scrim" {...dismissBackdrop(() => setUserMenuOpen(false))} />
               <div className="pp-pop pp-user-menu" role="menu">
                 <div className="pp-user-menu-id" aria-hidden>
                   <b>{patient.firstName} {patient.surname}</b>

@@ -17,6 +17,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SHIFT_TYPES } from '@/app/(dashboard)/hr/hr-shared';
 import type { StaffScheduleDoc } from '@/lib/db-types';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 export interface CreateShiftDialogProps {
   onClose: () => void;
@@ -82,7 +83,7 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated }: C
 
   return (
     <Modal onClose={onClose} width={448}>
-      <div className="modal-content card-elevated p-6 w-full" onClick={e => e.stopPropagation()}>
+      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold">{t('hr.scheduleShift')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">

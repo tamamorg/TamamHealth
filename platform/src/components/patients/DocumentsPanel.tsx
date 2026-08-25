@@ -29,6 +29,8 @@ import type { Attachment } from '@/data/mock';
 import type { PatientDoc, PatientDocumentCategory, PatientDocumentDoc, ReferralDoc, MessageDoc } from '@/lib/db-types';
 import { FileText, Image as ImageIcon, X, Eye, ArrowRightLeft, ChevronRight, Send, MessageSquare, AlertTriangle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 const CATEGORY_LABELS: Record<PatientDocumentCategory, string> = {
   radiology: 'Radiology',
@@ -107,6 +109,7 @@ export default function DocumentsPanel({
   focusId?: string;
 }) {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const confirm = useConfirm();
   const { documents, add, remove } = usePatientDocuments(patient._id);
   const [view, setView] = useState<DocView>('documents');
@@ -131,12 +134,12 @@ export default function DocumentsPanel({
   const loadSentEducation = useCallback(async () => {
     try {
       const { getMessagesByPatient } = await import('@/modules/communication/services/message-service');
-      const all = await getMessagesByPatient(patient._id);
+      const all = await getMessagesByPatient(patient._id, scope);
       setSentEducation(all.filter(m => m.patientEducation && m.direction !== 'patient_to_staff'));
     } catch {
       setSentEducation([]);
     }
-  }, [patient._id]);
+  }, [patient._id, scope]);
 
   useEffect(() => { loadSentEducation(); }, [loadSentEducation]);
 
@@ -493,8 +496,8 @@ export default function DocumentsPanel({
 
       {/* Preview modal */}
       {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-8" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={closePreview}>
-          <div className="relative max-w-4xl max-h-[90vh] rounded-xl overflow-hidden" style={{ background: 'var(--bg-card)' }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-8" style={{ background: 'rgba(0,0,0,0.75)' }} {...dismissBackdrop(closePreview)}>
+          <div className="relative max-w-4xl max-h-[90vh] rounded-xl overflow-hidden" style={{ background: 'var(--bg-card)' }} {...stopsClickPropagation}>
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
               <div className="flex items-center gap-2">
                 {preview.mimeType.startsWith('image/') ? <ImageIcon className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} /> : <FileText className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />}

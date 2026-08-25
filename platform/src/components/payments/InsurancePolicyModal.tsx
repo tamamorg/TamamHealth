@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast';
 import type { InsurancePolicyDoc, PayerType } from '@/lib/db-types-payments';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 interface InsurancePolicyModalProps {
   patientId: string;
@@ -120,7 +121,7 @@ export default function InsurancePolicyModal({
 
   return (
     <Modal onClose={onClose} width={480}>
-      <div className="modal-panel modal-panel--sm" onClick={e => e.stopPropagation()}>
+      <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="icon-box-sm">

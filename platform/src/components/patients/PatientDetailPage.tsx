@@ -93,6 +93,7 @@ import AssignDoctorModal, { type AssignDoctorTarget } from '@/components/AssignD
 import NurseVitalsModal from '@/components/nurse/NurseVitalsModal';
 import Select from '@/components/Select';
 import { safeReturnTo } from '@/lib/navigation/return-to';
+import { clickable, stopsClickPropagation } from '@/lib/a11y';
 
 // Administrative tabs are the only ones a non-clinical role (e.g. Medical
 // Receptionist) may see — the "minimum necessary" rule: contact details,
@@ -308,6 +309,7 @@ export default function PatientDetailPage() {
   const [showPrescribeModal, setShowPrescribeModal] = useState(false);
   const [showReferModal, setShowReferModal] = useState(false);
   const [showNurseVitals, setShowNurseVitals] = useState(false);
+  const [correctingVitalsRecord, setCorrectingVitalsRecord] = useState<MedicalRecordDoc | undefined>(undefined);
   const [assignTarget, setAssignTarget] = useState<AssignDoctorTarget | null>(null);
   // One-shot request for the chart shell to open a workspace drawer panel
   // (e.g. header "+ Note" → `clinical-note:<id>`, the note editor drawer).
@@ -409,7 +411,7 @@ export default function PatientDetailPage() {
   }, [id, loading, scopedPatient, currentUser?.orgId, currentUser?.role]);
 
   const patient = scopedPatient ?? (fallbackPatient?._id === id ? fallbackPatient : undefined);
-  const { records } = useMedicalRecords(patient?._id);
+  const { records, reload: reloadRecords } = useMedicalRecords(patient?._id);
   const { referrals: patientReferrals } = usePatientReferrals(patient?._id);
   const { results: allLabResults, reload: reloadLabResults } = useLabResults(patient?._id);
   const { immunizations: allImmunizations } = useImmunizations(patient?._id);
@@ -1488,7 +1490,7 @@ export default function PatientDetailPage() {
                 latestVitals={latestVitals}
                 latestRecordDate={latestVitalsEntry?.at}
                 onViewVitalsHistory={() => selectTab('vitals')}
-                onRecordVitals={() => { selectTab('vitals'); setShowNurseVitals(true); }}
+                onRecordVitals={() => { selectTab('vitals'); setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); }}
                 canRecordVitals={canConsult || canRecordVitalEvents}
               />
             ) : undefined}
@@ -1802,7 +1804,7 @@ export default function PatientDetailPage() {
           {activeTab === 'vitals' && (
             <ChartSection
               title={vitalsView === 'flowsheet' ? 'Vital sign flowsheet' : 'Vitals'}
-              onAdd={canRecordVitalEvents ? () => setShowNurseVitals(true) : undefined}
+              onAdd={(canConsult || canRecordVitalEvents) ? () => { setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); } : undefined}
               addLabel="Record vitals"
               toggleSlot={(
                 <div className="ehr-chart-subtabs" role="tablist" aria-label="Vitals view">
@@ -1846,17 +1848,21 @@ export default function PatientDetailPage() {
                       <th>Weight (kg)</th>
                       <th>BMI</th>
                       <th>Facility</th>
+                      <th>{t('chart.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {vitalsTimeline.length === 0 && (
                       <tr>
-                        <td colSpan={10} className="text-center text-sm py-8" style={{ color: 'var(--text-muted)' }}>
+                        <td colSpan={11} className="text-center text-sm py-8" style={{ color: 'var(--text-muted)' }}>
                           No vitals recorded yet for this patient.
                         </td>
                       </tr>
                     )}
                     {vitalsTimeline.map(entry => {
+                      const nursingRecord = entry.source === 'Nursing'
+                        ? records.find(record => record._id === entry.id && record.recordKind === 'nursing_vitals')
+                        : undefined;
                       const hasBp = entry.systolic !== undefined && entry.diastolic !== undefined;
                       const sourceStyle = entry.source === 'Triage'
                         ? { background: 'var(--accent-light)', color: 'var(--accent-primary)' }
@@ -1881,6 +1887,18 @@ export default function PatientDetailPage() {
                           <td>{entry.weight ?? '—'}</td>
                           <td>{entry.bmi ?? '—'}</td>
                           <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{(entry.facility || '').replace(' Hospital', '').replace(' Teaching', '') || '—'}</td>
+                          <td>
+                            {nursingRecord && (canConsult || canRecordVitalEvents) ? (
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-secondary"
+                                onClick={() => { setCorrectingVitalsRecord(nursingRecord); setShowNurseVitals(true); }}
+                                title={entry.corrected && entry.correctionReason ? entry.correctionReason : undefined}
+                              >
+                                {entry.corrected ? t('chart.correctAgain') : t('chart.correct')}
+                              </button>
+                            ) : '—'}
+                          </td>
                         </tr>
                       );
                     })}
@@ -2039,13 +2057,15 @@ export default function PatientDetailPage() {
           orgId={currentUser.orgId}
           encounterId={nurseVitalsEncounterId}
           currentUser={currentUser}
-          onClose={() => setShowNurseVitals(false)}
+          correctingRecord={correctingVitalsRecord}
+          onClose={() => { setShowNurseVitals(false); setCorrectingVitalsRecord(undefined); }}
+          onSaved={() => reloadRecords()}
         />
       )}
 
       {showMessageModal && patient && (
         <Modal onClose={() => !messageSending && setShowMessageModal(false)} width={500} labelledBy="patient-message-title">
-          <div className="modal-content card-elevated p-5 w-full" onClick={e => e.stopPropagation()}>
+          <div className="modal-content card-elevated p-5 w-full" {...stopsClickPropagation}>
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <h3 id="patient-message-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -2129,7 +2149,7 @@ export default function PatientDetailPage() {
           {/* No max-width here: Modal already sizes the dialog panel (600px) and
               paints it opaque, so a narrower child left ~90px of empty panel
               showing past the form's right edge. Matches the message modal above. */}
-          <div className="modal-content card-elevated p-5 w-full" onClick={e => e.stopPropagation()}>
+          <div className="modal-content card-elevated p-5 w-full" {...stopsClickPropagation}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold">Edit Patient Demographics</h3>
               <button onClick={() => setShowEditModal(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
@@ -2377,7 +2397,7 @@ function PatientFacesheetView({
       )}
 
       {showPanel('medications') && (
-      <section className="tebra-panel" onClick={() => onOpenTab('prescriptions')}>
+      <section className="tebra-panel" {...clickable(() => onOpenTab('prescriptions'), { label: 'Open medications' })}>
         <FacesheetPanelHead icon={Pill} title="Medications" action={actions.medications} />
         {currentMeds.length ? (
           <div className="tebra-list">
@@ -2393,7 +2413,7 @@ function PatientFacesheetView({
       )}
 
       {showPanel('problems') && (
-      <section className="tebra-panel" onClick={() => onOpenTab('problems')}>
+      <section className="tebra-panel" {...clickable(() => onOpenTab('problems'), { label: 'Open safety alerts' })}>
         <FacesheetPanelHead icon={ShieldAlert} title="Safety alerts" action={actions.problems} />
         {activeProblems.length || activeAllergies.length ? (
           <div className="tebra-list">
@@ -2412,7 +2432,8 @@ function PatientFacesheetView({
                 className="tebra-list-row tebra-list-row--alert"
                 // Allergies live on their own tab, not Conditions — without
                 // this an allergy row opened the Conditions tab instead.
-                onClick={event => { event.stopPropagation(); onOpenTab('allergies'); }}
+                {...clickable(event => { event.stopPropagation(); onOpenTab('allergies'); },
+                  { label: `Open allergies — ${allergy.name}` })}
               >
                 <strong>Allergy: {allergy.name}</strong>
                 <span>{allergy.detail || 'Active'}</span>
@@ -2438,7 +2459,7 @@ function PatientFacesheetView({
         const tempElevated = !!(latestVitals?.temperature && latestVitals.temperature >= 38);
         const spo2Low = !!(latestVitals?.oxygenSaturation && latestVitals.oxygenSaturation < 94);
         return (
-      <section className="tebra-panel tebra-panel--highlight" onClick={() => onOpenTab('vitals')}>
+      <section className="tebra-panel tebra-panel--highlight" {...clickable(() => onOpenTab('vitals'), { label: 'Open latest observations' })}>
         <FacesheetPanelHead icon={Activity} title="Latest observations" action={actions.vitals} />
         {latestVitals ? (
           <div className="tebra-vitals">
@@ -2454,7 +2475,7 @@ function PatientFacesheetView({
           // the vitals table instead of the result they name.
           <div
             className="tebra-list mt-2"
-            onClick={event => { event.stopPropagation(); onOpenTab('labs'); }}
+            {...clickable(event => { event.stopPropagation(); onOpenTab('labs'); }, { label: 'Open labs' })}
           >
             <div className="tebra-list-row"><strong>Recent results</strong><span>{recentLabs.length} recorded</span></div>
             {recentLabs.slice(0, 2).map(lab => (
@@ -2470,7 +2491,7 @@ function PatientFacesheetView({
       })()}
 
       {showPanel('recommendations') && (
-      <section className="tebra-panel tebra-recommendations" onClick={() => onOpenTab('careChecklist')}>
+      <section className="tebra-panel tebra-recommendations" {...clickable(() => onOpenTab('careChecklist'), { label: 'Open next care actions' })}>
         <FacesheetPanelHead icon={ClipboardList} title="Next care actions" action={actions.recommendations} />
         {careActions.length ? (
           <div className="tebra-reco-list">

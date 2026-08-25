@@ -26,6 +26,7 @@ import { useSettings } from '@/lib/settings/SettingsProvider';
 import { useRoleChoice, useRoleFlag } from '@/lib/settings/useRoleSetting';
 import type { LabResultDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 // Human labels for the granular diagnostics lifecycle (Stage 6).
 const ORDER_STAGE_LABEL: Record<LabOrderStatus, string> = {
@@ -478,7 +479,7 @@ export default function LabPage() {
                       </div>
                     </td>
                     {canEnterLabResults && (
-                      <td className="is-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="is-right" {...stopsClickPropagation}>
                         {(() => {
                           // Lab work happens in the chart, not in a popup: the
                           // technician needs the patient around the result
@@ -521,7 +522,7 @@ export default function LabPage() {
           {/* Import from Analyzer Modal */}
           {showImportModal && (
             <Modal onClose={resetImport}>
-              <div className="modal-content card-elevated p-6 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+              <div className="modal-content card-elevated p-6 max-w-2xl w-full" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Radio className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />

@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { createEnquiry } from '@/lib/services/enquiry-service';
 import type { MessageDoc } from '@/lib/db-types';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const EMPTY = { patientName: '', patientPhone: '', subject: '', body: '', assigneeId: '' };
 
@@ -68,7 +69,7 @@ export default function AddInquiryDialog({ onClose, onCreated }: AddInquiryDialo
 
   return (
     <Modal onClose={onClose} width={448}>
-      <div className="modal-content card-elevated p-6 w-full" onClick={e => e.stopPropagation()}>
+      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold">Add inquiry</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">

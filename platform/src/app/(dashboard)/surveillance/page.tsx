@@ -43,6 +43,7 @@ const TREND_WINDOWS: { weeks: TrendWindow; key: string }[] = [
 ];
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 // recharts (~80-100KB) is deferred behind a dynamic boundary so it's fetched
 // only when this chart renders — same pattern as
@@ -799,7 +800,7 @@ export default function SurveillancePage() {
         {/* Report Disease Alert Modal */}
         {showNewAlert && (
           <Modal onClose={() => !alertSubmitting && setShowNewAlert(false)}>
-            <div className="modal-content p-6 max-w-lg w-full" onClick={e => e.stopPropagation()}>
+            <div className="modal-content p-6 max-w-lg w-full" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />

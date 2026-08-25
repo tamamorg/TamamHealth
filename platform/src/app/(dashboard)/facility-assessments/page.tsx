@@ -13,6 +13,7 @@ import { Building2, ClipboardCheck, Wifi, Droplets, Users, Activity, TrendingUp,
 import Badge from '@/components/Badge';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 /**
  * Default values for the minimal create-assessment form. The full
@@ -273,7 +274,7 @@ export default function FacilityAssessmentsPage() {
         {/* Create Assessment Modal */}
         {showForm && (
           <Modal onClose={() => !submitting && setShowForm(false)}>
-            <div className="modal-content card-elevated p-6 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+            <div className="modal-content card-elevated p-6 max-w-2xl w-full" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />

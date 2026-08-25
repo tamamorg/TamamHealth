@@ -35,6 +35,8 @@ import { todayIso } from '@/lib/date-utils';
 import { isPathAllowed } from '@/lib/role-routes';
 import Select from '@/components/Select';
 import { isScheduledDoseAllowed, scheduleForFrequency, scheduledForIso } from '@/lib/clinical-flow/medication-schedule';
+import { stopsClickPropagation } from '@/lib/a11y';
+import { dismissBackdrop } from '@/lib/a11y';
 
 function todayISO(): string {
   return todayIso();
@@ -471,11 +473,11 @@ export default function MARPage() {
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: 'rgba(0, 29, 63,0.55)', backdropFilter: 'blur(2px)' }}
-            onClick={closeModal}
+            {...dismissBackdrop(closeModal)}
           >
             <div
               className="w-full max-w-md card-elevated overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
+              {...stopsClickPropagation}
               style={{ boxShadow: 'var(--card-shadow-xl)' }}
             >
               <header

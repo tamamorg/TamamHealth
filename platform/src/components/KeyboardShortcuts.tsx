@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, Keyboard } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useMessagingDock } from '@/modules/communication/client';
+import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 
 const SHORTCUTS = [
   { keys: ['Alt', 'N'], altKeys: ['Ctrl', 'N'], descriptionKey: 'keyboardShortcuts.newPatient', action: '/patients/new' },
@@ -100,7 +101,7 @@ export default function KeyboardShortcuts() {
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center"
       style={{ background: 'rgba(0, 29, 63,0.6)' }}
-      onClick={() => setShowHelp(false)}
+      {...dismissBackdrop(() => setShowHelp(false))}
     >
       <div
         className="w-full max-w-md mx-4 overflow-hidden"
@@ -110,7 +111,7 @@ export default function KeyboardShortcuts() {
           borderRadius: 'var(--card-radius)',
           boxShadow: 'var(--card-shadow-xl)',
         }}
-        onClick={(e) => e.stopPropagation()}
+        {...stopsClickPropagation}
       >
         {/* Header */}
         <div

@@ -25,6 +25,7 @@ import { appointmentStatusLabel } from '@/lib/appointment-status';
 import { useUsers } from '@/lib/hooks/useUsers';
 import type { AppointmentDoc, AppointmentPriority, AppointmentStatus, AppointmentType, PatientDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
   { value: 'general', label: 'General consultation' },
@@ -272,7 +273,7 @@ export default function AppointmentEditModal({
             </button>
           ))}
           {headerActions && (
-            <div className="appt-edit-header-actions" role="group" aria-label="Patient actions" onClick={event => event.stopPropagation()}>
+            <div {...stopsClickPropagation} className="appt-edit-header-actions" role="group" aria-label="Patient actions">
               {headerActions}
             </div>
           )}
@@ -376,7 +377,7 @@ export default function AppointmentEditModal({
         )}
       </div>
       {inline && hideInlineTabs && headerActions && (
-        <div className="ehr-row-detail__actions appt-edit-inline-actions" role="group" aria-label="Patient actions" onClick={event => event.stopPropagation()}>
+        <div {...stopsClickPropagation} className="ehr-row-detail__actions appt-edit-inline-actions" role="group" aria-label="Patient actions">
           {headerActions}
         </div>
       )}

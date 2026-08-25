@@ -28,6 +28,8 @@ import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import type { PatientDoc, ProblemDoc } from '@/lib/db-types';
 import type { NoteDiagnosis } from '@/lib/clinical-notes/types';
 import '../clinical-notes.css';
+import { stopsClickPropagation } from '@/lib/a11y';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 type ProblemTab = 'active' | 'inactive';
 
@@ -61,6 +63,7 @@ export default function IncludeProblemsModal({
   patientId, patientName, currentUser, onInclude, onClose,
 }: IncludeProblemsModalProps) {
   const { showToast } = useToast();
+  const scope = useDataScope();
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
 
   const [problems, setProblems] = useState<ProblemDoc[]>([]);
@@ -82,12 +85,12 @@ export default function IncludeProblemsModal({
   const load = useCallback(async () => {
     const { getProblemsByPatient } = await import('@/lib/services/problem-service');
     const { getPatientById } = await import('@/lib/services/patient-service');
-    const [rows, pt] = await Promise.all([getProblemsByPatient(patientId), getPatientById(patientId)]);
+    const [rows, pt] = await Promise.all([getProblemsByPatient(patientId, scope), getPatientById(patientId, scope)]);
     rows.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
     setProblems(rows);
     setPatient(pt);
     setLoading(false);
-  }, [patientId]);
+  }, [patientId, scope]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -268,7 +271,7 @@ export default function IncludeProblemsModal({
                       className={checked.has(p._id) ? 'is-checked' : undefined}
                       onClick={() => toggleRow(p._id)}
                     >
-                      <td onClick={e => e.stopPropagation()}>
+                      <td {...stopsClickPropagation}>
                         <input
                           type="checkbox"
                           checked={checked.has(p._id)}

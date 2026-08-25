@@ -16,6 +16,7 @@ import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader'
 import Select from '@/components/Select';
 import TransferPatientModal from '@/components/patients/TransferPatientModal';
 import { roleCan, WARD_ADMIT_ROLES, WARD_BED_ROLES, WARD_DISCHARGE_ROLES } from '@/lib/clinical-flow/ward-permissions';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 /* The admissions list is the shared appointment/worklist card row — the same
    surface, grid, type scale and status pill the patient registry uses, so a
@@ -426,7 +427,7 @@ export default function WardsPage() {
         {/* Admit modal */}
         {admitOpen && (
           <Modal onClose={() => setAdmitOpen(false)}>
-            <div className="modal-content card-elevated p-6 max-w-lg w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-content card-elevated p-6 max-w-lg w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold">{t('ward.admitPatient')}</h3>
                 <button onClick={() => setAdmitOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>

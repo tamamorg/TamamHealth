@@ -25,6 +25,7 @@ import {
 import { SaTable, classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { SadbPage, SadbCard, SadbChip, SadbSearch, SadbKvRow, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 type RangeFilter = '24h' | '7d' | '30d' | 'all';
 type SuccessFilter = 'all' | 'success' | 'failure';
@@ -404,7 +405,7 @@ function AuditEntryDialog({
           navy title bar without hand-rolling one here. Everything else
           (chips, fields, actions) lives outside that row, on the white panel,
           styled with the sadb-* tokens. */}
-      <div className="modal-panel" onClick={e => e.stopPropagation()}>
+      <div className="modal-panel" {...stopsClickPropagation}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="audit-entry-title" className="sadb-modal-title">{log.action}</h2>

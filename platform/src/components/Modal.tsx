@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 interface ModalProps {
   onClose: () => void;
@@ -174,11 +175,14 @@ export default function Modal({
     >
       <div
         ref={dialogRef}
+        // Spread first: this element is a real dialog, so its own role and tab
+        // behaviour must win over the helper's presentational defaults. All it
+        // borrows is the refusal to forward a click to the backdrop.
+        {...stopsClickPropagation}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
           maxWidth: width,

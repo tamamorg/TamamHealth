@@ -19,6 +19,7 @@
  */
 
 import { Fragment, type CSSProperties } from 'react';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 export interface RowStatusOption {
   /** Value handed back to `onSelect`. Use a distinct token for non-status actions. */
@@ -69,7 +70,7 @@ export default function RowStatusSelect({
     <span
       className={`appointment-status-pill appointment-status-pill--select ${className}`.trim()}
       style={style}
-      onClick={event => event.stopPropagation()}
+      {...stopsClickPropagation}
       onKeyDown={event => event.stopPropagation()}
     >
       {label}

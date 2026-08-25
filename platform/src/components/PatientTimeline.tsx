@@ -14,6 +14,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { priorityBadge } from '@/lib/clinical/triage-display';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -414,7 +415,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
                     {/* The detail cell stops click propagation: the parent row
                         toggles the disclosure, and a click on Sign inside it
                         would otherwise collapse the panel it was aimed at. */}
-                    <td colSpan={5} onClick={event => event.stopPropagation()}>
+                    <td colSpan={5} {...stopsClickPropagation}>
                       {e.subtitle && <p>{e.subtitle}</p>}
                       {e.meta && <small>{e.meta}</small>}
                       {signatureSlot && <div style={{ marginTop: 10 }}>{signatureSlot}</div>}

@@ -21,6 +21,7 @@ import { isFingerprintEnabled } from '@/lib/services/fingerprint-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
 import { EhrSearchFilter } from '@/components/ehr/EhrListHeader';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -399,7 +400,7 @@ export default function PatientsPage() {
                       <div className="ehr-appointment-identity">
                         <PatientAvatar patient={patient} size={40} />
                         <div className="ehr-appointment-main appointment-card-patient">
-                          <Link href={`/patients/${patient._id}`} onClick={e => e.stopPropagation()}>{patientDisplayName(patient)}</Link>
+                          <Link href={`/patients/${patient._id}`} {...stopsClickPropagation}>{patientDisplayName(patient)}</Link>
                           <p>{patient.hospitalNumber || 'No hospital number'} · {patientAgeLabel(patient)} · {patient.gender || 'Not recorded'}</p>
                         </div>
                       </div>

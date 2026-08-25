@@ -33,6 +33,7 @@ import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import type { PatientDoc, PrescriptionDoc } from '@/lib/db-types';
 import './clinical-notes.css';
 import Select from '@/components/Select';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 /** Ordered but never given: held, stockout-referred, or recalled. */
 const NOT_ADMINISTERED_STAGES = new Set<PrescriptionStatus>([
@@ -469,7 +470,7 @@ export default function MedicationsModal({
               global auto-blue-header rule excludes — without it this dialog
               (headings + buttons only) matches as one giant title bar and
               paints blue end to end. */}
-          <div className="cn-consent-pop modal-panel" onClick={e => e.stopPropagation()}>
+          <div className="cn-consent-pop modal-panel" {...stopsClickPropagation}>
             <div className="cn-meds-header">
               <h2 className="cn-meds-title" id="cn-consent-title">Obtain Consent from Patient</h2>
               <button type="button" className="cn-meds-close" onClick={() => setConsentPromptOpen(false)} aria-label="Close consent">

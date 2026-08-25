@@ -30,6 +30,7 @@ import { computeAdjudicatedStatus } from '@/lib/services/payment-service';
 import type { ClaimDoc, ClaimStatus, PayerType, InsurancePolicyDoc } from '@/lib/db-types-payments';
 import type { BillingDoc } from '@/lib/db-types-billing';
 import { formatMoney } from '@/lib/format-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 export const PAYER_LABEL_KEYS: Record<PayerType, string> = {
   self_pay: 'billing.payerSelfPay',
@@ -348,7 +349,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   <td style={{ fontWeight: 600 }}>{claim.claimNumber}</td>
                   <td>
                     {claim.patientId && !claim.patientId.startsWith('demo-') && !claim.patientId.includes('_demo') ? (
-                      <Link href={`/patients/${claim.patientId}?tab=billing`} onClick={e => e.stopPropagation()} className="bl-link">
+                      <Link href={`/patients/${claim.patientId}?tab=billing`} {...stopsClickPropagation} className="bl-link">
                         {shortenPersonName(claim.patientName)}
                       </Link>
                     ) : (

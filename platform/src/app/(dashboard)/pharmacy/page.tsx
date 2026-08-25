@@ -28,6 +28,7 @@ import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { useRoleChoice } from '@/lib/settings/useRoleSetting';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const UNITS = ['tablets', 'vials', 'bottles', 'sachets', 'tubes', 'ampoules', 'sachet', 'ml'];
 
@@ -1315,7 +1316,7 @@ export default function PharmacyPage() {
       {/* Stock-in modal */}
       {showStockInModal && (
         <Modal onClose={() => setShowStockInModal(false)}>
-          <div className="modal-content card-elevated p-6 max-w-lg w-full" onClick={e => e.stopPropagation()}>
+          <div className="modal-content card-elevated p-6 max-w-lg w-full" {...stopsClickPropagation}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="icon-box-sm">
@@ -1384,7 +1385,7 @@ export default function PharmacyPage() {
       {/* Restock modal — top up an existing inventory line with quantity + optional batch/expiry */}
       {restockTarget && (
         <Modal onClose={() => setRestockTarget(null)} width={448}>
-          <div className="modal-content card-elevated p-6 w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-content card-elevated p-6 w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-semibold">{t('pharmacy.receiveStock')}</h3>

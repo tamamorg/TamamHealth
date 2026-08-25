@@ -28,6 +28,7 @@ import {
 import { canDecideTransfer } from '@/lib/services/patient-transfer-permissions';
 import type { PatientTransferDoc } from '@/lib/db-types';
 import { ArrowRightLeft, ArrowRight, Check, Clock } from '@/components/icons/lucide';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 type Tab = 'incoming' | 'outgoing';
 
@@ -247,7 +248,7 @@ export default function TransfersPage() {
                     <div className="ehr-appointment-main appointment-card-patient">
                       <Link
                         href={`/patients/${t.patientId}?tab=referrals`}
-                        onClick={e => e.stopPropagation()}
+                        {...stopsClickPropagation}
                       >
                         {t.patientName || 'Patient'}
                       </Link>

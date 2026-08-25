@@ -30,6 +30,7 @@ import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { formatDobOmrs } from '@/lib/date-utils';
+import { dismissBackdrop } from '@/lib/a11y';
 
 
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'mobile_money', 'bank_transfer', 'insurance', 'credit'];
@@ -520,7 +521,7 @@ export default function BillDetailPage() {
                           </button>
                           {openMenuId === item.id && (
                             <>
-                              <div className="bl-menu-backdrop" onClick={() => setOpenMenuId(null)} />
+                              <div className="bl-menu-backdrop" {...dismissBackdrop(() => setOpenMenuId(null))} />
                               <div className="bl-menu" role="menu">
                                 <button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setEditingItemId(item.id); setQtyDraft(String(item.quantity)); }}>
                                   Edit quantity
