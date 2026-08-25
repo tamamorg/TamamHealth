@@ -566,7 +566,7 @@ export const apd: Dictionary = {
   "Primary Health Care Unit (PHCU)": "وحدة الرعاية الصحية الأولية (PHCU)",
   "Privacy Policy": "سياسة الخصوصية",
   "Products": "المنتجات",
-  "Professor of Theater · Director, Center for Migration and the Global City": "أستاذ المسرح · مدير مركز الهجرة والمدينة العالمية",
+  "Professor, Arts, Culture & Media · Director, Newest Americans": "أستاذ الفنون والثقافة والإعلام · مدير نيوست أمريكانز",
   "Project Manager": "مدير المشروع",
   "Promotion, screening & referral": "التعزيز والفحص والإحالة",
   "Quality Control": "ضبط الجودة",

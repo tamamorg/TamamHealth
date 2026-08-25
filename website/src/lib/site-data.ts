@@ -510,7 +510,7 @@ export const ADVISORS: Advisor[] = [
   {
     accent: "#015697",
     name: "Tim Raphael",
-    role: "Professor of Theater · Director, Center for Migration and the Global City",
+    role: "Professor, Arts, Culture & Media · Director, Newest Americans",
     institutions: ["Rutgers University–Newark"],
     industry: "Theater and migration studies",
     // 684×1024 — the tallest source in the set, and the only one whose face
