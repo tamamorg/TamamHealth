@@ -199,8 +199,8 @@ export default function AdminAnalyticsPage() {
           <YAxis yAxisId="failures" hide domain={[0, failAxisMax]} />
           <Tooltip {...chartTooltipStyle} />
           <Legend wrapperStyle={{ fontSize: '11px' }} />
-          <Area type="monotone" dataKey="encounters" name={t('analytics.legendEncounters')} stroke="var(--accent-primary)" strokeWidth={2} fill="var(--accent-primary)" fillOpacity={0.14} isAnimationActive={false} />
-          <Line yAxisId="failures" type="monotone" dataKey="failures" name={t('analytics.legendAuditFailures')} stroke="var(--color-danger-500)" strokeWidth={1.8} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+          <Area type="monotone" dataKey="encounters" name={t('analytics.legendEncounters')} stroke="var(--accent-primary)" strokeWidth={2} fill="var(--accent-primary)" fillOpacity={0.14} isAnimationActive animationDuration={420} animationEasing="ease-out" />
+          <Line yAxisId="failures" type="monotone" dataKey="failures" name={t('analytics.legendAuditFailures')} stroke="var(--color-danger-500)" strokeWidth={1.8} strokeDasharray="4 3" dot={false} isAnimationActive animationDuration={420} animationEasing="ease-out" />
         </ComposedChart>
       </ResponsiveContainer>
     );

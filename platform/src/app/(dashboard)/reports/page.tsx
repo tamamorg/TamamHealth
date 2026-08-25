@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
-  Activity,
+  ChevronUp, FileText, Download,
   Loader2, BarChart3, PieChart, Layers, List,
   AlertTriangle, type LucideIcon
 } from '@/components/icons/lucide';
@@ -45,7 +45,6 @@ const ReportChart = dynamic(
 const CHART_KINDS: { id: ReportChartKind; labelKey: string; icon: LucideIcon; partToWhole?: true }[] = [
   { id: 'column', labelKey: 'reports.chartColumn', icon: BarChart3 },
   { id: 'bar', labelKey: 'reports.chartBar', icon: List },
-  { id: 'lollipop', labelKey: 'reports.chartLollipop', icon: Activity },
   { id: 'donut', labelKey: 'reports.chartDonut', icon: PieChart, partToWhole: true },
   { id: 'treemap', labelKey: 'reports.chartTreemap', icon: Layers, partToWhole: true },
 ];
@@ -110,7 +109,7 @@ export default function ReportsPage() {
   /* Open by default. The rows are computed for every report up front
      (`reportPreviews`), so hiding them behind a click bought nothing and the
      control that did it claimed to "generate" data that already existed. */
-  const [tableOpen, setTableOpen] = useState(true);
+  const [tableOpen, setTableOpen] = useState(false);
   // Which form the graph takes. Standing columns by default; held across
   // report changes on purpose: a reader who chose a treemap wants treemaps,
   // not a reset on every step.
@@ -824,52 +823,29 @@ export default function ReportsPage() {
         <ReportControlPanel
           filter={reportFilter}
           onFilterChange={setReportFilter}
-          applied={{ report: chartReport, kind: chartKind, tableOpen }}
+          applied={{ report: chartReport, kind: chartKind }}
           onApply={(view: ReportView) => {
             setChartReport(view.report);
             setChartKind(view.kind);
-            setTableOpen(view.tableOpen);
           }}
           kinds={CHART_KINDS}
           partToWholeOkFor={partToWholeOkFor}
-          rowCountFor={name => reportPreviews.get(name)?.rowCount ?? 0}
           loading={dataLoading}
           total={chartableReports.length}
-          onStep={(from, delta) => {
-            const i = chartableReports.findIndex(r => r.name === from);
-            const next = ((i < 0 ? 0 : i) + delta + chartableReports.length) % chartableReports.length;
-            return chartableReports[next].name;
-          }}
-          positionOf={name => {
-            const i = chartableReports.findIndex(r => r.name === name);
-            return i < 0 ? 1 : i + 1;
-          }}
-          onExportCsv={() => {
-            const { rows, title } = generateReportData(chartReport);
-            if (rows.length) downloadCsv(rows, safeFilenamePart(title));
-          }}
         />
 
         {/* ── The plot, and the table it summarises ─────────────────────── */}
         <section className="rpt-main">
           <div className="rpt-plot-card">
-            {/* No caption here: the bar above already names the measure and
-                the category, and a chart card that repeats its own page
-                header twice is two lines saying one thing. */}
-            {/* The chart-form buttons moved into the control panel (2026-08-25):
-                the form is one of the things you choose about a view, so it
-                belongs with the rest of that choice and behind the same Apply
-                rather than redrawing the chart from on top of it.
-
-                What stays is the caption — with the command bar gone, this is
-                the only thing naming what the plot shows, and an unlabelled
-                chart is not a report. */}
+            {/* The chart-form buttons moved into the control panel (2026-08-25).
+                What stays is the caption — it is the only thing naming what the
+                plot shows, and an unlabelled chart is not a report. */}
             <div className="rpt-plot-head">
               <div className="rpt-plot-caption">
+                {/* No cadence chip here. It coloured a word the About list
+                    already states in full, and sat between the report's name
+                    and the caption describing it — three labels for one plot. */}
                 <b>{t(reportNameKey[chartReport] ?? chartReport)}</b>
-                <span className={`rpt-chip rpt-chip--${activeReport?.period.toLowerCase() ?? 'monthly'}`}>
-                  {t(periodKey[activeReport?.period ?? ''] ?? activeReport?.period ?? '')}
-                </span>
                 {activeChart && (
                   <i>
                     {t('reports.chartCaption', {
@@ -880,6 +856,24 @@ export default function ReportsPage() {
                   </i>
                 )}
               </div>
+
+              {/* Generate sits on the chart, because the table it opens is the
+                  same report one level down — the rows behind the shape above.
+                  It is a disclosure, not a computation: every report's rows are
+                  already reduced in `reportPreviews`, which is why this is
+                  instant and why the label promises less than it sounds. */}
+              <button
+                type="button"
+                className={`rpt-nav-generate ${tableOpen ? 'is-on' : ''}`.trim()}
+                aria-expanded={tableOpen}
+                disabled={dataLoading}
+                onClick={() => setTableOpen(open => !open)}
+                data-action="report-generate"
+              >
+                {tableOpen
+                  ? <><ChevronUp /> {t('action.close')}</>
+                  : <><FileText /> {t('reports.generate')}</>}
+              </button>
             </div>
             <div className="rpt-stats-body">
               {dataLoading ? (
@@ -906,6 +900,21 @@ export default function ReportsPage() {
               <div className="rpt-table-cap">
                 <span>{t(reportNameKey[chartReport] ?? chartReport)}</span>
                 <b>{t('reports.rowsAvailable', { count: reportPreviews.get(chartReport)?.rowCount ?? 0 })}</b>
+                {/* Export belongs to the table, not to the view being built:
+                    it hands over these rows, so it appears when they do. */}
+                <button
+                  type="button"
+                  className="rpt-nav-csv"
+                  disabled={dataLoading}
+                  data-track="reports.export_csv"
+                  data-action="report-download-csv"
+                  onClick={() => {
+                    const { rows, title } = generateReportData(chartReport);
+                    if (rows.length) downloadCsv(rows, safeFilenamePart(title));
+                  }}
+                >
+                  <Download /> {t('reports.downloadCsv')}
+                </button>
               </div>
               {renderTable(chartReport)}
             </div>

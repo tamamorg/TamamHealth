@@ -6,12 +6,19 @@ const source = (relative: string) => fs.readFileSync(path.join(process.cwd(), 's
 
 describe('the consolidated management workspace', () => {
   test('keeps edits narrow while oversight roles share the read-only network view', () => {
-    expect(managementViewsForRole('super_admin')).toEqual(['organizations', 'facilities', 'people']);
+    // Order is meaningful, not incidental: people lead (2026-08-25) because the
+    // console is opened to find a person far more often than to audit the
+    // tenant tree. Membership is the entitlement; the first entry is the
+    // landing tab, which is why this asserts sequence rather than a set.
+    expect(managementViewsForRole('super_admin')).toEqual(['people', 'facilities', 'organizations']);
     for (const role of ['org_admin', 'medical_superintendent', 'hospital_manager'] as const) {
-      expect(managementViewsForRole(role)).toEqual(['facilities', 'people']);
+      expect(managementViewsForRole(role)).toEqual(['people', 'facilities']);
     }
+    // Oversight roles still get no people view at all — reordering must not
+    // hand them one.
     for (const role of ['government', 'county_health_director', 'hrio', 'records_hmis_officer'] as const) {
-      expect(managementViewsForRole(role)).toEqual(['organizations', 'facilities']);
+      expect(managementViewsForRole(role)).toEqual(['facilities', 'organizations']);
+      expect(managementViewsForRole(role)).not.toContain('people');
     }
   });
 

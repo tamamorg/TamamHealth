@@ -22,11 +22,11 @@ export type ManagementView = 'organizations' | 'facilities' | 'people';
 
 /** Keep organization ownership platform-wide; tenant operators manage their own facilities and people. */
 export function managementViewsForRole(role: UserRole): readonly ManagementView[] {
-  if (role === 'super_admin') return ['organizations', 'facilities', 'people'];
+  if (role === 'super_admin') return ['people', 'facilities', 'organizations'];
   if (role === 'org_admin' || role === 'medical_superintendent' || role === 'hospital_manager') {
-    return ['facilities', 'people'];
+    return ['people', 'facilities'];
   }
-  return ['organizations', 'facilities'];
+  return ['facilities', 'organizations'];
 }
 
 export type TenancyAction =
