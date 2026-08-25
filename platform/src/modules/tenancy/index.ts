@@ -20,6 +20,9 @@ export function userWorksAtFacility(
 
 export type ManagementView = 'organizations' | 'facilities' | 'people';
 
+/** A record the tenant tree can create from a dialog, wherever it is hosted. */
+export type TenancyCreateKind = 'organization' | 'facility' | 'staff';
+
 /** Keep organization ownership platform-wide; tenant operators manage their own facilities and people. */
 export function managementViewsForRole(role: UserRole): readonly ManagementView[] {
   if (role === 'super_admin') return ['people', 'facilities', 'organizations'];

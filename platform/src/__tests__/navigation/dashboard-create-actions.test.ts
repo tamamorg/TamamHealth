@@ -34,12 +34,13 @@ describe('dashboardCreateActions', () => {
     expect(keys('')).toEqual([]);
   });
 
-  it('points every action at a real management create deep-link', () => {
+  it('names a dialog rather than a destination', () => {
+    // The buttons open their form on the dashboard. An `href` here would mean
+    // the operator is sent to the management workspace to create one record —
+    // which is exactly what these actions stopped doing.
     for (const action of dashboardCreateActions('super_admin')) {
-      // `new=1` is what ManagementWorkspace's deep-link effect opens on; a
-      // link without it lands on the list and the operator has to find the
-      // create button again.
-      expect(action.href).toMatch(/^\/manage\?view=(organizations|facilities|people)&new=1$/);
+      expect(['organization', 'facility', 'staff']).toContain(action.key);
+      expect(action).not.toHaveProperty('href');
     }
   });
 
