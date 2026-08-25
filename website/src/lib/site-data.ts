@@ -505,6 +505,7 @@ export const ADVISORS: Advisor[] = [
     role: "VP of Data & Automation",
     institutions: ["Phoenix Tailings", "Machinery Partner (board)"],
     industry: "Industrial technology",
+    image: "/assets/david-blair.jpg",
   },
   {
     accent: "#015697",
