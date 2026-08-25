@@ -49,8 +49,14 @@ export default function AdminUserCreatePage() {
    * platform roster — the exact page this parameter exists to avoid.
    */
   const [returnTo, setReturnTo] = useState('/admin/users');
+  const [presetOrgId, setPresetOrgId] = useState('');
+  const [presetHospitalId, setPresetHospitalId] = useState('');
   useEffect(() => {
-    setReturnTo(returnToFromSearch(window.location.search, '/admin/users'));
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    setReturnTo(returnToFromSearch(search, '/admin/users'));
+    setPresetOrgId(params.get('org') ?? '');
+    setPresetHospitalId(params.get('facility') ?? '');
   }, []);
   const backToRoster = () => router.push(returnTo);
 
@@ -83,7 +89,14 @@ export default function AdminUserCreatePage() {
           </aside>
 
           <div className="sadb-card sadb-regpage-form">
-            <UserForm onCancel={backToRoster} onSaved={({ handoff: h }) => setHandoff(h)} />
+            <UserForm
+              presetOrgId={presetOrgId}
+              presetHospitalId={presetHospitalId}
+              lockOrganization={!!presetOrgId}
+              lockFacility={!!presetHospitalId}
+              onCancel={backToRoster}
+              onSaved={({ handoff: h }) => setHandoff(h)}
+            />
           </div>
         </div>
       </div>

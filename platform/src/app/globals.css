@@ -29901,6 +29901,7 @@ button.sadb-signal { cursor: pointer; }
    (found by the organizations form, whose 4 sections outgrow a laptop
    viewport). */
 .sadb-modal { display: flex; flex-direction: column; padding: 15px 18px 16px; min-height: 0; overflow-y: auto; }
+.sadb-modal--page { padding: 0; overflow: visible; }
 .sadb-modal--danger { border-top: 3px solid var(--color-danger-800); border-radius: 6px; }
 .sadb-modal-copy { margin-bottom: 12px; }
 .sadb-modal-title {
@@ -29927,6 +29928,86 @@ button.sadb-signal { cursor: pointer; }
 }
 .sadb-modal-input:focus-visible { outline: 2px solid var(--brand-400); outline-offset: 1px; }
 .sadb-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+/* ── Resource-editor popup header ────────────────────────────────────────
+   Organization, facility and account editors are one provisioning family.
+   Their compact dialogs therefore share one unmistakable platform-blue
+   title band and the same two window controls: promote to the full page, or
+   close. The negative inline margin consumes the `.sadb-modal` padding so the
+   band meets the dialog edge while the form body keeps its measured inset. */
+.popup-resource-header {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin: -15px -18px 16px;
+  padding: 15px 14px 14px 18px;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--accent-primary, #015697);
+  color: #FFFFFF;
+}
+.popup-resource-header__copy { min-width: 0; padding-top: 1px; }
+.popup-resource-header__title {
+  margin: 0;
+  color: #FFFFFF;
+  font-family: var(--font-condensed);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.popup-resource-header__subtitle {
+  margin: 5px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.popup-resource-header__actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.popup-resource-header__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.11);
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+.popup-resource-header__button:hover {
+  border-color: rgba(255, 255, 255, 0.48);
+  background: rgba(255, 255, 255, 0.22);
+}
+.popup-resource-header__button:active { transform: translateY(1px); }
+.popup-resource-header__button:focus-visible {
+  outline: 2px solid #FFFFFF;
+  outline-offset: 2px;
+}
+.popup-resource-header__button svg {
+  color: currentColor;
+  stroke: currentColor;
+}
+
+@media (max-width: 520px) {
+  .popup-resource-header { gap: 10px; padding-left: 15px; }
+  .popup-resource-header__title { font-size: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popup-resource-header__button { transition: none; }
+}
 
 /* ══ Facility management header (fac-*) ══════════════════════════════
    /hospitals/[id]/manage used to open on an Overview tab of five stacked

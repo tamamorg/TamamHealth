@@ -1,10 +1,12 @@
 'use client';
 
 import Modal from '@/components/Modal';
+import PopupHeader from '@/components/PopupHeader';
 import { UserForm } from '@/components/admin/UserForm';
 import type { InvitationOutcome } from '@/modules/identity/provisioning/user-invite';
 import type { HospitalDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useRouter } from 'next/navigation';
 
 export interface CreatedCredentials {
   username: string;
@@ -33,14 +35,26 @@ export default function CreateUserModal({
   onAddFacility?: () => void;
 }) {
   const { t } = useTranslation();
+  const router = useRouter();
   const preset = hospitals.find(hospital => hospital._id === presetHospitalId);
+  const expandToPage = () => {
+    const query = new URLSearchParams();
+    query.set('returnTo', `${window.location.pathname}${window.location.search}`);
+    if (presetOrgId || preset?.orgId) query.set('org', presetOrgId || preset?.orgId || '');
+    if (presetHospitalId) query.set('facility', presetHospitalId);
+    onClose();
+    router.push(`/admin/users/new?${query.toString()}`);
+  };
   return (
     <Modal onClose={onClose} width={620} labelledBy="create-user-title">
       <div className="sadb-modal mgmt-user-modal">
-        <div className="sadb-modal-copy">
-          <h2 id="create-user-title" className="sadb-modal-title">{t('orgUsers.createNewUser')}</h2>
-          {preset && <p className="sadb-modal-sub">{t('hospitals.addUserForFacility', { name: preset.name })}</p>}
-        </div>
+        <PopupHeader
+          titleId="create-user-title"
+          title={t('orgUsers.createNewUser')}
+          subtitle={preset ? t('hospitals.addUserForFacility', { name: preset.name }) : undefined}
+          onExpand={expandToPage}
+          onClose={onClose}
+        />
         <UserForm
           presetOrgId={presetOrgId || preset?.orgId}
           presetHospitalId={presetHospitalId}
