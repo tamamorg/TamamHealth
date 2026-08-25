@@ -25,6 +25,7 @@ import {
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const VACCINES = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'];
 const SITES: Array<'left arm' | 'right arm' | 'left thigh' | 'right thigh' | 'oral'> = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
@@ -795,7 +796,7 @@ export default function ImmunizationsPage() {
                     )}
                     <Link
                       href={`/patients/${childId}?tab=immunizations`}
-                      onClick={(e) => e.stopPropagation()}
+                      {...stopsClickPropagation}
                       className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full transition-colors hover:bg-[var(--accent-light)]"
                       style={{ color: 'var(--accent-primary)' }}
                       title={t('immun.viewPatientRecord')}

@@ -14,6 +14,7 @@ import FileUpload from '@/components/FileUpload';
 import type { Attachment } from '@/data/mock';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 // Fallback list used only when the facility hasn't configured its departments
 // in Facility Settings (settings.departments drives the picker when present).
@@ -118,7 +119,7 @@ export default function ReferralFormModal({ onClose, onSent }: { onClose: () => 
 
   return (
     <Modal onClose={onClose} width={760} align="top" labelledBy="referral-form-title">
-      <div className="modal-panel modal-panel--lg" onClick={e => e.stopPropagation()}>
+      <div className="modal-panel modal-panel--lg" {...stopsClickPropagation}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Send className="w-5 h-5" style={{ color: 'var(--tamamhealth-blue)' }} />

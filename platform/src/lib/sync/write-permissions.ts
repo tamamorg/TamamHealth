@@ -336,6 +336,26 @@ export const DOC_UPDATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
 /** Roles allowed to create a document but not receive unrestricted updates. */
 export const DOC_CREATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   admission: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'],
+  // Ward/rooming vitals are stored as medical_record documents so the chart,
+  // trends and sync worker all consume one canonical observation stream. Do
+  // not put these roles in DOC_WRITE_ROLES: that would also let them author or
+  // replace consultation notes. The required-value constraint below limits
+  // this create grant to the dedicated nursing observation shape.
+  medical_record: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'],
+};
+
+/**
+ * Required field values for a create-only grant.
+ *
+ * CouchDB validates the body supplied by the client. A role-specific create
+ * exception therefore needs to prove that the new document is the narrow
+ * subtype the workflow owns, rather than trusting a UI route or a display
+ * label that can be bypassed by writing to local PouchDB directly.
+ */
+export const DOC_CREATE_ONLY_REQUIRED_VALUES: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  medical_record: {
+    recordKind: ['nursing_vitals'],
+  },
 };
 
 /** Fields an amend-only role may change on the existing document. */
@@ -490,6 +510,7 @@ export function buildValidateDocUpdateFn(
   updateOnly: Readonly<Record<string, readonly string[]>> = DOC_UPDATE_ONLY_ROLES,
   updateOnlyFields: Readonly<Record<string, readonly string[]>> = DOC_UPDATE_ONLY_FIELDS,
   createOnly: Readonly<Record<string, readonly string[]>> = DOC_CREATE_ONLY_ROLES,
+  createOnlyRequiredValues: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = DOC_CREATE_ONLY_REQUIRED_VALUES,
 ): string {
   const matrixJson = JSON.stringify(matrix);
   const immutableJson = JSON.stringify(IMMUTABLE_FIELDS);
@@ -497,6 +518,7 @@ export function buildValidateDocUpdateFn(
   const updateOnlyJson = JSON.stringify(updateOnly);
   const updateOnlyFieldsJson = JSON.stringify(updateOnlyFields);
   const createOnlyJson = JSON.stringify(createOnly);
+  const createOnlyRequiredValuesJson = JSON.stringify(createOnlyRequiredValues);
   const facilityFieldsJson = JSON.stringify(FACILITY_OWNER_FIELDS);
   const facilityExemptJson = JSON.stringify(FACILITY_EXEMPT_TYPES);
   const multiFacilityJson = JSON.stringify(MULTI_FACILITY_ROLES);
@@ -635,10 +657,20 @@ export function buildValidateDocUpdateFn(
   // to rewrite it later. Updates flow through the field-constrained block.
   if (!oldDoc && !isDelete) {
     var CREATE_ONLY_ROLES = ${createOnlyJson};
+    var CREATE_ONLY_REQUIRED_VALUES = ${createOnlyRequiredValuesJson};
     var creators = CREATE_ONLY_ROLES[docType];
     if (creators) {
       for (var c = 0; c < creators.length; c++) {
-        if (creators[c] === actingRole) return;
+        if (creators[c] === actingRole) {
+          var requiredValues = CREATE_ONLY_REQUIRED_VALUES[docType] || {};
+          for (var requiredField in requiredValues) {
+            if (!requiredValues.hasOwnProperty(requiredField)) continue;
+            if (!contains(requiredValues[requiredField], newDoc[requiredField])) {
+              throw({ forbidden: 'role ' + actingRole + ' may create ' + docType + ' only when ' + requiredField + ' is one of: ' + requiredValues[requiredField].join(', ') });
+            }
+          }
+          return;
+        }
       }
     }
   }

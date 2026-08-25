@@ -16,6 +16,7 @@ import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { formatDateTime } from '@/lib/format-utils';
 import Select from '@/components/Select';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const SCHEDULES: ControlledSubstanceLogDoc['schedule'][] = ['I', 'II', 'III', 'IV', 'V'];
 const MOVEMENTS: ControlledSubstanceLogDoc['movement'][] = ['intake', 'dispense', 'waste', 'reconciliation', 'transfer'];
@@ -224,7 +225,7 @@ export default function ControlledSubstancesPage() {
 
         {open && (
           <Modal onClose={() => setOpen(false)}>
-            <div className="modal-panel modal-panel--md" onClick={e => e.stopPropagation()}>
+            <div className="modal-panel modal-panel--md" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Record controlled-substance movement</h3>
                 <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>

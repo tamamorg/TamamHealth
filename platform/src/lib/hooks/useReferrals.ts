@@ -6,6 +6,7 @@ import type { ReferralDoc } from '../db-types';
 import type { Attachment, ReferralOutcome } from '@/data/mock';
 import { referralsDB } from '../db';
 import { useApp } from '../context';
+import { useDataScope } from './useDataScope';
 
 export function useReferrals() {
   const [referrals, setReferrals] = useState<ReferralDoc[]>([]);
@@ -99,6 +100,7 @@ export function usePatientReferrals(patientId?: string) {
   const [referrals, setReferrals] = useState<ReferralDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const scope = useDataScope();
 
   const loadReferrals = useCallback(async () => {
     if (!patientId) {
@@ -109,7 +111,7 @@ export function usePatientReferrals(patientId?: string) {
     try {
       setError(null);
       const { getReferralsByPatient } = await import('../services/referral-service');
-      const data = await getReferralsByPatient(patientId);
+      const data = await getReferralsByPatient(patientId, scope);
       setReferrals(data);
     } catch (err) {
       console.error(err);
@@ -117,7 +119,7 @@ export function usePatientReferrals(patientId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [patientId]);
+  }, [patientId, scope]);
 
   useEffect(() => {
     loadReferrals();

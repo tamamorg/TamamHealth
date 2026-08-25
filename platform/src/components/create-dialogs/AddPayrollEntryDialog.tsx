@@ -15,6 +15,7 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 export interface AddPayrollEntryDialogProps {
   onClose: () => void;
@@ -72,7 +73,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated }: Ad
 
   return (
     <Modal onClose={onClose} width={448}>
-      <div className="modal-content card-elevated p-6 w-full" onClick={e => e.stopPropagation()}>
+      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold">{t('hr.addPayrollEntryPeriod', { period: entryPeriod })}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">

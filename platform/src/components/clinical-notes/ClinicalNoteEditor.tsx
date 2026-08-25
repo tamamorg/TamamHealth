@@ -168,7 +168,7 @@ export default function ClinicalNoteEditor({
     (async () => {
       try {
         const { getProblemsByPatient } = await import('@/lib/services/problem-service');
-        const rows = await getProblemsByPatient(note.patientId);
+        const rows = await getProblemsByPatient(note.patientId, scope);
         if (cancelled) return;
         setProblems(rows.filter(p => p.status === 'active').map(p => ({
           effectiveDate: p.onsetDate || p.createdAt?.slice(0, 10) || '',
@@ -178,7 +178,7 @@ export default function ClinicalNoteEditor({
       } catch { /* the summary simply offers nothing to attach */ }
     })();
     return () => { cancelled = true; };
-  }, [note?.patientId]);
+  }, [note?.patientId, scope]);
 
   // Chart context for the left rail. Each block fails independently: a rail
   // card with nothing to show is not a reason to block the note.
@@ -189,7 +189,7 @@ export default function ClinicalNoteEditor({
     (async () => {
       try {
         const { getPatientById } = await import('@/lib/services/patient-service');
-        const doc = await getPatientById(patientId);
+        const doc = await getPatientById(patientId, scope);
         if (!cancelled) setPatient(doc);
       } catch { /* identity card renders from the note's own fields */ }
       try {
@@ -198,7 +198,7 @@ export default function ClinicalNoteEditor({
       } catch { /* Patient Notes card shows its empty state */ }
       try {
         const { getLabResultsByPatient } = await import('@/lib/services/lab-service');
-        const labs = await getLabResultsByPatient(patientId);
+        const labs = await getLabResultsByPatient(patientId, scope);
         if (!cancelled) {
           setRecentLabs(labs
             .filter(l => l.status === 'completed')
@@ -209,7 +209,7 @@ export default function ClinicalNoteEditor({
       } catch { if (!cancelled) setRecentLabs([]); }
       try {
         const { getPatientDocuments } = await import('@/lib/services/patient-document-service');
-        const docs = await getPatientDocuments(patientId);
+        const docs = await getPatientDocuments(patientId, scope);
         if (!cancelled) {
           docs.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
           setDocuments(docs);

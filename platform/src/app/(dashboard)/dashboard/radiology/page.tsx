@@ -117,11 +117,12 @@ export default function RadiologyDashboard() {
     // the session and reaches the ordering clinician.
     const study = realStudies.find(s => s.id === studyId);
     if (study) {
+      const documentIds: string[] = [];
       for (const file of chosen) {
         if (file.size > MAX_ATTACHMENT_BYTES) continue; // skip oversized silently in toast below
         try {
           const base64Data = await fileToBase64(file);
-          await addPatientDocument({
+          const document = await addPatientDocument({
             patientId: study.patientId,
             title: `${study.modality} — ${study.bodyPart}: ${file.name}`,
             category: 'radiology',
@@ -135,9 +136,15 @@ export default function RadiologyDashboard() {
             hospitalId: currentUser?.hospitalId,
             orgId: currentUser?.orgId,
           });
+          documentIds.push(document._id);
         } catch {
           // Persistence failure keeps the session thumbnail; staff can retry.
         }
+      }
+      if (documentIds.length) {
+        const source = labResults.find(result => result._id === studyId);
+        const linkedIds = [...new Set([...(source?.studyDocumentIds || []), ...documentIds])];
+        await updateLabResult(studyId, { studyDocumentIds: linkedIds, imageCount: linkedIds.length });
       }
     }
 

@@ -13,6 +13,7 @@ import { phoneNotesDB } from '../db';
 import type { PhoneNoteDoc } from '../db-types';
 import { findByType } from './db-query';
 import type { DataScope } from './data-scope';
+import { filterByScope } from './data-scope';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { isClinicalAuthorRole } from '../clinical-roles';
@@ -22,13 +23,14 @@ function byNewest(a: PhoneNoteDoc, b: PhoneNoteDoc): number {
 }
 
 /** All phone notes for a patient, newest-first. */
-export async function getPhoneNotesByPatient(patientId: string): Promise<PhoneNoteDoc[]> {
-  const rows = await findByType<PhoneNoteDoc>(
+export async function getPhoneNotesByPatient(patientId: string, scope?: DataScope): Promise<PhoneNoteDoc[]> {
+  let rows = await findByType<PhoneNoteDoc>(
     phoneNotesDB(),
     'phone_note',
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
+  if (scope) rows = filterByScope(rows, scope);
   return rows.sort(byNewest);
 }
 

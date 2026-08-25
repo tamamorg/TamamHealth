@@ -26,6 +26,7 @@ import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import {  } from '@/lib/date-utils';
 import type { AppointmentStatus } from '@/lib/db-types';
 import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigation/care-dashboard-url';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const EHR_CARE_PREVIEW_HISTORY_KEY = '__tamamEhrCarePreview';
 
@@ -1008,7 +1009,7 @@ export default function EhrCareDashboard({
                                 className={`appointment-status-pill appointment-status-pill--select ${statusPillClass}`.trim()}
                                 // The row expands on click; picking a status
                                 // must not also open the panel underneath.
-                                onClick={event => event.stopPropagation()}
+                                {...stopsClickPropagation}
                                 onPointerDown={event => event.stopPropagation()}
                                 onMouseDown={event => event.stopPropagation()}
                                 onKeyDown={event => event.stopPropagation()}
@@ -1023,7 +1024,7 @@ export default function EhrCareDashboard({
                                   value={statusControl.value ? canonicalAppointmentStatus(statusControl.value as AppointmentStatus) : ''}
                                   aria-label={`Status for ${row.title}`}
                                   title={APPOINTMENT_STATUS_DESCRIPTIONS[statusControl.value as AppointmentStatus] || undefined}
-                                  onClick={event => event.stopPropagation()}
+                                  {...stopsClickPropagation}
                                   onPointerDown={event => event.stopPropagation()}
                                   onMouseDown={event => event.stopPropagation()}
                                   onChange={event => statusControl.onChange?.(event.target.value)}

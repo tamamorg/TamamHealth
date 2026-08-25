@@ -6,6 +6,7 @@ import { X, CheckCircle2, ArrowRight, Loader2 } from '@/components/icons/lucide'
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 interface PaymentPlanWizardProps {
   patientId: string;
@@ -83,7 +84,7 @@ export default function PaymentPlanWizard({
 
   return (
     <Modal onClose={onCancel} width={440}>
-      <div className="modal-content" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+      <div className="modal-content" style={{ maxWidth: 440 }} {...stopsClickPropagation}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-medium)' }}>
           <div>

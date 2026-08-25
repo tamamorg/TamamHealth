@@ -23,6 +23,7 @@ import { getRoleConfig } from '@/lib/permissions';
 import type { UserRole } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Corners, loginStyles } from '@/components/login/login-chrome';
+import { portalFromParam, shotForPortal, DEFAULT_PORTAL, type LoginPortal } from '@/components/login/portal-imagery';
 
 // Role picker options — every role in the platform, labeled like the rest of
 // the UI. Everyone signs in as their assigned role; only the platform
@@ -97,7 +98,7 @@ function demoGroupName(account: DemoAccount): string {
 export default function LoginPage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { login, lastLoginFailure, isAuthenticated, currentUser, dbReady } = useAuth();
+  const { login, logout, lastLoginFailure, isAuthenticated, currentUser, dbReady } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -114,6 +115,15 @@ export default function LoginPage() {
   // Demo-only account picker. The build-time flag decides whether to ASK;
   // the answer decides whether to show anything, so a deployment where the
   // route declines (it has a users database) keeps the product panel.
+  /* Which of the site's four doors this visit came through (`?portal=`).
+     The photograph beside the form answers it — a ministry official and a
+     platform operator both used to land on a picture of clinical work. */
+  const [portal, setPortal] = useState<LoginPortal>(DEFAULT_PORTAL);
+  /* Set when someone signed in already asks for a different account. Without
+     it this page bounced any existing session straight to its dashboard, so
+     "sign in as someone else" was impossible — you were returned to whoever
+     was signed in last, whichever account you had clicked. */
+  const [switching, setSwitching] = useState(false);
   const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
   const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
   // Second-factor step. The password has been accepted and the server is
@@ -139,6 +149,13 @@ export default function LoginPage() {
     const preHydrationPassword = passwordInputRef.current?.value;
     if (preHydrationName) setUsername(prev => prev || preHydrationName);
     if (preHydrationPassword) setPassword(prev => prev || preHydrationPassword);
+  }, []);
+
+  /* `?portal=` stays in the address bar — unlike `?u=` below it carries
+     nothing private, and a refresh should reopen the same door. */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setPortal(portalFromParam(new URLSearchParams(window.location.search).get('portal')));
   }, []);
 
   const handedOffRef = useRef(false);
@@ -202,9 +219,15 @@ export default function LoginPage() {
     setRoleMenuOpen(false);
   };
 
+  /* A session that is already live goes to its dashboard — but NOT while a
+     sign-in is in flight, and not once the visitor has said they want a
+     different account. Both exceptions are the same bug: this effect fired on
+     the OLD identity and pushed you into the old workspace, cancelling the
+     login you had just started. */
   useEffect(() => {
+    if (loading || switching) return;
     if (isAuthenticated && currentUser) router.push(resolveLandingPage(currentUser.role));
-  }, [isAuthenticated, currentUser, router]);
+  }, [isAuthenticated, currentUser, router, loading, switching]);
 
   /**
    * Name the actual refusal. Every failed sign-in used to read "Invalid
@@ -250,6 +273,9 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
+      // Whoever is signed in now is not who was just asked for. Drop that
+      // session first, so the new credentials are the only ones in play.
+      if (isAuthenticated) logout();
       const result = await login(account.username, account.password);
       if (result) router.push(resolveLandingPage(result));
       else { setError(describeLoginFailure('That demo account could not sign in.')); setLoading(false); }
@@ -261,6 +287,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
+      if (isAuthenticated) logout();
       const result = await login(username, password, undefined, roleChoice || undefined);
       if (result) { router.push(resolveLandingPage(result)); return; }
 
@@ -269,11 +296,24 @@ export default function LoginPage() {
     } catch { setError(t('login.errorLoginFailed')); setLoading(false); }
   };
 
-  if (isAuthenticated) {
+  /* Signed in already and not switching: this is the redirect on its way
+     out, so it says whose session it is. `switching` skips it entirely and
+     drops through to the form below. */
+  if (isAuthenticated && !switching && !loading) {
     return (
       <div className="lg-redirect">
         <span className="lg-redirect-mark" />
         <p>{t('login.redirectingDashboard')}</p>
+        {currentUser && (
+          <p className="lg-redirect-who">{t('login.signedInAs', { name: currentUser.name || currentUser.username })}</p>
+        )}
+        <button
+          type="button"
+          className="lg-redirect-switch"
+          onClick={() => { setSwitching(true); logout(); }}
+        >
+          {t('login.useDifferentAccount')}
+        </button>
         {loginStyles}
       </div>
     );
@@ -468,6 +508,13 @@ export default function LoginPage() {
             <Corners />
             <h2 id="lg-demo-title">Choose a demo account</h2>
             <p>One tap signs you in — seeded data, no real patients.</p>
+            {/* Same picture as the product panel: which door this is, not
+                which of the seeded accounts the pointer is over. */}
+            <div className="lg-demo-shot blueprint">
+              <Corners />
+              {/* eslint-disable-next-line @next/next/no-img-element -- photograph, cropped by CSS */}
+              <img src={shotForPortal(portal).src} alt={t(shotForPortal(portal).altKey)} />
+            </div>
             <div className="lg-demo-scroll">
               {demoGroups.map(group => (
                 <div className="lg-demo-group" key={group.name}>
@@ -500,10 +547,12 @@ export default function LoginPage() {
             {t('login.promoBody')}
           </p>
           <a className="lg-aside-link" href="https://tamamhealth.org/products">{t('login.seeProducts')} &nbsp;›</a>
+          {/* The picture answers which door this is — staff, ministry, or the
+              platform console — not which role the form has selected. */}
           <div className="lg-shot blueprint">
             <Corners />
             {/* eslint-disable-next-line @next/next/no-img-element -- photograph, cropped by CSS */}
-            <img src="/assets/doctor-at-workstation.jpg" alt="A doctor at a workstation, reading a patient's record on screen" />
+            <img src={shotForPortal(portal).src} alt={t(shotForPortal(portal).altKey)} />
           </div>
         </aside>
         )}

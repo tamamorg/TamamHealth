@@ -21,6 +21,7 @@ import type {
 import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const EMERGENCY_TYPES: { value: EmergencyType; label: string }[] = [
   { value: 'disease_outbreak', label: 'Disease outbreak' },
@@ -292,7 +293,7 @@ export default function EmergencyPreparednessPage() {
 
         {showForm && (
           <Modal onClose={() => !submitting && setShowForm(false)}>
-            <div className="modal-content card-elevated p-6 max-w-2xl w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-content card-elevated p-6 max-w-2xl w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />

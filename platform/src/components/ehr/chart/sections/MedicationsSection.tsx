@@ -22,6 +22,7 @@ import { formatDate, formatRxSig } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
 import { RefreshCw, Ban } from '@/components/icons/lucide';
 import type { PrescriptionDoc } from '@/lib/db-types';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const PAGE_SIZE = 8;
 
@@ -218,7 +219,7 @@ export default function MedicationsSection({
                 <td><span className={STATUS_BADGE[rx.status] || 'omrs-panel-badge omrs-panel-badge--active'}>{RX_STATUS_LABEL[rx.status] || rx.status}</span></td>
                 <td>{formatDate(rx.createdAt)}</td>
                 {canPrescribe && (
-                  <td onClick={e => e.stopPropagation()}>
+                  <td {...stopsClickPropagation}>
                     <RowActionsMenu ariaLabel={`Actions for ${rx.medication}`} actions={rowActions(rx)} />
                   </td>
                 )}

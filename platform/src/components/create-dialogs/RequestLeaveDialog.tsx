@@ -17,6 +17,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { LEAVE_TYPES } from '@/app/(dashboard)/hr/hr-shared';
 import type { LeaveType } from '@/lib/db-types-hr';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const today = () => todayIso();
 const tomorrow = () => toIsoDate(new Date(Date.now() + 86400000));
@@ -73,7 +74,7 @@ export default function RequestLeaveDialog({ onClose, onCreated }: RequestLeaveD
 
   return (
     <Modal onClose={onClose} width={448}>
-      <div className="modal-content card-elevated p-6 w-full" onClick={e => e.stopPropagation()}>
+      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold">{t('hr.requestLeave')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} title="Close" aria-label="Close">

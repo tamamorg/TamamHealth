@@ -393,6 +393,9 @@ export interface VitalsTimelineEntry {
   muac?: number;
   bloodGlucose?: number;
   facility?: string;
+  /** True when this observation is an appended correction of an earlier row. */
+  corrected?: boolean;
+  correctionReason?: string;
 }
 
 /** Parses to a finite number, or `undefined` for empty/garbage input — never
@@ -424,8 +427,11 @@ function hasAnyVital(e: Pick<VitalsTimelineEntry,
  * vitals lookup: a real record wins over a triage stop from the same moment.
  */
 export function mergeVitalsTimeline(records: MedicalRecordDoc[], triages: TriageDoc[] = []): VitalsTimelineEntry[] {
+  const supersededRecordIds = new Set(
+    records.map(r => r.correctsRecordId).filter((id): id is string => Boolean(id)),
+  );
   const fromRecords: VitalsTimelineEntry[] = records
-    .filter(r => r.vitalSigns)
+    .filter(r => r.vitalSigns && !supersededRecordIds.has(r._id))
     .map((r): VitalsTimelineEntry => {
       const v = r.vitalSigns;
       return {
@@ -444,6 +450,8 @@ export function mergeVitalsTimeline(records: MedicalRecordDoc[], triages: Triage
         muac: numOrUndef(v.muac),
         bloodGlucose: numOrUndef(v.bloodGlucose),
         facility: r.hospitalName,
+        corrected: Boolean(r.correctsRecordId),
+        correctionReason: r.correctionReason,
       };
     })
     .filter(hasAnyVital);

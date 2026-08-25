@@ -11,6 +11,7 @@ import {
   ChevronDown, ChevronRight, Eye,
 } from '@/components/icons/lucide';
 import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
+import { clickable } from '@/lib/a11y';
 
 type TabView = 'overview' | 'anc' | 'births' | 'mortality' | 'immunization' | 'high-risk';
 
@@ -883,7 +884,9 @@ export default function MCHAnalyticsPage() {
                   <div key={mother.motherId} className="card-elevated overflow-hidden">
                     <div
                       className="p-4 flex items-center justify-between cursor-pointer"
-                      onClick={() => setExpandedMother(isExpanded ? null : mother.motherId)}
+                      aria-expanded={isExpanded}
+                      {...clickable(() => setExpandedMother(isExpanded ? null : mother.motherId),
+                        { label: `${isExpanded ? 'Collapse' : 'Expand'} mother record` })}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-md flex items-center justify-center" style={{

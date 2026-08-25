@@ -57,6 +57,7 @@ import { withReturnTo } from '@/lib/navigation/return-to';
 import { useRoleChoice, useRoleFlag } from '@/lib/settings/useRoleSetting';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { exceedsTargetWait } from '@/lib/clinical-flow/payment-model';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 export type WorklistPatient = {
   _id: string;
@@ -1966,7 +1967,7 @@ export default function EhrClinicalDashboard({
 
           {followUpToComplete && (
             <Modal onClose={() => { if (!followUpSaving) setFollowUpToComplete(null); }} width={480} labelledBy="complete-follow-up-title">
-              <div className="modal-content card-elevated p-6 w-full" onClick={event => event.stopPropagation()}>
+              <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
                 <div className="modal-headband">
                   <h3 id="complete-follow-up-title" className="text-base font-semibold mb-1">Complete follow-up</h3>
                   <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>

@@ -29,6 +29,7 @@ import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 // Minimal shape of the logged-in user needed by these modals. The patient
 // detail page passes `currentUser` from useApp(); we only read these fields.
@@ -162,7 +163,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
 
   return (
     <Modal onClose={close} width={560}>
-      <div className="modal-content card-elevated p-6 w-full" onClick={e => e.stopPropagation()}>
+      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
         <ModalHeader
           icon={<Pill className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />}
           title={t('tab.prescriptions')}
@@ -292,7 +293,7 @@ export function ReferModal({ isOpen, onClose, patient, currentUser }: BaseModalP
 
   return (
     <Modal onClose={close} width={600}>
-      <div className="modal-content card-elevated p-6 w-full" onClick={e => e.stopPropagation()}>
+      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
         <ModalHeader
           icon={<ArrowRightLeft className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />}
           title={t('referrals.createNew')}

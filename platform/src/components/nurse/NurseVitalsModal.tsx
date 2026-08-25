@@ -6,6 +6,8 @@ import Modal from '@/components/Modal';
 import { getVitalFlags, isVitalInRange, type VitalsInput } from '@/lib/clinical/vitals';
 import { recordNursingVitals } from '@/lib/services/medical-record-service';
 import { useToast } from '@/components/Toast';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import type { MedicalRecordDoc } from '@/lib/db-types';
 
 type NurseVitals = VitalsInput & { height?: string };
 
@@ -29,6 +31,21 @@ const blankVitals = (): NurseVitals => ({
   weight: '', height: '', painScore: '', bloodGlucose: '', gcs: '', muac: '', notes: '',
 });
 
+function vitalsFromRecord(record?: MedicalRecordDoc): NurseVitals {
+  if (!record) return blankVitals();
+  const value = (field: keyof NonNullable<MedicalRecordDoc['vitalSigns']>) => {
+    const raw = record.vitalSigns?.[field];
+    return raw === undefined || raw === null ? '' : String(raw);
+  };
+  return {
+    temperature: value('temperature'), systolic: value('systolic'), diastolic: value('diastolic'),
+    pulse: value('pulse'), respiratoryRate: value('respiratoryRate'), spo2: value('oxygenSaturation'),
+    weight: value('weight'), height: value('height'), painScore: value('painScore'),
+    bloodGlucose: value('bloodGlucose'), gcs: value('gcs'), muac: value('muac'),
+    notes: record.historyOfPresentIllness || '',
+  };
+}
+
 export default function NurseVitalsModal({
   patientId,
   patientName,
@@ -38,6 +55,7 @@ export default function NurseVitalsModal({
   orgId,
   encounterId,
   currentUser,
+  correctingRecord,
   onClose,
   onSaved,
 }: {
@@ -49,17 +67,24 @@ export default function NurseVitalsModal({
   orgId?: string;
   encounterId?: string;
   currentUser: Pick<{ _id: string; name: string }, '_id' | 'name'>;
+  correctingRecord?: MedicalRecordDoc;
   onClose: () => void;
   onSaved?: () => void;
 }) {
   const toast = useToast();
-  const [vitals, setVitals] = useState<NurseVitals>(blankVitals);
+  const { t } = useTranslation();
+  const [vitals, setVitals] = useState<NurseVitals>(() => vitalsFromRecord(correctingRecord));
+  const [correctionReason, setCorrectionReason] = useState('');
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     const entered = Object.entries(vitals).some(([key, value]) => key !== 'notes' && Boolean(value?.trim()));
     if (!entered) {
       toast.showToast('Enter at least one vital sign.', 'error');
+      return;
+    }
+    if (correctingRecord && correctionReason.trim().length < 3) {
+      toast.showToast(t('chart.vitalsCorrectionReasonRequired'), 'error');
       return;
     }
     for (const field of FIELDS) {
@@ -78,6 +103,8 @@ export default function NurseVitalsModal({
         hospitalName,
         orgId,
         encounterId,
+        correctsRecordId: correctingRecord?._id,
+        correctionReason: correctingRecord ? correctionReason.trim() : undefined,
         recordedById: currentUser._id,
         recordedByName: currentUser.name,
         vitals,
@@ -98,7 +125,9 @@ export default function NurseVitalsModal({
           <div>
             <div className="flex items-center gap-2">
               <Activity className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-              <h2 id="nurse-vitals-title" className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Record vitals</h2>
+              <h2 id="nurse-vitals-title" className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {correctingRecord ? t('chart.correctVitals') : 'Record vitals'}
+              </h2>
             </div>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{patientName} · {hospitalNumber || 'No ID'}</p>
           </div>
@@ -130,10 +159,24 @@ export default function NurseVitalsModal({
           Notes
           <textarea value={vitals.notes || ''} onChange={event => setVitals(current => ({ ...current, notes: event.target.value }))} rows={2} className="w-full mt-1 rounded border px-2.5 py-2 text-sm resize-none" placeholder="Position, oxygen, symptoms, or other observation" style={{ borderColor: 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }} />
         </label>
+        {correctingRecord && (
+          <label className="block mt-3 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            {t('chart.correctionReason')}
+            <textarea
+              value={correctionReason}
+              onChange={event => setCorrectionReason(event.target.value)}
+              rows={2}
+              required
+              className="w-full mt-1 rounded border px-2.5 py-2 text-sm resize-none"
+              placeholder={t('chart.vitalsCorrectionReasonPlaceholder')}
+              style={{ borderColor: 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }}
+            />
+          </label>
+        )}
         <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: '1px solid var(--border-light)' }}>
           <button type="button" onClick={onClose} disabled={saving} className="px-3 py-2 rounded text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Cancel</button>
           <button type="button" onClick={() => void save()} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--accent-primary)' }}>
-            <Save className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save vitals'}
+            <Save className="w-3.5 h-3.5" /> {saving ? 'Saving…' : correctingRecord ? t('chart.saveCorrection') : 'Save vitals'}
           </button>
         </div>
       </div>

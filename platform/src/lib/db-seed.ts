@@ -548,12 +548,25 @@ function normalizePoolIdentity(doc: Record<string, unknown>): void {
   fix('currentPatientId', 'currentPatientName'); // beds
 }
 
-// Helper: put a doc, silently skip if it already exists (409 conflict)
-async function safePut(db: PouchDB.Database, doc: Record<string, unknown>): Promise<void> {
+/**
+ * Put a doc, silently skipping a 409 (it already exists).
+ *
+ * Generic on purpose. This took `Record<string, unknown>`, so all 108 call
+ * sites had to launder their typed document through `as unknown as
+ * Record<string, unknown>` — 57% of every double assertion in the codebase,
+ * all of it to satisfy one helper. A double assertion is the one cast that
+ * turns off checking completely, so having the seed file be where they live
+ * meant the fixture data was the least type-checked code in the repo.
+ *
+ * The mutation below still needs an index signature, but that is this
+ * function's business rather than every caller's.
+ */
+async function safePut<T extends object>(db: PouchDB.Database, doc: T): Promise<void> {
   try {
-    if (IS_DEMO && !doc.dataOrigin) doc.dataOrigin = 'demo_seed';
-    normalizePoolIdentity(doc);
-    await db.put(doc);
+    const fields = doc as Record<string, unknown>;
+    if (IS_DEMO && !fields.dataOrigin) fields.dataOrigin = 'demo_seed';
+    normalizePoolIdentity(fields);
+    await db.put(fields);
   } catch (err: unknown) {
     const e = err as { status?: number };
     if (e.status === 409) return; // Document already exists — skip
@@ -1766,10 +1779,10 @@ async function migrateDemoAppointmentsAndWalkins(): Promise<void> {
     );
 
     for (const appt of [...demoAppointments, ...overflowAppointments]) {
-      await safePut(apptDB, appt as unknown as Record<string, unknown>);
+      await safePut(apptDB, appt);
     }
     for (const triage of [...demoWalkIns, ...overflowTriage]) {
-      await safePut(trDB, triage as unknown as Record<string, unknown>);
+      await safePut(trDB, triage);
     }
   } catch (err) {
     console.warn('[db-seed] demo appointment migration failed', err);
@@ -2096,7 +2109,7 @@ async function seedDatabaseExclusive(): Promise<void> {
   // Seed organizations
   const orgDB = organizationsDB();
   for (const org of defaultOrganizations) {
-    await safePut(orgDB, org as unknown as Record<string, unknown>);
+    await safePut(orgDB, org);
   }
 
   // Seed users. These carry no usable credential any more: sign-in reads the
@@ -2134,7 +2147,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       createdAt: now,
       updatedAt: now,
     };
-    await safePut(db, doc as unknown as Record<string, unknown>);
+    await safePut(db, doc);
   }
 
   // Seed hospitals (all public org by default)
@@ -2149,7 +2162,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       createdAt: now,
       updatedAt: now,
     } as HospitalDoc;
-    await safePut(hDB, doc as unknown as Record<string, unknown>);
+    await safePut(hDB, doc);
   }
 
   // Seed private org hospital
@@ -2163,7 +2176,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     syncStatus: 'online', lastSync: now, patientCount: 0, todayVisits: 0,
     operatingStatus: 'operational', orgId: PRIVATE_ORG_ID,
     createdAt: now, updatedAt: now,
-  } as unknown as Record<string, unknown>);
+  });
 
   // Sample nurse → doctor care assignments so the "assigned to you" worklist
   // (clinician dashboard) and the nurse's reassign control have demo data.
@@ -2251,13 +2264,20 @@ async function seedDatabaseExclusive(): Promise<void> {
     { id: 'dir-sample-6', type: 'privacy_consent', description: 'Patient prefers phone calls only — no SMS reminders.', startDate: now.slice(0, 10), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
   ];
   // Inject the shared sample set when a patient has none of its own. Demo-only.
-  const withSampleChart = (doc: Record<string, unknown>): Record<string, unknown> => {
+  // Generic for the same reason as `safePut`: taking a bare index signature
+  // forced every caller to launder a typed document through a double
+  // assertion just to hand it over.
+  const withSampleChart = <T extends object>(doc: T): T => {
     const out = { ...doc };
-    if (!out.structuredAllergies) {
-      out.structuredAllergies = SAMPLE_ALLERGIES;
-      out.allergies = SAMPLE_ALLERGIES.filter((a) => a.status === 'active').map((a) => a.substance);
+    // One index-signature view for the mutation, rather than an assertion at
+    // every call site. `T & Record<…>` does not work here: TS resolves the
+    // property against T first and rejects it.
+    const fields = out as Record<string, unknown>;
+    if (!fields.structuredAllergies) {
+      fields.structuredAllergies = SAMPLE_ALLERGIES;
+      fields.allergies = SAMPLE_ALLERGIES.filter((a) => a.status === 'active').map((a) => a.substance);
     }
-    if (!out.directives) out.directives = SAMPLE_DIRECTIVES;
+    if (!fields.directives) fields.directives = SAMPLE_DIRECTIVES;
     return out;
   };
 
@@ -2292,17 +2312,17 @@ async function seedDatabaseExclusive(): Promise<void> {
       createdAt: daysAgo(pIdx % 7),
       updatedAt: now,
     } as PatientDoc;
-    await safePut(pDB, withSampleChart(doc as unknown as Record<string, unknown>));
+    await safePut(pDB, withSampleChart(doc));
   }
 
   // Seed child patients (linked to immunization records)
   for (const child of childPatients) {
-    await safePut(pDB, withSampleChart({ ...child, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>));
+    await safePut(pDB, withSampleChart({ ...child, orgId: PUBLIC_ORG_ID }));
   }
 
   // Seed mother patients (linked to ANC records)
   for (const mother of motherPatients) {
-    await safePut(pDB, withSampleChart({ ...mother, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>));
+    await safePut(pDB, withSampleChart({ ...mother, orgId: PUBLIC_ORG_ID }));
   }
 
   // Seed Wau State Hospital roster (Clinical Officer's panel). Patients assigned
@@ -2316,7 +2336,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           assignedByName: 'Nurse Grace Achai Lual',
         }
       : {};
-    await safePut(pDB, withSampleChart({ ...wp, ...assignment, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>));
+    await safePut(pDB, withSampleChart({ ...wp, ...assignment, orgId: PUBLIC_ORG_ID }));
   }
 
   // Seed Malakal Teaching Hospital roster (hosp-003) so nurse.stella and
@@ -2329,21 +2349,21 @@ async function seedDatabaseExclusive(): Promise<void> {
           assignedByName: 'Nurse Stella Keji Lemi',
         }
       : {};
-    await safePut(pDB, withSampleChart({ ...mp, ...assignment, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>));
+    await safePut(pDB, withSampleChart({ ...mp, ...assignment, orgId: PUBLIC_ORG_ID }));
   }
 
   // Seed named end-to-end workflow cases across facilities. These are not just
   // registry fillers: downstream blocks below attach appointments, triage,
   // lab/imaging, pharmacy, referrals and billing to these same patients.
   for (const wp of workflowShowcasePatients) {
-    await safePut(pDB, withSampleChart({ ...wp, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>));
+    await safePut(pDB, withSampleChart({ ...wp, orgId: PUBLIC_ORG_ID }));
   }
 
   // Seed Mercy General Hospital (hosp-mercy-001, private org) roster so the
   // org.admin / dr.mercy / nurse.mercy / desk.mercy / pharma.mercy / lab.mercy
   // dashboards have their own real patients instead of borrowing hosp-001's.
   for (const mp of mercyPatients) {
-    await safePut(pDB, withSampleChart({ ...mp, orgId: PRIVATE_ORG_ID } as unknown as Record<string, unknown>));
+    await safePut(pDB, withSampleChart({ ...mp, orgId: PRIVATE_ORG_ID }));
   }
 
   // ── Bentiu State Hospital (hosp-004) lab queue ──────────────────────────
@@ -2370,7 +2390,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         hospitalNumber: bp.num, state: 'Unity', county: 'Rubkona', payam: '', boma: '', geocodeId: '',
         lastVisitDate: dateAgo(0), lastVisitHospital: 'hosp-004', isActive: true,
         orgId: PUBLIC_ORG_ID, createdAt: daysAgo(30), updatedAt: daysAgo(0),
-      } as unknown as Record<string, unknown>));
+      }));
     }
 
     const BENTIU_LAB_TESTS = [
@@ -2423,7 +2443,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         specimenRejectedBy: isRejectedSpecimen ? 'Lab Tech Gatluak Puok' : undefined,
         orderStatus,
         createdAt: orderedAt, updatedAt: completedAt || orderedAt, orgId: PUBLIC_ORG_ID,
-      } as unknown as Record<string, unknown>);
+      });
     }
   }
 
@@ -2451,7 +2471,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     },
   ];
   for (const n of demoPhoneNotes) {
-    await safePut(phDB, n as unknown as Record<string, unknown>);
+    await safePut(phDB, n);
   }
 
   // Seed held outcome-measure assessments (P2.2) — entered by front desk,
@@ -2480,7 +2500,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     },
   ];
   for (const a of demoAssessments) {
-    await safePut(asmtDB, a as unknown as Record<string, unknown>);
+    await safePut(asmtDB, a);
   }
 
   // Seed unsigned draft + awaiting-cosign records so the "Documents to sign"
@@ -2553,7 +2573,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     } as unknown as MedicalRecordDoc,
   ];
   for (const rec of demoMedRecords) {
-    await safePut(demoMrDB, rec as unknown as Record<string, unknown>);
+    await safePut(demoMrDB, rec);
   }
 
   // Seed referrals (all public org)
@@ -2567,7 +2587,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       createdAt: now,
       updatedAt: now,
     } as ReferralDoc;
-    await safePut(rDB, doc as unknown as Record<string, unknown>);
+    await safePut(rDB, doc);
   }
 
   // Clinical Officer's own outgoing referrals (CO Deng, Wau / hosp-002). The
@@ -2602,7 +2622,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     },
   ];
   for (const r of coReferrals) {
-    await safePut(rDB, r as unknown as Record<string, unknown>);
+    await safePut(rDB, r);
   }
 
   // Seed disease alerts (all public org). Spread reportDates across the last
@@ -2650,7 +2670,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         createdAt: daysAgo(offset),
         updatedAt: daysAgo(offset),
       } as DiseaseAlertDoc;
-      await safePut(daDB, doc as unknown as Record<string, unknown>);
+      await safePut(daDB, doc);
     }
   }
 
@@ -2669,7 +2689,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       createdAt: order,
       updatedAt: done || order,
       orgId: PUBLIC_ORG_ID,
-    } as unknown as Record<string, unknown>);
+    });
   }
 
   // Seed prescriptions (all public org). Spread across the last ~8 days so the
@@ -2686,7 +2706,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       updatedAt: dispensed || created,
       ...(dispensed ? { dispensedAt: dispensed } : {}),
       orgId: PUBLIC_ORG_ID,
-    } as unknown as Record<string, unknown>);
+    });
   }
 
   // Mercy General Hospital (hosp-mercy-001, private org) prescriptions —
@@ -2699,7 +2719,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     { _id: 'rx-mercy-5', type: 'prescription', patientId: 'pat-mercy-006', patientName: 'Simon Loro Baba', medication: 'Paracetamol 500mg', dose: '1g', route: 'Oral', frequency: 'QDS PRN', duration: '5 days', prescribedBy: 'Dr. Grace Lado', status: 'dispensed', dispensedAt: daysAgo(2), hospitalId: 'hosp-mercy-001', hospitalName: 'Mercy General Hospital', createdAt: daysAgo(2), updatedAt: daysAgo(2) },
   ];
   for (const rx of mercyRx) {
-    await safePut(rxDB, { ...rx, orgId: PRIVATE_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(rxDB, { ...rx, orgId: PRIVATE_ORG_ID });
   }
 
   // Malakal Teaching Hospital (hosp-003, public org) prescriptions — prescriber
@@ -2718,7 +2738,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     { _id: 'rx-m3b', type: 'prescription', patientId: 'pat-00206', patientName: 'Riek Wal', medication: 'Clopidogrel 75mg', dose: '75mg', route: 'Oral', frequency: 'OD', duration: '90 days', prescribedBy: 'Dr. Peter Ochalla Diu', status: 'pending', indication: 'Secondary stroke prevention', admissionId: 'admission-m3', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', createdAt: daysAgo(1), updatedAt: daysAgo(1) },
   ];
   for (const rx of malakalRx) {
-    await safePut(rxDB, { ...rx, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(rxDB, { ...rx, orgId: PUBLIC_ORG_ID });
   }
 
   // ── Generated clinical activity for the extended roster (pat-00087+) ────────
@@ -2774,7 +2794,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         orderedBy: prov.name, orderedAt: labOrder.replace('T', ' ').slice(0, 16), completedAt: labDone ? labDone.replace('T', ' ').slice(0, 16) : '',
         hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',
         createdAt: labOrder, updatedAt: labDone || labOrder, orgId: PUBLIC_ORG_ID,
-      } as unknown as Record<string, unknown>);
+      });
 
       const med = GEN_MEDS[i % GEN_MEDS.length];
       const rxStatus = i % 3 === 0 ? 'dispensed' : 'pending';
@@ -2786,7 +2806,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',
         createdAt: rxCreated, updatedAt: rxCreated, ...(rxStatus === 'dispensed' ? { dispensedAt: rxCreated } : {}),
         orgId: PUBLIC_ORG_ID,
-      } as unknown as Record<string, unknown>);
+      });
 
       const hh = String(8 + (i % 8)).padStart(2, '0');
       await safePut(genApptDB, {
@@ -2797,7 +2817,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         status: apptStatuses[i % apptStatuses.length], reminderSent: false, isRecurring: false,
         bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: p.state, county: p.county,
         orgId: PUBLIC_ORG_ID, createdAt: daysAgo((i % 14) + 1), updatedAt: daysAgo(i % 7),
-      } as unknown as Record<string, unknown>);
+      });
 
       await safePut(genTrDB, {
         _id: `triage-gen-${p.id}`, type: 'triage', patientId: p.id, patientName: name, hospitalNumber: p.hospitalNumber,
@@ -2809,7 +2829,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         chiefComplaint: `${tst.testName} workup`, triagedBy: 'user-nurse.stella', triagedByName: 'Nurse Stella Keji Lemi', triagedAt: daysAgo((i % 5) + 1),
         facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', status: triageStat[i % triageStat.length],
         orgId: PUBLIC_ORG_ID, createdAt: daysAgo((i % 5) + 1), updatedAt: daysAgo((i % 5) + 1),
-      } as unknown as Record<string, unknown>);
+      });
     }
   }
 
@@ -3034,7 +3054,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           bookedBy: fac.desk.id, bookedByName: fac.desk.name,
           state: p.state, county: p.county, orgId: fac.org,
           createdAt: daysAgo((i % 5) + 1), updatedAt: daysAgo(0),
-        } as unknown as Record<string, unknown>);
+        });
       }
 
       // Today's reception walk-ins (5 per public facility) so the triage queue
@@ -3067,7 +3087,7 @@ async function seedDatabaseExclusive(): Promise<void> {
             facilityId: fac.fid, facilityName: fac.fname,
             status: VIS_TRI_STATUS[i % VIS_TRI_STATUS.length],
             orgId: fac.org, createdAt: minutesAgo(20 + i * 17), updatedAt: minutesAgo(20 + i * 17),
-          } as unknown as Record<string, unknown>);
+          });
 
           // …and the booking that walk-in check-in creates for them.
           //
@@ -3099,7 +3119,7 @@ async function seedDatabaseExclusive(): Promise<void> {
               bookedBy: fac.triager.id, bookedByName: fac.triager.name,
               state: p.state || '', county: p.county || '', orgId: fac.org,
               createdAt: minutesAgo(20 + i * 17), updatedAt: minutesAgo(20 + i * 17),
-            } as unknown as Record<string, unknown>);
+            });
           }
         }
       }
@@ -3130,7 +3150,7 @@ async function seedDatabaseExclusive(): Promise<void> {
             bookedBy: fac.desk.id, bookedByName: fac.desk.name,
             state: p.state, county: p.county, orgId: fac.org,
             createdAt: daysAgo((i % 4) + 1), updatedAt: daysAgo(0),
-          } as unknown as Record<string, unknown>);
+          });
         }
       }
 
@@ -3160,7 +3180,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           bookedBy: fac.desk.id, bookedByName: fac.desk.name,
           state: p.state, county: p.county, orgId: fac.org,
           createdAt: daysAgo((i % 4) + 1), updatedAt: daysAgo(i % 3),
-        } as unknown as Record<string, unknown>);
+        });
       }
     }
   }
@@ -3178,7 +3198,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         createdAt: now,
         updatedAt: now,
       } as MedicalRecordDoc;
-      await safePut(mrDB, doc as unknown as Record<string, unknown>);
+      await safePut(mrDB, doc);
     }
   }
 
@@ -3215,7 +3235,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         createdAt: visitAt,
         updatedAt: visitAt,
       } as MedicalRecordDoc;
-      await safePut(mrDB, mrDoc as unknown as Record<string, unknown>);
+      await safePut(mrDB, mrDoc);
 
       // Medication history — standalone prescription docs. The most recent
       // visit's drugs stay 'pending' (active script); older ones are dispensed.
@@ -3241,7 +3261,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           orgId: PUBLIC_ORG_ID,
           createdAt: visitAt,
           updatedAt: visitAt,
-        } as unknown as Record<string, unknown>);
+        });
       }
 
       // Lab history — standalone completed lab_result docs.
@@ -3270,7 +3290,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           orgId: PUBLIC_ORG_ID,
           createdAt: visitAt,
           updatedAt: visitAt,
-        } as unknown as Record<string, unknown>);
+        });
       }
     }
   }
@@ -3303,7 +3323,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         createdAt: visitAt,
         updatedAt: visitAt,
       } as MedicalRecordDoc;
-      await safePut(mrDB, mrDoc as unknown as Record<string, unknown>);
+      await safePut(mrDB, mrDoc);
 
       for (let k = 0; k < record.prescriptions.length; k++) {
         const rx = record.prescriptions[k];
@@ -3327,7 +3347,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           orgId: PUBLIC_ORG_ID,
           createdAt: visitAt,
           updatedAt: visitAt,
-        } as unknown as Record<string, unknown>);
+        });
       }
 
       for (let k = 0; k < record.labResults.length; k++) {
@@ -3355,7 +3375,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           orgId: PUBLIC_ORG_ID,
           createdAt: visitAt,
           updatedAt: visitAt,
-        } as unknown as Record<string, unknown>);
+        });
       }
     }
   }
@@ -3372,7 +3392,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       createdAt: sent,
       updatedAt: sent,
       orgId: PUBLIC_ORG_ID,
-    } as unknown as Record<string, unknown>);
+    });
   }
 
   // Chart documents (all public org) — the files behind the patient chart's
@@ -3534,7 +3554,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       pinnedBy: [],
       hospitalId: H.id, hospitalName: H.name, orgId: PUBLIC_ORG_ID,
       createdAt: tsAgo(600), updatedAt: tsAgo(last.minsAgo),
-    } as unknown as Record<string, unknown>);
+    });
     for (let k = 0; k < c.msgs.length; k++) {
       const m = c.msgs[k];
       const sentAt = tsAgo(m.minsAgo);
@@ -3552,7 +3572,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         recipientHospitalId: H.id, recipientHospitalName: H.name,
         subject: '', body: m.body, channel: 'app', status: 'delivered',
         sentAt, readBy, orgId: PUBLIC_ORG_ID, createdAt: sentAt, updatedAt: sentAt,
-      } as unknown as Record<string, unknown>);
+      });
     }
   }
 
@@ -3569,7 +3589,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       createdAt: daysAgo(offset),
       updatedAt: daysAgo(offset),
       orgId: PUBLIC_ORG_ID,
-    } as unknown as Record<string, unknown>);
+    });
   }
 
   // Seed deaths (all public org). Spread across the last ~5 weeks so the
@@ -3585,57 +3605,57 @@ async function seedDatabaseExclusive(): Promise<void> {
       createdAt: daysAgo(offset),
       updatedAt: daysAgo(offset),
       orgId: PUBLIC_ORG_ID,
-    } as unknown as Record<string, unknown>);
+    });
   }
 
   // Seed facility assessments (all public org)
   const faDB = facilityAssessmentsDB();
   for (const fa of seedFacilityAssessments) {
-    await safePut(faDB, { ...fa, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(faDB, { ...fa, orgId: PUBLIC_ORG_ID });
   }
 
   // Seed immunizations (all public org)
   const immDB = immunizationsDB();
   for (const imm of seedImmunizations) {
-    await safePut(immDB, { ...imm, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(immDB, { ...imm, orgId: PUBLIC_ORG_ID });
   }
 
   // Seed ANC visits (all public org)
   const ancDatabase = ancDB();
   for (const anc of seedANCVisits) {
-    await safePut(ancDatabase, { ...anc, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(ancDatabase, { ...anc, orgId: PUBLIC_ORG_ID });
   }
 
   // Seed follow-ups (all public org)
   const fuDB = followUpsDB();
   for (const fu of seedFollowUps) {
-    await safePut(fuDB, { ...fu, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(fuDB, { ...fu, orgId: PUBLIC_ORG_ID });
   }
 
   // Seed payment & billing data (all public org)
   const chgDB = chargesDB();
   for (const chg of seedCharges) {
-    await safePut(chgDB, { ...chg, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(chgDB, { ...chg, orgId: PUBLIC_ORG_ID });
   }
 
   const insDB = insurancePoliciesDB();
   for (const ins of seedInsurancePolicies) {
-    await safePut(insDB, ins as unknown as Record<string, unknown>);
+    await safePut(insDB, ins);
   }
 
   const clmDB = claimsDB();
   for (const clm of seedClaims) {
-    await safePut(clmDB, clm as unknown as Record<string, unknown>);
+    await safePut(clmDB, clm);
   }
 
   const payDB = paymentsDB();
   for (const pay of seedPayments) {
-    await safePut(payDB, pay as unknown as Record<string, unknown>);
+    await safePut(payDB, pay);
   }
 
   const plnDB = paymentPlansDB();
   for (const pln of seedPaymentPlans) {
-    await safePut(plnDB, pln as unknown as Record<string, unknown>);
+    await safePut(plnDB, pln);
   }
 
   const ledDB = ledgerDB();
@@ -3643,7 +3663,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     // seedLedgerEntries literals carry no orgId; without it filterByScope
     // rejects them for every scoped user and the five showcase billing
     // patients render empty ledgers (generated ledger rows below DO set it).
-    await safePut(ledDB, { ...led, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(ledDB, { ...led, orgId: PUBLIC_ORG_ID });
   }
 
   // ─── Generated billing for the remaining demo patients ───────────────────
@@ -3680,25 +3700,25 @@ async function seedDatabaseExclusive(): Promise<void> {
     const paid = _gi % 3 !== 0; // ~2/3 fully paid, the rest left outstanding
     const c1 = `chg-gen-${gp.id}-1`;
     const c2 = `chg-gen-${gp.id}-2`;
-    await safePut(chgDB, { _id: c1, type: 'charge', encounterId: enc, patientId: gp.id, description: s1.description, category: s1.category, units: 1, billedAmount: s1.amount, status: 'approved', serviceDate: svcDate, providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga', facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts } as unknown as Record<string, unknown>);
-    await safePut(chgDB, { _id: c2, type: 'charge', encounterId: enc, patientId: gp.id, description: s2.description, category: s2.category, units: 1, billedAmount: s2.amount, status: 'approved', serviceDate: svcDate, providerId: 'user-dr.achol', providerName: 'Dr. Achol Mayen Deng', facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts } as unknown as Record<string, unknown>);
-    await safePut(ledDB, { _id: `led-gen-${gp.id}-c`, type: 'ledger_entry', patientId: gp.id, encounterId: enc, entryType: 'charge', amount: total, runningBalance: total, description: `${s1.description} + ${s2.description}`, referenceId: c1, referenceType: 'charge', currency: 'SSP', facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts } as unknown as Record<string, unknown>);
+    await safePut(chgDB, { _id: c1, type: 'charge', encounterId: enc, patientId: gp.id, description: s1.description, category: s1.category, units: 1, billedAmount: s1.amount, status: 'approved', serviceDate: svcDate, providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga', facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts });
+    await safePut(chgDB, { _id: c2, type: 'charge', encounterId: enc, patientId: gp.id, description: s2.description, category: s2.category, units: 1, billedAmount: s2.amount, status: 'approved', serviceDate: svcDate, providerId: 'user-dr.achol', providerName: 'Dr. Achol Mayen Deng', facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts });
+    await safePut(ledDB, { _id: `led-gen-${gp.id}-c`, type: 'ledger_entry', patientId: gp.id, encounterId: enc, entryType: 'charge', amount: total, runningBalance: total, description: `${s1.description} + ${s2.description}`, referenceId: c1, referenceType: 'charge', currency: 'SSP', facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts });
     const method = GEN_METHODS[_gi % GEN_METHODS.length];
     if (paid) {
       const payId = `pay-gen-${gp.id}`;
-      await safePut(payDB, { _id: payId, type: 'payment', patientId: gp.id, patientName: gName, encounterId: enc, method, amount: total, currency: 'SSP', reference: `RCT-GEN-${String(_gi).padStart(4, '0')}`, status: 'posted', processedAt: ts, processedBy: 'user-desk.amira', processedByName: 'Amira Juma Hassan', allocations: [{ encounterId: enc, amount: total, chargeId: c1 }], facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts } as unknown as Record<string, unknown>);
-      await safePut(ledDB, { _id: `led-gen-${gp.id}-p`, type: 'ledger_entry', patientId: gp.id, encounterId: enc, entryType: 'payment', amount: -total, runningBalance: 0, description: `Payment — ${GEN_METHOD_LABELS[method]}`, referenceId: payId, referenceType: 'payment', method, currency: 'SSP', facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts } as unknown as Record<string, unknown>);
+      await safePut(payDB, { _id: payId, type: 'payment', patientId: gp.id, patientName: gName, encounterId: enc, method, amount: total, currency: 'SSP', reference: `RCT-GEN-${String(_gi).padStart(4, '0')}`, status: 'posted', processedAt: ts, processedBy: 'user-desk.amira', processedByName: 'Amira Juma Hassan', allocations: [{ encounterId: enc, amount: total, chargeId: c1 }], facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts });
+      await safePut(ledDB, { _id: `led-gen-${gp.id}-p`, type: 'ledger_entry', patientId: gp.id, encounterId: enc, entryType: 'payment', amount: -total, runningBalance: 0, description: `Payment — ${GEN_METHOD_LABELS[method]}`, referenceId: payId, referenceType: 'payment', method, currency: 'SSP', facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts });
     }
-    await safePut(smDB, { _id: `spm-gen-${gp.id}`, type: 'saved_payment_method', patientId: gp.id, methodType: method, phoneNumber: gp.phone || '+211 920 000 000', label: `${GEN_METHOD_LABELS[method]} · default`, isDefault: true, facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts } as unknown as Record<string, unknown>);
+    await safePut(smDB, { _id: `spm-gen-${gp.id}`, type: 'saved_payment_method', patientId: gp.id, methodType: method, phoneNumber: gp.phone || '+211 920 000 000', label: `${GEN_METHOD_LABELS[method]} · default`, isDefault: true, facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts });
     if (_gi % 4 === 0) {
-      await safePut(insDB, { _id: `ins-gen-${gp.id}`, type: 'insurance_policy', patientId: gp.id, payerType: 'donor', payerName: 'Health Pooled Fund', payerCode: 'HPF-SS', memberId: `HPF-GEN-${String(_gi).padStart(4, '0')}`, policyNumber: `HPF-${gp.id}`, subscriberName: gName, subscriberRelationship: 'self', effectiveDate: '2026-01-01', terminationDate: '2026-12-31', isPrimary: true, copayAmount: 0, coinsurancePct: 0, deductibleAmount: 0, deductibleRemaining: 0, coverageNotes: 'HPF donor program coverage.', isActive: true, facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts } as unknown as Record<string, unknown>);
+      await safePut(insDB, { _id: `ins-gen-${gp.id}`, type: 'insurance_policy', patientId: gp.id, payerType: 'donor', payerName: 'Health Pooled Fund', payerCode: 'HPF-SS', memberId: `HPF-GEN-${String(_gi).padStart(4, '0')}`, policyNumber: `HPF-${gp.id}`, subscriberName: gName, subscriberRelationship: 'self', effectiveDate: '2026-01-01', terminationDate: '2026-12-31', isPrimary: true, copayAmount: 0, coinsurancePct: 0, deductibleAmount: 0, deductibleRemaining: 0, coverageNotes: 'HPF donor program coverage.', isActive: true, facilityId, orgId: PUBLIC_ORG_ID, createdAt: ts, updatedAt: ts });
     }
   }
 
   // Seed a patient care note so the Overview "Notes" card has real content.
   const noteDB = patientNotesDB();
   for (const note of seedPatientNotes) {
-    await safePut(noteDB, { ...note, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(noteDB, { ...note, orgId: PUBLIC_ORG_ID });
   }
 
   // Seed the service price catalog for both demo orgs so the org-admin Service
@@ -3714,14 +3734,14 @@ async function seedDatabaseExclusive(): Promise<void> {
         category: f.category, serviceCode: f.serviceCode, serviceName: f.serviceName,
         unitPrice: f.unitPrice, currency: 'SSP', isActive: true, effectiveFrom: now,
         orgId, createdAt: now, updatedAt: now,
-      } as unknown as Record<string, unknown>);
+      });
     }
   }
 
   // Seed billing invoices so checkout/billing show charged amounts, not zero.
   const blDB = billingDB();
   for (const b of seedBills) {
-    await safePut(blDB, b as unknown as Record<string, unknown>);
+    await safePut(blDB, b);
   }
 
   // ── Named workflow showcase cases ───────────────────────────────────────
@@ -3851,7 +3871,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         bookedBy: c.facilityId === 'hosp-002' ? 'user-desk.wau' : 'user-desk.amira',
         bookedByName: c.facilityId === 'hosp-002' ? 'Tabitha Nyandeng Kuol' : 'Amira Juma Hassan',
         state: c.state, county: c.county, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0),
-      } as unknown as Record<string, unknown>);
+      });
 
       await safePut(wfTriageDB, {
         _id: `triage-wf-${c.id}`, type: 'triage',
@@ -3866,7 +3886,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         triagedAt: daysAgo(0), facilityId: c.facilityId, facilityName: c.facilityName,
         status: c.triage.priority === 'RED' ? 'pending' : 'seen',
         orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0),
-      } as unknown as Record<string, unknown>);
+      });
 
       for (let k = 0; k < c.labs.length; k++) {
         const lab = c.labs[k];
@@ -3884,7 +3904,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           completedAt: completedAt ? completedAt.replace('T', ' ').slice(0, 16) : '',
           hospitalId: c.facilityId, hospitalName: c.facilityName,
           createdAt: orderedAt, updatedAt: completedAt || orderedAt, orgId: PUBLIC_ORG_ID,
-        } as unknown as Record<string, unknown>);
+        });
       }
 
       for (let k = 0; k < c.meds.length; k++) {
@@ -3899,7 +3919,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           ...(med.status === 'dispensed' ? { dispensedAt: daysAgo(0) } : {}),
           hospitalId: c.facilityId, hospitalName: c.facilityName,
           createdAt, updatedAt: daysAgo(0), orgId: PUBLIC_ORG_ID,
-        } as unknown as Record<string, unknown>);
+        });
       }
 
       await safePut(rDB, {
@@ -3913,7 +3933,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         createdBy: c.providerId, createdByName: c.providerName,
         state: c.state, county: c.county, orgId: PUBLIC_ORG_ID,
         createdAt: daysAgo(0), updatedAt: daysAgo(0),
-      } as unknown as Record<string, unknown>);
+      });
 
       const consult = 5000;
       const diagnostics = c.labs.reduce((sum, lab) => sum + (lab.specimen === 'Imaging' ? 15000 : 3000), 0);
@@ -3925,13 +3945,13 @@ async function seedDatabaseExclusive(): Promise<void> {
         `chg-wf-${c.id}-diagnostics`,
         `chg-wf-${c.id}-pharmacy`,
       ];
-      await safePut(chgDB, { _id: chargeIds[0], type: 'charge', encounterId: enc, patientId: c.id, description: 'Clinical consultation', category: 'consultation', units: 1, billedAmount: consult, status: 'approved', serviceDate: today, providerId: c.providerId, providerName: c.providerName, facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) } as unknown as Record<string, unknown>);
-      await safePut(chgDB, { _id: chargeIds[1], type: 'charge', encounterId: enc, patientId: c.id, description: 'Diagnostics: lab and imaging orders', category: c.labs.some(lab => lab.specimen === 'Imaging') ? 'radiology' : 'laboratory', units: 1, billedAmount: diagnostics, status: 'approved', serviceDate: today, providerId: c.providerId, providerName: c.providerName, facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) } as unknown as Record<string, unknown>);
-      await safePut(chgDB, { _id: chargeIds[2], type: 'charge', encounterId: enc, patientId: c.id, description: 'Medication dispensing', category: 'pharmacy', units: 1, billedAmount: pharmacy, status: 'approved', serviceDate: today, providerId: 'user-pharma.rose', providerName: 'Pharmacist Rose Gbudue', facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) } as unknown as Record<string, unknown>);
-      await safePut(ledDB, { _id: `led-wf-${c.id}-charge`, type: 'ledger_entry', patientId: c.id, encounterId: enc, entryType: 'charge', amount: total, runningBalance: total, description: 'Workflow visit charges', referenceId: chargeIds[0], referenceType: 'charge', currency: 'SSP', facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) } as unknown as Record<string, unknown>);
+      await safePut(chgDB, { _id: chargeIds[0], type: 'charge', encounterId: enc, patientId: c.id, description: 'Clinical consultation', category: 'consultation', units: 1, billedAmount: consult, status: 'approved', serviceDate: today, providerId: c.providerId, providerName: c.providerName, facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
+      await safePut(chgDB, { _id: chargeIds[1], type: 'charge', encounterId: enc, patientId: c.id, description: 'Diagnostics: lab and imaging orders', category: c.labs.some(lab => lab.specimen === 'Imaging') ? 'radiology' : 'laboratory', units: 1, billedAmount: diagnostics, status: 'approved', serviceDate: today, providerId: c.providerId, providerName: c.providerName, facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
+      await safePut(chgDB, { _id: chargeIds[2], type: 'charge', encounterId: enc, patientId: c.id, description: 'Medication dispensing', category: 'pharmacy', units: 1, billedAmount: pharmacy, status: 'approved', serviceDate: today, providerId: 'user-pharma.rose', providerName: 'Pharmacist Rose Gbudue', facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
+      await safePut(ledDB, { _id: `led-wf-${c.id}-charge`, type: 'ledger_entry', patientId: c.id, encounterId: enc, entryType: 'charge', amount: total, runningBalance: total, description: 'Workflow visit charges', referenceId: chargeIds[0], referenceType: 'charge', currency: 'SSP', facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
       if (c.bill.paid > 0) {
-        await safePut(payDB, { _id: `pay-wf-${c.id}`, type: 'payment', patientId: c.id, patientName: c.name, encounterId: enc, method: i % 2 === 0 ? 'cash' : 'm_gurush', amount: c.bill.paid, currency: 'SSP', reference: `RCT-WF-${String(i + 1).padStart(4, '0')}`, status: 'posted', processedAt: daysAgo(0), processedBy: 'user-cashier.deng', processedByName: 'Deng Akec Ring', allocations: [{ encounterId: enc, amount: c.bill.paid, chargeId: chargeIds[0] }], facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) } as unknown as Record<string, unknown>);
-        await safePut(ledDB, { _id: `led-wf-${c.id}-payment`, type: 'ledger_entry', patientId: c.id, encounterId: enc, entryType: 'payment', amount: -c.bill.paid, runningBalance: balance, description: 'Payment received at cashier', referenceId: `pay-wf-${c.id}`, referenceType: 'payment', method: i % 2 === 0 ? 'cash' : 'm_gurush', currency: 'SSP', facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) } as unknown as Record<string, unknown>);
+        await safePut(payDB, { _id: `pay-wf-${c.id}`, type: 'payment', patientId: c.id, patientName: c.name, encounterId: enc, method: i % 2 === 0 ? 'cash' : 'm_gurush', amount: c.bill.paid, currency: 'SSP', reference: `RCT-WF-${String(i + 1).padStart(4, '0')}`, status: 'posted', processedAt: daysAgo(0), processedBy: 'user-cashier.deng', processedByName: 'Deng Akec Ring', allocations: [{ encounterId: enc, amount: c.bill.paid, chargeId: chargeIds[0] }], facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) });
+        await safePut(ledDB, { _id: `led-wf-${c.id}-payment`, type: 'ledger_entry', patientId: c.id, encounterId: enc, entryType: 'payment', amount: -c.bill.paid, runningBalance: balance, description: 'Payment received at cashier', referenceId: `pay-wf-${c.id}`, referenceType: 'payment', method: i % 2 === 0 ? 'cash' : 'm_gurush', currency: 'SSP', facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) });
       }
       await safePut(blDB, {
         _id: `bill-wf-${c.id}`, type: 'billing',
@@ -3949,33 +3969,33 @@ async function seedDatabaseExclusive(): Promise<void> {
         invoiceNumber: `INV-WF-${String(i + 1).padStart(4, '0')}`,
         state: c.state, county: c.county, orgId: PUBLIC_ORG_ID,
         createdAt: daysAgo(0), updatedAt: daysAgo(0),
-      } as unknown as Record<string, unknown>);
+      });
     }
   }
 
   // Seed appointments
   const apptDB = appointmentsDB();
   for (const a of seedAppointments) {
-    await safePut(apptDB, a as unknown as Record<string, unknown>);
+    await safePut(apptDB, a);
   }
 
   // Seed the visit encounters those check-ins produce, so the nursing station's
   // Rooming queue opens with the patients reception has already checked in.
   const encDB = encountersDB();
   for (const e of seedEncounters) {
-    await safePut(encDB, e as unknown as Record<string, unknown>);
+    await safePut(encDB, e);
   }
 
   // Seed wards, beds, and admissions (ward DB holds all three doc types)
   const wDB = wardDB();
   for (const w of seedWards) {
-    await safePut(wDB, w as unknown as Record<string, unknown>);
+    await safePut(wDB, w);
   }
   for (const bed of seedBeds) {
-    await safePut(wDB, bed as unknown as Record<string, unknown>);
+    await safePut(wDB, bed);
   }
   for (const adm of seedAdmissions) {
-    await safePut(wDB, adm as unknown as Record<string, unknown>);
+    await safePut(wDB, adm);
   }
 
   // Seed recurring provider clinics (facility dashboard "Available" status and
@@ -4002,13 +4022,13 @@ async function seedDatabaseExclusive(): Promise<void> {
   // Seed pharmacy inventory
   const phInvDB = pharmacyInventoryDB();
   for (const item of seedPharmacyInventory) {
-    await safePut(phInvDB, item as unknown as Record<string, unknown>);
+    await safePut(phInvDB, item);
   }
 
   // Seed triage
   const trDB = triageDB();
   for (const t of seedTriage) {
-    await safePut(trDB, t as unknown as Record<string, unknown>);
+    await safePut(trDB, t);
   }
 
   // Malakal Teaching Hospital (hosp-003) — a signed night-shift handoff
@@ -4065,7 +4085,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     createdAt: daysAgo(0.3),
     updatedAt: daysAgo(0.3),
   };
-  await safePut(hoDB, malakalHandoff as unknown as Record<string, unknown>);
+  await safePut(hoDB, malakalHandoff);
 
   // Malakal Teaching Hospital (hosp-003) — rooming-station worklist. The
   // rooming queue is derived from `clinical_encounter` documents (not a
@@ -4105,31 +4125,31 @@ async function seedDatabaseExclusive(): Promise<void> {
     },
   ];
   for (const enc of malakalEncounters) {
-    await safePut(encDB2, enc as unknown as Record<string, unknown>);
+    await safePut(encDB2, enc);
   }
 
   // Seed assets
   const asDB = assetsDB();
   for (const as of seedAssets) {
-    await safePut(asDB, as as unknown as Record<string, unknown>);
+    await safePut(asDB, as);
   }
 
   // Seed leave requests
   const lvDB = leaveRequestsDB();
   for (const lv of seedLeaveRequests) {
-    await safePut(lvDB, lv as unknown as Record<string, unknown>);
+    await safePut(lvDB, lv);
   }
 
   // Seed payroll entries
   const prDB = payrollEntriesDB();
   for (const pr of seedPayrollEntries) {
-    await safePut(prDB, pr as unknown as Record<string, unknown>);
+    await safePut(prDB, pr);
   }
 
   // Seed problem-list entries
   const prbDB = problemsDB();
   for (const prb of seedProblems) {
-    await safePut(prbDB, prb as unknown as Record<string, unknown>);
+    await safePut(prbDB, prb);
   }
 
   // Demo-only: give EVERY patient (across every roster) a sample problem list
@@ -4180,7 +4200,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         recordedBy: 'user-dr.wani', recordedByName: 'Dr. James Wani Igga',
         hospitalId, hospitalName, orgId: PUBLIC_ORG_ID,
         createdAt: daysAgo(Math.min(sp.ageDays, 30)), updatedAt: daysAgo(1),
-      } as unknown as Record<string, unknown>);
+      });
     }
     for (let k = 0; k < SAMPLE_MEDS.length; k++) {
       const sm = SAMPLE_MEDS[k];
@@ -4190,7 +4210,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         medication: sm.medication, dose: sm.dose, route: 'Oral', frequency: sm.frequency, duration: sm.duration,
         prescribedBy: 'Dr. James Wani Igga', status: 'pending',
         hospitalId, hospitalName, createdAt: created, updatedAt: created, orgId: PUBLIC_ORG_ID,
-      } as unknown as Record<string, unknown>);
+      });
     }
   }
 
@@ -4198,7 +4218,7 @@ async function seedDatabaseExclusive(): Promise<void> {
   const osDB = orderSetsDB();
   const osNow = new Date().toISOString();
   for (const os of seedOrderSets) {
-    await safePut(osDB, { ...os, createdAt: osNow, updatedAt: osNow, orgId: PUBLIC_ORG_ID } as unknown as Record<string, unknown>);
+    await safePut(osDB, { ...os, createdAt: osNow, updatedAt: osNow, orgId: PUBLIC_ORG_ID });
   }
 
   // ── Today's bookings for Dr. Peter's assigned patients ────────────────────
@@ -4227,7 +4247,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan',
         state: 'Central Equatoria', county: 'Juba',
         orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(0),
-      } as unknown as Record<string, unknown>);
+      });
     }
   }
 
@@ -4267,7 +4287,7 @@ async function seedDatabaseExclusive(): Promise<void> {
             screeningResults: { hiv: false, hepatitisB: false, hepatitisC: false, syphilis: false, malaria: false },
             orgId: fac.org,
             createdAt: daysAgo(collectedDaysAgo), updatedAt: daysAgo(collectedDaysAgo),
-          } as unknown as Record<string, unknown>);
+          });
         }
       }
     }

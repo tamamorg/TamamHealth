@@ -17,6 +17,8 @@ import { useProcedures } from '@/lib/hooks/useProcedures';
 import { formatDate } from '@/lib/format-utils';
 import { procedure as procedureLifecycle, type ProcedureStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { todayIso } from '@/lib/date-utils';
+import type { ProcedureDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** Stage 7 states, worded the way a clinician would say them. */
 const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
@@ -40,15 +42,18 @@ interface ProceduresSectionProps {
 export default function ProceduresSection({ patientId, patientName, canConsult }: ProceduresSectionProps) {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const { procedures, create, advance } = useProcedures(patientId);
+  const { t } = useTranslation();
+  const { procedures, create, amend, advance, remove } = useProcedures(patientId);
 
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<ProcedureDoc | null>(null);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [date, setDate] = useState(() => todayIso());
   const [bodySite, setBodySite] = useState('');
   const [outcome, setOutcome] = useState('');
   const [notes, setNotes] = useState('');
+  const [correctionReason, setCorrectionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [advancing, setAdvancing] = useState<string | null>(null);
 
@@ -76,36 +81,70 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
   };
 
   const resetForm = () => {
-    setName(''); setCode(''); setBodySite(''); setOutcome(''); setNotes('');
+    setName(''); setCode(''); setBodySite(''); setOutcome(''); setNotes(''); setCorrectionReason('');
     setDate(todayIso());
+    setEditing(null);
     setAdding(false);
+  };
+
+  const startCorrection = (procedure: ProcedureDoc) => {
+    setEditing(procedure);
+    setName(procedure.name);
+    setCode(procedure.code || '');
+    setDate(procedure.date);
+    setBodySite(procedure.bodySite || '');
+    setOutcome(procedure.outcome || '');
+    setNotes(procedure.notes || '');
+    setCorrectionReason('');
+    setAdding(true);
   };
 
   const handleSubmit = async () => {
     if (!name.trim()) { showToast('Name the procedure first', 'error'); return; }
     if (!date) { showToast('Pick the procedure date', 'error'); return; }
+    if (editing && correctionReason.trim().length < 3) { showToast(t('chart.correctionReasonRequired'), 'error'); return; }
     try {
       setSubmitting(true);
-      await create({
-        patientId,
-        patientName,
+      const details = {
         name: name.trim(),
         code: code.trim() || undefined,
         date,
         bodySite: bodySite.trim() || undefined,
         outcome: outcome.trim() || undefined,
         notes: notes.trim() || undefined,
+      };
+      if (editing) {
+        await amend(editing._id, details, correctionReason, { id: currentUser?._id, name: currentUser?.name });
+      } else await create({
+        patientId,
+        patientName,
+        ...details,
         performedBy: currentUser?._id || currentUser?.username,
         performedByName: currentUser?.name,
         hospitalId: currentUser?.hospitalId,
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast('Procedure recorded', 'success');
+      showToast(editing ? t('chart.procedureCorrected') : 'Procedure recorded', 'success');
       resetForm();
     } catch (err) {
       console.error(err);
       showToast('Could not record this procedure. Please try again.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const markEnteredInError = async () => {
+    if (!editing || correctionReason.trim().length < 3) { showToast(t('chart.correctionReasonRequired'), 'error'); return; }
+    try {
+      setSubmitting(true);
+      const ok = await remove(editing._id, correctionReason, { id: currentUser?._id, name: currentUser?.name });
+      if (!ok) throw new Error(t('chart.procedureUpdateFailed'));
+      showToast(t('chart.procedureMarkedError'), 'success');
+      resetForm();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t('chart.procedureUpdateFailed'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -130,11 +169,12 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 <th>Status</th>
                 <th>Performed by</th>
                 <th>Outcome</th>
+                <th>{t('chart.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {procedures.map(p => (
-                <tr key={p._id}>
+                <tr key={p._id} style={p.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : undefined}>
                   <td style={{ fontWeight: 600 }}>
                     {p.name}
                     {p.code ? <span style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400 }}> · {p.code}</span> : null}
@@ -147,12 +187,12 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                         It reads "Recorded" rather than being forced into a
                         state nobody put it in, and can still be picked up. */}
                     <span style={{ fontWeight: 600 }}>
-                      {p.status ? PROCEDURE_STATUS_LABELS[p.status] : 'Recorded'}
+                      {p.recordStatus === 'entered_in_error' ? t('chart.enteredInError') : p.status ? PROCEDURE_STATUS_LABELS[p.status] : 'Recorded'}
                     </span>
                     {p.status === 'aborted' && p.abortedReason ? (
                       <div style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400, fontSize: 12 }}>{p.abortedReason}</div>
                     ) : null}
-                    {canConsult && procedureLifecycle.next(p.status || 'ordered').length > 0 && (
+                    {canConsult && p.recordStatus !== 'entered_in_error' && procedureLifecycle.next(p.status || 'ordered').length > 0 && (
                       <select
                         aria-label={`Advance ${p.name}`}
                         value=""
@@ -176,6 +216,11 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                     {p.outcome || '—'}
                     {p.notes ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>{p.notes}</div> : null}
                   </td>
+                  <td>
+                    {p.recordStatus === 'entered_in_error' ? (
+                      <span title={p.statusReason}>{t('chart.enteredInError')}</span>
+                    ) : canConsult ? <button type="button" className="btn btn-xs btn-secondary" onClick={() => startCorrection(p)}>{t('chart.correct')}</button> : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -187,7 +232,9 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
         <Modal onClose={() => !submitting && resetForm()} width={480} labelledBy="add-procedure-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
-              <h2 id="add-procedure-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Record procedure</h2>
+              <h2 id="add-procedure-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {editing ? t('chart.correctProcedure') : 'Record procedure'}
+              </h2>
               <button className="p-1 rounded" onClick={() => !submitting && resetForm()} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -202,6 +249,19 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
               />
             </div>
+            {editing && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('chart.correctionReason')}</label>
+                <textarea
+                  rows={2}
+                  value={correctionReason}
+                  onChange={e => setCorrectionReason(e.target.value)}
+                  placeholder={t('chart.procedureCorrectionReasonPlaceholder')}
+                  className="w-full p-2.5 rounded-md text-[13px]"
+                  style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Code (optional)</label>
@@ -259,9 +319,14 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
               />
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
+              {editing && (
+                <button className="btn btn-sm btn-secondary" disabled={submitting || correctionReason.trim().length < 3} onClick={markEnteredInError}>
+                  {t('chart.markError')}
+                </button>
+              )}
               <button className="btn btn-sm btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
               <button className="btn btn-sm btn-primary" disabled={submitting || !name.trim()} onClick={handleSubmit}>
-                {submitting ? 'Saving…' : 'Save procedure'}
+                {submitting ? 'Saving…' : editing ? t('chart.saveCorrection') : 'Save procedure'}
               </button>
             </div>
           </div>

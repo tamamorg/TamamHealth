@@ -13,6 +13,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import PopupSelect from '@/components/PopupSelect';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 import {
   Baby, Plus, X, ChevronDown,
 } from '@/components/icons/lucide';
@@ -191,7 +192,7 @@ export default function BirthsPage() {
                           href={`/patients/${motherChartId(b.motherName)}`}
                           className="hover:underline"
                           style={{ color: 'var(--accent-primary)', fontWeight: 600 }}
-                          onClick={e => e.stopPropagation()}
+                          {...stopsClickPropagation}
                         >
                           {b.motherName}
                         </Link>

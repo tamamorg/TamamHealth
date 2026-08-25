@@ -21,6 +21,7 @@ import {
   studyLine,
 } from '../radiology-workflow-types';
 import type { RadiologyWorkflowController } from '../useRadiologyWorkflow';
+import StudyImageWorkspace from '../StudyImageWorkspace';
 
 export function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
@@ -354,11 +355,13 @@ export function AcquireStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiol
 }
 
 /** Step 5 — read the study and file the report. */
-export function ReportStep({ study, ctrl }: { study: LabResultDoc; ctrl: RadiologyWorkflowController }) {
+export function ReportStep({ study, ctrl, canUpload }: { study: LabResultDoc; ctrl: RadiologyWorkflowController; canUpload: boolean }) {
   const { t } = useTranslation();
   const filed = ctrl.doneThrough >= 4;
 
   return (
+    <div>
+      <StudyImageWorkspace study={study} canUpload={canUpload} />
     <div className="labord-section">
       <div className="labord-section-head">{filed ? t('imgFlow.reportedHead') : t('imgFlow.reportHead')}</div>
       <div className="labord-section-body">
@@ -421,6 +424,7 @@ export function ReportStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiolo
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

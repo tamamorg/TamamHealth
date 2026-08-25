@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Patient } from '@/data/mock';
 import { avatarTint, initials, patientDisplayName, shortenPersonName } from '@/lib/patient-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 /** Minimal shape needed to render a patient's name. */
 export type PatientNameLike = Pick<Patient, 'firstName' | 'surname'> & {
@@ -50,7 +51,7 @@ export default function PatientName({
   const nameLink = patientId ? (
     <Link
       href={`/patients/${patientId}`}
-      onClick={(e) => e.stopPropagation()}
+      {...stopsClickPropagation}
       className={`font-semibold truncate hover:underline ${nameClassName}`}
       style={{ color: 'var(--text-primary)' }}
     >

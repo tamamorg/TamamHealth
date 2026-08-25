@@ -5,6 +5,7 @@ import { emitSyncEvent } from './sync-event-service';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
+import { logAuditSafe } from './audit-service';
 
 /**
  * The EPI antigens this deployment records. One list, exported: coverage
@@ -21,8 +22,8 @@ export async function getAllImmunizations(scope?: DataScope): Promise<Immunizati
   return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getByPatient(patientId: string): Promise<ImmunizationDoc[]> {
-  const all = await getAllImmunizations();
+export async function getByPatient(patientId: string, scope?: DataScope): Promise<ImmunizationDoc[]> {
+  const all = await getAllImmunizations(scope);
   return all.filter(i => i.patientId === patientId);
 }
 
@@ -76,33 +77,51 @@ export async function updateImmunization(id: string, data: Partial<ImmunizationD
       orgId: updated.orgId,
       hospitalId: updated.facilityId,
     });
+    await logAuditSafe('IMMUNIZATION_UPDATED', undefined, undefined, `Immunization ${id}: ${updated.vaccine} dose ${updated.doseNumber}`);
     return updated;
   } catch {
     return null;
   }
 }
 
-export async function deleteImmunization(id: string): Promise<boolean> {
-  const db = immunizationsDB();
-  try {
-    const doc = await db.get(id);
-    const typed = doc as unknown as ImmunizationDoc;
-    await db.remove(doc);
-    emitSyncEvent({
-      resourceType: 'immunization',
-      resourceId: id,
-      operation: 'delete',
-      orgId: typed.orgId,
-      hospitalId: typed.facilityId,
-    });
-    return true;
-  } catch {
-    return false;
-  }
+/**
+ * Retain a dose that was charted against the wrong vaccine/patient/date as an
+ * entered-in-error record. An administered clinical event is never physically
+ * deleted: the reason and actor remain available to audit and sync consumers.
+ */
+export async function enterImmunizationInError(
+  id: string,
+  reason: string,
+  actor?: { id?: string; name?: string },
+): Promise<ImmunizationDoc> {
+  const cleanReason = reason.trim();
+  if (cleanReason.length < 3) throw new Error('A reason is required to mark an immunization as entered in error.');
+  const updated = await updateImmunization(id, {
+    recordStatus: 'entered_in_error',
+    statusReason: cleanReason,
+    statusChangedAt: new Date().toISOString(),
+    statusChangedBy: actor?.name || actor?.id,
+  });
+  if (!updated) throw new Error('The immunization could not be updated. Reload the chart and try again.');
+  await logAuditSafe('IMMUNIZATION_ENTERED_IN_ERROR', actor?.id, actor?.name, `Immunization ${id}: ${cleanReason}`);
+  return updated;
+}
+
+/**
+ * Compatibility name for older callers. A recorded dose is not physically
+ * deleted; deletion means retiring it as entered in error with provenance.
+ */
+export async function deleteImmunization(
+  id: string,
+  reason: string,
+  actor?: { id?: string; name?: string },
+): Promise<boolean> {
+  await enterImmunizationInError(id, reason, actor);
+  return true;
 }
 
 export async function getImmunizationStats(scope?: DataScope) {
-  const all = await getAllImmunizations(scope);
+  const all = (await getAllImmunizations(scope)).filter(i => i.recordStatus !== 'entered_in_error');
   const completed = all.filter(i => i.status === 'completed');
   const overdue = all.filter(i => i.status === 'overdue');
   const scheduled = all.filter(i => i.status === 'scheduled');
@@ -165,7 +184,7 @@ export interface ImmunizationDefaulter {
 
 export async function getDefaulters(scope?: DataScope): Promise<ImmunizationDefaulter[]> {
   // Scope-aware: hospital users only see their slice.
-  const all = await getAllImmunizations(scope);
+  const all = (await getAllImmunizations(scope)).filter(i => i.recordStatus !== 'entered_in_error');
   const now = new Date();
   const defaulters: ImmunizationDefaulter[] = [];
 

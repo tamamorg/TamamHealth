@@ -37,6 +37,7 @@ import {
   type ResolveRiskInput,
 } from '@/lib/services/risk-resolution-service';
 import { SadbPage, SadbCard, SadbSearch, SadbChip, SadbTabs, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const SOURCE_HREF: Record<RiskSource, string> = {
   Audit: '/admin/audit',
@@ -281,7 +282,7 @@ export default function RiskCenterPage() {
                 <td>{r.detail}</td>
                 <td>{formatWhen(r.when)}</td>
                 <td>{r.status}</td>
-                <td onClick={e => e.stopPropagation()} style={{ textAlign: 'end' }}>
+                <td {...stopsClickPropagation} style={{ textAlign: 'end' }}>
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
+import { dismissBackdrop } from '@/lib/a11y';
 
 interface MobileBottomSheetProps {
   open: boolean;
@@ -24,7 +25,7 @@ export default function MobileBottomSheet({ open, onClose, title, subtitle, chil
 
   return (
     <>
-      <div className="mobile-sheet-scrim" onClick={onClose} />
+      <div className="mobile-sheet-scrim" {...dismissBackdrop(onClose)} />
       <div className="mobile-sheet" role="dialog" aria-modal="true" aria-label={title}>
         <div className="mobile-sheet-handle" />
         <div className="mobile-sheet-head">

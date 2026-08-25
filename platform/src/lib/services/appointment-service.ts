@@ -65,8 +65,9 @@ export async function getAppointmentsByDate(date: string, scope?: DataScope): Pr
   return all.filter(a => a.appointmentDate === date);
 }
 
-export async function getAppointmentsByPatient(patientId: string): Promise<AppointmentDoc[]> {
-  return findByType<AppointmentDoc>(appointmentsDB(), 'appointment', { patientId }, { indexFields: ['type', 'patientId'] });
+export async function getAppointmentsByPatient(patientId: string, scope?: DataScope): Promise<AppointmentDoc[]> {
+  const rows = await findByType<AppointmentDoc>(appointmentsDB(), 'appointment', { patientId }, { indexFields: ['type', 'patientId'] });
+  return scope ? filterByScope(rows, scope) : rows;
 }
 
 export async function getAppointmentsByProvider(providerId: string): Promise<AppointmentDoc[]> {

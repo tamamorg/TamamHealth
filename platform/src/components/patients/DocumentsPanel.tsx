@@ -21,6 +21,7 @@ import { useAuth } from '@/lib/context';
 import { useConfirm } from '@/components/ConfirmDialog';
 import FileUpload from '@/components/FileUpload';
 import { usePatientDocuments } from '@/lib/hooks/usePatientDocuments';
+import ClinicalImageViewer, { type ClinicalImageItem } from '@/components/clinical-images/ClinicalImageViewer';
 import { makeCoalescer } from '@/lib/hooks/live-reload';
 import { messagesDB } from '@/lib/db';
 import { formatDate } from '@/lib/format-utils';
@@ -29,6 +30,8 @@ import type { Attachment } from '@/data/mock';
 import type { PatientDoc, PatientDocumentCategory, PatientDocumentDoc, ReferralDoc, MessageDoc } from '@/lib/db-types';
 import { FileText, Image as ImageIcon, X, Eye, ArrowRightLeft, ChevronRight, Send, MessageSquare, AlertTriangle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 const CATEGORY_LABELS: Record<PatientDocumentCategory, string> = {
   radiology: 'Radiology',
@@ -107,8 +110,9 @@ export default function DocumentsPanel({
   focusId?: string;
 }) {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const confirm = useConfirm();
-  const { documents, add, remove } = usePatientDocuments(patient._id);
+  const { documents, add, remove, addAnnotation, updateAnnotation, deleteAnnotation } = usePatientDocuments(patient._id);
   const [view, setView] = useState<DocView>('documents');
   const [category, setCategory] = useState<PatientDocumentCategory>('radiology');
   const [note, setNote] = useState('');
@@ -117,7 +121,11 @@ export default function DocumentsPanel({
   // `data:` URL: an uploaded file may be up to 5 MB, which is ~6.7 MB of base64
   // in a src attribute for the browser to parse on every render, and the same
   // URL backs the Download link. Minted on open, revoked on close.
-  const [preview, setPreview] = useState<{ url: string; mimeType: string; title: string; fileName: string } | null>(null);
+  const [preview, setPreview] = useState<
+    | { kind: 'images'; images: ClinicalImageItem[]; initialImageId: string }
+    | { kind: 'file'; url: string; mimeType: string; title: string; fileName: string }
+    | null
+  >(null);
   const [busy, setBusy] = useState(false);
   const [sentEducation, setSentEducation] = useState<MessageDoc[]>([]);
   // The list is what a clinician came for; filing a new document is an action
@@ -131,12 +139,12 @@ export default function DocumentsPanel({
   const loadSentEducation = useCallback(async () => {
     try {
       const { getMessagesByPatient } = await import('@/modules/communication/services/message-service');
-      const all = await getMessagesByPatient(patient._id);
+      const all = await getMessagesByPatient(patient._id, scope);
       setSentEducation(all.filter(m => m.patientEducation && m.direction !== 'patient_to_staff'));
     } catch {
       setSentEducation([]);
     }
-  }, [patient._id]);
+  }, [patient._id, scope]);
 
   useEffect(() => { loadSentEducation(); }, [loadSentEducation]);
 
@@ -155,30 +163,39 @@ export default function DocumentsPanel({
 
   // Mirrors the open preview's URL for the unmount cleanup below, which cannot
   // read state from its own teardown.
-  const previewUrlRef = useRef<string | null>(null);
+  const previewUrlRef = useRef<string[]>([]);
 
-  const openPreview = (d: PatientDocumentDoc) => {
+  const objectUrlFor = (d: PatientDocumentDoc): string => {
     const binary = atob(d.base64Data);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const url = URL.createObjectURL(new Blob([bytes], { type: d.mimeType }));
-    previewUrlRef.current = url;
-    setPreview({
-      url,
-      mimeType: d.mimeType,
-      title: d.title,
-      fileName: d.fileName,
-    });
+    return URL.createObjectURL(new Blob([bytes], { type: d.mimeType }));
+  };
+
+  const openPreview = (d: PatientDocumentDoc) => {
+    if (d.mimeType.startsWith('image/')) {
+      const imageDocs = documents.filter(document => document.mimeType.startsWith('image/'));
+      const images = imageDocs.map((document): ClinicalImageItem => {
+        const src = objectUrlFor(document);
+        previewUrlRef.current.push(src);
+        return { id: document._id, title: document.title, fileName: document.fileName, src, annotations: document.imageAnnotations };
+      });
+      setPreview({ kind: 'images', images, initialImageId: d._id });
+      return;
+    }
+    const url = objectUrlFor(d);
+    previewUrlRef.current.push(url);
+    setPreview({ kind: 'file', url, mimeType: d.mimeType, title: d.title, fileName: d.fileName });
   };
 
   const closePreview = () => {
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    previewUrlRef.current = null;
+    previewUrlRef.current.forEach(url => URL.revokeObjectURL(url));
+    previewUrlRef.current = [];
     setPreview(null);
   };
 
   // Closing the chart with a preview open would otherwise leak the blob.
-  useEffect(() => () => { if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current); }, []);
+  useEffect(() => () => { previewUrlRef.current.forEach(url => URL.revokeObjectURL(url)); }, []);
 
   // Which category an upload in this view is filed under. Only the general
   // view lets the uploader choose; the other two are the category.
@@ -493,11 +510,26 @@ export default function DocumentsPanel({
 
       {/* Preview modal */}
       {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-8" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={closePreview}>
-          <div className="relative max-w-4xl max-h-[90vh] rounded-xl overflow-hidden" style={{ background: 'var(--bg-card)' }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.82)' }} {...dismissBackdrop(closePreview)}>
+          {preview.kind === 'images' ? (
+            <div {...stopsClickPropagation}>
+              <ClinicalImageViewer
+                images={preview.images.map(item => ({
+                  ...item,
+                  annotations: documents.find(document => document._id === item.id)?.imageAnnotations,
+                }))}
+                initialImageId={preview.initialImageId}
+                onClose={closePreview}
+                onCreateAnnotation={(documentId, input) => addAnnotation(documentId, input, { id: currentUser?._id, name: currentUser?.name || currentUser?.username })}
+                onUpdateAnnotation={(documentId, annotationId, label) => updateAnnotation(documentId, annotationId, label, { id: currentUser?._id, name: currentUser?.name || currentUser?.username })}
+                onDeleteAnnotation={(documentId, annotationId) => deleteAnnotation(documentId, annotationId, { id: currentUser?._id, name: currentUser?.name || currentUser?.username })}
+              />
+            </div>
+          ) : (
+          <div className="relative max-w-4xl max-h-[90vh] rounded-xl overflow-hidden" style={{ background: 'var(--bg-card)' }} {...stopsClickPropagation}>
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
               <div className="flex items-center gap-2">
-                {preview.mimeType.startsWith('image/') ? <ImageIcon className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} /> : <FileText className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />}
+                <FileText className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />
                 <span className="text-sm font-semibold">{preview.title}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -509,16 +541,14 @@ export default function DocumentsPanel({
               </div>
             </div>
             <div className="p-4 overflow-auto" style={{ maxHeight: 'calc(90vh - 60px)' }}>
-              {preview.mimeType.startsWith('image/') ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={preview.url} alt={preview.title} className="max-w-full h-auto rounded" />
-              ) : preview.mimeType === 'application/pdf' ? (
+              {preview.mimeType === 'application/pdf' ? (
                 <iframe src={preview.url} className="w-full rounded" style={{ height: '70vh' }} title={preview.title} />
               ) : (
                 <div className="text-center py-12"><FileText className="w-16 h-16 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} /><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Preview not available.</p></div>
               )}
             </div>
           </div>
+          )}
         </div>
       )}
     </ChartSection>

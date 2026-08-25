@@ -5,6 +5,7 @@ import { Upload, X, FileText, Image as ImageIcon, Eye, AlertTriangle } from '@/c
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { Attachment } from '@/data/mock';
 import { validateAttachment, MAX_FILE_SIZE_BYTES } from '@/lib/validation';
+import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 
 interface FileUploadProps {
   attachments: Attachment[];
@@ -195,12 +196,12 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-8"
           style={{ background: 'rgba(0,0,0,0.75)' }}
-          onClick={() => setPreviewAttachment(null)}
+          {...dismissBackdrop(() => setPreviewAttachment(null))}
         >
           <div
             className="relative max-w-4xl max-h-[90vh] rounded-xl overflow-hidden"
             style={{ background: 'var(--bg-card)' }}
-            onClick={e => e.stopPropagation()}
+            {...stopsClickPropagation}
           >
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
               <div className="flex items-center gap-2">

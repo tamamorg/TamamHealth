@@ -27,6 +27,7 @@ import { patientFullName } from '@/lib/patient-utils';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import Select from '@/components/Select';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const BLOOD_GROUPS: BloodBankDoc['bloodGroup'][] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -497,7 +498,7 @@ export default function BloodBankPage() {
         {/* Add unit modal */}
         {open && (
           <Modal onClose={() => setOpen(false)}>
-            <div className="modal-panel modal-panel--md" onClick={e => e.stopPropagation()}>
+            <div className="modal-panel modal-panel--md" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="icon-box-sm">
@@ -584,7 +585,7 @@ export default function BloodBankPage() {
           const isCompatible = reserveCompatibleGroups ? reserveCompatibleGroups.includes(unit.bloodGroup) : null;
           return (
             <Modal onClose={closeReserve}>
-              <div className="modal-panel modal-panel--md" onClick={e => e.stopPropagation()}>
+              <div className="modal-panel modal-panel--md" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="icon-box-sm">
@@ -665,7 +666,7 @@ export default function BloodBankPage() {
           if (!unit) return null;
           return (
             <Modal onClose={closeDiscard}>
-              <div className="modal-panel modal-panel--sm" onClick={e => e.stopPropagation()}>
+              <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="icon-box-sm">
@@ -707,7 +708,7 @@ export default function BloodBankPage() {
           if (!unit) return null;
           return (
             <Modal onClose={closeCrossmatch}>
-              <div className="modal-panel modal-panel--sm" onClick={e => e.stopPropagation()}>
+              <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="icon-box-sm">
@@ -767,7 +768,7 @@ export default function BloodBankPage() {
           const patient = patients.find(p => p._id === unit.reservedForPatient);
           return (
             <Modal onClose={closeTransfuse}>
-              <div className="modal-panel modal-panel--sm" onClick={e => e.stopPropagation()}>
+              <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="icon-box-sm">

@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/context';
 import { Calendar, Clock, X, Loader2, Check, AlertCircle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 
 const SLOT_OPTIONS = [15, 20, 30, 45, 60];
 
@@ -67,11 +68,11 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }} {...dismissBackdrop(onClose)}>
       <div
         className="w-full max-w-md mx-4 rounded-xl shadow-2xl p-6"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
-        onClick={e => e.stopPropagation()}
+        {...stopsClickPropagation}
       >
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">

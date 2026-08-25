@@ -19,6 +19,7 @@ import {
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const RISK_FACTOR_OPTIONS = [
   'hypertension', 'anemia', 'previous_csection', 'multiple_pregnancy',
@@ -339,7 +340,7 @@ export default function ANCPage() {
                       {hasRealPatientRecord ? (
                         <Link
                           href={`/patients/${latest.motherId}`}
-                          onClick={(e) => e.stopPropagation()}
+                          {...stopsClickPropagation}
                           className="text-sm font-semibold truncate block hover:underline"
                           style={{ color: 'var(--text-primary)' }}
                         >
@@ -360,7 +361,7 @@ export default function ANCPage() {
                       {hasRealPatientRecord && (
                         <Link
                           href={`/patients/${latest.motherId}`}
-                          onClick={(e) => e.stopPropagation()}
+                          {...stopsClickPropagation}
                           className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full transition-colors hover:bg-[var(--accent-light)]"
                           style={{ color: 'var(--accent-primary)' }}
                           title="View patient record"

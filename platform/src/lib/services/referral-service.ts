@@ -201,8 +201,8 @@ export async function createReferral(
   return doc;
 }
 
-export async function getReferralsByPatient(patientId: string): Promise<ReferralDoc[]> {
-  const all = await getAllReferrals();
+export async function getReferralsByPatient(patientId: string, scope?: DataScope): Promise<ReferralDoc[]> {
+  const all = await getAllReferrals(scope);
   return all.filter(r => r.patientId === patientId);
 }
 

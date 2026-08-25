@@ -12,6 +12,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AssetDoc, AssetCategory, AssetStatus } from '@/lib/db-types-asset';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 const CATEGORIES: { id: AssetCategory; labelKey: string }[] = [
   { id: 'medical_equipment', labelKey: 'equipment.categoryMedicalEquipment' },
@@ -234,7 +235,7 @@ export default function AssetsPage() {
         {/* Register modal */}
         {createOpen && (
           <Modal onClose={() => setCreateOpen(false)}>
-            <div className="modal-content card-elevated p-6 max-w-2xl w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-content card-elevated p-6 max-w-2xl w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold">{t('equipment.registerModalTitle')}</h3>
                 <button onClick={() => setCreateOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
@@ -315,7 +316,7 @@ export default function AssetsPage() {
         {/* Maintenance modal */}
         {serviceFor && (
           <Modal onClose={() => setServiceFor(null)} width={448}>
-            <div className="modal-content card-elevated p-6 w-full" onClick={e => e.stopPropagation()}>
+            <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-base font-semibold">{t('equipment.logServiceTitle')}</h3>

@@ -12,15 +12,18 @@ import type { PatientNoteDoc } from '../db-types';
 import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
+import type { DataScope } from './data-scope';
+import { filterByScope } from './data-scope';
 
 /** All internal notes for a patient, newest-first. */
-export async function getNotesByPatient(patientId: string): Promise<PatientNoteDoc[]> {
-  const rows = await findByType<PatientNoteDoc>(
+export async function getNotesByPatient(patientId: string, scope?: DataScope): Promise<PatientNoteDoc[]> {
+  let rows = await findByType<PatientNoteDoc>(
     patientNotesDB(),
     'patient_note',
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
+  if (scope) rows = filterByScope(rows, scope);
   return rows.sort(
     (a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime(),
   );

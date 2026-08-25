@@ -133,7 +133,7 @@ export default function RadiologyWorkflowPanel({
           {ctrl.step === 'schedule' && <ScheduleStep study={study} ctrl={ctrl} />}
           {ctrl.step === 'safety' && <SafetyStep study={study} ctrl={ctrl} />}
           {ctrl.step === 'acquire' && <AcquireStep study={study} ctrl={ctrl} />}
-          {ctrl.step === 'report' && <ReportStep study={study} ctrl={ctrl} />}
+          {ctrl.step === 'report' && <ReportStep study={study} ctrl={ctrl} canUpload={canWork} />}
           {ctrl.step === 'release' && <ReleaseStep study={study} ctrl={ctrl} />}
         </div>
 

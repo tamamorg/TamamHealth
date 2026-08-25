@@ -31,6 +31,7 @@ import ClinicalFormsPanel from './panels/ClinicalFormsPanel';
 import PatientListsPanel from './panels/PatientListsPanel';
 import type { ChartPanelRouter, ChartPanelUser } from './panels/types';
 import './openmrs-chart.css';
+import { dismissBackdrop } from '@/lib/a11y';
 
 export interface OmrsRailItem {
   id: string;
@@ -403,7 +404,7 @@ export default function OpenmrsChartShell({
       {/* ══ Slide-in workspace drawer ══ */}
       {activePanel && (
         <>
-          <div className="omrs-drawer-backdrop no-print" onClick={closeDrawer} />
+          <div className="omrs-drawer-backdrop no-print" {...dismissBackdrop(closeDrawer)} />
           <div
             ref={drawerRef}
             tabIndex={-1}

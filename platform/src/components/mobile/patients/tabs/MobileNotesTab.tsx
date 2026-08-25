@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { Loader2 } from '@/components/icons/lucide';
 import EmptyState from '@/components/EmptyState';
 import type { PatientNoteDoc } from '@/lib/db-types';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 export default function MobileNotesTab({ patientId }: { patientId: string }) {
   const [notes, setNotes] = useState<PatientNoteDoc[] | null>(null);
+  const scope = useDataScope();
 
   // No hook exists for patient notes — mirror the direct service-call
   // pattern used at patients/[id]/page.tsx:180-184.
@@ -14,11 +16,11 @@ export default function MobileNotesTab({ patientId }: { patientId: string }) {
     let cancelled = false;
     setNotes(null);
     import('@/lib/services/patient-note-service')
-      .then((m) => m.getNotesByPatient(patientId))
+      .then((m) => m.getNotesByPatient(patientId, scope))
       .then((n) => { if (!cancelled) setNotes(n); })
       .catch(() => { if (!cancelled) setNotes([]); });
     return () => { cancelled = true; };
-  }, [patientId]);
+  }, [patientId, scope]);
 
   if (notes === null) {
     return (

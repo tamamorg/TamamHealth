@@ -22,6 +22,7 @@ import {
   Paperclip, X, AlertTriangle, ArrowRightLeft, Check, UserPlus, Clock,
 } from '@/components/icons/lucide';
 import type { PatientTransferDoc, PatientTransferUrgency } from '@/lib/db-types';
+import { dismissBackdrop } from '@/lib/a11y';
 
 type Attachment = { name: string; mimeType: string; base64Data: string; sizeBytes: number };
 
@@ -98,6 +99,17 @@ export default function MessagingDock() {
   const [view, setView] = useState<'list' | 'new' | 'newTeam'>('list');
   const [tab, setTab] = useState<DockTab>('chats');
   const [composeOpen, setComposeOpen] = useState(false);
+
+  // The compose menu closes by clicking its backdrop, which is a mouse-only
+  // gesture. Escape is the keyboard equivalent, and without it a keyboard user
+  // who opened this menu had no way to dismiss it — the backdrop covers the
+  // screen, so it also swallowed every click target behind it.
+  useEffect(() => {
+    if (!composeOpen) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setComposeOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [composeOpen]);
   const [teamName, setTeamName] = useState('');
   const [teamMembers, setTeamMembers] = useState<string[]>([]);
   // Transfers of care. Loaded here rather than through a hook because the dock
@@ -460,7 +472,7 @@ export default function MessagingDock() {
                 <>
                   {/* Click-away. Sits behind the menu so a click anywhere else
                       closes it without also triggering what's underneath. */}
-                  <div className="fixed inset-0 z-40" onClick={() => setComposeOpen(false)} />
+                  <div className="fixed inset-0 z-40" {...dismissBackdrop(() => setComposeOpen(false))} />
                   <div
                     className="absolute end-0 top-full mt-1.5 z-50 py-1 rounded-xl overflow-hidden min-w-[196px]"
                     style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', boxShadow: '0 8px 24px rgba(0, 29, 63,0.14)' }}

@@ -16,6 +16,7 @@ import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
 import { formatDobOmrs } from '@/lib/date-utils';
 import type { PatientDoc } from '@/lib/db-types';
+import { dismissBackdrop } from '@/lib/a11y';
 
 
 interface ChartHeaderProps {
@@ -192,7 +193,7 @@ export default function ChartHeader({
           </button>
           {menuOpen && (
             <>
-              <div className="omrs-header-overflow-backdrop" onClick={() => setMenuOpen(false)} />
+              <div className="omrs-header-overflow-backdrop" {...dismissBackdrop(() => setMenuOpen(false))} />
               <div className="omrs-actions-menu" role="menu">
                 {canSendMessages && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onMessage(); }}>

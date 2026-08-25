@@ -185,22 +185,42 @@ export async function updateProcedure(id: string, data: Partial<ProcedureDoc>): 
   }
 }
 
-export async function deleteProcedure(id: string): Promise<boolean> {
-  const db = proceduresDB();
-  try {
-    const doc = await db.get(id);
-    const typed = doc as unknown as ProcedureDoc;
-    await db.remove(doc);
-    await logAuditSafe('DELETE_PROCEDURE', undefined, undefined, `Procedure ${id}: ${typed.name} for ${typed.patientName || typed.patientId}`);
-    emitSyncEvent({
-      resourceType: 'procedure',
-      resourceId: id,
-      operation: 'delete',
-      orgId: typed.orgId,
-      hospitalId: typed.hospitalId,
-    });
-    return true;
-  } catch {
-    return false;
-  }
+/** Correct procedure details without deleting the original clinical event. */
+export async function amendProcedure(
+  id: string,
+  data: Pick<Partial<ProcedureDoc>, 'name' | 'code' | 'date' | 'bodySite' | 'outcome' | 'notes'>,
+  reason: string,
+  actor?: { id?: string; name?: string },
+): Promise<ProcedureDoc> {
+  const cleanReason = reason.trim();
+  if (cleanReason.length < 3) throw new Error('A reason is required to correct a procedure.');
+  const updated = await updateProcedure(id, {
+    ...data,
+    amended: true,
+    amendedAt: new Date().toISOString(),
+    amendedBy: actor?.name || actor?.id,
+    amendmentReason: cleanReason,
+  });
+  if (!updated) throw new Error('The procedure could not be corrected. Reload the chart and try again.');
+  await logAuditSafe('PROCEDURE_AMENDED', actor?.id, actor?.name, `Procedure ${id}: ${cleanReason}`);
+  return updated;
+}
+
+/** Retire an incorrectly charted procedure while preserving its history. */
+export async function deleteProcedure(
+  id: string,
+  reason: string,
+  actor?: { id?: string; name?: string },
+): Promise<boolean> {
+  const cleanReason = reason.trim();
+  if (cleanReason.length < 3) throw new Error('A reason is required to mark a procedure as entered in error.');
+  const updated = await updateProcedure(id, {
+    recordStatus: 'entered_in_error',
+    statusReason: cleanReason,
+    statusChangedAt: new Date().toISOString(),
+    statusChangedBy: actor?.name || actor?.id,
+  });
+  if (!updated) return false;
+  await logAuditSafe('PROCEDURE_ENTERED_IN_ERROR', actor?.id, actor?.name, `Procedure ${id}: ${cleanReason}`);
+  return true;
 }

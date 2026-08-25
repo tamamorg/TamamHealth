@@ -16,6 +16,7 @@
 
 import { appointmentStatusLabel, appointmentStatusOptionsForRole, canonicalAppointmentStatus, APPOINTMENT_STATUS_DESCRIPTIONS } from '@/lib/appointment-status';
 import type { AppointmentStatus, UserRole } from '@/lib/db-types';
+import { stopsClickPropagation } from '@/lib/a11y';
 
 interface AppointmentStatusPillSelectProps {
   status: AppointmentStatus;
@@ -42,7 +43,7 @@ export default function AppointmentStatusPillSelect({
   return (
     <span
       className={`appointment-status-pill appointment-status-pill--select ${className}`.trim()}
-      onClick={event => event.stopPropagation()}
+      {...stopsClickPropagation}
       onKeyDown={event => event.stopPropagation()}
     >
       {labelFor(status)}

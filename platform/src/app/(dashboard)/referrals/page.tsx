@@ -30,6 +30,7 @@ import type { Attachment, TransferPackage, ReferralDisposition } from '@/data/mo
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -767,7 +768,7 @@ export default function ReferralsPage() {
             every row below it down the page lost the reader's place. */}
         {detailReferral && (
           <Modal onClose={() => setExpandedReferral(null)} width={760} align="top" labelledBy="referral-detail-title">
-            <div className="modal-panel" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)', overflow: 'hidden' }}>
+            <div className="modal-panel" {...stopsClickPropagation} style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)', overflow: 'hidden' }}>
               <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
                 <div className="min-w-0">
                   <h3 id="referral-detail-title" className="text-base font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
@@ -840,7 +841,7 @@ export default function ReferralsPage() {
             declined referral. Clinical reversals are confirmed first. */}
         {reverseModal && (
           <Modal onClose={() => setReverseModal(null)}>
-            <div className="modal-panel modal-panel--sm" onClick={e => e.stopPropagation()}>
+            <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.reverse')}</h3>
                 <button onClick={() => setReverseModal(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
@@ -863,7 +864,7 @@ export default function ReferralsPage() {
         {/* Add Note Modal */}
         {noteModalId && (
           <Modal onClose={() => setNoteModalId(null)}>
-            <div className="modal-panel modal-panel--sm" onClick={e => e.stopPropagation()}>
+            <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.addNote')}</h3>
                 <button onClick={() => setNoteModalId(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
@@ -894,7 +895,7 @@ export default function ReferralsPage() {
         {/* Decline Modal */}
         {declineModalId && (
           <Modal onClose={() => setDeclineModalId(null)}>
-            <div className="modal-panel modal-panel--sm" onClick={e => e.stopPropagation()}>
+            <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('referrals.declineReferral')}</h3>
                 <button onClick={() => setDeclineModalId(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
@@ -925,7 +926,7 @@ export default function ReferralsPage() {
         {/* Complete Modal */}
         {completeModalId && (
           <Modal onClose={() => setCompleteModalId(null)}>
-            <div className="modal-panel modal-panel--sm" onClick={e => e.stopPropagation()}>
+            <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('referrals.completeReferral')}</h3>
                 <button onClick={() => setCompleteModalId(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
@@ -979,12 +980,12 @@ export default function ReferralsPage() {
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-8"
             style={{ background: 'rgba(0,0,0,0.75)' }}
-            onClick={() => setPreviewAttachment(null)}
+            {...dismissBackdrop(() => setPreviewAttachment(null))}
           >
             <div
               className="relative max-w-4xl max-h-[90vh] rounded-xl overflow-hidden"
               style={{ background: 'var(--bg-card)' }}
-              onClick={e => e.stopPropagation()}
+              {...stopsClickPropagation}
             >
               <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
                 <div className="flex items-center gap-2">

@@ -540,6 +540,10 @@ export interface NursingVitalsInput {
   recordedById?: string;
   recordedByName?: string;
   encounterId?: string;
+  /** Existing nursing observation replaced by this append-only correction. */
+  correctsRecordId?: string;
+  /** Required clinical rationale when correctsRecordId is present. */
+  correctionReason?: string;
   vitals: {
     systolic?: string;
     diastolic?: string;
@@ -585,6 +589,21 @@ function bmiFrom(weightKg?: number, heightCm?: number): number {
 }
 
 export async function recordNursingVitals(input: NursingVitalsInput): Promise<MedicalRecordDoc> {
+  if (input.correctsRecordId && !input.correctionReason?.trim()) {
+    throw new Error('Correcting vitals requires a reason.');
+  }
+  if (input.correctsRecordId) {
+    const original = await getMedicalRecordById(input.correctsRecordId);
+    if (!original || original.recordKind !== 'nursing_vitals') {
+      throw new Error('Only a nursing vitals observation can be corrected here.');
+    }
+    if (original.patientId !== input.patientId) {
+      throw new Error('The correction does not belong to this patient.');
+    }
+    if (original.hospitalId !== input.hospitalId) {
+      throw new Error('Vitals can only be corrected from the facility that recorded them.');
+    }
+  }
   const now = new Date().toISOString();
   const record = {
     patientId: input.patientId,
@@ -592,6 +611,8 @@ export async function recordNursingVitals(input: NursingVitalsInput): Promise<Me
     hospitalName: input.hospitalName || '',
     orgId: input.orgId,
     encounterId: input.encounterId,
+    correctsRecordId: input.correctsRecordId,
+    correctionReason: input.correctionReason?.trim(),
     visitDate: now,
     consultedAt: now,
     visitType: 'inpatient' as const,

@@ -87,13 +87,14 @@ export function usePatientAppointments(patientId?: string) {
   const [appointments, setAppointments] = useState<AppointmentDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const scope = useDataScope();
 
   const load = useCallback(async () => {
     if (!patientId) { setAppointments([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAppointmentsByPatient } = await import('../services/appointment-service');
-      const data = await getAppointmentsByPatient(patientId);
+      const data = await getAppointmentsByPatient(patientId, scope);
       setAppointments(data);
     } catch (err) {
       console.error(err);
@@ -101,7 +102,7 @@ export function usePatientAppointments(patientId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [patientId]);
+  }, [patientId, scope]);
 
   useEffect(() => { load(); }, [load]);
 
