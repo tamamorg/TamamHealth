@@ -576,7 +576,7 @@ export default function ReportsPage() {
     for (const section of reports) {
       for (const item of section.items) {
         const { rows } = generateReportData(item.name);
-        map.set(item.name, { chart: buildReportChart(rows), rowCount: rows.length });
+        map.set(item.name, { chart: buildReportChart(rows, item.chartMeasure), rowCount: rows.length });
       }
     }
     return map;

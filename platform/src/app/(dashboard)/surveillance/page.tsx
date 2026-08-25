@@ -32,7 +32,15 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { downloadJson, safeFilenamePart } from '@/lib/export-file';
-import { type ChartType, type ChartPeriod } from '@/components/ChartCard';
+import { type ChartType } from '@/components/ChartCard';
+
+/** How many weekly buckets the trend chart shows: six weeks, a quarter, a year. */
+type TrendWindow = 6 | 13 | 52;
+const TREND_WINDOWS: { weeks: TrendWindow; key: string }[] = [
+  { weeks: 6, key: 'surveillance.window6w' },
+  { weeks: 13, key: 'surveillance.window13w' },
+  { weeks: 52, key: 'surveillance.window52w' },
+];
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 
@@ -164,7 +172,13 @@ export default function SurveillancePage() {
   });
   const [alertSubmitting, setAlertSubmitting] = useState(false);
   const [chartType, setChartType] = useState<ChartType>('line');
-  const [period, setPeriod] = useState<ChartPeriod>('month');
+  /* The series is one point per ISO WEEK, so the selector offers windows in
+     weeks. It used to offer This Week / This Month / This Quarter and slice
+     -7 / -30 / everything off a weekly array — so "This Week" drew the last
+     seven WEEKS, "This Month" the last thirty (seven months), and "This
+     Quarter" every week on file. Every option named a period the chart was
+     not showing. */
+  const [trendWeeks, setTrendWeeks] = useState<TrendWindow>(13);
   const [focusedAlertId, setFocusedAlertId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -545,8 +559,8 @@ export default function SurveillancePage() {
                   ))}
                 </div>
                 <Select
-                  value={period}
-                  onChange={e => setPeriod(e.target.value as ChartPeriod)}
+                  value={String(trendWeeks)}
+                  onChange={e => setTrendWeeks(Number(e.target.value) as TrendWindow)}
                   style={{
                     fontSize: 11,
                     color: 'var(--text-muted)',
@@ -558,16 +572,14 @@ export default function SurveillancePage() {
                     fontFamily: 'var(--font-platform)',
                   }}
                 >
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                  <option value="quarter">This Quarter</option>
+                  {TREND_WINDOWS.map(w => (
+                    <option key={w.weeks} value={w.weeks}>{t(w.key)}</option>
+                  ))}
                 </Select>
               </div>
               <div className="gov-chart-body">
                 {(() => {
-                  const sliced = period === 'week' ? weeklyDiseaseData.slice(-7)
-                    : period === 'quarter' ? weeklyDiseaseData
-                    : weeklyDiseaseData.slice(-30);
+                  const sliced = weeklyDiseaseData.slice(-trendWeeks);
                   const data = sliced.length > 0 ? sliced : weeklyDiseaseData;
                   return <WeeklyDiseaseTrendsChart data={data} chartType={chartType} />;
                 })()}

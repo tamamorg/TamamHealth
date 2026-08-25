@@ -304,16 +304,33 @@ export default function GovernmentNationalDashboard() {
   // Weekly cases broken out per disease (last 12 reporting weeks) — one numeric
   // field per disease name so each renders as its own series.
   const weeklyByDisease = useMemo(() => {
-    const byWeek = new Map<string, Record<string, number> & { week: string; sortKey: string }>();
+    /* The trailing twelve weeks, zero-filled — not the twelve weeks that
+       happen to carry a report.
+       This used to bucket whatever arrived and keep the last twelve buckets,
+       so a fortnight with nothing reported simply closed up: the axis still
+       read as twelve consecutive weeks while the line ran straight across the
+       blackout. In surveillance a silent week is the signal, and the panel
+       says "Last 12 weeks", so the twelve are built first and the reports are
+       dropped into them. */
+    const today = new Date();
+    const anchors = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (11 - i) * 7);
+      return isoWeekLabel(toIsoDate(d));
+    });
+    const byWeek = new Map<string, Record<string, number> & { week: string; sortKey: string }>(
+      anchors.map(a => [a.label, { week: a.label, sortKey: a.sortKey } as Record<string, number> & { week: string; sortKey: string }]),
+    );
     for (const a of alerts) {
       if (!a.reportDate || !a.disease) continue;
-      const { label, sortKey } = isoWeekLabel(a.reportDate);
-      const cur = byWeek.get(label) || { week: label, sortKey } as Record<string, number> & { week: string; sortKey: string };
+      const { label } = isoWeekLabel(a.reportDate);
+      const cur = byWeek.get(label);
+      // Older than the window — the panel is the last twelve weeks, not the
+      // whole archive.
+      if (!cur) continue;
       cur[a.disease] = (cur[a.disease] || 0) + (a.cases || 0);
-      if (sortKey < cur.sortKey) cur.sortKey = sortKey;
-      byWeek.set(label, cur);
     }
-    return Array.from(byWeek.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey)).slice(-12);
+    return anchors.map(a => byWeek.get(a.label)!);
   }, [alerts]);
 
   // Series to actually draw: the selected set, or all when nothing is chosen.

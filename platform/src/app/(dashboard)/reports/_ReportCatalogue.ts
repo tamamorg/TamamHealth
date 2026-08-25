@@ -18,6 +18,13 @@ import { Activity, BedDouble, Pill, TrendingUp, Users } from '@/components/icons
 // was rendered) rather than a stored last-run timestamp. When per-report
 // refresh history is wired up (e.g. via a `report_runs` doc keyed by report
 // name), replace `todayIso` below with that lookup.
+/**
+ * `chartMeasure` names the column the preview chart should rank by, for the
+ * reports whose leftmost number is not what the report is about. The chart
+ * otherwise infers it (see lib/reports/report-chart-data), reading left to
+ * right — which put "Bills Issued" on a revenue chart and "Doctors" on one
+ * about patients seen.
+ */
 export const reports = [
   {
     category: 'Patient Statistics',
@@ -54,14 +61,14 @@ export const reports = [
     items: [
       { name: 'Bed Occupancy Report', description: 'Ward-wise bed utilization and average length of stay', period: 'Daily' },
       { name: 'Referral Summary', description: 'Incoming and outgoing referrals by hospital and diagnosis', period: 'Monthly' },
-      { name: 'Staff Productivity Report', description: 'Patient-to-provider ratio and consultation volumes', period: 'Monthly' },
+      { name: 'Staff Productivity Report', description: 'Patient-to-provider ratio and consultation volumes', period: 'Monthly', chartMeasure: 'Patients Registered' },
     ],
   },
   {
     category: 'Financial',
     icon: TrendingUp,
     items: [
-      { name: 'Revenue Report', description: 'Cost-recovery service charges and collections', period: 'Monthly' },
+      { name: 'Revenue Report', description: 'Cost-recovery service charges and collections', period: 'Monthly', chartMeasure: 'Collected' },
       { name: 'Donor Reporting Pack', description: 'GAVI, Global Fund, and partner reporting requirements', period: 'Quarterly' },
     ],
   },

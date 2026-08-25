@@ -83,11 +83,19 @@ function pickCategoryColumn(rows: Record<string, unknown>[], headers: string[]):
  * "CFR (%)" beside "Total Cases" would rank a one-case outbreak above a
  * thousand-case one. They are still eligible as a last resort, because some
  * reports carry nothing else.
+ *
+ * `preferred` is a report naming its own measure, and wins whenever that
+ * column is actually present and numeric. Inference reads left to right, which
+ * is right for the reports whose first number IS the point and wrong for the
+ * ones where it is a counting column sitting in front of the answer — Revenue
+ * charted "Bills Issued" next to a table of money, and Staff Productivity
+ * charted "Doctors" next to a table about patients seen.
  */
 function pickValueColumn(
   rows: Record<string, unknown>[],
   headers: string[],
   exclude: string,
+  preferred?: string,
 ): string | null {
   const numericHeaders = headers.filter(header => {
     if (header === exclude) return false;
@@ -97,6 +105,7 @@ function pickValueColumn(
     return usable.length > 0 && usable.length >= rows.length / 2;
   });
   if (numericHeaders.length === 0) return null;
+  if (preferred && numericHeaders.includes(preferred)) return preferred;
   const isRate = (h: string) => /%|rate|percent/i.test(h);
   return numericHeaders.find(h => !isRate(h)) ?? numericHeaders[0];
 }
@@ -106,7 +115,11 @@ function pickValueColumn(
  * (no names, no measures, or every measure is zero — an all-zero chart is a
  * blank rectangle that implies a rendering fault rather than an empty month).
  */
-export function buildReportChart(rows: Record<string, unknown>[]): ReportChart | null {
+export function buildReportChart(
+  rows: Record<string, unknown>[],
+  /** The column this report wants charted, when its first number is not it. */
+  measure?: string,
+): ReportChart | null {
   if (!rows.length) return null;
   const headers = Object.keys(rows[0]);
   if (headers.length < 2) return null;
@@ -116,7 +129,7 @@ export function buildReportChart(rows: Record<string, unknown>[]): ReportChart |
 
   const categoryLabel = pickCategoryColumn(body, headers);
   if (!categoryLabel) return null;
-  const valueLabel = pickValueColumn(body, headers, categoryLabel);
+  const valueLabel = pickValueColumn(body, headers, categoryLabel, measure);
   if (!valueLabel) return null;
 
   // Sum duplicates. Several reports emit one row per record rather than per
