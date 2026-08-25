@@ -44,7 +44,7 @@ export function EpidemicCurveChart({ data, diseases, colorMap }: EpidemicCurveCh
         <Tooltip {...tooltipStyle} cursor={{ fill: 'var(--overlay-subtle)' }} />
         <Legend {...legendProps} />
         {diseases.map(d => (
-          <Bar key={d} dataKey={d} name={d} fill={colorMap.get(d)} radius={[2, 2, 0, 0]} maxBarSize={16} isAnimationActive={false} />
+          <Bar key={d} dataKey={d} name={d} fill={colorMap.get(d)} radius={[2, 2, 0, 0]} maxBarSize={16} isAnimationActive animationDuration={420} animationEasing="ease-out" />
         ))}
       </BarChart>
     </ResponsiveContainer>

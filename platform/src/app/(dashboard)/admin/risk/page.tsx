@@ -237,9 +237,9 @@ export default function RiskCenterPage() {
     }
   };
 
-  /* One way in for both tabs: the row opens the popup, and the popup is where
-     the action is confirmed. There is no in-row Resolve/Reopen button — a
-     queue you can clear by mis-tapping a table cell is not a control. */
+  /* Rows and their explicit Resolve controls both open the same confirmation
+     surface. The table action makes the workflow discoverable without making
+     a single click destructive: the signal only clears after confirmation. */
   const openResolveDialog = (rows: RiskRow[]) => { setNote(''); setResolving(rows); };
 
   /** The one row a popup opened from the table is about; null for the bulk. */
@@ -269,7 +269,7 @@ export default function RiskCenterPage() {
           </>
         }
       >
-        <div className="sadb-search-row">
+        <div className="sadb-search-row sadb-search-row--table-aligned">
           <SadbSearch value={search} onChange={setSearch} placeholder="Search signal or detail…" ariaLabel="Search risk signals" />
           {/* Deliberately "all shown", not "all": whatever the filters have
               narrowed to is what an operator has actually just looked at. */}
@@ -280,59 +280,73 @@ export default function RiskCenterPage() {
           )}
         </div>
 
-        {tab === 'open' ? (
-          <SaTable
-            columns={[
-              { label: 'Severity', w: 0.8 }, { label: 'Signal', w: 1.6 }, { label: 'Source', w: 0.9 },
-              { label: 'Detail', w: 2.4 }, { label: 'Age', w: 0.7 }, { label: 'Status', w: 0.9 },
-            ]}
-            empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
-          >
-            {filteredOpen.map(r => (
-              <tr
-                key={r.id}
-                tabIndex={0}
-                aria-label={`Open risk signal: ${r.signal}`}
-                style={{ cursor: 'pointer' }}
-                onClick={() => openResolveDialog([r])}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openResolveDialog([r]); } }}
-              >
-                <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity.toUpperCase()}</SadbChip></td>
-                <td><strong>{r.signal}</strong></td>
-                <td>{r.source}</td>
-                <td>{r.detail}</td>
-                <td>{formatWhen(r.when)}</td>
-                <td>{r.status}</td>
-              </tr>
-            ))}
-          </SaTable>
-        ) : (
-          <SaTable
-            columns={[
-              { label: 'Severity', w: 0.8 }, { label: 'Signal', w: 1.6 }, { label: 'Source', w: 0.9 },
-              { label: 'What was done', w: 2.4 }, { label: 'Resolved', w: 0.9 }, { label: 'By', w: 0.9 },
-            ]}
-            empty={loading ? 'Loading…' : 'Nothing has been resolved yet.'}
-          >
-            {filteredResolved.map(d => (
-              <tr
-                key={d._id}
-                tabIndex={0}
-                aria-label={`Open resolved risk signal: ${d.signal}`}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setReopening(d)}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setReopening(d); } }}
-              >
-                <td><SadbChip tone={SEVERITY_CHIP[d.severity]}>{d.severity.toUpperCase()}</SadbChip></td>
-                <td><strong>{d.signal}</strong></td>
-                <td>{d.source}</td>
-                <td>{d.note || <span style={{ color: 'var(--text-muted)' }}>Acknowledged, no note</span>}</td>
-                <td>{formatWhen(d.resolvedAt)}</td>
-                <td>{d.resolvedByName || '—'}</td>
-              </tr>
-            ))}
-          </SaTable>
-        )}
+        <div className="sadb-edge-aligned-table">
+          {tab === 'open' ? (
+            <SaTable
+              columns={[
+                'Signal', 'Severity', 'Source', 'Detail', 'Age', 'Status', 'Resolve',
+              ]}
+              empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
+            >
+              {filteredOpen.map(r => (
+                <tr
+                  key={r.id}
+                  tabIndex={0}
+                  aria-label={`Open risk signal: ${r.signal}`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => openResolveDialog([r])}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openResolveDialog([r]); } }}
+                >
+                  <td><strong>{r.signal}</strong></td>
+                  <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity.toUpperCase()}</SadbChip></td>
+                  <td>{r.source}</td>
+                  <td>{r.detail}</td>
+                  <td>{formatWhen(r.when)}</td>
+                  <td>{r.status}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm sadb-table-action"
+                      onClick={event => {
+                        event.stopPropagation();
+                        openResolveDialog([r]);
+                      }}
+                      onKeyDown={event => event.stopPropagation()}
+                      aria-label={`Resolve risk signal: ${r.signal}`}
+                    >
+                      Resolve
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </SaTable>
+          ) : (
+            <SaTable
+              columns={[
+                'Signal', 'Severity', 'Source', 'What was done', 'Resolved', 'By',
+              ]}
+              empty={loading ? 'Loading…' : 'Nothing has been resolved yet.'}
+            >
+              {filteredResolved.map(d => (
+                <tr
+                  key={d._id}
+                  tabIndex={0}
+                  aria-label={`Open resolved risk signal: ${d.signal}`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setReopening(d)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setReopening(d); } }}
+                >
+                  <td><strong>{d.signal}</strong></td>
+                  <td><SadbChip tone={SEVERITY_CHIP[d.severity]}>{d.severity.toUpperCase()}</SadbChip></td>
+                  <td>{d.source}</td>
+                  <td>{d.note || <span style={{ color: 'var(--text-muted)' }}>Acknowledged, no note</span>}</td>
+                  <td>{formatWhen(d.resolvedAt)}</td>
+                  <td>{d.resolvedByName || '—'}</td>
+                </tr>
+              ))}
+            </SaTable>
+          )}
+        </div>
       </SadbCard>
 
       {/* The queue's only action surface. A row opens this; the signal is read

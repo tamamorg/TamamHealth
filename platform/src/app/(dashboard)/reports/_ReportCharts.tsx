@@ -13,20 +13,16 @@
  *
  * ── Which forms are offered, and which are not ──────────────────────────
  * Every report on this page reduces to the same shape: NAMED CATEGORIES
- * measured once. Five forms read that shape honestly:
+ * measured once. Four forms read that shape honestly:
  *
  *   column    ranked magnitude, few names             — the default
  *   bar       ranked magnitude, long names
- *   lollipop  ranked magnitude, many categories       — least ink per row
  *   donut     part-to-whole, up to ~7 slices
  *   treemap   part-to-whole, many parts, by area
  *
- * Line and area are deliberately absent. They encode change along an ordered
- * continuum, and "Unity, Jonglei, Lakes…" has no order beyond the ranking the
- * chart itself imposed — a line between those points would draw a trend that
- * does not exist. Donut and treemap are offered only when the values are a
- * genuine part-to-whole (see `supportsPartToWhole`); a ring of percentages
- * that do not sum to anything is the same lie in a different shape.
+ * Donut and treemap are offered only when the values are a genuine
+ * part-to-whole (see `supportsPartToWhole`); a ring of percentages that do not
+ * sum to anything is the same lie in a different shape.
  *
  * ── Colour ──────────────────────────────────────────────────────────────
  * The ranked forms are ONE series over nominal categories, so every bar wears
@@ -54,7 +50,7 @@ import { tooltipStyle, axisTick } from '@/components/ChartCard';
 import { CHART_SERIES } from '@/lib/chart-colors';
 import type { ReportChartPoint } from '@/lib/reports/report-chart-data';
 
-export type ReportChartKind = 'bar' | 'column' | 'lollipop' | 'donut' | 'treemap';
+export type ReportChartKind = 'bar' | 'column' | 'donut' | 'treemap';
 
 /** Single-series hue when the page does not name one: the brand blue. */
 const DEFAULT_ACCENT = 'var(--chart-2)';
@@ -154,18 +150,6 @@ const legendProps = {
  * surface-colour ring keeps the dot legible against its own stem and against
  * the value label sitting to its right.
  */
-function LollipopShape(props: { x?: number; y?: number; width?: number; height?: number; fill?: string }) {
-  const { x = 0, y = 0, width = 0, height = 0, fill } = props;
-  const cy = y + height / 2;
-  const r = 5;
-  const end = x + Math.max(0, width);
-  return (
-    <g>
-      <line x1={x} y1={cy} x2={Math.max(x, end - r)} y2={cy} stroke={fill} strokeWidth={2} strokeLinecap="round" />
-      <circle cx={end} cy={cy} r={r} fill={fill} stroke="var(--bg-card-solid)" strokeWidth={2} />
-    </g>
-  );
-}
 
 /** Treemap tile: fill, a 2px surface gap, and a label when the tile can hold one. */
 function TreemapTile(props: {
@@ -305,15 +289,14 @@ export function ReportChart({ kind, points, valueLabel, accent = DEFAULT_ACCENT 
     );
   }
 
-  // bar | lollipop — both horizontal, differing only in the mark.
-  const isLollipop = kind === 'lollipop';
+  // bar — horizontal.
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={points}
         layout="vertical"
         margin={{ top: 6, right: 62, left: 2, bottom: 6 }}
-        barCategoryGap={isLollipop ? '42%' : '32%'}
+        barCategoryGap="32%"
       >
         {/* Same reasoning as the column form: the value rides the tip of every
             mark, so the number axis and its grid are dropped and the category
@@ -332,15 +315,14 @@ export function ReportChart({ kind, points, valueLabel, accent = DEFAULT_ACCENT 
         <Bar
           dataKey="value"
           radius={[0, 4, 4, 0]}
-          maxBarSize={isLollipop ? 12 : 20}
+          maxBarSize={20}
           isAnimationActive animationDuration={420} animationEasing="ease-out"
-          shape={isLollipop ? <LollipopShape /> : undefined}
         >
           {points.map(p => <Cell key={p.label} fill={rankedFill(p, accent)} />)}
           {/* Direct labels: the value is the point of the chart, and reading
               eight bars off an axis is worse than eight small numbers. The
-              offset clears the lollipop dot and the bar's rounded end. */}
-          <LabelList dataKey="value" position="right" offset={isLollipop ? 12 : 8} style={VALUE_LABEL} formatter={formatValue} />
+              offset clears the bar's rounded end. */}
+          <LabelList dataKey="value" position="right" offset={8} style={VALUE_LABEL} formatter={formatValue} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>

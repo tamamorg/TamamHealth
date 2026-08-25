@@ -29424,6 +29424,34 @@ button.sadb-signal { cursor: pointer; }
   flex-wrap: wrap;
 }
 
+/* Audit-style table toolbars share the table cells' 14px content edge. The
+   search begins on the first column's line and the trailing action ends on
+   the final column's line instead of floating two pixels inside both. */
+.sadb-search-row--table-aligned {
+  padding-inline: 14px;
+}
+
+/* Keep equal column tracks while making their outside anchors explicit: the
+   first cell is already start-aligned; the terminal cell closes the opposite
+   edge directly beneath the toolbar's trailing action. */
+.sadb-edge-aligned-table .sa-table th:last-child,
+.sadb-edge-aligned-table .sa-table td:last-child {
+  text-align: end;
+}
+
+/* Compact, stable action targets in the terminal table track. Their shared
+   width keeps Resolve/Resolved from making the column jump between rows. */
+.sadb-table-action {
+  min-width: 72px;
+  justify-content: center;
+}
+.sadb-table-action-state {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* One control height for everything on the row.
    The search box and the selects were each given 38px by hand while the action
    button was left at `.btn-sm`, whose height comes from padding (~31px) — so
@@ -31000,6 +31028,12 @@ button.sadb-signal { cursor: pointer; }
   color: var(--text-muted);
 }
 .rpt-ctl-legend > span { font-size: 10px; letter-spacing: 0; color: var(--text-muted); }
+.rpt-ctl-chart-form {
+  margin: 0 2px 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-light);
+}
+.rpt-ctl-chart-form .rpt-ctl-legend { padding-top: 10px; }
 .rpt-ctl-kinds {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -31046,34 +31080,6 @@ button.sadb-signal { cursor: pointer; }
   letter-spacing: 0;
 }
 .rpt-ctl-check input { accent-color: var(--accent-primary); cursor: pointer; }
-/* Catalogue stepper and export, both moved down from the command bar. */
-.rpt-ctl-step {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: 0 8px 4px;
-}
-.rpt-ctl-step .rpt-nav-pos { font-size: 11px; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.rpt-ctl-csv {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: calc(100% - 16px);
-  margin: 0 8px 12px;
-  padding: 7px 8px;
-  border: 1px solid var(--border-light);
-  border-radius: 7px;
-  background: var(--bg-card-solid);
-  cursor: pointer;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--accent-primary);
-}
-.rpt-ctl-csv svg { width: 14px; height: 14px; }
-.rpt-ctl-csv:hover:not(:disabled) { background: var(--tb-blue-50, rgba(33,145,208,0.10)); }
-.rpt-ctl-csv:disabled { opacity: 0.5; cursor: not-allowed; }
 /* The plot names itself now that no bar does. */
 .rpt-plot-caption {
   display: flex;
@@ -31177,14 +31183,19 @@ button.sadb-signal { cursor: pointer; }
   overflow: hidden;
 }
 .rpt-plot-head {
+  /* The caption reads from the leading edge — a title is not centred — and
+     Generate is pinned to the trailing corner rather than trailing the text,
+     where it read as part of the caption. `margin-inline-start` rather than
+     `justify-content`, so the split survives RTL and any later sibling. */
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 10px;
   flex: 0 0 auto;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-light);
 }
+.rpt-plot-head .rpt-nav-generate { margin-inline-start: auto; }
 /* ── Ranked figures beside the plot ──
    The axis truncates "Western Bahr el Ghazal"; this column does not. Bars
    are scaled to the LEADER, not to the total: the column is a ranking, and
@@ -31307,23 +31318,6 @@ button.sadb-signal { cursor: pointer; }
 }
 .rpt-panel-empty svg { width: 15px; height: 15px; color: var(--accent-primary); }
 
-/* Cadence chip beside the selected report's name. Hues match the four
-   cadences the reports use. */
-.rpt-chip {
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 999px;
-  flex: 0 0 auto;
-  color: var(--text-secondary);
-  background: var(--overlay-subtle);
-}
-.rpt-chip--daily { color: var(--color-success-text); background: color-mix(in srgb, var(--color-success) 12%, transparent); }
-.rpt-chip--weekly { color: var(--color-warning-text); background: color-mix(in srgb, var(--color-warning) 14%, transparent); }
-.rpt-chip--monthly { color: var(--chart-1); background: color-mix(in srgb, var(--chart-1) 10%, transparent); }
-.rpt-chip--quarterly { color: var(--chart-6); background: color-mix(in srgb, var(--chart-6) 12%, transparent); }
 
 /* Chart-form switcher. Icon-only and segmented: five forms of ONE thing, so
    they read as positions on a track rather than five separate buttons. A
@@ -31401,11 +31395,17 @@ button.sadb-signal { cursor: pointer; }
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* flex-start plus an auto margin, not space-between: the caption holds
+     three things now (name, row count, export) and space-between would
+     strand the count alone in the middle. The count belongs beside the
+     button that hands those rows over. */
+  justify-content: flex-start;
   gap: 10px;
   padding: 9px 14px;
   background: var(--overlay-subtle);
 }
+.rpt-table-cap > b { margin-inline-start: auto; }
+.rpt-table-cap > .rpt-nav-csv { flex: none; }
 .rpt-table-cap span { font-size: 12px; font-weight: 700; color: var(--text-primary); }
 .rpt-table-cap b {
   font-size: 11px;
