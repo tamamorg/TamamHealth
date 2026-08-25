@@ -45,7 +45,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/github-script@v7
+    # v9: v7 targets Node 20, which GitHub now force-runs on Node 24 and warns
+    # about on every alarm. v9's breaking changes are `require('@actions/github')`
+    # and the injected `getOctokit` — this script uses neither, only
+    # `github.rest.*` and `context`.
+    - uses: actions/github-script@v9
       with:
         github-token: ${{ inputs.token }}
         script: |

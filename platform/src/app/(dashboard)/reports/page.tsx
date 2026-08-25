@@ -3,17 +3,17 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
-  FileText, Download, Activity, Users, Pill, BedDouble, TrendingUp,
-  ChevronUp, ChevronLeft, ChevronRight, Loader2, BarChart3, PieChart, Layers, List,
+  ChevronUp, FileText, Download,
+  Loader2, BarChart3, PieChart, Layers, List, Activity,
   AlertTriangle, type LucideIcon
 } from '@/components/icons/lucide';
 import { buildReportChart, type ReportChart as ReportChartData } from '@/lib/reports/report-chart-data';
 import { supportsPartToWhole, type ReportChartKind, type RankedPoint } from './_ReportCharts';
 import { DISEASE_COLOR } from '@/lib/chart-colors';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import ReportRail from './_ReportRail';
+import ReportControlPanel, { type ReportView } from './_ReportControlPanel';
 import {
-  allReports, categoryKey, periodKey, reportDescKey, reportNameKey, reports,
+  allReports, categoryKey, periodKey, reportNameKey, reports,
   EMPTY_REPORT_FILTER, type ReportFilter,
 } from './_ReportCatalogue';
 import EmptyState from '@/components/EmptyState';
@@ -28,7 +28,6 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { BillingDoc } from '@/lib/db-types-billing';
 import { ESSENTIAL_MEDICINES } from '@/lib/services/supply-chain-service';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
-import Select from '@/components/Select';
 import { downloadCsv, safeFilenamePart } from '@/lib/export-file';
 
 /* ── Charts ────────────────────────────────────────────────────────
@@ -46,7 +45,7 @@ const ReportChart = dynamic(
 const CHART_KINDS: { id: ReportChartKind; labelKey: string; icon: LucideIcon; partToWhole?: true }[] = [
   { id: 'column', labelKey: 'reports.chartColumn', icon: BarChart3 },
   { id: 'bar', labelKey: 'reports.chartBar', icon: List },
-  { id: 'lollipop', labelKey: 'reports.chartLollipop', icon: Activity },
+  { id: 'line', labelKey: 'reports.chartLine', icon: Activity },
   { id: 'donut', labelKey: 'reports.chartDonut', icon: PieChart, partToWhole: true },
   { id: 'treemap', labelKey: 'reports.chartTreemap', icon: Layers, partToWhole: true },
 ];
@@ -108,6 +107,9 @@ export default function ReportsPage() {
 
   // Whether the selected report's table is shown under the graph. One flag,
   // not a per-card open/closed map: there is one report on screen now.
+  /* Open by default. The rows are computed for every report up front
+     (`reportPreviews`), so hiding them behind a click bought nothing and the
+     control that did it claimed to "generate" data that already existed. */
   const [tableOpen, setTableOpen] = useState(false);
   // Which form the graph takes. Standing columns by default; held across
   // report changes on purpose: a reader who chose a treemap wants treemaps,
@@ -598,11 +600,6 @@ export default function ReportsPage() {
 
   const chartIndex = chartableReports.findIndex(r => r.name === chartReport);
   const activeReport = chartableReports[chartIndex] ?? chartableReports[0];
-  const stepChart = (delta: number) => {
-    const next = (chartIndex + delta + chartableReports.length) % chartableReports.length;
-    setChartReport(chartableReports[next].name);
-    setTableOpen(false);
-  };
 
   /** The selected report, as bars.
    *
@@ -686,6 +683,12 @@ export default function ReportsPage() {
   const partToWholeOk = activeChart
     ? supportsPartToWhole(activeChart.valueLabel, activeChart.points)
     : false;
+  /* The panel drafts a report before it is drawn, so it has to ask whether a
+     donut would be honest for THAT report rather than the one on screen. */
+  const partToWholeOkFor = useCallback((name: string) => {
+    const chart = reportPreviews.get(name)?.chart;
+    return chart ? supportsPartToWhole(chart.valueLabel, chart.points) : false;
+  }, [reportPreviews]);
   const effectiveKind: ReportChartKind =
     (chartKind === 'donut' || chartKind === 'treemap') && !partToWholeOk ? 'column' : chartKind;
 
@@ -743,95 +746,12 @@ export default function ReportsPage() {
            while the names the reader most needed were truncated on the axis
            ("Western Bahr el…"). Nothing below is new data: it is the same
            report, given the room to say what it already knew. */}
-      <header className="rpt-bar">
-        <div className="rpt-stats-title">
-          <BarChart3 />
-          <div>
-            <i className="rpt-eyebrow">{t('nav.reports')}</i>
-            <b>{t(reportNameKey[chartReport] ?? chartReport)}</b>
-            <span>
-              {activeChart
-                ? t('reports.chartCaption', {
-                    measure: activeChart.valueLabel,
-                    category: activeChart.categoryLabel,
-                  })
-                : t(reportDescKey[chartReport] ?? '')}
-              {activeChart?.truncated && ` ${t('reports.chartTopOnly')}`}
-            </span>
-          </div>
-          {activeReport && (
-            <span className={`rpt-chip rpt-chip--${activeReport.period.toLowerCase()}`}>
-              {t(periodKey[activeReport.period] ?? activeReport.period)}
-            </span>
-          )}
-        </div>
-
-        <div className="rpt-stats-nav">
-          {/* Step to the neighbouring report without leaving the plot. */}
-          <button
-            type="button"
-            className="rpt-nav-btn"
-            aria-label={t('reports.chartPrev')}
-            onClick={() => stepChart(-1)}
-          >
-            <ChevronLeft />
-          </button>
-          <span className="rpt-nav-pos">{chartIndex + 1}/{chartableReports.length}</span>
-          <button
-            type="button"
-            className="rpt-nav-btn"
-            aria-label={t('reports.chartNext')}
-            onClick={() => stepChart(1)}
-          >
-            <ChevronRight />
-          </button>
-
-          {/* The same choice the rail offers, for the widths where the rail
-              is not on screen — hidden by CSS wherever it IS, so the page
-              never carries two live copies of one control. */}
-          <Select
-            className="rpt-nav-select"
-            value={chartReport}
-            aria-label={t('reports.chartPick')}
-            onChange={e => { setChartReport(e.target.value); setTableOpen(false); }}
-          >
-            {reports.map(section => (
-              <optgroup key={section.category} label={t(categoryKey[section.category] ?? section.category)}>
-                {section.items.map(item => (
-                  <option key={item.name} value={item.name}>
-                    {t(reportNameKey[item.name] ?? item.name)}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </Select>
-
-          <button
-            type="button"
-            className={`rpt-nav-generate ${tableOpen ? 'is-on' : ''}`.trim()}
-            aria-expanded={tableOpen}
-            disabled={dataLoading}
-            onClick={() => setTableOpen(open => !open)}
-          >
-            {tableOpen
-              ? <><ChevronUp /> {t('action.close')}</>
-              : <><FileText /> {t('reports.generate')}</>}
-          </button>
-
-          <button
-            type="button"
-            className="rpt-nav-csv"
-            disabled={dataLoading}
-            data-track="reports.export_csv"
-            onClick={() => {
-              const { rows, title } = generateReportData(chartReport);
-              if (rows.length) downloadCsv(rows, safeFilenamePart(title));
-            }}
-          >
-            <Download /> {t('reports.downloadCsv')}
-          </button>
-        </div>
-      </header>
+      {/* The command bar that used to sit here is gone (2026-08-25). Report
+          picker, the prev/next stepper, the data-table toggle and Export CSV
+          were four controls in a strip above a chart they described; they are
+          the control panel's job now, beside the rest of the view being
+          assembled. The report it names is on the plot card instead, so the
+          visual still says what it is without a bar to say it. */}
 
       {/* Headline figures for the selected report — a reporting page should
           lead with its numbers, not make the reader measure bars for them.
@@ -901,12 +821,16 @@ export default function ReportsPage() {
              the same chart sixteen times before you had chosen anything.
              This is a picker: the five sections as headings, each report as
              one line with its cadence and how many rows it will generate. */}
-        <ReportRail
+        <ReportControlPanel
           filter={reportFilter}
           onFilterChange={setReportFilter}
-          selected={chartReport}
-          onSelect={name => { setChartReport(name); setTableOpen(false); }}
-          rowCountFor={name => reportPreviews.get(name)?.rowCount ?? 0}
+          applied={{ report: chartReport, kind: chartKind }}
+          onApply={(view: ReportView) => {
+            setChartReport(view.report);
+            setChartKind(view.kind);
+          }}
+          kinds={CHART_KINDS}
+          partToWholeOkFor={partToWholeOkFor}
           loading={dataLoading}
           total={chartableReports.length}
         />
@@ -914,33 +838,43 @@ export default function ReportsPage() {
         {/* ── The plot, and the table it summarises ─────────────────────── */}
         <section className="rpt-main">
           <div className="rpt-plot-card">
-            {/* No caption here: the bar above already names the measure and
-                the category, and a chart card that repeats its own page
-                header twice is two lines saying one thing. */}
+            {/* The chart-form buttons moved into the control panel (2026-08-25).
+                What stays is the caption — it is the only thing naming what the
+                plot shows, and an unlabelled chart is not a report. */}
             <div className="rpt-plot-head">
-              {/* The form control sits on the thing it forms. Only the honest
-                  shapes for this data are offered — see the note at the top of
-                  _ReportCharts.tsx for why line and area are not among them. */}
-              <div className="rpt-kinds" role="radiogroup" aria-label={t('reports.chartForm')}>
-                {CHART_KINDS.map(kind => {
-                  const blocked = kind.partToWhole && !partToWholeOk;
-                  return (
-                    <button
-                      key={kind.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={effectiveKind === kind.id}
-                      className={effectiveKind === kind.id ? 'is-on' : ''}
-                      disabled={blocked}
-                      title={blocked ? t('reports.chartFormUnavailable') : t(kind.labelKey)}
-                      aria-label={t(kind.labelKey)}
-                      onClick={() => setChartKind(kind.id)}
-                    >
-                      <kind.icon />
-                    </button>
-                  );
-                })}
+              <div className="rpt-plot-caption">
+                {/* No cadence chip here. It coloured a word the About list
+                    already states in full, and sat between the report's name
+                    and the caption describing it — three labels for one plot. */}
+                <b>{t(reportNameKey[chartReport] ?? chartReport)}</b>
+                {activeChart && (
+                  <i>
+                    {t('reports.chartCaption', {
+                      measure: activeChart.valueLabel,
+                      category: activeChart.categoryLabel,
+                    })}
+                    {activeChart.truncated ? ` ${t('reports.chartTopOnly')}` : ''}
+                  </i>
+                )}
               </div>
+
+              {/* Generate sits on the chart, because the table it opens is the
+                  same report one level down — the rows behind the shape above.
+                  It is a disclosure, not a computation: every report's rows are
+                  already reduced in `reportPreviews`, which is why this is
+                  instant and why the label promises less than it sounds. */}
+              <button
+                type="button"
+                className={`rpt-nav-generate ${tableOpen ? 'is-on' : ''}`.trim()}
+                aria-expanded={tableOpen}
+                disabled={dataLoading}
+                onClick={() => setTableOpen(open => !open)}
+                data-action="report-generate"
+              >
+                {tableOpen
+                  ? <><ChevronUp /> {t('action.close')}</>
+                  : <><FileText /> {t('reports.generate')}</>}
+              </button>
             </div>
             <div className="rpt-stats-body">
               {dataLoading ? (
@@ -967,6 +901,21 @@ export default function ReportsPage() {
               <div className="rpt-table-cap">
                 <span>{t(reportNameKey[chartReport] ?? chartReport)}</span>
                 <b>{t('reports.rowsAvailable', { count: reportPreviews.get(chartReport)?.rowCount ?? 0 })}</b>
+                {/* Export belongs to the table, not to the view being built:
+                    it hands over these rows, so it appears when they do. */}
+                <button
+                  type="button"
+                  className="rpt-nav-csv"
+                  disabled={dataLoading}
+                  data-track="reports.export_csv"
+                  data-action="report-download-csv"
+                  onClick={() => {
+                    const { rows, title } = generateReportData(chartReport);
+                    if (rows.length) downloadCsv(rows, safeFilenamePart(title));
+                  }}
+                >
+                  <Download /> {t('reports.downloadCsv')}
+                </button>
               </div>
               {renderTable(chartReport)}
             </div>

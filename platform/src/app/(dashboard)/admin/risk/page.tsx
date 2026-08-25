@@ -37,7 +37,6 @@ import {
   type ResolveRiskInput,
 } from '@/lib/services/risk-resolution-service';
 import { SadbPage, SadbCard, SadbSearch, SadbChip, SadbTabs, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
-import { stopsClickPropagation } from '@/lib/a11y';
 
 const SOURCE_HREF: Record<RiskSource, string> = {
   Audit: '/admin/audit',
@@ -80,6 +79,9 @@ export default function RiskCenterPage() {
   const [resolving, setResolving] = useState<RiskRow[] | null>(null);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  /** The resolution queued for the reopen confirmation. */
+  const [reopening, setReopening] = useState<RiskResolutionDoc | null>(null);
+  const [reopenBusy, setReopenBusy] = useState(false);
 
   const reloadResolutions = useCallback(async () => {
     setResolutions(await getRiskResolutions());
@@ -219,16 +221,29 @@ export default function RiskCenterPage() {
     }
   };
 
-  const handleReopen = async (doc: RiskResolutionDoc) => {
+  const confirmReopen = async () => {
+    if (!reopening) return;
+    setReopenBusy(true);
     try {
-      await reopenRisk(doc.riskId, actor);
+      await reopenRisk(reopening.riskId, actor);
       await reloadResolutions();
+      setReopening(null);
       showToast('Risk reopened.', 'success');
     } catch (err) {
       console.error('Failed to reopen risk:', err);
       showToast('Could not reopen this risk.', 'error');
+    } finally {
+      setReopenBusy(false);
     }
   };
+
+  /* Rows and their explicit Resolve controls both open the same confirmation
+     surface. The table action makes the workflow discoverable without making
+     a single click destructive: the signal only clears after confirmation. */
+  const openResolveDialog = (rows: RiskRow[]) => { setNote(''); setResolving(rows); };
+
+  /** The one row a popup opened from the table is about; null for the bulk. */
+  const single = resolving && resolving.length === 1 ? resolving[0] : null;
 
   return (
     <SadbPage>
@@ -254,89 +269,126 @@ export default function RiskCenterPage() {
           </>
         }
       >
-        <div className="sadb-search-row">
+        <div className="sadb-search-row sadb-search-row--table-aligned">
           <SadbSearch value={search} onChange={setSearch} placeholder="Search signal or detail…" ariaLabel="Search risk signals" />
           {/* Deliberately "all shown", not "all": whatever the filters have
               narrowed to is what an operator has actually just looked at. */}
           {tab === 'open' && filteredOpen.length > 0 && (
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => { setNote(''); setResolving(filteredOpen); }}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => openResolveDialog(filteredOpen)}>
               Resolve all shown ({filteredOpen.length})
             </button>
           )}
         </div>
 
-        {tab === 'open' ? (
-          <SaTable
-            columns={[
-              { label: 'Severity', w: 0.8 }, { label: 'Signal', w: 1.6 }, { label: 'Source', w: 0.9 },
-              { label: 'Detail', w: 2.2 }, { label: 'Age', w: 0.7 }, { label: 'Status', w: 0.9 },
-              { label: '', w: 0.5 },
-            ]}
-            empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
-          >
-            {filteredOpen.map(r => (
-              <tr key={r.id} onClick={() => router.push(rowHref(r))} style={{ cursor: 'pointer' }}>
-                <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity.toUpperCase()}</SadbChip></td>
-                <td><strong>{r.signal}</strong></td>
-                <td>{r.source}</td>
-                <td>{r.detail}</td>
-                <td>{formatWhen(r.when)}</td>
-                <td>{r.status}</td>
-                <td {...stopsClickPropagation} style={{ textAlign: 'end' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => { setNote(''); setResolving([r]); }}
-                  >
-                    Resolve
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </SaTable>
-        ) : (
-          <SaTable
-            columns={[
-              { label: 'Severity', w: 0.8 }, { label: 'Signal', w: 1.6 }, { label: 'Source', w: 0.9 },
-              { label: 'What was done', w: 2.2 }, { label: 'Resolved', w: 0.9 }, { label: 'By', w: 0.9 },
-              { label: '', w: 0.5 },
-            ]}
-            empty={loading ? 'Loading…' : 'Nothing has been resolved yet.'}
-          >
-            {filteredResolved.map(d => (
-              <tr key={d._id}>
-                <td><SadbChip tone={SEVERITY_CHIP[d.severity]}>{d.severity.toUpperCase()}</SadbChip></td>
-                <td><strong>{d.signal}</strong></td>
-                <td>{d.source}</td>
-                <td>{d.note || <span style={{ color: 'var(--text-muted)' }}>Acknowledged, no note</span>}</td>
-                <td>{formatWhen(d.resolvedAt)}</td>
-                <td>{d.resolvedByName || '—'}</td>
-                <td style={{ textAlign: 'end' }}>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleReopen(d)}>
-                    Reopen
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </SaTable>
-        )}
+        <div className="sadb-edge-aligned-table">
+          {tab === 'open' ? (
+            <SaTable
+              columns={[
+                'Signal', 'Severity', 'Source', 'Detail', 'Age', 'Status', 'Resolve',
+              ]}
+              empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
+            >
+              {filteredOpen.map(r => (
+                <tr
+                  key={r.id}
+                  tabIndex={0}
+                  aria-label={`Open risk signal: ${r.signal}`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => openResolveDialog([r])}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openResolveDialog([r]); } }}
+                >
+                  <td><strong>{r.signal}</strong></td>
+                  <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity.toUpperCase()}</SadbChip></td>
+                  <td>{r.source}</td>
+                  <td>{r.detail}</td>
+                  <td>{formatWhen(r.when)}</td>
+                  <td>{r.status}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm sadb-table-action"
+                      onClick={event => {
+                        event.stopPropagation();
+                        openResolveDialog([r]);
+                      }}
+                      onKeyDown={event => event.stopPropagation()}
+                      aria-label={`Resolve risk signal: ${r.signal}`}
+                    >
+                      Resolve
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </SaTable>
+          ) : (
+            <SaTable
+              columns={[
+                'Signal', 'Severity', 'Source', 'What was done', 'Resolved', 'By',
+              ]}
+              empty={loading ? 'Loading…' : 'Nothing has been resolved yet.'}
+            >
+              {filteredResolved.map(d => (
+                <tr
+                  key={d._id}
+                  tabIndex={0}
+                  aria-label={`Open resolved risk signal: ${d.signal}`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setReopening(d)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setReopening(d); } }}
+                >
+                  <td><strong>{d.signal}</strong></td>
+                  <td><SadbChip tone={SEVERITY_CHIP[d.severity]}>{d.severity.toUpperCase()}</SadbChip></td>
+                  <td>{d.source}</td>
+                  <td>{d.note || <span style={{ color: 'var(--text-muted)' }}>Acknowledged, no note</span>}</td>
+                  <td>{formatWhen(d.resolvedAt)}</td>
+                  <td>{d.resolvedByName || '—'}</td>
+                </tr>
+              ))}
+            </SaTable>
+          )}
+        </div>
       </SadbCard>
 
+      {/* The queue's only action surface. A row opens this; the signal is read
+          here in full and the resolution is confirmed here, so nothing clears
+          on a single click into a dense table. */}
       {resolving && (
         <Modal onClose={() => setResolving(null)} width={480} labelledBy="resolve-risk-title">
           <div className="sadb-modal">
             <div className="sadb-modal-copy">
               <h2 id="resolve-risk-title" className="sadb-modal-title">
-                {resolving.length === 1 ? 'Resolve this risk' : `Resolve ${resolving.length} risks`}
+                {single ? single.signal : `Resolve ${resolving.length} risks`}
               </h2>
               <p className="sadb-modal-sub">
-                {resolving.length === 1
-                  ? resolving[0].signal
+                {single
+                  ? 'Resolve this signal?'
                   : `${resolving.length} signals currently shown in the queue.`}
                 {' '}Resolving records that it has been dealt with — it does not change the
                 underlying data. If the condition happens again it comes back on its own.
               </p>
             </div>
+
+            {single && (
+              <>
+                <p style={{
+                  fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap',
+                  overflowWrap: 'anywhere', margin: '0 0 14px', padding: '10px 12px',
+                  background: 'var(--overlay-subtle)', borderRadius: 10,
+                }}>
+                  {single.detail}
+                </p>
+                <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 14 }}>
+                  <div className="sadb-kv">
+                    <span>Severity</span>
+                    <SadbChip tone={SEVERITY_CHIP[single.severity]}>{single.severity.toUpperCase()}</SadbChip>
+                  </div>
+                  <div className="sadb-kv"><span>Source</span><span className="sadb-kv-value">{single.source}</span></div>
+                  <div className="sadb-kv"><span>Status</span><span className="sadb-kv-value">{single.status}</span></div>
+                  <div className="sadb-kv"><span>Age</span><span className="sadb-kv-value">{formatWhen(single.when)}</span></div>
+                </div>
+              </>
+            )}
+
             <label htmlFor="resolve-risk-note" style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
               What was done (optional)
             </label>
@@ -348,12 +400,66 @@ export default function RiskCenterPage() {
               onChange={e => setNote(e.target.value)}
               placeholder="e.g. Reset the account and confirmed the login succeeded"
             />
+            {/* The row used to be a link to the subsystem it came from. That
+                navigation lives here now, so opening the popup costs nothing. */}
+            <div className="sadb-modal-actions" style={{ justifyContent: single ? 'space-between' : 'flex-end' }}>
+              {single && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => router.push(rowHref(single))}
+                  disabled={saving}
+                >
+                  Open in {single.source}
+                </button>
+              )}
+              <span style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setResolving(null)} disabled={saving}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-primary" onClick={confirmResolve} disabled={saving}>
+                  {saving ? 'Saving…' : single ? 'Resolve' : `Resolve ${resolving.length}`}
+                </button>
+              </span>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Reopening puts a signal back in front of every operator, so it is
+          asked for the same way resolving is rather than firing from a row. */}
+      {reopening && (
+        <Modal onClose={() => setReopening(null)} width={480} labelledBy="reopen-risk-title">
+          <div className="sadb-modal">
+            <div className="sadb-modal-copy">
+              <h2 id="reopen-risk-title" className="sadb-modal-title">{reopening.signal}</h2>
+              <p className="sadb-modal-sub">
+                Reopen this signal? It goes back into the Open queue and counts against the
+                readiness score again. The record of what was done is kept.
+              </p>
+            </div>
+            <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 14 }}>
+              <div className="sadb-kv">
+                <span>Severity</span>
+                <SadbChip tone={SEVERITY_CHIP[reopening.severity]}>{reopening.severity.toUpperCase()}</SadbChip>
+              </div>
+              <div className="sadb-kv"><span>Source</span><span className="sadb-kv-value">{reopening.source}</span></div>
+              <div className="sadb-kv"><span>Resolved</span><span className="sadb-kv-value">{formatWhen(reopening.resolvedAt)}</span></div>
+              <div className="sadb-kv"><span>By</span><span className="sadb-kv-value">{reopening.resolvedByName || '—'}</span></div>
+            </div>
+            <p style={{
+              fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap',
+              overflowWrap: 'anywhere', margin: '0 0 4px', padding: '10px 12px',
+              background: 'var(--overlay-subtle)', borderRadius: 10,
+            }}>
+              {reopening.note || 'Acknowledged, no note.'}
+            </p>
             <div className="sadb-modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setResolving(null)} disabled={saving}>
+              <button type="button" className="btn btn-secondary" onClick={() => setReopening(null)} disabled={reopenBusy}>
                 Cancel
               </button>
-              <button type="button" className="btn btn-primary" onClick={confirmResolve} disabled={saving}>
-                {saving ? 'Saving…' : resolving.length === 1 ? 'Resolve' : `Resolve ${resolving.length}`}
+              <button type="button" className="btn btn-primary" onClick={confirmReopen} disabled={reopenBusy}>
+                {reopenBusy ? 'Reopening…' : 'Reopen'}
               </button>
             </div>
           </div>

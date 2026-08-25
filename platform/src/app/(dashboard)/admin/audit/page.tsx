@@ -10,9 +10,10 @@
  * structured field (IP, route, resource, patient, query) plus the next
  * steps an investigation actually takes from a log line.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
+import { useUsers } from '@/lib/hooks/useUsers';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
@@ -48,6 +49,7 @@ export default function AuditLogsPage() {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { organizations } = useOrganizations();
+  const { users } = useUsers();
   const [logs, setLogs] = useState<AuditLogDoc[]>([]);
   const [loading, setLoading] = useState(true);
   // The row the reviewer opened — the dialog shows the full entry.
@@ -106,6 +108,37 @@ export default function AuditLogsPage() {
     return m;
   }, [organizations]);
 
+  const userByIdentity = useMemo(() => {
+    const index = new Map<string, (typeof users)[number]>();
+    for (const user of users) {
+      index.set(`id:${user._id}`, user);
+      index.set(`name:${user.username}`, user);
+    }
+    return index;
+  }, [users]);
+
+  /** Older and login audit entries did not persist `orgId`. Recover the
+   * actor's tenant from the staff directory so the identity cell and Org
+   * column do not silently lose scope. */
+  const userForLog = useCallback((log: AuditLogDoc) => (
+    (log.userId ? userByIdentity.get(`id:${log.userId}`) : undefined)
+    ?? (log.username ? userByIdentity.get(`name:${log.username}`) : undefined)
+  ), [userByIdentity]);
+
+  const orgIdForLog = useCallback((log: AuditLogDoc) => (
+    log.orgId || userForLog(log)?.orgId
+  ), [userForLog]);
+
+  const orgNameForLog = useCallback((log: AuditLogDoc) => {
+    const user = userForLog(log);
+    const orgId = log.orgId || user?.orgId;
+    return (orgId ? orgNameById.get(orgId) : undefined)
+      || user?.orgName
+      || (user?.role === 'super_admin' || log.username === 'superadmin'
+        ? 'Platform administration'
+        : 'Organization unavailable');
+  }, [orgNameById, userForLog]);
+
   const withRisk = useMemo(
     () => logs.map(log => ({ log, risk: classifyAuditRisk(log.action, log.success) })),
     [logs]
@@ -133,19 +166,19 @@ export default function AuditLogsPage() {
       if (successFilter === 'success' && !log.success) return false;
       if (successFilter === 'failure' && log.success) return false;
       if (riskFilter !== 'all' && risk !== riskFilter) return false;
-      if (orgFilter !== 'all' && log.orgId !== orgFilter) return false;
+      if (orgFilter !== 'all' && orgIdForLog(log) !== orgFilter) return false;
       if (userScope) {
         const byId = !!userScope.id && log.userId === userScope.id;
         const byName = !!userScope.name && log.username === userScope.name;
         if (!byId && !byName) return false;
       }
       if (q) {
-        const haystack = `${log.action} ${log.username || ''} ${log.details || ''}`.toLowerCase();
+        const haystack = `${log.action} ${log.username || ''} ${orgNameForLog(log)} ${log.details || ''}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
     });
-  }, [inRange, successFilter, riskFilter, orgFilter, search, userScope]);
+  }, [inRange, successFilter, riskFilter, orgFilter, search, userScope, orgIdForLog, orgNameForLog]);
 
   const exportCsv = () => {
     const header = ['timestamp', 'user', 'org', 'action', 'details', 'success', 'risk'];
@@ -154,7 +187,7 @@ export default function AuditLogsPage() {
       lines.push([
         csvCell(log.createdAt || ''),
         csvCell(log.username || log.userId || ''),
-        csvCell(orgNameById.get(log.orgId || '') || log.orgId || ''),
+        csvCell(orgNameForLog(log)),
         csvCell(log.action),
         csvCell(log.details || ''),
         csvCell(String(log.success)),
@@ -192,7 +225,7 @@ export default function AuditLogsPage() {
           </div>
         }
       >
-        <div className="sadb-search-row">
+        <div className="sadb-search-row sadb-search-row--table-aligned">
           <SadbSearch
             value={search} onChange={setSearch}
             placeholder="Search action, user, or details…" ariaLabel="Search audit log"
@@ -259,12 +292,10 @@ export default function AuditLogsPage() {
         </div>
         {/* No pager: every matching event lives in one scroll area, and the
             head's "Showing X of Y" meta states the count. */}
-        <div style={{ maxHeight: 620, overflowY: 'auto' }}>
+        <div className="sadb-edge-aligned-table" style={{ maxHeight: 620, overflowY: 'auto' }}>
           <SaTable
             columns={[
-              { label: 'When', w: 0.8 }, { label: 'User', w: 1.1 }, { label: 'Org', w: 1 },
-              { label: 'Action', w: 1.5 }, { label: 'Detail', w: 2.4 },
-              { label: 'Result', w: 0.9 }, { label: 'Risk', w: 0.8 },
+              'User', 'When', 'Org', 'Action', 'Detail', 'Result', 'Risk', 'Resolve',
             ]}
             empty={loading ? 'Loading audit logs…' : 'No audit events match these filters.'}
           >
@@ -277,13 +308,36 @@ export default function AuditLogsPage() {
                 onClick={() => setSelected({ log, risk })}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected({ log, risk }); } }}
               >
+                <td>
+                  <span className="min-w-0">
+                    <span className="sadb-tenant-name truncate">{log.username || log.userId || 'System'}</span>
+                    <span className="sadb-tenant-sub truncate">{orgNameForLog(log)}</span>
+                  </span>
+                </td>
                 <td>{formatWhen(log.createdAt)}</td>
-                <td><strong>{log.username || log.userId || 'System'}</strong></td>
-                <td>{orgNameById.get(log.orgId || '') || (log.orgId ? log.orgId : '—')}</td>
+                <td>{orgNameForLog(log)}</td>
                 <td>{log.action}</td>
                 <td>{log.details || '—'}</td>
                 <td><SadbChip tone={log.success ? 'green' : 'red'}>{log.success ? 'Success' : 'Failure'}</SadbChip></td>
                 <td><SadbChip tone={SEVERITY_CHIP[risk]}>{risk.toUpperCase()}</SadbChip></td>
+                <td>
+                  {log.success ? (
+                    <span className="sadb-table-action-state">Not needed</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm sadb-table-action"
+                      onClick={event => {
+                        event.stopPropagation();
+                        setSelected({ log, risk });
+                      }}
+                      onKeyDown={event => event.stopPropagation()}
+                      aria-label={`${resolutionIndex.has(`audit-${log._id}`) ? 'Review resolved' : 'Resolve'} audit risk: ${log.action}`}
+                    >
+                      {resolutionIndex.has(`audit-${log._id}`) ? 'Resolved' : 'Resolve'}
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </SaTable>
@@ -294,7 +348,7 @@ export default function AuditLogsPage() {
         <AuditEntryDialog
           log={selected.log}
           risk={selected.risk}
-          orgName={orgNameById.get(selected.log.orgId || '')}
+          orgName={orgNameForLog(selected.log)}
           onClose={() => setSelected(null)}
           onFilterUser={() => {
             // Scope to the account, then get out of the way: the result/risk

@@ -40,7 +40,7 @@ export function FacilityTypeDonut({ data }: { data: FacilityMixEntry[] }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
-        <Pie data={data} dataKey="value" nameKey="label" innerRadius={32} outerRadius={52} paddingAngle={0} stroke="none" isAnimationActive={false}>
+        <Pie data={data} dataKey="value" nameKey="label" innerRadius={32} outerRadius={52} paddingAngle={0} stroke="none" isAnimationActive animationDuration={420} animationEasing="ease-out">
           {data.map(f => <Cell key={f.key} fill={f.color} />)}
         </Pie>
         <Tooltip {...tooltipStyle} formatter={(v: number | undefined, n) => [v ?? 0, String(n ?? '')]} />
@@ -68,7 +68,7 @@ export function WeeklyCasesChart({ data, diseases, colorMap }: WeeklyCasesChartP
         <Tooltip {...tooltipStyle} cursor={{ fill: 'var(--overlay-subtle)' }} />
         <Legend {...legendProps} />
         {diseases.map(d => (
-          <Bar key={d} dataKey={d} name={d} fill={colorMap.get(d)} radius={[2, 2, 0, 0]} maxBarSize={9} isAnimationActive={false} />
+          <Bar key={d} dataKey={d} name={d} fill={colorMap.get(d)} radius={[2, 2, 0, 0]} maxBarSize={9} isAnimationActive animationDuration={420} animationEasing="ease-out" />
         ))}
       </BarChart>
     </ResponsiveContainer>

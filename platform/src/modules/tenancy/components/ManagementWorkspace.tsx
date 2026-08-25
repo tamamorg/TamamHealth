@@ -26,16 +26,26 @@ import type { HospitalDoc, OrganizationDoc } from '@/lib/db-types';
 import { managementViewsForRole, TENANCY_WORKSPACE_ROLES, type ManagementView, userWorksAtFacility } from '../index';
 import { useAssignableFacilities } from '../hooks/useAssignableFacilities';
 
-const VIEWS: readonly ManagementView[] = ['organizations', 'facilities', 'people'];
+/* People first. The console is opened far more often to find a person than
+   to audit the tenant tree, and landing on Organizations meant two clicks
+   before the common task every time. Organizations and facilities are the
+   scope you narrow BY — they stay, one tab over. */
+const VIEWS: readonly ManagementView[] = ['people', 'facilities', 'organizations'];
 
 /** One column template for all three lists, so switching section does not
  *  re-flow the row anatomy under the reader. */
-const MGMT_GRID = 'minmax(220px, 1.7fr) minmax(130px, .9fr) minmax(96px, .55fr)';
+/* Even thirds. The columns were weighted 1.7 / .9 / .55, which pushed Scope
+   and Status into the left half and left a wide gutter after them; nothing in
+   these lists needs that much more room for its name than for its scope. */
+const MGMT_GRID = 'minmax(180px, 1fr) minmax(140px, 1fr) minmax(120px, 1fr)';
 
 function initialView(): ManagementView {
-  if (typeof window === 'undefined') return 'organizations';
+  if (typeof window === 'undefined') return 'people';
   const value = new URLSearchParams(window.location.search).get('view');
-  return VIEWS.includes(value as ManagementView) ? value as ManagementView : 'organizations';
+  // Falls back to the first view, not a hard-coded 'organizations' — the
+  // landing tab is VIEWS[0], and pinning the name here is what kept the
+  // console opening on Organizations after the order changed.
+  return VIEWS.includes(value as ManagementView) ? value as ManagementView : VIEWS[0];
 }
 
 /**
