@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Corners from "@/components/Corners";
 import { emphasise } from "@/components/emphasise";
 import { ADVISORS as ADVISORS_EN, DERBY_PHOTOS as DERBY_PHOTOS_EN, TEAM as TEAM_EN } from "@/lib/site-data";
@@ -44,8 +45,14 @@ export default async function AboutPage() {
                 </span>
               </div>
               <div className="tm-figure tm-minh280" style={{ position: "relative", minHeight: 280, borderInlineStart: "1px solid rgba(255,255,255,0.28)" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}
-                <img src="/assets/derby/derby-05.jpg" alt={t("Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check at the Derby Entrepreneurship Center at Tufts")} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                <Image
+                  src="/assets/derby/derby-05.jpg"
+                  alt={t("Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check at the Derby Entrepreneurship Center at Tufts")}
+                  fill
+                  sizes="(max-width: 760px) 100vw, 25vw"
+                  preload
+                  style={{ objectFit: "cover" }}
+                />
               </div>
             </div>
           </div>
@@ -64,10 +71,15 @@ export default async function AboutPage() {
               </span>
             </div>
             <div className="tm-gallery" tabIndex={0} role="group" aria-label={t("Photos from the Tufts New Ventures Competition, April 10, 2026")}>
-              {DERBY_PHOTOS.map((p, i) => (
+              {DERBY_PHOTOS.map((p) => (
                 <figure key={p.src}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- gallery frame, sized by CSS */}
-                  <img src={p.src} alt={p.alt} width={p.w} height={p.h} loading={i < 2 ? undefined : "lazy"} />
+                  <Image
+                    src={p.src}
+                    alt={p.alt}
+                    width={p.w}
+                    height={p.h}
+                    sizes="(max-width: 760px) 82vw, 520px"
+                  />
                   <figcaption>{p.caption}</figcaption>
                 </figure>
               ))}
@@ -94,8 +106,13 @@ export default async function AboutPage() {
                 <Corners />
                 <div className="tm-lead-plate">
                   {a.image ? (
-                    /* eslint-disable-next-line @next/next/no-img-element -- portrait plate, sized by CSS */
-                    <img src={a.image} alt={a.name} style={{ objectPosition: a.focus ?? "center top" }} />
+                    <Image
+                      src={a.image}
+                      alt={a.name}
+                      fill
+                      sizes="(max-width: 520px) 96px, (max-width: 760px) 112px, (max-width: 1100px) 220px, 25vw"
+                      style={{ objectFit: "cover", objectPosition: a.focus ?? "center top" }}
+                    />
                   ) : (
                     /* No portrait sent yet — a monogram holds the plate rather
                        than a broken image or a stock silhouette. */
@@ -129,8 +146,13 @@ export default async function AboutPage() {
               <div key={t.name} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div className="blueprint" style={{ position: "relative", width: "100%", paddingTop: "100%", overflow: "hidden", borderBottom: `4px solid ${t.accent}` }}>
                   <Corners />
-                  {/* eslint-disable-next-line @next/next/no-img-element -- square portrait, sized by CSS */}
-                  <img src={t.image} alt={t.name} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: t.focus ?? "center top" }} />
+                  <Image
+                    src={t.image}
+                    alt={t.name}
+                    fill
+                    sizes="(max-width: 479px) 50vw, (max-width: 1100px) 33vw, 17vw"
+                    style={{ objectFit: "cover", objectPosition: t.focus ?? "center top" }}
+                  />
                 </div>
                 <div style={{ marginTop: "auto" }}>
                   <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 19 }}>{t.name}</div>

@@ -9,6 +9,7 @@
    already been translated by whichever parent supplied it. */
 
 import Link from "next/link";
+import Image from "next/image";
 import Corners from "@/components/Corners";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import type { NewsItem } from "@/lib/site-data";
@@ -22,8 +23,13 @@ export default function NewsCard({ item }: { item: NewsItem }) {
     <Link href={`/news/${item.slug}`} className="blueprint tm-newscard" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "stretch", background: "#FFFFFF", textDecoration: "none" }}>
       <Corners />
       <div className="tm-newscard-fig" style={{ position: "relative", width: "100%", aspectRatio: "4 / 3", overflow: "hidden" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- card figure, sized by CSS */}
-        <img src={item.image} alt={item.imageAlt} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        <Image
+          src={item.image}
+          alt={item.imageAlt}
+          fill
+          sizes="(max-width: 639px) 116px, (max-width: 1100px) 50vw, 25vw"
+          style={{ objectFit: "cover" }}
+        />
       </div>
       <div className="tm-newscard-body" style={{ display: "flex", flexDirection: "column", gap: 10, padding: "20px 22px 24px", flex: 1 }}>
         <time dateTime={item.dateISO} className="fs12" style={{ letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Corners from "@/components/Corners";
@@ -55,8 +56,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </div>
             <div className="blueprint tm-figure" style={{ position: "relative", height: 320, borderColor: "rgba(255,255,255,0.28)" }}>
               <Corners light />
-              {/* eslint-disable-next-line @next/next/no-img-element -- hero figure, sized by CSS */}
-              <img src={p.image} alt={p.imageAlt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <Image src={p.image} alt={p.imageAlt} fill sizes="(max-width: 760px) 100vw, 44vw" preload style={{ objectFit: "cover" }} />
             </div>
           </div>
         </div>

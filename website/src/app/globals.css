@@ -81,9 +81,9 @@
   --color-neutral-800: #3c5574;
   --color-neutral-900: var(--tm-navy);
 
-  --font-heading: "Barlow Condensed", system-ui, sans-serif;
+  --font-heading: var(--font-heading-face), "Barlow Condensed", system-ui, sans-serif;
   --font-heading-weight: 600;
-  --font-body: "Barlow", system-ui, sans-serif;
+  --font-body: var(--font-body-face), "Barlow", system-ui, sans-serif;
   --radius-md: 4px;
   --shadow-sm: 0 1px 2px rgba(17, 48, 85, 0.14);
   --shadow-md: 0 3px 10px rgba(17, 48, 85, 0.16);
@@ -100,6 +100,8 @@ html {
   scroll-behavior: smooth;
   overflow-x: hidden;
   overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -139,7 +141,8 @@ p { margin: 0 0 10px; }
 a { color: var(--color-accent-700); text-underline-offset: 3px; }
 a:hover { color: var(--color-accent-800); }
 
-img { display: block; max-width: 100%; }
+img, video, canvas, svg { display: block; max-inline-size: 100%; }
+img, video, canvas { block-size: auto; }
 figure { margin: 0; }
 
 .text-muted { color: rgba(17, 48, 85, 0.55); }
@@ -780,6 +783,55 @@ header > div { min-width: 0; }
 /* ── Mobile density: shorter figures on phones ── */
 @media (max-width: 639px) {
   main .tm-minh280 { height: 196px !important; min-height: 196px !important; }
+}
+
+/* ── Mobile resilience: notches, browser chrome, touch, and form focus ── */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .tm-chal-rail,
+  .tm-flow-rail,
+  .tm-gallery,
+  .tm-strip-rail {
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tm-navrow {
+    padding-inline-start: calc(18px + env(safe-area-inset-left, 0px)) !important;
+    padding-inline-end: calc(18px + env(safe-area-inset-right, 0px)) !important;
+  }
+
+  main section,
+  footer > div {
+    padding-inline-start: calc(18px + env(safe-area-inset-left, 0px)) !important;
+    padding-inline-end: calc(18px + env(safe-area-inset-right, 0px)) !important;
+  }
+
+  footer {
+    padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+@media (any-pointer: coarse) {
+  button,
+  [role="button"],
+  .btn,
+  summary,
+  a.tm-prodchip {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .tm-chalstep,
+  .tm-chalstep-lit,
+  .btn-icon {
+    min-width: 44px;
+  }
 }
 
 /* ── 5. Print: one column on the sheet, no interactive chrome ── */

@@ -14,9 +14,11 @@
  */
 
 import {
-  buildRiskRows, readinessFromRisks, READINESS_SOURCE_CAP, SEVERITY_WEIGHT, type RiskInputs,
+  buildRiskRows, readinessFromRisks, riskGuidance, READINESS_SOURCE_CAP, RISK_GUIDANCE,
+  SEVERITY_WEIGHT, type RiskInputs, type RiskKind,
 } from '@/components/admin/risk-signals';
 import { indexResolutions, isRiskResolved } from '@/lib/services/risk-resolution-service';
+import en from '@/lib/i18n/locales/en';
 import type { AuditLogDoc, OrganizationDoc, RiskResolutionDoc } from '@/lib/db-types';
 
 const NOW = Date.now();
@@ -209,5 +211,79 @@ describe('readinessFromRisks', () => {
       backupAgeHours: null,
     });
     expect(readinessFromRisks(rows)).toBe(60);
+  });
+});
+
+/**
+ * Every row must be able to explain itself.
+ *
+ * The queue's rows are conditions with a severity — "No backup on record",
+ * HIGH — and the only control on them is Resolve, which tells every other
+ * operator the risk was handled. A row nobody can read is therefore not a
+ * missing tooltip; it is a button pressed to make a red thing stop. These
+ * assert the explanation exists for every rule, including the next one
+ * somebody adds, and that every key it names is real copy rather than a key
+ * echoed back at the reader.
+ */
+describe('risk guidance', () => {
+  const ALL_KINDS: RiskKind[] = [
+    'audit', 'sync', 'conflict', 'org-status', 'org-trial',
+    'backup-missing', 'backup-overdue', 'maintenance',
+  ];
+
+  test('the guidance map covers exactly the kinds that exist', () => {
+    expect(Object.keys(RISK_GUIDANCE).sort()).toEqual([...ALL_KINDS].sort());
+  });
+
+  test('every kind names a meaning, at least one cause, and a way to clear it', () => {
+    for (const kind of ALL_KINDS) {
+      const guidance = RISK_GUIDANCE[kind];
+      expect(guidance.meansKey).toBe(`riskGuide.${kind}.means`);
+      expect(guidance.clearsKey).toBe(`riskGuide.${kind}.clears`);
+      expect(guidance.causeKeys.length).toBeGreaterThan(0);
+      // Three is the dialog's limit; a fourth cause means the explanation has
+      // become a runbook and belongs in the docs it should link to instead.
+      expect(guidance.causeKeys.length).toBeLessThanOrEqual(3);
+    }
+  });
+
+  test('every key it names exists in the locale', () => {
+    // A missing key renders as the key itself — "riskGuide.sync.means" in the
+    // middle of a sentence — which is how a translation gap reaches an
+    // operator looking at a HIGH row.
+    for (const kind of ALL_KINDS) {
+      const { meansKey, causeKeys, clearsKey } = RISK_GUIDANCE[kind];
+      const copy = (key: string) => en[key as keyof typeof en] as string | undefined;
+      for (const key of [meansKey, ...causeKeys, clearsKey]) {
+        expect(typeof copy(key)).toBe('string');
+        // A sentence, not a placeholder. Causes are allowed to be terse
+        // ("Billing lapsed."); the two prose fields are not.
+        expect(copy(key)!.trim().length).toBeGreaterThan(10);
+      }
+      expect(copy(meansKey)!.length).toBeGreaterThan(40);
+      expect(copy(clearsKey)!.length).toBeGreaterThan(30);
+    }
+    for (const head of ['meansHead', 'causeHead', 'causesHead', 'clearsHead']) {
+      expect(typeof en[`riskGuide.${head}` as keyof typeof en]).toBe('string');
+    }
+  });
+
+  test('a built row resolves to its own explanation', () => {
+    // The two Continuity rules share a source and mean opposite things, so the
+    // lookup has to key on the rule rather than on `source`.
+    const [missing] = buildRiskRows({ ...emptyInputs(), backupRpoHours: 24, backupAgeHours: null });
+    const [overdue] = buildRiskRows({ ...emptyInputs(), backupRpoHours: 24, backupAgeHours: 30 });
+    expect(missing.kind).toBe('backup-missing');
+    expect(overdue.kind).toBe('backup-overdue');
+    expect(riskGuidance(missing)).toBe(RISK_GUIDANCE['backup-missing']);
+    expect(riskGuidance(overdue)).not.toBe(riskGuidance(missing));
+  });
+
+  test('the no-backup explanation says what it is actually asserting', () => {
+    // The row reads as "backups are failing". It is not that — it is "nothing
+    // reported one", and an operator who reads it the first way resolves it.
+    const means = en['riskGuide.backup-missing.means'];
+    expect(means).toMatch(/RECORD of a backup/);
+    expect(means).toMatch(/not evidence that backing up failed/);
   });
 });

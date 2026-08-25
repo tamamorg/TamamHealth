@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import Corners from "@/components/Corners";
 import { emphasise } from "@/components/emphasise";
@@ -44,8 +45,15 @@ export default async function PlatformPage() {
                 twice. */}
             <figure className="blueprint tm-figure" style={{ margin: 0, position: "relative", background: "#FFFFFF", padding: 8, borderColor: "rgba(255,255,255,0.28)" }}>
               <Corners light />
-              {/* eslint-disable-next-line @next/next/no-img-element -- product screenshot, natural ratio */}
-              <img src="/assets/platform-patient-chart.png" alt={t("A TamamHealth patient record: allergies and current vitals across the top, with medications, safety alerts, latest observations and next care actions below")} style={{ width: "100%", display: "block" }} />
+              <Image
+                src="/assets/platform-patient-chart.png"
+                alt={t("A TamamHealth patient record: allergies and current vitals across the top, with medications, safety alerts, latest observations and next care actions below")}
+                width={3200}
+                height={1928}
+                sizes="(max-width: 760px) 100vw, 52vw"
+                preload
+                style={{ width: "100%", height: "auto" }}
+              />
               {/* The frame says what room it is: without a line under it a
                   screenshot is decoration, and a reader who has never seen the
                   product cannot tell a chart from a queue. */}
