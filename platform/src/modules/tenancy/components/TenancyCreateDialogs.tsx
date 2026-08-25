@@ -22,7 +22,9 @@
  */
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
+import PopupHeader from '@/components/PopupHeader';
 import { useToast } from '@/components/Toast';
 import { useApp } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -47,6 +49,7 @@ export default function TenancyCreateDialogs({ kind, onDone }: {
   onDone: () => void;
 }) {
   const { t } = useTranslation();
+  const router = useRouter();
   const { currentUser } = useApp();
   const { showToast } = useToast();
   const [step, setStep] = useState<TenancyCreateKind>(kind);
@@ -80,7 +83,15 @@ export default function TenancyCreateDialogs({ kind, onDone }: {
     return (
       <Modal onClose={onDone} width={920} labelledBy="tenancy-create-organization">
         <div className="sadb-modal mgmt-form-modal">
-          <h2 id="tenancy-create-organization" className="sadb-modal-title">{t('management.addOrganization')}</h2>
+          <PopupHeader
+            titleId="tenancy-create-organization"
+            title={t('management.addOrganization')}
+            onClose={onDone}
+            onExpand={() => {
+              onDone();
+              router.push('/admin/organizations/new');
+            }}
+          />
           <OrganizationForm
             onCancel={onDone}
             onSaved={({ handoff: created }) => {

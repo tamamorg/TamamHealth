@@ -17,8 +17,10 @@
  */
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Building2, AlertCircle, ChevronDown, Check } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
+import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
@@ -41,6 +43,8 @@ export interface FacilityFormModalProps {
   organizations?: readonly OrganizationDoc[];
   actor?: { _id?: string; username?: string };
   brandColor?: string;
+  /** Full-page hosts reuse the form without rendering dialog chrome. */
+  presentation?: 'modal' | 'page';
 }
 
 const ERROR_KEY: Record<FacilityFormError, string> = {
@@ -58,8 +62,10 @@ export default function FacilityFormModal({
   organizations,
   actor,
   brandColor = 'var(--accent-primary)',
+  presentation = 'modal',
 }: FacilityFormModalProps) {
   const { t } = useTranslation();
+  const router = useRouter();
   const isEdit = !!facility;
   const [form, setForm] = useState<FacilityFormValues>(
     () => (facility ? facilityFormFrom(facility) : emptyFacilityForm),
@@ -156,17 +162,30 @@ export default function FacilityFormModal({
     </div>
   );
 
-  return (
-    <Modal onClose={onClose} width={520} labelledBy="facility-form-title">
-      <div className="sadb-modal">
-        <div className="sadb-modal-copy">
-          <h2 id="facility-form-title" className="sadb-modal-title">
-            {isEdit ? t('orgHospitals.editTitle') : t('orgHospitals.modalTitle')}
-          </h2>
-          <p className="sadb-modal-sub">
-            {isEdit ? t('orgHospitals.editSubtitle') : t('orgHospitals.modalSubtitle')}
-          </p>
-        </div>
+  const expandToPage = () => {
+    if (isEdit) {
+      onClose();
+      router.push(`/admin/facilities/${encodeURIComponent(facility._id)}`);
+      return;
+    }
+    const query = new URLSearchParams();
+    if (effectiveOrgId) query.set('org', effectiveOrgId);
+    query.set('returnTo', `${window.location.pathname}${window.location.search}`);
+    onClose();
+    router.push(`/admin/facilities/new?${query.toString()}`);
+  };
+
+  const content = (
+      <div className={`sadb-modal${presentation === 'page' ? ' sadb-modal--page' : ''}`}>
+        {presentation === 'modal' && (
+          <PopupHeader
+            titleId="facility-form-title"
+            title={isEdit ? t('orgHospitals.editTitle') : t('orgHospitals.modalTitle')}
+            subtitle={isEdit ? t('orgHospitals.editSubtitle') : t('orgHospitals.modalSubtitle')}
+            onExpand={expandToPage}
+            onClose={onClose}
+          />
+        )}
 
         {error && (
           <div
@@ -357,6 +376,13 @@ export default function FacilityFormModal({
           </button>
         </div>
       </div>
+  );
+
+  if (presentation === 'page') return content;
+
+  return (
+    <Modal onClose={onClose} width={520} labelledBy="facility-form-title">
+      {content}
     </Modal>
   );
 }

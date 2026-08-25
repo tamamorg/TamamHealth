@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, Plus, Users } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
+import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { useToast } from '@/components/Toast';
 import { useApp } from '@/lib/context';
@@ -404,7 +405,18 @@ export default function ManagementWorkspace() {
       {showOrgEditor && (
         <Modal onClose={() => setShowOrgEditor(false)} width={920} labelledBy="management-org-editor">
           <div className="sadb-modal mgmt-form-modal">
-            <h2 id="management-org-editor" className="sadb-modal-title">{editingOrg ? t('management.editOrganization') : t('management.addOrganization')}</h2>
+            <PopupHeader
+              titleId="management-org-editor"
+              title={editingOrg ? t('management.editOrganization') : t('management.addOrganization')}
+              onClose={() => setShowOrgEditor(false)}
+              onExpand={() => {
+                const destination = editingOrg
+                  ? `/admin/organizations/${encodeURIComponent(editingOrg._id)}`
+                  : '/admin/organizations/new';
+                setShowOrgEditor(false);
+                router.push(destination);
+              }}
+            />
             <OrganizationForm editing={editingOrg} onCancel={() => setShowOrgEditor(false)} onSaved={() => { setShowOrgEditor(false); void orgStore.reload(); }} />
           </div>
         </Modal>
