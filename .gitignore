@@ -57,3 +57,20 @@ next-env.d.ts
 *.bak
 *.old
 *.tmp
+
+# ── Private key material ─────────────────────────────────────────────
+# The backup PRIVATE key must never enter the repository. Its whole purpose
+# is to live somewhere the production host cannot reach, so that a compromised
+# host cannot decrypt its own offsite snapshots — committing it here would
+# hand it to anyone with clone access and to every CI runner.
+#
+# `backup-privkey.asc` was tracked (empty) and sat waiting for someone to paste
+# a key into it; one `git add -A` later it would have been in the history.
+# The PUBLIC key is deliberately NOT ignored: it belongs on every backup-
+# producing host and is safe to distribute.
+*.asc
+!backup-pubkey.gpg
+backup-privkey*
+*.privkey
+*-private.gpg
+secring.*
