@@ -5,9 +5,16 @@
 > `/var/lib/docker/volumes/tamamhealth_couchdb_backups/_data` on the same
 > host" pattern.
 >
-> **PHI residency:** all backups MUST land in an `af-south-1` (Cape Town) S3
-> bucket OR a Backblaze B2 region whose data plane is contractually pinned to
-> South Africa / EU. Never `aws s3 cp` to `us-east-1`.
+> **PHI residency:** all backups MUST land in a region pinned to South Africa
+> or the EU — `af-south-1` (Cape Town) on AWS, an EU DigitalOcean Spaces region
+> (`fra1`, `ams3`), or a Backblaze B2 region contractually pinned the same way.
+> Never `us-east-1`, `nyc3`, `sfo3` or any other US region.
+>
+> **On DigitalOcean specifically:** DO has no African region, so the
+> South-Africa half of that rule is unreachable there. `fra1` satisfies the EU
+> half and is the deployment's choice; this is a decision taken knowingly, not
+> an oversight, and it is written down here so the next operator does not have
+> to rediscover it.
 
 ---
 
@@ -179,6 +186,46 @@ list cross-account. This minimises blast radius.
 The drill IAM (used by the GitHub Action) gets `s3:GetObject` + `s3:ListBucket`
 + `s3:GetObjectVersion`, no put / delete.
 
+#### DigitalOcean Spaces setup (this deployment)
+
+The platform runs on a DigitalOcean droplet, so its object storage is Spaces.
+Spaces speaks the S3 API, and every script here already supports a non-AWS
+endpoint (`AWS_ENDPOINT_URL`, honoured by `backup-couchdb.sh`,
+`backup-postgres.sh` and `backup-restore-drill.sh`) — no AWS account is needed
+anywhere in this runbook.
+
+1. **Create the Space.** Control panel → Spaces Object Storage → Create.
+   Region `fra1` (see the residency note at the top), name
+   `tamamhealth-backups-prod`, file listing **restricted**.
+
+2. **Create a Spaces access key.** API → Spaces Keys → Generate New Key. The
+   secret is shown once. Save both to 1Password.
+
+3. **Point the tooling at it.** Wherever this document says `AWS_REGION` and a
+   bucket, add the endpoint:
+
+   ```bash
+   AWS_ENDPOINT_URL=https://fra1.digitaloceanspaces.com
+   AWS_REGION=fra1
+   BACKUP_BUCKET=tamamhealth-backups-prod
+   ```
+
+**Two protections you do NOT get on Spaces, and what to do instead.** Both are
+real losses relative to the S3 design above, not paperwork:
+
+- **No object-lock.** The compliance-mode retention below cannot be
+  reproduced, so a stolen or mistakenly-scoped key CAN delete the backups it
+  can write. Mitigate by keeping the drill's key separate from the host's
+  writer key, and ideally in a separate DO team, so one compromise does not
+  reach both.
+- **No bucket versioning.** An overwrite is final. The daily key layout
+  (`YYYY/MM/DD/…-HHMM…`) already makes same-key overwrites unlikely, which is
+  why this is survivable — but it is the only thing standing in for versioning,
+  so do not "tidy" that scheme into a fixed filename.
+
+Spaces lifecycle rules handle expiry; set them in the control panel to match
+the two-year retention in the lifecycle template above.
+
 #### Backblaze B2 setup (if chosen)
 
 1. Create an "Application Key" scoped to a single bucket, capabilities
@@ -242,15 +289,45 @@ journalctl -u tamamhealth-offsite-postgres-backup.service -n 50 --no-pager
 ### 4. Wire the quarterly drill
 
 The drill GitHub Action (`.github/workflows/backups-cron.yml`) runs every
-quarter and pages on failure. Required secrets on the `production`
-environment:
+quarter and pages on failure.
 
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` — drill IAM (read-only).
-- `AWS_REGION` (`af-south-1`).
+**The secrets go on the `production-cron` environment, NOT `production`.** This
+document said `production` for months and the drill has never read a secret set
+there: `production` carries required reviewers, so a scheduled job pointed at it
+sits waiting for approval until the next run supersedes and cancels it. The job
+uses a separate, ungated environment for exactly that reason — see the note on
+the job in the workflow.
+
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` — the drill's credentials.
+  Read-only where the provider allows it (AWS IAM does; DO Spaces keys do not).
+- `AWS_REGION` — `af-south-1` on AWS, `fra1` on DO Spaces.
+- `AWS_ENDPOINT_URL` — required on DO Spaces / B2 / MinIO, omitted on AWS.
 - `BACKUP_BUCKET`.
 - `BACKUP_PRIVKEY_GPG` — paste the full `gpg --armor --export-secret-keys`
   block.
 - `BACKUP_PRIVKEY_PASSPHRASE` — separate secret.
+
+```bash
+gh secret set BACKUP_PRIVKEY_GPG        --env production-cron < backup-privkey.asc
+gh secret set BACKUP_PRIVKEY_PASSPHRASE --env production-cron
+gh secret set BACKUP_BUCKET             --env production-cron
+gh secret set AWS_ACCESS_KEY_ID         --env production-cron
+gh secret set AWS_SECRET_ACCESS_KEY     --env production-cron
+gh secret set AWS_REGION                --env production-cron
+gh secret set AWS_ENDPOINT_URL          --env production-cron   # DO Spaces / B2 only
+```
+
+**The drill restores; it does not produce.** Until the host-side timers in step
+3 are installed and have uploaded at least one snapshot, a fully-provisioned
+drill still fails — correctly, because there is nothing to restore. Confirm an
+object exists under `YYYY/MM/DD/` before reading a red drill as a secrets
+problem.
+
+**Never commit the private key.** `backup-privkey.asc` in the repository root
+is git-ignored, and the public key beside it is not; that asymmetry is the
+whole design. A private key in the history would be readable by everyone with
+clone access and by every CI runner — the exact exposure the offsite encryption
+exists to prevent.
 
 Wire repo / org notification settings to email + Slack so a failed cron is
 noticed within the same business day. (Cron at 03:00 UTC = 06:00 EAT, so the

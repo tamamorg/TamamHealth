@@ -30,13 +30,14 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import {
   SadbPage, SadbCard, SadbChip, SadbKpiTile, SadbGridList, SadbGridRow, SadbSearch, SadbHeadLink,
+  SadbHeadIconButton,
   statusChip, effectiveOrgStatus,
 } from '@/components/admin/sadb-ui';
 import { TENANT_ACTION_ICONS } from '@/components/admin/TenantCard';
 import Select from '@/components/Select';
 import { getRoleConfig } from '@/lib/permissions';
 import Modal from '@/components/Modal';
-import { Maximize2, X } from '@/components/icons/lucide';
+import { Maximize2, UserPlus, X } from '@/components/icons/lucide';
 import { UserForm, type UserCredentialHandoff } from '@/components/admin/UserForm';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import { CredentialHandoffModal } from '@/modules/identity/client';
@@ -243,12 +244,26 @@ export default function AdminOrganizationDetailPage() {
              facility offers that facility's own page — profile, wards, stock,
              staff: the create/update/retire surface. */
           <>
-            <SadbHeadLink dataAction="org-create-user" onClick={() => setShowCreateUser(true)}>
-              {t('orgUsers.createUser')}
-            </SadbHeadLink>
-            <SadbHeadLink onClick={() => router.push(`/admin/facilities/${encodeURIComponent(selectedFacility._id)}`)}>
-              {t('orgAdmin.openFacility')}
-            </SadbHeadLink>
+            {/* A button, not a head link: this is the head's primary action —
+                the reason an administrator opens a facility's roster at all —
+                and it read as one more piece of uppercase micro-copy beside
+                the link next to it. */}
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              data-action="org-create-user"
+              onClick={() => setShowCreateUser(true)}
+            >
+              <UserPlus className="w-4 h-4" /> {t('orgUsers.addUser')}
+            </button>
+            {/* "Open facility" is the same act as the expand control on every
+                other console row, so it wears the same mark. The word survives
+                as the accessible name and the tooltip. */}
+            <SadbHeadIconButton
+              icon={<Maximize2 />}
+              label={t('orgAdmin.openFacility')}
+              onClick={() => router.push(`/admin/facilities/${encodeURIComponent(selectedFacility._id)}`)}
+            />
           </>
         ) : undefined}
       >

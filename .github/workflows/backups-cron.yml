@@ -16,13 +16,15 @@ name: backups-restore-drill
 # on the job below for why it is not `production`):
 #   AWS_ACCESS_KEY_ID
 #   AWS_SECRET_ACCESS_KEY
-#   AWS_REGION                  (default af-south-1)
+#   AWS_REGION                  (default af-south-1; `fra1` for DO Spaces)
 #   BACKUP_BUCKET
 #   BACKUP_PRIVKEY_GPG          armored GPG private key (paste full block)
 #   BACKUP_PRIVKEY_PASSPHRASE   passphrase for the above (recommended)
 #
 # Optional:
-#   AWS_ENDPOINT_URL            for Backblaze B2 / MinIO
+#   AWS_ENDPOINT_URL            for any S3-compatible store that is not AWS —
+#                               DigitalOcean Spaces, Backblaze B2, MinIO.
+#                               e.g. https://fra1.digitaloceanspaces.com
 #   DRILL_SKIP_POSTGRES         set to "1" if Postgres analytics not yet wired
 #
 # Alerting: GitHub Actions surfaces failures via the workflow notification
@@ -87,7 +89,7 @@ jobs:
             [ -n "$value" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
-            echo "::error title=Backups are not provisioned::Missing on the production environment:$missing. Until these are set there is no offsite backup to restore from — see docs/operations/backups.md."
+            echo "::error title=Backups are not provisioned::Missing on the production-cron environment:$missing. Set them THERE, not on production — this job deliberately avoids the reviewer-gated environment (see the note on the job above), so a secret set on production is invisible here. Until these are set there is no offsite backup to restore from — see docs/operations/backups.md."
             exit 1
           fi
           echo "All drill secrets present."
