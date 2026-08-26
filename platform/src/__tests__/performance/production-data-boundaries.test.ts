@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { CRITICAL_TRANSLATIONS } from '@/lib/i18n/critical-translations';
 
 const source = (relativePath: string) =>
   fs.readFileSync(path.join(process.cwd(), 'src', relativePath), 'utf8');
@@ -45,5 +46,19 @@ describe('production data and bundle boundaries', () => {
     expect(billing).not.toContain('getAllEncounters(scope)');
     expect(billing).toContain("dynamic(() => import('@/components/payments/ClaimsPanel'))");
     expect(billing).toContain("dynamic(() => import('@/components/payments/PaymentPanel'))");
+  });
+
+  it('keeps every sign-in label usable before a lazy locale chunk is available', () => {
+    const login = source('app/login/page.tsx');
+    const literalKeys = [...login.matchAll(/t\('(login\.[^']+)'/g)].map(match => match[1]);
+    const keys = new Set([
+      ...literalKeys,
+      'login.shotAdminAlt',
+      'login.shotMinistryAlt',
+      'login.shotStaffAlt',
+    ]);
+    for (const locale of ['en', 'apd'] as const) {
+      for (const key of keys) expect(CRITICAL_TRANSLATIONS[locale][key]).toBeTruthy();
+    }
   });
 });
