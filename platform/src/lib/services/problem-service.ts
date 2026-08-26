@@ -33,8 +33,14 @@ export async function getAllProblems(scope?: DataScope): Promise<ProblemDoc[]> {
 }
 
 export async function getProblemsByPatient(patientId: string, scope?: DataScope): Promise<ProblemDoc[]> {
-  const all = await getAllProblems(scope);
-  return all.filter(p => p.patientId === patientId);
+  const rows = await findByType<ProblemDoc>(
+    problemsDB(),
+    'problem',
+    { patientId },
+    { indexFields: ['type', 'patientId'] },
+  );
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return visible.sort((a, b) => (b.onsetDate || b.createdAt || '').localeCompare(a.onsetDate || a.createdAt || ''));
 }
 
 export async function createProblem(

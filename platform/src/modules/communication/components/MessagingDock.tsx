@@ -12,6 +12,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useStaffChat } from '@/lib/hooks/useStaffChat';
 import { useUsers } from '@/lib/hooks/useUsers';
+import { useAuth } from '@/lib/context';
 import { useMessagingDock } from '@/modules/communication/components/messaging-dock-context';
 import { getRoleConfig } from '@/lib/permissions';
 import { initials, avatarTint } from '@/lib/patient-utils';
@@ -88,14 +89,19 @@ function Avatar({ name, size = 36, group }: { name: string; size?: number; group
 
 export default function MessagingDock() {
   const pathname = usePathname();
-  const chat = useStaffChat();
-  const { users } = useUsers();
+  const { currentUser } = useAuth();
+  const { open, openDock, closeDock, pendingDM, clearPendingDM } = useMessagingDock();
+  const onDashboard = pathname === '/dashboard' || pathname?.startsWith('/dashboard/');
+  const canMessage = !!currentUser && !!getRoleConfig(currentUser.role)?.allowedRoutes?.includes('/messages');
+  const enabled = Boolean(canMessage && onDashboard);
+  // Keep the small conversation list live for the launcher's unread badge, but
+  // do not read message bodies or the staff directory until the dock opens.
+  const chat = useStaffChat({ enabled, messagesEnabled: open });
+  const { users } = useUsers(enabled && open);
   const {
-    currentUser, conversations, messages, activeId, setActiveId,
+    conversations, messages, activeId, setActiveId,
     activeConversation, send, startDM,
   } = chat;
-
-  const { open, openDock, closeDock, pendingDM, clearPendingDM } = useMessagingDock();
   const [view, setView] = useState<'list' | 'new' | 'newTeam'>('list');
   const [tab, setTab] = useState<DockTab>('chats');
   const [composeOpen, setComposeOpen] = useState(false);
@@ -326,10 +332,8 @@ export default function MessagingDock() {
   // The full /messages page already provides the whole experience — don't stack
   // the dock on top of it. Require an authenticated staff user whose role has
   // messaging access (same gating as the /messages route).
-  const canMessage = !!currentUser && !!getRoleConfig(currentUser.role)?.allowedRoutes?.includes('/messages');
   // Dashboard-only: the floating launcher lives on the role dashboards, never
   // on the working pages (patients, settings, …) where it crowds the content.
-  const onDashboard = pathname === '/dashboard' || pathname?.startsWith('/dashboard/');
   if (!canMessage || !onDashboard) return null;
 
   const handleSend = async () => {

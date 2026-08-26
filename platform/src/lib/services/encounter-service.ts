@@ -121,6 +121,25 @@ export async function getEncountersInRange(
   return filterByScope(rows, scope);
 }
 
+/** Completed encounters in a bounded close-time window, for billing/ops views. */
+export async function getEncountersClosedSince(
+  since: string,
+  statuses: EncounterStatus[],
+  scope?: DataScope,
+): Promise<EncounterDoc[]> {
+  if (statuses.length === 0) return [];
+  const db = encountersDB();
+  const groups = await Promise.all(statuses.map(status => findByType<EncounterDoc>(
+    db,
+    'clinical_encounter',
+    { status, closedAt: { $gte: since } },
+    { indexFields: ['type', 'status', 'closedAt'] },
+  )));
+  const rows = groups.flat().filter(encounter => !!encounter.closedAt && encounter.closedAt >= since);
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return visible.sort((a, b) => (b.closedAt || '').localeCompare(a.closedAt || ''));
+}
+
 /** Open (non-closed) encounters a clinician can resume, newest first. */
 export async function getResumableEncounters(clinicianId?: string): Promise<EncounterDoc[]> {
   const rows = await findByType<EncounterDoc>(encountersDB(), 'clinical_encounter', {}, { indexFields: ['type'] });

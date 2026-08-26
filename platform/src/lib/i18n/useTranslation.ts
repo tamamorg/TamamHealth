@@ -3,11 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, loadTranslations, interpolate } from './index';
 import type { Locale, TranslationMap } from './index';
+import { CRITICAL_TRANSLATIONS } from './critical-translations';
 
 const STORAGE_KEY = 'tamamhealth-locale';
 
 let cachedLocale: Locale = DEFAULT_LOCALE;
-let cachedTranslations: TranslationMap = {};
+let cachedTranslations: TranslationMap = CRITICAL_TRANSLATIONS[DEFAULT_LOCALE];
+let pendingLocale: Locale | null = null;
+let pendingLoad: Promise<void> | null = null;
 const listeners: (() => void)[] = [];
 
 function notifyListeners() {
@@ -40,25 +43,35 @@ export function useTranslation() {
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as Locale | null;
     const initial = saved || DEFAULT_LOCALE;
-    if (initial !== cachedLocale || Object.keys(cachedTranslations).length === 0) {
-      loadTranslations(initial).then(map => {
-        cachedLocale = initial;
-        cachedTranslations = map;
-        const localeConfig = SUPPORTED_LOCALES.find(l => l.code === initial);
-        if (localeConfig) {
-          document.documentElement.dir = localeConfig.dir;
-          document.documentElement.lang = initial;
-        }
-        notifyListeners();
-      }).catch(err => {
-        // The locale chunk fetch can fail on a stale tab whose JS bundle no
-        // longer matches the deployed chunk hash. We can't recover the
-        // translations, but we must catch the rejection so it doesn't bubble
-        // up as an unhandled promise (which crashes React's dev overlay and
-        // shows up as Sentry noise in prod). Untranslated keys fall back to
-        // the key name via the t() function below.
-        console.warn('[i18n] loadTranslations rejected; UI will render translation keys verbatim', err);
-      });
+    if (initial !== cachedLocale || cachedTranslations === CRITICAL_TRANSLATIONS[cachedLocale]) {
+      // Paint a usable sign-in shell immediately. The full lazy locale replaces
+      // this map below; if its chunk is unavailable offline, these keys remain.
+      cachedLocale = initial;
+      cachedTranslations = CRITICAL_TRANSLATIONS[initial];
+      notifyListeners();
+      if (!pendingLoad || pendingLocale !== initial) {
+        pendingLocale = initial;
+        const load = loadTranslations(initial).then(map => {
+          cachedLocale = initial;
+          cachedTranslations = map;
+          const localeConfig = SUPPORTED_LOCALES.find(l => l.code === initial);
+          if (localeConfig) {
+            document.documentElement.dir = localeConfig.dir;
+            document.documentElement.lang = initial;
+          }
+          notifyListeners();
+        }).catch(err => {
+          // Keep the critical shell map. A later mount retries after the
+          // network returns, while this rejection remains handled.
+          console.warn('[i18n] full locale unavailable; using critical offline translations', err);
+        }).finally(() => {
+          if (pendingLocale === initial) {
+            pendingLoad = null;
+            pendingLocale = null;
+          }
+        });
+        pendingLoad = load;
+      }
     }
   }, []);
 

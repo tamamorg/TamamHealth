@@ -41,15 +41,18 @@ export function useLabResults(patientId?: string) {
   useEffect(() => {
     let cancelled = false;
     const reload = makeCoalescer(() => { if (!cancelled) loadResults(); });
-    const changes = labResultsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
+    const changes = labResultsDB().changes({ since: 'now', live: true, include_docs: Boolean(patientId) })
+      .on('change', (change) => {
+        const doc = change.doc as LabResultDoc | undefined;
+        if (!patientId || !doc || doc.patientId === patientId || change.deleted) reload.trigger();
+      })
       .on('error', (err) => { console.warn('Lab results subscription error:', err); });
     return () => {
       cancelled = true;
       reload.cancel();
       try { changes.cancel(); } catch { /* noop */ }
     };
-  }, [loadResults]);
+  }, [loadResults, patientId]);
 
   const create = useCallback(async (data: Omit<LabResultDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createLabResult } = await import('../services/lab-service');

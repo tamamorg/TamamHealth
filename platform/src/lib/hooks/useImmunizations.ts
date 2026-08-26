@@ -38,15 +38,18 @@ export function useImmunizations(patientId?: string) {
   useEffect(() => {
     let cancelled = false;
     const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = immunizationsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
+    const changes = immunizationsDB().changes({ since: 'now', live: true, include_docs: Boolean(patientId) })
+      .on('change', (change) => {
+        const doc = change.doc as ImmunizationDoc | undefined;
+        if (!patientId || !doc || doc.patientId === patientId || change.deleted) reload.trigger();
+      })
       .on('error', () => { /* swallow */ });
     return () => {
       cancelled = true;
       reload.cancel();
       try { changes.cancel(); } catch { /* noop */ }
     };
-  }, [load]);
+  }, [load, patientId]);
 
   const register = useCallback(async (data: Omit<ImmunizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createImmunization } = await import('../services/immunization-service');

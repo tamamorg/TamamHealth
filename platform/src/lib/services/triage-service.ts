@@ -94,8 +94,14 @@ export async function getAllTriage(scope?: DataScope): Promise<TriageDoc[]> {
 
 /** Triages for a specific patient, newest first. */
 export async function getTriageByPatient(patientId: string, scope?: DataScope): Promise<TriageDoc[]> {
-  const all = await getAllTriage(scope);
-  return all.filter(t => t.patientId === patientId);
+  const rows = await findByType<TriageDoc>(
+    triageDB(),
+    'triage',
+    { patientId },
+    { indexFields: ['type', 'patientId'] },
+  );
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return visible.sort((a, b) => (b.triagedAt || '').localeCompare(a.triagedAt || ''));
 }
 
 export async function getTriageByEncounter(encounterId: string): Promise<TriageDoc | null> {

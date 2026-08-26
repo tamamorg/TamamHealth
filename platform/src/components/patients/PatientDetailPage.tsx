@@ -26,13 +26,41 @@ import { Package, MessageSquare } from '@/components/icons/lucide';
 import { Icon as DuotoneInfoIcon } from '@/components/icons';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import dynamic from 'next/dynamic';
+const ChartPanelLoading = () => (
+  <div className="h-24 rounded-lg animate-pulse" style={{ background: 'var(--overlay-subtle)' }} aria-hidden="true" />
+);
 // Lazy-loaded: recharts is large and only used on the Trends view, so keep it
 // out of the patient-record initial bundle.
 const VitalsTrends = dynamic(() => import('@/components/VitalsTrends'), {
   ssr: false,
   loading: () => <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading charts…</div>,
 });
-import PatientTimeline from '@/components/PatientTimeline';
+// The chart has more than twenty mutually-exclusive sections. Keep each large
+// workspace out of the facesheet bundle until its tab or action is opened.
+const PatientTimeline = dynamic(() => import('@/components/PatientTimeline'), { loading: ChartPanelLoading });
+const BillingTab = dynamic(() => import('@/components/patients/BillingTab'), { loading: ChartPanelLoading });
+const PatientSBAR = dynamic(() => import('@/components/patients/PatientSBAR'), { loading: ChartPanelLoading });
+const PortalAccessCard = dynamic(() => import('@/components/patients/PortalAccessCard'), { loading: ChartPanelLoading });
+const NotesList = dynamic(() => import('@/components/clinical-notes/NotesList'), { loading: ChartPanelLoading });
+const PhoneNotes = dynamic(() => import('@/components/patients/PhoneNotes'), { loading: ChartPanelLoading });
+const AssessmentsPanel = dynamic(() => import('@/components/patients/AssessmentsPanel'), { loading: ChartPanelLoading });
+const ScreeningsPanel = dynamic(() => import('@/components/patients/ScreeningsPanel'), { loading: ChartPanelLoading });
+const RemindersPanel = dynamic(() => import('@/components/patients/RemindersPanel'), { loading: ChartPanelLoading });
+const DocumentsPanel = dynamic(() => import('@/components/patients/DocumentsPanel'), { loading: ChartPanelLoading });
+const LabOrderModal = dynamic(() => import('@/components/lab/order/LabOrderModal'));
+const LabWorkspace = dynamic(() => import('@/components/lab/workflow/LabWorkspace'), { loading: ChartPanelLoading });
+const PharmacyWorkspace = dynamic(() => import('@/components/pharmacy/workflow/PharmacyWorkspace'), { loading: ChartPanelLoading });
+const AllergiesSection = dynamic(() => import('@/components/ehr/chart/sections/AllergiesSection'), { loading: ChartPanelLoading });
+const ConditionsSection = dynamic(() => import('@/components/ehr/chart/sections/ConditionsSection'), { loading: ChartPanelLoading });
+const OrdersSection = dynamic(() => import('@/components/ehr/chart/sections/OrdersSection'), { loading: ChartPanelLoading });
+const ProceduresSection = dynamic(() => import('@/components/ehr/chart/sections/ProceduresSection'), { loading: ChartPanelLoading });
+const ProgramsSection = dynamic(() => import('@/components/ehr/chart/sections/ProgramsSection'), { loading: ChartPanelLoading });
+const ImmunizationsSection = dynamic(() => import('@/components/ehr/chart/sections/ImmunizationsSection'), { loading: ChartPanelLoading });
+const DirectivesSection = dynamic(() => import('@/components/ehr/chart/sections/DirectivesSection'), { loading: ChartPanelLoading });
+const AssignDoctorModal = dynamic(() => import('@/components/AssignDoctorModal'));
+const NurseVitalsModal = dynamic(() => import('@/components/nurse/NurseVitalsModal'));
+const PrescribeModal = dynamic(() => import('@/components/patients/PatientActionModals').then(mod => mod.PrescribeModal));
+const ReferModal = dynamic(() => import('@/components/patients/PatientActionModals').then(mod => mod.ReferModal));
 import { toIsoDate, todayIso as isoToday } from '@/lib/date-utils';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
@@ -48,21 +76,12 @@ import { mergeVitalsTimeline } from '@/lib/clinical/vitals';
 import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
-import BillingTab from '@/components/patients/BillingTab';
-import PatientSBAR from '@/components/patients/PatientSBAR';
-import PortalAccessCard from '@/components/patients/PortalAccessCard';
 import { usePatientHandoff } from '@/lib/hooks/usePatientHandoff';
 import RecordSignatureBar from '@/components/patients/RecordSignatureBar';
-import NotesList from '@/components/clinical-notes/NotesList';
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
-import PhoneNotes from '@/components/patients/PhoneNotes';
-import AssessmentsPanel from '@/components/patients/AssessmentsPanel';
-import ScreeningsPanel from '@/components/patients/ScreeningsPanel';
-import RemindersPanel from '@/components/patients/RemindersPanel';
 import TransferHistoryPanel, { TransferBanner } from '@/components/patients/TransferHistoryPanel';
 import CareAlertsBanner from '@/components/patients/CareAlertsBanner';
-import DocumentsPanel from '@/components/patients/DocumentsPanel';
 import { useProblems } from '@/lib/hooks/useProblems';
 import type {
   AppointmentDoc,
@@ -76,23 +95,11 @@ import type {
 } from '@/lib/db-types';
 import { isValidPhone, normalizePhone, formatPhoneDisplay } from '@/lib/field-formats';
 import { useAuth } from '@/lib/context';
-import { PrescribeModal, ReferModal } from '@/components/patients/PatientActionModals';
-import LabOrderModal from '@/components/lab/order/LabOrderModal';
-import LabWorkspace from '@/components/lab/workflow/LabWorkspace';
 import OpenmrsChartShell from '@/components/ehr/chart/OpenmrsChartShell';
 import ChartHeader from '@/components/ehr/chart/ChartHeader';
 import ChartVitalsBand from '@/components/ehr/chart/ChartVitalsBand';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
-import AllergiesSection from '@/components/ehr/chart/sections/AllergiesSection';
-import ConditionsSection from '@/components/ehr/chart/sections/ConditionsSection';
-import PharmacyWorkspace from '@/components/pharmacy/workflow/PharmacyWorkspace';
-import OrdersSection from '@/components/ehr/chart/sections/OrdersSection';
-import ProceduresSection from '@/components/ehr/chart/sections/ProceduresSection';
-import ProgramsSection from '@/components/ehr/chart/sections/ProgramsSection';
-import ImmunizationsSection from '@/components/ehr/chart/sections/ImmunizationsSection';
-import DirectivesSection from '@/components/ehr/chart/sections/DirectivesSection';
-import AssignDoctorModal, { type AssignDoctorTarget } from '@/components/AssignDoctorModal';
-import NurseVitalsModal from '@/components/nurse/NurseVitalsModal';
+import type { AssignDoctorTarget } from '@/components/AssignDoctorModal';
 import Select from '@/components/Select';
 import { safeReturnTo } from '@/lib/navigation/return-to';
 import { clickable, stopsClickPropagation } from '@/lib/a11y';

@@ -44,15 +44,18 @@ export function useTriage(patientId?: string) {
   useEffect(() => {
     let cancelled = false;
     const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = triageDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
+    const changes = triageDB().changes({ since: 'now', live: true, include_docs: Boolean(patientId) })
+      .on('change', (change) => {
+        const doc = change.doc as TriageDoc | undefined;
+        if (!patientId || !doc || doc.patientId === patientId || change.deleted) reload.trigger();
+      })
       .on('error', (err) => { console.warn('Triage subscription error:', err); });
     return () => {
       cancelled = true;
       reload.cancel();
       try { changes.cancel(); } catch { /* noop */ }
     };
-  }, [load]);
+  }, [load, patientId]);
 
   const create = useCallback(async (
     data: Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>

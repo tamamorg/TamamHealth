@@ -20,27 +20,17 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, X } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
-import type { FilterOption } from '@/components/filters';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import { computeAdjudicatedStatus } from '@/lib/services/payment-service';
-import type { ClaimDoc, ClaimStatus, PayerType, InsurancePolicyDoc } from '@/lib/db-types-payments';
+import type { ClaimDoc, ClaimStatus, InsurancePolicyDoc } from '@/lib/db-types-payments';
 import type { BillingDoc } from '@/lib/db-types-billing';
 import { formatMoney } from '@/lib/format-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
-
-export const PAYER_LABEL_KEYS: Record<PayerType, string> = {
-  self_pay: 'billing.payerSelfPay',
-  nhis: 'billing.payerNhis',
-  cbhi: 'billing.payerCbhi',
-  donor: 'billing.payerDonor',
-  government: 'billing.payerGovernment',
-  private: 'billing.payerPrivate',
-  employer: 'billing.payerEmployer',
-};
+import { PAYER_LABEL_KEYS } from './claims-filter';
 
 // Claim status → bl-chip variant. Claim statuses are their own union (not
 // BillingStatus), so this maps onto the closest billing-module chip meaning:
@@ -55,8 +45,6 @@ const CLAIM_STATUS_CHIP: Record<ClaimStatus, string> = {
   appealed: 'bl-chip--partial',
   partial: 'bl-chip--partial',
 };
-
-const CLAIM_STATUSES: ClaimStatus[] = ['draft', 'submitted', 'accepted', 'partial', 'paid', 'denied', 'appealed'];
 
 interface AdjudicationForm {
   claimId: string;
@@ -74,25 +62,6 @@ interface NewClaimForm {
 }
 
 const EMPTY_CLAIM: NewClaimForm = { patientId: '', policyId: '', billingId: '', amount: '' };
-
-/**
- * Filters a claim list the same way the panel does — exported so the
- * workspace's CSV export writes exactly the rows on screen.
- */
-export function filterClaims(
-  claims: ClaimDoc[],
-  { search, status, payer }: { search: string; status: string; payer: string },
-): ClaimDoc[] {
-  const q = search.trim().toLowerCase();
-  return claims.filter(c => {
-    if (status !== 'all' && c.status !== status) return false;
-    if (payer !== 'all' && c.payerType !== payer) return false;
-    if (!q) return true;
-    return (c.claimNumber || '').toLowerCase().includes(q)
-      || (c.patientName || '').toLowerCase().includes(q)
-      || (c.payerName || '').toLowerCase().includes(q);
-  });
-}
 
 export interface ClaimsPanelProps {
   claims: ClaimDoc[];
@@ -743,29 +712,4 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       )}
     </>
   );
-}
-
-/**
- * Status + payer options for the claims tab, fed into the toolbar's single
- * filter menu. Counts ride on the labels so the menu doubles as a breakdown.
- */
-export function claimFilterOptions(claims: ClaimDoc[], t: (key: string) => string): {
-  status: FilterOption[];
-  payer: FilterOption[];
-} {
-  return {
-    status: [
-      { value: 'all', label: `All statuses (${claims.length})` },
-      ...CLAIM_STATUSES.map(s => ({
-        value: s,
-        label: `${t(`claims.status_${s}`)} (${claims.filter(c => c.status === s).length})`,
-      })),
-    ],
-    // Only payers that actually appear — an empty filter option is a dead end.
-    payer: [
-      { value: 'all', label: 'All payers' },
-      ...Array.from(new Set(claims.map(c => c.payerType)))
-        .map(p => ({ value: p, label: t(PAYER_LABEL_KEYS[p]) || p })),
-    ],
-  };
 }

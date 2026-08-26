@@ -1,7 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import EhrClinicalDashboard, {
   type WorklistPatient,
@@ -18,10 +16,7 @@ import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useFollowUpsDue } from '@/lib/hooks/useFollowUpsDue';
 import { patientFullName, patientDisplayName, shortenPersonName, patientAge } from '@/lib/patient-utils';
-import { getDefaultDashboard } from '@/lib/permissions';
 import { getNoteType } from '@/lib/clinical-notes/note-catalog';
-import SuperintendentDashboard from '@/components/dashboards/SuperintendentDashboard';
-import NurseHomeView from '@/components/dashboards/NurseHomeView';
 import { useTransferQueue } from '@/lib/hooks/usePatientTransfers';
 import { describeAssignment, isTransferOverdue } from '@/lib/services/patient-transfer-service';
 import type {
@@ -406,7 +401,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
  * from ever calling `useSigningInbox`/`useTransferQueue`/etc. (or vice versa)
  * — no hook in this file runs conditionally on the role branch anymore.
  */
-function ClinicianHomeView() {
+export default function ClinicianHomeView() {
   const { currentUser } = useAuth();
   const { patients } = usePatients();
   // Consultations this clinician paused while waiting on lab/imaging results.
@@ -451,59 +446,4 @@ function ClinicianHomeView() {
       />
     </main>
   );
-}
-
-/**
- * `/dashboard` is one shared clinical workspace, Epic Hyperspace-style: every
- * clinical role lands here and sees role-adapted content inside the same
- * `EhrClinicalDashboard` shell rather than owning a separate dashboard route.
- * This component is deliberately just a role switch with no data hooks of its
- * own (beyond `useAuth`) — `ClinicianHomeView`, `NurseHomeView` and
- * `SuperintendentDashboard` each call whatever hooks their own worklist needs.
- */
-export default function DashboardPage() {
-  const router = useRouter();
-  const { currentUser } = useAuth();
-
-  // Doctors / clinical officers / clinicians / super-admin get the clinical
-  // view; nurse-family roles (nurse, midwife, triage_nurse, rooming_nurse) get
-  // a nurse-shaped worklist in the SAME shell; the medical superintendent gets
-  // its own admin view (rendered below). Every one of these roles has
-  // `/dashboard` as its own `defaultDashboard` (role-routes.ts), so all of
-  // them must be excluded from the redirect below or they'd bounce to
-  // themselves. Every other role is sent home.
-  useEffect(() => {
-    if (
-      currentUser &&
-      currentUser.role !== 'doctor' &&
-      currentUser.role !== 'clinical_officer' &&
-      currentUser.role !== 'medical_superintendent' &&
-      currentUser.role !== 'clinician' &&
-      currentUser.role !== 'nurse' &&
-      currentUser.role !== 'midwife' &&
-      currentUser.role !== 'triage_nurse' &&
-      currentUser.role !== 'rooming_nurse' &&
-      // Total access: a super-admin browsing /dashboard sees the clinical
-      // view instead of being bounced back to /admin.
-      currentUser.role !== 'super_admin'
-    ) {
-      router.push(getDefaultDashboard(currentUser.role));
-    }
-  }, [currentUser, router]);
-
-  if (!currentUser) return null;
-  // Medical superintendent → admin-oriented hospital dashboard.
-  if (currentUser.role === 'medical_superintendent') return <SuperintendentDashboard />;
-  // Nurse-family roles → nurse-shaped worklist, same clinical shell.
-  if (
-    currentUser.role === 'nurse' || currentUser.role === 'midwife' ||
-    currentUser.role === 'triage_nurse' || currentUser.role === 'rooming_nurse'
-  ) return <NurseHomeView />;
-  // Anyone who isn't a doctor / clinical officer / clinician / super-admin is mid-redirect.
-  if (
-    currentUser.role !== 'doctor' && currentUser.role !== 'clinical_officer' &&
-    currentUser.role !== 'clinician' && currentUser.role !== 'super_admin'
-  ) return null;
-
-  return <ClinicianHomeView />;
 }

@@ -202,8 +202,14 @@ export async function createReferral(
 }
 
 export async function getReferralsByPatient(patientId: string, scope?: DataScope): Promise<ReferralDoc[]> {
-  const all = await getAllReferrals(scope);
-  return all.filter(r => r.patientId === patientId);
+  const rows = await findByType<ReferralDoc>(
+    referralsDB(),
+    'referral',
+    { patientId },
+    { indexFields: ['type', 'patientId'] },
+  );
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return visible.sort((a, b) => (b.referralDate || '').localeCompare(a.referralDate || ''));
 }
 
 export async function createReferralWithTransfer(

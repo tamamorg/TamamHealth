@@ -15,24 +15,29 @@ export function useProblems(patientId?: string) {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const { getAllProblems } = await import('../services/problem-service');
-      const all = await getAllProblems(scope);
-      setProblems(all);
+      const { getAllProblems, getProblemsByPatient } = await import('../services/problem-service');
+      const rows = patientId
+        ? await getProblemsByPatient(patientId, scope)
+        : await getAllProblems(scope);
+      setProblems(rows);
     } catch (err) {
       console.error(err);
       setError('Failed to load problems');
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, [scope, patientId]);
 
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     let cancelled = false;
     const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = problemsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
+    const changes = problemsDB().changes({ since: 'now', live: true, include_docs: Boolean(patientId) })
+      .on('change', (change) => {
+        const doc = change.doc as ProblemDoc | undefined;
+        if (!patientId || !doc || doc.patientId === patientId || change.deleted) reload.trigger();
+      })
       .on('error', () => { /* swallow */ });
     return () => {
       cancelled = true;
@@ -69,7 +74,8 @@ export function useProblems(patientId?: string) {
     return ok;
   }, [load]);
 
-  // Filtered to a single patient when caller passes a patientId.
+  // Patient-scoped calls are narrowed by the indexed service query above;
+  // keep the defensive filter for stores containing malformed legacy docs.
   const patientProblems = useMemo(
     () => patientId ? problems.filter(p => p.patientId === patientId) : problems,
     [problems, patientId],

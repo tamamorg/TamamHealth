@@ -23,8 +23,14 @@ export async function getAllImmunizations(scope?: DataScope): Promise<Immunizati
 }
 
 export async function getByPatient(patientId: string, scope?: DataScope): Promise<ImmunizationDoc[]> {
-  const all = await getAllImmunizations(scope);
-  return all.filter(i => i.patientId === patientId);
+  const rows = await findByType<ImmunizationDoc>(
+    immunizationsDB(),
+    'immunization',
+    { patientId },
+    { indexFields: ['type', 'patientId'] },
+  );
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
 export async function getByFacility(facilityId: string): Promise<ImmunizationDoc[]> {

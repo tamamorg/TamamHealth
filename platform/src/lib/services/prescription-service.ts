@@ -19,10 +19,10 @@ import { resolvePrescriptionTier } from '../clinical-flow/medication-tiers';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 import {
   getAdministrationEvents,
+  getAdministrationEventsForPrescriptions,
   mergeAdministrationEvents,
   recordAdministration as recordAdministrationEvent,
   voidAdministration as voidAdministrationEvent,
-  MedicationAdministrationError,
   type AdministrationInput,
 } from './medication-administration-service';
 
@@ -114,8 +114,27 @@ export async function getAllPrescriptions(scope?: DataScope): Promise<Prescripti
 }
 
 export async function getPrescriptionsByPatient(patientId: string, scope?: DataScope): Promise<PrescriptionDoc[]> {
-  const rows = await getAllPrescriptions(scope);
-  return rows.filter(row => row.patientId === patientId);
+  const rows = await findByType<PrescriptionDoc>(
+    prescriptionsDB(),
+    'prescription',
+    { patientId },
+    { indexFields: ['type', 'patientId'] },
+  );
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  const events = await getAdministrationEventsForPrescriptions(visible.map(row => row._id), scope);
+  const eventsByPrescription = new Map<string, typeof events>();
+  for (const event of events) {
+    const prescriptionEvents = eventsByPrescription.get(event.prescriptionId) || [];
+    prescriptionEvents.push(event);
+    eventsByPrescription.set(event.prescriptionId, prescriptionEvents);
+  }
+  for (const prescription of visible) {
+    const prescriptionEvents = eventsByPrescription.get(prescription._id) || [];
+    if (prescriptionEvents.length > 0) {
+      prescription.administrations = mergeAdministrationEvents(prescription.administrations, prescriptionEvents);
+    }
+  }
+  return visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
 /**

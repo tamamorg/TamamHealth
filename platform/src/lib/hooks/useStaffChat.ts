@@ -13,7 +13,9 @@ interface Participant { id: string; name: string }
  * conversation list plus the live message stream for whichever conversation
  * is open. Patient communication is intentionally NOT handled here.
  */
-export function useStaffChat() {
+export function useStaffChat(options: { enabled?: boolean; messagesEnabled?: boolean } = {}) {
+  const enabled = options.enabled ?? true;
+  const messagesEnabled = enabled && (options.messagesEnabled ?? true);
   const { currentUser } = useAuth();
   const [conversations, setConversations] = useState<ConversationDoc[]>([]);
   const [messages, setMessages] = useState<MessageDoc[]>([]);
@@ -30,7 +32,11 @@ export function useStaffChat() {
   );
 
   const loadConversations = useCallback(async () => {
-    if (!currentUser) return;
+    if (!enabled || !currentUser) {
+      setConversations([]);
+      setLoading(false);
+      return;
+    }
     try {
       const { getConversationsForUser } = await import('@/modules/communication/services/conversation-service');
       const data = await getConversationsForUser(currentUser._id, {
@@ -42,34 +48,44 @@ export function useStaffChat() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, enabled]);
 
   const loadMessages = useCallback(async (conversationId: string | null) => {
-    if (!conversationId) { setMessages([]); return; }
+    if (!messagesEnabled || !conversationId) { setMessages([]); return; }
     const { getConversationMessages } = await import('@/modules/communication/services/conversation-service');
     setMessages(await getConversationMessages(conversationId));
-  }, []);
+  }, [messagesEnabled]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
   useEffect(() => { loadMessages(activeId); }, [activeId, loadMessages]);
 
   // Live updates on both stores.
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
-    const reload = makeCoalescer(() => {
+    const reloadConversations = makeCoalescer(() => {
       if (cancelled) return;
       loadConversations();
-      loadMessages(activeId);
     });
-    const c1 = conversationsDB().changes({ since: 'now', live: true, include_docs: false }).on('change', () => reload.trigger()).on('error', () => {});
-    const c2 = messagesDB().changes({ since: 'now', live: true, include_docs: false }).on('change', () => reload.trigger()).on('error', () => {});
+    const reloadMessages = makeCoalescer(() => {
+      if (!cancelled) loadMessages(activeId);
+    });
+    const c1 = conversationsDB().changes({ since: 'now', live: true, include_docs: false })
+      .on('change', () => reloadConversations.trigger())
+      .on('error', () => {});
+    const c2 = messagesEnabled && activeId
+      ? messagesDB().changes({ since: 'now', live: true, include_docs: false })
+        .on('change', () => reloadMessages.trigger())
+        .on('error', () => {})
+      : null;
     return () => {
       cancelled = true;
-      reload.cancel();
+      reloadConversations.cancel();
+      reloadMessages.cancel();
       try { c1.cancel(); } catch {}
-      try { c2.cancel(); } catch {}
+      try { c2?.cancel(); } catch {}
     };
-  }, [loadConversations, loadMessages, activeId]);
+  }, [enabled, messagesEnabled, loadConversations, loadMessages, activeId]);
 
   // Mark the open conversation read whenever its messages change.
   useEffect(() => {

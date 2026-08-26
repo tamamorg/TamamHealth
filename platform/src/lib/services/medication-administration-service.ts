@@ -116,8 +116,23 @@ export async function getAdministrationEventsForPrescription(
   prescriptionId: string,
   scope?: DataScope,
 ): Promise<MedicationAdministrationDoc[]> {
-  const events = await getAdministrationEvents(scope);
-  return events.filter(event => event.prescriptionId === prescriptionId);
+  return getAdministrationEventsForPrescriptions([prescriptionId], scope);
+}
+
+/** Fetch dose events for a bounded set of orders without scanning every MAR row. */
+export async function getAdministrationEventsForPrescriptions(
+  prescriptionIds: string[],
+  scope?: DataScope,
+): Promise<MedicationAdministrationDoc[]> {
+  if (prescriptionIds.length === 0) return [];
+  const events = await findByType<MedicationAdministrationDoc>(
+    medicationAdministrationsDB(),
+    'medication_administration',
+    { prescriptionId: { $in: prescriptionIds } },
+    { indexFields: ['type', 'prescriptionId'] },
+  );
+  const visible = scope ? filterByScope(events, scope) : events;
+  return visible.sort((a, b) => (a.recordedAt || '').localeCompare(b.recordedAt || ''));
 }
 
 /** Compatibility projection for existing MAR components while storage migrates. */

@@ -20,6 +20,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
   X, Wallet, Activity, AlertCircle, ExternalLink, Receipt, Shield, Clock, Banknote,
@@ -32,22 +33,25 @@ import { SearchInput, FilterTabs, type FilterOption } from '@/components/filters
 import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
 import BillingOverviewCards from '@/components/payments/BillingOverviewCards';
 import BillingFilterMenu, { type FilterField } from '@/components/payments/BillingFilterMenu';
-import ClaimsPanel, { claimFilterOptions, filterClaims, PAYER_LABEL_KEYS } from '@/components/payments/ClaimsPanel';
+import { claimFilterOptions, filterClaims, PAYER_LABEL_KEYS } from '@/components/payments/claims-filter';
 import Modal from '@/components/Modal';
-import PaymentPanel from '@/components/payments/PaymentPanel';
 import { getMethodConfig } from '@/lib/payment-method-config';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { isPathAllowed } from '@/lib/role-routes';
 import type { PaymentDoc, ClaimDoc, PaymentPlanDoc, PaymentMethodType } from '@/lib/db-types-payments';
 import type { BillingDoc } from '@/lib/db-types-billing';
 import type { EncounterDoc } from '@/lib/db-types';
+import type { EncounterStatus } from '@/lib/clinical-flow/encounter-journey';
 import { formatMoney } from '@/lib/format-utils';
 import { shortenPersonName } from '@/lib/patient-utils';
 import '@/components/billing/billing.css';
 
+const ClaimsPanel = dynamic(() => import('@/components/payments/ClaimsPanel'));
+const PaymentPanel = dynamic(() => import('@/components/payments/PaymentPanel'));
+
 // Encounter statuses that represent a clinically-finished visit — used to spot
 // visits that closed out without ever generating a bill (see `unbilledEncounters`).
-const ENCOUNTER_COMPLETION_STATUSES = new Set([
+const ENCOUNTER_COMPLETION_STATUSES = new Set<EncounterStatus>([
   'discharged', 'discharged_with_referral', 'discharged_with_pending_items',
 ]);
 
@@ -174,17 +178,18 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     setLoading(true);
     setError('');
     try {
-      const [{ getAllPayments, getAllClaims, getAllPaymentPlans }, { getAllBills }, { getAllEncounters }] = await Promise.all([
+      const [{ getAllPayments, getAllClaims, getAllPaymentPlans }, { getAllBills }, { getEncountersClosedSince }] = await Promise.all([
         import('@/lib/services/payment-service'),
         import('@/lib/services/billing-service'),
         import('@/lib/services/encounter-service'),
       ]);
+      const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
       const [payments, claims, plans, bills, encounters] = await Promise.all([
         getAllPayments(scope),
-        getAllClaims(scope),
+        canSeeClaims ? getAllClaims(scope) : Promise.resolve([] as ClaimDoc[]),
         getAllPaymentPlans(scope),
         getAllBills(scope),
-        getAllEncounters(scope),
+        getEncountersClosedSince(since, [...ENCOUNTER_COMPLETION_STATUSES], scope),
       ]);
       setData({ payments: payments || [], claims: claims || [], plans: plans || [], bills: bills || [], encounters: encounters || [] });
     } catch (err) {
@@ -193,7 +198,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, [scope, canSeeClaims, t]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
