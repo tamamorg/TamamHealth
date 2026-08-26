@@ -340,6 +340,8 @@
   .sadb-regpage-rail { position: sticky !important; }
   .sadb-row-2 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   .sadb-row-2 > :last-child { grid-column: auto !important; }
+  .mgmt-main-bar { flex-direction: row !important; align-items: flex-end !important; }
+  .mgmt-main-actions { padding-bottom: 7px !important; }
 
   .rpt-workspace {
     grid-template-columns: var(--tablet-rail) minmax(0, 1fr) clamp(190px, 24vw, 250px) !important;
@@ -367,7 +369,11 @@
   .gov-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
   .gov-span-4 { grid-column: span 4 !important; }
   .gov-span-2 { grid-column: span 2 !important; }
-  .gov-map-body { grid-template-columns: minmax(0, 1fr) 190px !important; }
+  .gov-map-body {
+    flex-direction: row !important;
+    grid-template-columns: minmax(0, 1fr) 190px !important;
+  }
+  .gov-map-rail { width: clamp(150px, 22vw, 190px) !important; }
 
   .registration-option-grid,
   .registration-field-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }

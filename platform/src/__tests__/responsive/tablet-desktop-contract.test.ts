@@ -28,6 +28,8 @@ describe('tablet compact-desktop contract', () => {
     '.pp-body',
     '.bl-pay-layout',
     '.gov-grid',
+    '.gov-map-body',
+    '.mgmt-main-bar',
   ])('keeps the desktop module structure for %s', selector => {
     expect(tabletCss).toContain(selector);
   });
