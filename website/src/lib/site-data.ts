@@ -1116,41 +1116,6 @@ export const NEWS: NewsItem[] = [
       { after: 3, photos: [derby("derby-12")] },
       { after: 4, photos: [derby("derby-02"), derby("derby-11")] },
     ],
-    explainer: {
-      title: "What the Tufts New Ventures Competition is",
-      intro:
-        "The flagship venture competition at Tufts, run by the Derby Entrepreneurship Center. It is open to the whole university rather than to business students alone, and it is judged live.",
-      rows: [
-        {
-          k: "Who can enter",
-          v: "Teams of one to five, led by a matriculated Tufts undergraduate or graduate student, a full-time postdoc, research fellow or resident, or an alum who graduated within the last five years. Faculty- and staff-led ventures qualify when at least one executive cofounder meets that bar.",
-        },
-        {
-          k: "Three tracks",
-          v: "General, for new ventures in any sector. Healthcare & Life Science, for biotech, digital health and healthcare IT. Social Impact, for ventures solving societal problems in for-profit or non-profit form, based in the US and in emerging markets. We entered the healthcare track.",
-        },
-        {
-          k: "The stage it is for",
-          v: "Early. A team must not have raised more than $250,000 in combined grants, fellowships, notes or equity by the application deadline, must be serious about building the venture full time, and cannot have already won with the same venture.",
-        },
-        {
-          k: "How it runs",
-          v: "A written application with a two-minute video pitch, screened by a panel of judges. Those chosen pitch live at the semi-finals in March and the finalists pitch again at the finals in April — five minutes each time, then five minutes of questions. Workshops, pitch practice and one-to-one coaching run alongside.",
-        },
-        {
-          k: "How it is judged",
-          v: "Eight criteria: the problem, the solution, the go-to-market strategy, financial sustainability, impact, the team, the presentation, and a wildcard for anything else that impresses the judges — traction, ambition, or cross-functional work.",
-        },
-        {
-          k: "What is on offer",
-          v: "Per track, $20,000, $10,000 and $5,000 for first, second and third, plus a Cummings Properties credit worth $25,000 in a year of free office space. Add-on awards run once a year: the $15,000 Ricci Prize for an interdisciplinary engineering team, and $2,500 each for a creative arts and a small business team. Over $250,000 across all prizes.",
-        },
-        {
-          k: "The next cycle",
-          v: "Applications open February 1, 2027 and close February 21. Semi-finals are on March 19 and the finals and celebration on April 9, 2027.",
-        },
-      ],
-    },
     link: { label: "Meet the team behind it", href: "/about#team" },
     galleryTitle: "April 10, 2026 — the night the pilot got its first funding",
     gallery: DERBY_PHOTOS,

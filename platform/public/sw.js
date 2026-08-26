@@ -9,9 +9,16 @@ const BUILD_VERSION = (() => {
   }
 })();
 const CACHE_NAME = `tamamhealth-${BUILD_VERSION}`;
+const CACHE_PREFIX = 'tamamhealth-';
+const MAX_APP_CACHES = 2;
 const STATIC_ASSETS = [
   '/',
   '/login',
+  '/manifest.json',
+  '/assets/tamam-favicon.svg',
+  '/icons/icon-192.svg',
+  '/icons/icon-512.svg',
+  '/icons/icon-maskable-512.svg',
   '/patient-portal',
   '/dashboard',
   '/patients',
@@ -21,7 +28,6 @@ const STATIC_ASSETS = [
   '/pharmacy',
   '/surveillance',
   '/reports',
-  '/hospitals',
   '/government',
   '/appointments',
   '/immunizations',
@@ -30,13 +36,66 @@ const STATIC_ASSETS = [
   '/anc',
   '/messages',
   '/settings',
-  '/telehealth',
   '/epidemic-intelligence',
   '/data-quality',
   '/vital-statistics',
   '/mch-analytics',
   '/facility-assessments',
 ];
+
+/**
+ * Cache one URL without allowing a missing/redirecting optional route to
+ * abort installation of the whole offline shell.
+ *
+ * Next.js route HTML names the content-hashed JS and CSS needed to hydrate
+ * that route. Fetch those assets too: registering the worker happens after
+ * the current page has already loaded, so relying only on the runtime fetch
+ * handler leaves a first-time installation with HTML but no executable app.
+ */
+async function precacheUrl(cache, path) {
+  try {
+    const request = new Request(path, { credentials: 'same-origin' });
+    const response = await fetch(request);
+    // A protected route may redirect to /login while the worker installs.
+    // Never store that login response under the protected route's cache key.
+    if (!response.ok || response.redirected) return;
+
+    await cache.put(request, response.clone());
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('text/html')) return;
+
+    const html = await response.text();
+    const assetPaths = new Set();
+    const attributePattern = /(?:src|href)=["']([^"']+)["']/g;
+    for (const match of html.matchAll(attributePattern)) {
+      try {
+        const assetUrl = new URL(match[1], self.location.origin);
+        if (assetUrl.origin !== self.location.origin) continue;
+        if (
+          assetUrl.pathname.startsWith('/_next/static/') ||
+          assetUrl.pathname.startsWith('/assets/') ||
+          assetUrl.pathname.startsWith('/icons/')
+        ) {
+          assetPaths.add(`${assetUrl.pathname}${assetUrl.search}`);
+        }
+      } catch {
+        // Ignore malformed or non-URL attributes.
+      }
+    }
+
+    await Promise.allSettled([...assetPaths].map(async (assetPath) => {
+      const assetRequest = new Request(assetPath, { credentials: 'same-origin' });
+      const assetResponse = await fetch(assetRequest);
+      if (assetResponse.ok && !assetResponse.redirected) {
+        await cache.put(assetRequest, assetResponse);
+      }
+    }));
+  } catch {
+    // Optional route unavailable during deploy; every other entry still gets
+    // its own attempt and an older complete cache remains available.
+  }
+}
 
 const ONLINE_REQUIRED_API_PREFIXES = [
   '/api/auth',
@@ -128,27 +187,31 @@ async function flushSyncQueue() {
 // Install: cache app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch(() => {
-        // Some routes may not be available at install time
-        return cache.addAll(['/']);
-      });
-    })
-    // Precaching is an optimisation, not a precondition. Letting it reject
-    // fails the whole installation, so a single route that 503s mid-deploy
-    // would leave the browser with no worker at all.
+    caches.open(CACHE_NAME)
+      .then((cache) => Promise.allSettled(STATIC_ASSETS.map((path) => precacheUrl(cache, path))))
+    // Precaching is an optimisation, not a precondition. A previously loaded
+    // build can still be used and runtime caching can fill this cache later.
     .catch(() => { /* no offline shell this time; the app still works online */ })
   );
   self.skipWaiting();
 });
 
-// Activate: clean old caches and flush sync queue
+// Activate: keep the current cache plus one known-good previous deployment.
+// Deleting every old cache immediately used to turn a partial install during
+// a flaky deploy into a device with no working offline build at all. Cache
+// storage preserves key creation order, so the final two are the newest two.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k).catch(() => false)))
-      )
+      .then((keys) => {
+        const appCaches = keys.filter((key) => key.startsWith(CACHE_PREFIX));
+        const keep = new Set([...appCaches.slice(-MAX_APP_CACHES), CACHE_NAME]);
+        return Promise.all(
+          appCaches
+            .filter((key) => !keep.has(key))
+            .map((key) => caches.delete(key).catch(() => false))
+        );
+      })
       .catch(() => [])
       .then(() => flushSyncQueue())
   );
@@ -165,6 +228,27 @@ self.addEventListener('fetch', (event) => {
 
   // For API auth routes: network only (don't cache auth responses)
   if (url.pathname.startsWith('/api/auth')) {
+    return;
+  }
+
+  // IndexedDB/PouchDB is the offline clinical datastore. Caching arbitrary
+  // GET API responses here duplicates PHI outside that scoped store, can show
+  // one user's cached response to the next user of a shared tablet, and makes
+  // stale server data look authoritative. API reads therefore remain network
+  // only and callers use their explicit local-replica fallback.
+  if (request.method === 'GET' && url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request).catch(() => new Response(JSON.stringify({
+        offline: true,
+        error: 'This server request is unavailable offline.',
+      }), {
+        status: 503,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-TamamHealth-Offline': 'network-only',
+        },
+      }))
+    );
     return;
   }
 
@@ -259,9 +343,14 @@ self.addEventListener('fetch', (event) => {
       .catch(() => {
         return matchQuietly(request).then((cached) => {
           if (cached) return cached;
-          // For navigation requests, return cached app shell
+          // For navigation requests, return the cached sign-in shell first.
+          // It can verify the device credential locally; the public landing
+          // page cannot open an authenticated offline session.
           if (request.mode === 'navigate') {
-            return matchQuietly('/').then((shell) => shell || new Response('Offline', { status: 503 }));
+            return matchQuietly('/login').then((loginShell) => {
+              if (loginShell) return loginShell;
+              return matchQuietly('/').then((shell) => shell || new Response('Offline', { status: 503 }));
+            });
           }
           return new Response('Offline', { status: 503 });
         });

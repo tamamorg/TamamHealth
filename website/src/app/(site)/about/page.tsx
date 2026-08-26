@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Corners from "@/components/Corners";
 import { emphasise } from "@/components/emphasise";
-import { ADVISORS as ADVISORS_EN, DERBY_PHOTOS as DERBY_PHOTOS_EN, TEAM as TEAM_EN } from "@/lib/site-data";
+import { ADVISORS as ADVISORS_EN, TEAM as TEAM_EN } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
@@ -13,7 +13,6 @@ export const metadata: Metadata = {
 
 export default async function AboutPage() {
   const { t, content } = await getTranslator();
-  const DERBY_PHOTOS = content(DERBY_PHOTOS_EN);
   const TEAM = content(TEAM_EN);
   const ADVISORS = content(ADVISORS_EN);
   return (
@@ -31,58 +30,27 @@ export default async function AboutPage() {
                 {t("That is the problem we set out to fix, and it is why every design decision starts from the constraint rather than the ideal: it has to work on a tablet, on battery, with no signal, run by staff who were trained in a morning. Tamam is built by people who know what the paper system costs, because we have watched it cost them.")}
               </p>
             </div>
-            <div className="blueprint tm-award" style={{ borderColor: "rgba(255,255,255,0.28)", display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch", alignSelf: "start" }}>
-              <Corners light />
-              <div style={{ padding: "32px 28px", display: "flex", flexDirection: "column", gap: 10 }}>
-                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Recognition")}</span>
-                <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(34px, 4vw, 48px)", lineHeight: 0.95, color: "#7CC7FF" }}>$10,000</span>
-                <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.35, color: "#FFFFFF" }}>{t("Second place, Healthcare & Life Science track — Tufts New Ventures Competition")}</span>
-                <p style={{ margin: "6px 0 0", fontSize: 14.5, lineHeight: 1.6, color: "rgba(255,255,255,0.76)" }}>
-                  {t("Our first venture competition — judged on a working platform, not a slide deck: a full patient day on screen with the network switched off.")}
-                </p>
-                <span className="fs115" style={{ marginTop: "auto", paddingTop: 14, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)" }}>
-                  {t("Derby Entrepreneurship Center at Tufts · April 10, 2026")}
-                </span>
-              </div>
-              <div className="tm-figure tm-minh280" style={{ position: "relative", minHeight: 280, borderInlineStart: "1px solid rgba(255,255,255,0.28)" }}>
-                <Image
-                  src="/assets/derby/derby-05.jpg"
-                  alt={t("Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check at the Derby Entrepreneurship Center at Tufts")}
-                  fill
-                  sizes="(max-width: 760px) 100vw, 25vw"
-                  preload
-                  style={{ objectFit: "cover" }}
-                />
-              </div>
-            </div>
-          </div>
+            {/* The story's own picture, not the award's.
 
-          {/* Competition gallery */}
-          <div style={{ marginTop: 64, borderTop: "1px solid rgba(255,255,255,0.28)", paddingTop: 26 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "12px 24px", marginBottom: 26 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("From the competition")}</span>
-                <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(20px, 2.6vw, 28px)", lineHeight: 1.15, color: "#FFFFFF" }}>
-                  {t("April 10, 2026 — the night the pilot got its first funding")}
-                </span>
-              </div>
-              <span className="fs115" style={{ letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
-                {t("13 photos — scroll")}
-              </span>
-            </div>
-            <div className="tm-gallery" tabIndex={0} role="group" aria-label={t("Photos from the Tufts New Ventures Competition, April 10, 2026")}>
-              {DERBY_PHOTOS.map((p) => (
-                <figure key={p.src}>
-                  <Image
-                    src={p.src}
-                    alt={p.alt}
-                    width={p.w}
-                    height={p.h}
-                    sizes="(max-width: 760px) 82vw, 520px"
-                  />
-                  <figcaption>{p.caption}</figcaption>
-                </figure>
-              ))}
+                This column carried the $10,000 Recognition card and, under it,
+                the thirteen-frame competition gallery. Both moved out on
+                2026-08-26: the competition has its own article at
+                /news/tufts-new-ventures-competition, which is where a prize
+                belongs, and repeating it here made the origin story share its
+                opening with a trophy. */}
+            <div
+              className="blueprint tm-figure tm-minh280"
+              style={{ position: "relative", minHeight: 340, borderColor: "rgba(255,255,255,0.28)", alignSelf: "start" }}
+            >
+              <Corners light />
+              <Image
+                src="/assets/images/pediatric-ward-interior.jpeg"
+                alt={t("Mothers waiting beside their children’s cots in a busy paediatric ward, a nurse working the row")}
+                fill
+                sizes="(max-width: 760px) 100vw, 50vw"
+                preload
+                style={{ objectFit: "cover" }}
+              />
             </div>
           </div>
         </div>

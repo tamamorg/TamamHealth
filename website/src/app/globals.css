@@ -577,10 +577,6 @@ header > div { min-width: 0; }
   .tm-about-card .tm-about-fig { order: -1; min-height: 240px !important; height: 240px; }
   .tm-util-contact { display: none !important; }
 }
-@media (max-width: 760px) {
-  .tm-award { grid-template-columns: 1fr !important; }
-  .tm-award > .tm-figure { border-inline-start: 0 !important; border-top: 1px solid rgba(255, 255, 255, 0.28) !important; min-height: 220px !important; }
-}
 @media (max-width: 639px) {
   .tm-g4, .tm-g3 { grid-template-columns: 1fr !important; }
   /* Two story photos abreast are too small to read on a phone. */

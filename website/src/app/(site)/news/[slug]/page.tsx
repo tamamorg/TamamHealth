@@ -24,7 +24,7 @@ function BodyFigure({ photos }: { photos: Photo[] }) {
               src={p.src}
               alt={p.alt}
               fill
-              sizes={pair ? "(max-width: 760px) 100vw, 410px" : "(max-width: 760px) 100vw, 820px"}
+              sizes={pair ? "(max-width: 760px) 100vw, 650px" : "(max-width: 760px) 100vw, 1320px"}
               style={{ objectFit: "cover" }}
             />
           </div>
@@ -90,7 +90,11 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
 
       {/* Body */}
       <section style={{ padding: "66px 32px 24px" }}>
-        <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* The story runs the full page grid rather than a narrow reading
+            column: 1320 is the width every other section on the site is set
+            to, and an 820px column inside it left the article floating in
+            white with the header and the photo strip squared off around it. */}
+        <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
           {n.body.map((para, idx) => (
             <Fragment key={para.slice(0, 32)}>
               <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.75, color: "var(--color-text)" }}>{para}</p>
