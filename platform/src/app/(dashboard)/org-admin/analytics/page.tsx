@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Activity } from '@/components/icons/lucide';
 import EmptyState from '@/components/EmptyState';
@@ -49,7 +49,7 @@ const EVENT_GRID = 'minmax(150px, 0.9fr) minmax(120px, 0.8fr) minmax(160px, 1.1f
 
 export default function OrgAdminAnalyticsPage() {
   const { t } = useTranslation();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [events, setEvents] = useState<UsageEventRow[]>([]);
   const [loading, setLoading] = useState(true);

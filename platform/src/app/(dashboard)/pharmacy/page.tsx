@@ -8,7 +8,7 @@ import PatientName from '@/components/PatientName';
 import { Pill, AlertTriangle, Loader2, Plus, X, Printer, ChevronRight, AlertOctagon, Download, Check, ExternalLink } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useApp } from '@/lib/context';
+import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { usePharmacyInventory } from '@/lib/hooks/usePharmacyInventory';
@@ -67,7 +67,8 @@ export default function PharmacyPage() {
   // still this page's business.
   // Patients tab — which patient's prescription view is open (patient _id)
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
-  const { globalSearch, setGlobalSearch, currentUser } = useApp();
+  const { currentUser } = useAuth();
+  const { globalSearch, setGlobalSearch } = useUi();
   // Deep link from a patient chart: /pharmacy?patient=<name> pre-filters via
   // the shared global search (combined with the table's own search below).
   useEffect(() => {

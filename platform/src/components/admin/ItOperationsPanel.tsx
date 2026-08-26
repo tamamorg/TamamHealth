@@ -12,7 +12,7 @@ import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 
 import { useEffect, useMemo, useState } from 'react';
 import { SettingsLink } from '@/components/settings/SettingsHost';
-import { useApp } from '@/lib/context';
+import { useAuth, useSync } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { apiFetch } from '@/lib/api-fetch';
 import { isPathAllowed } from '@/lib/role-routes';
@@ -58,7 +58,8 @@ export default function ItOperationsPanel({ embedded = false }: {
   /** True when hosted inside Settings — hides the self-referential console link. */
   embedded?: boolean;
 }) {
-  const { currentUser, isOnline, syncPaused, lastSync, syncNow } = useApp();
+  const { currentUser } = useAuth();
+  const { isOnline, syncPaused, lastSync, syncNow } = useSync();
   const settings = useSettings();
   const [dbStats, setDbStats] = useState<DbStat[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);

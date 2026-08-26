@@ -1223,7 +1223,32 @@ export async function applyDueTransfers(
   const completed: string[] = [];
   const expired: string[] = [];
   const failed: Array<{ id: string; error: string }> = [];
-  const all = await getAllTransfers();
+  const nowIso = now.toISOString();
+  const db = patientTransfersDB();
+  // The hourly job used to read and sort every transfer ever created, even
+  // when zero were due. On a remote CouchDB that makes runtime grow with the
+  // lifetime of the installation and can exceed the scheduler timeout. Ask
+  // the database only for the two indexed state/time windows this sweep acts
+  // on. The final predicates retain the domain rules that do not belong in a
+  // Mango index (`autoCompleteOnEffectiveDate` and transfer type).
+  const [acceptedDue, completedDue] = await Promise.all([
+    findByType<PatientTransferDoc>(
+      db,
+      'patient_transfer',
+      { status: 'accepted', effectiveAt: { $lte: nowIso } },
+      { indexFields: ['type', 'status', 'effectiveAt'] },
+    ),
+    findByType<PatientTransferDoc>(
+      db,
+      'patient_transfer',
+      { status: 'completed', expiresAt: { $lte: nowIso } },
+      { indexFields: ['type', 'status', 'expiresAt'] },
+    ),
+  ]);
+  const all = [
+    ...acceptedDue.filter(t => t.autoCompleteOnEffectiveDate !== false && Boolean(t.effectiveAt)),
+    ...completedDue.filter(t => t.transferType !== 'permanent' && Boolean(t.expiresAt)),
+  ];
 
   for (const t of all) {
     try {

@@ -6,7 +6,7 @@ import { useBirths } from '@/lib/hooks/useBirths';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientFullName } from '@/lib/patient-utils';
 import { useHospitals } from '@/lib/hooks/useHospitals';
-import { useApp } from '@/lib/context';
+import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -34,7 +34,8 @@ export default function BirthsPage() {
     }
     return (name?: string) => (name ? byName.get(name.trim().toLowerCase()) : undefined);
   }, [patients]);
-  const { currentUser, globalSearch } = useApp();
+  const { currentUser } = useAuth();
+  const { globalSearch } = useUi();
   const { canRecordVitalEvents } = usePermissions();
   const { showToast } = useToast();
   const { t } = useTranslation();

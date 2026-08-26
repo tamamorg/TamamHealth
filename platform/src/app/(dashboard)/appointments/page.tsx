@@ -35,7 +35,7 @@ import { calendarPeriodLabel, calendarPeriodRange, countInPeriod } from './_cale
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { abbreviateProviderName, patientFullName } from '@/lib/patient-utils';
-import { useApp } from '@/lib/context';
+import { useAuth, useUi } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
@@ -101,7 +101,8 @@ const CAL_VIEW_TABS: { key: 'day' | 'week' | 'month'; label: string }[] = [
 export default function AppointmentsPage() {
   const { appointments, create } = useAppointments();
   const { patients } = usePatients();
-  const { currentUser, globalSearch } = useApp();
+  const { currentUser } = useAuth();
+  const { globalSearch } = useUi();
   const { canBookAppointments, canExportAppointments } = usePermissions();
   const { showToast } = useToast();
   const { t } = useTranslation();

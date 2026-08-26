@@ -26,7 +26,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { listClinicalNotes, createClinicalNote } from '@/lib/clinical-notes/note-service';
 import { defaultNoteTypeFor } from '@/components/clinical-notes/CreateNoteButton';
 import '@/components/clinical-notes/clinical-notes.css';
@@ -35,7 +35,7 @@ import { todayIso } from '@/lib/date-utils';
 export default function ConsultationRedirectPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
   // Effects run twice under React StrictMode in development; without this the
   // first pass would create one note and the second another for the same visit.

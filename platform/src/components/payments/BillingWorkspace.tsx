@@ -25,7 +25,7 @@ import {
   X, Wallet, Activity, AlertCircle, ExternalLink, Receipt, Shield, Clock, Banknote,
   RotateCcw, Ban, AlertTriangle, Search, Users,
 } from '@/components/icons/lucide';
-import { useApp } from '@/lib/context';
+import { useAuth, useUi } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SearchInput, FilterTabs, type FilterOption } from '@/components/filters';
@@ -125,7 +125,8 @@ function downloadCsv(filename: string, header: string[], rows: (string | number)
 export default function BillingWorkspace({ initialTab = 'accounts' }: { initialTab?: WorkspaceTab }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const { currentUser, globalSearch, setGlobalSearch } = useApp();
+  const { currentUser } = useAuth();
+  const { globalSearch, setGlobalSearch } = useUi();
   const [data, setData] = useState<PaymentsData>({ payments: [], claims: [], plans: [], bills: [], encounters: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

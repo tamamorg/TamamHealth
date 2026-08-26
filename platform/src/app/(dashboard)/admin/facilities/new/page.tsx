@@ -14,14 +14,14 @@ import { ArrowLeft } from '@/components/icons/lucide';
 import { SadbPage } from '@/components/admin/sadb-ui';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { returnToFromSearch } from '@/lib/navigation/return-to';
 
 export default function AdminFacilityCreatePage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { organizations } = useOrganizations();
   const [orgId, setOrgId] = useState('');
   const [returnTo, setReturnTo] = useState('/manage?view=facilities');

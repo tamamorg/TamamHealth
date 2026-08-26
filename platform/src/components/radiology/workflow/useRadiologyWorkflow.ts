@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { effectiveOrderStatus } from '@/lib/services/lab-service';
 import type { LabResultDoc } from '@/lib/db-types';
@@ -58,7 +58,7 @@ export interface ReportDraft {
 }
 
 export function useRadiologyWorkflow(study: LabResultDoc) {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { advance, update } = useLabResults(study.patientId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import {
@@ -55,7 +55,7 @@ export default function AdminUserDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const userId = params?.id ?? '';
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { organizations } = useOrganizations();
   const { tempLength } = usePasswordPolicy();

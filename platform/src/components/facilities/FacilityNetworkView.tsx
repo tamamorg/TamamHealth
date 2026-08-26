@@ -17,7 +17,7 @@ import { useWards } from '@/lib/hooks/useWards';
 import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
 import { censusFor } from '@/lib/services/facility-census';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
-import { useApp } from '@/lib/context';
+import { useAuth, useUi } from '@/lib/context';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import { canCreateFacilities } from '@/lib/people-nav';
 import { FACILITY_MANAGE_ROLES } from '@/lib/facility-access';
@@ -123,7 +123,8 @@ const FACILITY_GRID = 'minmax(200px,1.6fr) repeat(5, minmax(96px,1fr))';
 function HospitalsPageInner() {
   const { t } = useTranslation();
   const { hospitals, loading, reload: reloadHospitals } = useHospitals();
-  const { globalSearch, currentUser } = useApp();
+  const { currentUser } = useAuth();
+  const { globalSearch } = useUi();
   // Registering a facility is an organisation-level act, so it is narrower
   // than `canManage` (which also covers running one). This is the action that
   // used to exist only on a page with no nav row.
@@ -547,7 +548,7 @@ export function FacilityProfile({ hospital, onClose, canManage, canCreate, onEdi
   onHospitalSaved: (hospital: HospitalDoc) => void;
 }) {
   const { t } = useTranslation();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   // Real counts for the profile KPIs — the stored patientCount/todayVisits
   // registry fields are write-once-zero (2026-08 hardcoded-data sweep), and
   // the ward docs are the only true occupancy signal.

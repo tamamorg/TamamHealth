@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { Receipt, Search, ChevronLeft, ChevronRight, Activity } from '@/components/icons/lucide';
 import { formatMoney } from '@/lib/format-utils';
 import { formatBillDate, STATUS_CHIP } from '@/components/billing/billing-utils';
@@ -34,7 +34,7 @@ const FILTERS: { key: FilterKey; label: string; match: (b: BillingDoc) => boolea
 const PER_PAGE_OPTIONS = [10, 20, 30, 50];
 
 export default function BillingHomePage() {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const [bills, setBills] = useState<BillingDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

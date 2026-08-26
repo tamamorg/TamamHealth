@@ -8,7 +8,7 @@ import { useANC } from '@/lib/hooks/useANC';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientAge } from '@/lib/patient-utils';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
-import { useApp } from '@/lib/context';
+import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { ANCVisitDoc } from '@/lib/db-types';
@@ -35,7 +35,8 @@ const riskColors: Record<'low' | 'moderate' | 'high', { tone: BadgeTone; label: 
 
 export default function ANCPage() {
   const { t } = useTranslation();
-  const { currentUser, globalSearch } = useApp();
+  const { currentUser } = useAuth();
+  const { globalSearch } = useUi();
   const { visits, stats, loading, register, update } = useANC();
   const { patients } = usePatients();
   const { canRecordVitalEvents } = usePermissions();

@@ -29,7 +29,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Trash2, RotateCcw, Loader2, AlertTriangle, Building2, Users, HeartPulse } from '@/components/icons/lucide';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatDate } from '@/lib/format-utils';
@@ -41,7 +41,7 @@ interface Holdings { hospitalCount: number; userCount: number; patientCount: num
 
 export default function TrashPanel() {
   const { t } = useTranslation();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { trashedOrganizations, loading, restore, purge, getStats } = useOrganizations();
 

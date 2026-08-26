@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { getDefaultDashboard } from '@/lib/permissions';
 import type { UserRole } from '@/lib/db-types';
 import TourCard from '@/components/tour/TourCard';
@@ -54,7 +54,7 @@ function routeMatches(pathname: string, route: string): boolean {
 }
 
 export function TourProvider({ children }: { children: React.ReactNode }) {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 

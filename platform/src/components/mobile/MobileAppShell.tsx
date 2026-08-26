@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { WifiOff } from '@/components/icons/lucide';
-import { useApp } from '@/lib/context';
+import { useAuth, useSync } from '@/lib/context';
 import { getRoleConfig } from '@/lib/permissions';
 import { useMobileShellState } from '@/lib/mobile-shell/use-mobile-shell-state';
 import type { MobileDashboardArchetype } from '@/lib/mobile-shell/dashboard-strategy';
@@ -22,7 +22,8 @@ interface MobileAppShellProps {
 }
 
 export default function MobileAppShell({ archetype, children }: MobileAppShellProps) {
-  const { currentUser, isOnline } = useApp();
+  const { currentUser } = useAuth();
+  const { isOnline } = useSync();
   const shell = useMobileShellState();
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : undefined;
   const allowedRoutes = roleConfig?.allowedRoutes || [];

@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { useApp } from '@/lib/context';
+import { useAuth, useSync } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { DANGER, DANGER_STRONG, SUCCESS, SUCCESS_STRONG, WARNING, WARNING_STRONG, WHITE } from '@/lib/theme-colors';
 import {
@@ -69,7 +69,8 @@ function ToneIcon({ tone }: { tone: Tone }) {
 }
 
 export default function ConnectivityNotice() {
-  const { isAuthenticated, isOnline, isNetworkUp, syncPaused, syncStatus } = useApp();
+  const { isAuthenticated } = useAuth();
+  const { isOnline, isNetworkUp, syncPaused, syncStatus } = useSync();
   const { t } = useTranslation();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [exiting, setExiting] = useState(false);

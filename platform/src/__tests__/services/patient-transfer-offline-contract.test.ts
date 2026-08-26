@@ -24,4 +24,11 @@ describe('patient transfer offline write boundary', () => {
     expect(serviceSource).toContain('withPendingOfflineSync({ ...doc');
     expect(serviceSource).toContain('withPendingOfflineSync(doc)');
   });
+
+  it('uses indexed due-only sweep queries instead of loading transfer history', () => {
+    const sweep = serviceSource.slice(serviceSource.indexOf('export async function applyDueTransfers'));
+    expect(sweep).toContain("{ status: 'accepted', effectiveAt: { $lte: nowIso } }");
+    expect(sweep).toContain("{ status: 'completed', expiresAt: { $lte: nowIso } }");
+    expect(sweep).not.toContain('await getAllTransfers()');
+  });
 });

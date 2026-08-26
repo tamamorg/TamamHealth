@@ -9,11 +9,11 @@ import type { AggregateStatus } from './sync/sync-manager';
 // the most user-facing flow — lazy-loading them via dynamic import() created
 // a separate webpack chunk that could 404 if the browser tab outlived a dev
 // rebuild ("Loading chunk _app-pages-browser_src_lib_auth_ts-*.js failed").
-import { usersDB } from './db';
+import { CSRF_COOKIE_NAME } from '@/modules/identity/core/csrf';
 import {
-  CSRF_COOKIE_NAME, clearOfflineSession, readOfflineSession,
-  startOfflineSession, verifyPassword,
-} from '@/modules/identity/client';
+  clearOfflineSession, readOfflineSession, startOfflineSession,
+} from '@/modules/identity/core/offline-session';
+import { verifyPassword } from '@/modules/identity/core/auth';
 
 import { logAudit } from './services/audit-service';
 import { captureException } from './observability';
@@ -986,6 +986,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       if (!user) {
+        const { usersDB } = await import('./db');
         const db = usersDB();
         let localUser: UserDoc;
         try {

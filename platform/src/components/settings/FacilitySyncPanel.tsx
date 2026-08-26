@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { RefreshCw, Check } from '@/components/icons/lucide';
 import {
   getDhis2SyncLog, recordDhis2SyncResult, recordDhis2SyncFailure, isDhis2Configured,
@@ -49,7 +49,7 @@ export interface FacilitySync {
  * status read-out is not looking at.
  */
 export function useFacilitySync(): FacilitySync {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const [running, setRunning] = useState(false);
   const [log, setLog] = useState<Dhis2SyncLogDoc | null>(null);
   const [loaded, setLoaded] = useState(false);

@@ -17,7 +17,7 @@ import { useLabResults } from '@/lib/hooks/useLabResults';
 import { evaluateCritical } from '@/lib/services/lab-critical-flag';
 import { matchAnalyzerResult, parseInstrumentPayload, type ParsedInstrumentResult } from '@/lib/services/instrument-intake-service';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { useApp } from '@/lib/context';
+import { useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -106,7 +106,7 @@ export default function LabPage() {
   // popover itself now belongs to the search field (EhrSearchFilter), so only
   // the applied count is still this page's business.
   const headerFilterCount = [colFilters.test, colFilters.status, colFilters.worklist].filter(Boolean).length;
-  const { globalSearch } = useApp();
+  const { globalSearch } = useUi();
   const { results: labResults, loading: labLoading, reload: reloadLabs } = useLabResults();
   const { patients } = usePatients();
   const patientById = useMemo(() => new Map(patients.map(patient => [patient._id, patient])), [patients]);

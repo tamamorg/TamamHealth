@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { evaluateCritical } from '@/lib/services/lab-critical-flag';
 import { effectiveOrderStatus } from '@/lib/services/lab-service';
@@ -51,7 +51,7 @@ export function useLabWorkflow(
   /** A reading imported from an analyzer, offered for review rather than saved. */
   seedResult?: { value: string; unit: string; referenceRange: string },
 ) {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { advance, update } = useLabResults(order.patientId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

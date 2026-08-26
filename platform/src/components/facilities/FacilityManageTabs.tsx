@@ -42,7 +42,7 @@ import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { getPerformanceColor } from '@/lib/performance-colors';
 import { canCreateUsers } from '@/lib/people-nav';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { userWorksAtFacility } from '@/modules/tenancy/client';
 
 // ── Permission ───────────────────────────────────────────────────────────────
@@ -168,7 +168,7 @@ function StaffTab({ scope, hospitalId, hospital, refreshToken }: {
   refreshToken?: number;
 }) {
   const { t } = useTranslation();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { showToast } = useToast();
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);

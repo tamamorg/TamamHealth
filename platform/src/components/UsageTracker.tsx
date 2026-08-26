@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import {
   flushUsageQueue,
   setUsageIdentity,
@@ -17,7 +17,7 @@ import {
  */
 export default function UsageTracker() {
   const pathname = usePathname();
-  const { currentUser, isAuthenticated } = useApp();
+  const { currentUser, isAuthenticated } = useAuth();
   const sessionStarted = useRef(false);
 
   useEffect(() => {

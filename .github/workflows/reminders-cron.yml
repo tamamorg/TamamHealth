@@ -86,11 +86,18 @@ jobs:
           fi
           echo "::add-mask::$OIDC_TOKEN"
 
+          if ! curl -sS -o /dev/null \
+            --connect-timeout 10 --max-time 20 --retry 2 --retry-all-errors \
+            "$BASE_URL/api/health"; then
+            echo "::error title=Production platform unreachable::$BASE_URL cannot be reached. Deploy/restore production or set the PLATFORM_BASE_URL repository variable to the canonical production origin. Do not point this clinical job at a demo deployment."
+            exit 1
+          fi
+
           # --fail-with-body so a non-2xx exits non-zero AND still shows the
           # response, which is what makes a broken gateway visible here rather
           # than silently succeeding.
           RESPONSE=$(curl -sS --fail-with-body \
-            --max-time 300 \
+            --connect-timeout 10 --max-time 240 \
             -X POST \
             -H "authorization: Bearer $OIDC_TOKEN" \
             -H 'content-type: application/json' \

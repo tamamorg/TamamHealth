@@ -19,7 +19,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
-import { getRoleConfig } from '@/lib/permissions';
+import { ROLE_LABEL } from '@/lib/role-display';
+import { canonicalizeUserRole, isLegacyNursingRole } from '@/lib/user-role';
 import type { UserRole } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Corners } from '@/components/login/login-chrome';
@@ -41,13 +42,14 @@ import { portalFromParam, shotForPortal, DEFAULT_PORTAL, type LoginPortal } from
 // of them would make a workspace unreachable. Those keep the disambiguating
 // suffix, which is the only case it was ever for.
 const ROLE_OPTIONS = (() => {
-  const roles = Object.keys(ROLE_ROUTE_TABLE) as UserRole[];
+  const roles = (Object.keys(ROLE_ROUTE_TABLE) as UserRole[])
+    .filter(role => !isLegacyNursingRole(role));
   const workspaceOf = (value: UserRole) =>
     `${ROLE_ROUTE_TABLE[value].defaultDashboard}|${[...ROLE_ROUTE_TABLE[value].allowed].sort().join(',')}`;
 
   const byLabel = new Map<string, UserRole[]>();
   for (const value of roles) {
-    const label = getRoleConfig(value).label;
+    const label = ROLE_LABEL[value];
     byLabel.set(label, [...(byLabel.get(label) ?? []), value]);
   }
 
@@ -536,7 +538,7 @@ export default function LoginPage() {
                         disabled={loading}
                         onClick={() => signInAsDemo(account)}
                       >
-                        <span className="lg-demo-role">{getRoleConfig(account.role as UserRole).label}</span>
+                        <span className="lg-demo-role">{ROLE_LABEL[canonicalizeUserRole(account.role as UserRole)]}</span>
                         <span className="lg-demo-name">{account.name}</span>
                         <span className="lg-demo-user">{account.username}</span>
                       </button>

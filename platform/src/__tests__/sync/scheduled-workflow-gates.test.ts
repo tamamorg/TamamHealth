@@ -96,4 +96,13 @@ describe('scheduled workflows are not gated on human approval', () => {
     expect(readFileSync(join(WORKFLOWS, 'reminders-cron.yml'), 'utf8'))
       .not.toMatch(/secrets\.REMINDER_DISPATCH_SECRET/);
   });
+
+  it('bounds production reachability checks before invoking clinical jobs', () => {
+    for (const file of ['transfers-sweep-cron.yml', 'reminders-cron.yml']) {
+      const text = readFileSync(join(WORKFLOWS, file), 'utf8');
+      expect(text).toContain('::error title=Production platform unreachable');
+      expect(text).toContain('--connect-timeout 10 --max-time 20');
+      expect(text).toContain('$BASE_URL/api/health');
+    }
+  });
 });

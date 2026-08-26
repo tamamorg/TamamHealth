@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { getActiveAllergies } from '@/lib/services/allergy-service';
 import {
@@ -68,7 +68,7 @@ export function usePharmacyWorkflow(
   /** The patient's other active medicines, for interaction and duplicate checks. */
   activeMedications: string[] = [],
 ) {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { advance, dispense, markUnfilled } = usePrescriptions(rx.patientId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

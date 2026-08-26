@@ -18,7 +18,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal';
-import { useApp } from '@/lib/context';
+import { useAuth, useSync } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -161,7 +161,8 @@ type NavGroup = { title: string; items: NavItem[] };
 
 export default function RoleSettingsView() {
   const router = useRouter();
-  const { currentUser, isOnline, syncPaused, lastSync, refreshCurrentUser, toggleOnline } = useApp();
+  const { currentUser, refreshCurrentUser } = useAuth();
+  const { isOnline, syncPaused, lastSync, toggleOnline } = useSync();
   const { showToast } = useToast();
   const { canManageUsers, canAccess } = usePermissions();
   const { users, update: updateUser } = useUsers();

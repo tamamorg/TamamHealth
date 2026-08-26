@@ -11,7 +11,7 @@
  * once, see it everywhere" work without a refresh or re-login.
  */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 import {
   DEFAULT_FACILITY_SETTINGS,
   mergeFacilitySettings,
@@ -34,7 +34,7 @@ const SettingsContext = createContext<SettingsContextValue>({
 });
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const hospitalId = currentUser?.hospitalId;
   const orgId = currentUser?.orgId;
 

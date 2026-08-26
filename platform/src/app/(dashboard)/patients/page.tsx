@@ -8,7 +8,7 @@ import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { ScanLine, Hash, X, ArrowRight, Download, UserPlus } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { useApp } from '@/lib/context';
+import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { states } from '@/lib/data/south-sudan-reference';
 import dynamic from 'next/dynamic';
@@ -31,7 +31,8 @@ const PAGE_SIZE = 100;
 export default function PatientsPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { globalSearch, currentUser } = useApp();
+  const { currentUser } = useAuth();
+  const { globalSearch } = useUi();
   const { patients } = usePatients();
   const { canRegisterPatients, isMedicalBiller, isCashier } = usePermissions();
   // Billing-desk roles see money (outstanding balance) instead of clinical detail.

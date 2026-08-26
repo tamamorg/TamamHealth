@@ -11,7 +11,7 @@ import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientAge } from '@/lib/patient-utils';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
-import { useApp } from '@/lib/context';
+import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { toCsvRows, downloadCsvText, safeFilenamePart } from '@/lib/export-file';
@@ -45,7 +45,8 @@ export default function ImmunizationsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
-  const { currentUser, globalSearch } = useApp();
+  const { currentUser } = useAuth();
+  const { globalSearch } = useUi();
   const { immunizations, stats, coverage, loading, register, update } = useImmunizations();
   const { patients } = usePatients();
   const { canRecordVitalEvents } = usePermissions();

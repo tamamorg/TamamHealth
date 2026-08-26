@@ -13,7 +13,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientAge } from '@/lib/patient-utils';
 import { aoeSchedule } from './lab-order-aoe';
@@ -28,7 +28,7 @@ import {
 } from './lab-order-types';
 
 export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { patients } = usePatients();
   const [draft, setDraft] = useState<LabOrderDraft>(() => ({
     ...emptyLabOrderDraft(currentUser?.name || ''),

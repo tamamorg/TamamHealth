@@ -7,14 +7,14 @@
  */
 
 import { CheckCircle2, Printer } from '@/components/icons/lucide';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import LabRequisition from '../LabRequisition';
 import type { LabOrderController } from '../useLabOrderDraft';
 
 export default function CompleteStep({ controller }: { controller: LabOrderController }) {
   const { t } = useTranslation();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { draft, patient, receipt, schedule } = controller;
 
   if (!receipt || !patient) return null;

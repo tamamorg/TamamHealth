@@ -7,7 +7,7 @@ import Modal from '@/components/Modal';
 import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { useToast } from '@/components/Toast';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -68,7 +68,7 @@ export default function ManagementWorkspace() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const router = useRouter();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const orgStore = useOrganizations();
   const hospitalStore = useHospitals();
   const userStore = useUsers();

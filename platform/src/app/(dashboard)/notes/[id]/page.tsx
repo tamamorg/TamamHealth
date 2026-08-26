@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import ClinicalNoteEditor from '@/components/clinical-notes/ClinicalNoteEditor';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
 
 /**
@@ -13,7 +13,7 @@ import { useUsers } from '@/lib/hooks/useUsers';
  */
 export default function ClinicalNotePage() {
   const params = useParams<{ id: string }>();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { users } = useUsers();
 
   const assignable = useMemo(

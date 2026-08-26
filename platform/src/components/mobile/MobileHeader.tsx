@@ -1,6 +1,6 @@
 'use client';
 
-import { useApp } from '@/lib/context';
+import { useAuth, useSync } from '@/lib/context';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import { Menu } from '@/components/icons/lucide';
 
@@ -24,7 +24,8 @@ function syncChip(opts: {
  * this is always visible — the first persistent sync indicator in the app.
  */
 export default function MobileHeader({ onOpenModules }: { onOpenModules: () => void }) {
-  const { currentUser, isOnline, isNetworkUp, syncPaused, syncStatus, syncNow } = useApp();
+  const { currentUser } = useAuth();
+  const { isOnline, isNetworkUp, syncPaused, syncStatus, syncNow } = useSync();
   const chip = syncChip({ isOnline, isNetworkUp, syncPaused, syncState: syncStatus?.state });
 
   return (

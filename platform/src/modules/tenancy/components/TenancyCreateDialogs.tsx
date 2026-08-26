@@ -26,7 +26,7 @@ import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
 import PopupHeader from '@/components/PopupHeader';
 import { useToast } from '@/components/Toast';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { canCreateUsers } from '@/lib/people-nav';
@@ -50,7 +50,7 @@ export default function TenancyCreateDialogs({ kind, onDone }: {
 }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { showToast } = useToast();
   const [step, setStep] = useState<TenancyCreateKind>(kind);
   const [newFacility, setNewFacility] = useState<HospitalDoc | null>(null);

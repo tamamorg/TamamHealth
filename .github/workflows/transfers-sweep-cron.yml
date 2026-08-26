@@ -88,6 +88,17 @@ jobs:
           fi
           echo "::add-mask::$OIDC_TOKEN"
 
+          # Diagnose a dead production ingress before presenting it as an
+          # endpoint failure. app.tamamhealth.org currently has no reachable
+          # deployment; without this guard curl waits until exit 28 and the
+          # run reveals neither the failed host nor the corrective action.
+          if ! curl -sS -o /dev/null \
+            --connect-timeout 10 --max-time 20 --retry 2 --retry-all-errors \
+            "$BASE_URL/api/health"; then
+            echo "::error title=Production platform unreachable::$BASE_URL cannot be reached. Deploy/restore production or set the PLATFORM_BASE_URL repository variable to the canonical production origin. Do not point this clinical job at a demo deployment."
+            exit 1
+          fi
+
           URL="$BASE_URL/api/patient-transfers/sweep"
           if [ -n "${AS_OF:-}" ]; then
             URL="$URL?asOf=$(printf '%s' "$AS_OF" | jq -sRr @uri)"
@@ -97,7 +108,7 @@ jobs:
           # response, which is what makes a broken sweep visible here rather
           # than silently "succeeding".
           RESPONSE=$(curl -sS --fail-with-body \
-            --max-time 300 \
+            --connect-timeout 10 --max-time 240 \
             -X POST \
             -H "authorization: Bearer $OIDC_TOKEN" \
             -H 'content-type: application/json' \

@@ -31,10 +31,10 @@
   flex-direction: column;
   background: #FFFFFF;
   color: var(--lg-text);
-  font-family: var(--lg-font-body), 'Barlow', system-ui, sans-serif;
+  font-family: var(--font-barlow), 'Barlow', system-ui, sans-serif;
 }
 .lg-root h1, .lg-root h2 {
-  font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif;
+  font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif;
   font-weight: 600;
   line-height: 1.12;
   letter-spacing: -0.015em;
@@ -105,7 +105,7 @@
   display: flex; flex-direction: column; gap: 2px; font: inherit;
 }
 .lg-rolerow:hover, .lg-rolerow.is-selected { background: var(--lg-accent-100); }
-.lg-rolerow-name { font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif; font-weight: 600; font-size: 15px; color: var(--lg-text); }
+.lg-rolerow-name { font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif; font-weight: 600; font-size: 15px; color: var(--lg-text); }
 .lg-rolerow-scope { font-size: 12.5px; color: var(--lg-neutral-600); }
 .lg-rolelist-empty { display: block; padding: 14px; font-size: 13.5px; color: var(--lg-neutral-600); }
 
@@ -120,7 +120,7 @@
    4.5:1; navy ink carries it. */
 .lg-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  width: 100%; padding: 15px 0; font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif;
+  width: 100%; padding: 15px 0; font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif;
   font-weight: 600; font-size: 16px; color: #113055; background: var(--lg-cta);
   border: 1px solid var(--lg-cta); border-radius: 0; cursor: pointer;
 }
@@ -184,7 +184,7 @@
 .lg-aside { background: var(--lg-surface); padding: 30px 32px 32px; display: flex; flex-direction: column; gap: 14px; }
 .lg-eyebrow { font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lg-accent-700); }
 .lg-aside-copy { margin: 0; font-size: 15px; line-height: 1.6; color: var(--lg-neutral-800); }
-.lg-aside-link { font-family: var(--lg-font-heading), 'Barlow Condensed', system-ui, sans-serif; font-weight: 600; font-size: 16px; color: var(--lg-accent-700); text-decoration: none; }
+.lg-aside-link { font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif; font-weight: 600; font-size: 16px; color: var(--lg-accent-700); text-decoration: none; }
 /* A photograph, not a screenshot of the app: the panel argues what the
    record is for, and the person signing in is about to see the interface
    anyway. A fixed height with an object-fit crop so a landscape frame

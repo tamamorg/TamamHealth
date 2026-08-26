@@ -21,7 +21,7 @@ import { AlertTriangle, X } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
 import type { FilterOption } from '@/components/filters';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -121,7 +121,7 @@ const CLAIM_COLUMNS = [
 export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaimOpen, setNewClaimOpen }: ClaimsPanelProps) {
   const { t } = useTranslation();
   const router = useRouter();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { patients } = usePatients();
 

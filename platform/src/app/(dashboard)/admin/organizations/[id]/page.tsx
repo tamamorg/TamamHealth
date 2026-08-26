@@ -41,7 +41,7 @@ import { Maximize2, UserPlus, X } from '@/components/icons/lucide';
 import { UserForm, type UserCredentialHandoff } from '@/components/admin/UserForm';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import { CredentialHandoffModal } from '@/modules/identity/client';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import type { UserDoc } from '@/lib/db-types';
 import { userWorksAtFacility } from '@/modules/tenancy/client';
@@ -68,7 +68,7 @@ export default function AdminOrganizationDetailPage() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [showAddFacility, setShowAddFacility] = useState(false);
   const [handoff, setHandoff] = useState<UserCredentialHandoff | null>(null);
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { showToast } = useToast();
 
   const loadOrgDetail = useCallback(async () => {

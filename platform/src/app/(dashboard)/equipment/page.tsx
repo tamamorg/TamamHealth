@@ -5,7 +5,7 @@ import Modal from '@/components/Modal';
 import { Plus, X, CheckCircle2, Settings as Wrench } from '@/components/icons/lucide';
 import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
-import { useApp } from '@/lib/context';
+import { useAuth, useUi } from '@/lib/context';
 import { useAssets } from '@/lib/hooks/useAssets';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -36,7 +36,8 @@ const STATUS_TOKENS: Record<AssetStatus, { labelKey: string; color: string; bg: 
 };
 
 export default function AssetsPage() {
-  const { currentUser, globalSearch, setGlobalSearch } = useApp();
+  const { currentUser } = useAuth();
+  const { globalSearch, setGlobalSearch } = useUi();
   const { assets, summary, create, setStatus, logService } = useAssets();
   const { showToast } = useToast();
   const { t } = useTranslation();

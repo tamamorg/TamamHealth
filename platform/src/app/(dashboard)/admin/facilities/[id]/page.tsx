@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { ArrowLeft } from '@/components/icons/lucide';
 import { SadbPage } from '@/components/admin/sadb-ui';
 import { FacilityProfile } from '@/components/facilities/FacilityNetworkView';
@@ -33,7 +33,7 @@ export default function AdminFacilityDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const facilityId = params?.id ?? '';
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
 
   const [hospital, setHospital] = useState<HospitalDoc | null>(null);
   const [loading, setLoading] = useState(true);
