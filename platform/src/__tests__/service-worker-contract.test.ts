@@ -29,6 +29,10 @@ describe('service worker offline shell', () => {
     expect(source).toContain("'X-TamamHealth-Offline': 'network-only'");
   });
 
+  it('does not duplicate PouchDB replication writes in the generic request queue', () => {
+    expect(source).toMatch(/ONLINE_REQUIRED_API_PREFIXES[\s\S]*'\/api\/couch'/);
+  });
+
   it('has a cached offline sign-in entry point', () => {
     expect(source).toContain("'/login'");
     expect(source).toContain("matchQuietly('/login')");

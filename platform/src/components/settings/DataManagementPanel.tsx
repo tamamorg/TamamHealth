@@ -35,6 +35,11 @@ import { useRouter } from 'next/navigation';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import { isPathAllowed } from '@/lib/role-routes';
 import { LOCAL_AUDIT_RETENTION_DAYS } from '@/lib/services/audit-retention';
+import {
+  assessOfflineReadiness,
+  type OfflineReadinessCheckId,
+  type OfflineReadinessReport,
+} from '@/lib/offline-readiness';
 
 /** What this device is holding, once it has been measured. */
 interface DeviceData {
@@ -85,6 +90,7 @@ export default function DataManagementPanel() {
   const backup = useBackupStatus();
 
   const [device, setDevice] = useState<DeviceData | null>(null);
+  const [offlineReadiness, setOfflineReadiness] = useState<OfflineReadinessReport | null>(null);
   const [pruning, setPruning] = useState(false);
 
   const measure = useCallback(async () => {
@@ -129,7 +135,8 @@ export default function DataManagementPanel() {
     }
 
     setDevice({ unsynced, documents: readAny ? documents : null, usageBytes, quotaBytes, durable });
-  }, []);
+    setOfflineReadiness(await assessOfflineReadiness(currentUser?.username));
+  }, [currentUser?.username]);
 
   useEffect(() => { measure(); }, [measure]);
 
@@ -162,6 +169,8 @@ export default function DataManagementPanel() {
   ].filter(d => role && isPathAllowed(role, d.path));
 
   const unsyncedCount = device?.unsynced.length ?? 0;
+  const readinessIssue = offlineReadiness?.checks.find(check => !check.passed);
+  const readinessLabel = (id: OfflineReadinessCheckId): string => t(`offlineReady.check.${id}`);
 
   return (
     <section className="ehr-set-section">
@@ -179,6 +188,45 @@ export default function DataManagementPanel() {
         >
           <RefreshCw /> {t('dataMgmt.refresh')}
         </button>
+      </div>
+
+      {/* ── Cold-start gate: all prerequisites REDCap/Kobo-style provisioning needs ── */}
+      <div className="ehr-set-row dm-row">
+        <div className="ehr-set-row-label">
+          <b>{t('offlineReady.title')}</b>
+          <span>
+            {offlineReadiness === null
+              ? t('offlineReady.checking')
+              : offlineReadiness.state === 'ready'
+                ? t('offlineReady.readyBody')
+                : offlineReadiness.state === 'warning'
+                  ? t('offlineReady.warningBody')
+                  : t('offlineReady.notReadyBody', {
+                    item: readinessIssue ? readinessLabel(readinessIssue.id) : t('offlineReady.unknownIssue'),
+                  })}
+          </span>
+          {offlineReadiness && (
+            <div className="dm-chips">
+              {offlineReadiness.checks.map(check => (
+                <em key={check.id} className={`dm-chip ${check.passed ? 'dm-chip--ok' : 'dm-chip--warn'}`}>
+                  {check.passed ? '✓' : '×'} {readinessLabel(check.id)}
+                </em>
+              ))}
+            </div>
+          )}
+        </div>
+        <span className={`dm-state ${offlineReadiness?.state === 'ready' ? 'is-ok' : offlineReadiness ? 'is-warn' : ''}`}>
+          {offlineReadiness === null
+            ? <Loader2 className="animate-spin" />
+            : offlineReadiness.state === 'ready' ? <ShieldCheck /> : <AlertTriangle />}
+          {offlineReadiness === null
+            ? t('offlineReady.checkingState')
+            : offlineReadiness.state === 'ready'
+              ? t('offlineReady.ready')
+              : offlineReadiness.state === 'warning'
+                ? t('offlineReady.warning')
+                : t('offlineReady.notReady')}
+        </span>
       </div>
 
       {/* ── Unsynced work: the only thing here that can be permanently lost ── */}

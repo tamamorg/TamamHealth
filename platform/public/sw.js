@@ -99,6 +99,11 @@ async function precacheUrl(cache, path) {
 
 const ONLINE_REQUIRED_API_PREFIXES = [
   '/api/auth',
+  // PouchDB already owns the durable local write and retry lifecycle. Queuing
+  // its replication protocol a second time here would replay stale CouchDB
+  // requests (including old revisions) after SyncManager has already retried
+  // them, creating avoidable conflicts and an extra PHI-bearing outbox.
+  '/api/couch',
   '/api/users',
   '/api/admin',
   '/api/receipts',
